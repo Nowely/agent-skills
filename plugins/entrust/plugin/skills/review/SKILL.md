@@ -1,9 +1,8 @@
 ---
 name: review
 description: >-
-  User-invoked code review of a change, branch or PR: finds what is wrong, unnecessary, badly structured
-  or untested, each with the line that shows it, and says what the smallest clean solution looks like,
-  with one reviewer or with independent reviewers by direction.
+  User-invoked review of a change, branch or PR: assess solution quality, unnecessary code,
+  responsibility boundaries, behavior and tests, with one reviewer or independent reviewers by direction.
 disable-model-invocation: true
 metadata:
   version: "0.36.0"
@@ -12,144 +11,124 @@ license: MIT
 
 # Review
 
-Give the author a review they can act on without repeating your work: everything in the change that is wrong, unnecessary, badly structured or untested, each with the line that shows it; what you could not explain, as questions; what would make it better without being a problem, as ideas; and the shape of the smallest clean solution, so that the findings add up to a direction. Review only: change no code and post no comments unless asked. Keep to the scope and limits the user set; where you may not run code, say what a run would settle.
+Find the smallest clean solution to the task in this codebase, and explain how the change compares with it. Correct behavior, necessary mechanisms, clear ownership and readable structure all matter. A review can find a design problem without finding a functional defect; a sound design can keep several related rules in one function.
+
+Review only: change no project code and post no comments unless asked. Keep to the user's scope and execution limits. Save review artifacts in the user's permitted output location, outside the source tree by default; where writing artifacts is not allowed, return the complete structured report in the response and state that it was not saved. Never describe a read-through or a proposed manual scenario as an executed check.
+
+## Preparation
+
+Identify the exact diff and base, the task, and the project instructions. State the goal and its source. Extract numbered requirements with source labels: `task`, `discussion`, `question` or `assumption`; include a reference to the actual source. A task's recorded decision remains a requirement when code contradicts its premise: record the contradiction and the decision needed, rather than silently replacing it. An unapproved author rationale or stale project doc is an assumption, not a binding requirement: when an authoritative contract refutes it, recommend removing the unnecessary mechanism directly.
+
+Read the changed files and the base version of rewritten logic. Follow changed inputs from their producers, changed outputs to their consumers, and changed functions to their callers. Read the existing parser, validator, utility or neighboring implementation that already does this kind of work. Look for other places that compute or display the same fact.
+
+Establish reachable entries and boundary contracts. Entries are repository callers, task-specified inputs, schedules and events. At a boundary, identify which side guarantees what and cite the code or type that establishes it. For dependencies, identify the lockfile version and inspect the installed version's types or implementation relevant to the claim. For stored data, inspect the relevant writers, imports and migrations, including older writers when their data can remain. An unavailable contract stays unknown; a neighboring function or different version does not establish it.
+
+Read [references/report-data.md](references/report-data.md), the data and verification contract, for every review so the analysis can populate the report as evidence is collected. HTML is a separate, optional presentation of that same record.
+
+Scope and reading prepare the first analytical step below. If the change cannot be covered whole, review bounded parts in risk order and explicitly mark the unreached scope.
 
 ## Procedure
 
-Do the steps in order. Steps 1 to 5 collect and do not filter; step 6 filters. Finish all four passes of step 4 before going on, even after a serious find.
+### 1. Map the connected code
 
-1. **Scope.** Identify the exact change (the diff against its base), the task behind it and the project instructions that apply. Say in a sentence what the change is for and why, and note each source you took that from: the task text, the PR, an issue, the commits, a mockup. Write the task as a numbered list of requirements, each with where it comes from: the task, a decision taken in discussion, a question left open, or an assumption, yours or the author's. A requirement that rests on a claim the code or a contract contradicts stays in the list: say what contradicts it, for whoever decided it. A change too large to read whole is reviewed unit by unit in order of risk, and the report lists what was not reached.
-2. **Read around the change.** Read each changed file whole, and the base version of what was rewritten. For each changed function, open its callers, the source of each input and the consumers of its output. Find how the project already does this kind of thing: its parser, its validator, the neighbouring step of the same job. Search for code elsewhere that shows or computes the same thing and was not changed. Write two lists the later steps cite:
-   - **Entries.** What starts the changed code: each caller in the repository, each input the task names, each schedule or event. A trigger is one of these.
-   - **Contracts.** For each boundary the change crosses, a function it calls, a dependency, stored data, the caller it serves: which side guarantees what, and the line that says so in the code that runs. For a dependency, take its version from the lockfile and read that installed package's types or code, not a document, a comment or another copy of the package. For stored data, find every writer: the current code, older code, imports, migrations.
-3. **Map the change.** Split the diff into blocks: the smallest groups of lines that make one decision and could be kept, changed or removed on their own, such as a function, a branch, a guard, a parameter, a constant, a test. Every changed line belongs to one block. For each block note what it does and what it serves: the requirement it implements, or the integration or check that requirement cannot do without. Ask of each: if it were removed, which requirement would fail? A block that serves nothing is a candidate to delete; a requirement no block serves is a candidate to add. Then list the units: each function, class or module with real logic that the change adds or alters, with its jobs, read off its blocks, and the units it uses; and the existing units that call it or that it calls. For a unit that decides, such as a validator, a planner or a function that picks one outcome among several, write its rules from the code: for each, what it reads, when it applies, what comes out, and which wins where two apply. Hold the list against the requirements: a rule nothing asks for, a requirement with no rule and an order the task does not give are candidates.
-4. **Four passes.** Go through the blocks once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
-5. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns and which units it uses, what it reuses, and which blocks of the map it keeps. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. Then walk each requirement and each rule of step 3 through the target and name the unit that carries it; a target that loses one is not the target yet. If the change already is that solution, say so: a good change gets a short review.
-6. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question; what is no problem of the change and would still make it better is an idea.
-7. **Report** in [the report's shape](#the-report).
+Build this map for every review, including a short review without an interactive report. It is the first analytical product, not an optional report section. Continue reading wherever the map exposes a missing connection.
 
-## Directions
+Keep one compact analysis record, in Markdown or JSON, with references between its parts:
 
-In every pass, also note what you cannot explain: a parameter nothing reads, a branch nothing reaches, a constant with no source, a special case no requirement asks for, a comment that says "temporary", a comment the code contradicts.
+- **Requirements:** id, required behavior, source and source reference. Add verification status and any contradiction as the review progresses.
+- **Blocks:** file and changed line ranges on each side of the diff, containing unit where applicable, what the block does, and the requirement or necessary integration/check it serves. A block is a decision or independently removable part: a branch, guard, parameter, request, constant, test or cohesive function body. Every nonblank changed line belongs to exactly one block. Keep and removal decisions will be added after review; an empty requirement link is a candidate to investigate, not proof of redundancy.
+- **Units and connections:** each changed unit with real logic, its responsibilities, the units it uses, and the existing units that call it or that it calls. Include source locations for unchanged code and trace through relevant dependencies far enough to explain the changed behavior and ownership. For a unit that decides, record its rules: inputs, conditions, outcomes and precedence when rules overlap. Include shared mutable decision state and external or time-dependent effects where they connect blocks or affect ownership. The map must show the connected implementation, not just a list of changed files.
+- **Mechanisms:** identify the meaningful behaviors or coordination concepts the change adds, reuses, changes or removes. A mechanism may span several blocks and units: a scheduled refresh includes its trigger, state, cancellation and consumer. A helper or guard is not automatically a separate mechanism. Record its purpose, evidence or decision requiring it, existing alternatives, benefit, cost and proposed disposition in `mechanisms`, referencing the mapped units and requirements rather than copying the code map. An empty list is valid for a change with no material mechanism.
+- **Evidence and limits:** reachable entries, contract references, relevant existing utilities and unread boundaries. Record each once and refer to it from blocks, units and findings.
 
-### Behavior
+Use the same record for later findings and presentation. Requirement links come from blocks; dependencies come from units. Do not copy those relationships into several parallel tables. The initial map is provisional: do not assign keep/fix/remove merely to satisfy a schema before reviewing. After refutation, finalize it into the mandatory `review.json` data contract: `requirements`, `blocks`, `units`, `mechanisms` and `coverage` carry the map, with rule details in the unit's `jobs`. The complete structured report is required whether or not HTML is requested.
 
-- For each requirement, find the lines that implement it. A requirement with no lines, or met in only some of the places that need it, is a finding.
-- Compare with the base: what works differently now that no requirement asked to change?
-- Run concrete values through each changed branch by hand: both sides of every comparison and the value on its boundary; the first, the last and the only element; a value the contract allows to be absent; the same input twice; a failure halfway through.
-- Follow each error to where it is handled and to what the user or the caller learns. An error that is caught and only logged, or a lookup that falls back silently, hides the failure from whoever must act on it.
-- Check security, data integrity, concurrency and performance where the change touches them, under the callers and load the project supports.
-- When the change alters what the user sees, work from the pictures you were given: the mockup, the screen before and the screen after. Compare them screen by screen and state by state. A difference from the mockup that has a reason, in the task or in a limit of the design system, is noted with that reason; one without is a finding, and so is a difference from before that no requirement asks for. A state the mockup does not show, such as empty, loading, error, long text or a narrow screen, is a question. Do not start the application to take pictures unless the user said to: say which screens you could not compare and which picture would settle each.
+Check the map against the diff and the connected code: changed lines accounted for, unit references resolved, rule order stated, and unverified connections visible. Preserve it as an accessible artifact and link it in the report. A concise response may omit the full map; the analysis and its checkable record remain required.
 
-### Necessity
+### 2. Check responsibility boundaries and decomposition
 
-- Take each block of the map that is a mechanism: a guard or null check, a fallback or default, a try/catch, a retry, a cache, a conversion, an option or mode, a wrapper, a registry, a configuration, a new piece of state.
-- For each, write the assumption that makes it necessary ("the currency can be missing"), then check it against the contracts of step 2: the code that produces the value, the schema or type, every caller. It ends as `needed` (cite the source), `contradicted` (a finding: say what to delete and what still works) or `unknown` (a question: say what would settle it).
-- Judge each mechanism on its own evidence. One unnecessary guard says nothing about the next one.
-- Check whether the project already has this: a utility, a check upstream, the callee itself, or a value already in hand, an input or a field of an object the code was passed, that carries what the change fetches or computes again. Code that re-implements it is a finding, and so is each place where the copy behaves differently.
-- A mechanism that goes takes with it what existed only for it: the request for its data, the state that held it, its loading and error handling, its timer, its tests. Name them in the fix.
+After the breakdown, explicitly assess how responsibilities and rules are grouped: whether to split intertwined logic, merge scattered ownership, simplify control flow or layers in place, or keep the current grouping. Record the assessment and its reason in the map.
 
-### Design
+Examine what must be understood together to read, test or change each existing responsibility. Look for a rule whose intermediate state another rule silently overwrites, mutable flags crossing responsibilities, unrelated work that must be understood to establish an outcome, one rule scattered across owners, or an interface exposing another unit's internal decisions. Name the actual connection and its cost. Use the mechanism map as evidence: was it straightforward to locate each mechanism, identify its owner and follow its inputs, effects and lifetime? If not, distinguish unread or unavailable context from actual entanglement. Show what must be read or changed together for one concrete existing responsibility. The effort of tracing is a lead, not by itself a finding.
 
-Judge how the blocks are grouped into units and how the units depend on each other. Do it with a test: take each rule of step 3 and each requirement in turn as the one that changes, and note what you must read to change it safely and the units you would edit.
+Then compare the smallest useful alternatives: clarify or reorder within the unit, separate decisions from effects, bring scattered ownership together, extract an independently meaningful part, or remove unnecessary layers. A separation earns its boundary by making the relevant reasoning independent without moving the same coupling elsewhere.
 
-- **Tangled.** Rules that can change apart and cannot be read apart: one reassigns a variable another reads, an early return of one decides whether the next runs, a flag one sets another tests, their inputs are fetched together, or their blocks alternate. Rules that only follow one another in one function can be tangled this way. Propose the smallest separation that lets each rule be read alone: a named piece that takes what the rule reads and returns its outcome, deciding kept apart from doing, and an entry point that reads as the list of rules in the order they win. Show that entry point.
-- **Scattered.** One rule or requirement whose change touches several units that nothing else changes. Propose bringing it together.
-- **Too much structure.** An abstraction with one implementation, a layer that only forwards, a registry, an event or a configuration for a fixed set of one, a generic engine where one function would do. Propose the direct form, and name the project's own precedent for it.
-- **A crutch.** A special case, retry, delay, de-duplication or fallback in a consumer that makes up for a wrong value coming from somewhere else. Find the unit that produces the wrong value and propose the fix there: one fix at the source replaces a patch in every consumer. Where the source is a library the project cannot change, the patch stays, and the fix in the library is an idea, with the condition under which the patch goes.
-- **Ownership.** One fact or rule defined in two places; logic in a unit that does not own it, so that other consumers cannot use it; a function that changes its arguments; a parameter that switches between behaviors; a caller that must know its callee's internals; a name that says something other than what the code does.
-- **Dependencies.** Follow who uses whom from the entry point to the effect. A requirement whose path runs through more units than the project's own steps of this kind take; a cycle; a low-level unit that knows the one built on it; two units that every such requirement changes together; a unit placed outside the directory or layer where the project keeps its kind; an export nothing uses.
-- **Measure.** Size is no reason to split, and neither is a count of jobs or of functions: rules written in the order they win, each reading only its own inputs, are already apart, in one function or in five, and rules that only change together stay together. Propose no function that only hides two lines, no class where a function serves, and no pattern, unless you can name the change it makes easier.
+Sequence and precedence alone are not entanglement. Ordered guards and early returns can express independent rules clearly; shared input can be the natural context of one cohesive decision. Keep related rules together when their inputs, outcomes and precedence can be understood locally. Length, responsibility counts and helper counts do not decide this step. Its required outcome is an assessment, not a split.
 
-### Tests
+### 3. Sketch the target
 
-- For each requirement and each risky branch from the behavior pass, name the test that fails when it breaks. Where there is none, that is a gap: say which regression gets through, and ask for the smallest test that catches it at a level the project already tests.
-- For each test in the change, break the code in your head and ask whether the test fails. A test whose expected value was copied from the output, a mock that restates the implementation, a test of the scaffolding instead of the requirement, and a test that pins behavior the contract excludes all pass for the wrong reason.
-- Ask for no test of a state that cannot occur.
+Before the detailed passes, sketch the smallest solution supported by the requirements and contracts: its units, what each owns, what it reuses, and which mechanisms it needs. This is a provisional comparison, not a commitment to preserve the implementation's premises.
 
-## Refuting a candidate
+Walk every requirement and mapped rule through it. Preserve required timing, failure, retry, reload and no-further-input behavior as well as the immediate result. If a required decision conflicts with a contract, show the conflict and which part of the target depends on resolving it. If the change already has the appropriate structure, say so. Update the target when later evidence changes it.
 
-Reopen the cited code and look for what makes you wrong: a check upstream, a contract, callers that never pass the value, an existing test, the same behavior in the base.
+### 4. Review all four directions
 
-- **A defect** needs a trigger that is one of the entries of step 2, the path from it, and the wrong result. A trigger nothing in the repository or the task produces makes it a question: say who would know.
-- **A removal or simplification** needs the required behavior to survive it. Say what an observer would see change, also with no further input: after time passes, on a retry, on a reload. Where it rests on what a dependency does, it needs the line of the installed version; with a neighbouring function, a document or another package's type instead, it is a question that names the file to read.
-- **A design finding** needs the rule or requirement whose change the structure makes harder, what you must hold in mind together to make that change today, the other rules, the shared variables and flags, the fetched inputs, and what of that is left in the structure you propose. It is a judgment; label it one. A structure that only reads better to you, with no such change to name, is an idea.
-- **A test gap** needs the regression that passes today.
-- **Your own fix** passes the same tests: it names the contract or the entry that makes it necessary, and adds no guard, fallback, retry, option, layer or pattern for an input or a future you have not shown.
+Finish every direction, even after a serious finding. Collect candidates and unexplained code; refute them in the refutation step rather than discarding uncertain ones during collection.
 
-A requirement the change leaves to old code that does not meet it is the change's finding. Drop style and taste, advice without a scenario, and duplicates. An improvement the change does not need, with a gain you can name in code removed or a change made easier, is an idea, not a finding; so is a problem the base already had, which the change neither worsens nor relies on. Do not drop a candidate for being small or because you are unsure: unsure is a question.
+#### Behavior
+
+- Trace each requirement through all affected places and compare with the base for behavior the task did not ask to change.
+- Run concrete values through changed branches by hand: comparison boundaries, empty and singleton inputs, absence the contract permits, repeated input and a failure partway through. Check security, data integrity, concurrency and performance where the changed path makes them relevant.
+- Follow errors and fallbacks to what the caller or user observes. Establish whether the handling meets the contract; logging or fallback alone does not prove either correctness or a defect.
+- For visible changes, compare the supplied mockup, before and after pictures by screen and state. Distinguish a supported requirement from an unexplained visual difference or an unspecified state. Missing pictures leave comparison unchecked. Start the application only within the user's execution authorization.
+
+#### Necessity
+
+- For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence. One redundant guard says nothing about another.
+- Check whether an existing utility, upstream check, callee or value already in hand supplies what the change fetches or computes. Before recommending a new mechanism or interface, identify the required behavior the existing ones cannot express.
+- Weigh benefit against price: which observed or required scenario benefits, and what state, interactions, lifecycle/cleanup, runtime work, tests and maintenance the mechanism introduces. Separate measured runtime cost from static maintenance judgment; leave frequency or impact unknown when unsupported. Counts describe the chosen grouping, not quality. Keep, simplify, reuse or remove based on evidence. A modest convenience may not justify its mechanism: show the observable consequence of omission and whether the owner has accepted it. An explicit requirement stays binding until its owner changes it; an optional improvement is not a defect merely because it was omitted.
+- For each proposed removal, follow its dependent machinery: data requests, intermediate values, state, loading/error paths, timers and tests. Remove what serves only that mechanism; preserve parts with an independent required job. Explain the complete simplification, not just its first deleted call.
+
+#### Design
+
+Use the decomposition assessment and target to examine the design as a whole:
+
+- **Ownership and cohesion:** duplicated facts or rules, scattered decisions, overwritten intermediate decision state or mutable flags crossing rules, logic in a consumer that prevents reuse by other consumers, hidden mutation, misleading names, or mode parameters combining unrelated contracts.
+- **Dependencies and structure:** cycles, inverted layer knowledge, callers depending on callee internals, forwarding layers, or generic machinery without a supported variation. Compare with the project's closest precedent; fewer layers are useful when they reduce concepts and interfaces, not merely lines.
+- **Boundary work:** distinguish a producer violating its contract from an adapter translating valid output into the application's representation. Put a proven defect at its owner; keep a necessary adaptation at the appropriate boundary. A documented format difference is not a dependency bug. When a genuine upstream defect cannot be fixed here, assess the local workaround on its own necessity and record the upstream improvement separately.
+- **Cost of the proposal:** show which coupling, duplication or reasoning burden the alternative removes and what boundary it adds. Cohesive local code can be the target. A helper that only renames obvious lines, or a split that requires shared mutable state and more coordination, has not demonstrated an improvement. Ordered guards or early returns, length, responsibility counts and helper counts alone are not reasons to split.
+
+#### Tests
+
+- For each requirement and risky changed branch, identify the test that catches a plausible regression. A gap names the regression that escapes and the smallest useful test at a level the project already uses.
+- Check whether changed tests detect wrong behavior rather than repeating the implementation, pinning scaffolding, or demanding contract-excluded states. Reusing a utility also requires checking that its actual semantics meet this task.
+- Report checks actually run and their results separately from code inspection and recommended manual scenarios.
+
+<a id="refuting-a-candidate"></a>
+
+### 5. Refute candidates and reconcile the target
+
+Reopen the supporting code and actively seek a reason each candidate is wrong: a guarantee upstream, a reachable caller's actual input, a required lifecycle behavior, an explicit owner-accepted tradeoff, an existing test, or unchanged behavior in the base.
+
+- **Behavioral defect:** a reachable entry, its path and the wrong observable result. A merely conceivable input unsupported by code or the task is a question.
+- **Unnecessary mechanism:** the contract or existing capability that makes it unnecessary, and the required behavior preserved by the whole removal, including behavior over time. If the key dependency contract is unavailable, retain a question instead of asserting equivalence.
+- **Design finding:** the existing responsibility or rule, the concrete ownership/coupling/readability cost visible in the code, and how the proposed arrangement reduces it. Label the conclusion `judgment`. This evidence can justify a finding without a functional failure or a fabricated future requirement. Mere preference for another shape is an idea.
+- **Test gap:** the meaningful regression that current tests would miss.
+
+Apply the same scrutiny to fixes. Avoid speculative guards, options and layers; show that proposed deletions preserve independent responsibilities. Reconcile all surviving findings into one target and trace the requirements and rules through it again.
+
+A confirmed problem is a finding; an unresolved premise or candidate is a question; an improvement unnecessary to the change is an idea. Behavior omitted by an explicit owner decision is an accepted tradeoff with its source and consequence, not a finding; proposing to drop a binding requirement stays a question or idea until accepted. Mark pre-existing problems separately unless the change worsens or relies on them. An old implementation that the new requirement depends on but that does not meet it is relevant to this review. Merge duplicates without dropping small confirmed problems.
+
+### 6. Report
+
+Finalize `review.json` for every review (saving it in the permitted output location, or returning it inline when writes are disallowed) before returning the concise response, following [the report](#the-report). Include block and unit dispositions, requirement status, findings and the current and target structures. Read back the materialized JSON and check that the complete report, map and target agree, using the verification pass in the data contract. A structurally valid JSON can still describe contradictory behavior. Generate HTML only when explicitly requested.
 
 ## The report
 
-    ## Change
-    What the change is for, in a sentence, and why, when a source says. Its parts, one line each.
-    Sources: where you took the task from.
-    Requirements: numbered, each with its source (task, discussion, question or assumption) and how it
-    stands: met (ran or read), fails (its finding), or not checked. A part of it you did not check, such
-    as how it looks on screen, is named there and not in the requirement's text. Then what contradicts
-    it, if something does.
+`review.json` is every review's complete canonical result. Use the existing contract for the change and sources, requirements/status, verdict, evidence-backed findings, current/target structure, recommendations/steps, block/unit map, questions, ideas, coverage and applicable manual/visual checks. These are task evidence and conclusions, not hidden chain-of-thought. A later HTML request must not trigger their reconstruction.
 
-    ## Verdict
-    One sentence: whether the change does its task. Then what decides that, a short line each, naming
-    findings by number. Give no count of findings: it says nothing of what was not found.
-    How it works now: the solution as written, in one to three lines: its units and what each owns.
-    Target solution: the smallest clean solution the same way, what it reuses, and what of the change
-    survives in it; "the change is already this" when it is.
-    Recommendations: accept, fix in place or rewrite as the target, in a sentence; then, when there is
-    more than one thing to do, the steps in order, each naming its findings by number.
+Follow the data contract for source preservation, localization and validation; passing the script establishes structure, not truth.
 
-    ## Findings
-    Ordered by impact, each as:
-    ### <n>. <what is wrong> (<behavior | necessity | design | tests>; <ran | read | judgment>)
-    `path:line`: what happens and the result; or what is unnecessary; or which change the structure
-    makes harder. Name the requirement it breaks.
-    Shown by: for a defect, the entry that triggers it, as the caller's `path:line` or the task's
-    sentence; for something unnecessary, the line of the contract that excludes it; for structure, the
-    rule or requirement and what its change makes you read together; for a test gap, the regression
-    that passes.
-    Fix: the smallest change.
+Derive the human-facing response from the canonical report; do not maintain a competing set of findings in prose. Lead with the conclusion and the recommendation: accept, fix in place, or reshape toward the target. State what the change is for, what decides the recommendation, and the material limits of the review. When the target differs, briefly distinguish the solution now from the proposed one and give the ordered changes, referring to findings by number. Avoid using finding count as a quality score.
 
-    ## Ideas
-    Not needed for the change to be accepted. One line each: where, the idea, what it gains and what
-    it costs.
+Present findings by impact, each once, with direction, evidence level, source location, demonstrated problem and smallest sufficient fix. Link affected requirements and distinguish findings, unresolved questions and optional ideas. Derive grounded manual scenarios and visual limitations as the data contract specifies. Omit empty sections in the short response; link the complete `review.json` and surface limits that materially change the recommendation.
 
-    ## Check by hand
-    Only when the change alters what a user sees or does and you read how that is reached. One line per
-    scenario worth a person's minute: the state to start from, the steps, what to expect, and the
-    requirement it shows. You did not run them: say so, and leave out a step you would have to guess.
-
-    ## Screens
-    Only when the change alters what the user sees. One line per screen or state: the pictures you had
-    (mockup, before, after), then "matches the mockup" or each difference from it with its reason or the
-    number of its finding, or "not compared" and the picture that would settle it.
-
-    ## Structure
-    One line per unit of step 3, the existing ones included: `unit -> the units it uses`, its jobs (for
-    a unit that decides, its rules in the order they win), then keep, fix, split, merge or remove with
-    the number of its finding, or "existing".
-    Target: the same lines for the target's units when it differs, each "from the change", "to write"
-    or "existing".
-
-    ## Change map
-    One line per block to fix or remove, in the order of the diff: `path:lines`, what it does, what it
-    serves (a requirement by its number, or "nothing"), and the number of its finding. Then the blocks
-    to keep, as `path:lines` with the requirement each serves, several to a line. Then each requirement
-    no block serves.
-
-    ## Questions and oddities
-    One line each: where, what is unexplained, what would settle it.
-
-    ## Coverage
-    What you read beyond the diff, and what you could not check.
-    Contracts: for each one a finding or a fix rests on, the `path:line` you read it at, with the
-    dependency's version; "not read" where you did not, and what that leaves open.
-
-Paths are relative to the repository. `ran` means you executed it and saw the result, `read` that you followed the code path you cite and did not run it, and `judgment` a maintenance opinion with its cost named. An empty section says "none". Write each finding once, as briefly as its evidence allows; where another section needs it, name it by its number, and say nothing in two sections. A finding with nothing to put under "Shown by" is a question. Write the report in the language the user writes to you in, section names included; paths, identifiers and quoted code stay as they are.
-
-When the user asks for the interactive report, write the same report as data and render it, as [the interactive report](references/interactive-report.md) says: a script checks the change map against the diff and draws a page on which the user marks what to apply.
+When the user asks for an interactive report, render the already prepared `review.json` against its recorded source snapshot using [references/interactive-report.md](references/interactive-report.md). All report data and the selected language are already present. Only supported external presentation options or a separate display wrapper may vary; canonical JSON stays byte-identical and no new findings, requirements, targets or manual scenarios are gathered. If rendering exposes a substantive omission or new evidence warrants a change, make an explicit revised review record and identify the new analysis; do not present that as display-only work. Rendering a report is not authorization to apply the changes marked in it.
 
 ## Modes
 
-One reviewer doing all of the above is the default.
+One reviewer covering the whole procedure and all four directions is the default.
 
-When the user asks for independent reviewers, start one per direction, four for a full review. Give each the same change, task, project instructions and limits, this page to read whole by its path, and its direction: it does steps 1 to 3 and 5 in full, step 4 for its direction while noting whatever else it meets, then steps 6 and 7. Give none of them a suspected finding or another reviewer's result. When they return, reopen the lines each finding cites, since two reviewers agreeing is not evidence; merge duplicates, settle contradictions by reading the code, and write one report with one target. If you cannot start reviewers, say so; do not fall back to one reviewer silently. In an [orchestrate](../orchestrate/SKILL.md) run these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
+When the user explicitly asks for independent reviewers, start one per requested direction, four for a full review. Give each the same diff and base, task, project instructions, limits, and this skill's full path. Each prepares its own connected map, checks decomposition and sketches the target; it then reviews its assigned direction, noting other evidence it encounters, and refutes its candidates. Give reviewers neither suspected findings nor one another's results.
+
+Each focused reviewer returns structured report data for the scope it actually examined, marking other directions as unreviewed. When they return, reopen the cited code, merge duplicates and resolve disagreements from evidence. Agreement between reviewers is not evidence. Produce one connected map, one coherent target and one canonical `review.json` covering the requested directions; trace every requirement and mapped rule through that merged target and identify anything unreviewed. If independent reviewers cannot be started, say so rather than silently substituting a single reviewer. In an [orchestrate](../orchestrate/SKILL.md) run, these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).

@@ -4,7 +4,7 @@ import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
 import { labelsOf } from "./labels.mjs";
-import { VERDICTS } from "./review.mjs";
+import { VERDICTS, mechanismCounts } from "./review.mjs";
 import { esc } from "./text.mjs";
 
 const STYLE = `
@@ -428,6 +428,18 @@ function map(review, files, { blocks, owner }, t) {
   return files.map(file).join("\n    ");
 }
 
+function mechanisms(review, t) {
+  if (!review.mechanisms?.length) return "";
+  return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
+    <p class="sub">${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${review.mechanisms.map((m) => `
+    <article class="finding"><h3>${esc(m.name)}</h3>
+    <div class="group sub"><span>${esc(t(`change.${m.change}`))}</span><span>${esc(t(`evidence.${m.evidence}`))}</span></div>
+    <p><strong>${esc(t("units"))}:</strong> ${(m.units ?? []).map((name) => `<code>${esc(name)}</code>`).join(", ")}
+      ${(m.findings ?? []).map((id) => `<a href="#f${esc(id)}">${esc(t("finding"))} ${esc(id)}</a>`).join("; ")}</p>
+    ${["purpose", "basis", "benefit", "cost", "decision"].map((key) => `<p><strong>${esc(t(key))}:</strong> ${prose(m[key])}</p>`).join("")}
+    </article>`).join("")}</section>`;
+}
+
 const decider = (t) => (id) => `<span class="decide group act" data-finding="${esc(id)}"><button type="button" value="apply">${esc(t("apply"))}</button><button type="button" value="skip">${esc(t("skip"))}</button></span>`;
 
 export function page(review, files, model) {
@@ -469,13 +481,14 @@ export function page(review, files, model) {
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
 ${summary(review, model, t)}
 ${requirements(model, t)}
+${mechanisms(review, t)}
 ${checks(review, t)}
 ${screens(model, t)}
 ${drawn}
 ${tree(files, model, t)}
 <section class="stack">
   <div class="bar">
-    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav>
+    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav>
     <span class="group act"><span class="sub">${esc(t("show"))}</span><button type="button" data-show="all" aria-pressed="true">${esc(t("all"))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</span>
     <span class="sub act" id="progress"></span>
   </div>

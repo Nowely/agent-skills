@@ -2,10 +2,11 @@
 // A review written as data: checked against its diff, printed as the report, and drawn as a page.
 //
 //   node report.mjs lines <range>          print every changed line of `git diff <range>` with its address
+//   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
-//   node report.mjs labels                 print the report's own words, for a review to carry in its reader's language
+//   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
 //
-// Run it in the repository under review; references/interactive-report.md tells the reviewer what to write.
+// Run it in the repository under review; references/report-data.md tells the reviewer what to write.
 // `render` refuses a review whose change map leaves a changed line out, puts one in two blocks, or names an id
 // nothing defines, and lists every such fault: that every changed line belongs to one block is checked here,
 // not taken on trust.
@@ -13,9 +14,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { address, changedLines, diffOf } from "./diff.mjs";
-import { LABELS, labelsOf } from "./labels.mjs";
+import { CATALOGS, labelsOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, modelOf } from "./review.mjs";
+import { check, modelOf, mechanismCounts } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 
@@ -43,6 +44,10 @@ function markdown(review, { blocks, requirements, units, target }, t) {
       `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
+    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), ...review.mechanisms.flatMap((m) => [
+      `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
+      `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
+      ...["purpose", "basis", "benefit", "cost", "decision"].map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
     `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${cited(u.findings)}`)),
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     `## ${t("map")}`,
@@ -57,20 +62,24 @@ const [command, argument] = process.argv.slice(2);
 try {
   if (command === "lines" && argument) {
     for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
-  } else if (command === "render" && argument) {
+  } else if (["render", "check"].includes(command) && argument) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
     const directory = path.dirname(path.resolve(argument)), { errors, owner } = check(review, files, directory);
     if (errors.length) {
-      console.error(`The review does not match the diff; fix these ${errors.length} and render again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
+      console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
+    if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
     const model = modelOf(review, files, owner, directory), target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else if (command === "labels") {
-    console.log(JSON.stringify(LABELS, null, 2));
+    const code = (argument ?? "en").toLowerCase().split("-")[0];
+    const catalog = Object.hasOwn(CATALOGS, code) ? CATALOGS[code] : null;
+    if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
+    console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs lines <range> | report.mjs render <review.json> | report.mjs labels");
+    console.error("usage: report.mjs lines <range> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
     process.exit(2);
   }
 } catch (error) {

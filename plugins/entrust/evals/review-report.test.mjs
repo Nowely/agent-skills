@@ -3,13 +3,13 @@
 // on one prepared case with a review written here; it calls no model. It checks that a complete review becomes
 // a page that loads nothing from elsewhere and a printout in the shape SKILL.md gives the report, and that an
 // incomplete one is refused with every fault listed. Run it after an edit to those scripts, to
-// references/interactive-report.md or to the report's shape in SKILL.md.
+// references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { LABELS } from "../plugin/skills/review/scripts/labels.mjs";
+import { CATALOGS, LABELS } from "../plugin/skills/review/scripts/labels.mjs";
 import { DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
@@ -123,12 +123,68 @@ test("a review carries the report's words in its reader's language, and a word t
     return true;
   });
 
-test("the printout has the sections SKILL.md gives the report, in its order",
-  "the script and the page both state the report's shape; this is what keeps the two from parting",
+test("the printout presents the verdict, current solution, target and recommendations in that order",
+  "a conclusion without a distinguishable current and target solution hides what the recommendation changes",
   () => {
-    const shape = [...fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8").matchAll(/^ {4}## (.+)$/gm)].map((m) => m[1]);
-    const printed = [...render().stdout.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
-    return shape.length > 4 && shape.join("\n") === printed.join("\n") || `SKILL.md has [${shape.join(", ")}], the printout [${printed.join(", ")}]`;
+    const out = render().stdout, labels = ["## Verdict", "How it works now:", "Target solution:", "Recommendations:"];
+    const positions = labels.map((label) => out.indexOf(label));
+    return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1])) || "summary order differs";
+  });
+
+test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
+  "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
+  () => {
+    render(); fs.rmSync(html);
+    const before = fs.readFileSync(data);
+    const checked = report("check", data);
+    if (checked.status !== 0 || fs.existsSync(html) || !before.equals(fs.readFileSync(data))) return `check mutated artifacts: ${checked.stderr}`;
+    const drawn = report("render", data), first = fs.readFileSync(html);
+    const again = report("render", data);
+    if (drawn.status || again.status || !before.equals(fs.readFileSync(data)) || !first.equals(fs.readFileSync(html))) return "delayed rendering is not byte-stable";
+    const bad = JSON.parse(before); bad.blocks.pop(); fs.writeFileSync(data, JSON.stringify(bad)); fs.rmSync(html);
+    const rejected = report("check", data);
+    return rejected.status === 1 && rejected.stderr.includes("no block covers") && !fs.existsSync(html) || "check accepted an incomplete map";
+  });
+
+test("the selected language covers controls and exported decisions without per-review translations",
+  "partial translations silently left Files, Copy and selection comments in English",
+  () => {
+    for (const [lang, catalog] of Object.entries(CATALOGS)) {
+      if (Object.keys(catalog).sort().join() !== Object.keys(LABELS).sort().join()) return `${lang}: incomplete catalog`;
+      for (const [key, value] of Object.entries(catalog)) if (!value.trim() || LABELS[key].includes("{n}") !== value.includes("{n}")) return `${lang}: invalid ${key}`;
+    }
+    const result = render((r) => { r.language = "ru-RU"; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!["Файлы", "Копировать", "Комментировать выделение", "Комментарии к фрагментам", "Рекомендации"].every((text) => page.includes(text))) return "Russian controls or export are missing";
+    if (!result.stdout.includes("## Вывод")) return "Markdown is not localized";
+    if (report("labels", "ru").stdout !== JSON.stringify(CATALOGS.ru, null, 2) + "\n") return "the catalog command differs";
+    const incomplete = render((r) => { r.language = "fr"; r.labels = { findings: "Constats" }; });
+    if (incomplete.status !== 1 || !incomplete.stderr.includes("complete labels catalog")) return "unknown locale silently fell back to English";
+    return render((r) => { r.language = "custom"; r.labels = { ...LABELS, findings: "Custom findings" }; }).status === 0 || "a complete custom catalog was refused";
+  });
+
+const MECHANISM = { name: "Normalization <rule>", change: "reused", units: ["readArchive"], purpose: "Consistent display.",
+  basis: "Requirement 1; existing conversion.", benefit: "Readable codes.", cost: "No extra state; test the boundary.",
+  decision: "Keep the conversion.", evidence: "judgment", findings: [1] };
+test("mechanisms keep purpose, cost and decision in both renderings and resolve their references",
+  "a mechanism can span units; its cost must not disappear behind a function count or unlinked verdict",
+  () => {
+    const result = render((r) => { r.mechanisms = [MECHANISM]; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes("added: 0 · reused: 1 · changed: 0 · removed: 0") || !result.stdout.includes("added: 0; reused: 1; changed: 0; removed: 0")) return "mechanism counts differ from the inventory";
+    if (!page.includes("Normalization &lt;rule&gt;") || page.includes("Normalization <rule>")) return "mechanism text is not escaped";
+    if (![MECHANISM.purpose, MECHANISM.basis, MECHANISM.benefit, MECHANISM.cost, MECHANISM.decision].every((text) => page.includes(text) && result.stdout.includes(text))) return "mechanism evidence lost in presentation";
+    for (const [patch, error] of [[{ units: ["absent"] }, "names unit absent"], [{ findings: [88] }, "names finding 88"],
+      [{ change: "keep" }, "change is one of"], [{ cost: "" }, 'has no "cost"'], [{ evidence: "guessed" }, "evidence is one of"]]) {
+      const bad = render((r) => { r.mechanisms = [{ ...MECHANISM, ...patch }]; });
+      if (bad.status !== 1 || !bad.stderr.includes(error)) return `accepted malformed mechanism: ${JSON.stringify(patch)}`;
+    }
+    if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: [], findings: undefined }]; }).status !== 0) return "a file-level mechanism without findings was refused";
+    if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
+    if (render((r) => { r.mechanisms = {}; }).status !== 1) return "accepted a non-list inventory";
+    return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
   });
 
 test("a review that does not match the diff is refused, every fault is listed, and no page is written",
@@ -187,11 +243,11 @@ test("a block to remove may name a whole file",
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {
-    const page = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
+    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
     const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES].filter((word) => !page.includes(`\`${word}\``));
-    if (absent.length) return `interactive-report.md does not name ${absent.join(", ")}`;
+    if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    try { return Object.keys(JSON.parse(example[0])).join(" ") === [...Object.keys(REVIEW), "labels"].join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 

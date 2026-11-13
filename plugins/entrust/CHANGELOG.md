@@ -7,21 +7,35 @@ forensics remain in the repository references and release notes.
 
 ### Added
 
-- Add `review`, a code review you invoke: a fixed procedure over a change's behavior, necessity, design and
-  tests that reports every problem with the line that shows it, what it could not explain as questions, and
-  the smallest clean solution the change should become, with one reviewer or independent reviewers by
-  direction. Orchestrate's cross-reviewer follows the same page.
-- `review` opens its report with what the change is for and where that was taken from, says what it would do next,
-  keeps ideas apart from findings, compares what the user sees with the mockup from the pictures it was given, and reports the change's structure: its units, what each uses, and the same
-  for the target. On request it writes the report as data: a
-  script checks that every changed line belongs to one block, and draws a page with the diff cut into those
-  blocks, the structure as two diagrams, and each finding to apply or skip. The page sets the task, the
-  verdict, how the change works now, the target and the recommendations under a label each; says of every
-  requirement where it comes from, whether it is met, fails, lacks a test or was not checked, and what of it
-  was not checked; lists scenarios to check by hand; keeps every note and a comment on any passage the reader
-  selects in the text handed back; and takes its own words in the reader's language from the review.
-  A defect's trigger must be one of the entries the review listed, every finding says what it is shown by, and
-  structure is judged by writing out the rules of a unit that decides and taking each as the one that changes.
+- Add explicit `entrust:review`: one reviewer or independent reviewers by direction assess behavior,
+  necessity, design and tests, trace the connected code, refute findings and describe a coherent target.
+  Orchestrate's cross-reviewer uses the same procedure.
+- Every review prepares a canonical `review.json`, including requirements and their sources, current and
+  target structures, changed-line blocks, grounded findings, open questions and proposed manual checks.
+  HTML is optional and renders the existing record without another analysis. The page includes a file tree,
+  diagrams, apply/skip decisions and comments on selected passages.
+- Draft 23 adds mechanisms as meaningful behaviors or coordination concepts: their purpose, alternatives,
+  benefit, state/lifecycle/testing/maintenance costs and recommended disposition. Counts are descriptive;
+  decomposition needs a concrete reduction in reasoning or change cost. Explicit owner-accepted tradeoffs
+  remain recorded choices, not invented requirements.
+- Report tooling adds a check-only command, mechanism cards and complete English/Russian UI catalogs,
+  including regional language codes. Other languages require complete custom labels. Legacy reports without
+  mechanisms or language remain readable, including partial label overrides.
+- Keep fictional evaluation repositories, acceptance checks, design probes, clean controls and frozen
+  research drafts. Publish anonymized aggregate results and a release baseline for future comparisons.
+
+### Evidence and limits
+
+- The latest completed comparison evaluated drafts 20/21/22: 12 Terra reviews, six independent judge
+  sessions, two repetitions per version and snapshot. Draft 22 produced four validated JSON reports that
+  rendered without changing their bytes; this did not demonstrate better architecture recommendations.
+- Draft 23 is a targeted synthesis agreed with Carbon, not a separately benchmarked winner. One report-to-Astra
+  probe improved evidence boundaries but did not justify another workflow mode. Private code and raw reports
+  are excluded from public research.
+- The checker validates structure and references, not the truth or semantic consistency of findings.
+  Reviewers must read back the saved record. Runtime costs and scenario frequencies remain unknown unless measured.
+- New model experiments and live gates, including fresh-session, browser and cross-plugin probes, were not
+  run at the owner's request. Existing measurements remain frozen; exact-head PR CI gates publication.
 
 ## 0.36.0 — 2026-11-11
 

@@ -1,5 +1,4 @@
-// Every word the report shows that the reviewer did not write. A review may carry "labels" with any of these keys
-// in the language of its reader; a key it leaves out keeps the wording here. `{n}` is filled in where it stands.
+// Report UI catalogs; review.language selects one and review.labels may override its wording.
 export const LABELS = {
   "kind": "Code review",
   "change": "Change", "task": "Task", "sources": "Sources", "requirements": "Requirements",
@@ -34,19 +33,153 @@ export const LABELS = {
   "out.title": "Decisions on the review of", "out.apply": "Apply:", "out.skip": "Do not apply:", "out.ideas": "Ideas to take:",
   "out.open": "Not decided:", "out.idea-notes": "Notes on ideas not taken:", "out.blocks": "Notes on blocks:", "out.passages": "Comments on passages:",
   "page": "Interactive report",
+  "mechanisms": "Mechanisms", "purpose": "Purpose", "basis": "Basis and alternatives", "benefit": "Benefit", "cost": "Cost", "decision": "Decision",
+  "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
+
+export const CATALOGS = { en: LABELS, ru: {
+  "kind": "Ревью кода",
+  "change": "Изменение",
+  "task": "Задача",
+  "sources": "Источники",
+  "requirements": "Требования",
+  "verdict": "Вывод",
+  "now": "Как сейчас работает",
+  "target": "Целевое решение",
+  "recommendation": "Рекомендации",
+  "findings": "Замечания",
+  "ideas": "Идеи",
+  "ideas-note": "Не обязательны для принятия изменения.",
+  "screens": "Экраны",
+  "structure": "Структура",
+  "map": "Карта изменений",
+  "questions": "Вопросы и неясности",
+  "coverage": "Охват и ограничения",
+  "decisions": "Решения",
+  "summary": "Обзор",
+  "files": "Файлы",
+  "checks": "Как проверить вручную",
+  "checks-note": "Предлагаемые сценарии. Во время ревью они не выполнялись.",
+  "from": "Начальное состояние",
+  "do": "Действия",
+  "expect": "Ожидаемый результат",
+  "none": "нет",
+  "nothing": "ничего",
+  "shown-by": "Основание",
+  "fix": "Рекомендация",
+  "idea": "идея",
+  "finding": "замечание",
+  "reason": "Причина",
+  "requirement": "Требование",
+  "source": "Источник",
+  "status": "Статус",
+  "blocks": "Блоки",
+  "lines": "Строки",
+  "unit": "Единица кода",
+  "jobs": "Обязанности",
+  "uses": "Использует",
+  "in-unit": "в",
+  "verdict.keep": "оставить",
+  "verdict.fix": "исправить",
+  "verdict.remove": "удалить",
+  "verdict.split": "разделить",
+  "verdict.merge": "объединить",
+  "direction.behavior": "поведение",
+  "direction.necessity": "необходимость",
+  "direction.design": "архитектура",
+  "direction.tests": "тесты",
+  "evidence.ran": "выполнено и проверено",
+  "evidence.read": "проверено по коду, без запуска",
+  "evidence.judgment": "оценка",
+  "source.task": "задача",
+  "source.discussion": "обсуждение",
+  "source.question": "открытый вопрос",
+  "source.assumption": "предположение",
+  "met": "выполнено",
+  "fails": "нарушено",
+  "not-checked": "не проверено",
+  "no-test": "нет теста",
+  "reconsider": "Требует пересмотра",
+  "breaks": "Нарушает требование",
+  "untested": "Без теста: требование",
+  "serves": "Обеспечивает требование",
+  "serves-nothing": "Не связано с требованием",
+  "no-block": "нет блока",
+  "idle": "Без этих блоков ни одно требование не нарушается",
+  "share": "Строки изменения по рекомендации ревьюера",
+  "existing": "существует",
+  "existing-code": "существующий код",
+  "from-change": "из изменения",
+  "to-write": "предлагается добавить",
+  "as-written": "Как написано",
+  "units": "единиц кода",
+  "diagram-note": "Стрелка ведёт от единицы кода к тому, что она использует. Пунктиром выделен неизменённый код; полоска снизу показывает доли строк, которые предлагается оставить, исправить и удалить.",
+  "mockup": "Макет",
+  "before": "До",
+  "after": "После",
+  "no-pictures": "нет изображений",
+  "matches": "Соответствует макету.",
+  "not-compared": "Не сравнивалось",
+  "overlay": "Наложить результат на макет",
+  "result": "Результат",
+  "show": "Показать",
+  "all": "все",
+  "continued": "продолжение",
+  "kept-by-you": "вы решили оставить",
+  "apply": "Применить",
+  "skip": "Пропустить",
+  "copy": "Копировать",
+  "copied": "Скопировано",
+  "apply-all": "Применить всё",
+  "clear": "Очистить",
+  "note-block": "Комментарий к блоку",
+  "note-finding": "Комментарий к замечанию",
+  "note-idea": "Комментарий к идее",
+  "decisions-note": "Отметьте, какие замечания применить или пропустить. Добавьте пояснения, выделите любой текст для комментария и передайте итог тому, кто будет вносить изменения.",
+  "comment": "Комментировать выделение",
+  "passages": "Комментарии к фрагментам",
+  "note-passage": "Комментарий к фрагменту",
+  "remove": "Удалить",
+  "decisions-text": "Ваши решения текстом",
+  "decided": "Принято решений: {n}",
+  "out.title": "Решения по ревью",
+  "out.apply": "Применить:",
+  "out.skip": "Не применять:",
+  "out.ideas": "Принять идеи:",
+  "out.open": "Без решения:",
+  "out.idea-notes": "Комментарии к непринятым идеям:",
+  "out.blocks": "Комментарии к блокам:",
+  "out.passages": "Комментарии к фрагментам:",
+  "page": "Интерактивный отчёт",
+  "mechanisms": "Механики",
+  "purpose": "Назначение",
+  "basis": "Основание и альтернативы",
+  "benefit": "Польза",
+  "cost": "Цена",
+  "decision": "Решение",
+  "change.added": "добавлено",
+  "change.reused": "переиспользовано",
+  "change.changed": "изменено",
+  "change.removed": "удалено"
+} };
+
+export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
-  const own = review.labels ?? {};
-  return (key, n) => String(own[key] ?? LABELS[key]).replace("{n}", n);
+  const own = review.labels ?? {}, base = CATALOGS[languageOf(review)] ?? LABELS;
+  return (key, n) => String(own[key] ?? base[key]).replace("{n}", n);
 }
 
 export function labelFaults(review) {
-  if (review.labels === undefined) return [];
+  if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
+  const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
+    ? Object.keys(LABELS).filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
+  const faults = missing.length ? [`language "${review.language}" needs a complete labels catalog; missing: ${missing.join(", ")}`] : [];
+  if (review.labels === undefined) return faults;
   if (typeof review.labels !== "object" || review.labels === null || Array.isArray(review.labels)) return ['"labels" is not an object of label to wording'];
-  return Object.entries(review.labels).flatMap(([key, value]) =>
+  return faults.concat(Object.entries(review.labels).flatMap(([key, value]) =>
     !(key in LABELS) ? [`"labels" has "${key}", which is no label of the report`]
       : typeof value !== "string" || !value.trim() ? [`label "${key}" has no wording`]
-        : LABELS[key].includes("{n}") && !value.includes("{n}") ? [`label "${key}" has lost its {n}`] : []);
+        : LABELS[key].includes("{n}") && !value.includes("{n}") ? [`label "${key}" has lost its {n}`] : []));
 }

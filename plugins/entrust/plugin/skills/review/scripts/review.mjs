@@ -1,11 +1,14 @@
 // A review as data: its vocabulary, its faults against the diff, and the model both renderings read.
-// references/interactive-report.md defines the data for the reviewer; this file is what holds a review to it.
+// references/report-data.md defines the data for the reviewer; this file is what holds a review to it.
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
 import { labelFaults } from "./labels.mjs";
 
+export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
+export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
+  [change, (review.mechanisms ?? []).filter((m) => m.change === change).length]);
 export const VERDICTS = ["keep", "fix", "remove"];
 export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
@@ -53,6 +56,7 @@ export function check(review, files, directory) {
   if (!text(review.change?.goal)) errors.push('"change.goal" is missing');
   for (const field of ["parts", "sources"]) if (!filled(review.change?.[field])) errors.push(`"change.${field}" lists nothing`);
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
+  if (review.mechanisms !== undefined && !Array.isArray(review.mechanisms)) errors.push('"mechanisms" is not a list');
   errors.push(...labelFaults(review));
   if (errors.length) return { errors, owner };
 
@@ -123,6 +127,19 @@ export function check(review, files, directory) {
     refs(`unit ${u.name}`, u.findings, findings, "finding");
     if (u.verdict !== "keep" && !u.findings?.length) errors.push(`unit ${u.name} is to ${u.verdict} and names no finding`);
     if (!review.blocks.some((b) => b.unit === u.name)) errors.push(`unit ${u.name} has no block: give its blocks "unit": "${u.name}", or mark it "existing"`);
+  }
+
+  const mechanismUnits = new Set(units.map((u) => u.name));
+  known(review.mechanisms ?? [], "mechanism", "name");
+  for (const m of review.mechanisms ?? []) {
+    const who = `mechanism ${m.name}`;
+    for (const field of ["name", "purpose", "basis", "benefit", "cost", "decision"])
+      if (!text(m[field])) errors.push(`${who} has no "${field}"`);
+    if (!MECHANISM_CHANGES.includes(m.change)) errors.push(`${who}: change is one of ${MECHANISM_CHANGES.join(", ")}`);
+    if (!EVIDENCE.includes(m.evidence)) errors.push(`${who}: evidence is one of ${EVIDENCE.join(", ")}`);
+    if (m.units !== undefined && !Array.isArray(m.units)) errors.push(`${who}: units is not a list`);
+    else refs(who, m.units, mechanismUnits, "unit");
+    refs(who, m.findings, findings, "finding");
   }
 
   const written = (review.target_units ?? []).some((u) => !u.existing && !changed.has(u.name));
