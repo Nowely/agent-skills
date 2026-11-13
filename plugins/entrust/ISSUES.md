@@ -10,6 +10,14 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E142. macOS CI review-eval failed with a missing temporary Git objects directory
+
+**Evidence, level 3 (one observed CI failure).** On commit `fa7856b4759463f5bedaf23da2d5faf42777cdcc`, the
+[macOS job](https://github.com/Nowely/agent-skills/actions/runs/43528474790/job/132239978676) reported `ENOENT`
+for `review-outcome-NKZPTH/work/i01/repo/.git/objects` in the outcome case at `evals/review-eval.test.mjs:168`.
+The case prepares its temporary round and implementation at `:171-175`. The cause and reproducibility have not
+been established; this observation alone does not show a product regression.
+
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**

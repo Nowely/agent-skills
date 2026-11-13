@@ -1,5 +1,9 @@
 # Review after the baseline: drafts 24 and 25
 
+**Current integration:** The candidate shipping skill selectively incorporates draft 28's peer-consistency,
+visual-evidence and structural guidance alongside newer mechanism-weight and report UI work. The historical
+status statements below describe the runs when recorded; the drafts and measured artifacts remain frozen.
+
 ## Question
 
 Does a review recommend removing an unnecessary mechanism more often when its record must say, for every mechanism the change brings in, where the same thing is already available?
