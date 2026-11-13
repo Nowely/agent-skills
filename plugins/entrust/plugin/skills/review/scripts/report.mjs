@@ -47,7 +47,7 @@ function markdown(review, { blocks, requirements, units, target }, t) {
     ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), ...review.mechanisms.flatMap((m) => [
       `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
       `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
-      ...["purpose", "basis", "benefit", "cost", "decision"].map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
+      ...["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
     `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${cited(u.findings)}`)),
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     `## ${t("map")}`,

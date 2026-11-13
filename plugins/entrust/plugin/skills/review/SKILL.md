@@ -31,17 +31,17 @@ Scope and reading prepare the first analytical step below. If the change cannot 
 
 ### 1. Map the connected code
 
-Build this map for every review, including a short review without an interactive report. It is the first analytical product, not an optional report section. Continue reading wherever the map exposes a missing connection.
+Build this map for every review, including a short review without an interactive report. Continue reading wherever the map exposes a missing connection.
 
 Keep one compact analysis record, in Markdown or JSON, with references between its parts:
 
 - **Requirements:** id, required behavior, source and source reference. Add verification status and any contradiction as the review progresses.
 - **Blocks:** file and changed line ranges on each side of the diff, containing unit where applicable, what the block does, and the requirement or necessary integration/check it serves. A block is a decision or independently removable part: a branch, guard, parameter, request, constant, test or cohesive function body. Every nonblank changed line belongs to exactly one block. Keep and removal decisions will be added after review; an empty requirement link is a candidate to investigate, not proof of redundancy.
 - **Units and connections:** each changed unit with real logic, its responsibilities, the units it uses, and the existing units that call it or that it calls. Include source locations for unchanged code and trace through relevant dependencies far enough to explain the changed behavior and ownership. For a unit that decides, record its rules: inputs, conditions, outcomes and precedence when rules overlap. Include shared mutable decision state and external or time-dependent effects where they connect blocks or affect ownership. The map must show the connected implementation, not just a list of changed files.
-- **Mechanisms:** identify the meaningful behaviors or coordination concepts the change adds, reuses, changes or removes. A mechanism may span several blocks and units: a scheduled refresh includes its trigger, state, cancellation and consumer. A helper or guard is not automatically a separate mechanism. Record its purpose, evidence or decision requiring it, existing alternatives, benefit, cost and proposed disposition in `mechanisms`, referencing the mapped units and requirements rather than copying the code map. An empty list is valid for a change with no material mechanism.
+- **Mechanisms:** identify the meaningful behaviors or coordination concepts the change adds, reuses, changes or removes. A mechanism may span several blocks and units: a scheduled refresh includes its trigger, state, cancellation and consumer. A helper or guard is not automatically a separate mechanism. Record its purpose, basis, benefit, cost and proposed disposition in `mechanisms`, referencing the mapped units and requirements. For one the change adds or alters, first answer `instead`: where what it obtains or does is already available (a value or field the code was passed, an existing utility, an upstream check, the dependency's own behavior) and where you read that, or the places you read that do not supply it. An empty list is valid for a change with no material mechanism.
 - **Evidence and limits:** reachable entries, contract references, relevant existing utilities and unread boundaries. Record each once and refer to it from blocks, units and findings.
 
-Use the same record for later findings and presentation. Requirement links come from blocks; dependencies come from units. Do not copy those relationships into several parallel tables. The initial map is provisional: do not assign keep/fix/remove merely to satisfy a schema before reviewing. After refutation, finalize it into the mandatory `review.json` data contract: `requirements`, `blocks`, `units`, `mechanisms` and `coverage` carry the map, with rule details in the unit's `jobs`. The complete structured report is required whether or not HTML is requested.
+Use the same record for later findings and presentation. Requirement links come from blocks; dependencies come from units. Do not copy those relationships into several parallel tables. The initial map is provisional: assign no keep/fix/remove before reviewing. After refutation, finalize it into the mandatory `review.json` data contract: `requirements`, `blocks`, `units`, `mechanisms` and `coverage` carry the map, with rule details in the unit's `jobs`. The complete structured report is required whether or not HTML is requested.
 
 Check the map against the diff and the connected code: changed lines accounted for, unit references resolved, rule order stated, and unverified connections visible. Preserve it as an accessible artifact and link it in the report. A concise response may omit the full map; the analysis and its checkable record remain required.
 
@@ -53,7 +53,7 @@ Examine what must be understood together to read, test or change each existing r
 
 Then compare the smallest useful alternatives: clarify or reorder within the unit, separate decisions from effects, bring scattered ownership together, extract an independently meaningful part, or remove unnecessary layers. A separation earns its boundary by making the relevant reasoning independent without moving the same coupling elsewhere.
 
-Sequence and precedence alone are not entanglement. Ordered guards and early returns can express independent rules clearly; shared input can be the natural context of one cohesive decision. Keep related rules together when their inputs, outcomes and precedence can be understood locally. Length, responsibility counts and helper counts do not decide this step. Its required outcome is an assessment, not a split.
+Sequence and precedence alone are not entanglement. Ordered guards and early returns can express independent rules clearly; shared input can be the natural context of one cohesive decision. Keep related rules together when their inputs, outcomes and precedence can be understood locally. Length and counts of responsibilities or helpers do not decide this step; its outcome is an assessment, not a split.
 
 ### 3. Sketch the target
 
@@ -75,7 +75,7 @@ Finish every direction, even after a serious finding. Collect candidates and une
 #### Necessity
 
 - For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence. One redundant guard says nothing about another.
-- Check whether an existing utility, upstream check, callee or value already in hand supplies what the change fetches or computes. Before recommending a new mechanism or interface, identify the required behavior the existing ones cannot express.
+- Settle each mechanism's `instead` from the code and the installed contracts, not from the change's own account of why it is needed. An unsettled `instead` is an unread boundary, not a needed mechanism. Before recommending a new mechanism or interface, identify the required behavior the existing ones cannot express.
 - Weigh benefit against price: which observed or required scenario benefits, and what state, interactions, lifecycle/cleanup, runtime work, tests and maintenance the mechanism introduces. Separate measured runtime cost from static maintenance judgment; leave frequency or impact unknown when unsupported. Counts describe the chosen grouping, not quality. Keep, simplify, reuse or remove based on evidence. A modest convenience may not justify its mechanism: show the observable consequence of omission and whether the owner has accepted it. An explicit requirement stays binding until its owner changes it; an optional improvement is not a defect merely because it was omitted.
 - For each proposed removal, follow its dependent machinery: data requests, intermediate values, state, loading/error paths, timers and tests. Remove what serves only that mechanism; preserve parts with an independent required job. Explain the complete simplification, not just its first deleted call.
 
@@ -86,7 +86,7 @@ Use the decomposition assessment and target to examine the design as a whole:
 - **Ownership and cohesion:** duplicated facts or rules, scattered decisions, overwritten intermediate decision state or mutable flags crossing rules, logic in a consumer that prevents reuse by other consumers, hidden mutation, misleading names, or mode parameters combining unrelated contracts.
 - **Dependencies and structure:** cycles, inverted layer knowledge, callers depending on callee internals, forwarding layers, or generic machinery without a supported variation. Compare with the project's closest precedent; fewer layers are useful when they reduce concepts and interfaces, not merely lines.
 - **Boundary work:** distinguish a producer violating its contract from an adapter translating valid output into the application's representation. Put a proven defect at its owner; keep a necessary adaptation at the appropriate boundary. A documented format difference is not a dependency bug. When a genuine upstream defect cannot be fixed here, assess the local workaround on its own necessity and record the upstream improvement separately.
-- **Cost of the proposal:** show which coupling, duplication or reasoning burden the alternative removes and what boundary it adds. Cohesive local code can be the target. A helper that only renames obvious lines, or a split that requires shared mutable state and more coordination, has not demonstrated an improvement. Ordered guards or early returns, length, responsibility counts and helper counts alone are not reasons to split.
+- **Cost of the proposal:** show which coupling, duplication or reasoning burden the alternative removes and what boundary it adds. A helper that only renames obvious lines, or a split that requires shared mutable state and more coordination, has not demonstrated an improvement.
 
 #### Tests
 
@@ -115,7 +115,7 @@ Finalize `review.json` for every review (saving it in the permitted output locat
 
 ## The report
 
-`review.json` is every review's complete canonical result. Use the existing contract for the change and sources, requirements/status, verdict, evidence-backed findings, current/target structure, recommendations/steps, block/unit map, questions, ideas, coverage and applicable manual/visual checks. These are task evidence and conclusions, not hidden chain-of-thought. A later HTML request must not trigger their reconstruction.
+`review.json` is every review's complete canonical result. Use the existing contract for the change and sources, requirements/status, verdict, evidence-backed findings, current/target structure, recommendations/steps, block/unit map, questions, ideas, coverage and applicable manual/visual checks. A later HTML request must not trigger their reconstruction.
 
 Follow the data contract for source preservation, localization and validation; passing the script establishes structure, not truth.
 

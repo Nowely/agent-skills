@@ -33,7 +33,7 @@ export const LABELS = {
   "out.title": "Decisions on the review of", "out.apply": "Apply:", "out.skip": "Do not apply:", "out.ideas": "Ideas to take:",
   "out.open": "Not decided:", "out.idea-notes": "Notes on ideas not taken:", "out.blocks": "Notes on blocks:", "out.passages": "Comments on passages:",
   "page": "Interactive report",
-  "mechanisms": "Mechanisms", "purpose": "Purpose", "basis": "Basis and alternatives", "benefit": "Benefit", "cost": "Cost", "decision": "Decision",
+  "mechanisms": "Mechanisms", "purpose": "Purpose", "basis": "Basis", "instead": "Already available", "benefit": "Benefit", "cost": "Cost", "decision": "Decision",
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
@@ -153,7 +153,8 @@ export const CATALOGS = { en: LABELS, ru: {
   "page": "Интерактивный отчёт",
   "mechanisms": "Механики",
   "purpose": "Назначение",
-  "basis": "Основание и альтернативы",
+  "basis": "Основание",
+  "instead": "Уже доступно",
   "benefit": "Польза",
   "cost": "Цена",
   "decision": "Решение",

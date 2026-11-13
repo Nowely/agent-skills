@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `entrust:review`: a mechanism the change adds or alters says in `instead` where the same thing is already
+  available, or what was read that does not supply it; the report check requires it. Not yet measured
+  against 0.37.0.
+
 ## 0.37.0 — 2026-11-13
 
 ### Added

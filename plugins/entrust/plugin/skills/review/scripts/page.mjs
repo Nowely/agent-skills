@@ -436,7 +436,7 @@ function mechanisms(review, t) {
     <div class="group sub"><span>${esc(t(`change.${m.change}`))}</span><span>${esc(t(`evidence.${m.evidence}`))}</span></div>
     <p><strong>${esc(t("units"))}:</strong> ${(m.units ?? []).map((name) => `<code>${esc(name)}</code>`).join(", ")}
       ${(m.findings ?? []).map((id) => `<a href="#f${esc(id)}">${esc(t("finding"))} ${esc(id)}</a>`).join("; ")}</p>
-    ${["purpose", "basis", "benefit", "cost", "decision"].map((key) => `<p><strong>${esc(t(key))}:</strong> ${prose(m[key])}</p>`).join("")}
+    ${["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `<p><strong>${esc(t(key))}:</strong> ${prose(m[key])}</p>`).join("")}
     </article>`).join("")}</section>`;
 }
 

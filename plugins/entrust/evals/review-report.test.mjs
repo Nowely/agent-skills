@@ -182,6 +182,11 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
       if (bad.status !== 1 || !bad.stderr.includes(error)) return `accepted malformed mechanism: ${JSON.stringify(patch)}`;
     }
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: [], findings: undefined }]; }).status !== 0) return "a file-level mechanism without findings was refused";
+    // What a change brings in says what was already there; what it only reuses need not.
+    const brought = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added" }]; });
+    if (brought.status !== 1 || !brought.stderr.includes('has no "instead"')) return "an added mechanism that does not say what was already available was accepted";
+    const answered = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "The archive reader converts already." }]; });
+    if (answered.status !== 0 || !answered.stdout.includes("Already available: The archive reader converts already.")) return "the answer to what was already available is not printed";
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
     if (render((r) => { r.mechanisms = {}; }).status !== 1) return "accepted a non-list inventory";
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
