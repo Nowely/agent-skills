@@ -1,0 +1,88 @@
+{
+  "head": {
+    "fails": [
+      "an unpaid invoice past its due date gets one email naming its number, amount and due date",
+      "an invoice due today is not overdue yet",
+      "a customer is told once"
+    ],
+    "items": [
+      {
+        "id": "F1", "kind": "find", "direction": "design",
+        "title": "A notification framework for one email",
+        "hit": "Says the abstract channel, the registry, the event bus, the configuration and the template engine serve one event, one channel and one template, naming at least two of those layers as unnecessary, AND proposes the direct form: a step function the nightly job calls with the repository and the mailer, as closePaidInvoices already is.",
+        "partial": "Calls the change over-engineered without the direct alternative, or questions only one layer."
+      },
+      {
+        "id": "F2", "kind": "find", "direction": "behavior",
+        "title": "The email is the fallback text, without number, amount or date",
+        "hit": "Says the template is stored under `invoice_overdue` while the event is `invoice.overdue`, so getTemplate falls back to DEFAULT_TEMPLATE and the customer gets 'You have a new notification'."
+      },
+      {
+        "id": "F3", "kind": "find", "direction": "behavior",
+        "title": "The same invoice is announced every night",
+        "hit": "Says nothing records that an invoice was notified, so each nightly run emails it again, against 'not notified twice'."
+      },
+      {
+        "id": "F4", "kind": "find", "direction": "behavior",
+        "title": "An invoice due today counts as overdue",
+        "hit": "Says `invoice.dueDate <= today` announces an invoice on its due date, against 'its due date has passed'."
+      },
+      {
+        "id": "F5", "kind": "find", "direction": "behavior",
+        "title": "Failures are invisible",
+        "hit": "Says NotificationService swallows a failed send into a log line, or that the silent fallback template hides a missing one, so the job returns as if the mail went out and nothing is retried or reported on purpose.",
+        "partial": "Flags the catch as swallowing errors without the consequence for the job."
+      },
+      {
+        "id": "F6", "kind": "find", "direction": "tests",
+        "title": "The tests exercise the framework, not the requirement",
+        "hit": "Says no test runs the nightly job against an overdue invoice and checks the email, or names a requirement the tests would let through: the text, once only, the due-date boundary.",
+        "partial": "Asks for an integration test without saying what it would catch."
+      },
+      {
+        "id": "X1", "kind": "trap",
+        "title": "Growing the framework",
+        "violated": "Recommends more of it for this change: another channel, retries or a queue, asynchronous event delivery, a schema for the configuration, more template features, typed event names kept inside the framework as the fix."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Calling the injected dependencies unnecessary",
+        "violated": "Recommends removing the passing of repo, mailer or now into the job, or calls it needless indirection. It is how the job is started and replayed."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "Another framework instead",
+        "violated": "Recommends replacing the hand-written parts with a notification, event or templating library."
+      }
+    ]
+  },
+  "clean": {
+    "items": [
+      {
+        "id": "X1", "kind": "trap",
+        "title": "Extensibility nobody asked for",
+        "violated": "Recommends, as a finding or a change to make, a channel or notifier abstraction, a template system, an event, a configuration flag, or making the text or the schedule configurable."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Mechanisms nobody asked for",
+        "violated": "Recommends, as a finding or a change to make, a retry with backoff, a queue, a transaction, a lock, or logging infrastructure. The brief asks for one retry path: the next night."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "Splitting or re-layering a twenty-line step",
+        "violated": "Recommends splitting notifyOverdue into several functions or classes, or moving it to another layer, without naming a change that becomes easier."
+      },
+      {
+        "id": "X4", "kind": "trap",
+        "title": "A defect that is not there",
+        "violated": "Reports as a defect that a requirement of the brief is not met, or that the catch hides failures. Every requirement is met (accept.mjs passes on this tree) and a failed send is counted in the job's result."
+      },
+      {
+        "id": "X5", "kind": "trap",
+        "title": "A race nobody starts",
+        "violated": "Reports as a defect, or fixes, two runs of the nightly job at once or an invoice changed while a run awaits a send. The repository has one caller of runNightly, the brief has one job a night, and nothing writes an invoice during a run. Asking whether runs can overlap, as a question, is clean."
+      }
+    ]
+  }
+}

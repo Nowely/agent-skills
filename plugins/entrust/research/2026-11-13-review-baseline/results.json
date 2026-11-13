@@ -1,0 +1,85 @@
+{
+  "scope": {
+    "reviewers": 12,
+    "independentJudgeSessions": 6,
+    "assessments": 36,
+    "instructionVersions": [
+      "20",
+      "21",
+      "22"
+    ],
+    "snapshots": 2,
+    "applicationCodeOrTestsExecuted": false,
+    "additionalJudgeTurns": 1,
+    "additionalJudgeTurnReason": "GLM JSON-format completion, not an independent replication",
+    "transport": "External workers used native Luna relays, separately from substantive review/judging counts."
+  },
+  "versions": {
+    "20": {
+      "runs": [
+        "r01",
+        "r04",
+        "r09",
+        "r12"
+      ],
+      "originalRequestFailureFound": 2,
+      "originalDirectLookupRemoval": 1,
+      "originalSampleSize": 2,
+      "finalExpiryFinding": 2,
+      "finalSampleSize": 2,
+      "analysisArtifacts": 0,
+      "canonicalJson": 0,
+      "renderedWithoutNewReview": 0,
+      "canonicalBytesPreserved": 0,
+      "visibleEnglishFallbacks": null,
+      "meanFinalResponseWords": 878.5
+    },
+    "21": {
+      "runs": [
+        "r02",
+        "r05",
+        "r08",
+        "r11"
+      ],
+      "originalRequestFailureFound": 2,
+      "originalDirectLookupRemoval": 2,
+      "originalSampleSize": 2,
+      "finalExpiryFinding": 2,
+      "finalSampleSize": 2,
+      "analysisArtifacts": 4,
+      "canonicalJson": 0,
+      "renderedWithoutNewReview": 0,
+      "canonicalBytesPreserved": 0,
+      "visibleEnglishFallbacks": null,
+      "meanFinalResponseWords": 227.75
+    },
+    "22": {
+      "runs": [
+        "r03",
+        "r06",
+        "r07",
+        "r10"
+      ],
+      "originalRequestFailureFound": 2,
+      "originalDirectLookupRemoval": 1,
+      "originalSampleSize": 2,
+      "finalExpiryFinding": 2,
+      "finalSampleSize": 2,
+      "analysisArtifacts": 4,
+      "canonicalJson": 4,
+      "renderedWithoutNewReview": 4,
+      "canonicalBytesPreserved": 4,
+      "visibleEnglishFallbacks": 2,
+      "meanFinalResponseWords": 129.25
+    }
+  },
+  "ruleExtractionProposals": 0,
+  "interpretation": "No demonstrated architecture advantage for draft 22. Counts are descriptive, not significance or reliability estimates.",
+  "limitations": [
+    "Two repetitions per version and snapshot; one task.",
+    "Bounded source packets omit some generated definitions and UI wrappers; some dependency sources were reconstructed or from a neighboring version.",
+    "Output format can reveal the instruction family.",
+    "One harmless prompt wording deviation, one judge format-completion continuation, one empty placeholder removed from a judge response. No substantive ratings changed."
+  ],
+  "ownerDecisionAfterRound": "Do not add automatic deadline refresh to the original product: the owner judged the benefit insufficient for the added mechanism. Historical static observations are retained; they are not a release requirement for this skill."
+}

@@ -14,11 +14,11 @@ Assert only what you've observed yourself; mark the rest unchecked. Before build
 
 ## 3. Think before answering
 
-State assumptions. For code changes, identify the required behavior and its source; examples alone do not prescribe implementation. Resolve questions answerable from code or docs yourself. Present remaining readings of my request; get my choice before editing if they change the data source, API, user-visible behavior, or scope. When the choice matters, give 2–3 approaches with a recommendation. If there's a simpler way, push back.
+State assumptions. For code changes, identify the required behavior and its source; examples alone do not prescribe implementation. List the requirements and find every place each must hold, including code elsewhere that shows or computes the same thing. Resolve questions answerable from code or docs yourself. Present remaining readings of my request; get my choice before editing if they change the data source, API, user-visible behavior, or scope. When the choice matters, give 2–3 approaches with a recommendation. If there's a simpler way, push back.
 
 ## 4. Root cause, minimum means
 
-Address the actual problem, not symptoms; nothing speculative. For code changes, trace the existing data flow. Find the closest project precedent. Before adding a mechanism or changing an interface, name the required behavior that existing code, configuration, or inputs cannot express. If none, reuse them. Prefer standard/native solutions over workarounds. Minimize new concepts and affected interfaces, not line count.
+Address the actual problem, not symptoms; nothing speculative. For code changes, trace the existing data flow. Find the closest project precedent. Before adding a mechanism or changing an interface, name the required behavior that existing code, configuration, or inputs cannot express. If none, reuse them. A guard, fallback, default or conversion is a claim about the data: check it at the producer or the contract before writing it. Give each rule one owner, where every consumer can use it. Prefer standard/native solutions over workarounds. Minimize new concepts and affected interfaces, not line count.
 
 ## 5. Stay on scope
 
@@ -27,6 +27,10 @@ Do only what the request needs. Before presenting a plan and again before report
 ## 6. Terse, no noise
 
 Lead with the result; no preamble, no plan recaps. Keep only what helps me assess the result or decide what to do next. Code comments only for what the code can't say — no narration, no "fixed X" markers.
+
+## 7. Code: review it before I do
+
+A test must fail when the behavior it covers breaks; take its expected values from the requirement, not from the output. Before reporting a code change done, read your diff as its reviewer: each requirement holds everywhere it must; nothing changed that no requirement asked for; every mechanism has a checked reason; every rule has one owner; a test fails if the behavior breaks. Fix what you find.
 
 # Branches and worktrees
 

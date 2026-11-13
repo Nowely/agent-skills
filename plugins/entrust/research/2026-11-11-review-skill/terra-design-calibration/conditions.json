@@ -1,0 +1,16 @@
+{
+  "reviewer": "gpt-6.1-terra, requested xhigh; two fresh reviews per cell; static review, no project code or test execution",
+  "arms": [
+    "control",
+    "draft-18"
+  ],
+  "review_judges": [
+    "gpt-6-astra, requested xhigh",
+    "openrouter/~z-ai/glm-flash-latest, requested high"
+  ],
+  "implementation_judge": "gpt-6-astra, requested xhigh",
+  "implementation": "One review-guided implementer per arm and one task-only implementer per first-written case; gpt-6.1-terra, requested xhigh; implementers did not run code or tests.",
+  "behavior_verification": "Coordinator ran only fictional fixture acceptance cases and synthetic implementation test suites; this does not prove universal correctness.",
+  "blinding": "Reviewer sees one change and one task. Judges see a neutral case label, base, target and reviews without arm mapping. Review format may disclose the arm; filesystem restrictions were prompt rules, not a separate sandbox.",
+  "pilot": "Four preliminary contact reviews used a task with ambiguous wording; retained but excluded from main comparison."
+}

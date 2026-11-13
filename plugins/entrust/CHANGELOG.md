@@ -3,6 +3,40 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.37.0 — 2026-11-13
+
+### Added
+
+- Add explicit `entrust:review`: one reviewer or independent reviewers by direction assess behavior,
+  necessity, design and tests, trace the connected code, refute findings and describe a coherent target.
+  Orchestrate's cross-reviewer uses the same procedure.
+- Every review prepares a canonical `review.json`, including requirements and their sources, current and
+  target structures, changed-line blocks, grounded findings, open questions and proposed manual checks.
+  HTML is optional and renders the existing record without another analysis. The page includes a file tree,
+  diagrams, apply/skip decisions and comments on selected passages.
+- Draft 23 adds mechanisms as meaningful behaviors or coordination concepts: their purpose, alternatives,
+  benefit, state/lifecycle/testing/maintenance costs and recommended disposition. Counts are descriptive;
+  decomposition needs a concrete reduction in reasoning or change cost. Explicit owner-accepted tradeoffs
+  remain recorded choices, not invented requirements.
+- Report tooling adds a check-only command, mechanism cards and complete English/Russian UI catalogs,
+  including regional language codes. Other languages require complete custom labels. Legacy reports without
+  mechanisms or language remain readable, including partial label overrides.
+- Keep fictional evaluation repositories, acceptance checks, design probes, clean controls and frozen
+  research drafts. Publish anonymized aggregate results and a release baseline for future comparisons.
+
+### Evidence and limits
+
+- The latest completed comparison evaluated drafts 20/21/22: 12 Terra reviews, six independent judge
+  sessions, two repetitions per version and snapshot. Draft 22 produced four validated JSON reports that
+  rendered without changing their bytes; this did not demonstrate better architecture recommendations.
+- Draft 23 is a targeted synthesis agreed with Carbon, not a separately benchmarked winner. One report-to-Astra
+  probe improved evidence boundaries but did not justify another workflow mode. Private code and raw reports
+  are excluded from public research.
+- The checker validates structure and references, not the truth or semantic consistency of findings.
+  Reviewers must read back the saved record. Runtime costs and scenario frequencies remain unknown unless measured.
+- New model experiments and live gates, including fresh-session, browser and cross-plugin probes, were not
+  run at the owner's request. Existing measurements remain frozen; exact-head PR CI gates publication.
+
 ## 0.36.0 — 2026-11-11
 
 ### Breaking

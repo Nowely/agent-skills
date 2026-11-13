@@ -1,0 +1,38 @@
+[
+  {
+    "label": "case01",
+    "case": "contact-import-v2",
+    "variant": "clean",
+    "reviews": [
+      "r10",
+      "r13"
+    ]
+  },
+  {
+    "label": "case02",
+    "case": "booking-edit",
+    "variant": "head",
+    "reviews": [
+      "r12",
+      "r16"
+    ]
+  },
+  {
+    "label": "case03",
+    "case": "booking-edit",
+    "variant": "clean",
+    "reviews": [
+      "r11",
+      "r14"
+    ]
+  },
+  {
+    "label": "case04",
+    "case": "contact-import-v2",
+    "variant": "head",
+    "reviews": [
+      "r09",
+      "r15"
+    ]
+  }
+]

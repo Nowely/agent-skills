@@ -1,0 +1,7 @@
+# Compare implementation quality
+
+Each case directory has the task in brief.md and four independent implementation trees A, B, C, D. The labels are randomized; no label says which implementation is original, whether it had a review or what instructions were used. Evaluate each tree against the brief and its own accessible repository contracts. Use no other files and do not run code or tests.
+
+For each implementation, independently assess observable clarity of the core flow and rule precedence; meaningful boundaries and data ownership; reuse and unnecessary machinery; preservation of task behavior and error priority; and whether tests actually cover the changed behavior or encode behavior that contradicts the task. Explain concrete benefits or defects with file and line. Do not equate fewer lines, fewer functions, an exact helper layout or matching another version with quality. Be alert to multiple acceptable designs. A finding must name a supported input and result; a maintainability assessment should describe the reader's actual work. Distinguish confidence from uncertainty; an inspection is not a test run.
+
+For each case provide reasoned comparison of the four variants, including when alternatives are equally good; do not assume a forced ranking. Identify missing/obsolete tests or material optional work. Finally, describe the strongest evidenced non-behavioral quality difference between versions. Do not guess hidden conditions.

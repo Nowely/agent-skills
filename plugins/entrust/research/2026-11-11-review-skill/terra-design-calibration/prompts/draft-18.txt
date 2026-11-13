@@ -1,0 +1,8 @@
+Review a code change.
+
+- Repository: <run>/repo, a git repository. The change under review is its last commit (`git diff HEAD~1 HEAD`); HEAD~1 is the code before the change.
+- The task the author was given: <run>/brief.md.
+- Review the change for correctness, unnecessary complexity, design and readability, and tests.
+- How to review: <run>/instructions.md. Read that file whole before you start and follow it.
+
+Limits: a read-only, static review. Do not run the project's code or tests and do not change any file; git and file-reading commands are allowed. Read nothing outside <run>. Your final message is the complete review and nothing else.

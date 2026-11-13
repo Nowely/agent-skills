@@ -1,0 +1,128 @@
+{
+  "title": "CSV import of contacts",
+  "range": "HEAD~1..HEAD",
+  "verdict": "The change does not do its task. It misses two stated rules: a repeated email in one file is counted as created and then updated instead of once, and a file that cannot be parsed still writes contacts. It also ignores the existing `parseCsv`, `isEmail` and `normalizeEmail`, and adds three behaviours nobody asked for (strict and legacy modes, a skip of `@example.invalid` addresses, an insert retry). Most important: the broken parse-failure and duplicate rules, then the hand-rolled CSV parser.",
+  "target": "`importContacts(text, store)` in about 25 lines, in three steps. 1. `parseCsv(text)` from `src/lib/csv.js`. A `CsvError` propagates before anything is written. Each row already carries its `line`. 2. Validate each row with `name.trim()` and `isEmail`. Rejected rows go into `rejected` as `{line, reason}`. Valid rows go into a `Map` keyed by `normalizeEmail(email)`, so the last row wins. 3. Apply the map: `store.findByEmail` gives `updated++` (plus `rename` when the name differs), otherwise `store.insert` gives `created++`. Only the result shape `{created, updated, rejected}`, the empty-name and bad-email reasons, and the `findByEmail`/`rename`/`insert` calls survive from the change.",
+  "requirements": [
+    { "id": 1, "text": "A row is rejected when its name is empty or its email is not an address. Rejected rows are reported with their line number and the reason, and do not stop the import." },
+    { "id": 2, "text": "An email identifies a contact whatever its letter case and surrounding spaces. A row whose email already exists renames that contact; a new email creates one. The same email twice in one file counts once, and the last row wins." },
+    { "id": 3, "text": "Return how many contacts were created and updated, and the rejected rows." },
+    { "id": 4, "text": "Nothing is written if the file cannot be parsed." }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "A file that cannot be parsed still writes contacts",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:20-48",
+      "what": "The file is parsed and written line by line, and nothing ever throws on a parse problem. Trigger: \"name,email\\nAnn,ann@a.test\\nBob,\\\"bob@b.test\\n\" (unclosed quote). The unclosed quote simply swallows the rest of the line. No error is raised, the Ann row is already inserted, and the Bob row is rejected or mangled. Requirement 4 (\"nothing is written if the file cannot be parsed\") fails. The strict throws at lines 66 and 72 also fire mid-loop, after earlier rows were inserted. That is a partial write.",
+      "fix": "Call parseCsv (it throws CsvError on an unclosed quote) and do all validation before the first store call, as in the target."
+    },
+    {
+      "id": 2,
+      "title": "The same email twice in one file is counted as created plus updated, not once",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:76-96",
+      "what": "The first row inserts, so created++. The second row with the same normalized email finds that contact through findByEmail and does updated++. Trigger: Ann,a@x.test then Ann2,A@X.test  gives created 1, updated 1, and the name is correct only by accident. The task says it counts once, with the last row winning.",
+      "fix": "Dedupe into a Map keyed by normalizeEmail before touching the store, as in the target."
+    },
+    {
+      "id": 3,
+      "title": "A hand-written CSV parser duplicates src/lib/csv.js and is worse",
+      "direction": "design",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:10-48",
+      "what": "BOM handling, CRLF handling, quote handling and header lookup are all re-implemented, and parseCsv already does all of this. Splitting on \"\\n\" first breaks quoted fields that contain line breaks. A row such as \"Smith,\\nJo\",a@b.co is cut in half. Line numbers go wrong after any multi-line field, because i + 1 is used instead of the record's start line. The header is re-searched on every row (lines 52-53).",
+      "fix": "Use parseCsv. This also fixes finding 1."
+    },
+    {
+      "id": 4,
+      "title": "The email rule is a weaker copy of the project's own",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:1,69",
+      "what": "The import uses /^\\S+@\\S+$/ (lines 1 and 69). src/contacts/email.js already has isEmail (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/) and normalizeEmail, and createContact uses them. Trigger: Bob,bob@localhost or Bob,a@@b is accepted by the import and rejected by the single-contact form, so the same rule behaves differently in two places. email.trim().toLowerCase() is repeated 5 times where normalizeEmail exists.",
+      "fix": "Use isEmail and normalizeEmail."
+    },
+    {
+      "id": 5,
+      "title": "A temporary skip silently drops @example.invalid rows",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:75-79",
+      "what": "No requirement asks for it, and the comment itself says \"temporary\". Such rows are neither created nor rejected. The caller is never told, which contradicts \"rejected rows are reported\".",
+      "fix": "Delete it, and delete its test at test/import.test.js:24-26."
+    },
+    {
+      "id": 6,
+      "title": "The insert retry loop is a crutch, and it silently loses rows",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:82-95",
+      "what": "MAX_RETRIES and the try/catch. ContactStore.insert throws only when the email already exists (store.js:15). findByEmail just ruled that out, so a retry can never succeed. If it did fail, the row would be dropped with no report: the continue at line 91 skips both the count and rejected, and catch (e) swallows the error.",
+      "fix": "A single store.insert. Let an unexpected throw propagate."
+    },
+    {
+      "id": 7,
+      "title": "Unrequested mode option (strict, legacy, lenient)",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:4-5,60-61,66,72",
+      "what": "Nothing in the brief asks for any mode. separator is a parameter that switches the behaviour of the whole function, and strict is the source of the partial-write throw in finding 1.",
+      "fix": "Remove the option, the separator variable, both strict branches, and their tests."
+    },
+    {
+      "id": 8,
+      "title": "result.rows is unrequested, and its email is not normalized",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:5,97",
+      "what": "The task says to return created, updated and rejected only. rows pushes the raw email, so its casing and spacing differ from what was stored.",
+      "fix": "Remove it."
+    },
+    {
+      "id": 9,
+      "title": "Tests pass for the wrong reasons and miss the stated rules",
+      "direction": "tests",
+      "evidence": "traced",
+      "at": "test/import.test.js:6-26",
+      "what": "Missing tests, each with a regression that passes today: a duplicate email in one file, with the last row winning (finding 2); case and space variants of the same email counting as one contact; rejected line and reason values (the first test only checks rejected.length); the renamed name after an update (store.findByEmail(\"ann@site.test\").name is never asserted, so removing store.rename would still pass); an unparseable file writing nothing (finding 1); a quoted field with a comma or line break, and CRLF line endings. Tests that pin unrequested behaviour: strict, legacy and example.invalid (lines 17-26). They pass today only because of findings 5 and 7.",
+      "fix": "Add a test for each missing case above, and delete the strict, legacy and example.invalid tests when those features are removed (findings 5 and 7)."
+    },
+    {
+      "id": 10,
+      "title": "Nested else after continue, and unnecessary indirection",
+      "direction": "design",
+      "evidence": "judgment",
+      "at": "src/contacts/import.js:56-97",
+      "what": "if (...) { continue; } else { if ... continue; else {...} } nests the happy path three levels deep, although each branch already ends in continue. The name/email extraction with cells[i] !== undefined repeats what parseCsv already does (?? \"\"). Cost: this is why the dedupe and validation cannot be separated from the writes. The target's validate-then-apply split removes it.",
+      "fix": "Use the target's validate-then-apply split, with parseCsv for the cells."
+    }
+  ],
+  "blocks": [
+    { "path": "src/contacts/import.js", "added": "1-3", "does": "EMAIL_RE and MAX_RETRIES: the weaker duplicate email rule and the retry limit", "serves": [], "verdict": "remove", "findings": [4, 6] },
+    { "path": "src/contacts/import.js", "added": "5-8", "does": "The mode and separator options, and rows in the result", "serves": [], "verdict": "remove", "findings": [7, 8] },
+    { "path": "src/contacts/import.js", "added": "9-13, 17-46", "does": "BOM strip, line splitting, CRLF and blank-line skipping, and the hand-written CSV cell splitter", "serves": [4], "verdict": "remove", "findings": [1, 3] },
+    { "path": "src/contacts/import.js", "added": "14, 47-55", "does": "Header detection and the name/email column lookup", "serves": [], "verdict": "remove", "findings": [3] },
+    { "path": "src/contacts/import.js", "added": "56-71", "does": "Name trim, and the empty-name and bad-email rejection with line number and reason, including the strict throws", "serves": [1], "verdict": "fix", "findings": [1, 4, 7] },
+    { "path": "src/contacts/import.js", "added": "72-75", "does": "The temporary skip of @example.invalid addresses", "serves": [], "verdict": "remove", "findings": [5] },
+    { "path": "src/contacts/import.js", "added": "76-81", "does": "Lookup by email, rename when the name differs, and the updated count", "serves": [2, 3], "verdict": "keep", "findings": [2] },
+    { "path": "src/contacts/import.js", "added": "82-97", "does": "Insert inside a retry loop, and the created count", "serves": [2, 3], "verdict": "fix", "findings": [6] },
+    { "path": "src/contacts/import.js", "added": "98", "does": "rows.push of each row into the result", "serves": [], "verdict": "remove", "findings": [8] },
+    { "path": "src/contacts/import.js", "added": "4, 15-16, 99-104", "does": "The function's frame", "serves": [1, 2, 3, 4], "verdict": "keep", "findings": [10] },
+    { "path": "test/import.test.js", "added": "1-15", "does": "The first test: imports, then a mixed file checking the created, updated and rejected counts", "serves": [1, 2, 3], "verdict": "fix", "findings": [9] },
+    { "path": "test/import.test.js", "added": "16-19", "does": "The strict mode test: stops at the first bad row", "serves": [], "verdict": "remove", "findings": [7, 9] },
+    { "path": "test/import.test.js", "added": "20-23", "does": "The legacy test: semicolon-separated files", "serves": [], "verdict": "remove", "findings": [7, 9] },
+    { "path": "test/import.test.js", "added": "24-26", "does": "The test that old test addresses are skipped", "serves": [], "verdict": "remove", "findings": [5, 9] }
+  ],
+  "units": [
+    { "name": "importContacts", "jobs": ["parsing", "validation", "dedupe", "writing"], "verdict": "split" }
+  ],
+  "questions": [
+    { "at": "src/contacts/import.js:80-83", "text": "An existing contact with the same name is counted as updated although nothing changed. The brief says \"a row whose email already exists renames that contact\", so it is probably intended. Confirm with the author or the requester." },
+    { "at": "src/contacts/import.js:51", "text": "A header with missing name or email columns rejects every row with a reason about the row, not the header. Would a parse error be wanted? The brief does not say." }
+  ],
+  "coverage": "Read in full: the diff, src/contacts/store.js, email.js, create.js, src/lib/csv.js, test/csv.test.js, package.json, the brief and the instructions. Static review only; no code or tests were run, so all findings are traced, not ran. A run of the unclosed-quote case and the duplicate-email case would settle findings 1 and 2."
+}

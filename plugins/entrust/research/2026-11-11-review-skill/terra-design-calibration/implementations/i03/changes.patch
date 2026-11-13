@@ -1,0 +1,132 @@
+diff --git a/src/contacts/import.js b/src/contacts/import.js
+index d2b8431..bb500e2 100644
+--- a/src/contacts/import.js
++++ b/src/contacts/import.js
+@@ -1,2 +1,2 @@
+-const EMAIL_RE = /^\S+@\S+$/;
+-const MAX_RETRIES = 3;
++import { parseCsv } from "../lib/csv.js";
++import { isEmail, normalizeEmail } from "./email.js";
+@@ -4,3 +4,3 @@ const MAX_RETRIES = 3;
+-export function importContacts(text, store, options = {}) {
+-  const mode = options.mode || "lenient";
+-  const separator = mode === "legacy" ? ";" : ",";
++export function importContacts(text, store) {
++  // Parse the whole file before changing the address book.
++  const records = parseCsv(text);
+@@ -8,42 +8,15 @@ export function importContacts(text, store, options = {}) {
+-
+-  let data = text;
+-  if (data.charCodeAt(0) === 0xfeff) {
+-    data = data.slice(1);
+-  }
+-  const lines = data.split("\n");
+-  let header = null;
+-
+-  for (let i = 0; i < lines.length; i++) {
+-    let line = lines[i];
+-    if (line.endsWith("\r")) {
+-      line = line.slice(0, -1);
+-    }
+-    if (line.trim() === "") {
+-      continue;
+-    }
+-
+-    // split the line into cells, honouring quotes
+-    const cells = [];
+-    let current = "";
+-    let inQuotes = false;
+-    for (let j = 0; j < line.length; j++) {
+-      const ch = line[j];
+-      if (ch === '"') {
+-        if (inQuotes && line[j + 1] === '"') {
+-          current += '"';
+-          j++;
+-        } else {
+-          inQuotes = !inQuotes;
+-        }
+-      } else if (ch === separator && !inQuotes) {
+-        cells.push(current);
+-        current = "";
+-      } else {
+-        current += ch;
+-      }
+-    }
+-    cells.push(current);
+-
+-    if (header === null) {
+-      header = cells.map((cell) => cell.trim().toLowerCase());
+-      continue;
++  const contacts = new Map();
++
++  for (const record of records) {
++    // The previous importer accepted column names regardless of case.
++    const columns = Object.entries(record);
++    const name = (columns.find(([key]) => key.toLowerCase() === "name")?.[1] ?? "").trim();
++    const email = columns.find(([key]) => key.toLowerCase() === "email")?.[1] ?? "";
++
++    if (!name) {
++      result.rejected.push({ line: record.line, reason: "name is empty" });
++    } else if (!isEmail(email)) {
++      result.rejected.push({ line: record.line, reason: "email is not an address" });
++    } else {
++      contacts.set(normalizeEmail(email), name);
++      result.rows.push({ line: record.line, name, email });
+@@ -50,0 +24 @@ export function importContacts(text, store, options = {}) {
++  }
+@@ -52,12 +26,5 @@ export function importContacts(text, store, options = {}) {
+-    const nameIndex = header.indexOf("name");
+-    const emailIndex = header.indexOf("email");
+-    let name = nameIndex >= 0 && cells[nameIndex] !== undefined ? cells[nameIndex] : "";
+-    const email = emailIndex >= 0 && cells[emailIndex] !== undefined ? cells[emailIndex] : "";
+-    name = name.trim();
+-
+-    if (name === "") {
+-      if (mode === "strict") {
+-        throw new Error(`line ${i + 1}: name is empty`);
+-      }
+-      result.rejected.push({ line: i + 1, reason: "name is empty" });
+-      continue;
++  for (const [email, name] of contacts) {
++    const existing = store.findByEmail(email);
++    if (existing) {
++      store.rename(existing.id, name);
++      result.updated++;
+@@ -65,35 +32,2 @@ export function importContacts(text, store, options = {}) {
+-      if (!EMAIL_RE.test(email.trim().toLowerCase())) {
+-        if (mode === "strict") {
+-          throw new Error(`line ${i + 1}: email is not an address`);
+-        }
+-        result.rejected.push({ line: i + 1, reason: "email is not an address" });
+-        continue;
+-      } else {
+-        // temporary: skip addresses of the old test domain
+-        if (email.trim().toLowerCase().endsWith("@example.invalid")) {
+-          continue;
+-        }
+-        const existing = store.findByEmail(email.trim().toLowerCase());
+-        if (existing) {
+-          if (existing.name !== name) {
+-            store.rename(existing.id, name);
+-          }
+-          result.updated++;
+-        } else {
+-          let attempts = 0;
+-          let saved = false;
+-          while (attempts < MAX_RETRIES && !saved) {
+-            try {
+-              store.insert({ name, email: email.trim().toLowerCase() });
+-              saved = true;
+-            } catch (e) {
+-              attempts++;
+-            }
+-          }
+-          if (!saved) {
+-            continue;
+-          }
+-          result.created++;
+-        }
+-        result.rows.push({ line: i + 1, name, email });
+-      }
++      store.insert({ name, email });
++      result.created++;

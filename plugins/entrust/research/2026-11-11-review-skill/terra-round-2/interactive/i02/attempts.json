@@ -1,0 +1,10 @@
+[
+  {
+    "status": "failed",
+    "faults": "The review does not match the diff; fix these 1 and render again:\n- unit runNightly: verdict is one of keep, split, merge, remove\n"
+  },
+  {
+    "status": "succeeded",
+    "faults": ""
+  }
+]

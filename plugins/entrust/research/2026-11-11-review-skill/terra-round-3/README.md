@@ -1,0 +1,16 @@
+# Terra round 3: draft 17 and draft 18
+
+This round compared the no-skill control with [draft 17](../drafts/17-screens.md) and [draft 18](../drafts/18-methods.md) on the three cases as they stood at commit `893cec32`: `contact-import`, `currency-contract` and `overdue-notice`, each in `head` and `clean` form. There was one fresh `gpt-6.1-terra` review per cell: **18 static reviews**. The reviewers did not run project code or tests. The [manifest](runs.json), [returns](returns/) and [models](models.json) are the public synthetic record; temporary checkout paths in reviewer text were normalized to `case/<variant>/`. In `r10.md`, two Markdown hard-break spaces are represented as `<br>`; the exact path-normalized text is retained in [returns-raw/r10.json](returns-raw/r10.json). Original non-public code, task, review and identifiers are not included.
+
+Astra and GLM Flash independently graded every review against the case rubric, without arm labels, in groups for each case/variant. Their original verdicts are in [judgments](judgments/); Astra's [disputes](judgments/astra-disputes.md) record the evidence and remaining ambiguity. The format and length of an answer could still reveal the instruction family to a judge. Prompt-imposed read limits did not create a separate filesystem sandbox, and requested model effort is not proof of the provider's effective effort.
+
+For the three first-written variants, Astra recorded control **15 hits / 2 partial / 3 misses**, draft 17 **19 / 1 / 0**, and draft 18 **19 / 0 / 1**. GLM recorded **16 / 1 / 3**, **19 / 1 / 0**, and **19 / 0 / 1** respectively. The judges agreed on 123 of 126 item rulings. These are matches to this rubric, not a measure of implementation quality or a reliability estimate: there was only one review per cell, the cases and drafts share an author, and the reviewers did not apply their recommendations.
+
+Important limitations:
+
+- The clean import parser drops a quoted record with a single empty field. Whether that short record is supported was not specified unambiguously. A validator's treatment of consecutive dots was also underspecified; neither claim should automatically be classified as a confirmed defect or a false positive.
+- The clean overdue case can race if jobs overlap or a writer changes a record during a send, but the supported execution model is not stated. One assertion can trigger two traps; that does not make it two independent defects.
+- Overdue `F5` conflates failure reporting and retry: a failed send is eligible again next night, while failure observability is not specified. This disputed item affects the draft comparison.
+- The import design criterion could credit a list of phases even when the proposed target leaves the responsibilities together. A valid alternative layout is not a defect simply because it differs from the chosen control.
+
+On one non-public change, the draft 18 reviewer proposed removing an extra lookup but did not establish the exact installed dependency contract or propose separating the rules. The original task, code, paths and review are intentionally omitted. The [subsequent calibration](../terra-design-calibration/README.md) repeats the private review locally, tests more explicit design criteria and examines independent implementations on public synthetic cases.

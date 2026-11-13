@@ -1,0 +1,499 @@
+{
+  "title": "CSV import of contacts",
+  "range": "HEAD~1..HEAD",
+  "change": {
+    "goal": "Import contacts from CSV, rejecting invalid rows and reporting created and updated contacts.",
+    "why": "Add bulk import to the address book.",
+    "parts": [
+      "Parse and validate rows, then insert or rename contacts.",
+      "Return counts and rejected rows; add import tests."
+    ],
+    "sources": [
+      "brief.md (task text)",
+      "HEAD commit and diff"
+    ]
+  },
+  "verdict": "The importer handles a simple file but does not satisfy several core requirements: it writes before detecting parse errors, mishandles multiline records and repeated addresses, and accepts invalid addresses. It also silently discards some valid contacts and provides a mode that stops on invalid rows.",
+  "target": "Parse the whole file with parseCsv before touching the store, validate rows with isEmail and collect rejected line numbers. Deduplicate valid rows by normalized email, keeping the last row, then look up and write each contact once and count it once. Reuse ContactStore and its normalization; retain the import entry point and focused tests.",
+  "recommendation": "Fix in place, starting with full-file parsing before writes and deduplication, then use the existing email validator and remove the unsupported modes and silent skips. Add tests for each required outcome.",
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Reject rows with empty names or invalid email addresses, report line and reason, and continue importing."
+    },
+    {
+      "id": 2,
+      "text": "Identify contacts by email ignoring case and surrounding spaces; rename existing contacts and create new ones."
+    },
+    {
+      "id": 3,
+      "text": "Count each email once per file and let its last row win."
+    },
+    {
+      "id": 4,
+      "text": "Return created and updated counts and rejected rows."
+    },
+    {
+      "id": 5,
+      "text": "Write nothing when the file cannot be parsed."
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "Parsing happens incrementally and unclosed quotes are accepted",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:13",
+      "what": "For name,email followed by a valid row and then a row with an unclosed quote, the valid row is inserted before the malformed row is read; inQuotes is never checked, so no parse error is raised. The existing parseCsv throws CsvError for an unclosed quoted field. This breaks the no-writes-on-parse-failure requirement.",
+      "fix": "Call parseCsv on the entire text before any store write, and propagate its parse error.",
+      "breaks": [
+        5
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Quoted line breaks split one CSV record into multiple rows",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:13",
+      "what": "A valid record such as \"Ann\\nSmith\",ann@site.test is split before quote handling: its first half is rejected for missing email, and the second half is also treated as a separate row instead of completing the record. The existing parser preserves quoted newlines and records their starting line.",
+      "fix": "Use parseCsv records and their line property for validation and reporting.",
+      "breaks": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Repeated emails are counted as multiple operations",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:76",
+      "what": "Two valid rows for a new email insert it on the first row and rename it on the second, returning created=1 and updated=1 for one contact. For an existing email updated is incremented twice. Case and spaces still match because the store normalizes them, but the required once-per-file count is lost.",
+      "fix": "Deduplicate valid rows by normalized email before writes, retain the last row, and count each resulting contact once according to its state before import.",
+      "breaks": [
+        3,
+        4
+      ]
+    },
+    {
+      "id": 4,
+      "title": "The local email check accepts values the address book rejects",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:1",
+      "what": "The regex accepts ann@site and a@b@site.test, while src/contacts/email.js isEmail rejects both; these rows are inserted instead of being reported as invalid. The single-contact form uses isEmail as the project address contract.",
+      "fix": "Use the existing isEmail function for import validation.",
+      "breaks": [
+        1
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Valid addresses at example.invalid are silently skipped",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:72",
+      "what": "Ann,ann@example.invalid passes the project's isEmail check but is neither imported nor rejected; the added test explicitly pins this behavior. The task gives no domain exclusion.",
+      "fix": "Remove the domain skip and replace its test with an assertion that the contact is imported.",
+      "breaks": [
+        2,
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Strict mode aborts on an invalid row",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:59",
+      "what": "With mode=strict, an empty name or invalid email throws instead of recording the rejection and continuing; a valid earlier row may already have been written. The new test requires the abort although the task says rejected rows do not stop import.",
+      "fix": "Remove strict mode and always append a rejection and continue.",
+      "breaks": [
+        1
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Insert failures are retried and then silently discarded",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/contacts/import.js:83",
+      "what": "ContactStore.insert synchronously throws on a duplicate, which findByEmail has just excluded; its implementation shows no transient failure for retry to address. Any other insert error is swallowed after three attempts, so the caller receives a successful result without the row or an error.",
+      "fix": "Insert once and let errors propagate; remove the retry constant and loop."
+    },
+    {
+      "id": 8,
+      "title": "Extra legacy mode and returned rows add an unsupported interface",
+      "direction": "necessity",
+      "evidence": "judgment",
+      "at": "src/contacts/import.js:4",
+      "what": "The task specifies CSV and counts plus rejections, but adds neither a semicolon format nor a list of accepted rows. The new option, separator branch, result.rows and corresponding tests add behaviors that callers would have to maintain without a stated requirement.",
+      "fix": "Remove the mode parameter, legacy separator branch and rows result; use the project CSV parser."
+    },
+    {
+      "id": 9,
+      "title": "Tests do not exercise the required import outcomes",
+      "direction": "tests",
+      "evidence": "traced",
+      "at": "test/import.test.js:6",
+      "what": "The sole general test checks counts and rejected length only, so wrong names, line numbers or reasons, missing last-row wins, non-normalized duplicate handling, and writes after malformed input can all regress without failing. It also has no invalid-email case.",
+      "fix": "Test stored names and normalized identities, duplicate counts and last row, rejection line/reason with continued import, quoted multiline rows and parse failure with an unchanged store.",
+      "breaks": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "importContacts",
+      "jobs": [
+        "selects input mode",
+        "parses CSV",
+        "validates rows",
+        "writes contacts",
+        "counts and reports results"
+      ],
+      "uses": [
+        "ContactStore"
+      ],
+      "verdict": "keep"
+    },
+    {
+      "name": "ContactStore",
+      "existing": true,
+      "jobs": [
+        "looks up normalized emails",
+        "inserts and renames contacts"
+      ]
+    },
+    {
+      "name": "parseCsv",
+      "existing": true,
+      "jobs": [
+        "parses CSV records before returning",
+        "reports starting line and throws on an unclosed quote"
+      ]
+    },
+    {
+      "name": "isEmail",
+      "existing": true,
+      "jobs": [
+        "validates normalized addresses"
+      ]
+    },
+    {
+      "name": "normalizeEmail",
+      "existing": true,
+      "jobs": [
+        "normalizes email case and whitespace"
+      ]
+    }
+  ],
+  "target_units": [
+    {
+      "name": "importContacts",
+      "jobs": [
+        "parses entire file",
+        "validates and deduplicates records",
+        "writes each contact once and reports results"
+      ],
+      "uses": [
+        "parseCsv",
+        "isEmail",
+        "normalizeEmail",
+        "ContactStore"
+      ]
+    },
+    {
+      "name": "parseCsv",
+      "existing": true,
+      "jobs": [
+        "parses CSV records and reports starting line"
+      ]
+    },
+    {
+      "name": "isEmail",
+      "existing": true,
+      "jobs": [
+        "validates addresses"
+      ]
+    },
+    {
+      "name": "normalizeEmail",
+      "existing": true,
+      "jobs": [
+        "normalizes identity"
+      ]
+    },
+    {
+      "name": "ContactStore",
+      "existing": true,
+      "jobs": [
+        "looks up, inserts and renames contacts"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/contacts/import.js",
+      "added": "1",
+      "does": "Defines a local email regex.",
+      "serves": [
+        1
+      ],
+      "verdict": "fix",
+      "findings": [
+        4
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "2",
+      "does": "Sets insert retry limit.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        7
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "4-7",
+      "unit": "importContacts",
+      "does": "Selects mode and delimiter and initializes results.",
+      "serves": [
+        4
+      ],
+      "verdict": "fix",
+      "findings": [
+        6,
+        8
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "9-14",
+      "unit": "importContacts",
+      "does": "Removes BOM and splits text into lines.",
+      "serves": [
+        1,
+        2,
+        5
+      ],
+      "verdict": "fix",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "16-23",
+      "unit": "importContacts",
+      "does": "Iterates lines, strips CR and skips blank lines.",
+      "serves": [
+        1,
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "25-45",
+      "unit": "importContacts",
+      "does": "Splits each line into CSV cells with quotes.",
+      "serves": [
+        1,
+        2,
+        5
+      ],
+      "verdict": "fix",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "47-56",
+      "unit": "importContacts",
+      "does": "Reads header and extracts and trims row fields.",
+      "serves": [
+        1,
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "58-64",
+      "unit": "importContacts",
+      "does": "Rejects empty names or throws in strict mode.",
+      "serves": [
+        1
+      ],
+      "verdict": "fix",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "65-71",
+      "unit": "importContacts",
+      "does": "Validates email and rejects or throws.",
+      "serves": [
+        1
+      ],
+      "verdict": "fix",
+      "findings": [
+        4,
+        6
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "72-75",
+      "unit": "importContacts",
+      "does": "Skips the old test domain.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        5
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "76-82",
+      "unit": "importContacts",
+      "does": "Looks up and renames existing contacts and counts updates.",
+      "serves": [
+        2,
+        3,
+        4
+      ],
+      "verdict": "fix",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "83-95",
+      "unit": "importContacts",
+      "does": "Retries inserts and silently drops failed ones.",
+      "serves": [
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        7
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "96-97",
+      "unit": "importContacts",
+      "does": "Counts created contacts.",
+      "serves": [
+        3,
+        4
+      ],
+      "verdict": "fix",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "98",
+      "unit": "importContacts",
+      "does": "Returns accepted row details.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        8
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "99-104",
+      "unit": "importContacts",
+      "does": "Closes control flow and returns result.",
+      "serves": [
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "1-4",
+      "does": "Imports test utilities and importer.",
+      "serves": [
+        1,
+        2,
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "6-14",
+      "does": "Tests simple import counts.",
+      "serves": [
+        1,
+        2,
+        4
+      ],
+      "verdict": "fix",
+      "findings": [
+        8,
+        9
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "16-18",
+      "does": "Tests strict rejection mode.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "20-22",
+      "does": "Tests semicolon legacy mode.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        8
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "24-26",
+      "does": "Tests skipping a valid test-domain address.",
+      "serves": [],
+      "verdict": "fix",
+      "findings": [
+        5
+      ]
+    }
+  ],
+  "coverage": "Read both changed files in full, the task, all base source and test files, and package.json. Static review only: did not run project code or tests. Running targeted tests would verify the traced outcomes and integration; no UI or mockups are involved."
+}

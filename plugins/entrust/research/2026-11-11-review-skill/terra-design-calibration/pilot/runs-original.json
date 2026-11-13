@@ -1,0 +1,34 @@
+[
+  {
+    "run": "r01",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r01.md"
+  },
+  {
+    "run": "r02",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r02.md"
+  },
+  {
+    "run": "r03",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r03.md"
+  },
+  {
+    "run": "r04",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r04.md"
+  }
+]

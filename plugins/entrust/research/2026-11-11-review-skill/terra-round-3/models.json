@@ -1,0 +1,5 @@
+{
+  "reviewer": "gpt-6.1-terra (requested xhigh)",
+  "judge_astra": "gpt-6-astra (requested xhigh)",
+  "judge_glm": "openrouter/~z-ai/glm-flash-latest (requested high)"
+}

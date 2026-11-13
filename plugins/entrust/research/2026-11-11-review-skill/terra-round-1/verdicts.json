@@ -1,0 +1,389 @@
+[
+  {
+    "run": "r01",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The tests would not catch deletion of the shipped-status condition because no overdue non-shipped order is covered.",
+        "verdict": "valid",
+        "why": "head/test/badge.test.js:7-20 covers shipped orders with non-null dates and fallback cases with null dates; head/test/list.test.js:5-7 covers a paid order with promisedAt null, so applying Delayed to every overdue status would still pass."
+      }
+    ]
+  },
+  {
+    "run": "r02",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "miss",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Per-unit rounding can eliminate the loyalty discount, as when 100 items priced at $0.01 still produce a $1.00 discounted amount instead of $0.95.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:15 rounds each unit price before line 18 multiplies by quantity, and lines 21-28 apply no further loyalty discount without a coupon; round2(0.01 * 0.95) remains 0.01."
+      }
+    ]
+  },
+  {
+    "run": "r03",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The in-memory acknowledgement Set loses an ok acknowledgement across worker death, so queue redelivery can send the message again.",
+        "verdict": "unsupported",
+        "why": "head/src/delivery/store.js:1-8 is identical to base/src/delivery/store.js:1-8, and base/src/delivery/deliver.js:5,8 already used the same process-local acknowledgement check and mark; the change does not introduce or worsen this restart scenario."
+      },
+      {
+        "claim": "The three-attempt counter resets on queue redelivery after worker death, allowing more than three sends for one message.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:5,11 creates a local counter per call; head/src/queue/worker.js:3-6 permits redelivery after process death, so a new call can make three further attempts despite the brief's total limit."
+      }
+    ]
+  },
+  {
+    "run": "r04",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Per-unit rounding can erase or distort the loyalty discount and therefore change tax, as in the supported example of 100 units priced at $0.03.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:15 rounds each discounted unit before line 18 multiplies it by quantity and line 33 computes tax; $0.03 rounds back to $0.03, leaving a $3 discounted amount instead of applying 5% once to the $3 subtotal for $2.85."
+      }
+    ]
+  },
+  {
+    "run": "r05",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "miss",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Покупатели без id используют общий ключ undefined в кэше, поэтому результат проверки лояльности одного покупателя может применяться к другому.",
+        "verdict": "valid",
+        "why": "head/src/checkout/loyalty.js:5-7 читает и записывает loyaltyCache по customer.id без проверки наличия id; при отсутствии id ключ у всех один — undefined."
+      },
+      {
+        "claim": "Округление скидки в цене каждой позиции может полностью убрать 5%-ную скидку: 100 единиц по 0,01 остаются на сумму 1,00 вместо 0,95, что также меняет налог.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:15 округляет item.price * 0.95 до умножения на quantity на строке 18, а строка 33 считает налог от получившегося discounted; round2(0.0095) возвращает 0.01."
+      }
+    ]
+  },
+  {
+    "run": "r06",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Add a test that a non-shipped order with an earlier promised date keeps its normal status label.",
+        "verdict": "valid",
+        "why": "head/src/orders/badge.js:21 gates Delayed on status === 'shipped', while head/test/badge.test.js:7-20 has no overdue non-shipped case."
+      }
+    ]
+  },
+  {
+    "run": "r07",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "miss",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r08",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Per-item rounding can erase or distort the loyalty discount, so fractional-price and quantity coverage is needed.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:15,18 rounds each unit before multiplying by quantity; with round2 at head/src/checkout/money.js:2, $0.05 × 0.95 rounds back to $0.05, so ten such units receive no discount."
+      },
+      {
+        "claim": "The staff test with enough completed orders checks only loyaltyApplied and should also verify the total.",
+        "verdict": "valid",
+        "why": "head/test/total.test.js:26-27 asserts only loyaltyApplied for staff with 12 orders; the total assertion at lines 17-18 uses zero completed orders."
+      }
+    ]
+  },
+  {
+    "run": "r09",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Без купона скидка округляется для каждой единицы товара до умножения на количество, поэтому при цене 0,05 скидка может полностью исчезнуть.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:15 округляет item.price * 0.95 до накопления subtotal на строке 18; по head/src/checkout/money.js:1-3 round2(0.05 * 0.95) даёт 0.05, хотя brief.md требует скидку 5% на subtotal."
+      }
+    ]
+  },
+  {
+    "run": "r10",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "miss",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r11",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Acknowledgements need crash-durable storage and coordinated handling of the crash window between an ok response and markAcknowledged.",
+        "verdict": "unsupported",
+        "why": "base/src/delivery/store.js:1-8 and head/src/delivery/store.js:1-8 use the same process-local Set, while base/src/delivery/deliver.js:5-8 already had the same acknowledged check and ok-to-mark sequence; the change does not introduce or worsen this crash behavior."
+      },
+      {
+        "claim": "The three-attempt cap must account for attempts made before worker death and queue reissue, with a corresponding reissue test.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:11-15 starts a new three-attempt loop on every call, and head/src/queue/worker.js:3-6 can invoke deliver again after process death; base/src/delivery/deliver.js:7 sent only once per call, so the new loop worsens the number of attempts a reissued message can receive."
+      }
+    ]
+  },
+  {
+    "run": "r12",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Persist and reserve attempts across worker processes because the local counter resets on queue redelivery and can allow more than three total sends.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:10-15 creates the attempt counter per invocation, while head/src/queue/worker.js:3-6 permits another invocation after process death, allowing the combined invocations to exceed three sends."
+      },
+      {
+        "claim": "Use process-durable acknowledgement state and a crash-window protocol because a replacement process can resend an acknowledged message after worker death.",
+        "verdict": "unsupported",
+        "why": "head/src/delivery/store.js:1-8 is identical to base/src/delivery/store.js:1-8, and base/src/delivery/deliver.js:5-8 already had the same acknowledgement check and OK marking; the change did not introduce or worsen this process-death gap."
+      }
+    ]
+  },
+  {
+    "run": "r13",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Tests should also cover an overdue non-shipped order so a regression to Delayed is caught.",
+        "verdict": "valid",
+        "why": "head/test/badge.test.js:7-20 tests only shipped orders with valid statuses plus invalid-status fallbacks; head/test/list.test.js:5-7 covers only a paid order with a null date, leaving overdue non-shipped behavior uncovered."
+      }
+    ]
+  },
+  {
+    "run": "r14",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Acknowledgements need durable state and handling for the crash window after a 200 response, because the in-memory Set is lost on process death and the idempotency key alone cannot prevent another send.",
+        "verdict": "unsupported",
+        "why": "base/src/delivery/store.js:1-9 and head/src/delivery/store.js:1-9 are identical; base/src/delivery/deliver.js:5-8 already used the same Set and acknowledged ok responses. This pre-existing behavior was not introduced or worsened by the change."
+      },
+      {
+        "claim": "The new three-attempt limit applies only within one deliver() call, so a job redelivered after process death can exceed three total attempts unless the attempt count is persisted.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:5,11-15 creates a fresh local counter and permits three sends per invocation; head/src/queue/worker.js:3-6 explicitly allows the same job to reach deliver() again after handler death, and no attempt count is persisted."
+      }
+    ]
+  },
+  {
+    "run": "r15",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "miss",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r16",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Worker-death acknowledgement loss requires persistent acknowledgements, restart coverage, and a protocol for the endpoint-acceptance-to-persistence window.",
+        "verdict": "unsupported",
+        "why": "base/src/delivery/store.js:1-8 and head/src/delivery/store.js:1-8 are identical, and base/src/delivery/deliver.js:5-8 already used the same process-local acknowledgement check and marking for successful responses; the reported process-death behavior is pre-existing rather than introduced or worsened by this change."
+      },
+      {
+        "claim": "The new attempt limit resets on process-death queue redelivery, allowing more than three sends for one message, so the attempt count should persist across redelivery.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:10-15 keeps the newly added counter only within one invocation, while head/src/queue/worker.js:3-6 explicitly permits another invocation after handler-process death; a supported restart can therefore produce additional sends beyond three."
+      },
+      {
+        "claim": "The retry tests do not inspect sleep calls, so removing the sleeps or using incorrect backoff durations would pass; the tests should record and assert delays.",
+        "verdict": "valid",
+        "why": "head/test/deliver.test.js:9 defines an empty sleep stub, and lines 25-35 assert only results and send counts; no assertion observes the delays defined in head/src/delivery/backoff.js:1-4."
+      }
+    ]
+  },
+  {
+    "run": "r17",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Worker restart loses process-local acknowledgement state, so durable acknowledgement storage and a protocol covering the acceptance/recording crash window are required.",
+        "verdict": "unsupported",
+        "why": "head/src/delivery/store.js:1-9 is identical to base/src/delivery/store.js:1-9, and base/src/delivery/deliver.js:5-9 already used the same acknowledgement check and post-send recording; this is a pre-existing limitation, not a defect introduced or worsened by the change."
+      },
+      {
+        "claim": "Attempts must be tracked across queue handoffs because a replacement worker resets the local loop and can exceed three attempts for one message.",
+        "verdict": "valid",
+        "why": "head/src/delivery/deliver.js:11-15 keeps the attempt counter only within one invocation, while head/src/queue/worker.js:3-6 supports redelivery after process death; a subsequent invocation can therefore perform three more sends."
+      }
+    ]
+  },
+  {
+    "run": "r18",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "X1": "clean",
+      "X2": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The no-coupon path rounds each discounted unit before multiplying by quantity, so 100 items at $0.01 receive no discount instead of the required $0.05.",
+        "verdict": "valid",
+        "why": "head/src/checkout/total.js:14-18 rounds each $0.01 unit back to $0.01 before quantity multiplication; brief.md requires 5% off the $1.00 subtotal after any coupon."
+      }
+    ]
+  }
+]

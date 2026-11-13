@@ -1,0 +1,398 @@
+{
+  "title": "Upper-case invoice currency",
+  "range": "HEAD~1..HEAD",
+  "change": {
+    "goal": "Show invoice currency codes in upper case in the list, invoice page, and CSV export.",
+    "why": "Archived invoices contain lower-case currency codes.",
+    "parts": [
+      "Adds currency normalization for the invoice page.",
+      "Formats prices separately in the list and page.",
+      "Adds normalization and list tests."
+    ],
+    "sources": [
+      "brief.md",
+      "HEAD commit",
+      "data/archive.schema.json"
+    ]
+  },
+  "verdict": "The list handles archived lower-case codes, but the CSV still exports them lower case and the page can display the wrong currency. The code also duplicates price formatting and introduces fallbacks that the actual invoice contracts do not require.",
+  "target": "Use one currency uppercasing operation for display, reuse formatPrice for both screens, and apply the same operation to the CSV currency field. Preserve every valid code and test all three outputs with archived invoices.",
+  "recommendation": "Fix in place: correct CSV and preserve valid currencies first, then remove unsupported fallbacks and duplicated formatting and cover the three outputs.",
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Show currency codes in upper case in the invoice list."
+    },
+    {
+      "id": 2,
+      "text": "Show currency codes in upper case on the invoice page."
+    },
+    {
+      "id": 3,
+      "text": "Show currency codes in upper case in the CSV export."
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "CSV export leaves archived currency lower case",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/export/csv.js:2",
+      "what": "readArchive passes an archive row's three lower-case letters through as currency, and toCsv emits them unchanged: an archived 'usd' is still 'usd' in CSV.",
+      "fix": "Uppercase the currency in the CSV output, reusing the display normalization.",
+      "breaks": [
+        3
+      ]
+    },
+    {
+      "id": 2,
+      "title": "The page replaces valid currencies with USD",
+      "direction": "behavior",
+      "evidence": "traced",
+      "at": "src/invoices/price.js:8",
+      "what": "The archive accepts any three lower-case letters and billing-client 2.3.0 accepts any three upper-case letters. An archived 'jpy' or service 'JPY' becomes 'USD' on the page, mislabeling its amount; the list keeps JPY.",
+      "fix": "Uppercase the input without restricting it to the three listed codes.",
+      "breaks": [
+        2
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Price formatting is duplicated between the screens",
+      "direction": "design",
+      "evidence": "judgment",
+      "at": "src/screens/list.js:5",
+      "what": "Both screens stopped using formatPrice and now own separate amount formatting and currency rules; a price-format change must be made in both places and the implementations already disagree for JPY.",
+      "fix": "Put display normalization in the existing price formatter and reuse it from both screens.",
+      "breaks": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Missing-currency fallbacks and their tests contradict the inputs",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/invoices/price.js:4",
+      "what": "loadInvoices uses the root billing-client 2.3.0, which rejects absent or non-string currency, and the closed archive schema requires exactly three lower-case letters. The guard, fallback parameter, trimming, list's null fallback and tests of null are unsupported by either input; docs/billing.md describes 1.x, not the installed root client.",
+      "fix": "Remove the unsupported fallback, guard and trimming, the list fallback and stale comment, and the missing-currency test."
+    },
+    {
+      "id": 5,
+      "title": "The page hides unexpected formatting failures as a real price",
+      "direction": "necessity",
+      "evidence": "traced",
+      "at": "src/screens/page.js:7",
+      "what": "Both supported sources require an integer amount and string currency, so formatting them has no demonstrated failure requiring recovery. If an unexpected exception does occur, this catch silently displays USD 0.00 instead of exposing it.",
+      "fix": "Remove the catch and let unexpected errors propagate."
+    },
+    {
+      "id": 6,
+      "title": "Tests omit the page and CSV output",
+      "direction": "tests",
+      "evidence": "traced",
+      "at": "test/price.test.js:10",
+      "what": "The added lower-case test exercises the helper and list only. A page that converts JPY to USD or a CSV that leaves 'usd' unchanged passes the suite; the unknown-code test instead pins the wrong USD substitution.",
+      "fix": "Test list, page and CSV using archived lower-case codes including a valid code outside USD/EUR/GBP, and remove the wrong fallback assertion.",
+      "breaks": [
+        2,
+        3
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "name": "Invoice list and invoice page",
+      "differences": [],
+      "missing": "No mockup, before or after images were supplied; screenshots of both screens would allow a visual comparison."
+    }
+  ],
+  "units": [
+    {
+      "name": "normalizeCurrency",
+      "jobs": [
+        "normalize and restrict currency",
+        "supply a fallback"
+      ],
+      "uses": [],
+      "verdict": "split",
+      "findings": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "renderList",
+      "jobs": [
+        "format invoice list prices"
+      ],
+      "uses": [],
+      "verdict": "merge",
+      "findings": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "renderPage",
+      "jobs": [
+        "format invoice page price",
+        "hide formatting errors"
+      ],
+      "uses": [
+        "normalizeCurrency"
+      ],
+      "verdict": "split",
+      "findings": [
+        3,
+        5
+      ]
+    },
+    {
+      "name": "formatPrice",
+      "existing": true,
+      "jobs": [
+        "format a price"
+      ]
+    },
+    {
+      "name": "toCsv",
+      "existing": true,
+      "jobs": [
+        "export invoice fields"
+      ]
+    },
+    {
+      "name": "loadInvoices",
+      "existing": true,
+      "jobs": [
+        "load service and archive invoices"
+      ],
+      "uses": [
+        "fetchInvoices",
+        "readArchive"
+      ]
+    },
+    {
+      "name": "readArchive",
+      "existing": true,
+      "jobs": [
+        "map archive rows to invoices"
+      ]
+    },
+    {
+      "name": "fetchInvoices",
+      "existing": true,
+      "jobs": [
+        "fetch and validate service invoices"
+      ]
+    }
+  ],
+  "target_units": [
+    {
+      "name": "normalizeCurrency",
+      "jobs": [
+        "uppercase currency for display"
+      ]
+    },
+    {
+      "name": "formatPrice",
+      "existing": true,
+      "jobs": [
+        "format a price"
+      ],
+      "uses": [
+        "normalizeCurrency"
+      ]
+    },
+    {
+      "name": "renderList",
+      "jobs": [
+        "render invoice list"
+      ],
+      "uses": [
+        "formatPrice"
+      ]
+    },
+    {
+      "name": "renderPage",
+      "jobs": [
+        "render invoice page"
+      ],
+      "uses": [
+        "formatPrice"
+      ]
+    },
+    {
+      "name": "toCsv",
+      "existing": true,
+      "jobs": [
+        "export invoice fields"
+      ],
+      "uses": [
+        "normalizeCurrency"
+      ]
+    },
+    {
+      "name": "loadInvoices",
+      "existing": true,
+      "jobs": [
+        "load service and archive invoices"
+      ],
+      "uses": [
+        "fetchInvoices",
+        "readArchive"
+      ]
+    },
+    {
+      "name": "readArchive",
+      "existing": true,
+      "jobs": [
+        "map archive rows to invoices"
+      ]
+    },
+    {
+      "name": "fetchInvoices",
+      "existing": true,
+      "jobs": [
+        "fetch and validate service invoices"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/invoices/price.js",
+      "added": "1, 3-9",
+      "unit": "normalizeCurrency",
+      "does": "Normalizes currency and substitutes a fallback outside a three-code list.",
+      "serves": [
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        2,
+        4
+      ]
+    },
+    {
+      "path": "src/screens/list.js",
+      "removed": "1",
+      "unit": "renderList",
+      "does": "Removes the common price formatter import.",
+      "serves": [
+        1
+      ],
+      "verdict": "fix",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "src/screens/list.js",
+      "added": "2-6",
+      "removed": "4",
+      "unit": "renderList",
+      "does": "Uppercases list currency and formats amounts locally, with a null fallback.",
+      "serves": [
+        1
+      ],
+      "verdict": "fix",
+      "findings": [
+        3,
+        4
+      ]
+    },
+    {
+      "path": "src/screens/page.js",
+      "added": "1",
+      "removed": "1",
+      "unit": "renderPage",
+      "does": "Switches the page from the common formatter to currency normalization.",
+      "serves": [
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "src/screens/page.js",
+      "added": "4-6, 10",
+      "removed": "4",
+      "unit": "renderPage",
+      "does": "Formats the page price using normalized currency.",
+      "serves": [
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        2,
+        3
+      ]
+    },
+    {
+      "path": "src/screens/page.js",
+      "added": "7-9",
+      "unit": "renderPage",
+      "does": "Converts formatting errors to a fixed price.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        5
+      ]
+    },
+    {
+      "path": "test/price.test.js",
+      "added": "3-4",
+      "removed": "3",
+      "does": "Imports the new helper and list renderer for tests.",
+      "serves": [
+        1,
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "test/price.test.js",
+      "added": "10-13",
+      "does": "Tests uppercasing the helper and list.",
+      "serves": [
+        1,
+        2
+      ],
+      "verdict": "fix",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "test/price.test.js",
+      "added": "15-18",
+      "does": "Tests null currency fallback.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        4
+      ]
+    },
+    {
+      "path": "test/price.test.js",
+      "added": "20-22",
+      "does": "Tests fallback for an unlisted code.",
+      "serves": [],
+      "verdict": "remove",
+      "findings": [
+        2,
+        6
+      ]
+    }
+  ],
+  "questions": [],
+  "coverage": "Read the entire diff and all changed files and their base versions; traced loadInvoices, readArchive, toCsv, root and nested billing-client implementations and types, lockfile, archive schema, billing docs, and existing tests. Static review only: no project code or tests were run; running output tests would verify the traced cases. No screen images were supplied."
+}

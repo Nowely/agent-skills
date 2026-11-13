@@ -4,7 +4,7 @@ description: >-
   Run external Claude agents, native Claude delegation and entrust plans selecting Claude. A request to make
   Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”) is answered with the explicit proxy command.
 metadata:
-  version: "0.36.0"
+  version: "0.37.0"
 license: MIT
 ---
 

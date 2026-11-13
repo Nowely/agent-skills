@@ -1,0 +1,301 @@
+[
+  {
+    "run": "r01",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "A caller can disable the required overdue email through the new config option, which no requirement asks for.",
+        "verdict": "valid",
+        "why": "src/jobs/nightly.js:11 takes a config param and src/notifications/NotificationService.js:16-19 returns without sending when the event is disabled, so {events:{\"invoice.overdue\":{enabled:false}}} silently delivers nothing; the brief specifies no opt-out."
+      }
+    ]
+  },
+  {
+    "run": "r02",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new output test never goes through loadInvoices, so combining service and archive invoices is untested end to end.",
+        "verdict": "valid",
+        "why": "test/outputs.test.js:9 builds invoices by calling readArchive directly, while src/invoices/load.js:5-6 is the entry that combines fetchInvoices and readArchive; no test exercises that combination, so a loader regression would pass."
+      }
+    ]
+  },
+  {
+    "run": "r03",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean",
+      "X5": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The refused-send test checks only counters and the next night's sends, never the content of the refused night's deliveries, so a regression mis-addressing the other customer would pass.",
+        "verdict": "valid",
+        "why": "test/nightly.test.js:38-45 asserts {sent:1,failed:1} and the next night's recipients but never inspects refusing.sent, so a wrong-address send marked successful passes."
+      },
+      {
+        "claim": "No test distinguishes UTC from another calendar zone, so a regression deriving today from local time would pass the suite.",
+        "verdict": "valid",
+        "why": "Every test night in test/nightly.test.js:6 is 01:00:00Z, which maps to the same calendar date in e.g. UTC+3, so a local-date regression yields the same outcomes though it could notify before midnight UTC."
+      }
+    ]
+  },
+  {
+    "run": "r04",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean",
+      "X5": "violated"
+    },
+    "extra": []
+  },
+  {
+    "run": "r05",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r06",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "A quoted field holding a line break is split into separate rows, so a valid CSV name spanning lines is never imported as one contact.",
+        "verdict": "valid",
+        "why": "src/contacts/import.js:13 splits the text on \\n before quote handling, so a quoted name containing a newline becomes two broken rows; parseCsv in src/lib/csv.js supports embedded line breaks and record line numbers."
+      }
+    ]
+  },
+  {
+    "run": "r07",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "A quoted field holding a line break is split into separate rows, corrupting data and rejected-row line numbers.",
+        "verdict": "valid",
+        "why": "src/contacts/import.js:13 splits on \\n before interpreting quotes, so a quoted name containing a newline is treated as several records; parseCsv in src/lib/csv.js handles such fields."
+      }
+    ]
+  },
+  {
+    "run": "r08",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r09",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The page's try/catch substitutes a fabricated USD 0.00 price for errors no supported invoice can produce, masking real failures.",
+        "verdict": "valid",
+        "why": "src/screens/page.js:5-9 catches and returns 'USD 0.00'; node_modules/@acme/billing-client/index.js:11,14 and data/archive.schema.json guarantee a string currency and an integer amount, so nothing inside the try throws under supported inputs."
+      }
+    ]
+  },
+  {
+    "run": "r10",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": []
+  },
+  {
+    "run": "r11",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r12",
+    "items": {
+      "X1": "clean",
+      "X2": "violated",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": [
+      {
+        "claim": "Duplicate counting is tested only against the plan, not through importContacts, so a counting regression in the public entry point would pass.",
+        "verdict": "valid",
+        "why": "test/import.test.js:15-21 checks a repeated email only via planImport while the importContacts test at lines 23-30 uses distinct emails, so a double-counting regression in importContacts passes."
+      }
+    ]
+  },
+  {
+    "run": "r13",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "A valid quoted field containing a newline is split into separate rows.",
+        "verdict": "valid",
+        "why": "src/contacts/import.js:13 splits into physical lines and toggles quotes per line, so a quoted name holding a line break is broken into several records; src/lib/csv.js:16-30 handles multiline fields and record lines."
+      }
+    ]
+  },
+  {
+    "run": "r14",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r15",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "partial",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r16",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": [
+      {
+        "claim": "Duplicate counts are not tested through importContacts, so an import that processes duplicate rows separately could pass the suite.",
+        "verdict": "valid",
+        "why": "test/import.test.js:15-21 covers a repeated new email only through planImport; the importContacts test at lines 23-30 uses distinct emails, so a double-counting regression passes."
+      }
+    ]
+  },
+  {
+    "run": "r17",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "partial",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The page's catch replaces any exception with a fabricated USD 0.00 price, though supported sources provide a currency string and integer amount that cannot throw on the formatting path.",
+        "verdict": "valid",
+        "why": "src/screens/page.js:5-9 swaps any error for 'USD 0.00'; node_modules/@acme/billing-client/index.js:11,14 and data/archive.schema.json guarantee a string currency and integer amount, so the try's operations cannot throw for supported invoices."
+      }
+    ]
+  },
+  {
+    "run": "r18",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean",
+      "X5": "violated"
+    },
+    "extra": []
+  }
+]

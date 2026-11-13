@@ -1,0 +1,54 @@
+[
+  {
+    "id": "i01",
+    "case": "contact-import-v2",
+    "arm": "draft-18",
+    "reviewRun": "r01",
+    "patch": "i01/changes.patch",
+    "newFiles": []
+  },
+  {
+    "id": "i02",
+    "case": "contact-import-v2",
+    "arm": "control",
+    "reviewRun": "r03",
+    "patch": "i02/changes.patch",
+    "newFiles": []
+  },
+  {
+    "id": "i03",
+    "case": "contact-import-v2",
+    "arm": "no-review",
+    "reviewRun": null,
+    "patch": "i03/changes.patch",
+    "newFiles": []
+  },
+  {
+    "id": "i04",
+    "case": "booking-edit",
+    "arm": "control",
+    "reviewRun": "r06",
+    "patch": "i04/changes.patch",
+    "newFiles": [
+      "i04/new/src/bookings/edit.test.js"
+    ]
+  },
+  {
+    "id": "i05",
+    "case": "booking-edit",
+    "arm": "draft-18",
+    "reviewRun": "r08",
+    "patch": "i05/changes.patch",
+    "newFiles": [
+      "i05/new/src/bookings/edit.test.js"
+    ]
+  },
+  {
+    "id": "i06",
+    "case": "booking-edit",
+    "arm": "no-review",
+    "reviewRun": null,
+    "patch": "i06/changes.patch",
+    "newFiles": []
+  }
+]

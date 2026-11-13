@@ -1,0 +1,178 @@
+[
+  {
+    "run": "r01",
+    "case": "contact-import-v2",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r01.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r02",
+    "case": "contact-import-v2",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r02.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r03",
+    "case": "contact-import-v2",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r03.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r04",
+    "case": "contact-import-v2",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r04.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r05",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r05.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r06",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r06.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r07",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r07.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r08",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r08.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 1
+  },
+  {
+    "run": "r09",
+    "case": "contact-import-v2",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r09.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r10",
+    "case": "contact-import-v2",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r10.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r11",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r11.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r12",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r12.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r13",
+    "case": "contact-import-v2",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r13.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r14",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r14.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r15",
+    "case": "contact-import-v2",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r15.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  },
+  {
+    "run": "r16",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r16.md",
+    "model": "gpt-6.1-terra",
+    "requestedEffort": "xhigh",
+    "repetition": 2
+  }
+]

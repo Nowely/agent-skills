@@ -1,0 +1,37 @@
+{
+  "title": "Upper-case archive currency",
+  "range": "HEAD~1...HEAD",
+  "change": {
+    "goal": "Show the currency code in upper case in the list, the page and the CSV export.",
+    "why": "Some invoices show lower-case currency such as usd 10.00.",
+    "parts": ["readArchive upper-cases the archive's cur field when building an invoice", "a test for that conversion"],
+    "sources": ["brief.md", "the diff", "billing-client 2.3.0 code, types and changelog", "data/archive.schema.json"]
+  },
+  "verdict": "The change does its task. Service invoices are already validated as upper case by billing-client 2.3.0 (installed and locked), and the only source of lower case is the closed archive, which the schema says is always ^[a-z]{3}$. Fixing it at the single place where archive rows become invoices covers the list, page and CSV with one line.",
+  "target": "readArchive normalises the archive's code to upper case; loadInvoices merges the service's and the archive's invoices; formatPrice and toCsv stay as they are. The change is already this.",
+  "recommendation": "Accept as is. No findings; the ideas are optional.",
+  "requirements": [
+    {"id": 1, "text": "Archive-origin invoices show their currency code in upper case in the invoice list"},
+    {"id": 2, "text": "... and on the invoice page"},
+    {"id": 3, "text": "... and in the CSV export"},
+    {"id": 4, "text": "Service invoices (billing-client) keep working; no changes needed to them"}
+  ],
+  "findings": [],
+  "ideas": [
+    {"title": "Test through loadInvoices or the screens", "at": "test/archive.test.js:5", "text": "A test that feeds a lower-case archive row through loadInvoices and formatPrice would pin the end-to-end requirement; costs a transport stub."},
+    {"title": "Refresh stale docs", "at": "docs/billing.md:3", "text": "The page describes billing-client 1.x (null and mixed-case currency); 2.x guarantees upper case and never null. Updating it prevents someone adding guards later; costs a doc edit outside this change."}
+  ],
+  "units": [
+    {"name": "readArchive", "jobs": ["maps archive rows to invoices", "normalises the currency code"], "verdict": "keep"},
+    {"name": "loadInvoices", "existing": true, "uses": ["readArchive", "fetchInvoices"], "jobs": ["merges service and archive invoices"]},
+    {"name": "fetchInvoices", "existing": true, "jobs": ["fetches and validates service invoices, upper-case currency"]},
+    {"name": "formatPrice", "existing": true, "jobs": ["formats currency and amount"]},
+    {"name": "toCsv", "existing": true, "jobs": ["exports invoices as CSV"]}
+  ],
+  "blocks": [
+    {"path": "src/invoices/archive.js", "added": "2, 4", "removed": "3", "unit": "readArchive", "does": "Upper-cases the archive currency and documents why", "serves": [1, 2, 3], "verdict": "keep"},
+    {"path": "test/archive.test.js", "added": "1-8", "does": "Checks a lower-case archive row becomes an upper-case invoice", "serves": [1, 2, 3], "verdict": "keep"}
+  ],
+  "questions": [],
+  "coverage": "Read all of src, the schema, docs/billing.md, billing-client 2.3.0 source, types, changelog and lockfile, and the nested 1.4.0 copy under @acme/reports (not used by this code). Did not run tests. Archive rows are assumed to follow the schema; a missing cur would throw, but the schema requires it."
+}

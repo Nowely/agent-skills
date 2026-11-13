@@ -1,0 +1,18 @@
+[
+  {
+    "run": "r01",
+    "items": { "F1": "hit", "F2": "hit", "F3": "hit", "F4": "hit", "F5": "hit", "F6": "hit", "X1": "clean", "X2": "clean" },
+    "extra": []
+  },
+  {
+    "run": "r06",
+    "items": { "F1": "hit", "F2": "hit", "F3": "hit", "F4": "hit", "F5": "hit", "F6": "hit", "X1": "clean", "X2": "clean" },
+    "extra": [
+      {
+        "claim": "The `let label` followed by a conditional reassignment in badgeLabel is awkward and should become an early return for the delayed case.",
+        "verdict": "unsupported",
+        "why": "head/src/orders/badge.js:11-22 behaves correctly as written apart from the boundary already covered by F1; the point is about style only."
+      }
+    ]
+  }
+]

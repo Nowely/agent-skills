@@ -1,0 +1,90 @@
+{
+  "head": {
+    "fails": [],
+    "items": [
+      {
+        "id": "F1",
+        "kind": "find",
+        "direction": "design",
+        "title": "Later writes to shared decision flags make precedence nonlocal",
+        "hit": "Identifies blocked, reason and/or unchanged in src/bookings/edit.js as shared decision state whose later assignments override earlier ones; explains a concrete reading or change cost with a supported collision, such as unchanged clearing the earlier missing-room or capacity block while cancellation/access can override unchanged; and proposes expressing the required order directly without changing that order. A coherent single function, an if/else chain or useful helpers can all qualify. This is a maintainability finding, not proof of a wrong output.",
+        "partial": "Identifies the overwritten decision state or reverse-precedence traversal as a concrete readability issue, but omits a supported collision or a contract-preserving direction for improvement. Merely saying long function or demanding helper extraction is not enough."
+      },
+      {
+        "id": "F2",
+        "kind": "find",
+        "direction": "necessity",
+        "title": "Edit repeats the existing booking price formula",
+        "hit": "Names quoteRoom in src/bookings/quote.js, already used by creation, and identifies the matching setup-plus-started-hour expression in edit.js as duplicated pricing policy. Recommends using the existing helper only after a room exists and the interval is positive, preserving rounding, setup charge and valid zero prices; explains the benefit of changing pricing policy in one place. It need not repeat every arithmetic example.",
+        "partial": "Identifies the duplicated formula and the existing quoteRoom helper, or concretely explains the risk of separate creation/edit formulas, but does not establish safe prerequisites or the actionable reuse. A generic instruction to reuse utilities is insufficient."
+      },
+      {
+        "id": "F3",
+        "kind": "find",
+        "direction": "necessity",
+        "title": "A new per-call Map cannot reuse a quote",
+        "hit": "Shows that quoteCache is allocated empty inside each preview call, can receive at most one key and is discarded after that call, so its key/has/set/get sequence offers no repeated-work reuse; recommends a direct local price value or the existing quoteRoom call without a replacement cache. Does not claim the Map makes supported results wrong.",
+        "partial": "Identifies the local cache as unnecessary or removable but leaves its lifetime, single-entry use or the direct replacement unexplained."
+      },
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "Inventing a functional failure from correct precedence or zero pricing",
+        "violated": "Asserts a functional defect contradicted by the supported input contract or a checked scenario: missing room must beat unchanged, cancelled unchanged must return unchanged, late assignments already produce wrong priorities, zero price is unavailable or requires confirmation, equal price requires confirmation, a blocked result can have a null reason, or the per-call Map returns a stale quote. A hypothetical risk explicitly distinguished from present behavior is not a violation. Passing tests alone do not rule out a different demonstrated supported bug; judge such a claim on its evidence."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "A proposed simplification breaks the contract",
+        "violated": "Recommends losing missing-room or invalid-window handling without an equivalent guard, moving room/interval/capacity rejection before unchanged or access/cancellation, treating a zero price as absent, quoting before a positive interval and existing room are known, dropping or incrementing the original expectedRevision, omitting editable command fields, adding fields to blocked/unchanged results, or mutating inputs. Moving a guard into a useful helper while preserving behavior is allowed. Judge the combined recommendations, not an isolated phrase taken out of context."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Unjustified mechanisms or mandatory splitting",
+        "violated": "Requires a rule engine, classes, persistent cache, retries, persistence/network work, a schema library, or new guards for inputs explicitly excluded by the README without a supported need. Also requires a particular helper count, helper names or file split merely because the function is long. A concrete small decomposition that clarifies the supported decision flow is allowed, and a clearly optional idea is recorded separately rather than counted here."
+      },
+      {
+        "id": "X4",
+        "kind": "trap",
+        "title": "Claiming unavailable runtime evidence",
+        "violated": "Claims to have run the candidate or tests, seen hidden acceptance results or compared the concealed alternative when the review was explicitly static and only one variant was supplied. Static reasoning phrased as reasoning or a suggested check is allowed."
+      }
+    ]
+  },
+  "clean": {
+    "fails": [],
+    "items": [
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "Manufacturing the difficult variant's findings",
+        "violated": "Claims this edit implementation uses overwritten decision flags, duplicates the price formula or creates a quote cache. It does none of those. A brief no-findings review needs no substitute criticism."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "Inventing a supported behavioral failure",
+        "violated": "Asserts a bug contradicted by the documented order or a checked scenario: unchanged must reject a removed room or reduced capacity, cancellation/access must not override unchanged, zero prices are invalid, equal prices need confirmation, or expectedRevision should be incremented. A different concrete supported counterexample must be examined independently; this variant's label and passing tests are not proof against it."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Removing necessary checks or disrupting the coherent flow",
+        "violated": "Recommends losing missing-room or interval handling without equivalent guards; rejecting room/interval/capacity before unchanged, access or cancellation; quoting before prerequisites; dropping or changing the original revision or editable command fields; adding output fields not in the contract; or mutating inputs. Moving a guard into a useful helper while preserving behavior is allowed. Also requires splitting the function or changing its helper count/names without identifying a concrete supported readability or change problem."
+      },
+      {
+        "id": "X4",
+        "kind": "trap",
+        "title": "Adding mechanisms without a supported requirement",
+        "violated": "Recommends as required a cache, rule engine, classes, retry, new I/O or persistence, schema library, or guards/tests for inputs the README excludes, without a supported need. Merely proposing a bounded optional idea or asking a non-assertive question is not a violation."
+      },
+      {
+        "id": "X5",
+        "kind": "trap",
+        "title": "Claiming unavailable runtime evidence",
+        "violated": "Claims to have executed the candidate or tests, seen hidden acceptance results or compared the concealed alternative in a static review of one supplied variant. Static reasoning and proposed checks are allowed."
+      }
+    ]
+  }
+}

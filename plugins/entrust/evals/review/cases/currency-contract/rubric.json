@@ -1,0 +1,82 @@
+{
+  "head": {
+    "fails": [
+      "an archived invoice shows an upper-case currency in the CSV export",
+      "every invoice keeps its own currency"
+    ],
+    "items": [
+      {
+        "id": "F1", "kind": "find", "direction": "necessity",
+        "title": "The missing-currency fallback guards a state the contracts exclude",
+        "hit": "Calls the `?? \"USD\"` and the typeof / empty-string fallback unnecessary AND establishes it from the installed contract: package-lock.json or node_modules/@acme/billing-client/package.json give version 2.3.0, whose index.d.ts, index.js or CHANGELOG make currency required and upper case; the archive schema requires `cur`. Naming the installed version or its files is what makes it a hit.",
+        "partial": "Calls the fallback unnecessary or dangerous without establishing which contract applies, or says it depends on the client version without resolving it."
+      },
+      {
+        "id": "F2", "kind": "find", "direction": "behavior",
+        "title": "A currency outside a three-entry list is shown as USD",
+        "hit": "Says normalizeCurrency replaces any code not in KNOWN_CURRENCIES by the fallback, so a valid invoice in another currency is shown on its page as USD."
+      },
+      {
+        "id": "F3", "kind": "find", "direction": "behavior",
+        "title": "The CSV export still shows lower case",
+        "hit": "Says src/export/csv.js was not changed and prints invoice.currency as loaded, against the brief's 'and the CSV export'."
+      },
+      {
+        "id": "F4", "kind": "find", "direction": "design",
+        "title": "The fix belongs where lower case enters: the archive reader",
+        "hit": "Says lower case comes only from the archive (readArchive copies `row.cur`; the schema's pattern is lower case) while the service guarantees upper case, AND proposes upper-casing once where archive rows become invoices, so every consumer, the export included, gets it without change. Normalizing once in formatPrice and making all three consumers use it earns partial, not hit: the invoice still carries the wrong value.",
+        "partial": "Proposes one shared place for the conversion without locating the archive as the source, or notes the two copies in list.js and page.js as duplication."
+      },
+      {
+        "id": "F5", "kind": "find", "direction": "design",
+        "title": "The screens stopped using formatPrice",
+        "hit": "Says list.js and page.js now build the price string themselves, with two different fallbacks, leaving three copies of the format; or that formatPrice is no longer used by any screen."
+      },
+      {
+        "id": "F6", "kind": "find", "direction": "tests",
+        "title": "The tests pin the fallback and miss what was asked",
+        "hit": "Says the tests assert the null and unknown-currency fallback, states the contracts exclude or that are wrong, or names what no test covers: the export, an archived invoice loaded through readArchive, a currency outside the list.",
+        "partial": "Asks for more tests without naming a case."
+      },
+      {
+        "id": "X1", "kind": "trap",
+        "title": "Reading the wrong version of the contract",
+        "violated": "States that the service can return a null, missing or lower-case currency, on the strength of docs/billing.md or of the 1.4.0 copy under node_modules/@acme/reports, and keeps or adds handling for it."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Removing the conversion altogether",
+        "violated": "Says no upper-casing is needed anywhere because the client guarantees upper case. The archive's rows are lower case."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "Validation in more places",
+        "violated": "Recommends, as a finding or a change to make, validating currencies against a list in the screens or the export, or re-validating the service's responses in the app. The client already rejects a response that breaks its contract."
+      }
+    ]
+  },
+  "clean": {
+    "items": [
+      {
+        "id": "X1", "kind": "trap",
+        "title": "Handling for a currency that cannot be missing",
+        "violated": "Recommends, as a finding or a change to make, a null check, a default or a guard around `row.cur.toUpperCase()` or around the service's currency. The archive schema requires `cur`; the installed client is 2.3.0 and requires currency."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Converting in the consumers as well",
+        "violated": "Recommends upper-casing again in formatPrice, the screens or the export, 'to be safe'."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "Reading the wrong version of the contract",
+        "violated": "Reports a defect on the strength of docs/billing.md or of the 1.4.0 copy under node_modules/@acme/reports."
+      },
+      {
+        "id": "X4", "kind": "trap",
+        "title": "A defect that is not there",
+        "violated": "Reports as a defect that a place named in the brief still shows lower case. None does: accept.mjs passes on this tree."
+      }
+    ]
+  }
+}
