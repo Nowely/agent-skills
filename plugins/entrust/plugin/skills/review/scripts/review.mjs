@@ -137,7 +137,10 @@ export function check(review, files, directory) {
       if (!text(m[field])) errors.push(`${who} has no "${field}"`);
     if (!MECHANISM_CHANGES.includes(m.change)) errors.push(`${who}: change is one of ${MECHANISM_CHANGES.join(", ")}`);
     // What the change brings in is weighed against what was already there, so the record must say what was looked at.
-    if (["added", "changed"].includes(m.change) && !text(m.instead)) errors.push(`${who} has no "instead": where this is already available, or what you read that does not supply it`);
+    if (["added", "changed"].includes(m.change)) {
+      if (!text(m.instead)) errors.push(`${who} has no "instead": where this is already available, or what you read that does not supply it`);
+      else if (!/[\w@./-]+\.\w+:\d+/.test(m.instead)) errors.push(`${who}: "instead" cites no place; name the path:line you read`);
+    }
     if (!EVIDENCE.includes(m.evidence)) errors.push(`${who}: evidence is one of ${EVIDENCE.join(", ")}`);
     if (m.units !== undefined && !Array.isArray(m.units)) errors.push(`${who}: units is not a list`);
     else refs(who, m.units, mechanismUnits, "unit");

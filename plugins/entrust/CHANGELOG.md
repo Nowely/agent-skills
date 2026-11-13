@@ -8,7 +8,7 @@ forensics remain in the repository references and release notes.
 ### Changed
 
 - `entrust:review`: a mechanism the change adds or alters says in `instead` where the same thing is already
-  available, or what was read that does not supply it; the report check requires it. Not yet measured
+  available, or what was read that does not supply it, citing the place; the report check requires it. Not yet measured
   against 0.37.0.
 
 ## 0.37.0 — 2026-11-13

@@ -6,6 +6,9 @@
     { "id": "P4", "change": "Zones get a lunch break during which no slot may lie, for the courier's schedule and for this editor alike." }
   ],
   "head": {
+    "already": [
+      {"what": "the zone lookup, which the order already carries", "listed": ["getZone", "loadZone", "lookup"], "instead": ["address.zone", "orders-client"]}
+    ],
     "lines": {"remove": {"src/slots/edit.js": "4-5, 7-19, 23, 51-58, 64-65"}, "keep": {"src/slots/edit.js": "44, 46, 50"}},
     "fails": [
       "a closed editor runs nothing more",

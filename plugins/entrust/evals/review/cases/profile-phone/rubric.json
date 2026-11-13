@@ -5,6 +5,10 @@
     { "id": "P3", "change": "Profiles can also be imported from a file, a new entry point, and each imported phone is checked by the same rules." }
   ],
   "head": {
+    "already": [
+      {"what": "the stripping of separators, which the installed library does itself", "listed": ["strip", "separator", "replace"], "instead": ["@acme/phone"]},
+      {"what": "the catch of a throw the installed library does not make", "listed": ["catch", "try"], "instead": ["@acme/phone"]}
+    ],
     "lines": {"remove": {"src/profiles/create.js": "6, 11, 14, 16-19"}, "keep": {"src/profiles/create.js": "7-8, 23"}},
     "fails": [
       "a phone is stored in E.164 form however it was typed",

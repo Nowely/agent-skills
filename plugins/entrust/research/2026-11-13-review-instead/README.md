@@ -1,4 +1,4 @@
-# Review after the baseline: draft 24
+# Review after the baseline: drafts 24 and 25
 
 ## Question
 
@@ -21,16 +21,28 @@ The drafts are [the page](drafts/24-instead.md) and [its data contract](drafts/2
 
 A record written with 0.37.0 that lists an added or changed mechanism without `instead` no longer passes the check. This is deliberate for the comparison and is to be decided again before a release.
 
+## Draft 25: the answer cites what was read
+
+Draft 24 let `instead` be any text, so "nothing else does this" passed. In draft 25 the check refuses an `instead` that cites no `path:line`: an answer that something is available names where, and an answer that nothing is names what was read. The page is draft 24's, unchanged; [the data contract](drafts/25-cited-data.md) and the check differ. No review was run with draft 24, so draft 25 is the arm to run.
+
+## Known gaps, left for a later draft
+
+- A mechanism is tied to units, not to blocks, and its `decision` is free text. Nothing checks that a mechanism the review decides to remove has its lines marked `remove`, or that what existed only for it goes too. Round 5 found records that passed the check and contradicted themselves this way.
+- If the reviewer does not list a mechanism, `instead` is never asked of it. The first column of `blocks.mjs` shows how often that happens.
+- The format of a record tells a judge which arm wrote it.
+
+Each is a second change. They wait until the round shows where the chain breaks: at listing, at finding what is already there, at marking the lines, or at the implementer.
+
 ## How to tell
 
-Compare `control`, 0.37.0 (draft 23) and draft 24 on the admitted cases of [the instrument](../../evals/review/README.md), same model and effort:
+Compare `control`, 0.37.0 (draft 23) and draft 25 on the admitted cases of [the instrument](../../evals/review/README.md), same model and effort:
 
-1. `blocks.mjs`: the superfluous lines each review's record marks `remove`, and the needed or clean lines it marks `remove`. No judge; drafts 23 and 24 only, since a control has no record.
+1. `blocks.mjs`: whether each record lists the needless mechanism, names what was already there, and marks its lines `remove`, and the needed or clean lines it marks `remove`. No judge; drafts 23 and 25 only, since a control has no record.
 2. `outcome.mjs`: what an implementer leaves after each review, against `task-only`.
 3. The judge's rubric, for what the two above cannot see.
 
-Draft 24 is worth keeping if it marks more of the superfluous lines than draft 23 without marking more needed or clean ones, and its implementers recover more. If the two drafts do not differ, the field is weight and goes.
+Draft 25 is worth keeping if it marks more of the superfluous lines than draft 23 without marking more needed or clean ones, and its implementers recover more. If the two drafts do not differ, the field is weight and goes.
 
 ## Status
 
-Not run. No review has been written with draft 24, and the corrected `slot-edit` and `profile-phone` have not been admitted.
+Not run. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` have not been admitted.

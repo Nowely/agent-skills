@@ -263,6 +263,7 @@ test("the lines a case calls superfluous or needed are lines of its first-writte
         }
       }
       if (rubricOf(name).clean.lines) return `${name}: the clean form lists lines`;
+      if ((rubricOf(name).head.already ?? []).some((one) => !one.what || !one.listed?.length || !one.instead?.length)) return `${name}: a mechanism to find lacks its words`;
     }
     return true;
   });
@@ -275,19 +276,22 @@ test("what a review's record marks for removal is counted against the lines the 
       .map(([run, variant, arm]) => ({ run, case: name, variant, arm, review: `returns/${run}.md` }));
     fs.mkdirSync(path.join(dir, "returns"));
     fs.writeFileSync(path.join(dir, "runs.json"), JSON.stringify(runs));
-    const record = (run, list) => fs.writeFileSync(path.join(dir, "returns", `${run}.json`), JSON.stringify({ blocks: list }));
+    const record = (run, list, mechanisms = []) => fs.writeFileSync(path.join(dir, "returns", `${run}.json`), JSON.stringify({ blocks: list, mechanisms }));
     // One review removes the lookup and, wrongly, the rule for a slot that is too soon; one only repairs around it; one touches a clean form.
-    record("r01", [{ path: file, added: "7-19", verdict: "remove" }, { path: file, added: "44", verdict: "remove" }, { path: file, added: "51-58", verdict: "fix" }, { path: "test/slot-edit.test.js", added: "all", verdict: "remove" }]);
-    record("r02", [{ path: file, added: "1-67", verdict: "fix" }]);
+    record("r01", [{ path: file, added: "7-19", verdict: "remove" }, { path: file, added: "44", verdict: "remove" }, { path: file, added: "51-58", verdict: "fix" }, { path: "test/slot-edit.test.js", added: "all", verdict: "remove" }, { path: file, added: "30", verdict: "remove" }],
+      [{ name: "zone lookup", change: "added", instead: "The order carries it: node_modules/@acme/orders-client/index.d.ts:9, order.address.zone." }]);
+    // The other lists the lookup and does not find what makes it needless; a mechanism it only reuses is not one the change brought.
+    record("r02", [{ path: file, added: "1-67", verdict: "fix" }],
+      [{ name: "loadZone with a cache", change: "added", instead: "Nothing: src/slots/hours.js:1." }, { name: "getZone", change: "reused", basis: "order.address.zone" }]);
     record("r03", [{ path: file, added: "3-4", verdict: "remove" }, { path: "test/slot-edit.test.js", added: "1-5", verdict: "remove" }, { path: file, added: "10", verdict: "keep" }]);
     const results = blocks(dir), by = (run) => results.find((r) => r.run === run), total = numbers(known.remove[file]).size;
-    if (by("r01").removed !== 13 || by("r01").fixed !== 8 || by("r01").wrongly !== 1 || by("r01").superfluous !== total) return `r01: ${JSON.stringify(by("r01"))}`;
-    if (by("r02").removed !== 0 || by("r02").fixed !== total || by("r02").wrongly !== 0) return `r02: ${JSON.stringify(by("r02"))}`;
+    if (by("r01").removed !== 13 || by("r01").fixed !== 8 || by("r01").unmapped !== 5 || by("r01").wrongly !== 1 || by("r01").other !== 1 || by("r01").superfluous !== total || by("r01").found !== 1) return `r01: ${JSON.stringify(by("r01"))}`;
+    if (by("r02").removed !== 0 || by("r02").fixed !== total || by("r02").wrongly !== 0 || by("r02").listed !== 1 || by("r02").found !== 0) return `r02: ${JSON.stringify(by("r02"))}`;
     if (by("r03").removed !== 2) return `on the clean form only lines of code count: ${JSON.stringify(by("r03"))}`;
     if (!by("r04").missing) return "a run with no record was counted";
     const text = blocksTable(results);
-    return text.includes(`| draft | ${name}/head | 2 | 2 | 13 / ${2 * total} | ${8 + total} | 1 |`) && text.includes(`| draft | ${name}/clean | 1 | 1 | – | – | 2 |`)
-      && text.includes(`| control | ${name}/head | 1 | 0 | – | – | – |`) || `unexpected table:\n${text}`;
+    return text.includes(`| draft | ${name}/head | 2 | 2 | 2 / 2 | 1 / 2 | 13 / ${2 * total} | ${8 + total} | 5 | 1 | 1 |`) && text.includes(`| draft | ${name}/clean | 1 | 1 | – | – | – | – | – | – | 2 |`)
+      && text.includes(`| control | ${name}/head | 1 | 0 | – |`) || `unexpected table:\n${text}`;
   });
 
 test("the page that tells an operator how to run a round names every case",
