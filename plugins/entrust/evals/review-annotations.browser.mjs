@@ -9,7 +9,10 @@ async (page) => {
   const select = async (selector, partial = false) => {
     const result = await page.evaluate(({selector, partial}) => {
       document.documentElement.style.scrollBehavior = 'auto';
-      const el = document.querySelector(selector); el.scrollIntoView({block:'center'});
+      const el = document.querySelector(selector);
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) if (parent.tagName === 'DETAILS') parent.open = true;
+      if (el.matches('article.mechanism')) el.querySelectorAll('details').forEach(details => { details.open = true; });
+      el.scrollIntoView({block:'center'});
       const range = document.createRange(); range.selectNodeContents(el);
       if (partial) { const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let node; do { node = walker.nextNode(); } while (node && !node.length); range.setStart(node, 0); range.setEnd(node, Math.min(12,node.length)); }
       getSelection().removeAllRanges(); getSelection().addRange(range);
@@ -20,6 +23,10 @@ async (page) => {
   const action = name => page.locator('[data-annotation-action="'+name+'"]').click();
   try {
     await page.evaluate(k => localStorage.removeItem(k), key); await page.reload();
+    const card = page.locator('#m1 > details');
+    assert(!(await card.evaluate(el => el.open)) && await page.locator('#m1 .mechanism-decision').isVisible() && await page.locator('#m1 .mechanism-tradeoff').isHidden(), 'Card did not start collapsed with its summary visible');
+    await card.locator(':scope > summary').click(); assert(await card.evaluate(el => el.open) && await page.locator('#m1 .mechanism-tradeoff').isVisible(), 'Card did not open');
+    await card.locator(':scope > summary').click(); assert(!(await card.evaluate(el => el.open)), 'Card did not close'); checks.push('collapsed card and toggle');
     const first = await select('#m1 .mechanism-decision');
     await page.locator('#comment').click();
     assert(Math.abs(await page.evaluate(()=>scrollY)-first.y)<2,'Opening editor scrolled away');
@@ -36,6 +43,8 @@ async (page) => {
     assert((await state()).passages[0].note==='First note','Undo lost text'); checks.push('delete and undo');
     for(const id of ['m1','m2']) {await select('#'+id+' .group.sub span');await page.locator('#comment').click();await page.locator('#annotation-editor textarea').fill(id);await action('save');}
     const duplicates=(await state()).passages.slice(-2);assert(duplicates[0].quote===duplicates[1].quote && duplicates[0].anchor.id!==duplicates[1].anchor.id,'Duplicate quote anchors collide');
+    await card.evaluate(el => { el.open = false; }); await page.locator('#passages .passage').nth(1).locator('button').nth(1).click();
+    assert(await card.evaluate(el => el.open) && await page.locator('#m1 .group.sub .annotation-marker').isVisible(), 'Back link did not open the card'); checks.push('back link opens card');
     await page.reload();assert(await page.locator('#m2 .annotation-marker').count()===1,'Second quote restored to wrong card');checks.push('duplicate quote identity');
     const short=await select('#m1 .group.sub span',true);await page.locator('#comment').click();await action('save');assert((await state()).passages.at(-1).quote===short.quote && short.quote.length===12,'Partial selection changed');checks.push('short partial quote');
     const long=await select('#m1');assert(long.quote.length>400,'Fixture is too short');await page.locator('#comment').click();await action('save');

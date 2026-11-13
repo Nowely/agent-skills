@@ -12,8 +12,8 @@ Render only when the user asks. Every review already has a canonical `review.jso
 
 The self-contained page shows the current and target solutions, recommendations, requirement provenance, mechanisms and their costs, file tree, connected units, changed-line blocks, findings and proposed manual checks. It supports apply/skip decisions and notes on findings, ideas, blocks and selected passages. The user copies those decisions back as text. They are proposals for the next step, not edits to source. Local images are embedded; HTTPS pictures remain links.
 
-Mechanism cards lead with the existing recommendation, a linked consequence and the existing alternative;
-benefit and cost remain visible while detailed grounds can be expanded. This rearranges the canonical record,
+Mechanism cards start collapsed, showing the name, existing recommendation and compact attributed weight.
+Expanding a card reveals its consequence, alternative, benefit, cost and detailed grounds. This rearranges the canonical record,
 not a second analysis or a new independent mechanism-decision state. Global navigation precedes the content.
 
 Passage comments use a local draft editor with Save/Cancel (Escape cancels; Ctrl/Cmd+Enter saves).
@@ -32,6 +32,6 @@ The renderer does not invent frequency, omitted behavior or tradeoff conclusions
 attribution: this footprint is neither a complexity score nor an estimate of deletable code.
 
 The weight overview leads with all attributed lines within each mechanism, including shared lines, using
-localized added/removed wording and no zero operations. Shared lines are explicitly a subset, not an amount
-to add again; cards must not be summed. Exclusive contribution and per-block attribution stay in the expanded
+localized added/removed wording and no zero operations. Shared lines are explicitly a subset. Exclusive
+contribution and per-block attribution stay in the expanded
 counted-lines view. Code, tests and other material remain separate; unknown and verified-zero states differ.

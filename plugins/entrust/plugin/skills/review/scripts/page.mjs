@@ -141,7 +141,10 @@ footer { overflow-wrap: anywhere }
 @media (max-width: 40rem) { .bar { position: static } .role { grid-template-columns: minmax(0, 1fr) } }
 section, [data-anchor] { scroll-margin-top: 6rem }
 .mechanism { padding: 1rem 1.2rem; gap: .75rem }
-.mechanism h3 { font-size: 1.12rem }
+.mechanism > details > summary { padding: 0; background: none; color: inherit; font-size: inherit }
+.mechanism h3 { display: inline; font-size: 1.12rem }
+.mechanism-summary { display: block; padding: .5rem 0 0 1.2rem }
+.mechanism-content { padding-top: .75rem }
 .mechanism-decision { color: var(--accent); font-weight: 600 }
 .mechanism-tradeoff { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; border-block: 1px solid var(--line); padding-block: .7rem }
 .mechanism details .stack, .sources p { padding: .6rem .8rem }
@@ -409,17 +412,17 @@ function mechanisms(review, model, t) {
       const overview = weightOverview(m.weight, t, languageOf(review));
       const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
       return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
-        <h3>${esc(m.name)}</h3>
-        <p class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</p>
-        <div class="stack mechanism-weight"><strong>${esc(t("weight"))}</strong>
-          ${overview.length ? overview.map(row => `<p><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</p>`).join("")
-            : `<p>${esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}</p>`}
-          ${overview.length ? `<details><summary>${esc(t("weight.evidence"))}</summary><div class="stack">
+        <details><summary><h3>${esc(m.name)}</h3>
+          <span class="mechanism-summary"><span class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</span><br>
+          ${overview.length ? overview.map(row => `<span><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</span>`).join(" · ")
+            : esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}</span></summary>
+        <div class="stack mechanism-content">
+        ${overview.length ? `<div class="stack mechanism-weight"><strong>${esc(t("weight"))}</strong>
+          <details><summary>${esc(t("weight.evidence"))}</summary><div class="stack">
             <p>${esc(t("weight.exclusive"))}: ${esc(weightCountsText(m.weight.exclusive, t))}</p>
             ${(m.weight.shared ?? []).map(s => `<p class="sub">${esc(t("weight.shared"))} ${s.with.map(esc).join(", ")}: ${esc(weightCountsText({ [s.kind]: s }, t))} <a href="#b${s.block}">B${s.block}</a></p>`).join("")}
             <div class="group">${(m.blocks ?? []).map(id => `<a href="#b${id}">B${id}</a>`).join("")}</div><p class="sub">${esc(t("weight.note"))}</p>
-          </div></details>` : ""}
-        </div>
+          </div></details></div>` : ""}
         ${findings[0] ? `<p><strong>${esc(t("consequence"))}:</strong> ${prose(findings[0].what)} <a href="#f${esc(findings[0].id)}">${esc(t("shown-by"))}</a></p>` : ""}
         ${m.instead ? `<p><strong>${esc(t("instead"))}:</strong> ${prose(m.instead)}</p>` : ""}
         <div class="mechanism-tradeoff">${["benefit", "cost"].map(key => `<div><strong>${esc(t(key))}</strong>${lines(m[key])}</div>`).join("")}</div>
@@ -428,6 +431,7 @@ function mechanisms(review, model, t) {
           <p><strong>${esc(t("purpose"))}:</strong> ${prose(m.purpose)}</p><p>${prose(m.basis)}</p>
           <p><strong>${esc(t("unit"))}:</strong> ${(m.units ?? []).map(name => `<code>${esc(name)}</code>`).join(", ") || esc(t("none"))}</p>
           <p class="sub">${esc(t("mechanism-change"))}: ${esc(t(`change.${m.change}`))}</p>
+        </div></details>
         </div></details>
       </article>`;
     }).join("")}</section>`;

@@ -279,6 +279,9 @@ test("weight is rendered in HTML and text without changing the review record",
     });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8"), raw = JSON.parse(fs.readFileSync(data, "utf8"));
+    const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
+    const summary = card?.match(/<details><summary>([\s\S]*?)<\/summary>/)?.[1];
+    if (!summary?.includes("A</h3>") || !summary.includes(MECHANISM.decision) || !summary.includes("Code:") || summary.includes("Shared with")) return "collapsed summary lacks the name, decision or compact weight";
     return ["Shared with", "Not assessed", "Touched in this change"].every(text => page.includes(text) && result.stdout.includes(text))
       && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence missing or derived totals persisted";
   });

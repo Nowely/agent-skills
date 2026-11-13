@@ -12,6 +12,9 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Interactive report mechanism cards start collapsed, with the name, recommendation and attributed weight
+  visible; expanding a card reveals its reasoning and evidence.
+
 - Mechanism weight uses one compact line per category, e.g. "44 lines added (34 shared)". Shared counts
   sit beside the relevant addition/removal; accounting explanations remain in the expandable details.
 
