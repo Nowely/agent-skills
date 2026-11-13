@@ -5,6 +5,23 @@ export function annotations({ state, changed, t }) {
   const editor = document.getElementById('annotation-editor'), field = editor.querySelector('textarea');
   const quote = editor.querySelector('blockquote'), status = document.getElementById('annotation-status');
   let picked = null, draft = null, returnTo = null, deleted = null;
+  const feedback = document.querySelector('.annotation-feedback'), undo = document.getElementById('annotation-undo');
+  let feedbackTimer;
+  function dismissFeedback() {
+    clearTimeout(feedbackTimer); status.textContent = ''; undo.hidden = true; deleted = null;
+  }
+  function scheduleFeedback() {
+    clearTimeout(feedbackTimer);
+    if (status.textContent && !feedback.matches(':hover, :focus-within')) feedbackTimer = setTimeout(dismissFeedback, 8000);
+  }
+  function announce(message, withUndo = false) {
+    if (!withUndo) deleted = null;
+    undo.hidden = !withUndo; status.textContent = message; scheduleFeedback();
+  }
+  feedback.addEventListener('pointerenter', () => clearTimeout(feedbackTimer));
+  feedback.addEventListener('focusin', () => clearTimeout(feedbackTimer));
+  feedback.addEventListener('pointerleave', scheduleFeedback);
+  feedback.addEventListener('focusout', () => queueMicrotask(scheduleFeedback));
   root.querySelectorAll('section, article, .seg, tr[data-where]').forEach((el, i) => {
     if (!el.id) el.id = 'source-' + i;
     el.dataset.anchor = '';
@@ -115,7 +132,7 @@ export function annotations({ state, changed, t }) {
     } else if (action === 'cancel') { close(); return; }
     else return;
     const anchor = draft.anchor && document.getElementById(draft.anchor.id);
-    changed(); render(); returnTo = anchor || document.getElementById('decisions'); close(); status.textContent = action === 'save' ? t.saved : t.deleted;
+    changed(); render(); returnTo = anchor || document.getElementById('decisions'); close(); announce(action === 'save' ? t.saved : t.deleted, action === 'delete');
   });
   editor.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); close(); }
@@ -124,7 +141,7 @@ export function annotations({ state, changed, t }) {
   document.getElementById('annotation-undo').addEventListener('click', event => {
     if (!deleted) return;
     state().passages.splice(deleted.index, 0, deleted.value); deleted = null; changed(); render(); event.target.hidden = true;
-    document.getElementById('decisions').focus({ preventScroll: true }); status.textContent = t.restored;
+    document.getElementById('decisions').focus({ preventScroll: true }); announce(t.restored);
   });
   document.addEventListener('selectionchange', () => {
     if (editor.open) return;
@@ -134,5 +151,5 @@ export function annotations({ state, changed, t }) {
   trigger.addEventListener('mousedown', e => e.preventDefault());
   trigger.addEventListener('click', () => { if (picked) open(picked); });
   document.addEventListener('keydown', e => { if (e.altKey && e.shiftKey && e.code === 'KeyM' && !editor.open) { const p = capture(); if (p) { e.preventDefault(); open(p); } } });
-  return { render, reset() { status.textContent = ''; deleted = null; document.getElementById('annotation-undo').hidden = true; if (editor.open) close(); render(); } };
+  return { render, announce, reset() { dismissFeedback(); if (editor.open) close(); render(); } };
 }

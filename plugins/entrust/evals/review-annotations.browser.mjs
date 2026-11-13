@@ -46,6 +46,12 @@ async (page) => {
     await page.setViewportSize({width:1728,height:912});
     const code=await select('.seg pre code');await page.locator('#comment').click();await action('save');
     const codeNote=(await state()).passages.at(-1);assert(codeNote.where.includes('.js:') && codeNote.quote===code.quote,'Code location or whitespace lost');checks.push('code range and quote');
+    await page.locator('#m1 .annotation-marker').first().click();await action('delete');
+    const feedback=page.locator('.annotation-feedback'), undo=page.locator('#annotation-undo');
+    await feedback.hover();await page.waitForTimeout(8500);assert(await undo.isVisible(),'Hover did not pause dismissal');
+    await undo.focus();await page.mouse.move(0,0);await page.waitForTimeout(8500);assert(await undo.isVisible(),'Focus did not pause dismissal');
+    await undo.evaluate(el=>el.blur());await feedback.waitFor({state:'hidden',timeout:9500});
+    assert(await undo.isHidden() && await page.locator('#annotation-status').textContent()==='','Expired feedback kept message or undo');checks.push('notification idle expiry and hover/focus pause');
     await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({findings:{},notes:{},passages:[{where:'Old section',quote:'old full quote',note:'legacy note'}]})),key);await page.reload();
     assert((await page.locator('#passages').innerText()).includes('legacy note') && await page.locator('mark[data-annotation]').count()===0,'Legacy note lost or guessed');
     await page.locator('#passages button').first().click();await page.locator('#annotation-editor textarea').fill('updated legacy');await action('save');

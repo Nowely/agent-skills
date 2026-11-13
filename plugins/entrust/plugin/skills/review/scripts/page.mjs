@@ -215,7 +215,7 @@ const SCRIPT = `
     }    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
     else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = { findings: {}, notes: {}, passages: [] }; annotationUI.reset(); }
     else if (button.id === "copy") {
-      const done = () => { document.getElementById("annotation-status").textContent = t.copied; button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
+      const done = () => { annotationUI.announce(t.copied); button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
       const select = () => { out.focus(); out.select(); };
       try { navigator.clipboard.writeText(out.value).then(done, select); } catch { select(); }
       return;

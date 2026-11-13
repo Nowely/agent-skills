@@ -20,7 +20,7 @@ Passage comments use a local draft editor with Save/Cancel (Escape cancels; Ctrl
 Alt+Shift+M opens the editor for the current selection. Saved passages retain a source ID, text offsets and
 full quote; marks and numbered buttons are restored only when the stored text still matches. Old comments
 without anchors remain readable/editable/exportable and are marked as unlocated rather than guessed.
-Deletion offers undo; clearing all feedback requires confirmation. Only on-screen quote previews are shortened.
+Deletion offers undo for eight idle seconds; feedback pauses while hovered or focused and resumes when interaction leaves it. Clearing all feedback requires confirmation. Only on-screen quote previews are shortened.
 The browser regression script is `plugins/entrust/evals/review-annotations.browser.mjs`; run it through the
 Playwright browser tool on an isolated generated Russian report containing at least two mechanisms. It restores
 the report's prior local state on completion, including when a check fails.

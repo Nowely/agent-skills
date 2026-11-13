@@ -5,6 +5,11 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Fixed
+
+- Review feedback notifications dismiss after eight idle seconds, pause while hovered or focused, and clear
+  expired undo state. Save/copy/restore messages use the same notification lifecycle.
+
 ### Changed
 
 - Interactive review reports put mechanism recommendations and consequences first, move navigation above
