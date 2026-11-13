@@ -1,0 +1,66 @@
+{
+  "state": "prepared-no-model-cohort",
+  "draft": 28,
+  "baseDraft": 27,
+  "shippingPluginChanged": false,
+  "runtimeScriptsChanged": false,
+  "schemaFieldsAdded": 0,
+  "modelExperiments": 0,
+  "carbonConsultation": "Supported approach with three requested corrections, applied; not a blind experiment or final-code re-review.",
+  "checks": {
+    "instrument": {
+      "passed": 14,
+      "total": 14
+    },
+    "candidateDocuments": {
+      "passed": 8,
+      "total": 8
+    },
+    "acceptance": {
+      "headPassed": 2,
+      "headExpectedFailures": 2,
+      "referencePassed": 4,
+      "alternativeWithoutGettersPassed": 4
+    },
+    "ownTests": {
+      "base": 3,
+      "head": 4,
+      "clean": 5
+    }
+  },
+  "characters": {
+    "entry27": 20110,
+    "entry28": 20118,
+    "requiredText27": 35995,
+    "requiredText28": 37401
+  },
+  "sha256": {
+    "plugins/entrust/research/2026-11-13-review-instead/drafts/28-peer-consistency.md": "690f89805f0230e3af61c031cb433fbacec82a073031c321d7ac8bc93c415022",
+    "plugins/entrust/research/2026-11-13-review-instead/drafts/28-report-data.md": "b83f1acd908b58aa75b16a1e1ef449b370db675cabaebbbba83d2c5c0b5c354a",
+    "plugins/entrust/research/2026-11-13-review-instead/draft28-notes.md": "e8a01225657b9aa96a1b0b3050bf00d1b190a0d825b0b539d8fba82b459e8df4",
+    "plugins/entrust/evals/review/cases/locale-options/accept.mjs": "eadb9375abec8c551136cd8a0925a1e05b685c4843ab6883898146f64331f1e3",
+    "plugins/entrust/evals/review/cases/locale-options/base/README.md": "053ae7f57b46d0552d4363672cacc38622262f520983dff6551c3089fede1340",
+    "plugins/entrust/evals/review/cases/locale-options/base/package.json": "4df46100c57782f7a5ab56fdac6af0a6306321807fef4537c2c353220a2b7674",
+    "plugins/entrust/evals/review/cases/locale-options/base/src/categories.js": "ec832d3a8cc2b18f0c5ef50fdd9fc3d29feb4731a49445b34492297c53f29def",
+    "plugins/entrust/evals/review/cases/locale-options/base/src/category-labels.js": "f3c8b26ebed516f2fa036fe2d30d44dd982d534236c2188e4426f65358bb049f",
+    "plugins/entrust/evals/review/cases/locale-options/base/src/locale.js": "b9b5a263d4cd2bcdbbd74a15cb715cb248f40797c461e6727a313974e7372d74",
+    "plugins/entrust/evals/review/cases/locale-options/base/src/saved-selection.js": "8642466fbe74b577cdf7a9d0e4e6ebbb46a55f4fb4843aa1e7c6218199062af5",
+    "plugins/entrust/evals/review/cases/locale-options/base/test/categories.test.js": "282b46031602f30adcfb85d7d7273329fc8711bd00a5096aaaaf1e4176748caa",
+    "plugins/entrust/evals/review/cases/locale-options/brief.md": "d997182440213973503ba2cb1157791ade2208f88b5d16ca138264d553fdeb0e",
+    "plugins/entrust/evals/review/cases/locale-options/clean/README.md": "053ae7f57b46d0552d4363672cacc38622262f520983dff6551c3089fede1340",
+    "plugins/entrust/evals/review/cases/locale-options/clean/package.json": "4df46100c57782f7a5ab56fdac6af0a6306321807fef4537c2c353220a2b7674",
+    "plugins/entrust/evals/review/cases/locale-options/clean/src/categories.js": "a41e416c699223ae51e5ce37ca69d92f9a2534db55097e984859dc317828bb1a",
+    "plugins/entrust/evals/review/cases/locale-options/clean/src/category-labels.js": "eb96640018e5c376acf57a043afd3ac23946a153f995392166360331195d5f39",
+    "plugins/entrust/evals/review/cases/locale-options/clean/src/locale.js": "8937f2304e044f25368abb249143f707c4ba358d024471799900be37cb297533",
+    "plugins/entrust/evals/review/cases/locale-options/clean/src/saved-selection.js": "8642466fbe74b577cdf7a9d0e4e6ebbb46a55f4fb4843aa1e7c6218199062af5",
+    "plugins/entrust/evals/review/cases/locale-options/clean/test/categories.test.js": "c02df9d5aeddcec620e5040a8c019f991c3eec17318e15526b9bfea30eeebd07",
+    "plugins/entrust/evals/review/cases/locale-options/head/README.md": "053ae7f57b46d0552d4363672cacc38622262f520983dff6551c3089fede1340",
+    "plugins/entrust/evals/review/cases/locale-options/head/package.json": "4df46100c57782f7a5ab56fdac6af0a6306321807fef4537c2c353220a2b7674",
+    "plugins/entrust/evals/review/cases/locale-options/head/src/categories.js": "a41e416c699223ae51e5ce37ca69d92f9a2534db55097e984859dc317828bb1a",
+    "plugins/entrust/evals/review/cases/locale-options/head/src/category-labels.js": "67112f9fcb0be0cb4c9846d31bd6cfe808c1f5f013336af5d95ba45189e2298e",
+    "plugins/entrust/evals/review/cases/locale-options/head/src/locale.js": "8937f2304e044f25368abb249143f707c4ba358d024471799900be37cb297533",
+    "plugins/entrust/evals/review/cases/locale-options/head/src/saved-selection.js": "8642466fbe74b577cdf7a9d0e4e6ebbb46a55f4fb4843aa1e7c6218199062af5",
+    "plugins/entrust/evals/review/cases/locale-options/head/test/categories.test.js": "3617151fa23490fa31e60c2ffc80661573314d64f082df2104e7d9edd1aa7802",
+    "plugins/entrust/evals/review/cases/locale-options/rubric.json": "0b119bc13d59731760f915101cf3d75d0fe4cd566fa001862768e91305615aec"
+  }
+}

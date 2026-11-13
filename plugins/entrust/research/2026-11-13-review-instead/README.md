@@ -90,3 +90,13 @@ The list of signs of entanglement also regains the one the positive example rest
 
 Checked as draft 26 was: substituted into the installed layout, all eight skill-document checks pass; the entrypoint is 20,114 bytes against draft 26's 20,093. In the pilot and in [its controls](draft27-controls.md), draft 27 takes draft 26's place. Not run.
 
+
+## Draft 28: related-value consistency and visual-work scope
+
+[Draft 28 preparation](draft28-notes.md) adds a bounded peer-consistency check and question-driven visual
+evidence guidance, plus the fictional `locale-options` case. Carbon's three requested corrections were applied.
+The data contract keeps images optional, reuses task artifacts and does not create screenshot work merely for
+report completeness. The case is mechanically checked but unmeasured with models and is not automatically
+added to the frozen draft27 pilot. The shipping skill and earlier drafts remain unchanged.
+
+[Draft28 checks and file hashes](draft28-validation.json) record the deterministic verification and instruction size.
