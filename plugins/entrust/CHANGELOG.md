@@ -12,6 +12,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Mechanisms can reference typed change-map blocks to show attributed nonblank added/removed code,
+  test and other lines. Shared blocks are separate; old or partially mapped reports show unassessed weight.
+  Review guidance connects scenario/frequency, omitted behavior, qualitative cost and the final tradeoff.
+
 - Interactive review reports put mechanism recommendations and consequences first, move navigation above
   the content and collapse technical metadata. Passage comments now use a contextual draft editor with
   save/cancel, persistent source marks, numbered links, full-text export and deletion undo. Clearing all

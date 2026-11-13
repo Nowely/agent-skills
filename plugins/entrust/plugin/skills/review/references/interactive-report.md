@@ -24,3 +24,9 @@ Deletion offers undo for eight idle seconds; feedback pauses while hovered or fo
 The browser regression script is `plugins/entrust/evals/review-annotations.browser.mjs`; run it through the
 Playwright browser tool on an isolated generated Russian report containing at least two mechanisms. It restores
 the report's prior local state on completion, including when a check fails.
+
+Mechanism weight comes only from explicit block references and the recorded diff: separate added/removed
+nonblank lines for code, tests and other material. Shared blocks are displayed separately with links; they
+are not charged to every mechanism's exclusive contribution. Unmapped legacy mechanisms remain unassessed.
+The renderer does not invent frequency, omitted behavior or tradeoff conclusions. See the data contract for
+attribution: this footprint is neither a complexity score nor an estimate of deletable code.

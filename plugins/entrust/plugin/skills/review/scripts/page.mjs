@@ -4,7 +4,7 @@ import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
 import { labelsOf } from "./labels.mjs";
-import { VERDICTS, mechanismCounts } from "./review.mjs";
+import { VERDICTS, mechanismCounts, weightCountsText } from "./review.mjs";
 import { esc } from "./text.mjs";
 import { annotations } from "./annotations.mjs";
 
@@ -402,17 +402,23 @@ function map(review, files, { blocks, owner }, t) {
   return files.map(file).join("\n    ");
 }
 
-function mechanisms(review, t) {
+function mechanisms(review, model, t) {
   if (!review.mechanisms?.length) return "";
   return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
-    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${review.mechanisms.map((m, i) => {
+    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${model.mechanisms.map((m, i) => {
       const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
       return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
         <h3>${esc(m.name)}</h3>
         <p class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</p>
+        <div class="stack mechanism-weight"><p><strong>${esc(t("weight"))}:</strong> ${m.weight?.shared.length ? esc(t("weight.exclusive")) + ": " : ""}${esc(m.weight ? weightCountsText(m.weight.exclusive, t) : t("weight.unknown"))}</p>
+          ${m.weight?.shared.length ? `<p><strong>${esc(t("weight.shared-part"))}:</strong> ${esc(weightCountsText(m.weight.sharedCounts, t))}</p>` : ""}
+          <details><summary>${esc(t("weight.evidence"))}</summary><p class="sub">${esc(t("weight.note"))}</p>
+            ${(m.weight?.shared ?? []).map(s => `<p class="sub">${esc(t("weight.shared"))} ${s.with.map(esc).join(", ")}: ${esc(weightCountsText({ [s.kind]: s }, t))} <a href="#b${s.block}">B${s.block}</a></p>`).join("")}
+            <div class="group">${(m.blocks ?? []).map(id => `<a href="#b${id}">B${id}</a>`).join("")}</div></details>
+        </div>
         ${findings[0] ? `<p><strong>${esc(t("consequence"))}:</strong> ${prose(findings[0].what)} <a href="#f${esc(findings[0].id)}">${esc(t("shown-by"))}</a></p>` : ""}
         ${m.instead ? `<p><strong>${esc(t("instead"))}:</strong> ${prose(m.instead)}</p>` : ""}
-        <div class="mechanism-tradeoff">${["benefit", "cost"].map(key => `<div><strong>${esc(t(key))}</strong><p>${prose(m[key])}</p></div>`).join("")}</div>
+        <div class="mechanism-tradeoff">${["benefit", "cost"].map(key => `<div><strong>${esc(t(key))}</strong>${lines(m[key])}</div>`).join("")}</div>
         <div class="group sub"><span>${esc(t(`evidence.${m.evidence}`))}</span>${findings.map(f => `<a href="#f${esc(f.id)}">${esc(t("finding"))} ${esc(f.id)}</a>`).join("")}</div>
         <details><summary>${esc(t("basis"))}</summary><div class="stack">
           <p><strong>${esc(t("purpose"))}:</strong> ${prose(m.purpose)}</p><p>${prose(m.basis)}</p>
@@ -466,7 +472,7 @@ export function page(review, files, model) {
 <div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
 ${summary(review, model, t)}
 ${requirements(model, t)}
-${mechanisms(review, t)}
+${mechanisms(review, model, t)}
 ${checks(review, t)}
 ${screens(model, t)}
 ${drawn}

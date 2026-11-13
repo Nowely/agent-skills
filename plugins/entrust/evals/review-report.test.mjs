@@ -11,7 +11,7 @@ import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { CATALOGS, LABELS } from "../plugin/skills/review/scripts/labels.mjs";
-import { DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -208,6 +208,51 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
     if (render((r) => { r.mechanisms = {}; }).status !== 1) return "accepted a non-list inventory";
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
+  });
+
+test("mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns",
+  "shared wiring and test code must not inflate a mechanism's exclusive production weight",
+  () => {
+    const r = structuredClone(REVIEW);
+    r.blocks[0].added = "2-4";
+    ["code", "test", "other"].forEach((kind, i) => { r.blocks[i].kind = kind; });
+    r.mechanisms = [{ ...MECHANISM, name: "A", blocks: [1, 2] }, { ...MECHANISM, name: "B", blocks: [1, 3] },
+      { ...MECHANISM, name: "Unassessed" }, { ...MECHANISM, name: "Reused", blocks: [] }];
+    const added = (n, blank = false) => ({ kind: "add", new: n, text: blank ? " " : "code" });
+    const files = [{ path: r.blocks[0].path, hunks: [[added(2), added(3, true), { ...added(4), text: "// comment counts as nonblank" }, { kind: "del", old: 3, text: "old" }]] },
+      { path: r.blocks[1].path, hunks: [Array.from({ length: 8 }, (_, i) => added(i + 1, i === 3))] },
+      { path: r.blocks[2].path, hunks: [Array.from({ length: 13 }, (_, i) => added(i + 1))] }];
+    const checked = check(r, files, run);
+    if (checked.errors.length) return checked.errors.join("; ");
+    const model = modelOf(r, files, checked.owner, run), [a, b, unknown, reused] = model.mechanisms;
+    if (model.blocks[0].added.length !== 3 || model.blocks[0].size !== 4) return "existing block representation changed";
+    if (a.weight.exclusive.code.added !== 0 || a.weight.exclusive.test.added !== 7 || b.weight.exclusive.other.added !== 13) return "exclusive/category counts differ";
+    if (a.weight.shared.length !== 1 || a.weight.shared[0].added !== 2 || a.weight.shared[0].removed !== 1 || a.weight.shared[0].with.join() !== "B" || a.weight.sharedCounts.code.added !== 2) return "shared/blank/removed counts differ";
+    if (unknown.weight !== null || reused.weight === null || reused.weight.exclusive.code.added !== 0) return "unknown and verified zero conflated";
+    for (const ids of [[1, 1], [0], [99], ["1"], null]) {
+      const bad = structuredClone(r); bad.mechanisms[0].blocks = ids;
+      if (!check(bad, files, run).errors.length) return `accepted invalid references ${JSON.stringify(ids)}`;
+    }
+    const missing = structuredClone(r); delete missing.blocks[0].kind;
+    if (!check(missing, files, run).errors.some(e => e.includes("explicit kind"))) return "unit inferred code kind";
+    const invalid = structuredClone(r); invalid.blocks[2].kind = "guess";
+    if (!check(invalid, files, run).errors.some(e => e.includes("kind is one of"))) return "invalid kind accepted";
+    const empty = structuredClone(r); empty.mechanisms[3] = { ...MECHANISM, name: "Added", change: "added", instead: "source.js:1", blocks: [] };
+    if (!check(empty, files, run).errors.some(e => e.includes("empty blocks"))) return "added mechanism accepted zero attribution";
+    return true;
+  });
+
+test("weight is rendered in HTML and text without changing the review record",
+  "legacy unknowns and shared block evidence must be visible in both outputs",
+  () => {
+    const result = render(r => {
+      r.blocks.forEach(b => { b.kind = "code"; });
+      r.mechanisms = [{ ...MECHANISM, name: "A", blocks: [1] }, { ...MECHANISM, name: "B", blocks: [1] }, { ...MECHANISM, name: "Unknown" }];
+    });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8"), raw = JSON.parse(fs.readFileSync(data, "utf8"));
+    return ["Shared with", "not assessed", "Weight in this diff"].every(text => page.includes(text) && result.stdout.includes(text))
+      && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence missing or derived totals persisted";
   });
 
 test("a review that does not match the diff is refused, every fault is listed, and no page is written",
