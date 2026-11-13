@@ -67,3 +67,7 @@ the conditional workload comparison. [Validation and hashes](draft26-validation.
 Draft 26 has not been run with a model and is not the shipping entrypoint. The candidate passed all eight
 repository skill-document checks in an isolated installed layout. The generic skill-creator validator rejects
 the existing explicit-invocation frontmatter; that policy was preserved, not removed to satisfy its allowlist.
+
+## Controls proposed for the draft 26 pilot
+
+[Three controls](draft26-controls.md) the pilot lacks: an unaided arm on the private change's full packet, both drafts on the clean synthetic forms, and `slot-edit/head` for `instead` and for transfer. Draft 26 advances only if it adds a finding on the private change and no more false ones on good code than draft 25. Not run.

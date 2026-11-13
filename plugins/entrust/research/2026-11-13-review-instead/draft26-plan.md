@@ -69,5 +69,5 @@ in the startup catalogue; the installed adapter and user configuration were not 
    runs. If neither does, revisit the evidence/standard behind the expected improvement instead of appending
    another generic instruction. A new transfer case is future work, not automatically added here.
 
-No clean target or new product feature is part of this proposal. New model launches require the owner's next
+The pilot as proposed has no unaided arm, no good code and no second task. [Three added controls](draft26-controls.md) name those questions, their cost and the second half of the gate; they are proposed, not agreed. No new product feature is part of this proposal. New model launches require the owner's next
 instruction. The existing PR comment will describe preparation and methodology, with no invented result row.
