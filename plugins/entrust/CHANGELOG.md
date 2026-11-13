@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Interactive review reports put mechanism recommendations and consequences first, move navigation above
+  the content and collapse technical metadata. Passage comments now use a contextual draft editor with
+  save/cancel, persistent source marks, numbered links, full-text export and deletion undo. Clearing all
+  feedback requires confirmation; legacy comments without anchors are retained as unlocated.
+
 - `entrust:review`: a mechanism the change adds or alters says in `instead` where the same thing is already
   available, or what was read that does not supply it, citing the place; the report check requires it. Not yet measured
   against 0.37.0.

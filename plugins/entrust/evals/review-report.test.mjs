@@ -6,6 +6,7 @@
 // references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import vm from "node:vm";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
@@ -54,6 +55,21 @@ const render = (change = () => {}) => {
   fs.writeFileSync(data, JSON.stringify(review));
   return report("render", data);
 };
+
+test("interactive report embeds a complete annotation runtime and keeps navigation ahead of content",
+  "new reports must include the shared annotation controller, without relying on a patched HTML artifact",
+  () => {
+    const result = render((r) => { r.mechanisms = [{ name: "Reader", change: "reused", purpose: "Read", basis: "Existing code", benefit: "Reuse", cost: "None added", decision: "Keep it", evidence: "read" }]; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const script = page.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    if (!script) return "missing runtime";
+    new vm.Script(script);
+    return page.indexOf('<nav>') < page.indexOf('<section id="summary"')
+      && page.includes('id="annotation-editor"') && page.includes('data-annotation-action="cancel"')
+      && page.includes('id="m1"') && page.includes('role="status"')
+      || "missing contextual editor, source anchor, navigation or status region";
+  });
 
 test("lines prints every changed line under its file, with the address a block names it by",
   "a reviewer who computes line numbers from hunk headers gets them wrong; the listing is where blocks take them from",

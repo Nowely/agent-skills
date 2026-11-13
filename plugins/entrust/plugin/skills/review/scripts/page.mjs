@@ -6,6 +6,7 @@ import { highlight } from "./highlight.mjs";
 import { labelsOf } from "./labels.mjs";
 import { VERDICTS, mechanismCounts } from "./review.mjs";
 import { esc } from "./text.mjs";
+import { annotations } from "./annotations.mjs";
 
 const STYLE = `
 /* One column: the task, the verdict, how the change works now, the target and the recommendations, each under its own label; the requirements; the structure as two diagrams and a tree of files; the diff cut into blocks with a stripe for each verdict; the findings; the author's decisions. */
@@ -92,7 +93,7 @@ pre code { display: inline-block; min-width: 100% }
 .finding p { overflow-wrap: anywhere }
 input[type="text"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .2rem .5rem; width: 100%; max-width: 40rem }
 textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color: var(--fg); background: var(--surface); border: 1px solid var(--line); padding: .6rem .8rem }
-/* A comment on any passage: a button beside the selection, and the comments listed with the decisions. */
+/* Annotation controls are excluded from persisted text offsets. */
 .floating { position: absolute; z-index: 6; display: none; background: var(--accent); color: var(--bg); border-color: var(--accent); box-shadow: 0 2px 8px rgb(0 0 0 / .25) }
 .floating.on { display: block }
 .passage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .6rem; align-items: center; padding: .5rem .8rem; background: var(--surface); border: 1px solid var(--line) }
@@ -138,6 +139,25 @@ figure { margin: 0; min-width: 0; max-width: 100%; display: flex; flex-direction
 .tree .chip { margin: 0 }
 footer { overflow-wrap: anywhere }
 @media (max-width: 40rem) { .bar { position: static } .role { grid-template-columns: minmax(0, 1fr) } }
+section, [data-anchor] { scroll-margin-top: 6rem }
+.mechanism { padding: 1rem 1.2rem; gap: .75rem }
+.mechanism h3 { font-size: 1.12rem }
+.mechanism-decision { color: var(--accent); font-weight: 600 }
+.mechanism-tradeoff { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; border-block: 1px solid var(--line); padding-block: .7rem }
+.mechanism details .stack, .sources p { padding: .6rem .8rem }
+.sources { overflow-wrap: anywhere }
+mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: inherit }
+.annotation-marker { user-select: none; padding: 0 .3rem; margin-inline: .15rem; border-radius: 1rem; background: var(--accent); color: var(--bg); font-size: .8rem; vertical-align: super; line-height: 1.3 }
+#annotation-editor { position: fixed; margin: 0; width: min(32rem,calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; padding: 1rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--surface); color: var(--fg); box-shadow: 0 8px 30px rgb(0 0 0 / .2); z-index: 20 }
+#annotation-editor blockquote { margin: .5rem 0; border-left: 3px solid var(--accent); padding-left: .6rem; max-height: 6rem; overflow: auto; white-space: pre-wrap }
+#annotation-editor textarea { min-height: 6rem; font: inherit; margin-block: .5rem; resize: vertical }
+.passage { display: flex; flex-direction: column; align-items: stretch }
+.passage p, .passage blockquote { white-space: pre-wrap }
+[hidden] { display: none !important }
+.annotation-feedback { position: fixed; z-index: 21; bottom: 1rem; right: 1rem; max-width: calc(100vw - 2rem); padding: .5rem .75rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--surface); box-shadow: 0 2px 8px rgb(0 0 0 / .15) }
+.annotation-feedback:has(#annotation-status:empty):has(button[hidden]) { display: none }
+@media (max-width: 40rem) { .mechanism-tradeoff { grid-template-columns: 1fr } }
+
 `;
 
 const SCRIPT = `
@@ -145,8 +165,7 @@ const SCRIPT = `
   const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key, t = data.labels;
   const all = (selector) => [...document.querySelectorAll(selector)];
   const map = document.getElementById("map"), out = document.getElementById("out"), progress = document.getElementById("progress");
-  const comment = document.getElementById("comment"), passages = document.getElementById("passages");
-  let state = { findings: {}, notes: {}, passages: [] }, picked = null;
+  let state = { findings: {}, notes: {}, passages: [] };
   try { state = { ...state, ...JSON.parse(localStorage.getItem(key) || "{}") }; } catch {}
   const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch {} };
   document.documentElement.classList.add("js");
@@ -159,37 +178,12 @@ const SCRIPT = `
     const open = data.findings.filter((f) => !state.findings[f.id]);
     const blocks = data.blocks.filter((b) => state.notes["b" + b.id]).map((b) => "- " + b.path + " " + b.where + ": " + state.notes["b" + b.id]);
     const idea = (i) => "- " + i.title + note(i.id), taken = (i) => state.findings[i.id] === "apply";
-    const marked = state.passages.map((p) => "- " + p.where + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
+    const marked = state.passages.map((p, i) => "- " + (i + 1) + ". " + p.where + (p.anchor ? " [" + p.anchor.id + ":" + p.anchor.start + "-" + p.anchor.end + "]" : "") + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
     const part = (title, lines) => lines.length ? ["", title, ...lines] : [];
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")", ...part(t.apply, of("apply")), ...part(t.skip, of("skip")),
       ...(open.length ? ["", t.open + " " + open.map((f) => f.id).join(", "), ...open.filter((f) => state.notes["f" + f.id]).map(line)] : []),
       ...part(t.ideas, data.ideas.filter(taken).map(idea)), ...part(t.ideaNotes, data.ideas.filter((i) => !taken(i) && state.notes[i.id]).map(idea)),
       ...part(t.blocks, blocks), ...part(t.passages, marked)].join("\\n");
-  }
-
-  // Where a selection starts, in the reader's words: the line of the diff, or the part of the report it is in.
-  function placeOf(node) {
-    const at = node.nodeType === 1 ? node : node.parentElement, file = at.closest(".file"), line = at.closest(".l"), block = at.closest("[data-block]");
-    if (file && line) return file.querySelector("header strong").textContent + ":" + line.querySelector("i").textContent.replace("−", "-").trim() + line.querySelector("b").textContent
-      + (block ? " (B" + block.dataset.block + ")" : "");
-    const named = at.closest("[data-where]"), section = at.closest("section");
-    return named ? named.dataset.where : (section && section.querySelector("h2") || document.querySelector("h1")).textContent;
-  }
-
-  // The comments on passages, each with its own field. Drawn when one is added or removed, not while the reader types in one.
-  function list() {
-    passages.textContent = "";
-    if (state.passages.length) passages.append(Object.assign(document.createElement("span"), { className: "label", textContent: t.passagesTitle }));
-    state.passages.forEach((p, index) => {
-      const row = Object.assign(document.createElement("div"), { className: "passage" });
-      const input = Object.assign(document.createElement("input"), { type: "text", value: p.note, placeholder: t.notePassage });
-      input.dataset.passage = index; input.setAttribute("aria-label", t.notePassage);
-      const remove = Object.assign(document.createElement("button"), { type: "button", textContent: t.remove });
-      remove.dataset.remove = index;
-      row.append(Object.assign(document.createElement("span"), { className: "sub", textContent: p.where }),
-        Object.assign(document.createElement("blockquote"), { textContent: p.quote }), input, remove);
-      passages.append(row);
-    });
   }
 
   function paint() {
@@ -218,18 +212,10 @@ const SCRIPT = `
     } else if (button.dataset.overlay !== undefined) {
       button.setAttribute("aria-pressed", String(button.closest("article").querySelector(".shots").classList.toggle("overlaid")));
       return;
-    } else if (button === comment) {
-      if (!picked) return;
-      state.passages.push({ ...picked, note: "" });
-      getSelection().removeAllRanges(); comment.classList.remove("on");
-      save(); list(); paint();
-      passages.querySelector("[data-passage='" + (state.passages.length - 1) + "']").focus();
-      return;
-    } else if (button.dataset.remove !== undefined) { state.passages.splice(+button.dataset.remove, 1); list(); }
-    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
-    else if (button.id === "clear") { state = { findings: {}, notes: {}, passages: [] }; list(); }
+    }    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
+    else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = { findings: {}, notes: {}, passages: [] }; annotationUI.reset(); }
     else if (button.id === "copy") {
-      const done = () => { button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
+      const done = () => { document.getElementById("annotation-status").textContent = t.copied; button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
       const select = () => { out.focus(); out.select(); };
       try { navigator.clipboard.writeText(out.value).then(done, select); } catch { select(); }
       return;
@@ -238,25 +224,13 @@ const SCRIPT = `
   });
   document.addEventListener("input", (event) => {
     if (event.target.dataset.blend !== undefined) event.target.closest("article").querySelector(".shots").style.setProperty("--blend", event.target.value / 100);
-    if (event.target.dataset.passage !== undefined) { state.passages[+event.target.dataset.passage].note = event.target.value.trim(); save(); out.value = decisions(); return; }
     const id = event.target.dataset.note;
     if (!id) return;
     if (event.target.value.trim()) state.notes[id] = event.target.value.trim(); else delete state.notes[id];
     save(); paint();
   });
-  // The button follows the selection; pressing it must not clear what was selected.
-  document.addEventListener("selectionchange", () => {
-    const chosen = getSelection(), text = chosen.toString().replace(/\\s+/g, " ").trim();
-    const from = text && chosen.rangeCount ? chosen.getRangeAt(0) : null, start = from && (from.startContainer.nodeType === 1 ? from.startContainer : from.startContainer.parentElement);
-    if (!start || !start.closest(".wrap") || start.closest("#decisions, input, textarea, button")) { comment.classList.remove("on"); return; }
-    const box = from.getBoundingClientRect();
-    picked = { quote: text.length > 400 ? text.slice(0, 400) + "…" : text, where: placeOf(from.startContainer) };
-    comment.style.top = (scrollY + box.bottom + 6) + "px";
-    comment.style.left = Math.max(8, Math.min(scrollX + box.left, scrollX + innerWidth - comment.offsetWidth - 24)) + "px";
-    comment.classList.add("on");
-  });
-  comment.addEventListener("mousedown", (event) => event.preventDefault());
-  list(); paint();
+  const annotationUI = (${annotations.toString()})({ state: () => state, changed: () => { save(); paint(); }, t: data.annotationLabels });
+  annotationUI.render(); paint();
 })();
 `;
 
@@ -286,7 +260,7 @@ function summary(review, { blocks }, t) {
 <section id="summary" class="roles">
   ${role("task", `<p>${prose(change.goal)}${change.why ? ` ${prose(change.why)}` : ""}</p>
     <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
-    <p class="sub">${esc(t("sources"))}: ${change.sources.map(prose).join("; ")}</p>`)}
+    <details class="sources"><summary>${esc(t("sources"))}</summary><p class="sub">${change.sources.map(prose).join("; ")}</p></details>`)}
   ${role("verdict", lines(review.verdict, ' class="lead"'), "conclusion")}
   ${role("now", `${lines(review.now)}
     <div class="share" role="img" aria-label="${esc(t("share"))}">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
@@ -431,13 +405,22 @@ function map(review, files, { blocks, owner }, t) {
 function mechanisms(review, t) {
   if (!review.mechanisms?.length) return "";
   return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
-    <p class="sub">${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${review.mechanisms.map((m) => `
-    <article class="finding"><h3>${esc(m.name)}</h3>
-    <div class="group sub"><span>${esc(t(`change.${m.change}`))}</span><span>${esc(t(`evidence.${m.evidence}`))}</span></div>
-    <p><strong>${esc(t("units"))}:</strong> ${(m.units ?? []).map((name) => `<code>${esc(name)}</code>`).join(", ")}
-      ${(m.findings ?? []).map((id) => `<a href="#f${esc(id)}">${esc(t("finding"))} ${esc(id)}</a>`).join("; ")}</p>
-    ${["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `<p><strong>${esc(t(key))}:</strong> ${prose(m[key])}</p>`).join("")}
-    </article>`).join("")}</section>`;
+    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${review.mechanisms.map((m, i) => {
+      const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
+      return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
+        <h3>${esc(m.name)}</h3>
+        <p class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</p>
+        ${findings[0] ? `<p><strong>${esc(t("consequence"))}:</strong> ${prose(findings[0].what)} <a href="#f${esc(findings[0].id)}">${esc(t("shown-by"))}</a></p>` : ""}
+        ${m.instead ? `<p><strong>${esc(t("instead"))}:</strong> ${prose(m.instead)}</p>` : ""}
+        <div class="mechanism-tradeoff">${["benefit", "cost"].map(key => `<div><strong>${esc(t(key))}</strong><p>${prose(m[key])}</p></div>`).join("")}</div>
+        <div class="group sub"><span>${esc(t(`evidence.${m.evidence}`))}</span>${findings.map(f => `<a href="#f${esc(f.id)}">${esc(t("finding"))} ${esc(f.id)}</a>`).join("")}</div>
+        <details><summary>${esc(t("basis"))}</summary><div class="stack">
+          <p><strong>${esc(t("purpose"))}:</strong> ${prose(m.purpose)}</p><p>${prose(m.basis)}</p>
+          <p><strong>${esc(t("unit"))}:</strong> ${(m.units ?? []).map(name => `<code>${esc(name)}</code>`).join(", ") || esc(t("none"))}</p>
+          <p class="sub">${esc(t("mechanism-change"))}: ${esc(t(`change.${m.change}`))}</p>
+        </div></details>
+      </article>`;
+    }).join("")}</section>`;
 }
 
 const decider = (t) => (id) => `<span class="decide group act" data-finding="${esc(id)}"><button type="button" value="apply">${esc(t("apply"))}</button><button type="button" value="skip">${esc(t("skip"))}</button></span>`;
@@ -470,15 +453,17 @@ export function page(review, files, model) {
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map(({ id, path, where, findings: cited }) => ({ id, path, where, findings: cited })),
     labels: { title: t("out.title"), apply: t("out.apply"), skip: t("out.skip"), ideas: t("out.ideas"), ideaNotes: t("out.idea-notes"), open: t("out.open"), blocks: t("out.blocks"),
-      passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied") } };
+      passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied"), clearConfirm: t("clear-confirm") },
+    annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t), link = (id, label) => `<a href="#${id}">${esc(t(label))}</a>`;
   return `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(t("kind"))}: ${esc(review.title)}</title>
 <style>${STYLE}</style>
-<div class="wrap">
+<div class="wrap" id="review-content" tabindex="-1">
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
+<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
 ${summary(review, model, t)}
 ${requirements(model, t)}
 ${mechanisms(review, t)}
@@ -487,10 +472,10 @@ ${screens(model, t)}
 ${drawn}
 ${tree(files, model, t)}
 <section class="stack">
-  <div class="bar">
-    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav>
+  <div class="group map-filters">
+
     <span class="group act"><span class="sub">${esc(t("show"))}</span><button type="button" data-show="all" aria-pressed="true">${esc(t("all"))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</span>
-    <span class="sub act" id="progress"></span>
+
   </div>
   <div id="map" class="map stack" data-show="all" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
     <h2>${esc(t("map"))}</h2>
@@ -501,14 +486,19 @@ ${tree(files, model, t)}
 ${offered ? `<section id="ideas" class="stack"><h2>${esc(t("ideas"))}</h2><p class="sub">${esc(t("ideas-note"))}</p>${offered}</section>` : ""}
 <section class="stack"><h2>${esc(t("questions"))}</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q) => `<li><code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : `<p>${esc(t("none"))}</p>`}
   <h2>${esc(t("coverage"))}</h2><p>${prose(review.coverage || t("none"))}</p></section>
-<section id="decisions" class="stack act"><h2>${esc(t("decisions"))}</h2>
+<section id="decisions" class="stack act" tabindex="-1"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>
-  <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear"))}</button></div>
-  <div id="passages" class="stack"></div>
+  <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
+  <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button></div><div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
-<button type="button" id="comment" class="floating">${esc(t("comment"))}</button>
-<footer class="sub mono">${esc(review.range)} · ${model.key}</footer>
+<button type="button" id="comment" class="floating" aria-keyshortcuts="Alt+Shift+M" title="Alt+Shift+M">${esc(t("comment"))}</button>
+<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key}</code></details></footer>
 </div>
+<dialog id="annotation-editor" aria-labelledby="annotation-heading">
+  <h2 id="annotation-heading">${esc(t("note-passage"))}</h2><blockquote></blockquote>
+  <textarea aria-label="${esc(t("note-passage"))}" rows="4"></textarea>
+  <div class="group"><button type="button" data-annotation-action="save">${esc(t("annotation.save"))}</button><button type="button" data-annotation-action="cancel">${esc(t("annotation.cancel"))}</button><button type="button" data-annotation-action="delete">${esc(t("remove"))}</button></div>
+</dialog>
 <script id="data" type="application/json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>
 <script>${SCRIPT}</script>
 `;
