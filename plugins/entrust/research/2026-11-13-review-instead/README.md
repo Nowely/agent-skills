@@ -68,9 +68,15 @@ Draft 26 has not been run with a model and is not the shipping entrypoint. The c
 repository skill-document checks in an isolated installed layout. The generic skill-creator validator rejects
 the existing explicit-invocation frontmatter; that policy was preserved, not removed to satisfy its allowlist.
 
-## Controls proposed for the draft 26 pilot
+## Current pilot and optional controls
 
-[Three controls](draft26-controls.md) the pilot lacks: an unaided arm on the private change's full packet, both drafts on the clean synthetic forms, and `slot-edit/head` for `instead` and for transfer. Draft 26 advances only if it adds a finding on the private change and no more false ones on good code than draft 25. Not run.
+The [corrected draft-27 control plan](draft27-controls.md), agreed with Carbon, is the current proposal for the
+next launch. It uses three candidate reviews and two independent judge sessions (five total), with semantic
+joint-evidence criteria. Additional attribution, clean-reference and familiar-case controls are optional and
+separately priced. No clean target enters the immediate round automatically; safety on such inputs remains
+unmeasured. The [original control proposal](draft26-controls.md) and [draft-26 plan](draft26-plan.md) remain
+historical records, not the current launch recipe. [Agreement and verification](draft27-controls-agreement.md)
+records the corrections. No experimental runs have started.
 
 ## Draft 27: a preference does not replace a shown cost
 
@@ -82,5 +88,5 @@ Draft 26 was read again before any run and three faults were found in it. [Draft
 
 The list of signs of entanglement also regains the one the positive example rests on, a caller interpreting another unit's partial result.
 
-Checked as draft 26 was: substituted into the installed layout, all eight skill-document checks pass; the entrypoint is 20,114 bytes against draft 26's 20,093. In the pilot and in [its controls](draft26-controls.md), draft 27 takes draft 26's place. Not run.
+Checked as draft 26 was: substituted into the installed layout, all eight skill-document checks pass; the entrypoint is 20,114 bytes against draft 26's 20,093. In the pilot and in [its controls](draft27-controls.md), draft 27 takes draft 26's place. Not run.
 
