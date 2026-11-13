@@ -6,7 +6,7 @@ Does a review recommend removing an unnecessary mechanism more often when its re
 
 ## Why this change
 
-The released baseline, [draft 23](../2026-11-13-review-baseline/README.md), was never run. What was run before it shows one failure that repeats:
+Before [round 6](round-6/README.md), the released baseline, [draft 23](../2026-11-13-review-baseline/README.md), had not been run. Earlier work showed one failure that repeated:
 
 - On a private change, reviews with and without the skill each proposed removing a redundant lookup in 1 of 2 runs ([round 4](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6834922569)); drafts 20, 21 and 22 gave 1, 2 and 1 of 2 ([round 5](../2026-11-13-review-baseline/rounds.md)).
 - On `slot-edit`, three reviewers without the skill opened the installed client's contract, which says the order carries its zone whole, and none reported the lookup as unnecessary.
@@ -23,7 +23,7 @@ A record written with 0.37.0 that lists an added or changed mechanism without `i
 
 ## Draft 25: the answer cites what was read
 
-Draft 24 let `instead` be any text, so "nothing else does this" passed. In draft 25 the check refuses an `instead` that cites no `path:line`: an answer that something is available names where, and an answer that nothing is names what was read. The page is draft 24's, unchanged; [the data contract](drafts/25-cited-data.md) and the check differ. No review was run with draft 24, so draft 25 is the arm to run.
+Draft 24 let `instead` be any text, so "nothing else does this" passed. In draft 25 the check refuses an `instead` that cites no `path:line`: an answer that something is available names where, and an answer that nothing is names what was read. The page is draft 24's, unchanged; [the data contract](drafts/25-cited-data.md) and the check differ. No review was run with draft 24, so draft 25 was the candidate arm in round 6.
 
 ## Known gaps, left for a later draft
 
@@ -43,4 +43,13 @@ Draft 25 earns its extra field only if it produces useful, supported simplificat
 
 ## Status
 
-[Input preparation](preparation.md) is complete; no new model runs started. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` remain unadmitted and deferred. Progress and results will be maintained in one new English comment on PR #96.
+[Round 6 is complete](round-6/README.md): six Terra reviews, six isolated implementations, and independent
+Carbon/GLM judgments on the original flawed snapshot. Both arms recommended the same removal in 3/3 runs;
+all six implementations produced byte-identical core logic. Both judges support all three code-quality
+dimensions in every run. Strict overall support is 2/3 for draft 23 and 3/3 for draft 25 because Carbon left
+one baseline test's unused import/tooling consequence unresolved. This is not an architectural win for draft 25.
+
+The coordinator recommends keeping 23 as the released baseline and not promoting mandatory `instead` on these
+results. The candidate implementation remains unchanged pending the owner's decision. Corrected synthetic
+cases remain unadmitted/deferred; no clean-target round was run. Methodology and results share the same
+[PR comment](https://github.com/Nowely/agent-skills/pull/96#issuecomment-6847216007).
