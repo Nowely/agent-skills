@@ -28,21 +28,19 @@ Draft 24 let `instead` be any text, so "nothing else does this" passed. In draft
 ## Known gaps, left for a later draft
 
 - A mechanism is tied to units, not to blocks, and its `decision` is free text. Nothing checks that a mechanism the review decides to remove has its lines marked `remove`, or that what existed only for it goes too. Round 5 found records that passed the check and contradicted themselves this way.
-- If the reviewer does not list a mechanism, `instead` is never asked of it. The first column of `blocks.mjs` shows how often that happens.
+- If the reviewer does not list a mechanism, `instead` is never asked of it. The first column of `blocks.mjs` is a keyword-based screening signal; source reading is still needed to establish an omission.
 - The format of a record tells a judge which arm wrote it.
 
 Each is a second change. They wait until the round shows where the chain breaks: at listing, at finding what is already there, at marking the lines, or at the implementer.
 
 ## How to tell
 
-Compare `control`, 0.37.0 (draft 23) and draft 25 on the admitted cases of [the instrument](../../evals/review/README.md), same model and effort:
+The [next-round protocol](protocol.md) supersedes the earlier broad comparison plan: compare draft 23 and draft 25 on the original private flawed snapshot, three fresh reviews per arm, with complete matching skill packages. Follow every completed review with an isolated implementation and have Astra and GLM judge independently. Neither the later real snapshot nor synthetic clean variants are targets in this round. The protocol defines responsibilities, source parity, metric limitations and two-judge aggregation.
 
-1. `blocks.mjs`: whether each record lists the needless mechanism, names what was already there, and marks its lines `remove`, and the needed or clean lines it marks `remove`. No judge; drafts 23 and 25 only, since a control has no record.
-2. `outcome.mjs`: what an implementer leaves after each review, against `task-only`.
-3. The judge's rubric, for what the two above cannot see.
+`blocks.mjs` reports deterministic keyword matches and line dispositions where a frozen line rubric exists. Its matches can be false positives as well as false negatives; a match is not proof that the reviewer recognized an existing alternative. Deletions do not measure decomposition or architecture. Judge the supported target and resulting patch separately.
 
-Draft 25 is worth keeping if it marks more of the superfluous lines than draft 23 without marking more needed or clean ones, and its implementers recover more. If the two drafts do not differ, the field is weight and goes.
+Draft 25 earns its extra field only if it produces useful, supported simplification while preserving required behavior and reducing a concrete reasoning/change burden. More completed fields or keyword matches alone are insufficient. A small or mixed result remains inconclusive; compatibility with released reports is still to be decided before release.
 
 ## Status
 
-Not run. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` have not been admitted.
+Protocol updated; no new model runs started. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` remain unadmitted and deferred. Progress and results will be maintained in one new English comment on PR #96.

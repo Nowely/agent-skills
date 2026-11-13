@@ -10,10 +10,11 @@
 // those in no block at all, the needed lines it marks `remove`, and the other lines of code it marks `remove`, so
 // that a record which removes everything does not read as one that saw the superfluous; on a clean form, every
 // line of code it marks `remove`. `already` in the rubric names mechanisms that something existing makes needless:
-// the count says in how many the record lists the mechanism, and in how many it names what was already there.
+// keyword counts screen for mentions of the mechanism and an existing alternative; negations can match too.
 //
-// No judge takes part, so the count repeats exactly. It sees only what the record says of lines: a review may
-// mark the right lines for a wrong reason, and a review with no record, as a control's, has no row.
+// No judge takes part, so the count repeats exactly. Keyword matches can overcount or undercount understanding.
+// It sees only what the record says of lines: a review may mark the right lines for a wrong reason.
+// A review with no record, as a control's, has no measured counters.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -71,7 +72,7 @@ export function blocks(directory) {
 export function table(results) {
   const rows = Object.entries(Object.groupBy(results, (r) => `${r.arm}\n${r.case}/${r.variant}`)).sort(([a], [b]) => a.split("\n").reverse().join().localeCompare(b.split("\n").reverse().join()));
   const sum = (list, key) => list.reduce((total, r) => total + r[key], 0), of = (list, part, whole) => `${sum(list, part)} / ${sum(list, whole)}`;
-  return ["| Arm | Target | Runs | With a record | Mechanisms listed | Found already available | Superfluous lines marked remove | In a block marked fix | In no block | Needed lines marked remove | Other code lines marked remove |",
+  return ["| Arm | Target | Runs | With a record | Mechanism keyword matches | Alternative keyword matches | Superfluous lines marked remove | In a block marked fix | In no block | Needed lines marked remove | Other code lines marked remove |",
     "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...rows.map(([key, list]) => {
       const [arm, target] = key.split("\n"), read = list.filter((r) => !r.missing && !r.unknown), head = target.endsWith("/head");
