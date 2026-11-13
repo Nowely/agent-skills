@@ -76,7 +76,7 @@ joint-evidence criteria. Additional attribution, clean-reference and familiar-ca
 separately priced. No clean target enters the immediate round automatically; safety on such inputs remains
 unmeasured. The [original control proposal](draft26-controls.md) and [draft-26 plan](draft26-plan.md) remain
 historical records, not the current launch recipe. [Agreement and verification](draft27-controls-agreement.md)
-records the corrections. No experimental runs have started.
+records the corrections. Those optional control runs have not started; the separate round-7 diagnostic is recorded below.
 
 ## Draft 27: a preference does not replace a shown cost
 
@@ -100,3 +100,10 @@ report completeness. The case is mechanically checked but unmeasured with models
 added to the frozen draft27 pilot. The shipping skill and earlier drafts remain unchanged.
 
 [Draft28 checks and file hashes](draft28-validation.json) record the deterministic verification and instruction size.
+
+## Round 7: full versus reduced line allocation
+
+[Round 7](round-7/README.md) is complete: three fresh Terra reviews per arm, with independent Carbon and GLM
+assessment. All six found the same redundant mechanism and proposed the same target. Removing mandatory
+line allocation did not produce additional decomposition or a reliable smaller/faster report. Keep the full
+working method; the shipping skill and frozen earlier rounds are unchanged.

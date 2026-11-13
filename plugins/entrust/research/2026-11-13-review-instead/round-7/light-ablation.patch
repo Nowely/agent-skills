@@ -1,0 +1,117 @@
+--- a/skills/review/SKILL.md
++++ b/skills/review/SKILL.md
+@@ -39,4 +39,4 @@
+-- **Blocks:** file and changed line ranges on each side of the diff, containing unit where applicable, what the block does, and the requirement or necessary integration/check it serves. A block is a decision or independently removable part: a branch, guard, parameter, request, constant, test or cohesive function body. Every nonblank changed line belongs to exactly one block. Keep and removal decisions will be added after review; an empty requirement link is a candidate to investigate, not proof of redundancy.
+-- **Units and connections:** each changed unit with real logic, its responsibilities, the units it uses, and the existing units that call it or that it calls. Include source locations for unchanged code and trace through relevant dependencies far enough to explain the changed behavior and ownership. For a unit that decides, record its rules: inputs, conditions, outcomes and precedence when rules overlap. Include shared mutable decision state and external or time-dependent effects where they connect blocks or affect ownership. The map must show the connected implementation, not just a list of changed files.
+-- **Mechanisms:** identify the meaningful behaviors or coordination concepts the change adds, reuses, changes or removes. A mechanism may span several blocks and units: a scheduled refresh includes its trigger, state, cancellation and consumer. A helper or guard is not automatically a separate mechanism. Record its purpose, basis, benefit, cost and proposed disposition in `mechanisms`, referencing the mapped units and requirements. For one the change adds or alters, first answer `instead`: where what it obtains or does is already available (a value or field the code was passed, an existing utility, an upstream check, the dependency's own behavior) and where you read that, or the places you read that do not supply it. An empty list is valid for a change with no material mechanism.
+-- **Evidence and limits:** reachable entries, contract references, relevant existing utilities and unread boundaries. Record each once and refer to it from blocks, units and findings.
++- **Parts:** identify independently removable decisions such as branches, guards, requests, constants, tests or cohesive bodies, what they do and which requirement/integration they serve. Record this reasoning with units and their rules. This experimental output omits exhaustive changed-line allocation and the `blocks` table; it does not narrow source reading or analysis.
++- **Units and connections:** each changed unit with real logic, its responsibilities, the units it uses, and the existing units that call it or that it calls. Include source locations for unchanged code and trace through relevant dependencies far enough to explain the changed behavior and ownership. For a unit that decides, record its rules: inputs, conditions, outcomes and precedence when rules overlap. Include shared mutable decision state and external or time-dependent effects where they connect parts or affect ownership. The map must show the connected implementation, not just a list of changed files.
++- **Mechanisms:** identify the meaningful behaviors or coordination concepts the change adds, reuses, changes or removes. A mechanism may span several parts and units: a scheduled refresh includes its trigger, state, cancellation and consumer. A helper or guard is not automatically a separate mechanism. Record its purpose, basis, benefit, cost and proposed disposition in `mechanisms`, referencing the mapped units and requirements. For one the change adds or alters, first answer `instead`: where what it obtains or does is already available (a value or field the code was passed, an existing utility, an upstream check, the dependency's own behavior) and where you read that, or the places you read that do not supply it. An empty list is valid for a change with no material mechanism.
++- **Evidence and limits:** reachable entries, contract references, relevant existing utilities and unread boundaries. Record each once and refer to it from parts, units and findings.
+@@ -44 +44 @@
+-Use the same record for later findings and presentation. Requirement links come from blocks; dependencies come from units. Do not copy those relationships into several parallel tables. The initial map is provisional: assign no keep/fix/remove before reviewing. After refutation, finalize it into the mandatory `review.json` data contract: `requirements`, `blocks`, `units`, `mechanisms` and `coverage` carry the map, with rule details in the unit's `jobs`. The complete structured report is required whether or not HTML is requested.
++Use the same record for later findings and presentation. Describe requirement links with the units/rules; dependencies come from units. Do not copy those relationships into several parallel tables. The initial map is provisional: assign no keep/fix/remove before reviewing. After refutation, finalize it into the mandatory `analysis.json` data contract: `requirements`, `units`, `mechanisms` and `coverage` carry the map, with rule details in the unit's `jobs`. The complete structured report is required whether or not HTML is requested.
+@@ -46 +46 @@
+-Check the map against the diff and the connected code: changed lines accounted for, unit references resolved, rule order stated, and unverified connections visible. Preserve it as an accessible artifact and link it in the report. A concise response may omit the full map; the analysis and its checkable record remain required.
++Check the map against the diff and the connected code: changed responsibilities accounted for, unit references resolved, rule order stated, and unverified connections visible. Preserve it as an accessible artifact and link it in the report. A concise response may omit the full map; the analysis and its checkable record remain required.
+@@ -77 +77 @@
+-- For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence. Check guards inside `keep` blocks against proven types, producers and existing predicates; retain justified boundary defenses.
++- For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence. Check guards inside kept parts against proven types, producers and existing predicates; retain justified boundary defenses.
+@@ -114 +114 @@
+-Finalize `review.json` for every review (saving it in the permitted output location, or returning it inline when writes are disallowed) before returning the concise response, following [the report](#the-report). Include block and unit dispositions, requirement status, findings and the current and target structures. Read back the materialized JSON and check that the complete report, map and target agree, using the verification pass in the data contract. A structurally valid JSON can still describe contradictory behavior. Generate HTML only when explicitly requested.
++Finalize `analysis.json` for every review (saving it in the permitted output location, or returning it inline when writes are disallowed) before returning the concise response, following [the report](#the-report). Include unit dispositions, requirement status, findings and the current and target structures. Read back the materialized JSON and check that the complete report, map and target agree, using the verification pass in the data contract. A structurally valid JSON can still describe contradictory behavior. Generate HTML only when explicitly requested.
+@@ -118 +118 @@
+-`review.json` is every review's complete canonical result. Use the existing contract for the change and sources, requirements/status, verdict, evidence-backed findings, current/target structure, recommendations/steps, block/unit map, questions, ideas, coverage and applicable manual/visual checks. A later HTML request must not trigger their reconstruction.
++`analysis.json` is every review's complete canonical result. Use the existing contract for the change and sources, requirements/status, verdict, evidence-backed findings, current/target structure, recommendations/steps, unit/rule map, questions, ideas, coverage and applicable manual/visual checks. A later HTML request must not trigger their reconstruction.
+@@ -124 +124 @@
+-Present findings by impact, each once, with direction, evidence level, source location, demonstrated problem and smallest sufficient fix. Link affected requirements and distinguish findings, unresolved questions and optional ideas. Derive grounded manual scenarios and visual limitations as the data contract specifies. Omit empty sections in the short response; link the complete `review.json` and surface limits that materially change the recommendation.
++Present findings by impact, each once, with direction, evidence level, source location, demonstrated problem and smallest sufficient fix. Link affected requirements and distinguish findings, unresolved questions and optional ideas. Derive grounded manual scenarios and visual limitations as the data contract specifies. Omit empty sections in the short response; link the complete `analysis.json` and surface limits that materially change the recommendation.
+@@ -126 +126 @@
+-When the user asks for an interactive report, render the already prepared `review.json` against its recorded source snapshot using [references/interactive-report.md](references/interactive-report.md). All report data and the selected language are already present. Only supported external presentation options or a separate display wrapper may vary; canonical JSON stays byte-identical and no new findings, requirements, targets or manual scenarios are gathered. If rendering exposes a substantive omission or new evidence warrants a change, make an explicit revised review record and identify the new analysis; do not present that as display-only work. Rendering a report is not authorization to apply the changes marked in it.
++This experimental analysis artifact has no exhaustive block map and is not a production render-ready report. Do not use the ordinary renderer. Preserve the full substantive analysis, source citations and limitations; no HTML is requested in this experiment.
+@@ -134 +134 @@
+-Each focused reviewer returns structured report data for the scope it actually examined, marking other directions as unreviewed. When they return, reopen the cited code, merge duplicates and resolve disagreements from evidence. Agreement between reviewers is not evidence. Produce one connected map, one coherent target and one canonical `review.json` covering the requested directions; trace every requirement and mapped rule through that merged target and identify anything unreviewed. If independent reviewers cannot be started, say so rather than silently substituting a single reviewer. In an [orchestrate](../orchestrate/SKILL.md) run, these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
++Each focused reviewer returns structured report data for the scope it actually examined, marking other directions as unreviewed. When they return, reopen the cited code, merge duplicates and resolve disagreements from evidence. Agreement between reviewers is not evidence. Produce one connected map, one coherent target and one canonical `analysis.json` covering the requested directions; trace every requirement and mapped rule through that merged target and identify anything unreviewed. If independent reviewers cannot be started, say so rather than silently substituting a single reviewer. In an [orchestrate](../orchestrate/SKILL.md) run, these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
+--- a/skills/review/references/report-data.md
++++ b/skills/review/references/report-data.md
+@@ -3 +3 @@
+-Read this contract for every review. Save one canonical `review.json`; HTML is optional. [Lifecycle and verification](#lifecycle-and-verification) apply before returning the review.
++Read this experimental contract for every review. Save `analysis.json`. It omits only exhaustive block allocation and is not a production render-ready report. All source reading, requirements, unit/rule structure, mechanisms, findings and targets remain required. [Lifecycle and verification](#lifecycle-and-verification) apply before returning the review.
+@@ -44,2 +43,0 @@
+-      "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "importContacts",
+-                   "does": "...", "serves": [1], "verdict": "remove", "findings": [1] }],
+@@ -60,2 +58 @@
+-- **Blocks.** `added` and `removed` list the block's lines in one file as numbers and ranges; a decision that spans files is one block per file. Every changed line that is not blank belongs to exactly one block. `"all"` names every such line of the file, and only a block to remove may use it: code that stays is listed by its lines. `serves` lists requirement ids and is empty for a block that serves nothing. `verdict` is `keep`, `fix` or `remove`, and a block to fix or remove names its findings. `unit` names the unit the block is part of; leave it out for a test or for a line outside any unit.
+-- **Units.** The units as written: each has `jobs`, the units it `uses`, and a `verdict` of `keep`, `fix`, `split`, `merge` or `remove`, with its findings unless it is kept: `fix` is for a unit that stays one unit and changes inside. A unit of the change has at least one block. The requirements whose change touches a unit are read off its blocks, so do not write them. `"existing": true` marks code the change did not touch, listed because the change calls it or is called by it.
++- **Units.** The units as written: each has `jobs`, the units it `uses`, and a `verdict` of `keep`, `fix`, `split`, `merge` or `remove`, with its findings unless it is kept: `fix` is for a unit that stays one unit and changes inside. Describe requirement links in the affected unit's jobs; exact changed-line ownership is not part of this experiment. `"existing": true` marks code the change did not touch, listed because the change calls it or is called by it.
+@@ -66 +63 @@
+-Do not list the requirements no block serves, or which requirement fails or lacks a test: the script works these out.
++Findings still link broken or untested requirements. Explain material coverage gaps; there is no block-derived requirement coverage in this experiment.
+@@ -72,2 +69,2 @@
+-- Validate from the reviewed repository with `node "<skill-dir>/scripts/report.mjs" check /path/to/review.json`. This checks structure, references and changed-line ownership without writing HTML. Record what passed and what could not be checked. The reviewer chooses `check` when only data is requested: `render` would create an unrequested artifact.
+-- Read back the saved JSON itself. For each surviving finding, compare `now`, `target`, the current/target unit jobs, mechanism decisions and ordered recommendations. Resolve conflicting descriptions of the same behavior, orphaned state/effects after removal, and targets that silently drop a required rule. Check block descriptions against the actual ranges; covered lines alone do not prove that their descriptions are correct. Verify that `language` matches the session language and user-facing fields do not mix languages. A passed script cannot prove natural-language consistency or correctness.
++- Validate from the reviewed repository with `node "<skill-dir>/scripts/check-analysis.mjs" /path/to/analysis.json`. This experimental checker validates the remaining structure and references, not changed-line ownership or exhaustive source coverage. It writes no HTML. Record what passed and what could not be checked. Do not use the production checker/renderer on this reduced artifact.
++- Read back the saved JSON itself. For each surviving finding, compare `now`, `target`, the current/target unit jobs, mechanism decisions and ordered recommendations. Resolve conflicting descriptions of the same behavior, orphaned state/effects after removal, and targets that silently drop a required rule. Check unit/rule descriptions against the cited source; a populated record does not establish truthful analysis. Verify that `language` matches the session language and user-facing fields do not mix languages. A passed script cannot prove natural-language consistency or correctness.
+@@ -76 +73 @@
+-- Derive the short response from this record. Later HTML uses the same JSON bytes and source snapshot, without new analysis. If new evidence changes a conclusion, save an explicit revised review and identify the change rather than presenting it as display-only work.
++- Derive the short response from this record. This experimental artifact is not supported by the production HTML renderer. If new evidence changes a conclusion, save an explicit revised review and identify the change rather than presenting it as display-only work.
+@@ -83 +80 @@
+-- Preserve the existing report/image identities for delayed HTML rendering. Rendering uses the already established evidence; it does not start a new screenshot hunt or substantive review.
++- Preserve source/image identities for later reuse. This reduced experimental artifact cannot be rendered as a production report; completing that contract would be a separately identified change, not display-only work.
+--- /dev/null
++++ b/skills/review/scripts/check-analysis.mjs
+@@ -0,0 +1,13 @@
++import fs from "node:fs";
++import path from "node:path";
++import {check} from "./review.mjs";
++import {diffOf} from "./diff.mjs";
++try {
++  const file = process.argv[2];
++  if (!file) throw new Error("usage: check-analysis.mjs <analysis.json>");
++  const data = JSON.parse(fs.readFileSync(file, "utf8"));
++  if ("blocks" in data) throw new Error("This experiment omits the blocks table; preserve semantic part analysis in units/jobs.");
++  const {errors} = check(data, diffOf(data.range), path.dirname(path.resolve(file)));
++  if (errors.length) throw new Error(errors.join("\n"));
++  console.log("Experimental analysis structure/references checked; changed-line coverage NOT checked; not render-ready.");
++} catch (error) { console.error(error.message); process.exitCode = 1; }
+--- a/skills/review/scripts/review.mjs
++++ b/skills/review/scripts/review.mjs
+@@ -58 +58 @@
+-  for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
++  for (const field of ["requirements", "findings"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
+@@ -129 +128,0 @@
+-    if (!review.blocks.some((b) => b.unit === u.name)) errors.push(`unit ${u.name} has no block: give its blocks "unit": "${u.name}", or mark it "existing"`);
+@@ -153,32 +151,0 @@
+-  review.blocks.forEach((block, index) => {
+-    const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
+-    if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
+-    if (!text(block.does)) errors.push(`${name} has no "does"`);
+-    if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
+-    refs(name, block.serves, requirements, "requirement");
+-    refs(name, block.findings, findings, "finding");
+-    if (block.verdict !== "keep" && !block.findings?.length) errors.push(`${name} is to ${block.verdict} and names no finding`);
+-    if (block.unit !== undefined && !changed.has(block.unit)) errors.push(`${name}: "${block.unit}" is not a unit of the change`);
+-    // Code that stays is read line by line; only what goes entirely may be named whole.
+-    if ([block.added, block.removed].includes("all") && block.verdict !== "remove") errors.push(`${name}: "all" is for a block to remove; a block to ${block.verdict} lists its lines`);
+-    let own = 0;
+-    for (const [kind, field] of [["add", "added"], ["del", "removed"]]) {
+-      const lines = changedLines(file).filter((l) => l.kind === kind);
+-      let wanted;
+-      try { wanted = new Set(numbers(block[field], lines.map(numberOf))); }
+-      catch (error) { errors.push(`${name}: ${error.message}`); continue; }
+-      for (const line of lines.filter((l) => wanted.has(numberOf(l)))) {
+-        const key = `${file.path}\n${address(line)}`;
+-        if (owner.has(key)) errors.push(`${file.path} ${address(line)} is in block ${owner.get(key) + 1} and in ${name}`);
+-        else { owner.set(key, index); own++; }
+-      }
+-    }
+-    if (!own) errors.push(`${name} covers no changed line of ${block.path}`);
+-  });
+-
+-  for (const file of files) {
+-    const loose = changedLines(file).filter((l) => !blank(l) && !owner.has(`${file.path}\n${address(l)}`));
+-    const of = (kind) => compact(loose.filter((l) => l.kind === kind).map(numberOf));
+-    if (loose.length) errors.push(`${file.path}: no block covers ${[["added", of("add")], ["removed", of("del")]]
+-      .filter(([, lines]) => lines).map(([field, lines]) => `${field} ${lines}`).join("; ")}`);
+-  }

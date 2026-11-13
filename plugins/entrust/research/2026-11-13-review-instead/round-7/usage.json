@@ -1,0 +1,207 @@
+{
+  "method": "Unique model response usage summed and checked against final thread cumulative usage. Cached input is part of input, reasoning part of output. Judges/coordinator/relays excluded. UTF-8 JSON normalized to identical indentation.",
+  "runs": [
+    {
+      "run": "r01",
+      "variant": "full",
+      "totalTokens": 1166469,
+      "inputTokens": 1157366,
+      "cachedInputTokens": 1056384,
+      "uncachedInputTokens": 100982,
+      "outputTokens": 9103,
+      "durationSeconds": 196.218,
+      "toolCalls": 14,
+      "normalizedReportBytes": 25837,
+      "commonFieldBytes": 18891,
+      "blocks": 15,
+      "units": 11,
+      "mechanisms": 3,
+      "findings": 1,
+      "questions": 2,
+      "splits": 0
+    },
+    {
+      "run": "r02",
+      "variant": "without-line-allocation",
+      "totalTokens": 1016561,
+      "inputTokens": 1007548,
+      "cachedInputTokens": 944512,
+      "uncachedInputTokens": 63036,
+      "outputTokens": 9013,
+      "durationSeconds": 189.232,
+      "toolCalls": 13,
+      "normalizedReportBytes": 22422,
+      "commonFieldBytes": 22402,
+      "blocks": 0,
+      "units": 12,
+      "mechanisms": 3,
+      "findings": 1,
+      "questions": 1,
+      "splits": 0
+    },
+    {
+      "run": "r03",
+      "variant": "without-line-allocation",
+      "totalTokens": 1125647,
+      "inputTokens": 1113572,
+      "cachedInputTokens": 1047936,
+      "uncachedInputTokens": 65636,
+      "outputTokens": 12075,
+      "durationSeconds": 257.182,
+      "toolCalls": 14,
+      "normalizedReportBytes": 24644,
+      "commonFieldBytes": 24624,
+      "blocks": 0,
+      "units": 14,
+      "mechanisms": 3,
+      "findings": 1,
+      "questions": 2,
+      "splits": 0
+    },
+    {
+      "run": "r04",
+      "variant": "full",
+      "totalTokens": 1205531,
+      "inputTokens": 1197295,
+      "cachedInputTokens": 1127040,
+      "uncachedInputTokens": 70255,
+      "outputTokens": 8236,
+      "durationSeconds": 184.882,
+      "toolCalls": 15,
+      "normalizedReportBytes": 22136,
+      "commonFieldBytes": 17852,
+      "blocks": 9,
+      "units": 12,
+      "mechanisms": 2,
+      "findings": 1,
+      "questions": 1,
+      "splits": 0
+    },
+    {
+      "run": "r05",
+      "variant": "full",
+      "totalTokens": 1164583,
+      "inputTokens": 1156244,
+      "cachedInputTokens": 1095040,
+      "uncachedInputTokens": 61204,
+      "outputTokens": 8339,
+      "durationSeconds": 183.414,
+      "toolCalls": 15,
+      "normalizedReportBytes": 21063,
+      "commonFieldBytes": 15069,
+      "blocks": 12,
+      "units": 8,
+      "mechanisms": 2,
+      "findings": 1,
+      "questions": 1,
+      "splits": 0
+    },
+    {
+      "run": "r06",
+      "variant": "without-line-allocation",
+      "totalTokens": 1070055,
+      "inputTokens": 1061223,
+      "cachedInputTokens": 991488,
+      "uncachedInputTokens": 69735,
+      "outputTokens": 8832,
+      "durationSeconds": 187.587,
+      "toolCalls": 13,
+      "normalizedReportBytes": 24241,
+      "commonFieldBytes": 24221,
+      "blocks": 0,
+      "units": 17,
+      "mechanisms": 3,
+      "findings": 1,
+      "questions": 2,
+      "splits": 0
+    }
+  ],
+  "summary": {
+    "full": {
+      "mean": {
+        "totalTokens": 1178861,
+        "inputTokens": 1170301.6666666667,
+        "cachedInputTokens": 1092821.3333333333,
+        "uncachedInputTokens": 77480.33333333333,
+        "outputTokens": 8559.333333333334,
+        "durationSeconds": 188.17133333333334,
+        "toolCalls": 14.666666666666666,
+        "normalizedReportBytes": 23012,
+        "commonFieldBytes": 17270.666666666668,
+        "blocks": 12,
+        "units": 10.333333333333334,
+        "mechanisms": 2.3333333333333335,
+        "findings": 1,
+        "questions": 1.3333333333333333,
+        "splits": 0
+      },
+      "ranges": {
+        "durationSeconds": [
+          183.414,
+          196.218
+        ],
+        "totalTokens": [
+          1164583,
+          1205531
+        ],
+        "uncachedInputTokens": [
+          61204,
+          100982
+        ],
+        "outputTokens": [
+          8236,
+          9103
+        ]
+      },
+      "median": {
+        "durationSeconds": 184.882,
+        "totalTokens": 1166469,
+        "uncachedInputTokens": 70255,
+        "outputTokens": 8339
+      }
+    },
+    "without-line-allocation": {
+      "mean": {
+        "totalTokens": 1070754.3333333333,
+        "inputTokens": 1060781,
+        "cachedInputTokens": 994645.3333333334,
+        "uncachedInputTokens": 66135.66666666667,
+        "outputTokens": 9973.333333333334,
+        "durationSeconds": 211.33366666666666,
+        "toolCalls": 13.333333333333334,
+        "normalizedReportBytes": 23769,
+        "commonFieldBytes": 23749,
+        "blocks": 0,
+        "units": 14.333333333333334,
+        "mechanisms": 3,
+        "findings": 1,
+        "questions": 1.6666666666666667,
+        "splits": 0
+      },
+      "ranges": {
+        "durationSeconds": [
+          187.587,
+          257.182
+        ],
+        "totalTokens": [
+          1016561,
+          1125647
+        ],
+        "uncachedInputTokens": [
+          63036,
+          69735
+        ],
+        "outputTokens": [
+          8832,
+          12075
+        ]
+      },
+      "median": {
+        "durationSeconds": 189.232,
+        "totalTokens": 1070055,
+        "uncachedInputTokens": 65636,
+        "outputTokens": 9013
+      }
+    }
+  }
+}
