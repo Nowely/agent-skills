@@ -15,6 +15,7 @@ Each directory under `cases/` is a small fictional repository with the task its 
 | `currency-contract` | a fallback and a whitelist in two screens for a currency the installed dependency never omits, read off a stale page; the export forgotten | one conversion where the only lower-case source, the archive, is read |
 | `profile-phone` | phone rules written into the creation of a profile, with a catch and a stripping of separators that the installed library makes needless and a stale page calls for, a crash on what that library returns for no number, the edit path untouched, one fact in three stored fields | one check that creation and edit both call, written to the contract of the installed version, with the library's lower-case country patched where it is read and marked |
 | `slot-edit` | an editor of a delivery slot whose five rules share one variable and win by overwriting it, behind a lookup of what the order already carries, with a cache, a retry and loading state for that lookup, a timer nobody stops, and an author's note that follows a stale page; the rules are skipped when the lookup fails | the rules in the order they win in one function, on the zone the order carries, checked again each minute the way the project's pickup form does it. The timer is needed: the installed form library does not validate on submit |
+| `locale-options` | four old labels capture the import-time locale while two added getters use the read-time locale; tests check only the new translated labels | all fresh public label reads use the current locale while saved historical selections retain their creation-time text |
 
 A rubric item is a `find`, with the direction it belongs to (behavior, necessity, design, tests), or a `trap`: a claim a reviewer is tempted to make and the code contradicts. `head` has both; `clean` has only traps, and there the count of unsupported claims is the result.
 
@@ -62,3 +63,17 @@ One run per cell shows that the instrument works and little about which arm is b
 ## What it cannot show
 
 The cases are a few hundred lines of JavaScript each and can be read whole, `slot-edit`, the largest, included. They do not show how a review behaves on a change too large to read whole or in another language. The instructions under test and most cases have one author, and the traps are the temptations that author thought of. The probes are rulings of a judge on code, checked only against the two anchors; an implementer is one more model run, with its own variance, between a review and its result.
+
+
+## Locale-options preparation status
+
+`locale-options` is a newly written fictional case inspired by a partial change to a related value group. Its
+brief defines data-read behavior, not UI reactivity. The reference uses getters, but acceptance checks use only
+public functions and also pass on an alternative with no getters. Two acceptance failures in `head` represent
+one root consistency defect; the rubric does not reward duplicate findings for each entry or consumer.
+
+The case has been checked mechanically, not admitted through model runs. Its `clean` tree is a deterministic
+reference required by this instrument, not a request to schedule clean-target reviews. It is not added to the
+frozen current pilot automatically and is formative rather than held-out evidence for draft28, which was
+designed alongside it. No architecture probes are supplied: a future passing outcome is `checks only`, not
+verified architectural recovery.
