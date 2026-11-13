@@ -28,6 +28,7 @@ h1 { font-size: 1.55rem; line-height: 1.25; margin: 0; text-wrap: balance }
 h2 { font-size: 1.15rem; margin: 0 0 .6rem }
 h3 { font-size: 1rem; margin: 0 }
 p { margin: 0; max-width: 78ch }
+p, li, h1, h2, h3, summary, blockquote { overflow-wrap: anywhere }
 a { color: var(--accent) }
 code, pre, .mono { font-family: var(--mono); font-size: .92em }
 .sub { color: var(--muted); font-size: .92rem }
@@ -90,7 +91,6 @@ pre code { display: inline-block; min-width: 100% }
 .map[data-show="keep"] .seg:not(.v-keep), .map[data-show="fix"] .seg:not(.v-fix), .map[data-show="remove"] .seg:not(.v-remove),
 .map[data-show]:not([data-show="all"]) .gap { display: none }
 .finding { background: var(--surface); border: 1px solid var(--line); padding: .7rem 1rem; display: flex; flex-direction: column; gap: .4rem; scroll-margin-top: 4rem; min-width: 0 }
-.finding p { overflow-wrap: anywhere }
 input[type="text"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .2rem .5rem; width: 100%; max-width: 40rem }
 textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color: var(--fg); background: var(--surface); border: 1px solid var(--line); padding: .6rem .8rem }
 /* Annotation controls are excluded from persisted text offsets. */
@@ -150,7 +150,7 @@ section, [data-anchor] { scroll-margin-top: 6rem }
 .mechanism details .stack, .sources p { padding: .6rem .8rem }
 .sources { overflow-wrap: anywhere }
 mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: inherit }
-.annotation-marker { user-select: none; padding: 0 .3rem; margin-inline: .15rem; border-radius: 1rem; background: var(--accent); color: var(--bg); font-size: .8rem; vertical-align: super; line-height: 1.3 }
+.annotation-marker { user-select: none; min-width: 24px; height: 24px; padding: 0 .3rem; margin-inline: .15rem; border-radius: 1rem; background: var(--accent); color: var(--bg); font-size: .8rem; vertical-align: super; line-height: 1 }
 #annotation-editor { position: fixed; margin: 0; width: min(32rem,calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; padding: 1rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--surface); color: var(--fg); box-shadow: 0 8px 30px rgb(0 0 0 / .2); z-index: 20 }
 #annotation-editor blockquote { margin: .5rem 0; border-left: 3px solid var(--accent); padding-left: .6rem; max-height: 6rem; overflow: auto; white-space: pre-wrap }
 #annotation-editor textarea { min-height: 6rem; font: inherit; margin-block: .5rem; resize: vertical }
@@ -417,7 +417,7 @@ function mechanisms(review, model, t) {
           ${overview.length ? overview.map(row => `<span><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</span>`).join(" · ")
             : esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}</span></summary>
         <div class="stack mechanism-content">
-        ${overview.length ? `<div class="stack mechanism-weight"><strong>${esc(t("weight"))}</strong>
+        ${overview.length ? `<div class="stack mechanism-weight">
           <details><summary>${esc(t("weight.evidence"))}</summary><div class="stack">
             <p>${esc(t("weight.exclusive"))}: ${esc(weightCountsText(m.weight.exclusive, t))}</p>
             ${(m.weight.shared ?? []).map(s => `<p class="sub">${esc(t("weight.shared"))} ${s.with.map(esc).join(", ")}: ${esc(weightCountsText({ [s.kind]: s }, t))} <a href="#b${s.block}">B${s.block}</a></p>`).join("")}
@@ -503,7 +503,7 @@ ${offered ? `<section id="ideas" class="stack"><h2>${esc(t("ideas"))}</h2><p cla
 <section id="decisions" class="stack act" tabindex="-1"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>
   <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
-  <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button></div><div id="passages" class="stack"></div>
+  <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div><div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
 <button type="button" id="comment" class="floating" aria-keyshortcuts="Alt+Shift+M" title="Alt+Shift+M">${esc(t("comment"))}</button>
 <footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key}</code></details></footer>

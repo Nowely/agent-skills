@@ -18,6 +18,7 @@ export function annotations({ state, changed, t }) {
     if (!withUndo) deleted = null;
     undo.hidden = !withUndo; status.textContent = message; scheduleFeedback();
   }
+  document.getElementById('annotation-dismiss').addEventListener('click', dismissFeedback);
   feedback.addEventListener('pointerenter', () => clearTimeout(feedbackTimer));
   feedback.addEventListener('focusin', () => clearTimeout(feedbackTimer));
   feedback.addEventListener('pointerleave', scheduleFeedback);

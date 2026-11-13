@@ -36,11 +36,14 @@ async (page) => {
     await page.locator('#annotation-editor textarea').fill('First note'); await action('save');
     assert((await state()).passages[0].quote===first.quote,'Quote changed');
     await page.reload(); assert(await page.locator('#m1 mark').count()>0,'Reload lost highlight');
+    const markerBounds = await page.locator('#m1 .annotation-marker').boundingBox(); assert(markerBounds.width >= 24 && markerBounds.height >= 24, 'Annotation marker hit target is too small'); checks.push('annotation marker hit target');
     await page.locator('#m1 .annotation-marker').click(); await page.locator('#annotation-editor textarea').fill('discard edit'); await page.keyboard.press('Escape');
     assert((await state()).passages[0].note==='First note','Cancel edit changed saved text'); checks.push('keyboard create, restore, edit cancel');
     await page.locator('#m1 .annotation-marker').click(); await action('delete');
     assert((await state()).passages.length===0,'Delete kept passage'); await page.locator('#annotation-undo').click();
     assert((await state()).passages[0].note==='First note','Undo lost text'); checks.push('delete and undo');
+    await page.locator('#annotation-dismiss').focus(); await page.keyboard.press('Enter');
+    assert(await page.locator('.annotation-feedback').isHidden() && await page.locator('#annotation-status').textContent()==='', 'Keyboard dismissal kept feedback'); checks.push('keyboard dismiss feedback');
     for(const id of ['m1','m2']) {await select('#'+id+' .group.sub span');await page.locator('#comment').click();await page.locator('#annotation-editor textarea').fill(id);await action('save');}
     const duplicates=(await state()).passages.slice(-2);assert(duplicates[0].quote===duplicates[1].quote && duplicates[0].anchor.id!==duplicates[1].anchor.id,'Duplicate quote anchors collide');
     await card.evaluate(el => { el.open = false; }); await page.locator('#passages .passage').nth(1).locator('button').nth(1).click();
@@ -50,8 +53,11 @@ async (page) => {
     const long=await select('#m1');assert(long.quote.length>400,'Fixture is too short');await page.locator('#comment').click();await action('save');
     const full=(await state()).passages.at(-1);assert(full.quote===long.quote,'Long quote was truncated');assert((await page.locator('#out').inputValue()).includes(full.quote),'Export lost full quote');checks.push('overlap and full long export');
     const saved=JSON.stringify(await state());await page.evaluate(()=>{window.testConfirm=window.confirm;window.confirm=()=>false;});await page.locator('#clear').click();await page.evaluate(()=>{window.confirm=window.testConfirm;delete window.testConfirm;});assert(JSON.stringify(await state())===saved,'Cancelled reset erased notes');checks.push('clear-all cancellation');
-    await page.setViewportSize({width:390,height:844});await select('#m2 .mechanism-decision');await page.locator('#comment').click();
-    const bounds=await page.locator('#annotation-editor').boundingBox();assert(bounds.x>=0 && bounds.x+bounds.width<=391,'Editor overflows narrow viewport');await action('cancel');checks.push('narrow editor');
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'Report overflows narrow viewport');
+    assert(await page.locator('.seg .l').first().evaluate(el => getComputedStyle(el).whiteSpace === 'pre'), 'Diff whitespace no longer preserved');
+    await select('#m2 .mechanism-decision');await page.locator('#comment').click();
+    const bounds=await page.locator('#annotation-editor').boundingBox();assert(bounds.x>=0 && bounds.x+bounds.width<=391,'Editor overflows narrow viewport');await action('cancel');checks.push('narrow report and editor');
     await page.setViewportSize({width:1728,height:912});
     const code=await select('.seg pre code');await page.locator('#comment').click();await action('save');
     const codeNote=(await state()).passages.at(-1);assert(codeNote.where.includes('.js:') && codeNote.quote===code.quote,'Code location or whitespace lost');checks.push('code range and quote');

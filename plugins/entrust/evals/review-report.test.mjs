@@ -282,8 +282,9 @@ test("weight is rendered in HTML and text without changing the review record",
     const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
     const summary = card?.match(/<details><summary>([\s\S]*?)<\/summary>/)?.[1];
     if (!summary?.includes("A</h3>") || !summary.includes(MECHANISM.decision) || !summary.includes("Code:") || summary.includes("Shared with")) return "collapsed summary lacks the name, decision or compact weight";
-    return ["Shared with", "Not assessed", "Touched in this change"].every(text => page.includes(text) && result.stdout.includes(text))
-      && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence missing or derived totals persisted";
+    return ["Shared with", "Not assessed"].every(text => page.includes(text) && result.stdout.includes(text))
+      && result.stdout.includes("Touched in this change") && !card.includes("Touched in this change") && card.includes("Show counted lines")
+      && page.includes('aria-label="Dismiss notification"') && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence or dismiss control missing, redundant heading present, or derived totals persisted";
   });
 
 test("a review that does not match the diff is refused, every fault is listed, and no page is written",

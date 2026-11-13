@@ -7,10 +7,15 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- Interactive reports wrap long prose on narrow screens and give annotation markers a 24-pixel minimum
+  hit target. Feedback notifications can be dismissed with a labeled button.
+
 - Review feedback notifications dismiss after eight idle seconds, pause while hovered or focused, and clear
   expired undo state. Save/copy/restore messages use the same notification lifecycle.
 
 ### Changed
+
+- Mechanism cards show the counted-lines disclosure without a redundant weight heading.
 
 - Interactive report mechanism cards start collapsed, with the name, recommendation and attributed weight
   visible; expanding a card reveals its reasoning and evidence.
