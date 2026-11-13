@@ -322,3 +322,23 @@ is refused before the continuation assertions.
 
 **Issue text.** D6 relies on the checkout being an admissible write target, so its result depends on where the
 repository was cloned. Use an isolated admissible fixture repository for this test; keep the production guard.
+
+## E141. An early OpenCode model snapshot can hide available models
+
+**Evidence, level 3.** On OpenCode 2.1.2, an outside-sandbox catalogue read on one fresh server returned
+16 models at 348 ms, then 20 at 1,452 ms, including Carbon and Kimi. Desktop already listed both. The
+`GET /api/model` description explicitly permits a snapshot preceding initial plugin settlement.
+`plugin/skills/opencode/scripts/status.mjs:25-42` reads one snapshot and then closes its server, so the
+observed missing-model report was premature. No model turn or configuration change was needed to reproduce it.
+
+**Related inference, level 2.** `plugin/skills/opencode/scripts/client.mjs:54-64` reads the same snapshot,
+caches it for model resolution and rejects an absent ID. A worker can therefore encounter the same startup
+boundary; a worker refusal was not reproduced in this observation, and the later Carbon judgment started.
+
+**Check.** With a configured plugin-supplied model, compare the initial `/api/model` response with a later
+response from the same server after plugin initialization. Distinguish an incomplete catalogue from a
+settled catalogue that genuinely lacks the requested model; do not silently substitute another model.
+
+**Issue text.** Make model discovery/resolution respect OpenCode's documented plugin-initialization boundary
+before declaring a requested model unavailable. Prefer a readiness signal to an arbitrary fixed sleep.
+No installed adapter or user configuration was changed during the review experiment that found this.
