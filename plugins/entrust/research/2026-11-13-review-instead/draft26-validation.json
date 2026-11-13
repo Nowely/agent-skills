@@ -1,0 +1,32 @@
+{
+  "state": "prepared-not-run",
+  "workingReference": 25,
+  "candidate": 26,
+  "basePayloadCommit": "9ee0189c365024519bae92649610aada25d4cd21",
+  "shippingEntrypointChanged": false,
+  "dataContractChanged": false,
+  "runtimeScriptsChanged": false,
+  "newJsonFields": 0,
+  "newModelRuns": 0,
+  "repoSkillChecks": {
+    "passed": 8,
+    "total": 8,
+    "method": "candidate substituted into an isolated complete plugin layout"
+  },
+  "genericSkillCreatorValidator": {
+    "passed": false,
+    "reason": "Existing supported disable-model-invocation frontmatter is outside its allowlist; preserved explicit-only invocation policy."
+  },
+  "characters": {
+    "draft25Entry": 20059,
+    "draft26Entry": 20089,
+    "draft25RequiredText": 32851,
+    "draft26RequiredText": 35542
+  },
+  "files": {
+    "drafts/26-structure.md": "6e7c832a0a2926423bec755118e3f4c26b0affc9aefa70efd7fcf9968634552b",
+    "drafts/26-structure-examples.md": "2da3e3f305437d534d23110be4ea24f30c0e007495ebb83bcc080a52165fdb00",
+    "quality-criteria-26.md": "2b84e639c58ab7211d6189a7ce58836220744e1fc046314d22d03a460e517b87",
+    "draft26-plan.md": "9659255e756a5de9a2425980f01eb401f13d29128191acbe368f6a16992728a0"
+  }
+}

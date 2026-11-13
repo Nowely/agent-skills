@@ -53,3 +53,17 @@ The coordinator recommends keeping 23 as the released baseline and not promoting
 results. The candidate implementation remains unchanged pending the owner's decision. Corrected synthetic
 cases remain unadmitted/deferred; no clean-target round was run. Methodology and results share the same
 [PR comment](https://github.com/Nowely/agent-skills/pull/96#issuecomment-6847216007).
+
+## Draft 26 prepared after the owner/Carbon discussion
+
+The owner accepts schema breaks and uses the skill personally; draft 25 is now the working reference, while
+23 remains the released/historical baseline. This does not rewrite the round-6 results or claim that 25 won.
+[Draft 26](drafts/26-structure.md) strengthens source-backed mechanism costs and readable domain-rule ownership,
+with [one positive example and one empty split](drafts/26-structure-examples.md). No JSON fields or runtime
+scripts change. The [criteria](quality-criteria-26.md) assess remaining quality dimensions separately; the
+[preparation/next-pilot plan](draft26-plan.md) records Carbon's advice, the coordinator's qualifications and
+the conditional workload comparison. [Validation and hashes](draft26-validation.json) preserve what was checked.
+
+Draft 26 has not been run with a model and is not the shipping entrypoint. The candidate passed all eight
+repository skill-document checks in an isolated installed layout. The generic skill-creator validator rejects
+the existing explicit-invocation frontmatter; that policy was preserved, not removed to satisfy its allowlist.
