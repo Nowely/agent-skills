@@ -4,7 +4,7 @@
 
 Does requiring `instead` help a reviewer turn the original complicated solution into a necessary, understandable one, beyond the released draft 23? The primary target is the original private flawed snapshot used in the earlier research. Neither its later simplified snapshot nor a synthetic clean variant is a target in this round. Existing clean fixtures remain in the instrument for other rounds; their presence does not schedule them here.
 
-Compare two arms, three fresh reviews each: six reviews in total. Use Terra at the same requested xhigh effort and with the same tools and limits in both arms. Follow every completed review with a fresh Terra implementer at the same effort, six implementations if all reviews complete. Two independent judges, Astra and GLM, assess the reviews and implementations. This plans 14 substantive sessions, excluding external-model transport. Freeze exact model IDs and requested efforts before launch; report effective effort as unknown when the provider does not establish it. No task-only or no-skill control is added in this focused comparison, so it cannot establish benefit over unaided work.
+Compare two arms, three fresh reviews each: six reviews in total. Use Terra at the same requested xhigh effort and with the same tools and limits in both arms. Follow every completed review with a fresh Terra implementer at the same effort, six implementations if all reviews complete. Two independent judges, Carbon and GLM, assess the reviews and implementations. This plans 14 substantive sessions, excluding external-model transport. Freeze exact model IDs and requested efforts before launch; report effective effort as unknown when the provider does not establish it. No task-only or no-skill control is added in this focused comparison, so it cannot establish benefit over unaided work.
 
 This document prepares the round; editing it does not launch the agents. Corrected synthetic cases are deferred, not declared admitted. Add one later only for a named unresolved question the primary target cannot answer, with its scope and cost agreed first.
 
@@ -30,7 +30,7 @@ Line deletion is a diagnostic of proposed removal, not a score for architecture.
 
 ## Independent judgments and aggregation
 
-The coordinator prepares the same anonymized evaluation packet for Astra and GLM: task, source contracts, review artifacts and resulting patches, plus the same assessment questions above. They see neither the other judge's ruling nor an arm-labelled ranking. The report format may reveal the arm; record that limitation rather than claiming perfect blinding. Preserve each complete original answer separately, with its model, inputs and status.
+The coordinator prepares the same anonymized evaluation packet for Carbon and GLM: task, source contracts, review artifacts and resulting patches, plus the same assessment questions above. They see neither the other judge's ruling nor an arm-labelled ranking. The report format may reveal the arm; record that limitation rather than claiming perfect blinding. Preserve each complete original answer separately, with its model, inputs and status.
 
 Each judge assigns `supported`, `unsupported` or `unresolved` to each material recommendation and to the resulting solution's simplification, behavior preservation and ownership/readability assessment. Every ruling cites source/patch evidence and identifies the remaining gap. Align claims by meaning with their original locations; do not merge distinct recommendations just because they touch one function.
 

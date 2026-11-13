@@ -35,7 +35,7 @@ Each is a second change. They wait until the round shows where the chain breaks:
 
 ## How to tell
 
-The [next-round protocol](protocol.md) supersedes the earlier broad comparison plan: compare draft 23 and draft 25 on the original private flawed snapshot, three fresh reviews per arm, with complete matching skill packages. Follow every completed review with an isolated implementation and have Astra and GLM judge independently. Neither the later real snapshot nor synthetic clean variants are targets in this round. The protocol defines responsibilities, source parity, metric limitations and two-judge aggregation.
+The [next-round protocol](protocol.md) supersedes the earlier broad comparison plan: compare draft 23 and draft 25 on the original private flawed snapshot, three fresh reviews per arm, with complete matching skill packages. Follow every completed review with an isolated implementation and have Carbon and GLM judge independently. Neither the later real snapshot nor synthetic clean variants are targets in this round. The protocol defines responsibilities, source parity, metric limitations and two-judge aggregation.
 
 `blocks.mjs` reports deterministic keyword matches and line dispositions where a frozen line rubric exists. Its matches can be false positives as well as false negatives; a match is not proof that the reviewer recognized an existing alternative. Deletions do not measure decomposition or architecture. Judge the supported target and resulting patch separately.
 
@@ -43,4 +43,4 @@ Draft 25 earns its extra field only if it produces useful, supported simplificat
 
 ## Status
 
-Protocol updated; no new model runs started. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` remain unadmitted and deferred. Progress and results will be maintained in one new English comment on PR #96.
+[Input preparation](preparation.md) is complete; no new model runs started. No review has been written with draft 24 or 25, and the corrected `slot-edit` and `profile-phone` remain unadmitted and deferred. Progress and results will be maintained in one new English comment on PR #96.
