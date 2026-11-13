@@ -1,6 +1,6 @@
 # Draft 26 pilot: the controls it lacks
 
-An addition to [the pilot plan](draft26-plan.md), not a replacement. Nothing here has been run. [The protocol](protocol.md) defers synthetic cases until a named question needs one; this page names three, with the scope and cost of each.
+An addition to [the pilot plan](draft26-plan.md), not a replacement. Nothing here has been run. Where this page says draft 26, read [draft 27](drafts/27-shown-cost.md), which corrects it and takes its place in every arm. [The protocol](protocol.md) defers synthetic cases until a named question needs one; this page names three, with the scope and cost of each.
 
 ## Why the pilot alone cannot decide
 

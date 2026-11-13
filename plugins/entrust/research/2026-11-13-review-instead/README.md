@@ -71,3 +71,16 @@ the existing explicit-invocation frontmatter; that policy was preserved, not rem
 ## Controls proposed for the draft 26 pilot
 
 [Three controls](draft26-controls.md) the pilot lacks: an unaided arm on the private change's full packet, both drafts on the clean synthetic forms, and `slot-edit/head` for `instead` and for transfer. Draft 26 advances only if it adds a finding on the private change and no more false ones on good code than draft 25. Not run.
+
+## Draft 27: a preference does not replace a shown cost
+
+Draft 26 was read again before any run and three faults were found in it. [Draft 27](drafts/27-shown-cost.md) with [its examples](drafts/27-shown-cost-examples.md) corrects them and changes nothing else; draft 26 stays as written and was not run.
+
+- **A stated preference was enough for a finding.** Draft 26 said a declared readability standard supports a judgment, and that a shape preference is an idea only when it has neither a standard nor a shown cost. The skill declares the standard itself, so every reviewer could cite it and ask for a coordinator with named rules with nothing shown. In draft 27 the preference picks among arrangements once a reading burden is shown and does not stand in for showing one.
+- **The examples named features of the pilot's task.** A sentence on a file called `utils` and one on a timer as an optional convenience describe the private change the pilot runs on and what its owner later decided. A reviewer of that change would be handed the expected finding. Both sentences are gone; the general rule on an unrequested convenience stays on the page.
+- **Nothing showed ordered rules that stay together.** The example of a split not worth making was two conditions in one expression, so anything larger looked like the case for extraction. Draft 27 adds a function of four ordered guards with a small calculation inside one, whose verdict is `keep`.
+
+The list of signs of entanglement also regains the one the positive example rests on, a caller interpreting another unit's partial result.
+
+Checked as draft 26 was: substituted into the installed layout, all eight skill-document checks pass; the entrypoint is 20,114 bytes against draft 26's 20,093. In the pilot and in [its controls](draft26-controls.md), draft 27 takes draft 26's place. Not run.
+
