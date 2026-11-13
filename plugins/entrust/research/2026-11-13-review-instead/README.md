@@ -134,3 +134,19 @@ non-mutating preview. Both paths pass original and preview checks; the one Carbo
 local, supported by coordinator source verification. Both initial implementations use inline phases, so no
 helper-vs-inline or draft-version advantage is claimed. GLM was not launched. Frozen code, patches, evaluator,
 calibration, ratings and all actor usage are preserved; the shipping skill is unchanged.
+
+## Draft 29: the integrated page, frozen
+
+The page the pull request now ships was assembled from draft 28, draft 27's examples and the later text on mechanism weight, and had no number of its own. It is frozen here as [draft 29](drafts/29-integrated.md) with [its data contract](drafts/29-integrated-data.md); its examples are [draft 27's](drafts/27-shown-cost-examples.md), unchanged. A later change to the shipping page is a new draft, compared against this one.
+
+No review has been run with draft 29. Rounds 6 to 10 compared drafts with one another and none had an unaided arm, so what the skill adds to the model alone was last measured in round 4, where it added nothing on the one change tried. The round proposed for draft 29 is small and reuses packets that exist:
+
+| Target | Arms | Reviews |
+|---|---|---:|
+| `contact-import-v2/head` | `control`, draft 29 | 3 + 3 |
+| `locale-options/head` | `control`, draft 29 | 3 + 3 |
+| the private flawed snapshot, round 6's packet | `control`, draft 29 | 3 + 3 |
+| round 10's preview requirement on `contact-import-v2` | `task-only` implementers, then the same extension | 2 + 2 |
+
+Judged as rounds 8 and 9 were, by two judges on the frozen criteria, with round 10's evaluator for the last row. If the control matches draft 29 on all three, the skill's worth on these cases is its record and report, not what it finds, and harder cases are the next work. If it falls short, that is the first measured benefit since round 4. Not run; the launch is the owner's.
+
