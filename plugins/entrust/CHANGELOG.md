@@ -12,6 +12,9 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Mechanism weight uses one compact line per category, e.g. "44 lines added (34 shared)". Shared counts
+  sit beside the relevant addition/removal; accounting explanations remain in the expandable details.
+
 - Mechanism weight leads with its full attributed diff footprint in plain language, with shared lines as
   a subset. Exclusive counts and block details are expandable; zero operations are hidden and Russian/English
   line counts use plural forms. Unknown attribution remains distinct from verified zero.

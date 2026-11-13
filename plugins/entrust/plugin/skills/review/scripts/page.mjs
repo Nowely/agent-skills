@@ -412,7 +412,7 @@ function mechanisms(review, model, t) {
         <h3>${esc(m.name)}</h3>
         <p class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</p>
         <div class="stack mechanism-weight"><strong>${esc(t("weight"))}</strong>
-          ${overview.length ? overview.map(row => `<div><p><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</p>${row.shared ? `<p class="sub">${esc(row.shared)}</p>` : ""}</div>`).join("")
+          ${overview.length ? overview.map(row => `<p><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</p>`).join("")
             : `<p>${esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}</p>`}
           ${overview.length ? `<details><summary>${esc(t("weight.evidence"))}</summary><div class="stack">
             <p>${esc(t("weight.exclusive"))}: ${esc(weightCountsText(m.weight.exclusive, t))}</p>

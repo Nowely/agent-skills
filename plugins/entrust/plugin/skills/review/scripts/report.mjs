@@ -49,7 +49,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms }, t
       `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
       `${t("weight")}:`,
       ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
-        ? rows.flatMap(row => [`${t(`weight.category.${row.kind}`)}: ${row.text}`, ...(row.shared ? [row.shared] : [])])
+        ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`)
         : [t(m.weight ? "weight.unchanged" : "weight.unknown")]; })(),
       ...(m.weight?.shared.length ? [`${t("weight.exclusive")}: ${weightCountsText(m.weight.exclusive, t)}`] : []),
       ...(m.weight?.shared ?? []).map(s => `${t("weight.shared")} ${s.with.join(", ")}: ${weightCountsText({ [s.kind]: s }, t)} (B${s.block})`),

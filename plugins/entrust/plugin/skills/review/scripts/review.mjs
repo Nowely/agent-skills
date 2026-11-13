@@ -20,14 +20,14 @@ export function weightOverview(weight, t, language) {
   if (!weight) return [];
   let plurals;
   try { plurals = new Intl.PluralRules(language); } catch { plurals = new Intl.PluralRules("en"); }
-  const delta = counts => ["added", "removed"].filter(side => counts[side])
-    .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])).join(", ");
+  const delta = (counts, shared) => ["added", "removed"].filter(side => counts[side])
+    .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])
+      + (shared[side] ? ` (${t(`weight.shared-count.${plurals.select(shared[side])}`, shared[side])})` : "")).join(", ");
   return BLOCK_KINDS.flatMap(kind => {
     const own = weight.exclusive[kind], shared = weight.sharedCounts[kind];
     const total = { added: own.added + shared.added, removed: own.removed + shared.removed };
     if (!total.added && !total.removed) return [];
-    return [{ kind, text: delta(total), shared: shared.added || shared.removed
-      ? !own.added && !own.removed ? t("weight.all-shared") : t("weight.shared-subset", delta(shared)) : "" }];
+    return [{ kind, text: delta(total, shared) }];
   });
 }
 

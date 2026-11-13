@@ -249,13 +249,13 @@ test("weight overview leads with the full footprint, not exclusive lines or net 
     const weight = { exclusive: { code: counts(10), test: counts(), other: counts() }, sharedCounts: { code: counts(34), test: counts(), other: counts() } };
     const ru = labelsOf({ language: "ru" }), en = labelsOf({ language: "en" });
     let rows = weightOverview(weight, ru, "ru");
-    if (rows[0].text !== "добавлено 44 строки" || !rows[0].shared.includes("34 строки")) return "shared subset missing or double-counted";
+    if (rows[0].text !== "добавлено 44 строки (34 общие)") return "shared subset missing or double-counted";
     weight.exclusive.code = counts(20, 8); weight.sharedCounts.code = counts(30, 4);
-    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 50 строк, удалено 12 строк") return "mixed delta conflated";
+    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 50 строк (30 общих), удалено 12 строк (4 общие)") return "mixed delta conflated";
     weight.exclusive.code = counts(0, 30); weight.sharedCounts.code = counts();
     if (weightOverview(weight, ru, "ru")[0].text !== "удалено 30 строк") return "zero addition exposed";
     weight.exclusive.code = counts(); weight.sharedCounts.code = counts(34);
-    if (!weightOverview(weight, ru, "ru")[0].shared.startsWith("Все эти строки")) return "fully shared case misrepresented";
+    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 34 строки (34 общие)") return "fully shared case misrepresented";
     weight.sharedCounts.code = counts();
     if (weightOverview(weight, ru, "ru").length || weightOverview(null, ru, "ru").length) return "empty overview invented counts";
     for (const [n, expected] of [[1,"добавлена 1 строка"],[2,"добавлено 2 строки"],[5,"добавлено 5 строк"],[21,"добавлена 21 строка"]]) {
