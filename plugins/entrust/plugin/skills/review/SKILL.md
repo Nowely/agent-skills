@@ -5,7 +5,7 @@ description: >-
   responsibility boundaries, behavior and tests, with one reviewer or independent reviewers by direction.
 disable-model-invocation: true
 metadata:
-  version: "0.36.0"
+  version: "0.37.0"
 license: MIT
 ---
 
