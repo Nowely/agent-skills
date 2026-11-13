@@ -1,0 +1,28 @@
+{
+  "sourcePin": "d7e2e664e2961c1b8c651ecd579a80c4dee2bcd9",
+  "sourceAndReviewIdentityVerified": true,
+  "frozenSnapshotsUnchangedAfterChecks": true,
+  "evaluatorAndCriterionUnchanged": true,
+  "judgePacketFilesVerifiedUnchanged": 49,
+  "judgeFileChanges": [],
+  "judgeCommands": [],
+  "nativeReadBoundaries": "Visible calls inspected: assigned prompt/source/review files, local tests and Git; no evaluator/future-task/other-path reads observed in A. B input had one fresh commit and no review/history. This is an instruction/audit boundary, not proof of an OS-enforced sandbox.",
+  "authorityEvents": [
+    {
+      "actor": "b01",
+      "event": "Asked about approval; coordinator relayed existing explicit user authorization without technical guidance; same ongoing turn continued."
+    },
+    {
+      "actor": "b02",
+      "event": "Read-only handback before implementation; coordinator relayed existing authorization and resumed the same actor. Both turns and all usage preserved."
+    }
+  ],
+  "secondJudge": "Not requested: no material unresolved code/contract dispute remained after coordinator verification.",
+  "publicRelocations": "Local paths in final messages and judgment evidence relocated to published artifact/patch paths. Original raw records were captured during the run; see publicationResumption for availability limits.",
+  "publicationResumption": {
+    "originalTemporaryDirectory": "Unavailable during publication after interruption; no experiment was rerun.",
+    "verification": "All four published trees match saved snapshot hashes. All four patches replay from the pinned input or preceding A snapshot to those exact hashes. JSON, links and public-content patterns rechecked.",
+    "whitespaceCheck": "Passed excluding stored patch files. Full check reports blank context-line markers in patches; they are preserved verbatim and patch replay passed.",
+    "rawTranscriptAvailability": "Not reverified after the interruption; public code, checks, judgment and metrics are preserved in this bundle."
+  }
+}

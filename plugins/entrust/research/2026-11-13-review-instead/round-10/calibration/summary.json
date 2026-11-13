@@ -1,0 +1,80 @@
+[
+  {
+    "candidate": "correct-b",
+    "old": {
+      "planned": 13,
+      "passed": 13,
+      "failed": 0,
+      "unfinished": 0
+    },
+    "preview": {
+      "planned": 14,
+      "passed": 14,
+      "failed": 0,
+      "unfinished": 0
+    },
+    "failedPreviewChecks": []
+  },
+  {
+    "candidate": "bad-writes",
+    "old": {
+      "planned": 13,
+      "passed": 13,
+      "failed": 0,
+      "unfinished": 0
+    },
+    "preview": {
+      "planned": 14,
+      "passed": 8,
+      "failed": 6,
+      "unfinished": 0
+    },
+    "failedPreviewChecks": [
+      "preview: create and update",
+      "preview: normalized new duplicates and invalid last row",
+      "preview: existing valid duplicate survives later rejection",
+      "preview: whitespace and missing fields retain rejection lines",
+      "preview: multiline records retain physical line numbers",
+      "preview: same existing name preserves frozen import policy"
+    ]
+  },
+  {
+    "candidate": "bad-shared-policy",
+    "old": {
+      "planned": 13,
+      "passed": 11,
+      "failed": 2,
+      "unfinished": 0
+    },
+    "preview": {
+      "planned": 14,
+      "passed": 12,
+      "failed": 2,
+      "unfinished": 0
+    },
+    "failedPreviewChecks": [
+      "compatibility: normalized new duplicates and invalid last row",
+      "compatibility: existing valid duplicate survives later rejection"
+    ]
+  },
+  {
+    "candidate": "bad-transient-mutation",
+    "old": {
+      "planned": 13,
+      "passed": 13,
+      "failed": 0,
+      "unfinished": 0
+    },
+    "preview": {
+      "planned": 14,
+      "passed": 11,
+      "failed": 3,
+      "unfinished": 0
+    },
+    "failedPreviewChecks": [
+      "preview: create and update",
+      "preview: existing valid duplicate survives later rejection",
+      "preview: same existing name preserves frozen import policy"
+    ]
+  }
+]

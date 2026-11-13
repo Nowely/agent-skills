@@ -87,3 +87,11 @@ verified architectural recovery.
 Terra reviews on head only. Carbon and GLM support D2 in all four, but disagree on D1 (partial vs hit); preserve
 that distinction rather than derive an architecture score from the functional findings. No implementation,
 clean target or admission/transfer claim is included. The fixture and rubric remain unchanged.
+
+## Scoped contact-import-v2 outcome probe
+
+[Round 10](../../research/2026-11-13-review-instead/round-10/README.md) applies both draft28 reviews from round9
+and extends their resulting code with previewImport. Its explicitly scoped runner reuses the original 13
+checks and adds 14 frozen preview/compatibility checks, without automatic task-only or clean-target arms.
+Both paths pass and one Carbon assessment rates both changes local. This is a formative case-specific outcome,
+not admission of the fixture as a general architecture benchmark or an unmodified outcome.mjs recovery score.

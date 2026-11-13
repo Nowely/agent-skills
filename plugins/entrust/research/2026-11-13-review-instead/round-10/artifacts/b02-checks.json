@@ -1,0 +1,218 @@
+{
+  "id": "b02",
+  "oldAcceptance": {
+    "suite": "old",
+    "planned": 13,
+    "passed": 13,
+    "failed": 0,
+    "unfinished": 0,
+    "checks": [
+      {
+        "name": "new emails are created and known ones renamed, whatever their case and spacing",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a rejected row is reported with its line and reason and stops nothing",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "the same email twice in one file counts once and the last row wins",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a file that cannot be parsed writes nothing",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a quoted name may hold a comma and a line break",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "an address the single-contact form refuses is refused here",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "no valid row is dropped without a word",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a quoted empty short row is rejected, not treated as a blank line",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a blank physical line is ignored",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "a whitespace-only physical row is rejected",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "repeated existing email counts once and uses the last valid row",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "an invalid last duplicate is rejected and the last valid row wins",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "the import uses the address book email validator's policy",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      }
+    ]
+  },
+  "previewAcceptance": {
+    "suite": "preview",
+    "planned": 14,
+    "passed": 14,
+    "failed": 0,
+    "unfinished": 0,
+    "checks": [
+      {
+        "name": "preview: create and update",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: create and update",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: normalized new duplicates and invalid last row",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: normalized new duplicates and invalid last row",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: existing valid duplicate survives later rejection",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: existing valid duplicate survives later rejection",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: whitespace and missing fields retain rejection lines",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: whitespace and missing fields retain rejection lines",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: multiline records retain physical line numbers",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: multiline records retain physical line numbers",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: same existing name preserves frozen import policy",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: same existing name preserves frozen import policy",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "preview: malformed file never writes",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      },
+      {
+        "name": "compatibility: malformed file preserves existing contacts",
+        "status": "passed",
+        "exit": 0,
+        "signal": null,
+        "error": null
+      }
+    ]
+  },
+  "ownTests": {
+    "status": "passed",
+    "exit": 0,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  "passed": true
+}

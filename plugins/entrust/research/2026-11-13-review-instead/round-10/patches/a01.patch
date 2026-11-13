@@ -1,0 +1,216 @@
+diff --git a/src/contacts/import.js b/src/contacts/import.js
+index d2b8431..f096bb8 100644
+--- a/src/contacts/import.js
++++ b/src/contacts/import.js
+@@ -1,104 +1,33 @@
+-const EMAIL_RE = /^\S+@\S+$/;
+-const MAX_RETRIES = 3;
+-
+-export function importContacts(text, store, options = {}) {
+-  const mode = options.mode || "lenient";
+-  const separator = mode === "legacy" ? ";" : ",";
+-  const result = { created: 0, updated: 0, rejected: [], rows: [] };
+-
+-  let data = text;
+-  if (data.charCodeAt(0) === 0xfeff) {
+-    data = data.slice(1);
+-  }
+-  const lines = data.split("\n");
+-  let header = null;
+-
+-  for (let i = 0; i < lines.length; i++) {
+-    let line = lines[i];
+-    if (line.endsWith("\r")) {
+-      line = line.slice(0, -1);
+-    }
+-    if (line.trim() === "") {
+-      continue;
+-    }
+-
+-    // split the line into cells, honouring quotes
+-    const cells = [];
+-    let current = "";
+-    let inQuotes = false;
+-    for (let j = 0; j < line.length; j++) {
+-      const ch = line[j];
+-      if (ch === '"') {
+-        if (inQuotes && line[j + 1] === '"') {
+-          current += '"';
+-          j++;
+-        } else {
+-          inQuotes = !inQuotes;
+-        }
+-      } else if (ch === separator && !inQuotes) {
+-        cells.push(current);
+-        current = "";
+-      } else {
+-        current += ch;
+-      }
+-    }
+-    cells.push(current);
+-
+-    if (header === null) {
+-      header = cells.map((cell) => cell.trim().toLowerCase());
+-      continue;
++import { parseCsv } from "../lib/csv.js";
++import { isEmail, normalizeEmail } from "./email.js";
++
++export function importContacts(text, store) {
++  const rows = parseCsv(text);
++  const result = { created: 0, updated: 0, rejected: [] };
++  const contacts = new Map();
++
++  for (const row of rows) {
++    const fields = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value]));
++    const name = (fields.name ?? "").trim();
++    const email = fields.email ?? "";
++    if (!name) {
++      result.rejected.push({ line: row.line, reason: "name is empty" });
++    } else if (!isEmail(email)) {
++      result.rejected.push({ line: row.line, reason: "email is not an address" });
++    } else {
++      contacts.set(normalizeEmail(email), name);
+     }
++  }
+ 
+-    const nameIndex = header.indexOf("name");
+-    const emailIndex = header.indexOf("email");
+-    let name = nameIndex >= 0 && cells[nameIndex] !== undefined ? cells[nameIndex] : "";
+-    const email = emailIndex >= 0 && cells[emailIndex] !== undefined ? cells[emailIndex] : "";
+-    name = name.trim();
+-
+-    if (name === "") {
+-      if (mode === "strict") {
+-        throw new Error(`line ${i + 1}: name is empty`);
+-      }
+-      result.rejected.push({ line: i + 1, reason: "name is empty" });
+-      continue;
++  for (const [email, name] of contacts) {
++    const existing = store.findByEmail(email);
++    if (existing) {
++      if (existing.name !== name) store.rename(existing.id, name);
++      result.updated++;
+     } else {
+-      if (!EMAIL_RE.test(email.trim().toLowerCase())) {
+-        if (mode === "strict") {
+-          throw new Error(`line ${i + 1}: email is not an address`);
+-        }
+-        result.rejected.push({ line: i + 1, reason: "email is not an address" });
+-        continue;
+-      } else {
+-        // temporary: skip addresses of the old test domain
+-        if (email.trim().toLowerCase().endsWith("@example.invalid")) {
+-          continue;
+-        }
+-        const existing = store.findByEmail(email.trim().toLowerCase());
+-        if (existing) {
+-          if (existing.name !== name) {
+-            store.rename(existing.id, name);
+-          }
+-          result.updated++;
+-        } else {
+-          let attempts = 0;
+-          let saved = false;
+-          while (attempts < MAX_RETRIES && !saved) {
+-            try {
+-              store.insert({ name, email: email.trim().toLowerCase() });
+-              saved = true;
+-            } catch (e) {
+-              attempts++;
+-            }
+-          }
+-          if (!saved) {
+-            continue;
+-          }
+-          result.created++;
+-        }
+-        result.rows.push({ line: i + 1, name, email });
+-      }
++      store.insert({ name, email });
++      result.created++;
+     }
+   }
+-
+   return result;
+ }
+diff --git a/test/import.test.js b/test/import.test.js
+index 15f8d08..16413e0 100644
+--- a/test/import.test.js
++++ b/test/import.test.js
+@@ -2,25 +2,64 @@ import test from "node:test";
+ import assert from "node:assert/strict";
+ import { ContactStore } from "../src/contacts/store.js";
+ import { importContacts } from "../src/contacts/import.js";
++import { CsvError } from "../src/lib/csv.js";
+ 
+-test("imports a file", () => {
++test("counts each email once and keeps its last valid name", () => {
+   const store = new ContactStore();
+   store.insert({ name: "Old", email: "ann@site.test" });
+-  const result = importContacts("name,email\nAnn,ann@site.test\nBob,bob@site.test\n,nobody@site.test\n", store);
+-  assert.equal(result.created, 1);
+-  assert.equal(result.updated, 1);
+-  assert.equal(result.rejected.length, 1);
+-  assert.equal(result.rows.length, 2);
++  const result = importContacts([
++    " Name , EMAIL ",
++    "Ann,ann@site.test",
++    "Anne, ANN@SITE.TEST ",
++    "Bob,bob@site.test",
++    "Bobby, BOB@SITE.TEST ",
++    ",bob@site.test",
++    "Test,ann@example.invalid",
++  ].join("\n"), store);
++  assert.deepEqual(result, {
++    created: 2, updated: 1, rejected: [{ line: 6, reason: "name is empty" }],
++  });
++  assert.deepEqual(store.all().map(({ name, email }) => ({ name, email })), [
++    { name: "Anne", email: "ann@site.test" },
++    { name: "Bobby", email: "bob@site.test" },
++    { name: "Test", email: "ann@example.invalid" },
++  ]);
+ });
+ 
+-test("strict mode stops at the first bad row", () => {
+-  assert.throws(() => importContacts("name,email\n,nobody@site.test\n", new ContactStore(), { mode: "strict" }));
++test("reports missing fields, whitespace, invalid emails and physical starting lines", () => {
++  const store = new ContactStore();
++  const result = importContacts('\ufeffname,email\r\n\r\n   \r\n""\r\nOnly name\r\nBad,ann@site\r\n"Two\r\nlines",valid@site.test\r\n"",other@site.test\r\nGood,good@site.test\r\n', store);
++  assert.deepEqual(result, {
++    created: 2, updated: 0, rejected: [
++      { line: 3, reason: "name is empty" },
++      { line: 4, reason: "name is empty" },
++      { line: 5, reason: "email is not an address" },
++      { line: 6, reason: "email is not an address" },
++      { line: 9, reason: "name is empty" },
++    ],
++  });
++  assert.deepEqual(store.all().map(({ name }) => name), ["Two\r\nlines", "Good"]);
++});
++
++test("does not write when parsing fails after a valid row", () => {
++  for (const invalid of ['"unclosed,bad@site.test', 'Bad"quote,bad@site.test']) {
++    const store = new ContactStore();
++    store.insert({ name: "Old", email: "ann@site.test" });
++    assert.throws(() => importContacts(`name,email\nNew,ann@site.test\n${invalid}`, store), CsvError);
++    assert.deepEqual(store.all(), [{ id: 1, name: "Old", email: "ann@site.test" }]);
++  }
+ });
+ 
+-test("legacy files use semicolons", () => {
+-  assert.equal(importContacts("name;email\nAnn;ann@site.test\n", new ContactStore(), { mode: "legacy" }).created, 1);
++test("propagates storage errors", () => {
++  const store = { findByEmail: () => null, insert: () => { throw new Error("write failed"); } };
++  assert.throws(() => importContacts("name,email\nAnn,ann@site.test", store), /write failed/);
+ });
+ 
+-test("old test addresses are skipped", () => {
+-  assert.equal(importContacts("name,email\nAnn,ann@example.invalid\n", new ContactStore()).created, 0);
++test("handles quoted names and reports the start of an invalid multiline row", () => {
++  const store = new ContactStore();
++  const result = importContacts('email,name\nann@site.test,"Ann, ""Ace"""\ninvalid,"Two\nlines"\n', store);
++  assert.deepEqual(result, {
++    created: 1, updated: 0, rejected: [{ line: 3, reason: "email is not an address" }],
++  });
++  assert.equal(store.findByEmail("ann@site.test").name, 'Ann, "Ace"');
+ });

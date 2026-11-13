@@ -1,0 +1,21 @@
+{
+  "note": "Raw adapter accounting, not directly additive to native counters or proof of billed cost. Effective provider effort unconfirmed. Coordinator and transport-relay usage excluded.",
+  "judge": "Carbon",
+  "model": "openrouter/google/gemini-4-carbon",
+  "requestedEffort": "high",
+  "effectiveEffort": null,
+  "durationSeconds": 317.705,
+  "adapterReportedUsage": {
+    "input": 55862,
+    "output": 3921,
+    "reasoning": 15133,
+    "cache": {
+      "read": 257684,
+      "write": 0
+    }
+  },
+  "adapterReportedCost": 0.3280324,
+  "formatCorrections": 0,
+  "toolCalls": 41,
+  "shellCommands": 0
+}

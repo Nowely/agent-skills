@@ -122,3 +122,11 @@ case. [Existing decomposition cases](round-8/decomposition-readiness.md) were in
 with independent Carbon and GLM assessment. Both support actionable targets (D2) in all four; design diagnosis
 depth (D1) is disputed, not averaged. Each arm proposes one pure-helper target and one inline phased target.
 No incremental advantage for draft28 or implemented architectural recovery is claimed. The skill remains unchanged.
+
+## Round 10: implemented targets and a new requirement
+
+[Round 10](round-10/README.md) applies both draft28 reviews from round9, then has fresh Terra agents add a
+non-mutating preview. Both paths pass original and preview checks; the one Carbon judge rates both changes
+local, supported by coordinator source verification. Both initial implementations use inline phases, so no
+helper-vs-inline or draft-version advantage is claimed. GLM was not launched. Frozen code, patches, evaluator,
+calibration, ratings and all actor usage are preserved; the shipping skill is unchanged.

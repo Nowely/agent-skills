@@ -1,0 +1,8 @@
+Implement a change to an existing small project.
+
+- Repository: <RUN>/repo. HEAD is the starting code.
+- Existing behavior contract: <RUN>/brief.md.
+- New requirement: <RUN>/change.md. Implement it while preserving existing behavior.
+- Read the existing code and its tests. Choose the smallest complete, readable change; internal layout and helper names are your choice. Add meaningful tests and run local tests with the available Node runtime. No dependency installation or network is needed.
+
+Limits: read only this prompt and <RUN>. Do not load memory, chat history, other skills, neighboring directories, other runs or additional agents. Change files only in <RUN>/repo; put non-source notes/output only in <RUN>/out. Do not commit or push. No browser or private project work. Return a concise Russian note of what changed, why, and exact test results. Also name the code regions you needed to inspect and any uncertainty that materially affected the implementation, without using time or file counts as a quality claim.
