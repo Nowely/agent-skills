@@ -30,7 +30,7 @@ import { shortName } from "./launch.mjs";
 const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
 // This plugin's version; evals/package.test.mjs keeps it in step with the manifest.
-const VERSION = "0.37.0";
+const VERSION = "0.38.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's reasoning levels and the server's accepted efforts; preflightModel()
 // checks a requested one against the selected model before the turn.
