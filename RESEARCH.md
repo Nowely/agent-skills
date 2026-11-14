@@ -32,6 +32,19 @@ skill was absent. Hold other conditions common where feasible, record actual ord
 explain what cannot be observed. Randomization and neutral labels can reduce biases; they do not establish
 identical contexts, independence or full blinding by themselves.
 
+## Review prior work
+
+When designing a new skill, procedure or unfamiliar solution, look for existing approaches before
+settling the design if they could affect the choice. A narrow local change need not start a separate
+survey when the relevant precedent is already known.
+
+Look for applicable tools and established practices as well as original research. Follow material claims
+to their owners' documentation, source code or studies; check the evidence for adoption when calling a
+solution popular. Popularity is a reason to examine an approach, not proof that it works here. Record the
+sources, relevant context, benefits, tradeoffs and limits, and what the design reuses, adapts or does
+differently. If useful evidence cannot be found or accessed, record that limit instead of asserting that
+no prior work exists. Apply the privacy and disclosure boundaries below to searches and source sharing.
+
 ## Material and evaluation
 
 Distinguish previously used formative or regression material from material independent of the development
