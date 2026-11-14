@@ -22,6 +22,7 @@ A failure at the same place was seen once on #95. A possible cause, not confirme
 run is then copied whole, `.git` included, while housekeeping that the commit started in the background repacks
 `.git/objects`. The instrument's commits now run with `gc.auto=0` and `maintenance.auto=false`. If the failure
 recurs with that in place, the cause is elsewhere.
+The macOS job on `1f2d31d`, the first with that setting, passed review-eval.
 
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 

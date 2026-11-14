@@ -7,6 +7,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- `entrust:codex`: a run whose deadline falls while its own server is still answering a setup request ends
+  as a timeout with its report. The request the deadline cancelled no longer rewrites it as a usage error
+  (E143, seen once on a loaded macOS runner).
 - Interactive reports wrap long prose on narrow screens and give annotation markers a 24-pixel minimum
   hit target. Feedback notifications can be dismissed with a labeled button; they expire after eight idle
   seconds, pause while hovered or focused, and clear expired undo state.
