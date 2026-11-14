@@ -3,6 +3,16 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `entrust:review` reads "smallest" as the result, not the diff, and follows a design standard: each
+  structural finding rests on a change of the task walked through the code as written and the target, with
+  fewer places to edit or read in the target. Reviews record these as `scenarios`, and every unit of the
+  change gives a `reason` for its verdict; the report check requires both, so records from earlier versions
+  that list units no longer pass. Not yet measured.
+
 ## 0.38.0 — 2026-11-14
 
 ### Fixed

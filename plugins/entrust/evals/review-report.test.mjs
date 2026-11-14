@@ -34,7 +34,9 @@ const REVIEW = {
   screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
     differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
     { name: "The page", missing: "No picture was given." }],
-  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
+  scenarios: [{ id: 1, change: "Another <code> format is read.", requirements: [1], now: { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: the row loop"] },
+    target: { edit: ["src/invoices/upper.js: upper"], read: [] } }],
+  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep", reason: "One job, read whole at a glance." }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
     { path: "src/invoices/archive.js", added: "2, 4", removed: "3", unit: "readArchive", does: "Converts the code.", serves: [1], verdict: "keep" },
@@ -208,6 +210,34 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
     if (render((r) => { r.mechanisms = {}; }).status !== 1) return "accepted a non-list inventory";
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
+  });
+
+test("a structural finding rests on a change of the task that the target makes more local, and every unit says why its verdict",
+  "design findings were justified by the bugs they sat beside and kept units carried no reason; a scenario walked through both structures is what shows the cost",
+  () => {
+    const DESIGN = { id: 3, title: "A rule cannot change alone", direction: "design", evidence: "judgment", at: "src/invoices/archive.js:2",
+      what: "The format and the conversion share one loop.", shown_by: "Scenario 1.", fix: "Name the conversion; scenario 1 stays in two places without it.", scenarios: [1] };
+    const good = render((r) => { r.findings.push(DESIGN); });
+    if (good.status !== 0) return good.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('id="scenarios"') || !page.includes("Another &lt;code&gt; format is read.") || page.includes("Another <code> format")) return "the scenario is not drawn, or its text is not escaped";
+    if (!page.includes("One job, read whole at a glance.") || !good.stdout.includes("Reason: One job, read whole at a glance.")) return "a kept unit's reason is lost in presentation";
+    if (!good.stdout.includes("## Changes tried") || !good.stdout.includes("1. Another <code> format is read. (requirement 1)") || !good.stdout.includes("Target solution: edit: src/invoices/upper.js: upper. read: nothing.")) return `the printout lacks the scenario:\n${good.stdout}`;
+    const refused = [
+      [(r) => { r.findings.push({ ...DESIGN, scenarios: undefined }); }, "is about design and names no scenario"],
+      [(r) => { r.findings.push(DESIGN); r.scenarios[0].target = structuredClone(r.scenarios[0].now); }, "none of its scenarios edits or reads fewer places"],
+      [(r) => { r.findings.push({ ...DESIGN, scenarios: [9] }); }, "names scenario 9"],
+      [(r) => { delete r.scenarios; }, '"scenarios" lists nothing'],
+      [(r) => { r.scenarios[0].now.edit = []; }, '"now.edit" lists no place'],
+      [(r) => { delete r.units[0].reason; }, 'unit readArchive has no "reason"'],
+    ];
+    for (const [change, error] of refused) {
+      const bad = render(change);
+      if (bad.status !== 1 || !bad.stderr.includes(error)) return `not refused with "${error}": ${bad.stderr.slice(0, 300)}`;
+    }
+    // A target that leaves those places as they are needs no target side; a review with no unit of the change needs no scenario.
+    if (render((r) => { delete r.scenarios[0].target; }).status !== 0) return "a scenario whose target is the code as written was refused";
+    return render((r) => { r.units = [r.units[1]]; delete r.scenarios; r.blocks[0].unit = undefined; }).status === 0 || "a review with no unit of the change was asked for scenarios";
   });
 
 test("mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns",
