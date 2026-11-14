@@ -376,6 +376,55 @@ test("a block to remove may name a whole file",
     return status === 0 || `refused: ${stderr}`;
   });
 
+test("an unlinked block is not presented as unnecessary",
+  "an absent requirement link does not prove that deleting the block preserves requirements",
+  () => {
+    for (const [language, item, group] of [
+      ["en", "No requirement link recorded", "Blocks without recorded requirement links"],
+      ["ru", "Связь с требованием не указана", "Блоки без указанной связи с требованием"],
+    ]) {
+      const result = render((r) => { r.language = language; r.blocks[0].serves = []; });
+      if (result.status !== 0) return result.stderr;
+      const page = fs.readFileSync(html, "utf8");
+      if (!page.includes(item) || !page.includes(group) || !result.stdout.includes(item))
+        return `${language}: an unlinked block lacks the neutral label`;
+      if (page.includes("No requirement would fail without these") || page.includes("Без этих блоков ни одно требование не нарушается")
+        || result.stdout.includes("Serves nothing")) return `${language}: an unlinked block is presented as unnecessary`;
+    }
+    return true;
+  });
+
+test("the review procedure distinguishes a complete map from an incomplete review",
+  "an unread part must not be presented as a kept block or a checked complete report",
+  () => {
+    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
+    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
+    const interactive = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
+    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
+    const complete = [
+      "After refutation, map every nonblank changed line to exactly one block",
+      "If mapping exposes an analysis gap",
+      "For a complete review, finalize `review.json`",
+      "if the reconciled work covers the diff and each requested direction",
+    ];
+    const partial = [
+      "If the diff cannot be covered whole or a requested direction remains unreviewed",
+      "no valid complete review or canonical `review.json` was finalized",
+      "no valid complete line map was finalized",
+      "An unread part is not `keep`",
+      "The checker maps parsed text hunks, not binary changes, file modes or other diff metadata",
+      "If artifact writes are prohibited, return the complete JSON inline",
+    ];
+    const absent = [...complete.filter((text) => !skill.toLowerCase().includes(text.toLowerCase())),
+      ...partial.filter((text) => !page.includes(text)),
+      ...["a partial review has no canonical report to render", "If writes are prohibited"].filter((text) => !interactive.includes(text)),
+      ...["for incomplete coverage", "partial review"].filter((text) => !roles.includes(text))];
+    if (absent.length) return `review instructions omit: ${absent.join("; ")}`;
+    const positions = ["### 5. Refute", complete[0], complete[2]].map((text) => skill.indexOf(text));
+    return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1]))
+      || "full line mapping is not after refutation and before finalization";
+  });
+
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {

@@ -1,6 +1,6 @@
 # Interactive presentation
 
-Render only when the user asks. Every review already has a canonical `review.json` as specified by the [data contract](report-data.md). Presentation does not request a second review or authorize project edits.
+Render only when the user asks and artifact writes are permitted. A complete review has a canonical `review.json` as specified by the [data contract](report-data.md); a partial review has no canonical report to render. If writes are prohibited, explain that HTML cannot be produced until they are allowed. Presentation does not request a second review or authorize project edits.
 
 1. Locate the report and its recorded source snapshot. Verify revision/diff identity and local image digests from `change.sources` and `coverage`. If inputs are unavailable or have changed, name the missing evidence; do not silently use a new source version.
 2. From that repository, run:

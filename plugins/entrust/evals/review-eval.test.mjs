@@ -10,8 +10,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EVALS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { CASES, VARIANTS, prepare } from "./review/prepare.mjs";
-import { round } from "./review/round.mjs";
+import { CASES, VARIANTS, packageDigest, prepare } from "./review/prepare.mjs";
+import { PROTOCOL, round } from "./review/round.mjs";
 import { rubricOf, score, table } from "./review/score.mjs";
 import { TASK_ONLY, implement } from "./review/implement.mjs";
 import { outcome, table as outcomeTable } from "./review/outcome.mjs";
@@ -68,43 +68,307 @@ test("the clean solution meets the brief and the first-written one fails exactly
     return true;
   });
 
-test("a prepared run holds one variant as one commit and nothing of the answer",
-  "a reviewer who can open the rubric, the checks or the other variant is graded on reading them",
+function skillPackage() {
+  const dir = tempDir("review-skill-");
+  fs.mkdirSync(path.join(dir, "references", "nested"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "scripts"));
+  fs.writeFileSync(path.join(dir, "SKILL.md"), "---\nname: review\n---\nSee references/nested/data.md.\n");
+  fs.writeFileSync(path.join(dir, "references", "nested", "data.md"), "Reference.\n");
+  fs.writeFileSync(path.join(dir, "scripts", "check.mjs"), "export {};\n");
+  return dir;
+}
+
+test("a prepared run holds one variant, an identical neutral request and a complete skill package",
+  "the skill is delivered separately, not through a hint in the user's request",
   () => {
+    const skill = skillPackage(), expected = "Review the change.\n\nRepository: .\nChange: HEAD~1..HEAD\nTask: ../brief.md";
     for (const name of names) {
       for (const variant of VARIANTS) {
-        const control = prepare(name, variant), arm = prepare(name, variant, path.join(CASES, name, "brief.md"));
-        const git = (...args) => execFileSync("git", args, { cwd: path.join(arm.run, "repo"), encoding: "utf8" }).trim();
+        const control = prepare(name, variant), arm = prepare(name, variant, skill);
+        const git = (...args) => execFileSync("git", args, { cwd: arm.cwd, encoding: "utf8" }).trim();
         if (git("rev-list", "--count", "HEAD") !== "2") return `${name}/${variant}: expected two commits`;
         if (git("status", "--porcelain") !== "") return `${name}/${variant}: the working tree differs from HEAD`;
         const tree = files(path.join(CASES, name, variant)).map((f) => f.split(path.sep).join("/")).join("\n");
         if (git("ls-files").split("\n").sort().join("\n") !== tree) return `${name}/${variant}: HEAD is not the ${variant} tree`;
         if (git("diff", "--name-only", "HEAD~1", "HEAD") === "") return `${name}/${variant}: the two commits do not differ`;
         const beside = fs.readdirSync(arm.run).sort().join(" ");
-        if (beside !== "brief.md instructions.md repo") return `${name}/${variant}: the run directory holds ${beside}`;
-        if (fs.existsSync(path.join(control.run, "instructions.md"))) return `${name}/${variant}: the control arm got instructions`;
-        const extra = arm.prompt.replaceAll(arm.run, "RUN").split("\n")
-          .filter((l) => !control.prompt.replaceAll(control.run, "RUN").split("\n").includes(l));
-        if (extra.length !== 1 || !extra[0].includes("instructions.md")) return `${name}/${variant}: the arms' prompts differ by more than the instructions line`;
+        if (beside !== "brief.md repo skill") return `${name}/${variant}: the run directory holds ${beside}`;
+        if (control.skill !== null || fs.existsSync(path.join(control.run, "skill"))) return `${name}/${variant}: the control arm got a skill`;
+        if (control.cwd !== path.join(control.run, "repo") || arm.cwd !== path.join(arm.run, "repo")
+          || control.prompt !== expected || arm.prompt !== expected)
+          return `${name}/${variant}: cwd or user request differs`;
+        if (files(skill).join("\n") !== files(arm.skill.path).join("\n") || arm.skill.sha256 !== packageDigest(skill))
+          return `${name}/${variant}: package contents or digest differ`;
+        if (files(skill).some((f) => !fs.readFileSync(path.join(skill, f)).equals(fs.readFileSync(path.join(arm.skill.path, f)))))
+          return `${name}/${variant}: a package file differs`;
       }
-      if (prepare(name, "head").prompt.replace(/review-run-\w+/g, "") !== prepare(name, "clean").prompt.replace(/review-run-\w+/g, ""))
-        return `${name}: the prompt tells the variants apart`;
     }
     return true;
+  });
+
+test("the package digest detects changed references and refuses symbolic links",
+  "a matching entrypoint does not identify the package delivered to the host",
+  () => {
+    const skill = skillPackage(), first = prepare(names[0], "head", skill);
+    fs.writeFileSync(path.join(skill, "references", "nested", "data.md"), "Changed reference.\n");
+    try { prepare(names[0], "head", skill, first.skill.sha256); return "accepted a package changed after preflight"; }
+    catch (error) { if (!/changed since round preflight/.test(error.message)) return error.message; }
+    const second = prepare(names[0], "head", skill);
+    if (first.skill.sha256 === second.skill.sha256 || first.skill.sha256 !== packageDigest(first.skill.path))
+      return "a changed reference was not reflected in the prepared package digest";
+    fs.writeFileSync(path.join(first.skill.path, "references", "nested", "data.md"), "Substituted reference.\n");
+    if (first.skill.sha256 === packageDigest(first.skill.path)) return "a substituted prepared reference was not detected";
+    fs.symlinkSync("nested/data.md", path.join(skill, "references", "link.md"));
+    try { prepare(names[0], "head", skill); return "a symbolic link was accepted"; }
+    catch (error) { return /symbolic link/.test(error.message) || error.message; }
+  });
+
+test("the documented digest command checks the copied package",
+  "the operator must be able to compare the prepared bytes immediately before activation",
+  () => {
+    const page = fs.readFileSync(path.join(EVALS, "review/README.md"), "utf8");
+    const command = page.match(/^   (node --input-type=module .+)$/m)?.[1];
+    if (!command) return "the documented digest command is missing";
+    const prepared = prepare(names[0], "head", skillPackage());
+    const check = () => execFileSync("/bin/sh", ["-c", command], {
+      cwd: path.dirname(EVALS), env: { ...process.env, SKILL_DIR: prepared.skill.path }, encoding: "utf8",
+    }).trim();
+    if (check() !== prepared.skill.sha256) return "the documented command differs from the manifest digest";
+    fs.writeFileSync(path.join(prepared.skill.path, "references", "nested", "data.md"), "Changed after preparation.\n");
+    return check() !== prepared.skill.sha256 || "the documented command did not detect a changed copy";
   });
 
 test("a round prepares every case, variant and arm once per repetition and records which run is which",
   "the manifest is the only place a run id is tied to its arm",
   () => {
-    const dir = tempDir("review-round-"), instructions = path.join(CASES, names[0], "brief.md");
-    round(dir, ["control", `draft=${instructions}`]);
-    const { runs } = round(dir, ["control", `draft=${instructions}`]);
+    const dir = tempDir("review-round-"), skill = skillPackage();
+    round(dir, ["control", `draft=${skill}`]);
+    const { runs } = round(dir, ["control", `draft=${skill}`]);
     const cells = runs.map((r) => `${r.case} ${r.variant} ${r.arm}`);
     const twice = [...new Set(cells)].every((cell) => cells.filter((c) => c === cell).length === 2);
+    const prompts = runs.map((r) => fs.readFileSync(path.join(dir, "prompts", `${r.run}.txt`), "utf8"));
     return runs.length === names.length * VARIANTS.length * 2 * 2 && twice && new Set(runs.map((r) => r.run)).size === runs.length
-      && runs.every((r) => fs.existsSync(path.join(dir, "prompts", `${r.run}.txt`)) && (r.arm === "control") === (r.instructions === null))
+      && prompts.every((prompt) => prompt === prompts[0])
+      && runs.every((r) => r.protocol === PROTOCOL && fs.existsSync(path.join(r.cwd, ".git"))
+        && (r.arm === "control" ? r.skill === null : r.skill.sha256 === packageDigest(r.skill.path)))
       && fs.existsSync(path.join(dir, "returns")) && round(tempDir("review-round-"), ["control"], [names[0]]).runs.every((r) => r.case === names[0])
       || `unexpected manifest: ${JSON.stringify(runs.slice(0, 3))}`;
+  });
+
+test("the recorded cwd resolves the repository, change and relative brief",
+  "the host starts at the project root and the shared request's paths must resolve from there",
+  () => {
+    const dir = tempDir("review-cwd-"), skill = skillPackage(), name = names[0];
+    round(dir, ["control", `draft=${skill}`], [name]);
+    const runs = JSON.parse(fs.readFileSync(path.join(dir, "runs.json"), "utf8"));
+    const expectedBrief = fs.readFileSync(path.join(CASES, name, "brief.md"));
+    for (const run of runs) {
+      const options = { cwd: run.cwd };
+      const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { ...options, encoding: "utf8" }).trim();
+      if (fs.realpathSync(root) !== fs.realpathSync(run.cwd)) return `${run.run}: cwd is not the repository root`;
+      const diff = execFileSync("git", ["diff", "--name-only", "HEAD~1..HEAD"], { ...options, encoding: "utf8" }).trim();
+      if (!diff) return `${run.run}: the requested change is empty`;
+      const brief = execFileSync(process.execPath, ["-e", 'process.stdout.write(require("node:fs").readFileSync("../brief.md"))'], options);
+      if (!brief.equals(expectedBrief)) return `${run.run}: ../brief.md is not the case's brief`;
+      if (run.skill && path.dirname(run.skill.path) !== path.dirname(run.cwd)) return `${run.run}: skill is not beside the repository`;
+    }
+    return true;
+  });
+
+test("a failed manifest write preserves the previous manifest and prompts",
+  "an interrupted append must not destroy the assignments already recorded",
+  () => {
+    const dir = tempDir("review-manifest-"), manifest = path.join(dir, "runs.json");
+    round(dir, ["control"], [names[0]]);
+    const appended = round(dir, ["control"], [names[0]]);
+    if (appended.runs.length !== VARIANTS.length * 2) return "a normal append failed";
+    const before = fs.readFileSync(manifest);
+    const prompts = appended.runs.map((run) => [run.run, fs.readFileSync(path.join(dir, "prompts", `${run.run}.txt`))]);
+    const write = fs.writeFileSync;
+    fs.writeFileSync = (target, data, options) => {
+      if (typeof target === "number") {
+        write(target, "partial");
+        throw new Error("simulated manifest write failure");
+      }
+      return write(target, data, options);
+    };
+    try {
+      round(dir, ["control"], [names[0]]);
+      return "a failed manifest write was accepted";
+    } catch (error) {
+      if (error.message !== "simulated manifest write failure") return error.message;
+      if (!fs.readFileSync(manifest).equals(before)) return "the previous manifest changed";
+      if (prompts.some(([run, content]) => !fs.readFileSync(path.join(dir, "prompts", `${run}.txt`)).equals(content)))
+        return "an existing prompt changed";
+      if (fs.readdirSync(dir).some((name) => /^runs\.json\..*\.tmp$/.test(name))) return "the temporary manifest was not removed";
+      return true;
+    } finally { fs.writeFileSync = write; }
+  });
+
+test("a round refuses legacy, unknown and mixed manifests before writing",
+  "new assignments must not be appended to a historical or unrecognized study",
+  () => {
+    if (PROTOCOL !== "review-neutral-2") return `unexpected protocol marker ${PROTOCOL}`;
+    for (const entries of [[{ run: "r01" }], [{ run: "r01", protocol: "other" }],
+      [{ run: "r01", protocol: "review-activated-1" }],
+      [{ run: "r01", protocol: "review-neutral-1" }],
+      [{ run: "r01", protocol: PROTOCOL }, { run: "r02" }], []]) {
+      const dir = tempDir("review-protocol-"), manifest = path.join(dir, "runs.json"), original = JSON.stringify(entries);
+      fs.writeFileSync(manifest, original);
+      const before = fs.readdirSync(dir).sort().join("\n");
+      try { round(dir, ["control"], [names[0]]); return `accepted ${original}`; }
+      catch (error) { if (!/legacy, unknown or mixed/.test(error.message)) return error.message; }
+      if (fs.readFileSync(manifest, "utf8") !== original || fs.readdirSync(dir).sort().join("\n") !== before)
+        return `wrote to a refused study: ${original}`;
+    }
+    return true;
+  });
+
+const snapshot = (dir) => {
+  const entries = (at) => fs.readdirSync(path.join(dir, at), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap((entry) => {
+      const name = path.join(at, entry.name);
+      return entry.isDirectory() ? [`${name}/`, ...entries(name)] : [`${name}:${fs.readFileSync(path.join(dir, name)).toString("hex")}`];
+    });
+  return entries("").join("\n");
+};
+
+test("a round rejects duplicate arm names and changed package identities before writing",
+  "a single arm must not silently combine distinct interventions",
+  () => {
+    const dir = tempDir("review-identities-"), skill = skillPackage();
+    round(dir, ["control", `draft=${skill}`], [names[0]]);
+    const before = snapshot(dir);
+    for (const arms of [["control", "control"], [`draft=${skill}`, `draft=${skill}`]]) {
+      try { round(dir, arms, [names[0]]); return `accepted duplicate arms ${arms}`; }
+      catch (error) { if (!/arm names must be unique/.test(error.message)) return error.message; }
+      if (snapshot(dir) !== before) return "duplicate arms changed the study";
+    }
+    fs.writeFileSync(path.join(skill, "references", "nested", "data.md"), "A different version.\n");
+    try { round(dir, ["control", `draft=${skill}`], [names[0]]); return "accepted a changed reference"; }
+    catch (error) { if (!/different skill package or control state/.test(error.message)) return error.message; }
+    if (snapshot(dir) !== before) return "a changed package altered the manifest or prompts";
+    const manifest = path.join(dir, "runs.json"), runs = JSON.parse(fs.readFileSync(manifest, "utf8"));
+    runs.find((run) => run.arm === "control").skill = { sha256: "not-control" };
+    fs.writeFileSync(manifest, JSON.stringify(runs));
+    const inconsistent = snapshot(dir);
+    try { round(dir, ["control"], [names[0]]); return "accepted an inconsistent control state"; }
+    catch (error) { if (!/different skill package or control state/.test(error.message)) return error.message; }
+    return snapshot(dir) === inconsistent || "a changed control state altered the study";
+  });
+
+test("a round refuses existing prompt paths without changing the study",
+  "a prompt left by an interrupted preparation must not be overwritten",
+  () => {
+    for (const existing of [false, true]) {
+      const dir = tempDir("review-prompt-");
+      if (existing) round(dir, ["control"], [names[0]]);
+      else fs.mkdirSync(path.join(dir, "prompts"));
+      const file = path.join(dir, "prompts", existing ? "r04.txt" : "r02.txt");
+      fs.writeFileSync(file, Buffer.from([0, 255, 128, 10]));
+      const before = snapshot(dir);
+      try { round(dir, ["control"], [names[0]]); return `accepted an existing prompt: ${file}`; }
+      catch (error) { if (!/prompt already exists/.test(error.message)) return error.message; }
+      if (snapshot(dir) !== before) return `changed the study containing ${file}`;
+    }
+    return true;
+  });
+
+test("a round refuses unassigned returns before writing",
+  "an old artifact must not be associated with a new assignment",
+  () => {
+    for (const [existing, name, directory] of [
+      [false, "r99.md", false], [false, "unrelated", true],
+      [true, "r03", false], [true, "r04.md", false], [true, "r03.json", false],
+      [true, "r04.html", false], [true, "r03", true], [true, "r04.extra", true],
+      [true, "R03.MD", false], [true, "R04", true],
+    ]) {
+      const dir = tempDir("review-return-");
+      if (existing) round(dir, ["control"], [names[0]]);
+      else fs.mkdirSync(path.join(dir, "returns"));
+      const entry = path.join(dir, "returns", name);
+      if (directory) fs.mkdirSync(entry);
+      const sentinel = directory ? path.join(entry, "sentinel") : entry;
+      fs.writeFileSync(sentinel, Buffer.from([0, 255, 128, 10]));
+      const before = snapshot(dir);
+      try { round(dir, ["control"], [names[0]]); return `accepted unassigned return ${name}`; }
+      catch (error) { if (!/returns is not empty without a manifest|return already exists/.test(error.message)) return error.message; }
+      if (snapshot(dir) !== before) return `changed the study containing ${name}`;
+    }
+    return true;
+  });
+
+test("a round refuses legacy outputs without a manifest before writing",
+  "old verdicts or implementation artifacts must not be attributed to new assignments",
+  () => {
+    for (const [name, directory] of [
+      ["verdicts.json", false], ["VERDICTS.JSON", false], ["blocks.json", false],
+      ["implement.json", false], ["outcome.json", false], ["outcome-verdicts.json", false],
+      ["WORK", true], ["implement", true], ["patches", true],
+    ]) {
+      const dir = tempDir("review-legacy-output-"), entry = path.join(dir, name);
+      if (directory) fs.mkdirSync(entry);
+      const sentinel = directory ? path.join(entry, "sentinel") : entry;
+      fs.writeFileSync(sentinel, Buffer.from([0, 255, 128, 10]));
+      const before = snapshot(dir);
+      try { round(dir, ["control"], [names[0]]); return `accepted legacy output ${name}`; }
+      catch (error) { if (!/legacy output exists without a manifest/.test(error.message)) return error.message; }
+      if (snapshot(dir) !== before) return `changed the study containing ${name}`;
+    }
+    return true;
+  });
+
+test("a round allows empty returns and names not matching new IDs",
+  "only exact IDs and dot-suffixed names collide when a manifest exists",
+  () => {
+    const dir = tempDir("review-return-ok-");
+    fs.mkdirSync(path.join(dir, "returns"));
+    const sentinel = Buffer.from([0, 255, 128, 10]);
+    fs.writeFileSync(path.join(dir, "protocol.md"), sentinel);
+    round(dir, ["control"], [names[0]]);
+    for (const name of ["r01.md", "r030.md"]) fs.writeFileSync(path.join(dir, "returns", name), sentinel);
+    const { runs } = round(dir, ["control"], [names[0]]);
+    return runs.length === VARIANTS.length * 2
+      && fs.readFileSync(path.join(dir, "protocol.md")).equals(sentinel)
+      && ["r01.md", "r030.md"].every((name) => fs.readFileSync(path.join(dir, "returns", name)).equals(sentinel))
+      || "a non-colliding return blocked the round or changed";
+  });
+
+test("a round creates prompts exclusively after preflight",
+  "a prompt created between preflight and writing must remain intact",
+  () => {
+    const dir = tempDir("review-prompt-race-"), file = path.join(dir, "prompts", "r01.txt");
+    const sentinel = Buffer.from([0, 255, 128, 10]), write = fs.writeFileSync;
+    fs.writeFileSync = (target, data, options) => {
+      if (target === file) write(file, sentinel, { flag: "wx" });
+      return write(target, data, options);
+    };
+    try {
+      round(dir, ["control"], [names[0]]);
+      return "overwrote a prompt created after preflight";
+    } catch (error) {
+      if (error.code !== "EEXIST") return error.message;
+      return fs.readFileSync(file).equals(sentinel) && !fs.existsSync(path.join(dir, "runs.json"))
+        || "the new prompt or manifest changed";
+    } finally { fs.writeFileSync = write; }
+  });
+
+test("a round rejects a package changed during copying",
+  "the copied bytes must match the package identity frozen in preflight",
+  () => {
+    const dir = tempDir("review-copy-"), skill = skillPackage(), copy = fs.cpSync;
+    fs.cpSync = (source, destination, options) => {
+      copy(source, destination, options);
+      if (source === skill) fs.writeFileSync(path.join(destination, "references", "nested", "data.md"), "Changed during copying.\n");
+    };
+    try {
+      round(dir, [`draft=${skill}`], [names[0]]);
+      return "accepted a changed copy";
+    } catch (error) {
+      if (!/skill package changed while copying/.test(error.message)) return error.message;
+      return !fs.existsSync(path.join(dir, "runs.json")) && fs.readdirSync(path.join(dir, "prompts")).length === 0
+        || "a changed copy was recorded as a prepared assignment";
+    } finally { fs.cpSync = copy; }
   });
 
 const all = (name, variant, find, trap) => Object.fromEntries(rubricOf(name)[variant].items.map((i) => [i.id, i.kind === "find" ? find : trap]));

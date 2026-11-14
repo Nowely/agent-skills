@@ -2,6 +2,11 @@
 
 This document records the draft 30 proposal and its original planned experiment. The subsequent draft 31 candidate and pilot results are in [draft-31-pilot.md](draft-31-pilot.md); the status and proposed arms below are historical, not the current results.
 
+The later [external evidence review](external-evidence.md) records source-backed observations and limits
+for future work; it does not revise the pilot results. New comparisons use the
+[review protocol](../../evals/review/protocol.md), including its case-selection and assessment rules.
+The [next-comparison note](next-comparison.md) records open preparation decisions, not an approved round.
+
 ## Question
 
 Does a review lead a tangled solution to a better-decomposed one when it must show the cost of the structure as a change of the task walked through the code, and when "smallest" means the result rather than the diff?

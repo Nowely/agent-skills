@@ -6,9 +6,10 @@ specified versions of a skill. It applies to future work, not retroactively to p
 Preparing this protocol does not authorize a model run, access to a private project, or a new version of
 the skill.
 
-The existing [instrument](README.md) predates this protocol. Its current prompt, single-file skill
-copy and binary scoring do **not** implement the comparison below. Do not present its output as compliant
-without addressing and verifying those differences.
+The [preparation instrument](README.md) supplies the neutral request and a skill-directory copy, but
+does not activate a skill or establish the host context. Its binary scorer and legacy assessment tools
+do not implement the evaluation below. Record and assess the remaining steps under this protocol; a
+prepared run is not by itself evidence of a compliant comparison.
 
 ## Question and arms
 
@@ -30,9 +31,10 @@ Give every arm the same ordinary user request, for example:
 
 ```text
 Review the change.
-Repository: repo/
+
+Repository: .
 Change: HEAD~1..HEAD
-Task: brief.md
+Task: ../brief.md
 ```
 
 Use the actual repository, range and task for the case. Relative paths can make the user text identical;

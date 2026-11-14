@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 // Build one blind review run: a throwaway git repository holding a change, and its reviewer's prompt.
 //
-//   node evals/review/prepare.mjs <case> <head|clean> [instructions.md]
+//   node evals/review/prepare.mjs <case> <head|clean> [skill-directory]
 //
 // <case> is a directory under cases/. The repository gets two commits, the case's base/ and then the named
 // variant: head/ is the change as it was first written, clean/ the change as it should be. The reviewer is not
-// told which it has; the change under review is HEAD against HEAD~1. With an instructions file, a copy sits
-// beside the repository as instructions.md and the prompt says to follow it; without one the prompt is the
-// control arm. The two prompts differ by that one line. The other variant, the rubric and the acceptance
-// checks are never copied. Prints the run directory, a blank line, then the prompt.
+// told which it has; the change under review is HEAD against HEAD~1. A supplied skill package is copied
+// separately from the identical user prompt. The other variant, rubric and acceptance checks are not copied.
 
+import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -26,28 +25,44 @@ const GIT = ["-c", "user.name=author", "-c", "user.email=author@example.invalid"
   "-c", "core.hooksPath=/dev/null", "-c", "gc.auto=0", "-c", "maintenance.auto=false"];
 const DATE = "2026-01-01T00:00:00Z";
 
-export function reviewerPrompt(run, withInstructions) {
+export function reviewerPrompt() {
   return [
-    "Review a code change.",
+    "Review the change.",
     "",
-    `- Repository: ${path.join(run, "repo")}, a git repository. The change under review is its last commit `
-      + "(`git diff HEAD~1 HEAD`); HEAD~1 is the code before the change.",
-    `- The task the author was given: ${path.join(run, "brief.md")}.`,
-    "- Review the change for correctness, unnecessary complexity, design and readability, and tests.",
-    ...(withInstructions
-      ? [`- How to review: ${path.join(run, "instructions.md")}. Read that file whole before you start and follow it.`]
-      : []),
-    "",
-    "Limits: a read-only, static review. Do not run the project's code or tests and do not change any file; git "
-      + `and file-reading commands are allowed. Read nothing outside ${run}. Your final message is the complete `
-      + "review and nothing else.",
+    "Repository: .",
+    "Change: HEAD~1..HEAD",
+    "Task: ../brief.md",
   ].join("\n");
 }
 
-export function prepare(caseName, variant, instructions) {
+// Hash relative paths and contents, with byte lengths to delimit entries unambiguously.
+export function packageDigest(directory) {
+  const root = fs.lstatSync(directory);
+  if (root.isSymbolicLink()) throw new Error(`skill package is a symbolic link: ${directory}`);
+  if (!root.isDirectory()) throw new Error(`skill package must be a directory: ${directory}`);
+  const hash = crypto.createHash("sha256");
+  const visit = (relative) => {
+    const file = path.join(directory, relative), stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink()) throw new Error(`skill package contains a symbolic link: ${file}`);
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(file).sort()) visit(path.join(relative, entry));
+    } else if (stat.isFile()) {
+      const name = relative.split(path.sep).join("/"), content = fs.readFileSync(file);
+      hash.update(`${Buffer.byteLength(name)}:`).update(name).update(`${content.length}:`).update(content);
+    } else throw new Error(`skill package contains a non-file entry: ${file}`);
+  };
+  visit("");
+  const entry = path.join(directory, "SKILL.md");
+  if (!fs.existsSync(entry) || !fs.lstatSync(entry).isFile()) throw new Error(`skill package has no SKILL.md file: ${directory}`);
+  return hash.digest("hex");
+}
+
+export function prepare(caseName, variant, skillDirectory, expectedDigest) {
   const source = path.join(CASES, caseName);
   if (!fs.existsSync(path.join(source, "brief.md"))) throw new Error(`no case named ${caseName} under ${CASES}`);
   if (!VARIANTS.includes(variant)) throw new Error(`variant is ${VARIANTS.join(" or ")}, not ${variant}`);
+  const digest = skillDirectory ? packageDigest(skillDirectory) : null;
+  if (expectedDigest !== undefined && digest !== expectedDigest) throw new Error(`skill package changed since round preflight: ${skillDirectory}`);
   const run = fs.mkdtempSync(path.join(os.tmpdir(), "review-run-"));
   const repo = path.join(run, "repo");
   const git = (...args) => execFileSync("git", [...GIT, ...args], { cwd: repo, stdio: "pipe",
@@ -61,16 +76,23 @@ export function prepare(caseName, variant, instructions) {
     git("commit", "--quiet", "--message", message);
   }
   fs.copyFileSync(path.join(source, "brief.md"), path.join(run, "brief.md"));
-  if (instructions) fs.copyFileSync(instructions, path.join(run, "instructions.md"));
-  return { run, prompt: reviewerPrompt(run, Boolean(instructions)) };
+  let skill = null;
+  if (skillDirectory) {
+    const destination = path.join(run, "skill");
+    fs.cpSync(skillDirectory, destination, { recursive: true });
+    const copiedDigest = packageDigest(destination);
+    if (copiedDigest !== digest) throw new Error(`skill package changed while copying: ${skillDirectory}`);
+    skill = { path: destination, sha256: copiedDigest };
+  }
+  return { run, cwd: repo, skill, prompt: reviewerPrompt() };
 }
 
 if (isMain(import.meta)) {
-  const [caseName, variant, instructions] = process.argv.slice(2);
+  const [caseName, variant, skillDirectory] = process.argv.slice(2);
   if (!caseName || !variant) {
-    console.error(`usage: prepare.mjs <case> <head|clean> [instructions.md]\ncases: ${fs.readdirSync(CASES).sort().join(", ")}`);
+    console.error(`usage: prepare.mjs <case> <head|clean> [skill-directory]\ncases: ${fs.readdirSync(CASES).sort().join(", ")}`);
     process.exit(2);
   }
-  const { run, prompt } = prepare(caseName, variant, instructions);
-  console.log(`${run}\n\n${prompt}`);
+  const { cwd, skill, prompt } = prepare(caseName, variant, skillDirectory);
+  console.log(`cwd: ${cwd}\nskill: ${skill ? `${skill.path} (sha256 ${skill.sha256})` : "none"}\n\n${prompt}`);
 }

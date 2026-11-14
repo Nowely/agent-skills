@@ -12,6 +12,12 @@ forensics remain in the repository references and release notes.
   verdict. The checker validates scenario shape and references when present and requires unit reasons, so
   older records without the latter need updating. Small research pilots do not establish a general quality
   improvement.
+- `entrust:review` analyzes connected code before finalizing the full changed-line map. If the diff or a
+  requested direction cannot be covered, it returns a bounded partial review rather than treating unread
+  lines as `keep` or presenting a valid complete `review.json`. The full-review data contract and checker
+  remain unchanged.
+- Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
+  proof that the blocks serve nothing or can be removed safely.
 
 ## 0.38.0 — 2026-11-14
 

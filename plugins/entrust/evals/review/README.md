@@ -1,16 +1,19 @@
 # Review skill: the measuring instrument
 
-This instrument prepared and scored historical studies of [the review skill](../../plugin/skills/review/SKILL.md).
-Its current scripts do **not** implement the [protocol for new comparisons](protocol.md): `prepare.mjs`
-directs both arms toward specific review categories, imposes static-review limits and copies only one
-instruction file, while `score.mjs` cannot represent an unknown ruling. The workflows below describe
-this legacy instrument, not a plain-request no-skill comparison. Do not use it to claim compliance with
-the new protocol without resolving and verifying these differences. Past runs retain their original
-methods and results. `node evals/review-eval.test.mjs` checks the existing instrument and calls no model.
+This instrument prepares comparisons of [the review skill](../../plugin/skills/review/SKILL.md).
+The preparation scripts supply a neutral request and a complete skill directory separately; they do not
+activate the skill or establish that a host delivered it. Follow the [protocol](protocol.md) and record
+the remaining steps manually. `score.mjs`, `judge.md`, `blocks.mjs` and the outcome workflow below are
+legacy tools, not a complete assessment under the new protocol. In particular, the scorer cannot represent
+unknown rulings. Do not use them to claim a compliant new-protocol analysis.
+
+Past runs retain their original methods and results. To reproduce legacy preparation, use the historical
+commit of the instrument used by the study. `node evals/review-eval.test.mjs` checks the instrument and
+calls no model.
 
 ## Cases
 
-Each directory under `cases/` is a small fictional repository with the task its author was given, `brief.md`, in three states: `base/` before the change, `head/` the change as first written, and `clean/` an alternative change. `accept.mjs` checks observable requirements: all checks pass on `clean/`, and `head/` fails exactly those listed in `rubric.json`. A behavior-correct `head/` can have no failing checks and still be difficult to understand. The general protocol reviews both variants; a scoped round must state any omitted variants and the resulting limits. The [next draft23/25 round](../../research/2026-11-13-review-instead/protocol.md) uses only the original private flawed snapshot. Neither the `clean/` label nor passing checks proves that no finding is possible or that its design is the only good one.
+Each directory under `cases/` is a small fictional repository with the task its author was given, `brief.md`, in three states: `base/` before the change, `head/` the change as first written, and `clean/` an alternative change. `accept.mjs` checks observable requirements: all checks pass on `clean/`, and `head/` fails exactly those listed in `rubric.json`. A behavior-correct `head/` can have no failing checks and still be difficult to understand. `round.mjs` always prepares both variants; the protocol does not require both. A single-variant or real case needs different preparation. The historical [draft23/25 round](../../research/2026-11-13-review-instead/protocol.md) used only the original private flawed snapshot. Neither the `clean/` label nor passing checks proves that no finding is possible or that its design is the only good one.
 
 | Case | `head/` | `clean/` |
 |---|---|---|
@@ -29,14 +32,85 @@ A case may carry `probes` in its rubric: changes someone will be asked to make a
 
 ## A round
 
-This is the legacy workflow produced by the current scripts; it is not the protocol for new comparisons.
+1. **Plan and prepare.** Before a confirmatory round, follow the protocol's requirements for the question,
+   cases, materials, outcomes, budget and stopping rule. Manually record every assigned attempt before
+   preparation, including its arm. From `plugins/entrust`, run
+   `node evals/review/round.mjs <directory> [--cases a,b] control name=<skill-directory> ...`.
+   Each skill directory must contain `SKILL.md`; the whole directory, including `references/` and `scripts/`,
+   is copied. The control gets no skill package. Each case and variant is prepared once per arm in shuffled
+   order. The `review-neutral-2` manifest version identifies preparation, not confirmed activation.
+   Arm names must be unique. Before writing, the command hashes each package and refuses legacy,
+   unknown, empty or mixed manifests, an existing arm whose package digest or control state differs, and
+   any existing prompt at a new run's path. Without a manifest, an existing `returns/` must be empty.
+   In that case, the command also refuses root entries named `verdicts.json`, `blocks.json`, `implement.json`,
+   `outcome.json` or `outcome-verdicts.json`, and directories or symbolic links named `work`, `implement`
+   or `patches`. With a manifest, it refuses any file or directory in `returns/` named for a new run ID
+   exactly or followed by a dot and suffix. Both checks compare names case-insensitively on every platform,
+   conservatively refusing case variants even on a case-sensitive filesystem; they do not delete anything.
+   A prewritten `protocol.md` is allowed. Existing verdicts and other assessments are not inspected for
+   references to future run IDs: the operator must keep and check assessments against their assignments
+   and must not carry them over to new attempts. Prompts are created exclusively, never overwritten.
+   Each copy is checked against its preflight digest; a change during preparation stops the command. The
+   manifest is written after preparation: if preparation fails or is interrupted, earlier prompts or temporary
+   runs may remain without a recorded ID-to-arm mapping. Never dispatch orphan prompts not listed in a
+   completed manifest. Record the preparation as a batch failure, retain the manual assignment list and
+   remaining files, and prepare any repeat in a new directory under the predeclared retry rule. Do not run
+   preparations or add outputs concurrently in the same directory: the instrument has no lock and these
+   checks do not provide isolation. Each preparation rereads the case source and brief; the instrument
+   neither freezes them nor checks that paired copies match.
+   Freeze their identities separately and verify the prepared task and diff for every arm before dispatch.
+2. **Deliver.** Each `runs.json` entry records the prepared `cwd`, the copied `skill` path and its `sha256`,
+   or `null` for control. Give `prompts/<run>.txt` unchanged to the reviewer with that cwd. The prompt is
+   byte-identical across arms; it uses `.`, `../brief.md` and `HEAD~1..HEAD`. The recorded `cwd` is the
+   prepared repository root, so ordinary project-context discovery can start there. This does not establish
+   what any host actually loads: observe and record the host's project context where possible. The host must
+   permit reading `../brief.md` on equal terms for every arm; otherwise the task is not equivalently supplied.
+   Configure and activate the assigned skill separately through the host, not by modifying that prompt.
+   `cwd` and package paths point to temporary prepared runs and must remain available to the host. The
+   copied package is placed in a directory named `skill`; this does not register it or preserve a
+   host-specific skill ID. The operator must install or register it under the intended ID using the host's procedure and
+   verify the source, ID and package digest in the host before delivery. The registered package path may
+   differ from the prepared copy.
 
-1. **Arms.** Freeze each skill version under test as a numbered file in the research run. `node evals/review/round.mjs <directory> control name=instructions.md ...` prepares every case in both variants once per arm, or only the cases named after `--cases`, and writes `<directory>/runs.json` with each arm's instruction digest. Run it again on the same directory for another repetition.
-2. **Reviewers.** Give each `prompts/<run>.txt`, unchanged, to a fresh reviewer that has seen no other run, with the same model, effort and tools in every arm, and save its final message as `returns/<run>.md`. Where the instructions have the reviewer write a `review.json`, give it a directory outside the repository to write in, the same wording in every such arm, and save the file as `returns/<run>.json`.
-3. **Judge.** Per case and variant, give one judge [judge.md](judge.md), the case directory and that target's reviews, named by run id only. The judge is not told the arms and is not the model family under test when another is available. Collect its objects as `<directory>/verdicts.json`. The separate [design calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md) describes a more restricted blind-judging protocol and its limitations.
-4. **Record.** Add the model and effort to the record, and report every run that started, including the ones that failed or were excluded and why. `node evals/review/score.mjs <directory>` prints the table.
+   To check either package, set `SKILL_DIR` to its directory and, from `plugins/entrust`, run:
 
-## The outcome
+   ```sh
+   node --input-type=module -e 'import { packageDigest } from "./evals/review/prepare.mjs"; console.log(packageDigest(process.argv[1]));' "$SKILL_DIR"
+   ```
+
+   Compare the output with the same entry's `skill.sha256` in `runs.json`: check the prepared copy and
+   repeat the check on the registered package after each manual copy or build and immediately before
+   activation. If the digest differs or a check fails, record a deviation and do not activate that package
+   as the assigned one. If the host's source or ID mapping cannot be verified, record it as unknown and
+   stop to agree on a next step. A digest match is not evidence of activation or delivery and does not
+   establish that the package remained unchanged afterward.
+3. **Record.** Manually preserve all assignments and attempts, statuses, refusals, interruptions, retries,
+   deviations and exclusions with reasons. Record the actual message and order, requested and observed host,
+   model, effort, ordinary instructions, tools and permissions, and accessible traces. Separately record
+   package availability, activation request, observed activation, delivery and files actually read, with
+   evidence or `unknown`. A copied package, digest, activation request or success response alone does not
+   prove delivery. Do not claim that control cannot access other skills or that host contexts are identical.
+   If required delivery or its observation cannot be established, record the uncertainty and stop to agree
+   on a next step as the protocol requires.
+4. **Assess manually.** Apply the protocol's same rule for final messages and accessible linked artifacts to
+   every arm, record inaccessible links, and preserve original source-grounded judgments and disagreements.
+   Keep unknowns separate from success and failure; report incomplete attempts, quality, harm and available
+   cost and time separately. Do not use the binary `score.mjs`, legacy `judge.md` or `blocks.mjs` as the
+   full new-protocol assessment.
+
+For a single run use `node evals/review/prepare.mjs <case> <head|clean> [skill-directory]`; it prints the
+cwd, optional copied package and digest, and the request. The digest is SHA-256 over relative file paths
+and file bytes, with byte lengths delimiting each path and content. The traversal is depth-first, sorting
+the entries of each directory by JavaScript's default string order. It includes `SKILL.md` metadata as
+bytes, but not filesystem metadata or empty directories. In particular, file mode and executable
+permissions are not identified by the digest and may affect execution; check and record them separately
+when relevant. Symbolic links and non-file entries in the package are rejected rather than followed.
+The digest identifies the copied package's paths and bytes, not host delivery.
+References outside the supplied directory, such as `../orchestrate`, are not copied or frozen. The operator
+must identify and separately provide and record any relevant external dependencies; do not assume they
+are available or freeze the neighboring environment automatically.
+
+## The outcome (legacy)
 
 What a review says is not what it is for. The second stage measures the code that is left when someone acts on it.
 
@@ -52,7 +126,7 @@ The table keeps three things apart: the acceptance checks, the probes, and the r
 - **Lines changed.** Code and tests apart. On a `clean` row they measure how far a review moved an implementer, not harm: a useful test or a true finding also changes lines. Harm is read from the patch: a regression, a mechanism nothing needs, or a rewrite with no shown gain. Use the count to find the patches worth reading, not as a gate.
 - **Code against the clean form.** The lines of code the result adds to the code before the change, over the same count for the clean form. It is a size, not a grade: a result may be smaller than the clean form by leaving a requirement out.
 
-## The record's own lines
+## The record's own lines (legacy)
 
 A review written with the skill saves its record, `review.json`, in which every changed line belongs to a block with a verdict. Save it as `returns/<run>.json`, and `node evals/review/blocks.mjs <directory>` holds those verdicts against the lines the case knows: `lines.remove` in a rubric's `head` are lines no solution of the task keeps, `lines.keep` lines every solution needs. The table follows a removal link by link. `already` in the rubric names mechanisms that something existing makes needless, by words a record would use: the table gives in how many the record lists the mechanism among those the change brought, and in how many its `instead` or `basis` names what was already there. Then the lines: the superfluous ones the review marks `remove`, those it leaves in a block marked `fix`, those in no block, the needed lines it marks `remove`, and the other lines of code it marks `remove`, which show a record that removes everything. On a clean form, any line of code marked `remove`.
 
@@ -66,7 +140,7 @@ reclassify cases in the primary analysis of a new comparison; apply the selectio
 
 A case on which the unaided arms already recover measures nothing: `booking-edit` was found whole by reviewers with no instructions, and an implementer given the task alone wrote the same code as one given the skill's review ([the calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md)). Before a case counts, run `control` and `task-only` on it three times. If they recover more than half of those runs, the case is a regression case: it stays in the round to show that nothing is lost, and its rows are reported apart from the result. Three runs decide where further measuring is worth its cost; they are no evidence of what the skill does. For a comparison of arms, run five reviews per arm on each admitted first-written form and three on each clean one: the count of lines costs nothing per review, so the reviews are the whole price, and implementers can follow for three of the five. Give the probes to two judges that do not see each other's rulings. Preserve their original files separately. `outcome.mjs` accepts one judge file at a time: use a working copy at `outcome-verdicts.json`, save each judge's outcome JSON/table before evaluating the next, then intersect successful run IDs. Never concatenate the judgments or overwrite their originals. Missing, disputed and unassessed results stay visible; the coordinator records disagreements with both reasons. The [scoped protocol](../../research/2026-11-13-review-instead/protocol.md#independent-judgments-and-aggregation) defines the private static round's separate evidence assessment. `slot-edit` and `profile-phone` were run once as a pilot, which found their tasks and probes ambiguous ([round 4](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6834922569)); the corrected cases have not been run, and whether a judge rules their clean forms more local than their first-written ones is still to be seen.
 
-## Reading the table
+## Reading the table (legacy)
 
 On `head` rows, recall is hits plus half the partials over the find items; it measures the listed rubric items, not overall review or solution quality. On `clean` rows, traps and unsupported claims reveal some unnecessary recommendations, but a real new finding must still be judged on evidence. Neither count is folded into recall. `Other valid` counts supported findings the rubric did not list; a case that collects many needs its rubric extended, which starts a new round.
 
