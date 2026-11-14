@@ -1,0 +1,782 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..aa7484d
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,89 @@
++# Seed dispatch planner
++
++Канонический интерфейс описан в `brief/BRIEF.md`.
++
++## Локальный адаптер ручного ввода
++
++`operatorAids` — необязательный локальный вход для преобразования ручных ссылок
++перед планированием.
++
++Если `operatorAids` не передан, адаптер возвращает исходный объект заявки без
++преобразований. Действует только канонический контракт с `items`.
++
++При передаче `operatorAids` действуют следующие правила:
++
++- `operatorAids.varieties` и `operatorAids.members` независимы; любой из массивов
++  может отсутствовать или быть пустым.
++- Variety aid имеет вид `{ id, aliases? }`; его `id` обязан ссылаться на вид из
++  основного аргумента `varieties`.
++- Member aid имеет вид
++  `{ id, aliases?, householdId, permits?, carriedOver? }`.
++  `householdId` обязателен для каждой member-записи.
++- `itemCodes` может использовать канонические ID и aliases. Неизвестный code
++  сохраняется и затем обрабатывается планировщиком как `unknown-variety`.
++- Если присутствует `items`, используется оно, а `itemCodes` игнорируется.
++  Значения `items` не проходят alias-подстановку.
++- `memberId` может использовать канонический ID или alias. Неизвестный member
++  reference — ошибка адаптации.
++- Явные `householdId` и `carriedOver` имеют приоритет над member defaults.
++  Разрешения заявки и member-записи объединяются без дубликатов.
++- Если после объединения нет непустого `householdId`, адаптер выбрасывает
++  `TypeError`; планирование с неопределённым домохозяйством не начинается.
++- `items` или `itemCodes` после выбора источника обязаны быть непустым массивом.
++
++ID и aliases сравниваются после NFKD-нормализации, удаления диакритики,
++приведения регистра и сворачивания разделителей. Точное совпадение канонического
++ID работает до нормализации. Конфигурация отклоняется заранее, если alias
++совпадает после нормализации с каноническим ID другой записи или с alias другой
++записи. Канонические ID, которые после нормализации совпадают друг с другом,
++также отклоняются при включённом адаптере.
++
++Пример только с variety aids:
++
++```js
++planDispatches({
++  requests: [
++    {
++      id: "request-8",
++      itemCodes: ["Scarlet beans"],
++      householdId: "house-9",
++      submittedAt: "2027-01-01T10:00:00Z",
++    },
++  ],
++  varieties,
++  lots,
++  cycleDate: "2027-01-01",
++  operatorAids: {
++    varieties: [
++      { id: "bean-scarlet", aliases: ["Scarlet beans", "scarlet-bean"] },
++    ],
++  },
++});
++```
++
++Пример только с member aids:
++
++```js
++const adapted = createRequestAdapter(
++  {
++    members: [
++      {
++        id: "member-17",
++        aliases: ["M17"],
++        householdId: "house-9",
++        permits: ["SCARIFY"],
++        carriedOver: true,
++      },
++    ],
++  },
++  varieties,
++)({
++  id: "request-9",
++  items: ["garlic"],
++  memberId: "M17",
++  submittedAt: "2027-01-01T10:00:00Z",
++});
++```
++
++Адаптер не добавляет виды, партии или домохозяйства в основной планировщик и не
++изменяет правила запасов, разрешений, сортировки и allium-допуска.
+diff --git a/package.json b/package.json
+index 968bc6d..4c05d5a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,12 +1,14 @@
+ {
+-  "name": "seed-dispatch-base-v2",
+-  "version": "1.0.0",
++  "name": "seed-dispatch-head-v2",
++  "version": "2.0.0",
+   "private": true,
+   "type": "module",
+   "engines": {
+     "node": ">=20"
+   },
+   "scripts": {
+-    "test": "node --test test/*.test.js"
++    "test": "node --test ../brief/acceptance.test.mjs test/*.test.js",
++    "test:acceptance": "node --test ../brief/acceptance.test.mjs",
++    "test:edge": "node --test test/*.test.js"
+   }
+ }
+diff --git a/src/operatorAids.js b/src/operatorAids.js
+new file mode 100644
+index 0000000..9e72ce1
+--- /dev/null
++++ b/src/operatorAids.js
+@@ -0,0 +1,159 @@
++function foldReference(value) {
++  return value
++    .normalize("NFKD")
++    .replace(/\p{M}+/gu, "")
++    .toLowerCase()
++    .replace(/[^\p{Letter}\p{Number}]+/gu, " ")
++    .trim();
++}
++
++function createReferenceIndex(canonicalIds, aidRows, kind) {
++  const canonicalExact = new Set();
++  const canonicalFolded = new Map();
++
++  for (const id of canonicalIds) {
++    if (typeof id !== "string" || id.length === 0) {
++      throw new TypeError(`${kind} canonical IDs must be non-empty strings`);
++    }
++    if (canonicalExact.has(id)) {
++      throw new TypeError(`Duplicate ${kind} canonical ID: ${id}`);
++    }
++
++    const folded = foldReference(id);
++    const previous = canonicalFolded.get(folded);
++    if (previous !== undefined && previous !== id) {
++      throw new TypeError(
++        `${kind} canonical IDs collide after normalization: ${previous}, ${id}`,
++      );
++    }
++
++    canonicalExact.add(id);
++    canonicalFolded.set(folded, id);
++  }
++
++  const aliases = new Map();
++
++  for (const row of aidRows) {
++    if (!canonicalExact.has(row.id)) {
++      throw new TypeError(`Unknown ${kind} aid canonical ID: ${row.id}`);
++    }
++
++    for (const alias of row.aliases ?? []) {
++      if (typeof alias !== "string" || alias.length === 0) {
++        throw new TypeError(`${kind} aliases must be non-empty strings`);
++      }
++
++      const folded = foldReference(alias);
++      const canonicalMatch = canonicalFolded.get(folded);
++      if (canonicalMatch !== undefined && canonicalMatch !== row.id) {
++        throw new TypeError(
++          `${kind} alias collides with canonical ID ${canonicalMatch}: ${alias}`,
++        );
++      }
++
++      const previous = aliases.get(folded);
++      if (previous !== undefined && previous !== row.id) {
++        throw new TypeError(`Ambiguous ${kind} alias: ${alias}`);
++      }
++      aliases.set(folded, row.id);
++    }
++  }
++
++  return (reference) => {
++    if (canonicalExact.has(reference)) return reference;
++    if (typeof reference !== "string" || reference.length === 0) {
++      return reference;
++    }
++
++    const folded = foldReference(reference);
++    return canonicalFolded.get(folded) ?? aliases.get(folded) ?? reference;
++  };
++}
++
++function requireItems(sourceRequest) {
++  if (sourceRequest.items !== undefined) {
++    if (!Array.isArray(sourceRequest.items) || sourceRequest.items.length === 0) {
++      throw new TypeError("Request items must be a non-empty array");
++    }
++    return { values: sourceRequest.items, resolveAliases: false };
++  }
++
++  if (!Array.isArray(sourceRequest.itemCodes) || sourceRequest.itemCodes.length === 0) {
++    throw new TypeError("Request needs non-empty items or itemCodes");
++  }
++  return { values: sourceRequest.itemCodes, resolveAliases: true };
++}
++
++export function createRequestAdapter(operatorAids, varieties) {
++  if (operatorAids === undefined) {
++    return (request) => request;
++  }
++
++  if (operatorAids === null || typeof operatorAids !== "object") {
++    throw new TypeError("operatorAids must be an object when provided");
++  }
++
++  const varietyAids = operatorAids.varieties ?? [];
++  const memberAids = operatorAids.members ?? [];
++
++  if (!Array.isArray(varietyAids) || !Array.isArray(memberAids)) {
++    throw new TypeError("operatorAids varieties and members must be arrays");
++  }
++
++  const resolveVariety = createReferenceIndex(
++    varieties.map((variety) => variety.id),
++    varietyAids,
++    "variety",
++  );
++  const resolveMember = createReferenceIndex(
++    memberAids.map((member) => member.id),
++    memberAids,
++    "member",
++  );
++  const membersById = new Map(memberAids.map((member) => [member.id, member]));
++
++  for (const member of memberAids) {
++    if (typeof member.householdId !== "string" || member.householdId.length === 0) {
++      throw new TypeError(`Member ${member.id} needs a householdId`);
++    }
++    if (member.carriedOver !== undefined && typeof member.carriedOver !== "boolean") {
++      throw new TypeError(`Member ${member.id} carriedOver must be boolean`);
++    }
++  }
++
++  return (sourceRequest) => {
++    const sourceItems = requireItems(sourceRequest);
++    const items = sourceItems.resolveAliases
++      ? sourceItems.values.map(resolveVariety)
++      : [...sourceItems.values];
++
++    let member;
++    if (sourceRequest.memberId !== undefined) {
++      const memberId = resolveMember(sourceRequest.memberId);
++      member = membersById.get(memberId);
++      if (!member) {
++        throw new TypeError(`Unknown member reference: ${sourceRequest.memberId}`);
++      }
++    }
++
++    const householdId = sourceRequest.householdId ?? member?.householdId;
++    if (typeof householdId !== "string" || householdId.length === 0) {
++      throw new TypeError(
++        `Request ${sourceRequest.id} needs householdId or a member default`,
++      );
++    }
++
++    return {
++      ...sourceRequest,
++      items,
++      householdId,
++      carriedOver: sourceRequest.carriedOver ?? member?.carriedOver ?? false,
++      permits: [
++        ...new Set([
++          ...(sourceRequest.permits ?? []),
++          ...(member?.permits ?? []),
++        ]),
++      ],
++    };
++  };
++}
+diff --git a/src/planDispatches.js b/src/planDispatches.js
+index 2b184ce..961f937 100644
+--- a/src/planDispatches.js
++++ b/src/planDispatches.js
+@@ -1,34 +1,92 @@
++import { createRequestAdapter } from "./operatorAids.js";
++
+ const compareText = (left, right) => {
+   if (left < right) return -1;
+   if (left > right) return 1;
+   return 0;
+ };
+ 
+-export function planDispatches({ requests, varieties, lots }) {
+-  const knownVarieties = new Set(varieties.map((variety) => variety.id));
+-  const lotState = lots.map((lot) => ({
+-    ...lot,
+-    remaining: lot.packets,
+-    used: 0,
++export function planDispatches({
++  requests,
++  varieties,
++  lots,
++  cycleDate,
++  operatorAids,
++}) {
++  const varietiesById = new Map(
++    varieties.map((variety) => [variety.id, variety]),
++  );
++  const adaptRequest = createRequestAdapter(operatorAids, varieties);
++
++  const ranked = requests.map((sourceRequest, sourceIndex) => ({
++    sourceIndex,
++    request: adaptRequest(sourceRequest),
+   }));
+ 
++  ranked.sort((left, right) => {
++    const a = left.request;
++    const b = right.request;
++
++    const carryDifference = Number(b.carriedOver) - Number(a.carriedOver);
++    if (carryDifference !== 0) return carryDifference;
++
++    const submittedDifference = compareText(a.submittedAt, b.submittedAt);
++    if (submittedDifference !== 0) return submittedDifference;
++
++    return compareText(a.id, b.id) || left.sourceIndex - right.sourceIndex;
++  });
++
++  const lotState = lots
++    .map((lot, sourceIndex) => ({
++      ...lot,
++      sourceIndex,
++      remaining: lot.packets,
++      used: 0,
++    }))
++    .sort(
++      (left, right) =>
++        compareText(left.expiresOn, right.expiresOn) ||
++        compareText(left.id, right.id) ||
++        left.sourceIndex - right.sourceIndex,
++    );
++
+   const packets = [];
+   const skipped = [];
+   const labels = [];
++  const alliumHouseholds = new Set();
+ 
+-  for (const request of requests) {
++  for (const { request } of ranked) {
++    const permits = new Set(request.permits ?? []);
++    const hadAlliumBeforeRequest = alliumHouseholds.has(request.householdId);
+     const staged = [];
+     let failure;
+ 
+     for (const varietyId of request.items) {
+-      if (!knownVarieties.has(varietyId)) {
++      const variety = varietiesById.get(varietyId);
++
++      if (!variety) {
+         failure = { varietyId, reason: "unknown-variety" };
+         break;
+       }
+ 
++      if (variety.treatment === "scarified" && !permits.has("SCARIFY")) {
++        failure = { varietyId, reason: "permit-required" };
++        break;
++      }
++
++      if (
++        variety.family === "allium" &&
++        alliumHouseholds.has(request.householdId)
++      ) {
++        failure = { varietyId, reason: "household-allium-limit" };
++        break;
++      }
++
+       const lot = lotState.find(
+         (candidate) =>
+-          candidate.varietyId === varietyId && candidate.remaining > 0,
++          candidate.varietyId === varietyId &&
++          candidate.remaining > 0 &&
++          candidate.expiresOn >= cycleDate,
+       );
+ 
+       if (!lot) {
+@@ -38,6 +96,11 @@ export function planDispatches({ requests, varieties, lots }) {
+ 
+       lot.remaining -= 1;
+       lot.used += 1;
++
++      if (variety.family === "allium") {
++        alliumHouseholds.add(request.householdId);
++      }
++
+       staged.push({ varietyId, lot });
+     }
+ 
+@@ -47,6 +110,12 @@ export function planDispatches({ requests, varieties, lots }) {
+         staged[index].lot.used -= 1;
+       }
+ 
++      if (hadAlliumBeforeRequest) {
++        alliumHouseholds.add(request.householdId);
++      } else {
++        alliumHouseholds.delete(request.householdId);
++      }
++
+       skipped.push({
+         requestId: request.id,
+         varietyId: failure.varietyId,
+diff --git a/test/edge.test.js b/test/edge.test.js
+new file mode 100644
+index 0000000..5a9438e
+--- /dev/null
++++ b/test/edge.test.js
+@@ -0,0 +1,277 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++
++import { planDispatches } from "../src/planDispatches.js";
++import { createRequestAdapter } from "../src/operatorAids.js";
++
++const varieties = [
++  { id: "bean", family: "fabaceae", treatment: "none" },
++  { id: "garlic", family: "allium", treatment: "scarified" },
++];
++
++const submittedAt = "2027-01-01T00:00:00Z";
++
++test("omitting operatorAids installs an identity adapter", () => {
++  const source = {
++    id: "r",
++    householdId: "h",
++    items: ["bean"],
++    submittedAt,
++    carriedOver: false,
++    permits: [],
++  };
++  const adapt = createRequestAdapter(undefined, varieties);
++
++  assert.equal(adapt(source), source);
++});
++
++test("variety-only aids resolve itemCodes without member data", () => {
++  const operatorAids = {
++    varieties: [{ id: "bean", aliases: ["Scarlet-Bean"] }],
++  };
++  const result = planDispatches({
++    requests: [
++      {
++        id: "r",
++        itemCodes: ["scarlet-bean"],
++        householdId: "h",
++        submittedAt,
++      },
++    ],
++    varieties,
++    lots: [
++      { id: "lot-bean", varietyId: "bean", expiresOn: "2027-02-01", packets: 1 },
++    ],
++    cycleDate: "2027-01-01",
++    operatorAids,
++  });
++
++  assert.deepEqual(result.packets, [
++    {
++      requestId: "r",
++      householdId: "h",
++      varietyId: "bean",
++      lotId: "lot-bean",
++    },
++  ]);
++  assert.deepEqual(result.skipped, []);
++});
++
++test("member-only aids supply defaults and explicit fields win", () => {
++  const adapt = createRequestAdapter(
++    {
++      members: [
++        {
++          id: "member-17",
++          aliases: ["M17"],
++          householdId: "member-house",
++          permits: ["SCARIFY"],
++          carriedOver: true,
++        },
++      ],
++    },
++    varieties,
++  );
++
++  const withDefaults = adapt({
++    id: "r1",
++    items: ["garlic"],
++    memberId: "m17",
++    submittedAt,
++  });
++  assert.equal(withDefaults.householdId, "member-house");
++  assert.equal(withDefaults.carriedOver, true);
++  assert.deepEqual(withDefaults.permits, ["SCARIFY"]);
++
++  const explicit = adapt({
++    id: "r2",
++    items: ["garlic"],
++    memberId: "member-17",
++    householdId: "explicit-house",
++    carriedOver: false,
++    permits: ["OTHER", "SCARIFY"],
++    submittedAt,
++  });
++  assert.equal(explicit.householdId, "explicit-house");
++  assert.equal(explicit.carriedOver, false);
++  assert.deepEqual(explicit.permits, ["OTHER", "SCARIFY"]);
++});
++
++test("partial aids reject an unresolved household and unknown member", () => {
++  const adapt = createRequestAdapter({}, varieties);
++
++  assert.throws(
++    () =>
++      adapt({
++        id: "r1",
++        items: ["bean"],
++        submittedAt,
++      }),
++    /needs householdId/,
++  );
++
++  assert.throws(
++    () =>
++      adapt({
++        id: "r2",
++        items: ["bean"],
++        memberId: "missing",
++        submittedAt,
++      }),
++    /Unknown member reference/,
++  );
++});
++
++test("aids reject canonical and alias collisions during setup", () => {
++  assert.throws(
++    () =>
++      createRequestAdapter(
++        {
++          varieties: [{ id: "bean", aliases: ["Garlic"] }],
++        },
++        varieties,
++      ),
++    /alias collides with canonical ID garlic/,
++  );
++
++  assert.throws(
++    () =>
++      createRequestAdapter(
++        {
++          varieties: [
++            { id: "bean", aliases: ["shared"] },
++            { id: "garlic", aliases: ["shared"] },
++          ],
++        },
++        varieties,
++      ),
++    /Ambiguous variety alias/,
++  );
++});
++
++test("unknown itemCodes reach the core as unknown varieties", () => {
++  const result = planDispatches({
++    requests: [
++      {
++        id: "r",
++        itemCodes: ["mystery"],
++        householdId: "h",
++        submittedAt,
++      },
++    ],
++    varieties,
++    lots: [],
++    cycleDate: "2027-01-01",
++    operatorAids: {},
++  });
++
++  assert.deepEqual(result.skipped, [
++    { requestId: "r", varietyId: "mystery", reason: "unknown-variety" },
++  ]);
++});
++
++test("canonical items bypass alias substitution when aids are enabled", () => {
++  const result = planDispatches({
++    requests: [
++      {
++        id: "r",
++        items: ["Scarlet-Bean"],
++        householdId: "h",
++        submittedAt,
++      },
++    ],
++    varieties,
++    lots: [
++      { id: "lot-bean", varietyId: "bean", expiresOn: "2027-02-01", packets: 1 },
++    ],
++    cycleDate: "2027-01-01",
++    operatorAids: {
++      varieties: [{ id: "bean", aliases: ["Scarlet-Bean"] }],
++    },
++  });
++
++  assert.deepEqual(result.skipped, [
++    {
++      requestId: "r",
++      varietyId: "Scarlet-Bean",
++      reason: "unknown-variety",
++    },
++  ]);
++});
++
++test("zero stock and an allium-only failed request leave later decisions unchanged", () => {
++  const result = planDispatches({
++    requests: [
++      {
++        id: "01-empty",
++        householdId: "h1",
++        items: ["garlic"],
++        submittedAt,
++        carriedOver: false,
++        permits: ["SCARIFY"],
++      },
++      {
++        id: "02-valid",
++        householdId: "h1",
++        items: ["bean"],
++        submittedAt: "2027-01-01T00:01:00Z",
++        carriedOver: false,
++        permits: [],
++      },
++    ],
++    varieties,
++    lots: [
++      { id: "empty-garlic", varietyId: "garlic", expiresOn: "2027-02-01", packets: 0 },
++      { id: "bean-lot", varietyId: "bean", expiresOn: "2027-02-01", packets: 1 },
++    ],
++    cycleDate: "2027-01-01",
++  });
++
++  assert.deepEqual(result.skipped, [
++    { requestId: "01-empty", varietyId: "garlic", reason: "out-of-stock" },
++  ]);
++  assert.deepEqual(result.packets, [
++    {
++      requestId: "02-valid",
++      householdId: "h1",
++      varietyId: "bean",
++      lotId: "bean-lot",
++    },
++  ]);
++});
++
++test("planner does not mutate canonical request or lot objects", () => {
++  const sourceRequest = Object.freeze({
++    id: "r",
++    householdId: "h",
++    items: Object.freeze(["bean", "bean"]),
++    submittedAt,
++    carriedOver: false,
++    permits: Object.freeze([]),
++  });
++  const sourceLot = Object.freeze({
++    id: "bean-lot",
++    varietyId: "bean",
++    expiresOn: "2027-02-01",
++    packets: 2,
++  });
++
++  const result = planDispatches({
++    requests: Object.freeze([sourceRequest]),
++    varieties: Object.freeze(varieties),
++    lots: Object.freeze([sourceLot]),
++    cycleDate: "2027-01-01",
++  });
++
++  assert.equal(sourceLot.packets, 2);
++  assert.deepEqual(sourceRequest.items, ["bean", "bean"]);
++  assert.equal(result.packets.length, 2);
++  assert.deepEqual(result.lotUse, [
++    {
++      lotId: "bean-lot",
++      varietyId: "bean",
++      used: 2,
++      remaining: 0,
++    },
++  ]);
++});
+diff --git a/test/planDispatches.test.js b/test/planDispatches.test.js
+deleted file mode 100644
+index 7562154..0000000
+--- a/test/planDispatches.test.js
++++ /dev/null
+@@ -1,80 +0,0 @@
+-import test from "node:test";
+-import assert from "node:assert/strict";
+-
+-import { planDispatches } from "../src/planDispatches.js";
+-
+-test("keeps multi-item requests atomic and uses input order", () => {
+-  const result = planDispatches({
+-    requests: [
+-      {
+-        id: "r-partial",
+-        householdId: "h1",
+-        items: ["carrot", "tomato", "tomato"],
+-      },
+-      {
+-        id: "r-carrot",
+-        householdId: "h2",
+-        items: ["carrot"],
+-      },
+-      {
+-        id: "r-tomato",
+-        householdId: "h3",
+-        items: ["tomato"],
+-      },
+-      {
+-        id: "r-unknown",
+-        householdId: "h4",
+-        items: ["missing"],
+-      },
+-    ],
+-    varieties: [{ id: "carrot" }, { id: "tomato" }],
+-    lots: [
+-      { id: "lot-z", varietyId: "tomato", packets: 1 },
+-      { id: "lot-a", varietyId: "carrot", packets: 1 },
+-    ],
+-  });
+-
+-  assert.deepEqual(result, {
+-    packets: [
+-      {
+-        requestId: "r-carrot",
+-        householdId: "h2",
+-        varietyId: "carrot",
+-        lotId: "lot-a",
+-      },
+-      {
+-        requestId: "r-tomato",
+-        householdId: "h3",
+-        varietyId: "tomato",
+-        lotId: "lot-z",
+-      },
+-    ],
+-    skipped: [
+-      {
+-        requestId: "r-partial",
+-        varietyId: "tomato",
+-        reason: "out-of-stock",
+-      },
+-      {
+-        requestId: "r-unknown",
+-        varietyId: "missing",
+-        reason: "unknown-variety",
+-      },
+-    ],
+-    labels: ["r-carrot:carrot@lot-a", "r-tomato:tomato@lot-z"],
+-    lotUse: [
+-      {
+-        lotId: "lot-a",
+-        varietyId: "carrot",
+-        used: 1,
+-        remaining: 0,
+-      },
+-      {
+-        lotId: "lot-z",
+-        varietyId: "tomato",
+-        used: 1,
+-        remaining: 0,
+-      },
+-    ],
+-  });
+-});

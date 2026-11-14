@@ -1,0 +1,194 @@
+{
+  "scope": "partial, synthetic pilot only",
+  "source_alias": "pilot = review31-pilot/review; source location intentionally omitted",
+  "pairs": [
+    {
+      "id": "r02",
+      "case": "A",
+      "arm": "candidate",
+      "draft": "draft-31",
+      "files": [
+        {
+          "source": "pilot:results/r02/review.md",
+          "path": "pilot/r02/review.md",
+          "original_sha256": "ed715c3d86843d2289d0f829d9ef1b068f3c14c50d25a497bea42d92066c868d",
+          "published_sha256": "80c2accec6378a982322c853e9f2ca817157f9ee6497a636bd928d7bd5421687",
+          "changed": true
+        },
+        {
+          "source": "pilot:results/r02/review.json",
+          "path": "pilot/r02/review.json",
+          "original_sha256": "f56aa707dfd2cc35dbd08a01198958a59b6aa9a92032fd5b22b585a68e0d8905",
+          "published_sha256": "00b2ec9e03e38a06e8b1be5f24e203c9f405c29d384157b6e753880bf6dd37ba",
+          "changed": true
+        }
+      ]
+    },
+    {
+      "id": "r03",
+      "case": "B",
+      "arm": "baseline",
+      "draft": "draft-30",
+      "files": [
+        {
+          "source": "pilot:results/r03/review.md",
+          "path": "pilot/r03/review.md",
+          "original_sha256": "e433f3fd3f808eb785ee4bc4eeb0a7352d272dd415f029d3a1bf6523d3d7ccf9",
+          "published_sha256": "e433f3fd3f808eb785ee4bc4eeb0a7352d272dd415f029d3a1bf6523d3d7ccf9",
+          "changed": false
+        },
+        {
+          "source": "pilot:results/r03/review.json",
+          "path": "pilot/r03/review.json",
+          "original_sha256": "740b8b2d1cc8c0dd46b8eb79fa4342cbc013b50728d59fe5b4c7f70854b38ac7",
+          "published_sha256": "740b8b2d1cc8c0dd46b8eb79fa4342cbc013b50728d59fe5b4c7f70854b38ac7",
+          "changed": false
+        }
+      ]
+    },
+    {
+      "id": "r05",
+      "case": "A",
+      "arm": "baseline",
+      "draft": "draft-30",
+      "files": [
+        {
+          "source": "pilot:results/r05/review.md",
+          "path": "pilot/r05/review.md",
+          "original_sha256": "49f1b690a83ee8a4b89214c1ee2fb941035533b7622f2d8ea45524ae6612aff5",
+          "published_sha256": "f8d4dc162506a554ba69d2b578a9fb0b97916e6b525ed6b2d25aa30e275f4a47",
+          "changed": true
+        },
+        {
+          "source": "pilot:results/r05/review.json",
+          "path": "pilot/r05/review.json",
+          "original_sha256": "fffa21f59e7b214b0b49f0262eb729b3ace680313c14db60aa7cf8c511f3aa49",
+          "published_sha256": "ab5707271758c732ed29bb63942baa0a7c09e821d3ed3f2ffc3ab67f4ed7a728",
+          "changed": true
+        }
+      ]
+    },
+    {
+      "id": "r06",
+      "case": "B",
+      "arm": "candidate",
+      "draft": "draft-31",
+      "files": [
+        {
+          "source": "pilot:results/r06/review.md",
+          "path": "pilot/r06/review.md",
+          "original_sha256": "2bc963a7ca61a25736a71f86ccdb0bd8914f6a6710e62f515ea41f8d4acf38f9",
+          "published_sha256": "2bc963a7ca61a25736a71f86ccdb0bd8914f6a6710e62f515ea41f8d4acf38f9",
+          "changed": false
+        },
+        {
+          "source": "pilot:results/r06/review.json",
+          "path": "pilot/r06/review.json",
+          "original_sha256": "a9b09643cb119652f21312c22dc30558a94ba01080374d39cd6d4c41135cc6a9",
+          "published_sha256": "df53488acb921a36b7430c06f2b75609c25bb24d8ab742f0c4e84f4c35b6db75",
+          "changed": true
+        }
+      ]
+    },
+    {
+      "id": "r07",
+      "case": "B-corrected",
+      "arm": "baseline",
+      "draft": "draft-30",
+      "files": [
+        {
+          "source": "pilot:followup-results/r07/review.md",
+          "path": "pilot/r07/review.md",
+          "original_sha256": "a412ad9732ddd5e2d18182c14112cd497100587f2391b52b72e13843e26f097c",
+          "published_sha256": "a412ad9732ddd5e2d18182c14112cd497100587f2391b52b72e13843e26f097c",
+          "changed": false
+        },
+        {
+          "source": "pilot:followup-results/r07/review.json",
+          "path": "pilot/r07/review.json",
+          "original_sha256": "957d3924f40e471fd8c6d5e46e6146304eb44ec8929cae48b34752b9a4c1f090",
+          "published_sha256": "3f4e1f0500569b3c1859ea34cd61b534df4338987a8a6bccd325904a9c37ec3c",
+          "changed": true
+        }
+      ]
+    },
+    {
+      "id": "r08",
+      "case": "B-corrected",
+      "arm": "candidate",
+      "draft": "draft-31",
+      "files": [
+        {
+          "source": "pilot:followup-results/r08/review.md",
+          "path": "pilot/r08/review.md",
+          "original_sha256": "2234ba3b408103138603b19293e59a63c40a0067bbfe0241d96b8d7175af785a",
+          "published_sha256": "2234ba3b408103138603b19293e59a63c40a0067bbfe0241d96b8d7175af785a",
+          "changed": false
+        },
+        {
+          "source": "pilot:followup-results/r08/review.json",
+          "path": "pilot/r08/review.json",
+          "original_sha256": "8a79739c51f3914d2d561fb310078588dd9b83c11d033374f10f69c09a3f356f",
+          "published_sha256": "4e119e37456cf1dbe1467da465dc64acdda963f2ff8140cd8735cd9714315004",
+          "changed": true
+        }
+      ]
+    }
+  ],
+  "fixtures": [
+    {
+      "fixture": "A",
+      "source": "pilot:common/A/brief.md",
+      "path": "fixtures/A/brief.md",
+      "sha256": "57dbf65796c09e4756fe675cb4ba9636566a059407565b5d07b3a644bf06fa7d"
+    },
+    {
+      "fixture": "A",
+      "source": "pilot:common/A/base/order.js",
+      "path": "fixtures/A/base/order.js",
+      "sha256": "2dda289315fcf56ee42c2e1e945a28f8e2fc55de58c47d48eef0d4ef4536b5b9"
+    },
+    {
+      "fixture": "A",
+      "source": "pilot:common/A/head/order.js",
+      "path": "fixtures/A/head/order.js",
+      "sha256": "ded41be54d714c191d28c80c78e1e7017847249aa45adc26ae48d994061f4faa"
+    },
+    {
+      "fixture": "B",
+      "source": "pilot:common/B/brief.md",
+      "path": "fixtures/B/brief.md",
+      "sha256": "3def3d12120ad0f85ba81c90209f43810ed52183682070cb82b959559cc2c862"
+    },
+    {
+      "fixture": "B",
+      "source": "pilot:common/B/base/store.js",
+      "path": "fixtures/B/base/store.js",
+      "sha256": "58158dab4b957a0213bd0d048ce50480e7eec33a7a8c9669d53ea49c427bdd3e"
+    },
+    {
+      "fixture": "B",
+      "source": "pilot:common/B/head/store.js",
+      "path": "fixtures/B/head/store.js",
+      "sha256": "814631db6c014c7f8197458c296f43f31b92a5155fc6c9d844cb6670d8392870"
+    },
+    {
+      "fixture": "B-corrected",
+      "source": "pilot:corrected-control/reviewer/brief.md",
+      "path": "fixtures/B-corrected/brief.md",
+      "sha256": "3def3d12120ad0f85ba81c90209f43810ed52183682070cb82b959559cc2c862"
+    },
+    {
+      "fixture": "B-corrected",
+      "source": "pilot:corrected-control/reviewer/base/store.js",
+      "path": "fixtures/B-corrected/base/store.js",
+      "sha256": "58158dab4b957a0213bd0d048ce50480e7eec33a7a8c9669d53ea49c427bdd3e"
+    },
+    {
+      "fixture": "B-corrected",
+      "source": "pilot:corrected-control/reviewer/head/store.js",
+      "path": "fixtures/B-corrected/head/store.js",
+      "sha256": "8ae13b3350ddfd47ee491315a923141a5880407c4d9fbf730e726cf7c29b7ffd"
+    }
+  ]
+}

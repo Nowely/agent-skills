@@ -14,6 +14,10 @@ in the importer's coupled responsibilities. It also cost more time and output. T
 structured review/report workflow; it does not establish general architectural superiority or an outcome
 on the original private task.
 
+The common [control prompt](prompts/r01.txt) explicitly requested correctness, task completeness, necessity,
+architecture, readability and tests. Thus the control was without the skill, not an ordinary unprompted
+review baseline. This round cannot establish what the skill adds to a simple "review this change" request.
+
 ## What ran
 
 The [approved protocol](protocol.md) used fresh `gpt-6.1-terra` sessions at `xhigh`, two reviews per arm per

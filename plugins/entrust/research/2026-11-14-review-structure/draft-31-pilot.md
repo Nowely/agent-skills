@@ -2,7 +2,7 @@
 
 ## Question and candidate
 
-Draft 30 made future-change scenarios mandatory and treated a lower number of edit or read locations as the gate for a design finding. Draft 31 makes grounded scenarios optional, asks for a concrete structural burden instead of a numeric proxy, and explicitly weighs an unestablished automated convenience against its benefit, cost and observable loss. The complete changed-line map remains; a mechanism's weight must not include mixed blocks without defensible attribution. See the [candidate notes](drafts/31-notes.md) and the three draft snapshots beside them. The working skill and checker in this PR contain the candidate, not a proven release.
+Draft 30 made future-change scenarios mandatory and treated a lower number of edit or read locations as the gate for a design finding. Draft 31 makes grounded scenarios optional, asks for a concrete structural burden instead of a numeric proxy, and explicitly weighs an unestablished automated convenience against its benefit, cost and observable loss. The complete changed-line map remains; a mechanism's weight must not include mixed blocks without defensible attribution. See the [candidate notes](drafts/31-notes.md) and the three draft snapshots beside them. The PR's working skill was subsequently refined beyond those frozen snapshots; neither is a proven release.
 
 The purpose is to improve reviews of decomposition and unnecessary mechanisms without forcing a split, losing needed behavior, or overclaiming exact mechanism weight. The pilot is a low-sample diagnostic, not a release gate or a reliability estimate.
 
@@ -35,4 +35,4 @@ Draft 31 removes a mandatory reporting step on the corrected control, but the pi
 
 Before promoting this candidate, refine how reviews show the cost and benefit of optional mechanisms and diagnose responsibility boundaries, then test against independently prepared, held-out changes with both tangled and already cohesive designs. Preserve source-grounded judging and distinguish behavior, architecture, false positives and review cost. More independent review/implementation samples can be more informative than multiple judges on a single sample; an additional judge is useful when a substantive disagreement remains.
 
-The real-task materials and raw reports are private and intentionally not included here. This public record summarizes observations, not reproducible access to that task. The corrected synthetic control and its results are described above; their raw packets are not part of this PR.
+The real-task materials and raw reports are private and intentionally not included here. This public record summarizes observations, not reproducible access to that task. A [sanitized synthetic report export](artifacts/reports/) includes the corrected-control reviews and source snapshots, with its reconstruction limits documented separately.

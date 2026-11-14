@@ -1,6 +1,6 @@
 # Draft 31 notes
 
-Baseline: local `codex/review-draft31` at commit `1a35f1fef5c9efa4408d1a3739f5775ae6477f0e` (PR 97 draft 30); plugin manifest version `0.38.0`. This is a research candidate, not a release. The three `31-*` snapshots capture the candidate skill and its two changed references. Runtime checker and tests are in the working tree, not included in these Markdown snapshots.
+Baseline: local `codex/review-draft31` at commit `1a35f1fef5c9efa4408d1a3739f5775ae6477f0e` (PR 97 draft 30); plugin manifest version `0.38.0`. This is a research candidate, not a release. The three `31-*` snapshots capture the candidate skill and its two changed references. Runtime checker and tests were in the pilot working tree, not included in these Markdown snapshots. The working skill was later refined; it should not be mistaken for the frozen pilot snapshots.
 
 Changes: weigh unestablished automated conveniences by benefit, cost and omission; attribute only whole blocks reasonably belonging to a mechanism, otherwise split meaningfully or leave unassessed; assess design by evidenced readability, ownership and dependencies, with scenarios when useful. The checker no longer requires scenarios or judges design by numeric edit/read counts. It still checks scenario references, unit reasons and complete changed-line ownership. Shared mechanism weight and report presentation are unchanged.
 

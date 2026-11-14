@@ -1,0 +1,14 @@
+{
+  "name": "seed-dispatch-head-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test ../brief/acceptance.test.mjs test/*.test.js",
+    "test:acceptance": "node --test ../brief/acceptance.test.mjs",
+    "test:edge": "node --test test/*.test.js"
+  }
+}

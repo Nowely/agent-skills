@@ -51,7 +51,7 @@ Assess readability, rule ownership and dependencies: split intertwined logic, me
 
 Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. A useful scenario shows what must be understood or changed together; tracing difficulty alone is a lead.
 
-Compare clarification in place, separating decisions from effects, consolidation, extraction and removal by the standard's comparison. Ground the tradeoff in the code and its actual burden; a preference alone does not establish one.
+Compare in-place simplification, separating decisions from effects, consolidation, extraction or removal as useful. For a material burden, sketch the simplest plausible alternative: compare readability, rule ownership, dependencies and boundary or coordination cost. Trace required rules and precedence; preference alone is not an improvement.
 
 Keep obvious guards and cohesive ordered decisions together; length and helper counts do not decide. Read [the structural examples](references/structure-examples.md) before finalizing this assessment.
 
@@ -59,7 +59,7 @@ Keep obvious guards and cohesive ordered decisions together; length and helper c
 
 Before the detailed passes, sketch the smallest solution supported by the requirements and contracts: its units, what each owns, what it reuses, and which mechanisms it needs. This is a provisional comparison, not a commitment to preserve the implementation's premises.
 
-Trace requirements and rules through it, and walk any recorded scenarios through it, recording what the target edits and reads. Keep a boundary when its benefit justifies its cost. Preserve required timing, failure, retry, reload and no-further-input behavior, citing the task, owner decision or established contract that requires it. When an automated convenience is not established as required, weigh its benefit, cost and observable loss if omitted; absence of a stated requirement alone does not mandate removal. Offer a meaningful tradeoff to the owner. If a required decision conflicts with a contract, show the conflict and which part of the target depends on resolving it. If the change already has the appropriate structure, say so. Update the target when later evidence changes it.
+Trace requirements, rules and scenarios through the target, including edits and reads. Preserve timing, failure, retry, reload and no-further-input behavior required by the task, owner decision or contract, citing the source. For a material mechanism of unestablished necessity, sketch the simplest alternative without it: what triggers required behavior, which inputs it uses and what is lost; mark unknowns. Compare benefit and cost; absence from the task alone does not mandate removal. Record a material unresolved tradeoff in the mechanism and an owner question or idea. A provisional recommendation is not an owner decision; record uncertainty about whether it works separately. Avoid questions about minor conveniences. Show conflicts between required decisions and contracts and which target parts depend on their resolution. Say if the structure is appropriate; update the target with evidence.
 
 ### 4. Review all four directions
 
@@ -118,7 +118,7 @@ Finalize `review.json` for every review (saving it in the permitted output locat
 
 Follow the data contract for source preservation, localization and validation; passing the script establishes structure, not truth.
 
-Derive the human-facing response from the canonical report; do not maintain a competing set of findings in prose. Lead with the conclusion and the recommendation: accept, fix in place, or reshape toward the target. State what the change is for, what decides the recommendation, and the material limits of the review. When the target differs, briefly distinguish the solution now from the proposed one and give the ordered changes, referring to findings by number. A structural step explains the concrete burden that remains without it; cite a scenario when one helps. Avoid using finding count as a quality score.
+Derive the response from the canonical report, not a competing set of findings. Lead with the conclusion and recommendation: accept, fix in place, or reshape toward the target. State the change's purpose, what decides the recommendation and material limits. Surface unresolved owner tradeoffs that materially affect the solution, with alternatives and consequences. When the target differs, distinguish it from the current solution and give ordered changes, referring to findings by number. A structural step explains the burden without it; cite a scenario when useful. Finding count is not a quality score.
 
 Present findings by impact, each once, with direction, evidence level, source location, demonstrated problem and smallest sufficient fix. Link affected requirements and distinguish findings, unresolved questions and optional ideas. Derive grounded manual scenarios and visual limitations as the data contract specifies. Omit empty sections in the short response; link the complete `review.json` and surface limits that materially change the recommendation.
 

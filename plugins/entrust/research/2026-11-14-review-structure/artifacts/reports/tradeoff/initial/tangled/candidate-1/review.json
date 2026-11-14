@@ -1,0 +1,77 @@
+{
+  "title": "Статическое ревью планировщика выдачи семян",
+  "language": "ru",
+  "range": "HEAD~1..HEAD",
+  "change": {
+    "goal": "Добавить приоритет перенесённых заявок, разрешения, allium-лимит, FEFO и атомарную обработку.",
+    "why": "Прежний планировщик обрабатывал заявки и партии в исходном порядке: case/brief/BRIEF.md:3-10.",
+    "parts": ["Порядок заявок и партий, проверки и откат.", "Необязательный адаптер ручного ввода.", "Команды и тесты acceptance и edge."],
+    "sources": ["case/brief/BRIEF.md:1-174", "base 882ceecc7ab0928c578681d0ef3f6d6de08eb4e1", "head a85a9f9ec05141e4f6c9a5214a01c3f3dbe3882e", "git diff --no-ext-diff HEAD~1 HEAD SHA-256 6e3e06bbf35a247250c954aeb23098a5c53f57fd5935dc2cceb27c00c05fcd38"]
+  },
+  "verdict": "Исправить на месте: поведенческих нарушений канонического контракта статически не обнаружено.\n- Резервный порядок по индексам избыточен.\n- Необходимость адаптера требует решения владельца; тесты не запускались.",
+  "now": "planDispatches адаптирует вход, сортирует заявки и партии, проверяет позиции и откатывает резервы при отказе. Отдельный адаптер поддерживает алиасы и defaults.",
+  "target": "Сохранить порядок проверок, FEFO и атомарный откат; убрать недостижимые sourceIndex. До решения владельца сохранить адаптер и его локальный контракт.",
+  "recommendation": "Исправить на месте и отдельно согласовать судьбу адаптера.",
+  "steps": [
+    {"text": "Упростить сортировку без изменения заданных ключей.", "findings": [1]},
+    {"text": "Добавить различающую проверку лексического порядка.", "findings": [2]}
+  ],
+  "requirements": [
+    {"id": 1, "text": "Сортировать заявки по carriedOver, submittedAt и id операторами JS < и >, позиции — по items. Источник: case/brief/BRIEF.md:69-78.", "source": "task", "met": "read"},
+    {"id": 2, "text": "Атомарно проверять позиции в порядке: неизвестный вид, разрешение, allium-лимит, остаток; отклонять по первой ошибке. Источник: case/brief/BRIEF.md:80-99.", "source": "task", "met": "read"},
+    {"id": 3, "text": "Выбирать годную партию с остатком по expiresOn и id; учитывать временные резервы и откатывать неудачную заявку. Источник: case/brief/BRIEF.md:101-114.", "source": "task", "met": "read"},
+    {"id": 4, "text": "Вернуть ровно packets, skipped, labels и lotUse в заданных порядках, сохраняя неизвестные ID. Источник: case/brief/BRIEF.md:116-158.", "source": "task", "met": "read"},
+    {"id": 5, "text": "Использовать чистый JavaScript без внешних зависимостей, сети, файлового ввода-вывода, часов и случайности. Источник: case/brief/BRIEF.md:10-11.", "source": "task", "met": "read"},
+    {"id": 6, "text": "Поддерживать локальный контракт адаптера из README.md:4-39 и test/edge.test.js:14-199. Источник: case/brief/BRIEF.md:160-174.", "source": "assumption", "not_checked": "Необходимость адаптера и самостоятельного контракта не подтверждена владельцем."},
+    {"id": 7, "text": "Предоставить команды test:acceptance и test:edge для Node.js 20+. Источник: case/brief/BRIEF.md:163-174.", "source": "task", "not_checked": "Команды не запускались по ограничению пользователя."}
+  ],
+  "findings": [
+    {"id": 1, "title": "Tie-breaker по исходному индексу недостижим", "direction": "necessity", "evidence": "read", "at": "src/planDispatches.js:21-22,36,40-42,49-50", "what": "Оба сортировщика используют sourceIndex только после равенства ID. ID разных заявок и партий уникальны; сравнение объекта с самим собой даёт одинаковый индекс. Индексы не меняют результат, но добавляют поля и обёртку ranked.", "shown_by": "case/brief/BRIEF.md:37,66,69-77,106-109; src/operatorAids.js:146-157 сохраняет request.id.", "fix": "Убрать sourceIndex и последние fallback-сравнения; сортировать адаптированные заявки напрямую, сохранив все заданные ключи и адаптер до решения владельца."},
+    {"id": 2, "title": "Тесты не отличают обычный порядок JS от localeCompare", "direction": "tests", "evidence": "read", "at": "../brief/acceptance.test.mjs:21-119", "what": "Проверяемые ID используют строчные ASCII-буквы и цифры, поэтому localeCompare вместо заданных < и > может пройти существующие проверки, хотя для смешанного регистра порядок различается.", "shown_by": "case/brief/BRIEF.md:71-77; case/brief/acceptance.test.mjs:21-119; head/test/edge.test.js:14-277.", "fix": "Добавить равные carriedOver/submittedAt и ID A и a с ожидаемым порядком по <; аналогично проверить партии с равным сроком.", "untested": [1, 3]}
+  ],
+  "units": [
+    {"name": "compareText", "existing": true, "jobs": ["Сравнивает операторами < и > для сортировок заявок, партий и lotUse."]},
+    {"name": "foldReference", "jobs": ["Нормализует строку NFKD, удаляет диакритику и сворачивает регистр и разделители."], "uses": [], "verdict": "keep", "reason": "Общая нормализация ссылок видов и участников."},
+    {"name": "createReferenceIndex", "jobs": ["Проверяет точные и нормализованные ID и коллизии; разрешает точное совпадение раньше нормализованного, иначе возвращает вход."], "uses": ["foldReference"], "verdict": "keep", "reason": "Изолирует правила разрешения и конфликты двух типов ссылок."},
+    {"name": "requireItems", "jobs": ["Выбирает items раньше itemCodes и проверяет непустой массив."], "uses": [], "verdict": "keep", "reason": "Локализует выбор источника позиций."},
+    {"name": "createRequestAdapter", "jobs": ["Без aids возвращает заявку без изменения; иначе строит индексы и проверяет участников.", "На заявке выбирает позиции и участника, объединяет householdId, carriedOver и permits; при неверной конфигурации или неизвестном участнике выбрасывает TypeError."], "uses": ["createReferenceIndex", "requireItems"], "verdict": "keep", "reason": "Локальный контракт документирован; удалять возможность без решения владельца нельзя."},
+    {"name": "planDispatches", "jobs": ["Строит индекс видов, адаптирует все заявки до сортировки, сортирует заявки по carry/time/id, партии по сроку/id.", "Проверяет каждую позицию: вид → permit → allium → годный остаток; первая ошибка останавливает заявку.", "Временно меняет остатки и allium; при отказе восстанавливает, иначе публикует packets и labels.", "Выводит использованные партии по lotId и четыре поля результата."], "uses": ["createRequestAdapter", "compareText"], "verdict": "fix", "findings": [1], "reason": "Упорядоченные проверки и откат — связная транзакция; индексы для невозможного равенства избыточны."}
+  ],
+  "mechanisms": [
+    {"name": "Ручной адаптер aliases и defaults", "change": "added", "units": ["foldReference", "createReferenceIndex", "requireItems", "createRequestAdapter", "planDispatches"], "purpose": "Преобразовать ручные коды и участника в каноническую заявку до сортировки.", "basis": "README.md:4-39 и test/edge.test.js:14-199 задают локальный контракт; case/brief/BRIEF.md:160-161 не требует этой возможности. Атрибуция строк не оценена: интеграция смешана с ранжированием.", "instead": "case/brief/BRIEF.md:24-40 задаёт уже полную заявку, src/planDispatches.js:64-90 работает непосредственно с её items и полями; другого разрешителя ручных имён в просмотренном дереве нет.", "benefit": "При ручном вводе распознаёт алиасы и подставляет данные участника; без него данные готовит вызывающая сторона. Частота ручного ввода и реальные потребители неизвестны.", "cost": "Два индекса, коллизии, валидация, defaults, новые исключения, публичный вход, документация и тесты; необходимо поддерживать два контракта.", "decision": "Сохранить до решения владельца: оставить локальный контракт либо убрать адаптер, интеграцию, документацию и его тесты, потеряв удобство ручного ввода.", "evidence": "judgment"},
+    {"name": "Атомарное резервирование запасов и allium", "change": "changed", "units": ["planDispatches"], "purpose": "Обеспечить видимость временных резервов и отсутствие последствий отказа.", "basis": "case/brief/BRIEF.md:80-114; src/planDispatches.js:58-124. Атрибуция строк не оценена: код смешан с проверками.", "instead": "src/planDispatches.js:97-104 и HEAD~1:src/planDispatches.js:34-52 показывают существующий staged/rollback запасов, но прежняя версия не вела allium.", "benefit": "При второй allium-позиции или недостатке остатков отказ не влияет на следующую заявку; частота неизвестна.", "cost": "Временное общее состояние, откат остатков и занятости надо читать вместе.", "decision": "Сохранить: существующая транзакция расширена необходимым состоянием.", "evidence": "read"},
+    {"name": "Резервный порядок по sourceIndex", "change": "added", "units": ["planDispatches"], "purpose": "Разрешать равенство предыдущих ключей сортировки.", "basis": "src/planDispatches.js:21-22,36,40-42,49-50; case/brief/BRIEF.md:37,66 гарантирует уникальные ID. Атрибуция не оценена: индексы разделяют строки с необходимой сортировкой.", "instead": "case/brief/BRIEF.md:71-77 и case/brief/BRIEF.md:106-109 задают ID последним ключом; src/operatorAids.js:146-157 не изменяет ID.", "benefit": "При одинаковых ID разных объектов сохранялся бы исходный порядок, но такой вход исключён контрактом; применимой частоты нет.", "cost": "Лишние поля и обёртка заявок, два сравнения и дополнительное состояние.", "decision": "Убрать индексы и fallback, сохранив сортировку по ID.", "evidence": "read", "findings": [1]}
+  ],
+  "target_units": [
+    {"name": "compareText", "existing": true, "jobs": ["Сравнивает операторами < и >."]},
+    {"name": "foldReference", "jobs": ["Нормализует ручные ссылки."]},
+    {"name": "createReferenceIndex", "jobs": ["Проверяет и разрешает ссылки."], "uses": ["foldReference"]},
+    {"name": "requireItems", "jobs": ["Выбирает и валидирует источник позиций."]},
+    {"name": "createRequestAdapter", "jobs": ["Преобразует ручную заявку или возвращает исходную при отсутствии aids."], "uses": ["createReferenceIndex", "requireItems"]},
+    {"name": "planDispatches", "jobs": ["Адаптирует заявки; сортирует по carry/time/id и партии по expiresOn/id без sourceIndex.", "Применяет упорядоченные проверки, резервирует и откатывает остатки и allium, формирует четыре поля результата."], "uses": ["createRequestAdapter", "compareText"]}
+  ],
+  "blocks": [
+    {"path": "README.md", "added": "1-89", "does": "Описывает локальный контракт и примеры адаптера.", "serves": [6], "verdict": "keep"},
+    {"path": "package.json", "added": "2-3", "removed": "2-3", "does": "Изменяет имя и версию пакета.", "serves": [], "verdict": "keep"},
+    {"path": "package.json", "added": "10-12", "removed": "10", "does": "Подключает acceptance и edge команды.", "serves": [7], "verdict": "keep"},
+    {"path": "src/operatorAids.js", "added": "1-8", "unit": "foldReference", "does": "Нормализует ручную ссылку.", "serves": [6], "verdict": "keep"},
+    {"path": "src/operatorAids.js", "added": "10-71", "unit": "createReferenceIndex", "does": "Строит индекс ID и алиасов, проверяет конфликты и разрешает ссылку.", "serves": [6], "verdict": "keep"},
+    {"path": "src/operatorAids.js", "added": "73-85", "unit": "requireItems", "does": "Выбирает items или itemCodes.", "serves": [6], "verdict": "keep"},
+    {"path": "src/operatorAids.js", "added": "87-159", "unit": "createRequestAdapter", "does": "Создаёт опциональный адаптер и сливает поля заявки.", "serves": [6], "verdict": "keep"},
+    {"path": "src/planDispatches.js", "added": "1,9-20", "removed": "7-12", "unit": "planDispatches", "does": "Подключает адаптер, принимает cycleDate и индексирует виды.", "serves": [1, 2, 3, 6], "verdict": "keep"},
+    {"path": "src/planDispatches.js", "added": "21-24,26-37,58", "removed": "19", "unit": "planDispatches", "does": "Адаптирует и ранжирует заявки с резервным ключом индекса.", "serves": [1, 6], "verdict": "fix", "findings": [1]},
+    {"path": "src/planDispatches.js", "added": "39-51", "unit": "planDispatches", "does": "Копирует и сортирует партии с резервным ключом индекса.", "serves": [3], "verdict": "fix", "findings": [1]},
+    {"path": "src/planDispatches.js", "added": "56,59-60,100-102,113-117", "unit": "planDispatches", "does": "Отслеживает разрешения и allium, восстанавливает состояние при отказе.", "serves": [2, 3], "verdict": "keep"},
+    {"path": "src/planDispatches.js", "added": "65,67,72-83", "removed": "24", "unit": "planDispatches", "does": "Ищет вид и выполняет проверки разрешения и allium.", "serves": [2], "verdict": "keep"},
+    {"path": "src/planDispatches.js", "added": "87-89", "removed": "31", "unit": "planDispatches", "does": "Проверяет вид, остаток и срок партии.", "serves": [3], "verdict": "keep"},
+    {"path": "test/edge.test.js", "added": "1-13", "does": "Импорты и общие фикстуры крайних случаев.", "serves": [2, 3, 6], "verdict": "keep"},
+    {"path": "test/edge.test.js", "added": "14-200", "does": "Проверяет адаптер и разрешение ссылок.", "serves": [6], "verdict": "keep"},
+    {"path": "test/edge.test.js", "added": "201-243", "does": "Проверяет нулевой остаток и следующую заявку.", "serves": [2, 3], "verdict": "keep"},
+    {"path": "test/edge.test.js", "added": "244-277", "does": "Проверяет неизменность входных объектов и повтор вида.", "serves": [3, 4], "verdict": "keep"},
+    {"path": "test/planDispatches.test.js", "removed": "1-80", "does": "Удаляет старый тест с входами без новых обязательных полей и прежним порядком; атомарный случай покрыт acceptance.", "serves": [1, 2, 3, 4], "verdict": "keep"}
+  ],
+  "questions": [
+    {"at": "src/operatorAids.js:87", "text": "Нужно ли поддерживать локальный интерфейс ручного ввода? Сохранение даёт aliases и defaults, но требует поддержки индексов и ошибок. Удаление сохраняет канонический контракт, но лишает ручного преобразования; необходимо также убрать интеграцию, документацию и тесты адаптера."}
+  ],
+  "coverage": "Изучены полный diff, обе версии планировщика, все файлы head, case/brief/BRIEF.md и acceptance.test.mjs, обязательные ссылки скилла. Все четыре направления рассмотрены статически; вход и ограничения — BRIEF.md:13-114, тесты — acceptance.test.mjs и test/edge.test.js. Внешних зависимостей нет (package.json). Проверены git diff --stat, полный и нулевой контекст diff, чистота git status, хеши base/head и SHA-256 diff. Штатный report.mjs check сначала обнаружил две непокрытые строки diff; после исправления карты проверка прошла. Первая попытка записать отчёт через Python завершилась SyntaxError до записи, затем файлы записаны другим способом. Тесты, приложение, сборка, установка и сеть не запускались по запрету. Функциональная проверка и контракт реальных потребителей адаптера не выполнены. Ревизии: 882ceecc7ab0928c578681d0ef3f6d6de08eb4e1 → a85a9f9ec05141e4f6c9a5214a01c3f3dbe3882e; SHA-256 diff 6e3e06bbf35a247250c954aeb23098a5c53f57fd5935dc2cceb27c00c05fcd38."
+}

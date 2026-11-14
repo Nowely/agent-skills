@@ -1,0 +1,103 @@
+{
+  "title": "Автоматическая отправка напоминания",
+  "language": "ru",
+  "range": "4f2d09910ffce3ae05bcc3fa1716f7eaded2f9d0..24e85a8f3e73e174940cf22c6057708d578c918d",
+  "change": {
+    "goal": "Добавить автоматическую одноразовую отправку после задержки, сохранив ручную отправку и отмену.",
+    "why": "Ранее отправка была только ручной (BRIEF.md:3-5).",
+    "parts": ["Планирование через переданный scheduler или Node timers.", "Проверка delayMs и управление отложенной работой.", "Дополнительное строковое представление объекта."],
+    "sources": ["BRIEF.md:1-89", "База 4f2d09910ffce3ae05bcc3fa1716f7eaded2f9d0, HEAD 24e85a8f3e73e174940cf22c6057708d578c918d; diff reminder.js между этими коммитами"]
+  },
+  "verdict": "Поведенческого нарушения заданного контракта при статическом разборе не обнаружено; рекомендуется упростить реализацию и проверить нативный планировщик.\n- Учёт живого таймера дублирует гарантии scheduler; собственный toString не относится к задаче.\n- Тесты и приложение не запускались.",
+  "now": "createReminder проверяет параметры, регистрирует callback и хранит state и изменяемый timer. finish меняет состояние, при наличии handle отменяет работу и вызывает onSend. callback очищает timer и вызывает finish. Объект дополнительно определяет toString.",
+  "target": "Сохранить единый finish и один handle: после успешного перехода отменять этот handle без отдельного признака живого таймера; отмена исполняющегося callback допустима и не прерывает его. Объявить handle после finish, полагаясь на асинхронность schedule. Удалить собственный toString; сохранить проверки, задержку, порядок state/onSend, исключения и независимость напоминаний. Добавить тест нативного scheduler.",
+  "recommendation": "Исправить на месте: убрать дублирующий учёт таймера и внеплановый API, дополнить проверку нативного планировщика.",
+  "steps": [
+    {"text": "Упростить жизненный цикл handle, сохранив порядок перехода и вызова обработчика.", "findings": [1]},
+    {"text": "Убрать дополнительное строковое представление, учитывая потерю удобного форматирования.", "findings": [2]},
+    {"text": "Добавить тест создания без scheduler с автоматической отправкой и отменой.", "findings": [3]}
+  ],
+  "requirements": [
+    {"id": 1, "text": "scheduler необязателен; по умолчанию применяются Node setTimeout и clearTimeout. Источник: BRIEF.md:13,19-20.", "source": "task", "met": "read", "not_checked": "Реальное исполнение Node timers не проверялось."},
+    {"id": 2, "text": "Непустой text и функция onSend обязательны; delayMs — целое число 0..2147483647; ошибки TypeError и RangeError возникают до регистрации. Источник: BRIEF.md:16-25.", "source": "task", "met": "read"},
+    {"id": 3, "text": "Единожды зарегистрировать автоматическую отправку без опроса; при нулевой задержке она не происходит внутри createReminder. Источник: BRIEF.md:40-50,63-70.", "source": "task", "met": "read"},
+    {"id": 4, "text": "Ручная отправка и отмена завершают pending, возвращают true при переходе и false после завершения, снимая ещё не начавшуюся работу; они могут выиграть до запуска callback даже после срока. Источник: BRIEF.md:27-38,46-47,84-86.", "source": "task", "met": "read"},
+    {"id": 5, "text": "До вызова onSend состояние sent; повторный вход через snapshot, sendNow и cancel безопасен; onSend вызывается не более раза с единственным неизменённым text. Источник: BRIEF.md:16,18,47,52-53.", "source": "task", "met": "read"},
+    {"id": 6, "text": "Исключения onSend проходят наружу без отката и повторной доставки. Источник: BRIEF.md:55-56.", "source": "task", "met": "read"},
+    {"id": 7, "text": "snapshot возвращает отдельный пассивный объект {text,state}, не меняющий исходное напоминание. Источник: BRIEF.md:31,58-59.", "source": "task", "met": "read"},
+    {"id": 8, "text": "Несколько напоминаний используют общий scheduler независимо. Источник: BRIEF.md:63-82,88-89.", "source": "task", "met": "read"}
+  ],
+  "findings": [
+    {
+      "id": 1, "title": "Дополнительное состояние таймера повторяет контракт scheduler", "direction": "necessity", "evidence": "read", "at": "reminder.js:32-42,50-52",
+      "what": "Переменная timer обнуляется в callback и после cancel, а finish проверяет её на null. Но finish допускает лишь один переход из pending; schedule не вызывает callback синхронно, handle не переиспользуется, cancel не бросает и не останавливает исполняющийся callback. Поэтому на автоматическом пути допустимо отменить тот же исполняющийся handle, а при ручном переходе — ожидающий. Дополнительный вызов scheduler.cancel на автоматическом пути будет наблюдаем планировщиком, но контракт не запрещает его и результат отправки не меняется.",
+      "shown_by": "BRIEF.md:63-82; reminder.js:34-53. При запуске callback finish делает sent до onSend; при sendNow/cancel до запуска finish отменяет собственный handle.",
+      "fix": "Хранить неизменяемый handle, не обнулять его и однократно вызывать scheduler.cancel(handle) в finish после успешного перехода; callback вызывает finish(\"sent\"). Сохранить асинхронность и отсутствие повторной регистрации."
+    },
+    {
+      "id": 2, "title": "Вне задачи добавлено собственное строковое представление", "direction": "necessity", "evidence": "judgment", "at": "reminder.js:68-70",
+      "what": "Метод меняет результат приведения напоминания к строке и раскрывает text и state в строковых контекстах; базовый объект имел стандартное представление. BRIEF описывает только sendNow, cancel и snapshot; в репозитории нет потребителя такого форматирования. Возможное удобство диагностики есть, но его востребованность неизвестна, а это дополнительное публично наблюдаемое поведение и обязанность сопровождения.",
+      "shown_by": "BRIEF.md:27-31; reminder.js:55-71; test/acceptance.test.js:1-325; базовая версия reminder.js.",
+      "fix": "Удалить собственный toString, вернув стандартное поведение объекта; это лишит потребителя формата [state] text. Если формат нужен, согласовать его отдельно."
+    },
+    {
+      "id": 3, "title": "Тесты не упражняют планировщик по умолчанию", "direction": "tests", "evidence": "read", "at": "test/acceptance.test.js:58-67",
+      "what": "Все случаи создают напоминания с fake scheduler; тесты не проверяют ветку без scheduler. Ошибка в nativeScheduler либо в выборе значения по умолчанию может не затронуть ни один существующий тест.",
+      "shown_by": "setup всегда передаёт clock.scheduler (test/acceptance.test.js:58-67); остальные прямые вызовы с корректными данными также передают scheduler (173-188, 206-218, 267-283).",
+      "fix": "Добавить асинхронный тест на Node timers без scheduler: дождаться одной автоматической отправки, а также проверить отмену до начала callback.", "untested": [1]
+    }
+  ],
+  "units": [
+    {"name": "nativeScheduler", "jobs": ["schedule делегирует setTimeout; cancel делегирует clearTimeout."], "uses": ["Node timers"], "verdict": "keep", "reason": "Необходимая адаптация порядка аргументов и интерфейса scheduler к Node timers."},
+    {"name": "createReminder", "jobs": ["Проверяет text, onSend, delayMs до регистрации.", "Создаёт замкнутые state и handle; schedule единожды регистрирует callback, который очищает timer и вызывает finish(sent).", "Публикует методы; раздельный handle обеспечивает независимость экземпляров."], "uses": ["nativeScheduler", "finish", "scheduler", "snapshot", "toString"], "verdict": "fix", "findings": [1, 2], "reason": "Сохранить регистрацию, проверки и API; упростить хранение handle и убрать дополнительный метод."},
+    {"name": "finish", "jobs": ["Если state не pending, возвращает false без эффектов.", "Иначе записывает конечное состояние, отменяет не-null timer и очищает его; для sent вызывает onSend(text), затем возвращает true.", "При исключении onSend состояние остаётся конечным; повторный вход получает false."], "uses": ["scheduler", "onSend"], "verdict": "fix", "findings": [1], "reason": "Один согласованный переход должен оставаться здесь; ветка по обнулению timer не нужна по контракту."},
+    {"name": "toString", "jobs": ["Форматирует текущее состояние и текст."], "uses": [], "verdict": "remove", "findings": [2], "reason": "Необязательный наблюдаемый API вне задачи; форматирование теряется при удалении."},
+    {"name": "scheduler", "existing": true, "jobs": ["schedule возвращает уникальный ненулевой handle без синхронного callback; cancel не бросает, снимает ожидающий callback и не останавливает начавшийся. Контракт BRIEF.md:63-82."]},
+    {"name": "Node timers", "existing": true, "jobs": ["Глобальные setTimeout и clearTimeout заданы для реализации по умолчанию (BRIEF.md:19-20); версия Node в package.json:6-8. Внешняя реализация не изучалась."]},
+    {"name": "onSend", "existing": true, "jobs": ["Пользовательский обработчик: один аргумент text, может повторно войти и бросить (BRIEF.md:18,52-56)."]},
+    {"name": "snapshot", "existing": true, "jobs": ["Возвращает новый объект text/state; reminder.js:64-66."]},
+    {"name": "fakeScheduler", "existing": true, "jobs": ["Тестовый планировщик хранит задания Map с уникальными объектами, удаляет до вызова callback; test/acceptance.test.js:5-55."]}
+  ],
+  "target_units": [
+    {"name": "nativeScheduler", "jobs": ["Адаптирует scheduler к Node timers."], "uses": ["Node timers"]},
+    {"name": "createReminder", "jobs": ["Проверяет ввод, регистрирует единственный callback и хранит handle в замыкании; предоставляет прежние методы."], "uses": ["nativeScheduler", "finish", "scheduler", "snapshot"]},
+    {"name": "finish", "jobs": ["Возвращает false для конечного состояния; иначе записывает состояние, отменяет handle, при sent вызывает onSend(text) и возвращает true. Исключение обработчика проходит наружу."], "uses": ["scheduler", "onSend"]},
+    {"name": "scheduler", "existing": true, "jobs": ["Обеспечивает контракт BRIEF.md:63-82."]},
+    {"name": "Node timers", "existing": true, "jobs": ["Встроенные таймеры Node."]},
+    {"name": "onSend", "existing": true, "jobs": ["Обработчик получателя."]},
+    {"name": "snapshot", "existing": true, "jobs": ["Возвращает независимую копию состояния."]}
+  ],
+  "mechanisms": [
+    {
+      "name": "Однократная отложенная отправка и отмена", "change": "added", "units": ["createReminder", "finish", "nativeScheduler"],
+      "purpose": "Отправить напоминание по задержке либо снять ещё не начатую работу при ручном завершении.",
+      "basis": "BRIEF.md:40-50,63-89; блоки охватывают интеграцию с scheduler и состояние жизненного цикла.",
+      "instead": "Базовый finish не планировал отправку: базовая reminder.js:1-36; Node timers уже доступны через reminder.js:1-8 и заданы BRIEF.md:19-20.",
+      "benefit": "Без планирования отправка не произойдёт без действий потребителя; автоматическая отправка обязательна для каждого pending-напоминания.",
+      "cost": "Один handle и связь между callback, конечным состоянием и отменой; нужны проверки с подменным и нативным scheduler. Изменяемое значение и null-guard добавляют избыточную синхронизацию с состоянием callback.",
+      "decision": "Сохранить планирование, адаптер и переход; устранить только дублирующий учёт жизненного цикла handle, принимая дополнительный допустимый вызов cancel при автоматическом завершении.",
+      "evidence": "judgment", "findings": [1], "blocks": [1, 4, 5, 6, 7, 8]
+    },
+    {
+      "name": "Пользовательское строковое представление", "change": "added", "units": ["toString"], "purpose": "Получить строку с состоянием и текстом.",
+      "basis": "reminder.js:68-70; BRIEF.md:27-31 не предписывает форматирование.",
+      "instead": "До изменения объект использовал обычное объектное строковое представление: базовая reminder.js:22-36; snapshot в reminder.js:64-66 уже предоставляет те же поля.",
+      "benefit": "Удобная диагностика через строковое приведение; без метода формат [state] text недоступен автоматически; частота такой диагностики неизвестна.",
+      "cost": "Изменение наблюдаемого поведения преобразования, возможный вывод текста в журнал и ещё один поддерживаемый формат.",
+      "decision": "Удалить как неподтверждённый дополнительный API; при потребности согласовать формат отдельно.",
+      "evidence": "judgment", "findings": [2], "blocks": [9]
+    }
+  ],
+  "blocks": [
+    {"path": "reminder.js", "added": "1-4, 6-9", "unit": "nativeScheduler", "does": "Адаптер setTimeout/clearTimeout к интерфейсу scheduler.", "serves": [1, 3, 4], "verdict": "keep", "kind": "code"},
+    {"path": "reminder.js", "added": "11-16", "removed": "1", "unit": "createReminder", "does": "Расширяет вход createReminder задержкой и необязательным scheduler.", "serves": [1, 2, 3], "verdict": "keep", "kind": "code"},
+    {"path": "reminder.js", "added": "23-29", "unit": "createReminder", "does": "Проверяет целочисленный диапазон задержки до регистрации.", "serves": [2], "verdict": "keep", "kind": "code"},
+    {"path": "reminder.js", "added": "32", "unit": "createReminder", "does": "Создаёт изменяемое состояние handle с начальным null.", "serves": [3, 4], "verdict": "fix", "findings": [1], "kind": "code"},
+    {"path": "reminder.js", "added": "40-43", "unit": "finish", "does": "Условно отменяет и очищает хранящийся handle после перехода.", "serves": [4, 5, 8], "verdict": "fix", "findings": [1], "kind": "code"},
+    {"path": "reminder.js", "added": "50", "unit": "createReminder", "does": "Регистрирует отложенный callback и сохраняет возвращённый handle.", "serves": [3, 4, 8], "verdict": "fix", "findings": [1], "kind": "code"},
+    {"path": "reminder.js", "added": "51", "unit": "createReminder", "does": "Очищает handle при начале callback.", "serves": [3, 4], "verdict": "remove", "findings": [1], "kind": "code"},
+    {"path": "reminder.js", "added": "52-53", "unit": "createReminder", "does": "Направляет автоматическую отправку через общий переход finish.", "serves": [3, 5, 6], "verdict": "keep", "kind": "code"},
+    {"path": "reminder.js", "added": "68-70", "unit": "toString", "does": "Добавляет форматирование состояния и текста при приведении к строке.", "serves": [], "verdict": "remove", "findings": [2], "kind": "code"}
+  ],
+  "coverage": "Статический обзор всего diff 4f2d09910ffce3ae05bcc3fa1716f7eaded2f9d0..24e85a8f3e73e174940cf22c6057708d578c918d: BRIEF.md:1-89, текущий и базовый reminder.js целиком, package.json целиком, test/acceptance.test.js:1-325; других отслеживаемых файлов нет. Связи: внешний createReminder -> проверки -> scheduler.schedule -> callback -> finish -> onSend; методы sendNow/cancel -> finish -> scheduler.cancel; snapshot читает замыкание. Рассмотрены ноль, максимум, неверная задержка, повторный вход, исключение, отложенный запуск и два напоминания на общем scheduler. Git status чист при начале обзора. Выполнены чтение и git diff/status/show/ls-tree/rev-parse; тесты, приложение, сборка, установка и сеть запрещены и не выполнялись. Внутренняя реализация Node и практическое исполнение таймеров не проверены. Штатная проверка report.mjs check прошла: данные соответствуют diff; первая попытка указала неверный путь и завершилась ENOENT. Проверка не доказывает правильность анализа."
+}

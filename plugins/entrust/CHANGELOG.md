@@ -7,11 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
-- `entrust:review` reads "smallest" as the result, not the diff, and follows a design standard: each
-  structural finding rests on a change of the task walked through the code as written and the target, with
-  fewer places to edit or read in the target. Reviews record these as `scenarios`, and every unit of the
-  change gives a `reason` for its verdict; the report check requires both, so records from earlier versions
-  that list units no longer pass. Not yet measured.
+- `entrust:review` reads "smallest" as the result, not the diff, and assesses concrete structural burdens
+  and their tradeoffs. Grounded change scenarios are optional; each changed unit gives a `reason` for its
+  verdict. The checker validates scenario shape and references when present and requires unit reasons, so
+  older records without the latter need updating. Small research pilots do not establish a general quality
+  improvement.
 
 ## 0.38.0 — 2026-11-14
 

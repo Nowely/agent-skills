@@ -1,0 +1,3 @@
+# Exhibit labels
+
+Extend the exhibit store with `rename(id, text)` and `flash(id, duration)`. Renaming immediately replaces the text of an existing exhibit and has no scheduled work. Flashing immediately marks an existing exhibit highlighted and schedules its removal after `duration` milliseconds. Flashing the same exhibit again replaces the previous expiration: an older callback must not clear the newer highlight. Renaming must not affect a highlight or its expiration. The injected scheduler provides `set(callback, delay)` and `clear(handle)`. IDs are existing strings; text is a string and duration is a positive integer. `get` returns a snapshot.
