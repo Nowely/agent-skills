@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.38.0 — 2026-11-14
 
 ### Fixed
 
@@ -26,9 +26,25 @@ forensics remain in the repository references and release notes.
 - Interactive mechanism cards start collapsed with recommendation and compact weight; expanded details
   retain the evidence. Passage comments have a draft editor, source marks, full-text export and deletion
   undo. Legacy comments without anchors remain readable as unlocated.
-- Controlled research found no observed draft 28 advantage over draft 25 on the tested cases; two reviewed
-  implementations also accepted one local preview extension. These results do not establish general
-  architecture gains. See [the research](research/2026-11-13-review-instead/README.md) for limits.
+
+### Compatibility
+
+- Review records with added or changed mechanisms now require `instead` with a source citation. Older
+  records that omit it no longer pass validation. Mechanism weight remains optional; missing attribution
+  is not treated as zero. Legacy unanchored comments remain readable, editable and exportable.
+
+### Evidence and limits
+
+- The draft 29 comparison completed eight reviews and two judgments on two synthetic cases. Both arms found
+  the main defects; the skill gave fuller test-gap explanations and target descriptions, taking about
+  2.2–2.3 times as long in these small samples. No full maintainability diagnosis or general architecture
+  advantage was established. Four planned reviews of the original private task were not run because its
+  source packet was unavailable. See the [round report](https://github.com/Nowely/agent-skills/blob/7e1e4c0c6b13d1db4a5a693ae1ce28bea6ca6e2e/plugins/entrust/research/2026-11-13-review-instead/round-11/README.md).
+- Report behavior was checked through 15 browser scenarios. No new live orchestration/model gate is part
+  of this release preparation; real-device touch and screen-reader validation were not performed.
+- E142's earlier macOS temporary-Git failure has an unconfirmed cause; automatic housekeeping is disabled
+  in evaluation fixtures and the latest product PR CI passed. Other tracked limits remain in
+  [known issues](https://github.com/Nowely/agent-skills/blob/7e1e4c0c6b13d1db4a5a693ae1ce28bea6ca6e2e/plugins/entrust/ISSUES.md).
 
 ## 0.37.0 — 2026-11-13
 
