@@ -1,6 +1,12 @@
 # Review skill: the measuring instrument
 
-What a version of [the review skill](../../plugin/skills/review/SKILL.md) is measured with. A round gives fresh reviewers a change to review, with or without a version of the skill, and a judge grades each review against a rubric the reviewer never saw. `node evals/review-eval.test.mjs` checks the instrument itself and calls no model; a round is run by hand, by anyone with a model to run it on.
+This instrument prepared and scored historical studies of [the review skill](../../plugin/skills/review/SKILL.md).
+Its current scripts do **not** implement the [protocol for new comparisons](protocol.md): `prepare.mjs`
+directs both arms toward specific review categories, imposes static-review limits and copies only one
+instruction file, while `score.mjs` cannot represent an unknown ruling. The workflows below describe
+this legacy instrument, not a plain-request no-skill comparison. Do not use it to claim compliance with
+the new protocol without resolving and verifying these differences. Past runs retain their original
+methods and results. `node evals/review-eval.test.mjs` checks the existing instrument and calls no model.
 
 ## Cases
 
@@ -22,6 +28,8 @@ A rubric item is a `find`, with the direction it belongs to (behavior, necessity
 A case may carry `probes` in its rubric: changes someone will be asked to make after this one, each a local edit in the clean form and not in the first-written one. They are what the outcome's judge rules on.
 
 ## A round
+
+This is the legacy workflow produced by the current scripts; it is not the protocol for new comparisons.
 
 1. **Arms.** Freeze each skill version under test as a numbered file in the research run. `node evals/review/round.mjs <directory> control name=instructions.md ...` prepares every case in both variants once per arm, or only the cases named after `--cases`, and writes `<directory>/runs.json` with each arm's instruction digest. Run it again on the same directory for another repetition.
 2. **Reviewers.** Give each `prompts/<run>.txt`, unchanged, to a fresh reviewer that has seen no other run, with the same model, effort and tools in every arm, and save its final message as `returns/<run>.md`. Where the instructions have the reviewer write a `review.json`, give it a directory outside the repository to write in, the same wording in every such arm, and save the file as `returns/<run>.json`.
@@ -51,6 +59,10 @@ A review written with the skill saves its record, `review.json`, in which every 
 No judge takes part, so the count repeats exactly and costs nothing. It is narrower than the judge's ruling: it shows which lines the record marks and which words it contains, not whether the reviewer understood the redundancy or gave a sound reason. A review with no record, as a control's, has no measured counters. The two mechanism columns match words. They can overcount (a name in a denial or an irrelevant sentence) and undercount (different terminology or language); they are not a lower bound or evidence that the alternative was understood. Read both matched and unmatched records. Line dispositions describe proposed removals, not architectural quality; judge behavior preservation and the target separately. `slot-edit` and `profile-phone` list their lines.
 
 ## Admitting a case
+
+The following selection rule describes the legacy instrument. Do not use control outcomes to exclude or
+reclassify cases in the primary analysis of a new comparison; apply the selection rules in the
+[new protocol](protocol.md).
 
 A case on which the unaided arms already recover measures nothing: `booking-edit` was found whole by reviewers with no instructions, and an implementer given the task alone wrote the same code as one given the skill's review ([the calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md)). Before a case counts, run `control` and `task-only` on it three times. If they recover more than half of those runs, the case is a regression case: it stays in the round to show that nothing is lost, and its rows are reported apart from the result. Three runs decide where further measuring is worth its cost; they are no evidence of what the skill does. For a comparison of arms, run five reviews per arm on each admitted first-written form and three on each clean one: the count of lines costs nothing per review, so the reviews are the whole price, and implementers can follow for three of the five. Give the probes to two judges that do not see each other's rulings. Preserve their original files separately. `outcome.mjs` accepts one judge file at a time: use a working copy at `outcome-verdicts.json`, save each judge's outcome JSON/table before evaluating the next, then intersect successful run IDs. Never concatenate the judgments or overwrite their originals. Missing, disputed and unassessed results stay visible; the coordinator records disagreements with both reasons. The [scoped protocol](../../research/2026-11-13-review-instead/protocol.md#independent-judgments-and-aggregation) defines the private static round's separate evidence assessment. `slot-edit` and `profile-phone` were run once as a pilot, which found their tasks and probes ambiguous ([round 4](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6834922569)); the corrected cases have not been run, and whether a judge rules their clean forms more local than their first-written ones is still to be seen.
 
