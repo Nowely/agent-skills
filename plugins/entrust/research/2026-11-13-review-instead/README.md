@@ -173,3 +173,5 @@ Round 11 is the first comparison with an unaided arm since round 4. The model al
 
 The case to measure them on is behavior-correct and tangled, with a clean counterpart, and written apart from the drafts.
 
+All three are in [draft 30](../2026-11-14-review-structure/README.md), with a design standard and a check of the scenarios.
+

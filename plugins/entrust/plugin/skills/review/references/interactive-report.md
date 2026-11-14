@@ -10,7 +10,7 @@ Render only when the user asks. Every review already has a canonical `review.jso
    `<skill-dir>` is the installed review skill directory. The script checks the record against the diff, writes `review.html` beside it and prints a Markdown rendering. It does not modify JSON.
 3. Confirm the JSON bytes are unchanged and link the HTML. All findings, requirements, structures, mechanisms and manual scenarios come from the existing record. A new substantive conclusion needs an explicit revised review, not a silent rendering-time repair.
 
-The self-contained page shows the current and target solutions, recommendations, requirement provenance, mechanisms and their costs, file tree, connected units, changed-line blocks, findings and proposed manual checks. It supports apply/skip decisions and notes on findings, ideas, blocks and selected passages. The user copies those decisions back as text. They are proposals for the next step, not edits to source. Local images are embedded; HTTPS pictures remain links.
+The self-contained page shows the current and target solutions, recommendations, requirement provenance, mechanisms and their costs, file tree, connected units, the changes tried through them, changed-line blocks, findings and proposed manual checks. It supports apply/skip decisions and notes on findings, ideas, blocks and selected passages. The user copies those decisions back as text. They are proposals for the next step, not edits to source. Local images are embedded; HTTPS pictures remain links.
 
 Mechanism cards start collapsed, showing the name, existing recommendation and compact attributed weight.
 Expanding a card reveals its consequence, alternative, benefit, cost and detailed grounds. This rearranges the canonical record,

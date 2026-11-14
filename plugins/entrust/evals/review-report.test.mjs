@@ -34,7 +34,9 @@ const REVIEW = {
   screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
     differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
     { name: "The page", missing: "No picture was given." }],
-  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
+  scenarios: [{ id: 1, change: "Another <code> format is read.", requirements: [1], now: { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: the row loop"] },
+    target: { edit: ["src/invoices/upper.js: upper"], read: [] } }],
+  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep", reason: "One job, read whole at a glance." }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
     { path: "src/invoices/archive.js", added: "2, 4", removed: "3", unit: "readArchive", does: "Converts the code.", serves: [1], verdict: "keep" },
@@ -210,6 +212,37 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
   });
 
+test("scenarios render and reference validation survives without a numerical design gate",
+  "a structural tradeoff may improve readability with more edit locations, and a simple review may need no scenario",
+  () => {
+    const DESIGN = { id: 3, title: "A rule cannot change alone", direction: "design", evidence: "judgment", at: "src/invoices/archive.js:2",
+      what: "The format and the conversion share one loop.", shown_by: "Scenario 1.", fix: "Name the conversion; scenario 1 stays in two places without it.", scenarios: [1] };
+    const good = render((r) => { r.findings.push(DESIGN); });
+    if (good.status !== 0) return good.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('id="scenarios"') || !page.includes("Another &lt;code&gt; format is read.") || page.includes("Another <code> format")) return "the scenario is not drawn, or its text is not escaped";
+    if (!page.includes("One job, read whole at a glance.") || !good.stdout.includes("Reason: One job, read whole at a glance.")) return "a kept unit's reason is lost in presentation";
+    if (!good.stdout.includes("## Changes tried") || !good.stdout.includes("1. Another <code> format is read. (requirement 1)") || !good.stdout.includes("Target solution: edit: src/invoices/upper.js: upper. read: nothing.")) return `the printout lacks the scenario:\n${good.stdout}`;
+    const refused = [
+      [(r) => { r.findings.push({ ...DESIGN, scenarios: [9] }); }, "names scenario 9"],
+      [(r) => { r.scenarios[0].now.edit = []; }, '"now.edit" lists no place'],
+      [(r) => { delete r.units[0].reason; }, 'unit readArchive has no "reason"'],
+    ];
+    for (const [change, error] of refused) {
+      const bad = render(change);
+      if (bad.status !== 1 || !bad.stderr.includes(error)) return `not refused with "${error}": ${bad.stderr.slice(0, 300)}`;
+    }
+    const tradeoff = render((r) => {
+      r.findings.push(DESIGN);
+      r.scenarios[0].now = { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: whole loop"] };
+      r.scenarios[0].target = { edit: ["src/invoices/a.js: first", "src/invoices/b.js: second"], read: ["src/invoices/a.js: a short rule"] };
+    });
+    if (tradeoff.status !== 0) return `a tradeoff with more edits and less code to read was refused: ${tradeoff.stderr}`;
+    if (render((r) => { delete r.scenarios[0].target; }).status !== 0) return "a scenario whose target is the code as written was refused";
+    if (render((r) => { delete r.scenarios; }).status !== 0) return "a simple review with changed units was asked for scenarios";
+    return render((r) => { delete r.scenarios; r.findings.push({ ...DESIGN, scenarios: undefined }); }).status === 0 || "a design finding without a scenario was refused";
+  });
+
 test("mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns",
   "shared wiring and test code must not inflate a mechanism's exclusive production weight",
   () => {
@@ -224,6 +257,9 @@ test("mechanism weights count nonblank +/- lines, separate shared blocks and ret
       { path: r.blocks[2].path, hunks: [Array.from({ length: 13 }, (_, i) => added(i + 1))] }];
     const checked = check(r, files, run);
     if (checked.errors.length) return checked.errors.join("; ");
+    // Structural validity is not semantic proof: the checker cannot know which lines serve a mechanism.
+    const falselyAttributed = structuredClone(r); falselyAttributed.mechanisms[0].blocks = [3];
+    if (check(falselyAttributed, files, run).errors.length) return "the checker claims to decide semantic ownership";
     const model = modelOf(r, files, checked.owner, run), [a, b, unknown, reused] = model.mechanisms;
     if (model.blocks[0].added.length !== 3 || model.blocks[0].size !== 4) return "existing block representation changed";
     if (a.weight.exclusive.code.added !== 0 || a.weight.exclusive.test.added !== 7 || b.weight.exclusive.other.added !== 13) return "exclusive/category counts differ";
