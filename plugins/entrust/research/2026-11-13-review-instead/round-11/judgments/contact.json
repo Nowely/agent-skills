@@ -1,0 +1,821 @@
+{
+  "runs": [
+    {
+      "id": "u01",
+      "items": {
+        "D1": {
+          "rating": "miss",
+          "reason": "Ревью фиксирует только рантайм-дефекты (запись по мере чтения при невалидном CSV и двойной подсчёт повторов), но не формулирует архитектурный диагноз о стоимости чтения, отслеживания инвариантов или внесения изменений из-за смешения разбора, отбора строк, подсчётов и побочных эффектов в одном цикле.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3 — указывает рантайм-баг «запись происходит по мере чтения» без анализа нагрузки на чтение или изменение кода",
+            "reviews/u01/review.md:6 — описывает неверные счётчики дублей как поведенческий дефект"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-101 — единый цикл совмещает построчный разбор, фильтрацию, мутации store и обновление счётчиков"
+          ]
+        },
+        "D2": {
+          "rating": "partial",
+          "reason": "Названы существующие parseCsv и isEmail, а также необходимость дедупликации валидных строк по нормализованному email до подсчёта и записи без вытеснения отклонёнными строками, но рекомендации разбросаны по отдельным замечаниям о багах: не собран единый поток данных от результата parseCsv через проверку пустого имени и isEmail к отображению по normalizeEmail и однократному применению к ContactStore, а функция normalizeEmail явно не названа.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3-6 — разрозненные упоминания parseCsv, isEmail и дедупликации до подсчёта и записи",
+            "reviews/u01/review.md:9-10 — отдельные замечания об ошибках store.insert, режиме strict и поле rows"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-38 — parseCsv возвращает массив объектов записей с полем line",
+            "src/contacts/email.js:3-9 — существующие normalizeEmail и isEmail",
+            "src/contacts/store.js:8-22 — методы findByEmail, insert и rename"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Прямо указывает на самописный построчный разбор кавычек и переносов в import.js и рекомендует существующий в проекте parseCsv, который проверяет весь файл до возврата записей и сохраняет начальную физическую строку.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3 — ссылка на src/contacts/import.js:13–45 и существующий parseCsv",
+            "reviews/u01/review.md:4 — указание, что parseCsv поддерживает переносы в кавычках и начальную физическую строку"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-45 — ручное деление по \\n и разбор кавычек",
+            "src/lib/csv.js:6-38 — готовая реализация parseCsv"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Указывает локальное регулярное выражение EMAIL_RE в import.js:1, 65 и его расхождение с существующим isEmail на конкретных примерах (ann@site, a@b@c), которые принимаются при импорте вместо попадания в rejected.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:5 — сравнение регулярного выражения на строках 1, 65 с существующим isEmail на примерах ann@site и a@b@c"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65 — EMAIL_RE = /^\\S+@\\S+$/ и повторные email.trim().toLowerCase()",
+            "src/contacts/email.js:1-9 — EMAIL, normalizeEmail и isEmail",
+            "src/contacts/create.js:6 — форма одиночного контакта использует isEmail"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Отмечает, что незакрытые и недопустимые кавычки не вызывают ошибки, а запись в адресную книгу выполняется по мере чтения (а также что strict прерывает импорт после сохранения предыдущих строк), нарушая требование ничего не записывать при неразбираемом файле.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3 — пример с корректной строкой перед незакрытой кавычкой и ссылкой на import.js:13–45, 76–96",
+            "reviews/u01/review.md:10 — при strict предыдущие записи уже сохранены до исключения"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:25-45,59-60,66-67,76-96 — отсутствие проверки закрытия кавычек и запись в store внутри цикла чтения",
+            "task.md:8 — требование «Nothing is written if the file cannot be parsed»"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Точно диагностирует, что две валидные строки с новым одинаковым email дают created: 1 и updated: 1, а для уже существующего контакта дважды увеличивают updated вопреки правилу однократного учёта.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:6 — разбор import.js:76–81, 96 для нового и существующего повторяющегося email"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-81,87,96 — первая строка вставляет контакт и увеличивает created, следующая находит его в store и увеличивает updated",
+            "task.md:6 — «The same email twice in one file counts once, and the last valid row wins»"
+          ]
+        },
+        "F6": {
+          "rating": "partial",
+          "reason": "Отмечает, что дополнительные режимы (import.js:4–6, 58–60, 65–67) не требуются задачей и раздувают интерфейс, а цикл из трёх попыток store.insert подавляет исключения и теряет контакт; однако не проверяет отсутствие вызывающих options.mode в кодовой базе, не сопоставляет ретраи с синхронным in-memory ContactStore (формулируя «Нет основания считать все ошибки временными», будто часть ошибок может быть временной) и не формулирует явного решения полностью удалить цикл повторов.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:9 — критика трёх повторов и подавления исключений с оговоркой «все ошибки временными»",
+            "reviews/u01/review.md:10 — указание на import.js:4–6 и не требуемые задачей дополнительные режимы"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-6,59-61,66-68,83-95 — options.mode (strict, legacy) и цикл MAX_RETRIES вокруг store.insert",
+            "src/contacts/store.js:5-18 — синхронный in-memory Map без временных сбоев"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Указывает на молчаливый пропуск адресов домена @example.invalid (import.js:72–75), которые проходят существующую проверку isEmail, но не импортируются и не попадают в rejected, а также на тест на строке 25, закрепляющий это не требуемое задачей исключение.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:8 — разбор import.js:72–75 и ссылки на тест на строке 25"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75 — временный пропуск @example.invalid",
+            "test/import.test.js:24-26 — тест, закрепляющий пропуск старого тестового домена"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Отмечает, что тесты проверяют только базовый сценарий и дополнительные режимы (включая закрепление пропуска @example.invalid), и перечисляет конкретные непокрытые требования: содержимое адресной книги, дубли и последняя валидная строка, ошибки CSV и отсутствие записи, многострочные поля, физические номера строк, пробельные строки и соответствие isEmail.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:8 — тест на строке 25 закрепляет неверное поведение",
+            "reviews/u01/review.md:12 — перечень непокрытых требований и указание на тесты дополнительных режимов"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26 — базовый тест без проверки store/причин и три теста на strict, legacy и @example.invalid",
+            "task.md:5-10 — требования к импорту"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Ревью не предлагает классов валидаторов, стратегий по режимам, конвейерной/плагинной архитектуры, базовых классов импортера или сторонних схем.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3-10 — предлагает использовать существующие parseCsv и isEmail и дедупликацию до записи без введения фреймворков"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6 — функция parseCsv",
+            "src/contacts/email.js:7 — функция isEmail"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Ревью не предлагает сохранять, документировать или расширять режимы options.mode либо настраивать ретраи и backoff; напротив, указывает на избыточность режимов и недопустимость подавления ошибок записи.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:9-10 — критика подавления исключений при повторах и указание, что дополнительные режимы не требуются задачей"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-6,83-95 — MAX_RETRIES и options.mode"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Все обязательные элементы задачи (нормализация email при дедупликации, выбор последней валидной строки и отчёт об отклонённых строках с номером физической строки) сохраняются как необходимые.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:5-7 — требует отчёта в rejected с физической строкой и дедупликации по нормализованному email с приоритетом последней валидной строки"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — обязательные правила нормализации, дублей и отчёта об отклонениях"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "partial",
+          "reason": "Выявлены все добавленные механизмы внутри import.js (включая самописный разбор, EMAIL_RE, запись в цикле, @example.invalid, ретраи, режимы и лишнее поле rows) и связь с parseCsv и isEmail, но не прослежены реализация ContactStore в src/contacts/store.js, функция normalizeEmail в src/contacts/email.js и отсутствие внешних вызывающих options.mode.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3-10 — ссылки на механизмы внутри import.js, parseCsv и isEmail без анализа store.js и normalizeEmail"
+          ],
+          "sourceEvidence": [
+            "src/contacts/store.js:5-22 — синхронный ContactStore на Map",
+            "src/contacts/email.js:3-5 — normalizeEmail",
+            "src/contacts/import.js:1-104 — реализация importContacts"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "partial",
+          "reason": "Разграничивает требования задачи и лишние элементы (дополнительные режимы, @example.invalid, поле rows в ответе, дублирование parseCsv и isEmail), но не обосновывает удаление ретраев через устройство синхронного ContactStore (оставляя тезис «не все ошибки временные») и не проверяет вызывающих options.mode.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:8-10 — оценка ненужности исключения домена, дополнительных режимов и поля rows при неполном решении по ретраям"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-7,72-75,83-98 — лишние механизмы и поле rows",
+            "src/contacts/store.js:12-18 — синхронный insert без временных ошибок"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_assessed",
+          "reason": "Ревью ограничивается списком дефектов поведения, интерфейса и тестов; границы ответственности модулей или функций, решения split/merge/keep и нагрузка на чтение или изменение кода не оцениваются.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:1-12 — отсутствуют суждения о границах ответственности и стоимости сопровождения"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104 — совмещение разбора, фильтрации, подсчёта и записи в одной функции"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "partial",
+          "reason": "Отдельные пункты требуют полного разбора через parseCsv, проверки через isEmail, сохранения отклонённых строк с физической строкой и дедупликации валидных строк по нормализованному email до подсчёта и записи без вытеснения невалидным дублем, однако единый целевой порядок (приоритет проверки пустого имени после trim над email, использование normalizeEmail, полный отказ от ретраев) не сведён в связную спецификацию.",
+          "reviewEvidence": [
+            "reviews/u01/review.md:3-10 — разрозненные требования к parseCsv, isEmail, дедупликации и ошибкам insert"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — полные инварианты импорта",
+            "src/lib/csv.js:6-38 — контракт parseCsv",
+            "src/contacts/email.js:3-9 — normalizeEmail и isEmail"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Указывает лишнее поле rows в возвращаемом объекте и его закрепление тестом (reviews/u01/review.md:10; src/contacts/import.js:7,98; test/import.test.js:13; task.md:7).",
+        "Отмечает пропуск физически непустых строк из одних пробелов из-за line.trim() === \"\" и разбиение многострочных кавычечных полей со сдвигом номеров строк как конкретные проявления отказа от parseCsv (reviews/u01/review.md:4,7; src/contacts/import.js:13,21-22; task.md:9)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Точное дефект-ориентированное ревью: уверенно находит поведенческие баги, расхождение с parseCsv и isEmail, пропуск @example.invalid, пробельные строки и даже лишнее поле result.rows (которое пропустили остальные ревью), не попадая в ловушки. При этом не содержит архитектурной диагностики D1, не проверяет реализацию ContactStore для обоснования полного удаления ретраев и оставляет целевую структуру D2 набором разрозненных правок."
+    },
+    {
+      "id": "u02",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Явно перечисляет совмещённые фазы в importContacts и отмечает, что собственная обработка кавычек и разделителей связана с немедленной записью в хранилище и ветвлениями режимов/повторов, однако обосновывает проблему через нарушение рантайм-контрактов (невозможность атомарного отказа при ошибке CSV и двойной подсчёт повторов), не раскрывая конкретную нагрузку на чтение кода или сложность внесения будущих изменений.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:19,99-105,218-224 — описание совмещения построчного разбора, проверки, режимов, ретраев и немедленной записи в одной функции",
+            "reviews/u02/review.json:289-290,593 — связь разбора с записью объясняется через атомарность при ошибке разбора, а не через стоимость чтения/изменения"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-101 — единый цикл совмещает состояние заголовка/кавычек, валидацию, поиск/запись в store и счётчики"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Предлагает связный и реализуемый целевой поток с опорой на существующие функции: сначала целиком разобрать текст через parseCsv (распространяя CsvError до любых записей), затем последовательно проверить пустое после trim имя и адрес через isEmail с накоплением rejected (физическая начальная строка из parseCsv и причина) и сбором последних валидных записей по ключу normalizeEmail (не заменяя валидную запись последующей отклонённой), после чего один раз применить каждую уникальную запись к ContactStore и посчитать created и updated без режимов, фильтра домена и ретраев.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:20,348-387,593 — целевой поток и состав используемых единиц (parseCsv, isEmail, normalizeEmail, ContactStore) с обоснованием группировки этапов",
+            "reviews/u02/review.md:3,6 — порядок полного разбора до записи и сбора последних валидных строк по нормализованному email без вытеснения отклонениями"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-38 — parseCsv возвращает записи с начальной строкой line и бросает CsvError до возврата",
+            "src/contacts/email.js:3-9 — normalizeEmail и isEmail",
+            "src/contacts/store.js:8-22 — findByEmail, insert и rename"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Прямо указывает на существующий parseCsv в src/lib/csv.js:6-37 и тесты test/csv.test.js, требуя заменить им ручной построчный разбор и обработку кавычек в import.js.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:103-106,280-300,446-458 — сопоставление import.js:13,25-45 с src/lib/csv.js:6-37 и решение заменить на parseCsv",
+            "reviews/u02/review.md:3 — рекомендация полностью разбирать файл существующим parseCsv"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-50 — дублирующий построчный разбор CSV",
+            "src/lib/csv.js:6-38 — существующий parseCsv"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Показывает, что локальный EMAIL_RE в import.js:1 расходится с isEmail в src/contacts/email.js:1-8 (принимает ann@site и a@@b, отвергаемые общей проверкой и test/create.test.js:11-13), и требует использовать isEmail и normalizeEmail.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:128-139,349-380 — разбор import.js:1 против src/contacts/email.js:1-8 и test/create.test.js:11-13",
+            "reviews/u02/review.md:5 — примеры ann@site и a@@b и требование использовать isEmail"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,73,76,87 — EMAIL_RE и повторяющиеся email.trim().toLowerCase()",
+            "src/contacts/email.js:1-9 — EMAIL, normalizeEmail и isEmail",
+            "test/create.test.js:11-13 — отказ для ann@site в форме создания контакта"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Точно указывает, что незакрытые и неверно расположенные кавычки не обнаруживаются, а контакты записываются по мере чтения (а при strict — до выброса ошибки на следующей строке), поэтому невалидный файл уже меняет хранилище.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:99-106,177-178 — разбор записи по мере чтения на import.js:13 и при strict на import.js:59",
+            "reviews/u02/review.md:3 — указание на запись предыдущих строк при незакрытых кавычках"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-45,59-68,76-96 — запись в store внутри цикла разбора строк",
+            "task.md:8 — требование отсутствия записей при ошибке разбора"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Показывает, что немедленное обращение к store на каждой строке приводит к created: 1 и updated: 1 для двух валидных строк нового email и к двойному увеличению updated для существующего контакта.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:142-154 — разбор import.js:76-96 для нового и существующего дубликата",
+            "reviews/u02/review.md:6 — описание двойного учёта created и updated"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-81,87,96 — мутация store и инкремент счётчиков на каждую валидную строку",
+            "task.md:6 — один email в файле считается один раз"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Прослеживает оба лишних механизма: проверяет отсутствие других вызывающих importContacts в репозитории и требует удалить режимы strict и legacy вместе с их тестами, а также сопоставляет цикл из трёх попыток вокруг store.insert с синхронной реализацией ContactStore.insert (src/contacts/store.js:12-17), показывая отсутствие временных сбоев и молчаливую потерю строки.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:173-194,303-345,593 — анализ режимов strict/legacy, отсутствия иных вызывающих и синхронного ContactStore.insert без временных сбоев",
+            "reviews/u02/review.md:8-9 — рекомендация удалить выбор режима (включая legacy «;») и повторы вставки"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,59-68,83-95 — options.mode и цикл MAX_RETRIES",
+            "src/contacts/store.js:12-18 — синхронный ContactStore.insert на Map"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Указывает, что временная ветка пропуска @example.invalid в import.js:73 молча отбрасывает валидный по isEmail адрес без импорта и без записи в rejected, и требует удалить как фильтр, так и закрепляющий его тест.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:157-170,492-502,580-590 — анализ import.js:72-75 и test/import.test.js:24-26",
+            "reviews/u02/review.md:7 — требование удалить исключение ann@example.invalid и его тест"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75 — пропуск @example.invalid",
+            "test/import.test.js:24-26 — тест пропуска домена"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Указывает как тесты, закрепляющие не требуемое или противоречащее задаче поведение (strict, legacy с точкой с запятой, пропуск @example.invalid), так и конкретные непокрытые требования (повреждённый CSV после валидной записи, перенос в кавычках, пробельная строка, общий валидатор isEmail, повторы с победой последней валидной строки, итоговое состояние хранилища и причины отказов).",
+          "reviewEvidence": [
+            "reviews/u02/review.json:196-214,543-591 — детальный разбор всех четырёх тестов в test/import.test.js",
+            "reviews/u02/review.md:10 — перечень отсутствующих проверок и лишних тестов"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26 — существующие тесты импорта",
+            "task.md:5-10 — требования задачи"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Не предлагает классов, стратегий, конвейеров или сторонних библиотек; оставляет решение в рамках функции importContacts и существующих утилит.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:348-387,593 — одна функция importContacts с использованием существующих parseCsv, isEmail, normalizeEmail и ContactStore"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4 — функция importContacts"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Прямо рекомендует удалить режимы strict и legacy и цикл повторных попыток insert, а не сохранять или развивать их.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:313,334 — решения удалить повторные попытки и убрать режимы и их тесты"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,83-95 — MAX_RETRIES и options.mode"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Явно сохраняет нормализацию через normalizeEmail, выбор последней валидной строки при дубликатах, отчёт об отклонённых строках и полный разбор до записи.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:20,48-95 — целевая схема и полный список сохраняемых требований задачи"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — обязательные требования задачи"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Прослеживает добавленные механизмы в import.js (построчный парсер, EMAIL_RE, запись в цикле, режимы strict/legacy, ретраи insert, фильтр @example.invalid) вместе с зависимым существующим кодом (src/lib/csv.js, src/contacts/email.js, src/contacts/store.js, test/create.test.js, test/import.test.js) и проверяет отсутствие внешних вызывающих; упущено лишь лишнее поле result.rows.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:216-345,593 — карта единиц, механизмов, существующих контрактов и проверка вызывающих"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104 — добавленный код (включая неупомянутое поле rows на строках 7, 98)",
+            "src/lib/csv.js:6-38 — parseCsv",
+            "src/contacts/email.js:1-9 — normalizeEmail и isEmail",
+            "src/contacts/store.js:8-22 — ContactStore"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Чётко отделяет требования brief/task от не запрошенных механизмов (strict, legacy, ретраи insert, фильтр @example.invalid) и дублирующих реализаций (ручной парсер, EMAIL_RE), принимая аргументированные решения keep/reuse/remove на основе контрактов существующих модулей и отсутствия вызывающих (за исключением неоценённого поля result.rows).",
+          "reviewEvidence": [
+            "reviews/u02/review.json:240-345,390-591,593 — обоснование переиспользования существующих модулей и удаления режимов, ретраев и фильтра домена"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-98 — дублирующие и не запрошенные механизмы",
+            "src/contacts/store.js:12-18 — синхронная семантика insert",
+            "task.md:3-10 — границы требований"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Обосновывает передачу разбора и проверки email существующим модулям, разделение полного разбора/отбора и записи внутри importContacts и сохранение проверок имени и email вместе без лишнего дробления, однако опирается на рантайм-инварианты (невозможность атомарного отказа при немедленной записи), а не на продемонстрированную нагрузку при чтении или изменении кода.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:216-277,347-388,593 — решения keep/fix и обоснование группировки этапов через требование отсутствия записи при ошибке разбора"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104 — структура importContacts",
+            "src/lib/csv.js:6-38 — существующая граница парсера",
+            "src/contacts/email.js:3-9 — существующая граница проверки и нормализации email"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Описанная целевая схема явно сохраняет полный разбор до записи (через parseCsv), приоритет проверки пустого после trim имени и общую валидацию isEmail с записью физической строки и причины в rejected без прерывания импорта, выбор последней валидной строки по normalizeEmail без вытеснения отклонёнными дублями и однократный подсчёт created/updated относительно ContactStore; при этом оценка остаётся статическим предложением без проверки исполнением и не оговаривает удаление поля result.rows.",
+          "reviewEvidence": [
+            "reviews/u02/review.json:20,73-76,99-194,222,349-358,593 — описание всех этапов и сохраняемых инвариантов",
+            "reviews/u02/review.md:3-9 — краткое изложение целевого поведения"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — обязательные поведенческие инварианты",
+            "src/lib/csv.js:20,26,37 — сохранение пробельных строк и начального номера физической строки в parseCsv",
+            "src/contacts/import.js:7,98 — неупомянутое поле result.rows"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Явно фиксирует пропуск строки из одних пробелов (import.js:21) и искажение многострочных полей в кавычках и последующих номеров строк как следствия отказа от parseCsv, а также сохраняет порядок проверки пустого имени перед email (reviews/u02/review.json:104,114-125,222; src/contacts/import.js:13,21,58-70; task.md:5,9)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Полное и хорошо обоснованное ревью: точно связывает дефекты и лишние механизмы с существующими модулями проекта (csv.js, email.js, store.js), проверяет отсутствие вызывающих options.mode и формулирует чёткий целевой поток D2 внутри importContacts без избыточных абстракций. Не достигает полного D1 (и полной оценки границ ответственности), так как объясняет разделение фаз через рантайм-баги, а не через стоимость чтения и модификации кода, и не замечает лишнее поле result.rows."
+    },
+    {
+      "id": "u03",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Отмечает, что одна функция построчно разбирает, проверяет и сразу записывает данные и что состояние кавычек и заголовка смешано с записью, предлагая выделить планирование, однако обосновывает разделение фаз необходимостью соблюсти рантайм-контракты (разбор до записи и дедупликацию), не показывая конкретную трудность чтения или внесения изменений в связанный код.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:18,206-215,272,585 — фиксация смешения состояния кавычек и заголовка с записью и объяснение группировки через этапы разбора и дедупликации"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:14-101 — совместное хранение состояния разбора, валидации, мутаций store и счётчиков в одном цикле"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Предлагает конкретный и прозрачный целевой поток: полностью разобрать вход через parseCsv (распространяя CsvError до начала записи), в чистой функции/этапе planImport пройти записи по порядку с проверкой пустого имени и isEmail, собирая отклонённые строки (с начальной физической строкой из parseCsv и причиной) и последние валидные значения по ключу normalizeEmail (не заменяя валидный дубликат отклонённым), а затем в importContacts один раз для каждого нормализованного email обратиться к ContactStore и посчитать created и updated относительно исходного состояния хранилища.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:19,135,332-382,585 — описание целевого потока и границы между parseCsv, planImport и применением к ContactStore",
+            "reviews/u03/review.md:3,6 — полный разбор до записи и однократное применение последних валидных строк по нормализованному email"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-38 — parseCsv",
+            "src/contacts/email.js:3-9 — normalizeEmail и isEmail",
+            "src/contacts/store.js:8-22 — ContactStore"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Указывает, что самописный построчный парсер в import.js повторяет существующий parseCsv из src/lib/csv.js:6-37, не обнаруживая ошибки кавычек и ломая многострочные поля, и требует заменить его вызовом parseCsv до записи.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:85-97,263-278,425-437 — сопоставление import.js:9-50 с src/lib/csv.js:6-37 и решение заменить на parseCsv",
+            "reviews/u03/review.md:3 — требование сначала разобрать весь файл существующим parseCsv"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-50 — ручной разбор CSV",
+            "src/lib/csv.js:6-38 — существующий parseCsv"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Показывает расхождение локального шаблона /^\\S+@\\S+$/ (import.js:1) с существующим isEmail из src/contacts/email.js:1-8 и формой одиночного контакта src/contacts/create.js:5-6 на примере ann@site, рекомендуя использовать isEmail и normalizeEmail.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:114-125,345-373 — сопоставление import.js:1 с src/contacts/email.js:1-8 и src/contacts/create.js:5-6",
+            "reviews/u03/review.md:5 — пример ann@site и рекомендация использовать isEmail"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,73,76,87 — EMAIL_RE и ручная нормализация",
+            "src/contacts/email.js:1-9 — EMAIL, normalizeEmail и isEmail",
+            "src/contacts/create.js:5-6 — использование isEmail в createContact"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Показывает на конкретном примере (Ann,ann@site.test перед строкой с незакрытой кавычкой \"Bob,bob@site.test и при выбросе ошибки в strict), что запись происходит в том же цикле до завершения разбора, оставляя ранее записанные контакты в хранилище.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:85-97,158-168 — пример частичной записи до незакрытой кавычки и при strict",
+            "reviews/u03/review.md:3 — «Предыдущие строки уже записаны»"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-45,59-68,76-96 — мутации store внутри цикла чтения строк",
+            "task.md:8 — при ошибке разбора ничего не записывается"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Приводит точный сценарий (Ann,a@b.test и Bob,A@B.test на пустом store дают created=1, updated=1 вместо одного созданного, либо несколько раз увеличивают updated), диагностируя нарушение однократного подсчёта email в файле.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:128-140 — трассировка двух строк с одним нормализованным email на import.js:76",
+            "reviews/u03/review.md:6 — двойной учёт как создания и обновления"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-81,87,96 — поиск, переименование/вставка и подсчёт на каждой строке",
+            "task.md:6 — повторный email в файле считается один раз"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Проверяет отсутствие вызовов importContacts вне новых тестов, указывает на отсутствие в задаче режимов strict и legacy и требует их удалить, а также связывает три попытки повтора и подавление исключений вокруг store.insert с синхронной реализацией ContactStore.insert (src/contacts/store.js:12-17), требуя убрать ретраи и скрытие ошибок.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:158-183,281-312,585 — разбор режимов strict/legacy, отсутствия внешних вызовов и синхронного ContactStore.insert",
+            "reviews/u03/review.md:8-9 — удаление режимов strict/legacy и повторов записи"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-6,59-68,83-95 — options.mode и цикл MAX_RETRIES",
+            "src/contacts/store.js:12-18 — синхронный ContactStore.insert"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Прямо указывает на молчаливое исключение валидного по isEmail адреса @example.invalid в import.js:72-75 без импорта и без добавления в rejected, требуя удалить фильтр и закрепляющий его тест.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:143-155,315-329 — анализ фильтра домена import.js:72 и ссылки на email.js и create.js",
+            "reviews/u03/review.md:7 — пропуск ann@example.invalid и удаление фильтра и теста"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75 — фильтр @example.invalid",
+            "test/import.test.js:24-26 — тест пропуска домена"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Отмечает, что единственный общий тест проверяет лишь количества, три остальных закрепляют не запрошенные режимы и фильтр домена, и перечисляет отсутствующие проверки контракта (ошибки парсинга после валидной записи с проверкой пустого store, дубликаты, пробельные строки, многострочные поля и адрес без доменного суффикса).",
+          "reviewEvidence": [
+            "reviews/u03/review.json:185-202,557-582 — анализ test/import.test.js:6-26",
+            "reviews/u03/review.md:10 — перечень непокрытых сценариев"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26 — тесты импорта",
+            "task.md:5-10 — требования контракта"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Предлагает лишь выделение одной локальной чистой функции planImport для отбора строк и явно оговаривает отказ от дополнительных обёрток вокруг последовательных проверок имени и email; никаких классов, стратегий, конвейеров или схем не вводится.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:332-353,585 — выделение только функции planImport и отказ от лишних обёрток"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4 — модуль импорта контактов"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Требует полностью удалить режимы strict/legacy и цикл повторных попыток записи вместо их сохранения или расширения.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:291,308 — решения удалить режимы и убрать повторы записи"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-6,83-95 — MAX_RETRIES и options.mode"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Сохраняет нормализацию через normalizeEmail, выбор последней валидной строки при повторах, отчёт об отклонённых строках с номером начала записи и полный разбор до записи.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:19,47-81 — целевой поток и перечень обязательных требований задачи"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — требования задачи"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Точно прослеживает добавленные механизмы в import.js и связывает каждый из них с зависимыми модулями репозитория (src/lib/csv.js, src/contacts/email.js, src/contacts/create.js, src/contacts/store.js, test/import.test.js) и отсутствием внешних вызывающих; не отмечено только лишнее поле result.rows.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:204-330,585 — описание существующих и добавленных механизмов и их взаимодействий"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104 — реализация importContacts (включая неупомянутое поле rows на строках 7, 98)",
+            "src/lib/csv.js:6-38 — parseCsv",
+            "src/contacts/email.js:1-9 — normalizeEmail и isEmail",
+            "src/contacts/create.js:4-9 — createContact",
+            "src/contacts/store.js:8-22 — ContactStore"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Разграничивает обязательные требования задачи и неподтверждённые механизмы (самописный парсер, EMAIL_RE, режимы strict/legacy, ретраи записи, фильтр домена), обосновывая каждое решение о переиспользовании или удалении ссылками на существующие модули и отсутствие вызывающих (упущено лишь поле result.rows).",
+          "reviewEvidence": [
+            "reviews/u03/review.json:261-330,383-582 — анализ выгод, издержек и конкретных решений по каждому механизму и блоку кода"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-98 — дублирующие и лишние механизмы",
+            "src/contacts/store.js:12-18 — синхронный ContactStore.insert",
+            "task.md:3-10 — требования задачи"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Предлагает чёткое разделение между полным разбором (parseCsv), чистым планированием отбора/отклонений (planImport на базе isEmail и normalizeEmail) и применением эффектов к ContactStore, а также явно отказывается от лишнего дробления проверок имени и email; вместе с тем решение split мотивировано выполнением поведенческих этапов, а не анализом нагрузки на чтение или конкретных сценариев будущих изменений.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:205-225,332-382,585 — решение split с выделением planImport и обоснование через этапы разбора до записи и дедупликации"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104 — исходное смешение планирования и записи",
+            "src/lib/csv.js:6-38 — граница парсинга",
+            "src/contacts/email.js:3-9 — граница нормализации и валидации"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Целевой поток явно описывает и сохраняет все четыре ключевых инварианта: полный разбор файла через parseCsv до начала записи, отбор последней валидной строки по normalizeEmail без вытеснения невалидным повтором, однократный подсчёт created/updated относительно исходного ContactStore и сохранение причин и начальных физических номеров отклонённых строк без остановки импорта; остаётся общим ограничением статический характер оценки и отсутствие явного упоминания поля result.rows.",
+          "reviewEvidence": [
+            "reviews/u03/review.json:19,85-183,332-353,585 — спецификация целевого потока и сохраняемых контрактов",
+            "reviews/u03/review.md:3-9 — резюме целевых правок"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — обязательные поведенческие инварианты",
+            "src/lib/csv.js:20,26,37 — обработка пробельных строк и начальных номеров записей в parseCsv",
+            "src/contacts/import.js:7,98 — неупомянутое поле result.rows"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Отмечает потерю строки из пробелов из-за line.trim() === \"\" (import.js:21) и разбиение многострочных полей в кавычках как конкретные нарушения контракта, устраняемые переходом на parseCsv (reviews/u03/review.json:90,100-111; src/contacts/import.js:13,21; task.md:9)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Глубокое и связное ревью, эквивалентное по диагностической силе u02: проверяет все соседние модули (включая create.js и store.js), обосновывает удаление лишних режимов, ретраев и фильтра домена и формулирует чёткую целевую границу D2 с выделением чистого планировщика planImport. Как и u02, ограничивается частичным попаданием в D1 (обосновывая разделение через рантайм-инварианты, а не через стоимость чтения/изменения) и не отмечает лишнее поле result.rows."
+    },
+    {
+      "id": "u04",
+      "items": {
+        "D1": {
+          "rating": "miss",
+          "reason": "Все замечания сформулированы исключительно как рантайм-ошибки и нарушения функциональных требований; анализ связности решений и побочных эффектов с точки зрения сложности чтения, понимания или модификации кода отсутствует.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3,6 — описывает запись до проверки CSV и двойной подсчёт дубликатов только как поведенческие дефекты"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-101 — смешение построчного разбора, валидации, мутаций store и счётчиков"
+          ]
+        },
+        "D2": {
+          "rating": "partial",
+          "reason": "Называет parseCsv, isEmail и необходимость сначала выбрать последнюю валидную строку для нормализованного адреса перед применением, но оставляет целевую конструкцию разрозненным набором локальных исправлений: не называет normalizeEmail, не сводит обработку полей записи parseCsv, приоритет проверки имени перед email и однократное применение к ContactStore в единый поток и полностью упускает режим legacy и поле result.rows.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3-9 — отдельные замечания о parseCsv, isEmail, выборе последней валидной строки, ретраях и strict без единой схемы потока данных"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-38 — parseCsv (поддерживает только запятую)",
+            "src/contacts/email.js:3-9 — normalizeEmail и isEmail",
+            "src/contacts/import.js:6-7,98 — не учтённые в целевой схеме legacy-разделитель и result.rows"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Указывает на дефекты самодельного построчного разбора в import.js:13 (незакрытые и внутренние кавычки, разбиение многострочных полей и смещение номеров строк) и прямо рекомендует использовать существующий в проекте parseCsv до изменений хранилища.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3 — критика самодельного разбора и указание получить результат существующего parseCsv до записи"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-45 — самописный разбор строк и кавычек",
+            "src/lib/csv.js:6-38 — существующий parseCsv"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Отмечает, что регулярное выражение в import.js:1, 65 принимает ann@site и a@b@c, которые отклоняет существующая функция isEmail, и требует применять общую валидацию адресной книги.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:4 — примеры ann@site и a@b@c на import.js:1, 65 и ссылка на существующую isEmail"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65 — EMAIL_RE",
+            "src/contacts/email.js:1-9 — EMAIL, normalizeEmail и isEmail"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Указывает, что самодельный разбор не выявляет ошибки кавычек и изменяет хранилище уже на первой корректной строке до последующей ошибки (а также что strict выбрасывает исключение после сохранения предыдущих допустимых строк), нарушая атомарность при ошибке разбора.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3 — ссылка на import.js:13, 76 и запись первой строки до обнаружения некорректного CSV",
+            "reviews/u04/review.md:9 — сохранение предыдущих строк до выброса ошибки в strict mode"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:16-45,58-70,76-96 — запись в store внутри цикла разбора",
+            "task.md:8 — требование ничего не записывать при ошибке разбора"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Показывает, что две валидные строки нового адреса a@site.test дают created: 1, updated: 1, а существующего контакта — updated: 2 вопреки правилу однократного учёта адреса в файле.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:6 — разбор import.js:76 для нового и существующего дубликата"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-81,87,96 — немедленная запись и инкремент счётчиков на каждой строке",
+            "task.md:6 — адрес в файле учитывается один раз"
+          ]
+        },
+        "F6": {
+          "rating": "partial",
+          "reason": "Называет повторные попытки с молчаливым пропуском (import.js:83) и режим strict (import.js:58) не запрошенными задачей, однако полностью пропускает ветку mode === \"legacy\" (import.js:6 и тест на строках 20–22, прямо говоря на строке 11 лишь о «двух не требуемых поведениях»), не проверяет вызывающих options.mode и не сверяется с реализацией ContactStore в store.js, предполагая гипотетически «недоступное хранилище» вместо синхронного in-memory Map.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:8 — тезис о «недоступном хранилище» при оценке ретраев insert",
+            "reviews/u04/review.md:9,11 — упоминание только strict mode и «двух не требуемых поведений» без legacy"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,58-70,83-95 — оба режима (strict и legacy) и цикл MAX_RETRIES",
+            "src/contacts/store.js:5-18 — синхронный in-memory ContactStore",
+            "test/import.test.js:16-26 — три теста не запрошенного поведения (strict, legacy, @example.invalid)"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Прямо указывает на молчаливый пропуск валидного адреса Ann,ann@example.invalid на import.js:72 без создания контакта и без отказа, отмечая отсутствие такого исключения в задаче и закрепляющий его тест.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:5 — разбор import.js:72 и закрепляющего теста"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75 — пропуск @example.invalid",
+            "test/import.test.js:24-26 — тест пропуска домена"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Указывает, что тесты закрепляют не запрошенное поведение (отмечая два случая: strict и @example.invalid) и перечисляет конкретные непокрытые требования: ошибки CSV после валидной строки, многострочные поля и физические номера строк, валидацию через isEmail, пробельные и неполные строки, нормализованные дубликаты с последней валидной строкой и отказы без остановки импорта.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:5,9,11 — анализ лишних и недостающих тестовых сценариев"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26 — тесты импорта",
+            "task.md:5-10 — требования задачи"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Не предлагает классов валидаторов, стратегий, конвейеров, плагинов или схем валидации.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3-9 — рекомендации ограничиваются использованием parseCsv, isEmail и предварительным отбором последней валидной строки"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6 — parseCsv",
+            "src/contacts/email.js:7 — isEmail"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Не рекомендует сохранять или развивать режимы или ретраи (ветка legacy пропущена по невнимательности, а не предложена к сохранению или расширению; strict и ретраи названы не запрошенными).",
+          "reviewEvidence": [
+            "reviews/u04/review.md:8-9 — ретраи и strict названы не требуемыми задачей"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,83-95 — MAX_RETRIES и options.mode"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Сохраняет нормализацию адреса, выбор последней валидной строки при дубликатах и отчёт об отказах без остановки импорта.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:6-7,9 — сохранение нормализованного сопоставления, последней валидной строки и отказов"
+          ],
+          "sourceEvidence": [
+            "task.md:5-10 — обязательные требования импорта"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "partial",
+          "reason": "Определяет основные дефектные механизмы внутри import.js и связывает их с parseCsv и isEmail, но полностью упускает ветку legacy (import.js:6, test/import.test.js:20-22) и поле result.rows (import.js:7, 98), не называет normalizeEmail и не прослеживает устройство ContactStore в src/contacts/store.js (предполагая внешнюю «недоступность хранилища»).",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3-9,11 — отсутствие упоминаний legacy, result.rows и normalizeEmail; предположение о «недоступном хранилище» на строке 8"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:6-7,83-98 — режим legacy, поле rows и ретраи insert",
+            "src/contacts/store.js:5-18 — in-memory ContactStore",
+            "src/contacts/email.js:3-5 — normalizeEmail"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "partial",
+          "reason": "Верно квалифицирует самописный разбор, локальную регулярку email, пропуск @example.invalid, strict mode и ретраи insert как дублирующие или не требуемые задачей, но упускает необходимость удаления legacy mode и result.rows, не проверяет вызывающих и опирается на неподтверждённую предпосылку о недоступности хранилища вместо анализа store.js.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3-5,8-9,11 — частичная оценка лишних механизмов без legacy, rows и анализа store.js"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-7,72-75,83-98 — полный набор лишних механизмов",
+            "test/import.test.js:13,20-22 — закрепление result.rows и legacy в тестах"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_assessed",
+          "reason": "Ревью состоит только из точечных замечаний о багах и тестах и не содержит оценки границ ответственности модулей/функций, решений split/merge/keep или стоимости чтения и изменения кода.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:1-11 — отсутствие анализа границ ответственности и сопровождаемости"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104 — совмещение всех этапов в одной функции"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "partial",
+          "reason": "Отдельные замечания требуют получения результата parseCsv до записи, валидации через isEmail, выбора последней валидной строки по нормализованному адресу без вытеснения невалидным дубликатом и продолжения импорта при отказах, однако отсутствие единого целевого потока, пропуск режима legacy (при переходе на parseCsv, поддерживающий только запятую) и неоговорённая связь записей parseCsv с проверкой имени и normalizeEmail оставляют детали реализации недосказанными.",
+          "reviewEvidence": [
+            "reviews/u04/review.md:3-9 — разрозненные требования без целостной целевой схемы и без решения по legacy"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:25,35-38 — parseCsv разбирает только запятую и возвращает объекты строк",
+            "src/contacts/import.js:6 — неучтённый режим legacy с разделителем «;»",
+            "task.md:5-10 — инварианты поведения"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Отмечает потерю строки из одних пробелов из-за trim() на import.js:21 и разбиение многострочных кавычечных полей со смещением номеров последующих строк на import.js:13 (reviews/u04/review.md:3,7; src/contacts/import.js:13,21; task.md:9)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Качественное поведенческое ревью основных багов импорта (parseCsv до записи, isEmail, дубликаты, @example.invalid, пробельные строки, подавление ошибок insert, strict mode и пробелы в тестах) без срабатывания ловушек. Уступает другим прогонам в полноте проверки окружения и лишних механизмов: пропускает режим legacy и поле result.rows, не заглядывает в реализацию ContactStore (допуская тезис о «недоступном хранилище») и не оценивает архитектурные границы D1 и целостную схему D2."
+    }
+  ],
+  "equivalentGroups": [
+    {
+      "ids": [
+        "u02",
+        "u03"
+      ],
+      "reason": "Совпадают по всем оценкам рубрики (D1 partial, D2 hit, F2–F8 hit, ловушки не задеты) и всем четырём измерениям: оба прослеживают связь import.js с существующими csv.js, email.js и store.js, проверяют отсутствие иных вызывающих, обосновывают удаление обоих режимов (strict и legacy), ретраев insert и фильтра @example.invalid, формулируют полный целевой поток D2, но обосновывают разделение фаз через рантайм-контракты без диагностики стоимости чтения/изменения (D1) и не замечают лишнее поле result.rows. Содержательные различия: u03 предлагает выделить чистую функцию планирования planImport (явно оставляя проверки имени и email вместе без лишних обёрток) и ссылается на create.js:5-6, тогда как u02 оставляет последовательные этапы внутри importContacts, ссылается на test/create.test.js:11-13 и точнее разделяет лишние тесты на два противоречащих задаче (strict, @example.invalid) и один не запрошенный (legacy)."
+    },
+    {
+      "ids": [
+        "u01",
+        "u04"
+      ],
+      "reason": "Совпадают по профилю оценок (D1 miss, D2 partial, F2–F5 и F7–F8 hit, F6 partial, ловушки не задеты; частичная поддержка по механизмам, необходимости и сохранению поведения при отсутствии оценки границ ответственности): оба ограничиваются списком дефектов без архитектурной диагностики D1, без связной целевой схемы D2, без упоминания normalizeEmail и без проверки синхронного in-memory ContactStore в store.js и вызывающих options.mode. Содержательные различия: u01 единственный из всех четырёх прогонов замечает лишнее поле result.rows (import.js:7, 98) и охватывает дополнительные режимы в целом (import.js:4–6), но оставляет неоднозначность по ретраям («Нет основания считать все ошибки временными»); u04 прямо называет ретраи не требуемыми задачей, но выдвигает не подтверждённый кодом store.js тезис о «недоступном хранилище» и полностью упускает режим legacy (import.js:6, test/import.test.js:20-22) и поле result.rows."
+    }
+  ],
+  "limitations": [
+    "Оцениваются только четыре статических ревью одного небольшого учебного изменения без запуска кода, тестов и без этапа реализации; даже полное попадание в D2 (u02, u03) подтверждает лишь ясность предложенного плана, а не фактическое сохранение поведения или локальность изменений в работающем коде.",
+    "Ни один из четырёх прогонов не сформулировал полноценный диагноз D1 о нагрузке на чтение и внесение будущих изменений отдельно от исправления рантайм-дефектов F4 и F5.",
+    "Уверенность выводов строго ограничена данной задачей импорта контактов и четырьмя рассмотренными ответами; обобщать результаты на общую архитектурную надёжность моделей или подходов нельзя."
+  ],
+  "summary": "Все четыре ревью безошибочно нашли ключевые функциональные дефекты изменения (самописный CSV-разбор и запись до завершения чтения F2/F4, расхождение регулярного выражения с isEmail F3, двойной подсчёт повторов F5, молчаливый пропуск @example.invalid F7 и пробелы в тестах F8) и не попали ни в одну из ловушек X1–X3. Содержательное разделение проходит по проверке соседних модулей и полноте целевой конструкции: пара u02 и u03 проследила контракты ContactStore, normalizeEmail и отсутствие внешних вызывающих, полностью обосновала удаление режимов strict/legacy и ретраев (F6 hit) и описала связный целевой поток (D2 hit — внутри importContacts в u02 и с выделением чистого planImport в u03), тогда как пара u01 и u04 ограничилась точечными замечаниями о багах без проверки ContactStore (F6 partial, D2 partial, D1 miss), причём u01 единственным обнаружил лишнее поле result.rows, а u04 пропустил режим legacy. Полноценную диагностику стоимости чтения и сопровождения связанного кода (D1 hit) не дал ни один прогон."
+}

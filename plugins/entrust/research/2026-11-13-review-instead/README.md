@@ -150,3 +150,16 @@ No review has been run with draft 29. Rounds 6 to 10 compared drafts with one an
 
 Judged as rounds 8 and 9 were, by two judges on the frozen criteria, with round 10's evaluator for the last row. If the control matches draft 29 on all three, the skill's worth on these cases is its record and report, not what it finds, and harder cases are the next work. If it falls short, that is the first measured benefit since round 4. Not run; the launch is the owner's.
 
+## Round 11: approved reduced comparison, partially completed
+
+The owner approved a smaller plan: two Terra reviews per arm on each of three tasks (12 reviews) and one
+Carbon assessment per task. [Round 11](round-11/README.md) completed both synthetic comparisons: eight reviews
+and two judgments. The exact private round-6 packet was unavailable and the owner confirmed no backup;
+its four reviews and judgment were not launched. The earlier larger proposal above remains historical.
+
+Both arms found the core defects. Draft 29 supplied more explicit test-gap explanations and consolidated
+targets, at higher time/output cost; no review earned a full maintainability diagnosis on the import case.
+Raw judgments, coordinator qualifications and a checker-induced target edit are retained separately. This
+is neither a completed original-task comparison nor proof of general architectural superiority. The skill
+and frozen drafts were not changed by this round.
+

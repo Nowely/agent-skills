@@ -1,0 +1,49 @@
+{
+  "method": "Two separate Carbon sessions, one per completed case. Adapter fields retained without converting into native token accounting or invoice totals. Effective provider effort is unconfirmed when reported as unknown. Coordinator/preparation/relay usage is excluded.",
+  "runs": [
+    {
+      "case": "contact",
+      "model": "openrouter/google/gemini-4-carbon",
+      "requestedVariant": "high",
+      "confirmedEffort": null,
+      "receiptOk": true,
+      "schemaOk": true,
+      "durationSeconds": 607.54,
+      "rawAdapterUsage": {
+        "input": 62927,
+        "output": 15583,
+        "reasoning": 40917,
+        "cache": {
+          "read": 203908,
+          "write": 0
+        }
+      },
+      "visibleToolCalls": 24,
+      "packetUnchanged": true,
+      "fileChanges": [],
+      "automaticSchemaCorrection": null
+    },
+    {
+      "case": "locale",
+      "model": "openrouter/google/gemini-4-carbon",
+      "requestedVariant": "high",
+      "confirmedEffort": null,
+      "receiptOk": true,
+      "schemaOk": true,
+      "durationSeconds": 720.36,
+      "rawAdapterUsage": {
+        "input": 41216,
+        "output": 11345,
+        "reasoning": 29640,
+        "cache": {
+          "read": 97131,
+          "write": 0
+        }
+      },
+      "visibleToolCalls": 21,
+      "packetUnchanged": true,
+      "fileChanges": [],
+      "automaticSchemaCorrection": null
+    }
+  ]
+}

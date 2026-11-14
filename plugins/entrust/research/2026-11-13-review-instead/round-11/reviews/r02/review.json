@@ -1,0 +1,594 @@
+{
+  "title": "Импорт контактов из CSV",
+  "language": "ru",
+  "range": "bfcb8e1057b598ca8ec9225cfa9f85f184d104b0..3cf02c8cd86695cb56a5499869cee0062871e88b",
+  "change": {
+    "goal": "Добавить импорт контактов из CSV в адресную книгу.",
+    "why": "Требования задачи в brief.md.",
+    "parts": [
+      "Разбор и проверка строк, запись контактов и счетчики.",
+      "Тесты импорта."
+    ],
+    "sources": [
+      "https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md",
+      "base bfcb8e1057b598ca8ec9225cfa9f85f184d104b0; head 3cf02c8cd86695cb56a5499869cee0062871e88b",
+      "git diff --no-ext-diff --binary HEAD~1 HEAD sha256 bc343843f682570dac4a4d4ab51ad84333f644ceaf7fe894b3dae202a73918a3"
+    ]
+  },
+  "verdict": "Изменение не выполняет задачу; переработать импорт.\n- Ошибки разбора не предотвращают запись, повторы считаются несколько раз, а проверка адреса отличается от общей.",
+  "now": "Одна функция построчно разбирает файл, проверяет поля и сразу меняет хранилище. Режимы и повторы записи добавляют отдельные ветви.",
+  "target": "Полностью разобрать CSV существующим parseCsv до записи; проверить поля через isEmail, собрать последние валидные строки по normalizeEmail и затем по одному применить их к ContactStore. Сохранять номера отклоненных строк и считать созданные и обновленные контакты.",
+  "recommendation": "Переработать функцию в соответствии с указанной целью и проверить результат тестами.",
+  "steps": [
+    {
+      "text": "Заменить построчный разбор общим парсером и исключить запись до его успешного завершения.",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "text": "Использовать общую проверку, собрать последние валидные записи и применить их один раз.",
+      "findings": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "text": "Убрать режимы и повторы, проверить контракт тестами.",
+      "findings": [
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Импортировать CSV с колонками name и email.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 2,
+      "text": "Отклонять пустое имя и невалидный адрес, сообщая физическую строку и причину; продолжать импорт.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 3,
+      "text": "Сопоставлять email без учета регистра и пробелов по краям; существующий контакт переименовывать, новый создавать.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 4,
+      "text": "Повторы email в файле считать один раз; последняя валидная строка побеждает, отклоненная не заменяет валидную.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 5,
+      "text": "Вернуть число созданных и обновленных контактов и отклоненные строки.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 6,
+      "text": "При ошибке разбора файла ничего не записывать.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 7,
+      "text": "Пустая физическая строка не является записью, строка из пробелов является; отсутствующие поля и единственное пустое поле в кавычках считать пустыми.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    },
+    {
+      "id": 8,
+      "text": "Применять существующую проверку email адресной книги.",
+      "source": "task",
+      "not_checked": "Источник: https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/contact-import-v2/brief.md; проверка статическая."
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "Разбор и запись перемешаны, ошибки CSV не обнаруживаются",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:13",
+      "what": "Незакрытая кавычка и кавычка внутри поля не вызывают ошибку; данные записываются по мере чтения. Для CSV с валидной строкой и затем незакрытой кавычкой контакт уже записан, хотя файл нельзя разобрать. Поле с переносом разбивается на строки, поэтому имя и номера последующих записей искажаются.",
+      "shown_by": "Существующий parseCsv полностью разбирает текст, сообщает CsvError и сохраняет физическую начальную строку: src/lib/csv.js:6-37; тесты test/csv.test.js:5-10,17-23.",
+      "fix": "Сначала целиком вызвать parseCsv, затем только после успеха применять записи.",
+      "breaks": [
+        1,
+        2,
+        6
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Строки из пробелов пропускаются",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:21",
+      "what": "Строка, содержащая только пробелы, пропускается вместо отклонения с пустым именем и номером строки.",
+      "shown_by": "Вход name,email\\n   \\n достигает line.trim() === \"\"; parseCsv считает непустую физическую строку записью (src/lib/csv.js:20,26).",
+      "fix": "Пользоваться записями parseCsv и отклонять пустое после trim имя.",
+      "breaks": [
+        2,
+        7
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Правило проверки email отличается от адресной книги",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:1",
+      "what": "Регулярное выражение принимает ann@site и a@@b, хотя общая проверка их отклоняет. Такие строки создают контакты вместо отклонений.",
+      "shown_by": "src/contacts/email.js:1-8 требует единственную @ и точку в домене; test/create.test.js:11-13 проверяет отсутствие суффикса.",
+      "fix": "Использовать isEmail из email.js.",
+      "breaks": [
+        2,
+        8
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Повторы учитываются многократно",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:76",
+      "what": "Для двух валидных строк нового email первая увеличивает created, вторая updated; для существующего обе увеличивают updated. Требуется один итог на email.",
+      "shown_by": "Каждая итерация сразу ищет и изменяет store, счетчики увеличиваются на строку (строки 76-96).",
+      "fix": "Сначала собрать последние валидные записи по normalizeEmail, затем один раз применить каждую и посчитать результат.",
+      "breaks": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Валидный домен безусловно пропускается",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:73",
+      "what": "Ann,ann@example.invalid проходит общую проверку, но не создается и не попадает в отклоненные строки.",
+      "shown_by": "isEmail в src/contacts/email.js:1-8 допускает этот адрес; условие импорта пропускает его без результата.",
+      "fix": "Удалить исключение домена и тест, требующий пропуска.",
+      "breaks": [
+        2,
+        3,
+        5,
+        8
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Строгий режим прерывает обработку отклоненной строки",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/contacts/import.js:59",
+      "what": "При options.mode=\"strict\" первая невалидная строка выбрасывает исключение, а последующие записи не импортируются; предыдущие уже могли быть записаны.",
+      "shown_by": "Ветки строк 59-60 и 66-67 и тест test/import.test.js:16-18 подтверждают режим. Задание требует продолжать для отклоненных строк.",
+      "fix": "Удалить strict и лишний выбор режима; всегда собирать отклонения и продолжать.",
+      "breaks": [
+        2
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Повторные попытки скрывают ошибки записи",
+      "direction": "necessity",
+      "evidence": "read",
+      "at": "src/contacts/import.js:83",
+      "what": "Три попытки повторяют одну операцию без изменения входа и после неуспеха молча пропускают контакт. Подтвержденного сценария временного сбоя у предоставленного хранилища нет.",
+      "shown_by": "ContactStore.insert в src/contacts/store.js:12-17 синхронно выбрасывает ошибку при дубликате, который ранее ищется findByEmail; контракт повторных попыток отсутствует.",
+      "fix": "Удалить повторные попытки и не подавлять ошибку insert."
+    },
+    {
+      "id": 8,
+      "title": "Тесты не защищают основные требования импорта",
+      "direction": "tests",
+      "evidence": "read",
+      "at": "test/import.test.js:6",
+      "what": "Проверяются только счетчики простого случая и количество отклонений, без содержимого хранилища и причин; два теста закрепляют противоположное заданию поведение.",
+      "shown_by": "Ни один тест импорта не проверяет поврежденный CSV после валидной записи, перенос в кавычках, пробельную строку, существующий валидатор, повторы и последнее валидное имя.",
+      "fix": "Добавить проверки итогового хранилища и результата для этих случаев, удалить тесты strict и пропуска домена.",
+      "untested": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "importContacts",
+      "jobs": [
+        "Принимает текст и режим; legacy выбирает точку с запятой, иначе запятую.",
+        "Разбирает каждую физическую строку и пропускает пробельную; первая непустая — заголовок.",
+        "Пустое имя имеет приоритет над email; strict выбрасывает ошибку, иначе добавляет отклонение.",
+        "После проверки исключает домен, ищет email и немедленно пишет; повтор увеличивает счетчик, insert повторяется до трех раз."
+      ],
+      "uses": [
+        "ContactStore"
+      ],
+      "verdict": "fix",
+      "findings": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "name": "ContactStore",
+      "existing": true,
+      "jobs": [
+        "Нормализует ключ, ищет, вставляет и переименовывает контакт; insert отклоняет дубликат."
+      ],
+      "uses": [
+        "normalizeEmail"
+      ],
+      "verdict": "keep"
+    },
+    {
+      "name": "parseCsv",
+      "existing": true,
+      "jobs": [
+        "Полностью разбирает CSV до возврата, обнаруживает ошибки кавычек, возвращает поля и физические строки."
+      ],
+      "verdict": "keep"
+    },
+    {
+      "name": "isEmail",
+      "existing": true,
+      "jobs": [
+        "Нормализует адрес и проверяет общий формат."
+      ],
+      "uses": [
+        "normalizeEmail"
+      ],
+      "verdict": "keep"
+    },
+    {
+      "name": "normalizeEmail",
+      "existing": true,
+      "jobs": [
+        "Убирает крайние пробелы и приводит регистр."
+      ],
+      "verdict": "keep"
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Построчный разбор CSV",
+      "change": "added",
+      "units": [
+        "importContacts"
+      ],
+      "purpose": "Получить поля и номер строки",
+      "basis": "brief.md: импорт CSV и отсутствие записи при ошибке; блоки 4-6",
+      "instead": "src/lib/csv.js:6-37 уже разбирает весь текст и обнаруживает ошибки.",
+      "benefit": "Импорт строк; частота многострочных или ошибочных файлов неизвестна.",
+      "cost": "Собственная обработка кавычек и двух разделителей связана с записью и не обеспечивает атомарность разбора.",
+      "decision": "Заменить существующим parseCsv до записи.",
+      "evidence": "read",
+      "findings": [
+        1,
+        2
+      ],
+      "blocks": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "name": "Повторные попытки insert",
+      "change": "added",
+      "units": [
+        "importContacts"
+      ],
+      "purpose": "Повторить неуспешную вставку",
+      "basis": "src/contacts/import.js:83-95; требование повторов отсутствует.",
+      "instead": "src/contacts/store.js:12-17: синхронная вставка сообщает дубликат; временные сбои и политика повторов не установлены.",
+      "benefit": "При гипотетическом временном сбое может сохранить контакт; частота неизвестна.",
+      "cost": "Счетчик, цикл и подавление исключения скрывают несохраненную запись.",
+      "decision": "Удалить попытки и распространить ошибку.",
+      "evidence": "judgment",
+      "findings": [
+        7
+      ],
+      "blocks": [
+        2,
+        10
+      ]
+    },
+    {
+      "name": "Режимы strict и legacy",
+      "change": "added",
+      "units": [
+        "importContacts"
+      ],
+      "purpose": "Менять обработку ошибок и разделитель",
+      "basis": "src/contacts/import.js:5-6,59-60; brief.md задает CSV и продолжение при отклонении.",
+      "instead": "src/lib/csv.js:25 разбирает запятую, а brief.md требует продолжения.",
+      "benefit": "Дополнительные варианты ввода; потребность и частота неизвестны.",
+      "cost": "Меняют контракт и ветвят обработку; strict противоречит задаче.",
+      "decision": "Убрать режимы и их тесты; задача не требует этих вариантов.",
+      "evidence": "judgment",
+      "findings": [
+        6
+      ],
+      "blocks": [
+        3,
+        7,
+        13,
+        14
+      ]
+    }
+  ],
+  "target_units": [
+    {
+      "name": "importContacts",
+      "jobs": [
+        "Вызывает полный разбор, собирает ошибки и последние валидные строки по нормализованному email, затем применяет их и считает результаты."
+      ],
+      "uses": [
+        "parseCsv",
+        "isEmail",
+        "normalizeEmail",
+        "ContactStore"
+      ]
+    },
+    {
+      "name": "parseCsv",
+      "existing": true,
+      "jobs": [
+        "Полностью разбирает CSV или сообщает ошибку."
+      ]
+    },
+    {
+      "name": "isEmail",
+      "existing": true,
+      "jobs": [
+        "Проверяет адрес по правилу адресной книги."
+      ]
+    },
+    {
+      "name": "normalizeEmail",
+      "existing": true,
+      "jobs": [
+        "Нормализует email для дедупликации."
+      ]
+    },
+    {
+      "name": "ContactStore",
+      "existing": true,
+      "jobs": [
+        "Ищет, создает и переименовывает контакты."
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/contacts/import.js",
+      "added": "1",
+      "does": "Локальное регулярное выражение email",
+      "serves": [
+        8
+      ],
+      "verdict": "remove",
+      "kind": "code",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "2",
+      "does": "Лимит попыток записи",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "code",
+      "findings": [
+        7
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "4-7",
+      "does": "Интерфейс, выбор режима и инициализация результата",
+      "serves": [
+        1,
+        5
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "9-23",
+      "does": "Удаление BOM, разделение на физические строки и пропуск пустых",
+      "serves": [
+        1,
+        7
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "25-45",
+      "does": "Разбор полей по кавычкам и разделителю",
+      "serves": [
+        1,
+        6
+      ],
+      "verdict": "remove",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        1
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "47-56",
+      "does": "Извлечение заголовка и значений полей",
+      "serves": [
+        1,
+        7
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        1
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "58-71",
+      "does": "Проверка имени и email, отказ и строгий режим",
+      "serves": [
+        2,
+        8
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        3,
+        6
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "72-75",
+      "does": "Пропуск домена example.invalid",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        5
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "76-82,96-98",
+      "does": "Поиск, переименование или создание и подсчет каждой строки",
+      "serves": [
+        3,
+        4,
+        5
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        4
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "83-95",
+      "does": "Три попытки вставки и молчаливый пропуск ошибки",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "code",
+      "unit": "importContacts",
+      "findings": [
+        7
+      ]
+    },
+    {
+      "path": "src/contacts/import.js",
+      "added": "99-104",
+      "does": "Завершение ветвей, цикла и возврат результата",
+      "serves": [
+        5
+      ],
+      "verdict": "keep",
+      "kind": "code",
+      "unit": "importContacts"
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "1-14",
+      "does": "Проверка простого импорта и счетчиков",
+      "serves": [
+        2,
+        3,
+        5
+      ],
+      "verdict": "fix",
+      "kind": "test",
+      "findings": [
+        8
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "16-18",
+      "does": "Тест прекращения при ошибочной строке",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "test",
+      "findings": [
+        6,
+        8
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "20-22",
+      "does": "Тест не запрошенного формата с точкой с запятой",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "test",
+      "findings": [
+        6
+      ]
+    },
+    {
+      "path": "test/import.test.js",
+      "added": "24-26",
+      "does": "Тест пропуска валидного домена",
+      "serves": [],
+      "verdict": "remove",
+      "kind": "test",
+      "findings": [
+        5,
+        8
+      ]
+    }
+  ],
+  "coverage": "Прочитаны все файлы проекта и тесты, включая src/lib/csv.js, src/contacts/email.js, create.js и store.js. AGENTS.md в репозитории не найден. База bfcb8e1057b598ca8ec9225cfa9f85f184d104b0, HEAD 3cf02c8cd86695cb56a5499869cee0062871e88b, SHA-256 diff bc343843f682570dac4a4d4ab51ad84333f644ceaf7fe894b3dae202a73918a3. Статическое ревью; тесты и приложение не запускались по ограничениям. Внешних зависимостей в package.json нет; иных вызывающих importContacts в репозитории не найдено. Группировка: разделить полный разбор и применение записей, поскольку немедленная запись делает обязательное отсутствие записи при ошибке разбора невозможным; проверки имени и email оставить упорядоченными вместе. Поведение произвольных внешних реализаций store не установлено. Удаление legacy уберет дополнительную поддержку разделителя «;»; задача ее не требует. Проверка структуры отчета выполнена отдельным checker, приложение и тесты не запускались."
+}

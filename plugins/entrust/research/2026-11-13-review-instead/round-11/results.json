@@ -1,0 +1,300 @@
+{
+  "state": "partial-private-packet-unavailable",
+  "plannedReviews": 12,
+  "completedReviews": 8,
+  "blockedReviews": 4,
+  "plannedJudges": 3,
+  "completedJudges": 2,
+  "blockedJudges": 1,
+  "rawJudgeRatings": [
+    {
+      "id": "u01",
+      "run": "r05",
+      "arm": "control",
+      "case": "contact",
+      "ratings": {
+        "D1": "miss",
+        "D2": "partial",
+        "F2": "hit",
+        "F3": "hit",
+        "F4": "hit",
+        "F5": "hit",
+        "F6": "partial",
+        "F7": "hit",
+        "F8": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "partial",
+        "necessityAndCost": "partial",
+        "responsibilityBoundaries": "not_assessed",
+        "behaviorPreservation": "partial"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Указывает лишнее поле rows в возвращаемом объекте и его закрепление тестом (reviews/u01/review.md:10; src/contacts/import.js:7,98; test/import.test.js:13; task.md:7).",
+        "Отмечает пропуск физически непустых строк из одних пробелов из-за line.trim() === \"\" и разбиение многострочных кавычечных полей со сдвигом номеров строк как конкретные проявления отказа от parseCsv (reviews/u01/review.md:4,7; src/contacts/import.js:13,21-22; task.md:9)."
+      ]
+    },
+    {
+      "id": "u02",
+      "run": "r02",
+      "arm": "candidate",
+      "case": "contact",
+      "ratings": {
+        "D1": "partial",
+        "D2": "hit",
+        "F2": "hit",
+        "F3": "hit",
+        "F4": "hit",
+        "F5": "hit",
+        "F6": "hit",
+        "F7": "hit",
+        "F8": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "supported",
+        "responsibilityBoundaries": "partial",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Явно фиксирует пропуск строки из одних пробелов (import.js:21) и искажение многострочных полей в кавычках и последующих номеров строк как следствия отказа от parseCsv, а также сохраняет порядок проверки пустого имени перед email (reviews/u02/review.json:104,114-125,222; src/contacts/import.js:13,21,58-70; task.md:5,9)."
+      ]
+    },
+    {
+      "id": "u03",
+      "run": "r08",
+      "arm": "candidate",
+      "case": "contact",
+      "ratings": {
+        "D1": "partial",
+        "D2": "hit",
+        "F2": "hit",
+        "F3": "hit",
+        "F4": "hit",
+        "F5": "hit",
+        "F6": "hit",
+        "F7": "hit",
+        "F8": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "supported",
+        "responsibilityBoundaries": "partial",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Отмечает потерю строки из пробелов из-за line.trim() === \"\" (import.js:21) и разбиение многострочных полей в кавычках как конкретные нарушения контракта, устраняемые переходом на parseCsv (reviews/u03/review.json:90,100-111; src/contacts/import.js:13,21; task.md:9)."
+      ]
+    },
+    {
+      "id": "u04",
+      "run": "r01",
+      "arm": "control",
+      "case": "contact",
+      "ratings": {
+        "D1": "miss",
+        "D2": "partial",
+        "F2": "hit",
+        "F3": "hit",
+        "F4": "hit",
+        "F5": "hit",
+        "F6": "partial",
+        "F7": "hit",
+        "F8": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "partial",
+        "necessityAndCost": "partial",
+        "responsibilityBoundaries": "not_assessed",
+        "behaviorPreservation": "partial"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Отмечает потерю строки из одних пробелов из-за trim() на import.js:21 и разбиение многострочных кавычечных полей со смещением номеров последующих строк на import.js:13 (reviews/u04/review.md:3,7; src/contacts/import.js:13,21; task.md:9)."
+      ]
+    },
+    {
+      "id": "u01",
+      "run": "r07",
+      "arm": "control",
+      "case": "locale",
+      "ratings": {
+        "F1": "hit",
+        "F2": "partial"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "partial",
+        "responsibilityBoundaries": "not_applicable",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": []
+    },
+    {
+      "id": "u02",
+      "run": "r04",
+      "arm": "candidate",
+      "case": "locale",
+      "ratings": {
+        "F1": "hit",
+        "F2": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "supported",
+        "responsibilityBoundaries": "not_applicable",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Отмечает, что listCategoryOptions() в test/categories.test.js:8-10 проверяется исключительно по полю id без единой проверки поля label даже в начальной локали, а требование английских и русских меток новых категорий остаётся недопроверенным в en (reviews/u02/review.md:4, reviews/u02/review.json:74-81).",
+        "Отмечает замену теста исторического снимка старой категории (notes) на новую (drawings) в diff test/categories.test.js:21-23, из-за чего сценарий сохранения старой категории после переключения на ru не покрыт (reviews/u02/review.json:76, 334-345)."
+      ]
+    },
+    {
+      "id": "u03",
+      "run": "r03",
+      "arm": "control",
+      "case": "locale",
+      "ratings": {
+        "F1": "hit",
+        "F2": "partial"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "partial",
+        "responsibilityBoundaries": "not_applicable",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": []
+    },
+    {
+      "id": "u04",
+      "run": "r06",
+      "arm": "candidate",
+      "case": "locale",
+      "ratings": {
+        "F1": "hit",
+        "F2": "hit"
+      },
+      "dimensions": {
+        "mechanismIdentification": "supported",
+        "necessityAndCost": "supported",
+        "responsibilityBoundaries": "not_applicable",
+        "behaviorPreservation": "supported"
+      },
+      "traps": {
+        "X1": "not_triggered",
+        "X2": "not_triggered",
+        "X3": "not_triggered"
+      },
+      "unsupportedRecommendations": [],
+      "additionalSupportedFindings": [
+        "Прямо указывает, что английские подписи новых категорий (videos и drawings) вообще не проверены в test/categories.test.js, а listCategoryOptions() проверяется только по полю id без проверки подписей (reviews/u04/review.json:84-85, reviews/u04/review.md:4).",
+        "Отмечает замену теста исторического снимка старого ID на новый ID drawings в test/categories.test.js:21-23, оставляющую непроверенным снимок прежней категории после переключения на русскую локаль (reviews/u04/review.json:84-85, 275-288)."
+      ]
+    }
+  ],
+  "coordinatorNotes": [
+    "The substantive locale-consistency defect is found by both arms. Candidate reviews explicitly diagnose the missing existing-label/list-label coverage; controls recommend tests without describing the current suite gap.",
+    "Contact core behavior/reuse findings are present in both arms. Candidate records make the combined target and source-based mechanism rationale more explicit; no review earns a full D1 architecture diagnosis from Carbon.",
+    "Carbon says controls did not inspect ContactStore or tests. Native calls show those files were read in both controls; the defensible difference is what the written reviews articulate. Raw judgments are preserved unchanged.",
+    "D2 does not require exact helper names or one consolidated paragraph. Parts of Carbon's partial reasoning cite absent normalizeEmail naming or scattered presentation; these are not independent failures. The claimed D2 gap is qualified rather than used as an architectural superiority score.",
+    "r05 control uniquely flags the extra rows output. The skill did not dominate every necessity detail.",
+    "r08 added planImport to target_units after the checker rejected split without a new target unit. The final recommendation is real, but helper presence alone is not evidence of an independently developed design diagnosis."
+  ],
+  "costSummary": [
+    {
+      "case": "contact-import-v2",
+      "arm": "control",
+      "n": 2,
+      "meanSeconds": 91.9525,
+      "meanInputTokens": 186981,
+      "meanCachedInputTokens": 172096,
+      "meanUncachedInputTokens": 14885,
+      "meanOutputTokens": 1710,
+      "meanDeliveredBytes": 5043
+    },
+    {
+      "case": "contact-import-v2",
+      "arm": "candidate",
+      "n": 2,
+      "meanSeconds": 199.8505,
+      "meanInputTokens": 388342,
+      "meanCachedInputTokens": 368448,
+      "meanUncachedInputTokens": 19894,
+      "meanOutputTokens": 6104,
+      "meanDeliveredBytes": 29017
+    },
+    {
+      "case": "locale-options",
+      "arm": "control",
+      "n": 2,
+      "meanSeconds": 73.957,
+      "meanInputTokens": 177060.5,
+      "meanCachedInputTokens": 173056,
+      "meanUncachedInputTokens": 4004.5,
+      "meanOutputTokens": 1005.5,
+      "meanDeliveredBytes": 1276
+    },
+    {
+      "case": "locale-options",
+      "arm": "candidate",
+      "n": 2,
+      "meanSeconds": 172.1315,
+      "meanInputTokens": 319016.5,
+      "meanCachedInputTokens": 303552,
+      "meanUncachedInputTokens": 15464.5,
+      "meanOutputTokens": 4825.5,
+      "meanDeliveredBytes": 17121
+    }
+  ],
+  "limitations": [
+    "Two reviews per arm per familiar synthetic case; no statistical reliability/equivalence estimate.",
+    "One judge per case; output format can reveal the arm.",
+    "The treatment includes canonical record production; this is not an isolation of one instruction sentence.",
+    "No implementation or new-requirement stage; static recommendations are not code outcomes.",
+    "The original private source/contracts packet and its integrity manifest could not be recovered; no substitute was reviewed.",
+    "Raw final judge scores and coordinator qualifications are both retained; no hidden adjudicated score."
+  ]
+}

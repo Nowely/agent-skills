@@ -1,0 +1,236 @@
+{
+  "method": "Unique native response usage summed and reconciled with cumulative counters. Cached input is a subset of input; reasoning is a subset of output. Reviewer sessions only, excluding coordinator, preparation, relay and judges. Durations run from native task_started to task_complete. Report assembly/checker repairs remain included. Two samples per arm/case, no invoice or stable efficiency estimate.",
+  "runs": [
+    {
+      "id": "r01",
+      "case": "contact-import-v2",
+      "arm": "control",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 89.084,
+      "usage": {
+        "input_tokens": 183807,
+        "cached_input_tokens": 162176,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1756,
+        "reasoning_output_tokens": 164,
+        "total_tokens": 185563
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 5,
+      "outputBytes": {
+        "review.md": 5182
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r02",
+      "case": "contact-import-v2",
+      "arm": "candidate",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 202.799,
+      "usage": {
+        "input_tokens": 413620,
+        "cached_input_tokens": 391040,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6331,
+        "reasoning_output_tokens": 413,
+        "total_tokens": 419951
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 9,
+      "outputBytes": {
+        "build_report.py": 19091,
+        "review.json": 25886,
+        "review.md": 4334
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r03",
+      "case": "locale-options",
+      "arm": "control",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 78.139,
+      "usage": {
+        "input_tokens": 176960,
+        "cached_input_tokens": 172928,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 993,
+        "reasoning_output_tokens": 99,
+        "total_tokens": 177953
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 5,
+      "outputBytes": {
+        "review.md": 1255
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r04",
+      "case": "locale-options",
+      "arm": "candidate",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 173.021,
+      "usage": {
+        "input_tokens": 336465,
+        "cached_input_tokens": 323584,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4822,
+        "reasoning_output_tokens": 392,
+        "total_tokens": 341287
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 8,
+      "outputBytes": {
+        "make_report.py": 12551,
+        "review.json": 14957,
+        "review.md": 2408
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r05",
+      "case": "contact-import-v2",
+      "arm": "control",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 94.821,
+      "usage": {
+        "input_tokens": 190155,
+        "cached_input_tokens": 182016,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1664,
+        "reasoning_output_tokens": 130,
+        "total_tokens": 191819
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 5,
+      "outputBytes": {
+        "review.md": 4904
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r06",
+      "case": "locale-options",
+      "arm": "candidate",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 171.242,
+      "usage": {
+        "input_tokens": 301568,
+        "cached_input_tokens": 283520,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4829,
+        "reasoning_output_tokens": 424,
+        "total_tokens": 306397
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 7,
+      "outputBytes": {
+        "review.json": 14573,
+        "review.md": 2304
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r07",
+      "case": "locale-options",
+      "arm": "control",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 69.775,
+      "usage": {
+        "input_tokens": 177161,
+        "cached_input_tokens": 173184,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1018,
+        "reasoning_output_tokens": 157,
+        "total_tokens": 178179
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 5,
+      "outputBytes": {
+        "review.md": 1297
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    },
+    {
+      "id": "r08",
+      "case": "contact-import-v2",
+      "arm": "candidate",
+      "state": "completed",
+      "observedModels": [
+        "gpt-6.1-terra"
+      ],
+      "observedEfforts": [
+        "xhigh"
+      ],
+      "durationSeconds": 196.902,
+      "usage": {
+        "input_tokens": 363064,
+        "cached_input_tokens": 345856,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 5877,
+        "reasoning_output_tokens": 202,
+        "total_tokens": 368941
+      },
+      "usageMatchesCumulative": true,
+      "visibleToolCalls": 8,
+      "outputBytes": {
+        "create_report.py": 17762,
+        "review.json": 23926,
+        "review.md": 3888
+      },
+      "sourceUnchanged": true,
+      "packageUnchanged": true
+    }
+  ]
+}
