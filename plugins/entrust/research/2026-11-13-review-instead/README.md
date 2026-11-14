@@ -163,3 +163,13 @@ Raw judgments, coordinator qualifications and a checker-induced target edit are 
 is neither a completed original-task comparison nor proof of general architectural superiority. The skill
 and frozen drafts were not changed by this round.
 
+## Proposed after round 11, not written
+
+Round 11 is the first comparison with an unaided arm since round 4. The model alone finds the behavior defects; draft 29 adds the test-gap explanation, a more concrete target and the record, at about twice the time. No run in either arm shows the reading or change cost of a structure apart from its bugs. Three changes are proposed for draft 30 and held until a case can measure them:
+
+- **The change test, restored.** Draft 20 had it and draft 21 dropped it: take each rule and requirement in turn as the one that changes, and write what must be read and which places edited, today and in the target. Since then the page asks for the cost and gives no way to find it.
+- **Separable from the bugs.** A design finding must still stand if every behavior finding were fixed in place; otherwise it belongs to that fix. Round 9's judge downgraded design diagnoses justified by runtime correctness.
+- **A place for the decision on a unit.** Step 2 asks for the grouping assessment and its reason, and the data contract has no field for it: a unit kept as it is carries no reason, so "considered and kept" cannot be told from "not considered".
+
+The case to measure them on is behavior-correct and tangled, with a clean counterpart, and written apart from the drafts.
+
