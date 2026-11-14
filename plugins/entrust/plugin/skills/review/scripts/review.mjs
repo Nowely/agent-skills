@@ -119,9 +119,6 @@ export function check(review, files, directory) {
       if (s[side]?.read !== undefined && !places(s[side].read)) errors.push(`${who}: "${side}.read" is not a list of places`);
     }
   }
-  // Fewer places to edit, or less to read, in the target than now: what a structural finding has to show.
-  const easier = (s) => s.target !== undefined && filled(s.now?.edit) && filled(s.target?.edit)
-    && (s.target.edit.length < s.now.edit.length || (s.target.read ?? []).length < (s.now.read ?? []).length);
   for (const f of review.findings) {
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
@@ -132,11 +129,6 @@ export function check(review, files, directory) {
     if (f.direction === "tests" && f.breaks?.length) errors.push(`finding ${f.id} is about tests: it lists requirements under "untested", not "breaks"`);
     if (f.direction !== "tests" && f.untested?.length) errors.push(`finding ${f.id} is not about tests: it lists requirements under "breaks", not "untested"`);
     refs(`finding ${f.id}`, f.scenarios, scenarioIds, "scenario");
-    if (f.direction === "design") {
-      const shown = scenarios.filter((s) => f.scenarios?.includes(s.id));
-      if (!shown.length) errors.push(`finding ${f.id} is about design and names no scenario: walk a change of the task through the code and the target`);
-      else if (!shown.some(easier)) errors.push(`finding ${f.id} is about design and none of its scenarios edits or reads fewer places in the target than now`);
-    }
   }
   for (const r of review.requirements) {
     if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
@@ -183,7 +175,6 @@ export function check(review, files, directory) {
       refs(`${where}: ${u.name}`, u.uses, names, "unit");
     }
   }
-  if (units.some((u) => !u.existing) && !scenarios.length) errors.push('"scenarios" lists nothing: write two or three changes of the task through the units of the change');
   for (const u of units.filter((u) => !u.existing)) {
     if (!text(u.reason)) errors.push(`unit ${u.name} has no "reason": why it is to ${u.verdict ?? "keep"}, a unit kept as it is included`);
     if (!UNIT_VERDICTS.includes(u.verdict)) errors.push(`unit ${u.name}: verdict is one of ${UNIT_VERDICTS.join(", ")}`);

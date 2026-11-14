@@ -1,5 +1,7 @@
 # Review of structure: draft 30
 
+This document records the draft 30 proposal and its original planned experiment. The subsequent draft 31 candidate and pilot results are in [draft-31-pilot.md](draft-31-pilot.md); the status and proposed arms below are historical, not the current results.
+
 ## Question
 
 Does a review lead a tangled solution to a better-decomposed one when it must show the cost of the structure as a change of the task walked through the code, and when "smallest" means the result rather than the diff?
@@ -40,4 +42,4 @@ Synthetic cases written beside the drafts are at the ceiling; they stay as regre
 
 ## Status
 
-Not run. No review has been written with draft 30. Offline checks pass: skill pages 8, report 17, review instrument 14, packaging 21 with one pre-tag skip.
+At proposal time, no review had been written with draft 30. Offline checks passed: skill pages 8, report 17, review instrument 14, packaging 21 with one pre-tag skip. See the [subsequent pilot](draft-31-pilot.md) for the runs and their limits.

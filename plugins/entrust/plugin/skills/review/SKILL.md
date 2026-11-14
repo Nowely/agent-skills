@@ -11,7 +11,7 @@ license: MIT
 
 # Review
 
-Find the cleanest solution to the task in this codebase, and explain how the change compares with it. Cleanest means the result, not the diff: correct behavior, fewest concepts, one owner per rule and the fewest places a likely change must touch, judged by [the design standard](references/design-standard.md). Code the change wrote may be reshaped toward that target; code it did not touch stays, and a problem there is pre-existing. A review can find a design problem without finding a functional defect; a sound design can keep several related rules in one function.
+Find the cleanest solution to the task in this codebase, and explain how the change compares with it. Cleanest means the result, not the diff: correct behavior, comprehensible code, cohesive rule ownership and justified concepts, judged by [the design standard](references/design-standard.md). Code the change wrote may be reshaped toward that target; code it did not touch stays, and a problem there is pre-existing. A review can find a design problem without finding a functional defect; a sound design can keep several related rules in one function.
 
 Review only: change no project code and post no comments unless asked. Keep to the user's scope and execution limits. Save review artifacts in the user's permitted output location, outside the source tree by default; where writing artifacts is not allowed, return the complete structured report in the response and state that it was not saved. Never describe a read-through or a proposed manual scenario as an executed check.
 
@@ -47,11 +47,11 @@ Check the map against the diff and the connected code: changed lines accounted f
 
 ### 2. Check responsibility boundaries and decomposition
 
-After the breakdown and before any target, write the standard's scenarios: two or three changes derived from the requirements and the deciding units' rules, each with the places to edit and the code to read today. Then assess the grouping: split intertwined logic, merge scattered ownership, simplify in place, or keep. Record each unit's decision with its `reason`, a kept unit included.
+Assess readability, rule ownership and dependencies: split intertwined logic, merge scattered ownership, simplify in place, or keep. When a plausible concrete change helps assess a structural tradeoff, record it before the target as a scenario grounded in the task or code, with the places to edit and code to read today. A simple or clean change may need none. Record each unit's decision with its `reason`, a kept unit included.
 
-Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. The scenarios show what must be understood or changed together; tracing difficulty alone is a lead.
+Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. A useful scenario shows what must be understood or changed together; tracing difficulty alone is a lead.
 
-Compare clarification in place, separating decisions from effects, consolidation, extraction and removal by the standard's comparison. Its stated preferences pick among arrangements once a scenario shows a burden; they do not stand in for showing one.
+Compare clarification in place, separating decisions from effects, consolidation, extraction and removal by the standard's comparison. Ground the tradeoff in the code and its actual burden; a preference alone does not establish one.
 
 Keep obvious guards and cohesive ordered decisions together; length and helper counts do not decide. Read [the structural examples](references/structure-examples.md) before finalizing this assessment.
 
@@ -59,7 +59,7 @@ Keep obvious guards and cohesive ordered decisions together; length and helper c
 
 Before the detailed passes, sketch the smallest solution supported by the requirements and contracts: its units, what each owns, what it reuses, and which mechanisms it needs. This is a provisional comparison, not a commitment to preserve the implementation's premises.
 
-Trace requirements and rules through it, and walk the scenarios through it, recording what the target edits and reads; drop a boundary that makes no scenario more local. Preserve required timing, failure, retry, reload and no-further-input behavior, citing the task, owner decision or established contract that requires it. A convenience introduced by this change is not binding merely because the author implemented it. If a required decision conflicts with a contract, show the conflict and which part of the target depends on resolving it. If the change already has the appropriate structure, say so. Update the target when later evidence changes it.
+Trace requirements and rules through it, and walk any recorded scenarios through it, recording what the target edits and reads. Keep a boundary when its benefit justifies its cost. Preserve required timing, failure, retry, reload and no-further-input behavior, citing the task, owner decision or established contract that requires it. When an automated convenience is not established as required, weigh its benefit, cost and observable loss if omitted; absence of a stated requirement alone does not mandate removal. Offer a meaningful tradeoff to the owner. If a required decision conflicts with a contract, show the conflict and which part of the target depends on resolving it. If the change already has the appropriate structure, say so. Update the target when later evidence changes it.
 
 ### 4. Review all four directions
 
@@ -74,16 +74,16 @@ Finish every direction, even after a serious finding. Collect candidates and une
 
 #### Necessity
 
-- For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence. Check guards inside `keep` blocks against proven types, producers and existing predicates; retain justified boundary defenses.
+- For each mechanism and each independently removable part—guard, fallback, catch, retry, cache, conversion, option, wrapper, registry, configuration or state—state the premise that requires it. Check that premise against producers, callers and boundary contracts. Classify it as `needed` with evidence, `contradicted` with the removable part, or `unknown` with the missing evidence; weigh any independent benefit before proposing removal. Check guards inside `keep` blocks against proven types, producers and existing predicates; retain justified boundary defenses.
 - Settle each mechanism's `instead` from the code and the installed contracts, not from the change's own account of why it is needed. An unsettled `instead` is an unread boundary, not a needed mechanism. Before recommending a new mechanism or interface, identify the required behavior the existing ones cannot express.
-- Weigh benefit against price. In `benefit`, state the scenario, observable loss without the mechanism, and frequency with its evidence or unknown status. In `cost`, show relevant state, lifecycle, tests and what must be understood or changed together. In `decision`, explain why that tradeoff merits keeping, simplifying, removing or asking the owner; `instead` supports the alternative. Attributed diff lines are not complexity scores or removable-line counts. Unknown frequency alone neither justifies nor prevents removing redundant machinery. Preserve mandatory behavior; make any proposed loss of optional convenience explicit to its owner.
+- Weigh benefit against price. In `benefit`, state the scenario, observable loss without the mechanism, and frequency with its evidence or unknown status; do not invent numbers. In `cost`, show relevant state, lifecycle, tests and what must be understood or changed together. In `decision`, explain why that tradeoff merits keeping, simplifying, removing or asking the owner; `instead` supports the alternative. Attributed diff lines are not complexity scores or removable-line counts. Unknown frequency alone neither justifies nor prevents removing redundant machinery. Preserve mandatory behavior; make any proposed loss of optional convenience explicit to its owner.
 - For each proposed removal, follow its dependent machinery: data requests, intermediate values, state, loading/error paths, timers and tests. Remove what serves only that mechanism; preserve parts with an independent required job. Explain the complete simplification, not just its first deleted call.
 
 #### Design
 
 Use the decomposition assessment and target to examine the design as a whole:
 
-- **The standard's principles:** check the change against each; a broken principle shows in a scenario.
+- **The standard's principles:** check the change against each and show any concrete burden in the code; use a grounded scenario when it helps.
 - **Boundary work:** distinguish a producer violating its contract from an adapter translating valid output into the application's representation. Put a proven defect at its owner; keep a necessary adaptation at the appropriate boundary. A documented format difference is not a dependency bug. When a genuine upstream defect cannot be fixed here, assess the local workaround on its own necessity and record the upstream improvement separately.
 - **Cost of the proposal:** compare the target with the change by the standard, including the boundaries it adds. A helper that only renames obvious lines, or a split that requires shared mutable state and more coordination, has not demonstrated an improvement.
 
@@ -101,7 +101,7 @@ Reopen the supporting code and actively seek a reason each candidate is wrong: a
 
 - **Behavioral defect:** a reachable entry, its path and the wrong observable result. A merely conceivable input unsupported by code or the task is a question.
 - **Unnecessary mechanism:** the contract or existing capability that makes it unnecessary, and the required behavior preserved by the whole removal, including behavior over time. If the key dependency contract is unavailable, retain a question instead of asserting equivalence.
-- **Design finding:** the principle broken and the scenario that shows it, with fewer places to edit or read in the target than now. It must stand if every behavior finding were fixed in place; otherwise it belongs to those fixes. Label it `judgment`. It needs no functional failure or invented future requirement; a shape preference no scenario supports is an idea.
+- **Design finding:** show the concrete structural burden, its evidence and why the proposed arrangement improves the tradeoff. A grounded scenario can clarify this when useful. It must stand if every behavior finding were fixed in place; otherwise it belongs to those fixes. Label it `judgment`. It needs no functional failure or invented future requirement; an unsupported shape preference is an idea.
 - **Test gap:** the meaningful regression that current tests would miss.
 
 Apply the same scrutiny to fixes. Avoid speculative guards, options and layers; show that proposed deletions preserve independent responsibilities. After a major removal, reassess the remaining responsibilities and plumbing on their own merits. Reconcile findings into one target and trace the requirements and rules through it again; do not invent a further finding to fill a category.
@@ -118,7 +118,7 @@ Finalize `review.json` for every review (saving it in the permitted output locat
 
 Follow the data contract for source preservation, localization and validation; passing the script establishes structure, not truth.
 
-Derive the human-facing response from the canonical report; do not maintain a competing set of findings in prose. Lead with the conclusion and the recommendation: accept, fix in place, or reshape toward the target. State what the change is for, what decides the recommendation, and the material limits of the review. When the target differs, briefly distinguish the solution now from the proposed one and give the ordered changes, referring to findings by number. A structural step names the scenario that stays non-local without it: an implementer who keeps to the smallest diff needs that reason to make it. Avoid using finding count as a quality score.
+Derive the human-facing response from the canonical report; do not maintain a competing set of findings in prose. Lead with the conclusion and the recommendation: accept, fix in place, or reshape toward the target. State what the change is for, what decides the recommendation, and the material limits of the review. When the target differs, briefly distinguish the solution now from the proposed one and give the ordered changes, referring to findings by number. A structural step explains the concrete burden that remains without it; cite a scenario when one helps. Avoid using finding count as a quality score.
 
 Present findings by impact, each once, with direction, evidence level, source location, demonstrated problem and smallest sufficient fix. Link affected requirements and distinguish findings, unresolved questions and optional ideas. Derive grounded manual scenarios and visual limitations as the data contract specifies. Omit empty sections in the short response; link the complete `review.json` and surface limits that materially change the recommendation.
 

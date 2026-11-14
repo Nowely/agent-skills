@@ -1,20 +1,18 @@
 # Design standard
 
 What this review counts as clean structure, and how it compares two solutions. Read it for every review, before
-step 2 of the procedure. Every principle is shown the same way: by a change. Take a rule or requirement of the
-task as the one that changes, and name the places you would edit and the code you would have to read to make
-that change safely, today and in the target. A structural finding rests on one principle and one such scenario;
-without the scenario it is an idea.
+step 2 of the procedure. Assess actual readability, rule ownership and dependencies. A structural finding
+shows a concrete burden in the code and why the proposed arrangement improves it. When useful, walk a plausible
+change grounded in the task or code through both arrangements; do not invent future requirements.
 
 The principles are not new. Where the literature disagrees, this page takes a side and says which.
 
 ## The measure
 
-Structure is worse when a change touches more places that must agree, needs more code read to be sure nothing
-else breaks, or hides something the person changing it needed to know: Ousterhout's three symptoms of
-complexity, change amplification, cognitive load and unknown unknowns. Smallest means the result: fewest
-concepts, one owner per rule, fewest places a likely change touches. It does not mean the smallest diff. Length
-and the number of functions or files are what a structure costs, weighed against what it buys on this scale.
+Places that must agree, code that must be read safely, and hidden knowledge are diagnostic signals of
+complexity: change amplification, cognitive load and unknown unknowns. Weigh the actual burden and benefits
+of each arrangement; counts alone do not decide. Smallest means the result: comprehensible code, cohesive
+ownership and justified concepts, not the smallest diff or the fewest functions, files or edit locations.
 
 ## Principles
 
@@ -31,21 +29,21 @@ and the number of functions or files are what a structure costs, weighed against
 4. **Decisions apart from effects.** What to do is decided apart from doing it: writes, requests, counters,
    timers. Shown by: changing a decision means reading or preserving the order of effects around it, or testing
    it needs a fake store or clock. Not a violation: one effect after a short decision.
-5. **A boundary hides a decision.** A unit earns its place when a likely change is made inside it and its
-   callers do not change (Parnas; Ousterhout's deep modules). Shown by: the scenario that motivated the unit
-   still edits its callers, or the unit only forwards or renames one or two obvious lines. Side taken: deep
-   modules over small functions. A function per rule is not a goal. When non-trivial calculations obscure the
-   precedence of several rules, prefer a short coordinator that reads as the rules in the order they win, with
-   each such calculation named; a rule whose body reads at a glance stays inline.
+5. **A boundary hides a decision.** A unit can earn its place when a likely change is made inside it and its
+   callers do not change (Parnas; Ousterhout's deep modules). Consider whether the scenario that motivated the unit
+   still edits its callers, or the unit only forwards or renames one or two obvious lines, alongside its benefits
+   and costs. Side taken: deep modules over small functions. A function per rule is not a goal. When non-trivial
+   calculations obscure the precedence of several rules, prefer a short coordinator that reads as the rules in
+   the order they win, with each such calculation named; a rule whose body reads at a glance stays inline.
 6. **Interfaces do not expose internals.** Shown by: a caller interprets another unit's partial flags or
    intermediate values, so a change inside the callee edits the caller; or a unit changes an argument or shared object its caller does not expect it to touch.
 7. **Phases own their knowledge.** Splitting work by the order it runs (read, parse, decide, write) is sound when
    each phase reads only the previous one's result. Shown by: two phases must agree on a format or decision, so
    one scenario edits both (temporal decomposition).
-8. **Fewest concepts.** Every mechanism, option, layer and piece of state has a requirement that existing code,
-   inputs or contracts cannot meet (Beck: fewest elements). Shown by: something already in hand meets it.
+8. **Fewest concepts.** Weigh each mechanism, option, layer and piece of state against its benefit and what
+   existing code, inputs or contracts already provide (Beck: fewest elements).
 9. **No speculative generality.** No option, mode parameter, registry, configuration or interface without a
-   second variation the task or code actually has. Shown by: one caller, one value, one implementation.
+   concrete need grounded in the task or code. One caller, value or implementation alone does not establish a defect.
 10. **Trust the contract; check at the boundary.** A guard, fallback or conversion is a claim about the data,
     checked where the data comes from: noise inside a boundary that guarantees it, required at an untrusted
     one. Where possible, define the error out of existence instead of handling it.
@@ -56,32 +54,23 @@ and the number of functions or files are what a structure costs, weighed against
 
 ## Scenarios
 
-Write them before the target, so they cannot be chosen to suit it. Derive two or three from the requirements and
-from the rules of each unit that decides: a limit that varies, a rule added before or after another, a rule
-removed, a second entry point, an input from a new source. Include at least one the current code already takes
-in one place: it checks that the target does not make that worse. Record each in `scenarios` with the places to
-edit and the code to read today, then the same for the target once it is sketched.
+When a concrete plausible change helps evaluate a design, derive it from the task or the code before sketching
+the target. Record the places to edit and code to read today and in the target. Avoid inventing future needs;
+a simple or already cohesive change may need no scenario.
 
 ## Comparing two solutions
 
-Compare the change with the target, or two candidate targets, in this order:
-
-1. **Behavior is the entry condition.** Walk every requirement and rule through both. A solution that drops one
-   does not compete.
-2. **Fewer scenarios that edit several places that must agree.**
-3. **At equal edits, less to read** to make each scenario safely.
-4. **At equal reading, fewer concepts**, each with a requirement behind it.
-5. **Only then, size.**
-
-A boundary in the target earns its place only when omitting it makes a named scenario edit more places or read
-more code; otherwise drop it from the target. If the target improves no scenario, the current structure stays,
-with its reason.
+Both solutions must preserve required behavior. Compare actual readability, ownership, dependencies and the
+costs of changes supported by evidence. Consider the cost and benefit of boundaries, coordination and concepts
+as well as code a maintainer must understand. Numbers of edit or read locations are diagnostics, not an ordered
+score: for example, more small edits can require less code to understand. Keep cohesive code when a split has
+no demonstrated benefit; do not introduce a helper merely to meet a shape preference.
 
 ## A structural finding
 
-- Cites the principle and the scenario, with fewer places to edit or read in the target than today.
+- Shows the concrete burden and why the proposed arrangement improves the tradeoff, with a grounded scenario
+  when useful.
 - Still stands if every behavior finding were fixed in place. If those fixes would remove the cost, it belongs to
   them.
-- Is labelled `judgment`: the scenario is a reasoned walk through the code, not a run.
-- Says in its fix which scenario stays non-local without the structural part, so an implementer who keeps to
-  the smallest diff sees why the part is required.
+- Is labelled `judgment`: the assessment is reasoned from the code, not a run.
+- Explains the burden that remains without the structural part.
