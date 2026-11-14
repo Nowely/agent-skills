@@ -1,0 +1,135 @@
+{
+  "method": "Unique native response usage summed and checked against cumulative usage. Cached input is part of input; reasoning part of output. Reviewer-only; judges/coordinator/relays excluded. UTF-8 JSON normalized equally. Two samples per arm; no stable cost or reliability claim. Split/finding counts describe representation, not quality.",
+  "runs": [
+    {
+      "run": "r01",
+      "draft": 28,
+      "totalTokens": 577717,
+      "inputTokens": 568915,
+      "cachedInputTokens": 542976,
+      "uncachedInputTokens": 25939,
+      "outputTokens": 8802,
+      "durationSeconds": 182.227,
+      "toolSteps": 11,
+      "reportBytes": 31677,
+      "findings": 9,
+      "unitsMarkedSplit": 0
+    },
+    {
+      "run": "r02",
+      "draft": 25,
+      "totalTokens": 397702,
+      "inputTokens": 389697,
+      "cachedInputTokens": 368640,
+      "uncachedInputTokens": 21057,
+      "outputTokens": 8005,
+      "durationSeconds": 162.554,
+      "toolSteps": 8,
+      "reportBytes": 29478,
+      "findings": 8,
+      "unitsMarkedSplit": 0
+    },
+    {
+      "run": "r03",
+      "draft": 25,
+      "totalTokens": 404438,
+      "inputTokens": 397379,
+      "cachedInputTokens": 374272,
+      "uncachedInputTokens": 23107,
+      "outputTokens": 7059,
+      "durationSeconds": 146.218,
+      "toolSteps": 8,
+      "reportBytes": 27245,
+      "findings": 8,
+      "unitsMarkedSplit": 1
+    },
+    {
+      "run": "r04",
+      "draft": 28,
+      "totalTokens": 347370,
+      "inputTokens": 340051,
+      "cachedInputTokens": 322432,
+      "uncachedInputTokens": 17619,
+      "outputTokens": 7319,
+      "durationSeconds": 148.029,
+      "toolSteps": 7,
+      "reportBytes": 31589,
+      "findings": 9,
+      "unitsMarkedSplit": 1
+    }
+  ],
+  "byDraft": {
+    "25": {
+      "mean": {
+        "totalTokens": 401070,
+        "uncachedInputTokens": 22082,
+        "outputTokens": 7532,
+        "durationSeconds": 154.386,
+        "reportBytes": 28361.5,
+        "toolSteps": 8
+      },
+      "range": {
+        "totalTokens": [
+          397702,
+          404438
+        ],
+        "uncachedInputTokens": [
+          21057,
+          23107
+        ],
+        "outputTokens": [
+          7059,
+          8005
+        ],
+        "durationSeconds": [
+          146.218,
+          162.554
+        ],
+        "reportBytes": [
+          27245,
+          29478
+        ],
+        "toolSteps": [
+          8,
+          8
+        ]
+      }
+    },
+    "28": {
+      "mean": {
+        "totalTokens": 462543.5,
+        "uncachedInputTokens": 21779,
+        "outputTokens": 8060.5,
+        "durationSeconds": 165.128,
+        "reportBytes": 31633,
+        "toolSteps": 9
+      },
+      "range": {
+        "totalTokens": [
+          347370,
+          577717
+        ],
+        "uncachedInputTokens": [
+          17619,
+          25939
+        ],
+        "outputTokens": [
+          7319,
+          8802
+        ],
+        "durationSeconds": [
+          148.029,
+          182.227
+        ],
+        "reportBytes": [
+          31589,
+          31677
+        ],
+        "toolSteps": [
+          7,
+          11
+        ]
+      }
+    }
+  }
+}

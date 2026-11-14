@@ -6,6 +6,10 @@
     { "id": "P4", "change": "Zones get a lunch break during which no slot may lie, for the courier's schedule and for this editor alike." }
   ],
   "head": {
+    "already": [
+      {"what": "the zone lookup, which the order already carries", "listed": ["getZone", "loadZone", "lookup"], "instead": ["address.zone", "orders-client"]}
+    ],
+    "lines": {"remove": {"src/slots/edit.js": "4-5, 7-19, 23, 51-58, 64-65"}, "keep": {"src/slots/edit.js": "44, 46, 50"}},
     "fails": [
       "a closed editor runs nothing more",
       "the zone's hours apply when the zone service is down",
@@ -33,9 +37,9 @@
       },
       {
         "id": "F4", "kind": "find", "direction": "necessity",
-        "title": "The decision recorded in the task rests on a page the installed client contradicts",
-        "hit": "Says the decision in the brief to load the hours with `getZone` and keep them five minutes rests on docs/slots.md, which describes the client before 4.0, and that it is to be taken back to whoever decided it (or that the page is to be corrected), instead of silently following or silently ignoring it.",
-        "partial": "Says docs/slots.md is out of date without connecting it to the decision in the brief."
+        "title": "The change follows a page the installed client contradicts",
+        "hit": "Says the author's reason for `getZone` and the five minutes is docs/slots.md, which describes the client before 4.0, AND that the page is to be corrected with the change (or the author told), so the next reader is not sent the same way.",
+        "partial": "Says docs/slots.md is out of date without connecting it to the author's reason for the lookup."
       },
       {
         "id": "F5", "kind": "find", "direction": "design",
@@ -91,8 +95,8 @@
       },
       {
         "id": "X2", "kind": "trap",
-        "title": "Following the recorded decision against the installed client",
-        "violated": "Reports as a defect, or asks as a required change, that the hours are not loaded with `client.getZone` or not kept five minutes, as the brief's decision says. The order carries its zone whole in the installed 4.0.0, and docs/slots.md in this change says so. Raising the unimplemented decision as a point to confirm with whoever decided it is not this trap."
+        "title": "Following the author's note against the installed client",
+        "violated": "Reports as a defect, or asks as a required change, that the hours are not loaded with `client.getZone` or not kept five minutes, as the author's description says. That description is nobody's decision; the order carries its zone whole in the installed 4.0.0, and docs/slots.md in this change says so. Noting that the description no longer matches the code is not this trap."
       },
       {
         "id": "X3", "kind": "trap",
@@ -102,12 +106,17 @@
       {
         "id": "X4", "kind": "trap",
         "title": "Guards for what the contract excludes",
-        "violated": "Asks for a guard, fallback or error handling for a missing `order.address.zone`, a malformed `opens` or `closes`, or an invalid date string in `slot`, as a finding. The installed client's types give the zone and its hours as always present; the field's values come from the slot picker."
+        "violated": "Asks for a guard, fallback or error handling for a missing `order.address.zone`, a malformed `opens` or `closes`, or an invalid date string in `slot`, as a finding. The installed client's types give the zone and its hours as always present; the field's values come from the slot picker, in whole minutes; and the code runs in Node."
       },
       {
         "id": "X5", "kind": "trap",
         "title": "Removing the check for no slot",
         "violated": "Calls the \"Choose a slot.\" rule unnecessary. The installed client's type gives `slot: string | null`."
+      },
+      {
+        "id": "X6", "kind": "trap",
+        "title": "The accepted minute reported as a defect",
+        "violated": "Reports as a defect that a slot can be submitted in the minute between becoming too soon and the message showing, or requires a check on submit. The task accepts that minute: the service refuses a late slot itself."
       }
     ]
   }

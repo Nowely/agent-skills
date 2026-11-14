@@ -1,0 +1,156 @@
+{
+  "paths": [
+    {
+      "id": "p01",
+      "originalContract": {
+        "rating": "supported",
+        "reason": "Implements parse-before-write CSV import, shared email normalization/validation, last-valid duplicate selection, blank-line skipping, physical start-line rejections, and create/update counts. Passes 13/13 external and 12/12 unit checks, while also returning a pre-existing unrequested `rows` array on the result.",
+        "evidence": [
+          "artifacts/a02/src/contacts/import.js:4-36",
+          "artifacts/a02/src/lib/csv.js:6-38",
+          "artifacts/a02/src/contacts/email.js:1-9",
+          "artifacts/a02-checks.json:3-111"
+        ]
+      },
+      "previewContract": {
+        "rating": "supported",
+        "reason": "Exports synchronous `previewImport(text, store)` matching `importContacts` on `created`, `updated`, and `rejected`, avoiding `insert`/`rename` and contact mutations across repeated calls, propagating `CsvError` before store reads, and keeping unchanged-name `updated` counts without renaming. Passes 14/14 preview and 13/13 regression checks.",
+        "evidence": [
+          "artifacts/b02/src/contacts/import.js:4-44",
+          "patches/b02.patch:8-32",
+          "artifacts/b02-checks.json:3-218",
+          "evaluator/preview-accept.mjs:21-61"
+        ]
+      },
+      "changeLocality": {
+        "rating": "local",
+        "reason": "`before` already separated pure parsing, validation, and normalized `Map` deduplication from persistence. `after` moved the body into `processImport(text, store, apply)` and guarded only `store.rename` and `store.insert` with `apply`, without spreading the flag into validation, deduplication, or counting.",
+        "editedLogicalRegions": [
+          "Entry wrappers and processImport signature (artifacts/b02/src/contacts/import.js:4-12)",
+          "Conditional store write calls in resolution loop (artifacts/b02/src/contacts/import.js:32-41)",
+          "Preview, parse-error, and unchanged-name tests (artifacts/b02/test/import.test.js:4,60-107)"
+        ],
+        "neededContext": [
+          "First loop runs parseCsv upfront and deduplicates valid rows by normalizeEmail in contacts Map, so skipped writes cannot affect subsequent findByEmail calls (artifacts/b02/src/contacts/import.js:13-30)",
+          "Unchanged existing names increment updated without calling rename (artifacts/b02/src/contacts/import.js:34-36)",
+          "ContactStore.findByEmail is non-mutating and normalizes keys identically to insert/rename (artifacts/a02/src/contacts/store.js:8-22)"
+        ],
+        "dataAcrossBoundary": [
+          "Helper input/output: (text, store, apply) -> { created, updated, rejected, rows }",
+          "Phase-1 to phase-2: deduplicated contacts Map<normalizedEmail, { name, email }> and result.rejected/rows (artifacts/b02/src/contacts/import.js:14-32)",
+          "Store boundary: normalized email -> existing contact | null; gated rename(id, name) and insert({ name, email }) (artifacts/b02/src/contacts/import.js:33-39)"
+        ],
+        "evidence": [
+          "patches/b02.patch:1-33",
+          "artifacts/a02/src/contacts/import.js:4-36",
+          "artifacts/b02/src/contacts/import.js:4-44"
+        ]
+      },
+      "ruleOwnership": {
+        "rating": "supported",
+        "reason": "`csv.js` owns CSV framing and line numbers, `email.js` owns email normalization/validation, `store.js` owns storage, and `processImport` is the sole owner of import/preview validation, deduplication, and counting; only the two validation reason strings pre-existed in `create.js`.",
+        "evidence": [
+          "artifacts/b02/src/contacts/import.js:12-44",
+          "artifacts/b02/src/lib/csv.js:6-38",
+          "artifacts/b02/src/contacts/email.js:1-9",
+          "artifacts/b02/src/contacts/create.js:4-8"
+        ]
+      },
+      "testQuality": {
+        "rating": "supported",
+        "reason": "Preserves baseline tests and adds preview cases checking fixed expected counts/rejections alongside `importContacts` parity, repeated read-only calls, pre-read `CsvError` propagation, and unchanged-name handling in both functions, backed by frozen-baseline external checks. Own tests verify post-call contact snapshots rather than `Object.freeze`.",
+        "evidence": [
+          "artifacts/b02/test/import.test.js:60-107",
+          "artifacts/b02-checks.json:103-216",
+          "evaluator/preview-accept.mjs:39-61"
+        ]
+      },
+      "unrelatedSemanticChanges": [],
+      "unnecessaryMechanisms": [],
+      "recommendations": [
+        "Freeze returned contact objects in artifacts/b02/test/import.test.js:68-74 to catch transient in-place mutations directly.",
+        "Confirm whether the pre-existing result.rows field in artifacts/b02/src/contacts/import.js:14 is needed by callers."
+      ],
+      "summary": "`p01` meets both contracts via a bounded two-statement write guard in `processImport`, preserving single rule ownership and passing all checks."
+    },
+    {
+      "id": "p02",
+      "originalContract": {
+        "rating": "supported",
+        "reason": "Implements parse-before-write CSV import, shared email validation/normalization, normalized last-valid deduplication, blank vs nonblank row handling, physical start-line rejections, and exact `{ created, updated, rejected }` output, passing 13/13 external and 13/13 unit checks.",
+        "evidence": [
+          "artifacts/a01/src/contacts/import.js:4-33",
+          "artifacts/a01/src/lib/csv.js:6-38",
+          "artifacts/a01/src/contacts/email.js:1-9",
+          "artifacts/a01-checks.json:3-111"
+        ]
+      },
+      "previewContract": {
+        "rating": "supported",
+        "reason": "Exports synchronous `previewImport(text, store)` returning `{ created, updated, rejected }` equal to `importContacts` without calling `insert`/`rename` or mutating contacts across repeated runs, propagating `CsvError` before store access, and passing 14/14 preview and 13/13 regression checks.",
+        "evidence": [
+          "artifacts/b01/src/contacts/import.js:4-41",
+          "patches/b01.patch:8-32",
+          "artifacts/b01-checks.json:3-218",
+          "evaluator/preview-accept.mjs:21-61"
+        ]
+      },
+      "changeLocality": {
+        "rating": "local",
+        "reason": "`before` already isolated pure parsing, validation, and `Map` email deduplication ahead of the store loop. `after` extracted the body into `processImport(text, store, apply)` and gated only `store.rename` and `store.insert` with `apply`, leaving upstream decisions and counting untouched.",
+        "editedLogicalRegions": [
+          "Entry wrappers and processImport signature (artifacts/b01/src/contacts/import.js:4-12)",
+          "Conditional store write calls in resolution loop (artifacts/b01/src/contacts/import.js:30-39)",
+          "Preview, parse-error, and unchanged-name tests (artifacts/b01/test/import.test.js:4,67-112)"
+        ],
+        "neededContext": [
+          "First loop completes parseCsv upfront and deduplicates valid emails via normalizeEmail in contacts Map, ensuring skipped writes cannot alter later findByEmail lookups (artifacts/b01/src/contacts/import.js:13-28)",
+          "Unchanged existing names increment updated without calling rename (artifacts/b01/src/contacts/import.js:32-34)",
+          "ContactStore.findByEmail is read-only and shares normalizeEmail with insert/rename (artifacts/a01/src/contacts/store.js:8-22)"
+        ],
+        "dataAcrossBoundary": [
+          "Helper input/output: (text, store, apply) -> { created, updated, rejected }",
+          "Phase-1 to phase-2: deduplicated contacts Map<normalizedEmail, name> and result.rejected (artifacts/b01/src/contacts/import.js:14-30)",
+          "Store boundary: normalized email -> existing contact | null; gated rename(id, name) and insert({ name, email }) (artifacts/b01/src/contacts/import.js:31-37)"
+        ],
+        "evidence": [
+          "patches/b01.patch:1-33",
+          "artifacts/a01/src/contacts/import.js:4-33",
+          "artifacts/b01/src/contacts/import.js:4-41"
+        ]
+      },
+      "ruleOwnership": {
+        "rating": "supported",
+        "reason": "`csv.js` owns CSV syntax and line tracking, `email.js` owns email policy, `store.js` owns persistence, and `processImport` is the single owner of import/preview validation, deduplication, and counting, with only pre-existing reason-string overlap in `create.js`.",
+        "evidence": [
+          "artifacts/b01/src/contacts/import.js:12-41",
+          "artifacts/b01/src/lib/csv.js:6-38",
+          "artifacts/b01/src/contacts/email.js:1-9",
+          "artifacts/b01/src/contacts/create.js:4-8"
+        ]
+      },
+      "testQuality": {
+        "rating": "supported",
+        "reason": "Retains baseline tests and adds preview cases asserting fixed `{ created, updated, rejected }` outcomes, `importContacts` parity, `Object.freeze` on stored contacts, throwing write stubs, pre-read `CsvError` checks across two quote errors, and unchanged-name non-rename behavior, plus frozen-baseline external checks.",
+        "evidence": [
+          "artifacts/b01/test/import.test.js:67-112",
+          "artifacts/b01-checks.json:103-216",
+          "evaluator/preview-accept.mjs:39-61"
+        ]
+      },
+      "unrelatedSemanticChanges": [],
+      "unnecessaryMechanisms": [],
+      "recommendations": [
+        "Add a direct previewImport assertion in the standalone unchanged-name test at artifacts/b01/test/import.test.js:104-112 alongside the combined fixture."
+      ],
+      "summary": "`p02` satisfies both contracts via the same local `processImport` write guard, maintaining exact output fields, single rule ownership, and thorough tests."
+    }
+  ],
+  "comparison": "Both paths start from nearly identical two-phase `importContacts` implementations sharing identical `csv.js`, `email.js`, `store.js`, and `create.js`, and converge on the same change: wrapping the existing body in `processImport(text, store, apply)` and guarding only `store.rename` and `store.insert` with `apply`. Change locality and rule ownership are equally strong in both because `Map` deduplication by normalized email precedes all store access. Concrete differences are minor: `p01` retains a pre-existing extra `result.rows` array, stores `{ name, email }` in `contacts`, and asserts unchanged-name non-rename directly on both functions; `p02` stores `name`, returns strictly `{ created, updated, rejected }`, and freezes stored contact objects during preview testing.",
+  "limitations": [
+    "Static code/diff review and pre-recorded check logs only; code and tests were not executed during judging.",
+    "Passing suites establish covered synchronous single-store scenarios, not unexercised cases such as duplicate case-variant CSV headers (e.g., Name,name) or mid-import store write failures.",
+    "Single small synthetic probe without author timing or token telemetry; supports no broad claims across architectures or workflows."
+  ],
+  "summary": "Both `p01` and `p02` satisfy the original and preview contracts and accommodate `previewImport` with equally local changes: each already separated pure CSV validation and deduplication from store persistence, requiring only a bounded two-statement write switch."
+}

@@ -6,11 +6,12 @@
 // references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import vm from "node:vm";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { CATALOGS, LABELS } from "../plugin/skills/review/scripts/labels.mjs";
-import { DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { CATALOGS, LABELS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
+import { check, modelOf, weightOverview, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -54,6 +55,21 @@ const render = (change = () => {}) => {
   fs.writeFileSync(data, JSON.stringify(review));
   return report("render", data);
 };
+
+test("interactive report embeds a complete annotation runtime and keeps navigation ahead of content",
+  "new reports must include the shared annotation controller, without relying on a patched HTML artifact",
+  () => {
+    const result = render((r) => { r.mechanisms = [{ name: "Reader", change: "reused", purpose: "Read", basis: "Existing code", benefit: "Reuse", cost: "None added", decision: "Keep it", evidence: "read" }]; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const script = page.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    if (!script) return "missing runtime";
+    new vm.Script(script);
+    return page.indexOf('<nav>') < page.indexOf('<section id="summary"')
+      && page.includes('id="annotation-editor"') && page.includes('data-annotation-action="cancel"')
+      && page.includes('id="m1"') && page.includes('role="status"')
+      || "missing contextual editor, source anchor, navigation or status region";
+  });
 
 test("lines prints every changed line under its file, with the address a block names it by",
   "a reviewer who computes line numbers from hunk headers gets them wrong; the listing is where blocks take them from",
@@ -182,9 +198,93 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
       if (bad.status !== 1 || !bad.stderr.includes(error)) return `accepted malformed mechanism: ${JSON.stringify(patch)}`;
     }
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: [], findings: undefined }]; }).status !== 0) return "a file-level mechanism without findings was refused";
+    // What a change brings in says what was already there; what it only reuses need not.
+    const brought = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added" }]; });
+    if (brought.status !== 1 || !brought.stderr.includes('has no "instead"')) return "an added mechanism that does not say what was already available was accepted";
+    const vague = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "Nothing else does this." }]; });
+    if (vague.status !== 1 || !vague.stderr.includes("cites no place")) return "an answer that names nothing read was accepted";
+    const answered = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "The archive reader converts already: src/archive.js:12." }]; });
+    if (answered.status !== 0 || !answered.stdout.includes("Already available: The archive reader converts already: src/archive.js:12.")) return "the answer to what was already available is not printed";
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
     if (render((r) => { r.mechanisms = {}; }).status !== 1) return "accepted a non-list inventory";
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
+  });
+
+test("mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns",
+  "shared wiring and test code must not inflate a mechanism's exclusive production weight",
+  () => {
+    const r = structuredClone(REVIEW);
+    r.blocks[0].added = "2-4";
+    ["code", "test", "other"].forEach((kind, i) => { r.blocks[i].kind = kind; });
+    r.mechanisms = [{ ...MECHANISM, name: "A", blocks: [1, 2] }, { ...MECHANISM, name: "B", blocks: [1, 3] },
+      { ...MECHANISM, name: "Unassessed" }, { ...MECHANISM, name: "Reused", blocks: [] }];
+    const added = (n, blank = false) => ({ kind: "add", new: n, text: blank ? " " : "code" });
+    const files = [{ path: r.blocks[0].path, hunks: [[added(2), added(3, true), { ...added(4), text: "// comment counts as nonblank" }, { kind: "del", old: 3, text: "old" }]] },
+      { path: r.blocks[1].path, hunks: [Array.from({ length: 8 }, (_, i) => added(i + 1, i === 3))] },
+      { path: r.blocks[2].path, hunks: [Array.from({ length: 13 }, (_, i) => added(i + 1))] }];
+    const checked = check(r, files, run);
+    if (checked.errors.length) return checked.errors.join("; ");
+    const model = modelOf(r, files, checked.owner, run), [a, b, unknown, reused] = model.mechanisms;
+    if (model.blocks[0].added.length !== 3 || model.blocks[0].size !== 4) return "existing block representation changed";
+    if (a.weight.exclusive.code.added !== 0 || a.weight.exclusive.test.added !== 7 || b.weight.exclusive.other.added !== 13) return "exclusive/category counts differ";
+    if (a.weight.shared.length !== 1 || a.weight.shared[0].added !== 2 || a.weight.shared[0].removed !== 1 || a.weight.shared[0].with.join() !== "B" || a.weight.sharedCounts.code.added !== 2) return "shared/blank/removed counts differ";
+    if (unknown.weight !== null || reused.weight === null || reused.weight.exclusive.code.added !== 0) return "unknown and verified zero conflated";
+    for (const ids of [[1, 1], [0], [99], ["1"], null]) {
+      const bad = structuredClone(r); bad.mechanisms[0].blocks = ids;
+      if (!check(bad, files, run).errors.length) return `accepted invalid references ${JSON.stringify(ids)}`;
+    }
+    const missing = structuredClone(r); delete missing.blocks[0].kind;
+    if (!check(missing, files, run).errors.some(e => e.includes("explicit kind"))) return "unit inferred code kind";
+    const invalid = structuredClone(r); invalid.blocks[2].kind = "guess";
+    if (!check(invalid, files, run).errors.some(e => e.includes("kind is one of"))) return "invalid kind accepted";
+    const empty = structuredClone(r); empty.mechanisms[3] = { ...MECHANISM, name: "Added", change: "added", instead: "source.js:1", blocks: [] };
+    if (!check(empty, files, run).errors.some(e => e.includes("empty blocks"))) return "added mechanism accepted zero attribution";
+    return true;
+  });
+
+test("weight overview leads with the full footprint, not exclusive lines or net change",
+  "44 attributed lines must not be presented as 10, and +50/-12 must not become 38",
+  () => {
+    const counts = (added = 0, removed = 0) => ({ added, removed });
+    const weight = { exclusive: { code: counts(10), test: counts(), other: counts() }, sharedCounts: { code: counts(34), test: counts(), other: counts() } };
+    const ru = labelsOf({ language: "ru" }), en = labelsOf({ language: "en" });
+    let rows = weightOverview(weight, ru, "ru");
+    if (rows[0].text !== "добавлено 44 строки (34 общие)") return "shared subset missing or double-counted";
+    weight.exclusive.code = counts(20, 8); weight.sharedCounts.code = counts(30, 4);
+    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 50 строк (30 общих), удалено 12 строк (4 общие)") return "mixed delta conflated";
+    weight.exclusive.code = counts(0, 30); weight.sharedCounts.code = counts();
+    if (weightOverview(weight, ru, "ru")[0].text !== "удалено 30 строк") return "zero addition exposed";
+    weight.exclusive.code = counts(); weight.sharedCounts.code = counts(34);
+    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 34 строки (34 общие)") return "fully shared case misrepresented";
+    weight.sharedCounts.code = counts();
+    if (weightOverview(weight, ru, "ru").length || weightOverview(null, ru, "ru").length) return "empty overview invented counts";
+    for (const [n, expected] of [[1,"добавлена 1 строка"],[2,"добавлено 2 строки"],[5,"добавлено 5 строк"],[21,"добавлена 21 строка"]]) {
+      weight.exclusive.code = counts(n);
+      if (weightOverview(weight, ru, "ru")[0].text !== expected) return `bad Russian count ${n}`;
+    }
+    weight.exclusive.code = counts(1);
+    if (weightOverview(weight, en, "en")[0].text !== "1 line added") return "bad English singular";
+    weight.exclusive.code = counts(2);
+    if (weightOverview(weight, en, "ar")[0].text !== "2 lines added") return "missing CLDR two form";
+    weight.exclusive.code = counts(44);
+    return weightOverview(weight, en, "en")[0].text === "44 lines added" || "bad English plural";
+  });
+
+test("weight is rendered in HTML and text without changing the review record",
+  "legacy unknowns and shared block evidence must be visible in both outputs",
+  () => {
+    const result = render(r => {
+      r.blocks.forEach(b => { b.kind = "code"; });
+      r.mechanisms = [{ ...MECHANISM, name: "A", blocks: [1] }, { ...MECHANISM, name: "B", blocks: [1] }, { ...MECHANISM, name: "Unknown" }];
+    });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8"), raw = JSON.parse(fs.readFileSync(data, "utf8"));
+    const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
+    const summary = card?.match(/<details><summary>([\s\S]*?)<\/summary>/)?.[1];
+    if (!summary?.includes("A</h3>") || !summary.includes(MECHANISM.decision) || !summary.includes("Code:") || summary.includes("Shared with")) return "collapsed summary lacks the name, decision or compact weight";
+    return ["Shared with", "Not assessed"].every(text => page.includes(text) && result.stdout.includes(text))
+      && result.stdout.includes("Touched in this change") && !card.includes("Touched in this change") && card.includes("Show counted lines")
+      && page.includes('aria-label="Dismiss notification"') && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence or dismiss control missing, redundant heading present, or derived totals persisted";
   });
 
 test("a review that does not match the diff is refused, every fault is listed, and no page is written",

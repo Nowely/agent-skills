@@ -15,6 +15,7 @@ import { round } from "./review/round.mjs";
 import { rubricOf, score, table } from "./review/score.mjs";
 import { TASK_ONLY, implement } from "./review/implement.mjs";
 import { outcome, table as outcomeTable } from "./review/outcome.mjs";
+import { blocks, numbers, table as blocksTable } from "./review/blocks.mjs";
 
 const { cases: TESTS, test } = registry();
 const names = fs.readdirSync(CASES).sort();
@@ -227,6 +228,70 @@ test("the repository's own tests end as passed, failed, unfinished or none, and 
     if (status[heads[0].id].status !== "failed" || status[heads[0].id].exit === 0) return `a failing test is "${status[heads[0].id].status}"`;
     if (status[heads[1].id].status !== "none") return `a repository with no tests is "${status[heads[1].id].status}"`;
     return status[heads[2].id].status === "passed" || `untouched tests are "${status[heads[2].id].status}"`;
+  });
+
+test("an acceptance check that never ends is unfinished, and the checks beside it keep their results",
+  "one implementation awaited a service that never answers; the whole run was written down as no checks and one error, and the table printed -3 / 0",
+  () => {
+    const dir = tempDir("review-outcome-");
+    fs.mkdirSync(path.join(dir, "returns"));
+    fs.writeFileSync(path.join(dir, "runs.json"), JSON.stringify([{ run: "r01", case: "slot-edit", variant: "head", arm: "control", review: "returns/r01.md" }]));
+    fs.writeFileSync(path.join(dir, "returns", "r01.md"), "A review.");
+    const [waiting] = implement(dir).filter((m) => m.review), screen = path.join(dir, "work", waiting.id, "repo", "src", "slots", "screen.js");
+    // The editor now waits for the zone before it opens: it never opens while the service is silent, and throws when it is down.
+    fs.writeFileSync(screen, fs.readFileSync(screen, "utf8").replace("const form =", "await client.getZone(order.address.zone.id);\n  const form ="));
+    const results = outcome(dir).results, result = results.find((r) => r.id === waiting.id), text = outcomeTable(results);
+    if (result.unfinished.join() !== "the zone's hours apply while the zone service has not answered") return `unfinished: ${JSON.stringify(result.unfinished)}`;
+    if (!result.failed.includes("the zone's hours apply when the zone service is down") || result.checks !== 13 || result.state !== "not recovered") return `failed: ${JSON.stringify(result.failed)} of ${result.checks}, ${result.state}`;
+    const passed = result.checks - result.failed.length - 1;
+    return passed > 0 && text.includes(`| ${passed} / 13, 1 unfinished |`) || `unexpected table:\n${text}`;
+  });
+
+test("the lines a case calls superfluous or needed are lines of its first-written form, and the clean form has none to remove",
+  "a count against line numbers that drifted from the file measures nothing and looks exact",
+  () => {
+    for (const name of names) {
+      const { lines } = rubricOf(name).head;
+      if (!lines) continue;
+      const seen = new Set();
+      for (const [kind, spec] of Object.entries(lines)) for (const [file, list] of Object.entries(spec)) {
+        const text = fs.readFileSync(path.join(CASES, name, "head", file), "utf8").split("\n");
+        for (const line of numbers(list)) {
+          if (!text[line - 1]?.trim()) return `${name}: ${kind} names ${file}:${line}, which is blank or past the end`;
+          if (seen.has(`${file}:${line}`)) return `${name}: ${file}:${line} is both to remove and to keep`;
+          seen.add(`${file}:${line}`);
+        }
+      }
+      if (rubricOf(name).clean.lines) return `${name}: the clean form lists lines`;
+      if ((rubricOf(name).head.already ?? []).some((one) => !one.what || !one.listed?.length || !one.instead?.length)) return `${name}: a mechanism to find lacks its words`;
+    }
+    return true;
+  });
+
+test("what a review's record marks for removal is counted against the lines the case knows, with no judge",
+  "whether a review sees the superfluous code was known only through a judge's reading of prose; the record names the lines itself",
+  () => {
+    const dir = tempDir("review-blocks-"), name = "slot-edit", file = "src/slots/edit.js", known = rubricOf(name).head.lines;
+    const runs = [["r01", "head", "draft"], ["r02", "head", "draft"], ["r03", "clean", "draft"], ["r04", "head", "control"]]
+      .map(([run, variant, arm]) => ({ run, case: name, variant, arm, review: `returns/${run}.md` }));
+    fs.mkdirSync(path.join(dir, "returns"));
+    fs.writeFileSync(path.join(dir, "runs.json"), JSON.stringify(runs));
+    const record = (run, list, mechanisms = []) => fs.writeFileSync(path.join(dir, "returns", `${run}.json`), JSON.stringify({ blocks: list, mechanisms }));
+    // One review removes the lookup and, wrongly, the rule for a slot that is too soon; one only repairs around it; one touches a clean form.
+    record("r01", [{ path: file, added: "7-19", verdict: "remove" }, { path: file, added: "44", verdict: "remove" }, { path: file, added: "51-58", verdict: "fix" }, { path: "test/slot-edit.test.js", added: "all", verdict: "remove" }, { path: file, added: "30", verdict: "remove" }],
+      [{ name: "zone lookup", change: "added", instead: "The order carries it: node_modules/@acme/orders-client/index.d.ts:9, order.address.zone." }]);
+    // The other lists the lookup and does not find what makes it needless; a mechanism it only reuses is not one the change brought.
+    record("r02", [{ path: file, added: "1-67", verdict: "fix" }],
+      [{ name: "loadZone with a cache", change: "added", instead: "Nothing: src/slots/hours.js:1." }, { name: "getZone", change: "reused", basis: "order.address.zone" }]);
+    record("r03", [{ path: file, added: "3-4", verdict: "remove" }, { path: "test/slot-edit.test.js", added: "1-5", verdict: "remove" }, { path: file, added: "10", verdict: "keep" }]);
+    const results = blocks(dir), by = (run) => results.find((r) => r.run === run), total = numbers(known.remove[file]).size;
+    if (by("r01").removed !== 13 || by("r01").fixed !== 8 || by("r01").unmapped !== 5 || by("r01").wrongly !== 1 || by("r01").other !== 1 || by("r01").superfluous !== total || by("r01").found !== 1) return `r01: ${JSON.stringify(by("r01"))}`;
+    if (by("r02").removed !== 0 || by("r02").fixed !== total || by("r02").wrongly !== 0 || by("r02").listed !== 1 || by("r02").found !== 0) return `r02: ${JSON.stringify(by("r02"))}`;
+    if (by("r03").removed !== 2) return `on the clean form only lines of code count: ${JSON.stringify(by("r03"))}`;
+    if (!by("r04").missing) return "a run with no record was counted";
+    const text = blocksTable(results);
+    return text.includes(`| draft | ${name}/head | 2 | 2 | 2 / 2 | 1 / 2 | 13 / ${2 * total} | ${8 + total} | 5 | 1 | 1 |`) && text.includes(`| draft | ${name}/clean | 1 | 1 | – | – | – | – | – | – | 2 |`)
+      && text.includes(`| control | ${name}/head | 1 | 0 | – |`) || `unexpected table:\n${text}`;
   });
 
 test("the page that tells an operator how to run a round names every case",

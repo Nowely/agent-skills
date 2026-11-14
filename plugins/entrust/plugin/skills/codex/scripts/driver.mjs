@@ -120,6 +120,9 @@ const initializeParams = () => ({
 // Set by --check-prompt-file, whose refusals are one line in a shape its caller reads.
 let checkOnly = false;
 function fail(code, msg) {
+  // A run that has already ended keeps its code and report: a request its deadline or stop cancelled rejects
+  // afterwards, and the catch that calls fail() then is a consequence of that ending, not a second cause (E143).
+  if (settled) throw new Bail();
   process.stderr.write(checkOnly ? `entrust: refused: ${msg.replace(/\s*\n\s*/g, " ")}\n` : `entrust: ${msg}\n`);
   // A refusal is a report too: a missing file would read as an agent still starting.
   preTurnReport(code, msg);

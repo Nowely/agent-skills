@@ -10,7 +10,8 @@
 // outcome-verdicts.json, the rulings of judge-outcome.md on the case's probes, it adds how many probes are a
 // local change. Prints the table and writes outcome.json.
 //
-// Three things are kept apart: the acceptance checks, the probes and the repository's own tests. On a
+// Three things are kept apart: the acceptance checks, the probes and the repository's own tests. Each check runs
+// in its own process and ends as passed, failed or unfinished; an unfinished check is not a pass. On a
 // first-written form a result is `recovered` only when every check passes and a judge ruled every probe local.
 // Where the checks pass and the probes were not ruled on it is `not assessed`; where the judge did not rule the
 // case's clean form more local than its first-written one, `disputed`; where the case has no probes, `checks only`.
@@ -44,14 +45,25 @@ function testsOf(repo) {
 const reference = (name, tree) => added(spawnSync("git", ["diff", "--no-index", "--numstat", "base", tree], { cwd: path.join(CASES, name), encoding: "utf8" }).stdout
   .replaceAll(`${tree}/`, ""));
 
-// The acceptance checks run in a process of their own: an implementation may throw at import or never return.
-async function accept(name, repo) {
-  const checks = (await import(pathToFileURL(path.join(CASES, name, "accept.mjs")).href)).default, failed = [];
+// Every acceptance check runs in a process of its own: an implementation may throw at import or never return, and
+// one check that does not end must not take the others' results with it.
+const checksOf = async (name) => (await import(pathToFileURL(path.join(CASES, name, "accept.mjs")).href)).default;
+async function accept(name, repo, index) {
+  const check = (await checksOf(name))[index];
   console.error = () => {};
-  for (const check of checks) {
-    try { await check.run((file) => import(pathToFileURL(path.join(repo, file)).href)); } catch { failed.push(check.name); }
-  }
-  return { checks: checks.length, failed };
+  await check.run((file) => import(pathToFileURL(path.join(repo, file)).href));
+}
+// Planned, failed and unfinished apart. A check is unfinished when its process timed out or ended with its work
+// still pending (Node's exit code 13); it is failed when the check threw.
+function accepted(name, repo) {
+  const self = (...args) => spawnSync(process.execPath, [SELF, ...args], { encoding: "utf8", timeout: 60_000 });
+  const names = JSON.parse(self("--checks", name).stdout), failed = [], unfinished = [];
+  names.forEach((check, index) => {
+    const run = self("--accept", name, repo, String(index));
+    if (run.status === 0) return;
+    (run.status === 1 ? failed : unfinished).push(check);
+  });
+  return { checks: names.length, failed, unfinished };
 }
 
 export function measure(directory, entry) {
@@ -60,10 +72,8 @@ export function measure(directory, entry) {
   const patch = git("diff", "HEAD");
   fs.mkdirSync(path.join(directory, "patches"), { recursive: true });
   fs.writeFileSync(path.join(directory, "patches", `${entry.id}.patch`), patch);
-  const judged = spawnSync(process.execPath, [SELF, "--accept", entry.case, repo], { encoding: "utf8", timeout: 60_000 });
-  const accepted = judged.status === 0 ? JSON.parse(judged.stdout) : { checks: 0, failed: ["the acceptance checks did not finish"] };
   const change = git("diff", "--numstat", "HEAD");
-  return { ...entry, ...accepted, tests: testsOf(repo), size: added(git("diff", "--numstat", "HEAD~1")),
+  return { ...entry, ...accepted(entry.case, repo), tests: testsOf(repo), size: added(git("diff", "--numstat", "HEAD~1")),
     changed: { code: touched(code(change)), tests: touched(rows(change).filter(([, , file]) => isTest(file))) } };
 }
 
@@ -92,7 +102,7 @@ function rulings(directory, manifest) {
 
 // One word for what became of the change; only `recovered` and `kept` say it is as it should be.
 function stateOf(result, asked, local, disputed) {
-  const passes = result.failed.length === 0;
+  const passes = result.failed.length + result.unfinished.length === 0;
   if (result.variant !== "head") return passes ? "kept" : "broken";
   if (!passes) return "not recovered";
   if (!asked) return "checks only";
@@ -124,8 +134,8 @@ export function table(results) {
   // "2 recovered, 1 disputed": every state that occurs, with its count.
   const tally = (list, of) => Object.entries(Object.groupBy(list, of)).map(([word, same]) => `${same.length} ${word}`).join(", ");
   const line = ({ arm, target, list }) => {
-    const judged = list.filter((r) => r.probes && r.state !== "disputed");
-    return `| ${arm} | ${target} | ${list.length} | ${tally(list, (r) => r.state)} | ${sum(list, (r) => r.checks - r.failed.length)} / ${sum(list, (r) => r.checks)} | `
+    const judged = list.filter((r) => r.probes && r.state !== "disputed"), unfinished = sum(list, (r) => r.unfinished.length);
+    return `| ${arm} | ${target} | ${list.length} | ${tally(list, (r) => r.state)} | ${sum(list, (r) => r.checks - r.failed.length - r.unfinished.length)} / ${sum(list, (r) => r.checks)}${unfinished ? `, ${unfinished} unfinished` : ""} | `
       + `${judged.length ? `${sum(judged, (r) => r.probes.local)} / ${sum(judged, (r) => r.probes.asked)}` : "–"} | ${tally(list, (r) => r.tests.status)} | `
       + `${(sum(list, (r) => r.size) / sum(list, (r) => r.reference)).toFixed(2)} | ${Math.round(sum(list, (r) => r.changed.code) / list.length)} | ${Math.round(sum(list, (r) => r.changed.tests) / list.length)} |`;
   };
@@ -135,8 +145,9 @@ export function table(results) {
 }
 
 if (isMain(import.meta)) {
-  const [first, name, repo] = process.argv.slice(2);
-  if (first === "--accept") { console.log(JSON.stringify(await accept(name, repo))); process.exit(0); }
+  const [first, name, repo, index] = process.argv.slice(2);
+  if (first === "--checks") { console.log(JSON.stringify((await checksOf(name)).map((check) => check.name))); process.exit(0); }
+  if (first === "--accept") { try { await accept(name, repo, Number(index)); } catch { process.exit(1); } process.exit(0); }
   if (!first) { console.error("usage: outcome.mjs <directory>"); process.exit(2); }
   const { results, disputed } = outcome(first);
   console.log(table(results));

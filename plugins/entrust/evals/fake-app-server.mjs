@@ -411,7 +411,10 @@ function onLine(line) {
       ...(process.env.FAKE_SKILLS_AMBIGUOUS && !target ? [{ name: "same", description: "system", path: `${cwd}/system/SKILL.md`, scope: "system", enabled: false }] : []),
     ] : [];
     if (target && process.env.FAKE_SKILLS_MISMATCH && skills.length) skills[0].enabled = true;
-    w(reply(m.id, { data: [{ cwd, skills, errors: process.env.FAKE_SKILLS_ERROR ? [{ path: cwd, message: "synthetic" }] : [] }] }));
+    const answer = () => w(reply(m.id, { data: [{ cwd, skills, errors: process.env.FAKE_SKILLS_ERROR ? [{ path: cwd, message: "synthetic" }] : [] }] }));
+    // A run's own server slow to list its skills: the deadline can then fall while that request is in flight.
+    const delay = target ? Number(process.env.FAKE_SKILLS_DELAY_MS ?? 0) : 0;
+    if (delay > 0) setTimeout(answer, delay); else answer();
     return;
   }
   if (m.method === "skills/extraRoots/set") { extraSkillRoots = m.params.extraRoots; w(reply(m.id, {})); return; }

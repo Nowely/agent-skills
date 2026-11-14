@@ -268,6 +268,11 @@ const CASES = [
     why: "the probe carries a bell of its own, clamped between CONFIG_PROBE_MIN_MS and CONFIG_PROBE_MAX_MS: without it a config request that never answers holds the run open before the turn, and no other case drives that bound at all",
     assertStderr: (e) => /could not read the caller's Codex config \(no reply in 1000ms\)/.test(e)
       || `the probe's own budget did not end it: ${e.slice(0, 200)}` },
+  // The deadline falls while the run's own server is still listing skills: abort() ends the run as a timeout,
+  // and the request it cancelled rejects afterwards. Seen once on a loaded runner through the case above (E143).
+  { scenario: "no-thread",        expect: EXIT.TIMEOUT, args: ["--timeout", "1"],
+    env: { FAKE_SKILLS_DELAY_MS: "3000" },
+    why: "a request the deadline cancelled rejected afterwards and its catch called fail(), which rewrote the timeout as a usage error: a settled run keeps its exit code" },
   { scenario: "policy-clamped",   expect: EXIT.TRANSPORT,
     why: "an MDM profile clamps a policy it does not permit, after which every command is denied while the run still looks healthy — the exact failure this driver exists to route around, and invisible in every other field" },
   { scenario: "workspace-elsewhere", expect: EXIT.TRANSPORT,

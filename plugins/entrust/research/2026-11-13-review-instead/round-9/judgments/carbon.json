@@ -1,0 +1,926 @@
+{
+  "runs": [
+    {
+      "id": "u01",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Identifies that importContacts couples line-by-line CSV parsing, validation, shared loop state (header, result), and immediate store mutations in one loop, and notes in coverage that sequential phases avoid shared mutable flags. However, it justifies splitting primarily via runtime requirements (parse-before-write and duplicate aggregation) without demonstrating a concrete reading trace or change difficulty in the existing code.",
+          "reviewEvidence": [
+            "reviews/u01.json:20 (now)",
+            "reviews/u01.json:207-228 (units[0])",
+            "reviews/u01.json:313-331 (mechanisms[0])",
+            "reviews/u01.json:629 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Proposes a concrete, actionable flow: parse the entire input with parseCsv before any store access, run pure planImport to validate trimmed names and isEmail while recording rejections with row.line and keeping only the last valid row per normalizeEmail (ignoring rejected duplicates), then apply one create/rename per normalized key against ContactStore without retries. Caveat: omits an explicit finding to remove result.rows, leaving {created, updated, rejected} implicit in target_units.",
+          "reviewEvidence": [
+            "reviews/u01.json:21 (target)",
+            "reviews/u01.json:91-147 (findings 1-4)",
+            "reviews/u01.json:261-282 (target_units)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points directly to parseCsv in src/lib/csv.js and recommends replacing the hand-written line and quote splitting in importContacts with it.",
+          "reviewEvidence": [
+            "reviews/u01.json:91-105 (finding 1)",
+            "reviews/u01.json:313-331 (mechanisms[0])",
+            "reviews/u01.json:453-465 (blocks)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-50",
+            "src/lib/csv.js:6-38"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Identifies isEmail and normalizeEmail in src/contacts/email.js, shows local EMAIL_RE accepts addresses like ann@site that createContact/isEmail reject, and recommends reusing both helpers.",
+          "reviewEvidence": [
+            "reviews/u01.json:121-133 (finding 3)",
+            "reviews/u01.json:142 (finding 4 fix)",
+            "reviews/u01.json:333-348 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,76,87",
+            "src/contacts/email.js:1-9",
+            "src/contacts/create.js:6",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Shows contacts are inserted during line-by-line parsing before syntax errors are checked and unclosed quotes go undetected, leaving earlier rows written on malformed input.",
+          "reviewEvidence": [
+            "reviews/u01.json:91-105 (finding 1)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13-45,76-97",
+            "src/lib/csv.js:17-32",
+            "brief.md:8"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Demonstrates that two valid rows sharing an email (case-insensitively) first insert then rename, yielding created=1 and updated=1 instead of counting once.",
+          "reviewEvidence": [
+            "reviews/u01.json:135-147 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-97",
+            "brief.md:6"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Flags both unrequested strict/legacy modes and the 3-attempt store.insert retry loop on synchronous ContactStore (which swallows errors and drops rows), recommending removal.",
+          "reviewEvidence": [
+            "reviews/u01.json:164-185 (findings 6-7)",
+            "reviews/u01.json:350-383 (mechanisms[2-3])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,59-68,83-95",
+            "src/contacts/store.js:12-18"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Identifies the silent @example.invalid continue branch and its test as unrequested behavior that drops valid addresses without importing or rejecting them.",
+          "reviewEvidence": [
+            "reviews/u01.json:149-162 (finding 5)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "test/import.test.js:24-26",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Names missing requirement tests (duplicates, broken CSV atomicity, whitespace rows, multiline fields, isEmail, final store contents) and marks strict, legacy, and domain-skip tests for removal.",
+          "reviewEvidence": [
+            "reviews/u01.json:187-204 (finding 8)",
+            "reviews/u01.json:598-627 (blocks)"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "brief.md:5-10"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Proposes only importContacts plus a small pure planImport helper reusing existing functions, introducing no classes, pipelines, strategies, or schema libraries.",
+          "reviewEvidence": [
+            "reviews/u01.json:261-311 (target_units)",
+            "reviews/u01.json:629 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Recommends deleting strict/legacy modes and the insert retry loop rather than configuring, documenting, or extending them.",
+          "reviewEvidence": [
+            "reviews/u01.json:164-185 (findings 6-7)",
+            "reviews/u01.json:350-383 (mechanisms[2-3])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,59-68,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Preserves normalized-email lookup/deduplication, last-valid duplicate handling, and line/reason rejection reporting as core requirements.",
+          "reviewEvidence": [
+            "reviews/u01.json:21 (target)",
+            "reviews/u01.json:135-147 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/contacts/email.js:3-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces all added mechanisms in import.js and test/import.test.js against parseCsv, isEmail/normalizeEmail, createContact, and ContactStore, omitting only explicit discussion of result.rows removal.",
+          "reviewEvidence": [
+            "reviews/u01.json:206-260 (units)",
+            "reviews/u01.json:312-384 (mechanisms)",
+            "reviews/u01.json:629 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Distinguishes brief.md requirements from duplicated parsing/validation and unrequested modes, domain filtering, and retries, backing each with concrete reuse or removal decisions (leaving result.rows implicit).",
+          "reviewEvidence": [
+            "reviews/u01.json:312-384 (mechanisms)",
+            "reviews/u01.json:385-628 (blocks)"
+          ],
+          "sourceEvidence": [
+            "brief.md:3-10",
+            "src/contacts/import.js:1-104",
+            "test/import.test.js:16-26"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Justifies keeping existing helpers and separating pure planImport from store writes, but ties the split mainly to runtime parse/deduplication ordering rather than a demonstrated reading or change burden.",
+          "reviewEvidence": [
+            "reviews/u01.json:207-228 (units[0])",
+            "reviews/u01.json:261-311 (target_units)",
+            "reviews/u01.json:629 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Static target preserves parse-before-write via parseCsv, last-valid selection by normalizeEmail (ignoring rejected rows), single-pass counts, and line/reason rejections; result.rows removal and name-first priority remain implicit.",
+          "reviewEvidence": [
+            "reviews/u01.json:21 (target)",
+            "reviews/u01.json:91-147 (findings 1-4)",
+            "reviews/u01.json:261-282 (target_units)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Identifies that line.trim() === '' silently drops whitespace-only physical lines instead of rejecting them for empty name (reviews/u01.json:107-119; src/contacts/import.js:21; brief.md:9).",
+        "Shows line-splitting breaks valid multiline quoted CSV fields (reviews/u01.json:91-105; src/contacts/import.js:13; src/lib/csv.js:21-25).",
+        "Notes the happy-path test asserts only numeric counts without checking resulting contact names in ContactStore (reviews/u01.json:187-204; test/import.test.js:6-14)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Strong review hitting F2-F8 and D2 via a clear parseCsv -> planImport -> ContactStore flow with no traps triggered; D1 and responsibilityBoundaries are partial because coupling is framed around runtime invariants rather than concrete reading/change difficulty, and result.rows removal is left implicit."
+    },
+    {
+      "id": "u02",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Notes that one function mixes physical-line parsing, validation, and immediate store mutation over shared mutable state (header, result, store) while modes and retries complicate control flow. However, it asserts mixed flow and runtime ordering needs (parse before effects, coupling of validation and deduplication) without demonstrating a specific reading trace or change burden in existing code.",
+          "reviewEvidence": [
+            "reviews/u02.json:20 (now)",
+            "reviews/u02.json:92-106 (finding 1)",
+            "reviews/u02.json:223-243 (units[0])",
+            "reviews/u02.json:723 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Specifies a complete, implementable flow: run parseCsv on the full input before writes, pass records to pure prepareRows (explicitly checking trimmed empty name before isEmail, recording rejections with original line numbers, and grouping last valid rows by normalizeEmail while rejected duplicates do not replace valid entries), then apply one create/rename per unique email in ContactStore without retries. Caveat: leaves removing result.rows implicit in target_units rather than a dedicated finding.",
+          "reviewEvidence": [
+            "reviews/u02.json:21 (target)",
+            "reviews/u02.json:92-148 (findings 1-4)",
+            "reviews/u02.json:399-420 (target_units)",
+            "reviews/u02.json:735-747 (checks[1])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points to parseCsv in src/lib/csv.js and recommends replacing the hand-written line and quote splitting in importContacts.",
+          "reviewEvidence": [
+            "reviews/u02.json:92-106 (finding 1)",
+            "reviews/u02.json:293-310 (mechanisms[0])",
+            "reviews/u02.json:497-554 (blocks)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-50",
+            "src/lib/csv.js:6-38"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Cites isEmail and normalizeEmail in src/contacts/email.js, demonstrates local EMAIL_RE accepts ann@site and multiple-@ strings refused by isEmail, and recommends reusing both.",
+          "reviewEvidence": [
+            "reviews/u02.json:122-134 (finding 3)",
+            "reviews/u02.json:312-328 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,76,87",
+            "src/contacts/email.js:1-9",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Explains that rows are written inside the line loop while unclosed quotes go undetected and strict mode throws mid-file, leaving partial store writes.",
+          "reviewEvidence": [
+            "reviews/u02.json:92-106 (finding 1)",
+            "reviews/u02.json:166-177 (finding 6)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13-45,59-68,76-97",
+            "src/lib/csv.js:16-37",
+            "brief.md:8"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Shows two valid rows for one new normalized email yield created=1 and updated=1 (or updated=2 if existing) instead of counting once.",
+          "reviewEvidence": [
+            "reviews/u02.json:136-148 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-97",
+            "brief.md:6"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Identifies strict mode, legacy semicolon mode, and the 3x store.insert retry loop as unrequested/unfounded for synchronous ContactStore, recommending removal of all three.",
+          "reviewEvidence": [
+            "reviews/u02.json:166-201 (findings 6-8)",
+            "reviews/u02.json:347-380 (mechanisms[3-4])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,59-68,83-95",
+            "src/contacts/store.js:12-18"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Points at the @example.invalid skip and its test, noting valid addresses are silently dropped without import or rejection.",
+          "reviewEvidence": [
+            "reviews/u02.json:150-164 (finding 5)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "test/import.test.js:24-26",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Details missing requirement tests (store contents, rejection lines/reasons, parse atomicity, duplicates, isEmail alignment) and marks strict, legacy, and domain-skip tests for removal.",
+          "reviewEvidence": [
+            "reviews/u02.json:203-220 (finding 9)",
+            "reviews/u02.json:692-721 (blocks)",
+            "reviews/u02.json:724-748 (checks)"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "brief.md:5-10"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Proposes only importContacts plus a local prepareRows helper reusing existing functions, without classes, strategies, plugins, or schema libraries.",
+          "reviewEvidence": [
+            "reviews/u02.json:399-455 (target_units)",
+            "reviews/u02.json:723 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Recommends removing strict, legacy, and retry machinery rather than keeping, configuring, or documenting them.",
+          "reviewEvidence": [
+            "reviews/u02.json:166-201 (findings 6-8)",
+            "reviews/u02.json:347-380 (mechanisms[3-4])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,5-6,59-68,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Retains email normalization, last-valid duplicate deduplication, parse-before-write, and rejection reporting.",
+          "reviewEvidence": [
+            "reviews/u02.json:21 (target)",
+            "reviews/u02.json:136-148 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/contacts/email.js:3-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces all added parsing, validation, write/counting, retry, mode, and domain-skip mechanisms across import.js, tests, and existing csv/email/create/store modules (leaving only result.rows implicit).",
+          "reviewEvidence": [
+            "reviews/u02.json:222-291 (units)",
+            "reviews/u02.json:292-398 (mechanisms)",
+            "reviews/u02.json:723 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-25"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Separates task-required behavior from duplicated parsing/validation and unsupported modes, domain skip, and retries, giving concrete reuse/remove decisions for each (except leaving result.rows implicit).",
+          "reviewEvidence": [
+            "reviews/u02.json:292-398 (mechanisms)",
+            "reviews/u02.json:456-722 (blocks)"
+          ],
+          "sourceEvidence": [
+            "brief.md:3-10",
+            "src/contacts/import.js:1-104",
+            "test/import.test.js:16-26"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Gives sound contract and data-dependency reasons for keeping existing helpers and splitting prepareRows from writes, but does not demonstrate a concrete reading or change burden in existing code.",
+          "reviewEvidence": [
+            "reviews/u02.json:223-243 (units[0])",
+            "reviews/u02.json:399-455 (target_units)",
+            "reviews/u02.json:723 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/store.js:8-25"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Static target explicitly preserves parse-before-write, empty-name-before-email rejection priority, starting line numbers, last-valid normalizeEmail selection ignoring rejected duplicates, and unique counts; result.rows removal is implicit.",
+          "reviewEvidence": [
+            "reviews/u02.json:21 (target)",
+            "reviews/u02.json:399-420 (target_units)",
+            "reviews/u02.json:724-748 (checks)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Shows line.trim() === '' skips whitespace-only lines instead of rejecting them with original line number (reviews/u02.json:108-120; src/contacts/import.js:21; brief.md:9).",
+        "Notes line-splitting breaks valid multiline quoted CSV fields (reviews/u02.json:92-106; src/contacts/import.js:13; src/lib/csv.js:16-37).",
+        "Points out the baseline test checks counts only and would pass even if contact names or rejection lines were wrong (reviews/u02.json:203-220; test/import.test.js:6-14)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Thorough review hitting F2-F8 and D2, explicitly preserving empty-name validation priority and providing concrete verification checks; D1 and responsibilityBoundaries remain partial without a demonstrated reading/change burden, and result.rows removal is implicit."
+    },
+    {
+      "id": "u03",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Describes how importContacts interleaves manual line parsing, validation, strict-mode throws, retries, immediate store writes, and per-row counting, and notes legacy mode blocks reusing parseCsv. However, coverage explicitly grounds separating parse, grouping, and writes in runtime parse atomicity and unique-key counting rather than diagnosing a concrete reading or change burden in the coupled loop.",
+          "reviewEvidence": [
+            "reviews/u03.json:19 (now)",
+            "reviews/u03.json:183-191 (finding 8)",
+            "reviews/u03.json:212-233 (units[0])",
+            "reviews/u03.json:646 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Proposes a clear sequential target inside importContacts: parse all input upfront with parseCsv so syntax errors precede writes, validate rows (empty trimmed name and isEmail) while collecting rejections with parseCsv line numbers and mapping normalized emails via normalizeEmail to their last valid row without rejected rows altering the map, then apply one create/rename and count per key against ContactStore, returning {created, updated, rejected} with options and rows removed.",
+          "reviewEvidence": [
+            "reviews/u03.json:20 (target)",
+            "reviews/u03.json:86-142 (findings 1-4)",
+            "reviews/u03.json:183-191 (finding 8)",
+            "reviews/u03.json:273-285 (target_units)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Names parseCsv in src/lib/csv.js and instructs replacing manual per-line CSV splitting with a full upfront parseCsv call.",
+          "reviewEvidence": [
+            "reviews/u03.json:86-100 (finding 1)",
+            "reviews/u03.json:316-333 (mechanisms[0])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-56",
+            "src/lib/csv.js:6-38"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Points to isEmail and normalizeEmail in src/contacts/email.js and createContact, showing local EMAIL_RE accepts ann@site and repeated normalization duplicates existing helpers.",
+          "reviewEvidence": [
+            "reviews/u03.json:116-128 (finding 3)",
+            "reviews/u03.json:335-350 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,76,87",
+            "src/contacts/email.js:1-9",
+            "src/contacts/create.js:6"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Shows store writes occur inside the physical-line loop while quote state resets per line and strict throws mid-stream, permitting partial writes on invalid CSV.",
+          "reviewEvidence": [
+            "reviews/u03.json:86-100 (finding 1)",
+            "reviews/u03.json:160-171 (finding 6)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13-45,59-68,76-97",
+            "src/lib/csv.js:17-32",
+            "brief.md:8"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Demonstrates duplicate normalized emails in one file trigger both insert and rename, yielding created=1 and updated=1 (or updated=2) instead of counting once.",
+          "reviewEvidence": [
+            "reviews/u03.json:130-142 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-97",
+            "src/contacts/store.js:8-16",
+            "brief.md:6"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Calls out strict mode, legacy mode/options, result.rows, and the 3x store.insert retry loop on synchronous ContactStore as unrequested/harmful, recommending removal.",
+          "reviewEvidence": [
+            "reviews/u03.json:160-191 (findings 6-8)",
+            "reviews/u03.json:369-385,404-419 (mechanisms[3,5])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-7,59-68,83-98",
+            "src/contacts/store.js:12-18"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Flags the silent @example.invalid continue branch and its test, showing valid addresses disappear from both store updates and rejected output.",
+          "reviewEvidence": [
+            "reviews/u03.json:144-158 (finding 5)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "test/import.test.js:24-26",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Identifies missing contract tests (duplicates with invalid trailing row, parse-error atomicity, whitespace/multiline CSV, line/reason details, store state, isEmail) and tests pinning strict, legacy, domain skip, and rows.",
+          "reviewEvidence": [
+            "reviews/u03.json:193-209 (finding 9)",
+            "reviews/u03.json:602-644 (blocks)"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "brief.md:5-10"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Keeps a single importContacts coordinator reusing parseCsv, isEmail, normalizeEmail, and ContactStore without introducing classes, strategies, pipelines, or frameworks.",
+          "reviewEvidence": [
+            "reviews/u03.json:273-314 (target_units)",
+            "reviews/u03.json:646 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Recommends deleting modes, options, rows, and the retry loop rather than preserving or expanding them.",
+          "reviewEvidence": [
+            "reviews/u03.json:160-191 (findings 6-8)",
+            "reviews/u03.json:369-385,404-419 (mechanisms[3,5])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-7,59-68,83-98"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Preserves normalizeEmail deduplication, last-valid duplicate selection, parse-before-write, and rejection reporting.",
+          "reviewEvidence": [
+            "reviews/u03.json:20 (target)",
+            "reviews/u03.json:130-142 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/contacts/email.js:3-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Complete trace of all added mechanisms—including options and result.rows—against parseCsv, isEmail, normalizeEmail, createContact, ContactStore, and test callers.",
+          "reviewEvidence": [
+            "reviews/u03.json:211-272 (units)",
+            "reviews/u03.json:315-420 (mechanisms)",
+            "reviews/u03.json:646 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:5-22"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Evaluates task basis, existing module ownership, and concrete reuse/remove/keep decisions for every added mechanism, explicitly including legacy/strict options, result.rows, domain skip, and retries.",
+          "reviewEvidence": [
+            "reviews/u03.json:183-191 (finding 8)",
+            "reviews/u03.json:315-420 (mechanisms)"
+          ],
+          "sourceEvidence": [
+            "brief.md:3-10",
+            "src/contacts/import.js:1-104",
+            "test/import.test.js:9-26"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Sensibly retains cohesive existing modules and keeps sequential phases inside importContacts, but justifies boundaries solely by runtime parse atomicity and unique-key counts rather than reasoning/change burden.",
+          "reviewEvidence": [
+            "reviews/u03.json:212-272 (units)",
+            "reviews/u03.json:273-314 (target_units)",
+            "reviews/u03.json:646 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/store.js:5-22"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Static target preserves upfront parseCsv before writes, last-valid normalizeEmail grouping without rejected rows overwriting, single-pass unique counts, and rejection reporting (name-before-email order noted in blocks/findings rather than target summary).",
+          "reviewEvidence": [
+            "reviews/u03.json:20 (target)",
+            "reviews/u03.json:86-142 (findings 1-4)",
+            "reviews/u03.json:520-547 (blocks)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Identifies silent skipping of whitespace-only physical lines instead of rejecting for empty name (reviews/u03.json:102-114; src/contacts/import.js:21; brief.md:9).",
+        "Shows line-by-line parsing breaks multiline quoted CSV fields (reviews/u03.json:86-100; src/contacts/import.js:13; src/lib/csv.js:17-32).",
+        "Explicitly flags result.rows and options as unrequested public contract expansions (reviews/u03.json:183-191; src/contacts/import.js:4-7,98; brief.md:7).",
+        "Notes the baseline test omits assertions on stored contact names and rejection details (reviews/u03.json:193-209; test/import.test.js:6-14)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Comprehensive review hitting F2-F8 and D2 (including explicit removal of options and result.rows) with cohesive in-function phases and no traps; D1 and responsibilityBoundaries are partial because coupling is analyzed through runtime invariants rather than reading/change burden."
+    },
+    {
+      "id": "u04",
+      "items": {
+        "D1": {
+          "rating": "partial",
+          "reason": "Enumerates importContacts's interleaved jobs—mode selection, physical-line parsing, local validation, domain skip, retry-wrapped store writes, and per-row counting—and notes immediate writes occur before parsing finishes. However, it frames decomposition purely around runtime bugs and existing helper contract ownership without explaining any concrete reading or change difficulty.",
+          "reviewEvidence": [
+            "reviews/u04.json:19 (now)",
+            "reviews/u04.json:208-229 (units[0])",
+            "reviews/u04.json:357-374 (mechanisms[2])",
+            "reviews/u04.json:624 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Proposes an actionable sequential flow in importContacts: call parseCsv for the whole input so parse errors propagate before any store changes, validate rows (preserving empty-name check priority in blocks, then isEmail) while recording rejections with starting physical lines and collecting last valid rows keyed by normalizeEmail (leaving earlier valid duplicates intact on rejected duplicates), then apply one create/rename per normalized address against ContactStore and return {created, updated, rejected} without modes, retries, or rows.",
+          "reviewEvidence": [
+            "reviews/u04.json:20 (target)",
+            "reviews/u04.json:92-148 (findings 1-4)",
+            "reviews/u04.json:165-176 (finding 6)",
+            "reviews/u04.json:271-283 (target_units)",
+            "reviews/u04.json:507-519 (blocks)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points to parseCsv in src/lib/csv.js and recommends replacing the local per-line CSV splitting with an upfront parseCsv call.",
+          "reviewEvidence": [
+            "reviews/u04.json:92-106 (finding 1)",
+            "reviews/u04.json:320-337 (mechanisms[0])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:9-56",
+            "src/lib/csv.js:6-38"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Identifies isEmail and normalizeEmail in src/contacts/email.js, shows EMAIL_RE accepts ann@site refused by isEmail/createContact, and recommends reusing both helpers.",
+          "reviewEvidence": [
+            "reviews/u04.json:122-134 (finding 3)",
+            "reviews/u04.json:339-355 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65,76,87",
+            "src/contacts/email.js:1-9",
+            "src/contacts/create.js:1-9",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Shows contacts are written inside the physical-line loop before the rest of the CSV is validated and unclosed quotes raise no error.",
+          "reviewEvidence": [
+            "reviews/u04.json:92-106 (finding 1)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13-45,76-97",
+            "src/lib/csv.js:21-31",
+            "brief.md:8"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Demonstrates repeated case-variant emails in one file trigger create then update (created=1, updated=1) or double updates instead of counting once.",
+          "reviewEvidence": [
+            "reviews/u04.json:136-148 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-97",
+            "brief.md:6"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Flags strict/legacy modes, result.rows, and the 3x store.insert retry loop (which swallows errors and drops rows on synchronous ContactStore) for removal.",
+          "reviewEvidence": [
+            "reviews/u04.json:165-186 (findings 6-7)",
+            "reviews/u04.json:376-391,410-426 (mechanisms[3,5])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-7,59-68,83-98",
+            "src/contacts/store.js:12-18"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "Points at the @example.invalid filter and its test as unrequested logic that silently drops valid addresses without importing or rejecting them.",
+          "reviewEvidence": [
+            "reviews/u04.json:150-163 (finding 5)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "test/import.test.js:24-26",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "Names untested contracts (store contents, rejection lines/reasons, parse-error atomicity, duplicates with invalid final row, whitespace rows, ann@site) and removes tests pinning strict, legacy, and domain skip.",
+          "reviewEvidence": [
+            "reviews/u04.json:188-205 (finding 8)",
+            "reviews/u04.json:590-622 (blocks)"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "brief.md:5-10"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Reorders importContacts around existing helpers and explicitly rejects extra infrastructure, proposing no classes, strategies, pipelines, or schema libraries.",
+          "reviewEvidence": [
+            "reviews/u04.json:271-318 (target_units)",
+            "reviews/u04.json:624 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Recommends deleting strict/legacy modes, rows, and the retry loop rather than keeping or extending them.",
+          "reviewEvidence": [
+            "reviews/u04.json:165-186 (findings 6-7)",
+            "reviews/u04.json:376-391,410-426 (mechanisms[3,5])"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:2,4-7,59-68,83-98"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Preserves normalizeEmail deduplication, last-valid duplicate selection, parse-before-write, and rejection reporting.",
+          "reviewEvidence": [
+            "reviews/u04.json:20 (target)",
+            "reviews/u04.json:136-148 (finding 4)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/contacts/email.js:3-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces all added mechanisms in import.js and test/import.test.js—including modes, result.rows, domain skip, and retries—against parseCsv, isEmail/normalizeEmail, createContact, and ContactStore.",
+          "reviewEvidence": [
+            "reviews/u04.json:207-270 (units)",
+            "reviews/u04.json:319-427 (mechanisms)",
+            "reviews/u04.json:624 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1-104",
+            "src/lib/csv.js:1-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:1-27"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Separates brief.md requirements from duplicated parser/validator logic and unrequested modes, rows, domain exclusion, and retries, providing concrete reuse/remove/keep decisions.",
+          "reviewEvidence": [
+            "reviews/u04.json:165-186 (findings 6-7)",
+            "reviews/u04.json:319-427 (mechanisms)"
+          ],
+          "sourceEvidence": [
+            "brief.md:3-10",
+            "src/contacts/import.js:1-104",
+            "test/import.test.js:16-26"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "partial",
+          "reason": "Keeps existing helpers by contract ownership and avoids unnecessary abstractions, but does not tie the internal decision/effect boundary in importContacts to a demonstrated reasoning or change burden.",
+          "reviewEvidence": [
+            "reviews/u04.json:208-270 (units)",
+            "reviews/u04.json:271-318 (target_units)",
+            "reviews/u04.json:624 (coverage)"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104",
+            "src/lib/csv.js:6-38",
+            "src/contacts/store.js:1-27"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Static target preserves parse-before-write via parseCsv, last-valid normalizeEmail grouping (with rejected duplicates ignored per requirements[7]/finding 8), single-pass unique counts, and starting-line rejections (name priority noted in blocks).",
+          "reviewEvidence": [
+            "reviews/u04.json:20 (target)",
+            "reviews/u04.json:85-89 (requirements[6])",
+            "reviews/u04.json:92-148 (findings 1-4)",
+            "reviews/u04.json:507-519 (blocks)"
+          ],
+          "sourceEvidence": [
+            "brief.md:5-10",
+            "src/lib/csv.js:6-38",
+            "src/contacts/email.js:1-9",
+            "src/contacts/store.js:8-22"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Identifies silent skipping of whitespace-only lines instead of rejecting with 'name is empty' (reviews/u04.json:108-120; src/contacts/import.js:21; brief.md:9).",
+        "Shows physical-line splitting breaks valid multiline quoted CSV fields (reviews/u04.json:92-106; src/contacts/import.js:13; src/lib/csv.js:21-31).",
+        "Explicitly flags result.rows as an unrequested addition to the returned report (reviews/u04.json:165-176; src/contacts/import.js:7,98; brief.md:7).",
+        "Notes the baseline test checks only counts/lengths without verifying stored contact state or rejection details (reviews/u04.json:188-205; test/import.test.js:6-14)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Complete defect and necessity review hitting F2-F8 and D2 (including explicit result.rows removal) with minimal in-function restructuring and no traps; D1 and responsibilityBoundaries are partial because it omits any concrete reading/change burden diagnosis."
+    }
+  ],
+  "equivalentGroups": [
+    {
+      "ids": [
+        "u01",
+        "u02",
+        "u03",
+        "u04"
+      ],
+      "reason": "All four reviews reach substantively equivalent conclusions: all hit F2-F8 plus whitespace-row and multiline-CSV defects, avoid traps X1-X3, propose an actionable parseCsv -> normalizeEmail last-valid selection -> single-pass ContactStore target (D2 hit), and stop at partial on D1/responsibilityBoundaries by grounding separation in runtime invariants rather than a concrete reading/change burden. Key differences: u01 and u02 extract a pure helper (planImport/prepareRows) and note shared loop state but leave result.rows removal implicit (with u02 explicitly stating empty-name priority in target), whereas u03 and u04 keep sequential phases inside importContacts and explicitly flag result.rows and options for removal."
+    }
+  ],
+  "limitations": [
+    "Static assessment only: no target code or tests were executed, so behaviorPreservation evaluates target specification completeness rather than applied runtime behavior.",
+    "u01 and u02 omit an explicit finding for removing result.rows (src/contacts/import.js:7,98; test/import.test.js:13), leaving its removal implicit in target return descriptions.",
+    "In u01, u03, and u04, empty-name validation priority over invalid email on rows missing both fields is preserved across findings/blocks rather than stated directly in the top-level target summary (unlike u02).",
+    "None of the reviews addresses defensive defaulting if the CSV header itself lacks name or email columns (brief.md:3 assumes both columns exist, while parseCsv omits absent header keys)."
+  ],
+  "summary": "All four reviews (u01-u04) accurately diagnose every functional bug, reuse gap, unrequested mechanism, and test gap (F2-F8 hit), avoid over-engineering and requirement-removal traps (X1-X3 not_triggered), and specify coherent, actionable parse-then-plan-then-write targets preserving parse-before-write, normalized last-valid deduplication, unique counts, and rejection reporting (D2 hit). However, all four earn partial on D1 and responsibilityBoundaries because they justify structural separation via runtime correctness requirements (parse atomicity and duplicate counting) and general remarks on loop state rather than demonstrating a concrete reading or change burden in the coupled implementation."
+}

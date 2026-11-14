@@ -1,0 +1,693 @@
+{
+  "type": "object",
+  "properties": {
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "object",
+            "properties": {
+              "D1": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "D2": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F2": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F3": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F4": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F5": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F6": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F7": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "F8": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "hit",
+                      "partial",
+                      "miss"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "D1",
+              "D2",
+              "F2",
+              "F3",
+              "F4",
+              "F5",
+              "F6",
+              "F7",
+              "F8"
+            ],
+            "additionalProperties": false
+          },
+          "traps": {
+            "type": "object",
+            "properties": {
+              "X1": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "triggered",
+                      "not_triggered",
+                      "unresolved"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "X2": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "triggered",
+                      "not_triggered",
+                      "unresolved"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "X3": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "triggered",
+                      "not_triggered",
+                      "unresolved"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "X1",
+              "X2",
+              "X3"
+            ],
+            "additionalProperties": false
+          },
+          "dimensions": {
+            "type": "object",
+            "properties": {
+              "mechanismIdentification": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "supported",
+                      "partial",
+                      "unsupported",
+                      "unresolved",
+                      "not_assessed",
+                      "not_applicable"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "necessityAndCost": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "supported",
+                      "partial",
+                      "unsupported",
+                      "unresolved",
+                      "not_assessed",
+                      "not_applicable"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "responsibilityBoundaries": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "supported",
+                      "partial",
+                      "unsupported",
+                      "unresolved",
+                      "not_assessed",
+                      "not_applicable"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              },
+              "behaviorPreservation": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "string",
+                    "enum": [
+                      "supported",
+                      "partial",
+                      "unsupported",
+                      "unresolved",
+                      "not_assessed",
+                      "not_applicable"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "reviewEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sourceEvidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "rating",
+                  "reason",
+                  "reviewEvidence",
+                  "sourceEvidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "mechanismIdentification",
+              "necessityAndCost",
+              "responsibilityBoundaries",
+              "behaviorPreservation"
+            ],
+            "additionalProperties": false
+          },
+          "additionalSupportedFindings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unsupportedRecommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "items",
+          "traps",
+          "dimensions",
+          "additionalSupportedFindings",
+          "unsupportedRecommendations",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "equivalentGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ids",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runs",
+    "equivalentGroups",
+    "limitations",
+    "summary"
+  ],
+  "additionalProperties": false
+}

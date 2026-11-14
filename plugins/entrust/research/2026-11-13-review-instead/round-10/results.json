@@ -1,0 +1,96 @@
+{
+  "state": "complete",
+  "paths": [
+    {
+      "judgeId": "p01",
+      "A": "a02",
+      "B": "b02",
+      "oldAcceptanceA": {
+        "passed": 13,
+        "planned": 13
+      },
+      "ownTestsA": {
+        "status": "passed",
+        "exit": 0,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0
+      },
+      "oldAcceptanceB": {
+        "passed": 13,
+        "planned": 13
+      },
+      "previewAcceptanceB": {
+        "passed": 14,
+        "planned": 14
+      },
+      "ownTestsB": {
+        "status": "passed",
+        "exit": 0,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0
+      },
+      "carbon": {
+        "originalContract": "supported",
+        "previewContract": "supported",
+        "changeLocality": "local",
+        "ruleOwnership": "supported",
+        "testQuality": "supported"
+      },
+      "unrelatedSemanticChanges": [],
+      "unnecessaryNewMechanisms": []
+    },
+    {
+      "judgeId": "p02",
+      "A": "a01",
+      "B": "b01",
+      "oldAcceptanceA": {
+        "passed": 13,
+        "planned": 13
+      },
+      "ownTestsA": {
+        "status": "passed",
+        "exit": 0,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0
+      },
+      "oldAcceptanceB": {
+        "passed": 13,
+        "planned": 13
+      },
+      "previewAcceptanceB": {
+        "passed": 14,
+        "planned": 14
+      },
+      "ownTestsB": {
+        "status": "passed",
+        "exit": 0,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "carbon": {
+        "originalContract": "supported",
+        "previewContract": "supported",
+        "changeLocality": "local",
+        "ruleOwnership": "supported",
+        "testQuality": "supported"
+      },
+      "unrelatedSemanticChanges": [],
+      "unnecessaryNewMechanisms": []
+    }
+  ],
+  "plannedDenominator": 2,
+  "pathsAdvanced": 2,
+  "pathsCompleted": 2,
+  "judgeCount": 1,
+  "secondJudgeUsed": false,
+  "interpretation": "Both reviewed implementations passed the tested contracts and accepted preview through a bounded shared-handler change. Carbon rated both changes local; coordinator source verification supports that ruling. Both initial implementations converged to inline phases, so this does not compare a pre-existing planning helper with inline code or establish a draft-version/skill advantage.",
+  "remainingObservations": [
+    "Path a02/b02 retains pre-existing extra rows output and a redundant raw email value in its contact-map entries; these are not introduced by the extension.",
+    "Own tests differ in explicit transient-mutation protection; the independent suite checks attempted writes and transient contact mutation for both.",
+    "Carbon normalization wording is slightly imprecise: findByEmail and insert normalize keys; rename locates by id and only updates name. The verified locality argument relies on that actual behavior."
+  ]
+}

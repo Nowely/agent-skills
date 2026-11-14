@@ -1,0 +1,349 @@
+{
+  "title": "Добавление категорий videos и drawings",
+  "language": "ru",
+  "range": "ce5e7d339b8a905d6436b70ba7d9c9ea5add9efe..ec60c1b3d2dd421a5353fda475e3b6300d559c57",
+  "change": {
+    "goal": "Добавить videos и drawings с английскими и русскими названиями, сохранив контракт существующих данных.",
+    "why": "Постановка brief.md требует расширения селектора.",
+    "parts": [
+      "Добавлены два ID в конец списка и переводы.",
+      "Новые названия вычисляются при чтении; изменены тесты."
+    ],
+    "sources": [
+      "https://github.com/Nowely/agent-skills/blob/843c2a392d31a7bb2129b61d7d74f226fafbb9c7/plugins/entrust/evals/review/cases/locale-options/brief.md",
+      "README.md:3-11",
+      "base ce5e7d339b8a905d6436b70ba7d9c9ea5add9efe; head ec60c1b3d2dd421a5353fda475e3b6300d559c57",
+      "git diff HEAD~1 HEAD SHA-256 38f9cb018d17f10b496313a34719416051ddb8326bae3ee2d48b4851e086705e"
+    ]
+  },
+  "verdict": "Исправить на месте: локаль для существующих категорий не соответствует обязательному контракту.\n- Ошибка существовала до коммита, но задача прямо требует сохранить этот контракт для всех категорий.\n- Проверка статическая, тесты не запускались.",
+  "now": "ID упорядочены в IDS; список и отдельная метка читают CATEGORY_LABELS. Четыре исходные метки вычисляются при импорте, две новые — при обращении; сохранение копирует текущую строку.",
+  "target": "Все шесть меток вычисляются при каждом публичном чтении через существующий t и текущую локаль. ID и порядок сохраняются; saveSelection продолжает сохранять строку на момент вызова.",
+  "recommendation": "Исправить на месте единый способ чтения меток и дополнить проверки контракта.",
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Добавить videos и drawings после четырёх существующих категорий, сохранив стабильные ID и порядок.",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 2,
+      "text": "Предоставить английские и русские названия новых категорий.",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 3,
+      "text": "Каждый новый вызов listCategoryOptions и labelForCategory читает названия всех категорий в текущей локали хоста.",
+      "source": "task"
+    },
+    {
+      "id": 4,
+      "text": "Сохранённая запись удерживает текст на момент сохранения после смены локали.",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 5,
+      "text": "Не добавлять реактивность интерфейса, новую систему локализации или публичный API.",
+      "source": "task",
+      "met": "read"
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "Существующие категории игнорируют выбранную локаль",
+      "direction": "behavior",
+      "evidence": "read",
+      "at": "src/category-labels.js:4",
+      "what": "После импорта и setLocale(\"ru\") новые чтения notes, photos, music и archives возвращают английский текст. При сохранении этих ID в русской локали в историю также попадёт английский текст. Это недостаток базовой версии, который сохраняется в изменении вопреки явно требуемому контракту README.",
+      "shown_by": "README.md:3-6 задаёт смену локали после импорта; src/category-labels.js:4-7 вычисляет t при импорте, а src/categories.js:4-7 и src/saved-selection.js:3-4 читают сохранённое значение. src/locale.js:19-22 начинает с en и меняет locale только позже.",
+      "fix": "Вычислять все шесть меток при чтении, например применить существующий t к ID при каждом обращении или сделать остальные свойства динамическими. Проверить оба публичных метода и историческую запись после смены локали.",
+      "breaks": [
+        3
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Тесты не проверяют локаль всего списка",
+      "direction": "tests",
+      "evidence": "read",
+      "at": "test/categories.test.js:8",
+      "what": "Проверка списка сравнивает только ID; проверки локали охватывают только два новых ID через labelForCategory. Ошибка в метках списка или в локализации любой прежней категории останется незамеченной.",
+      "shown_by": "test/categories.test.js:8-17 не сравнивает label у listCategoryOptions и не читает прежние ID после setLocale(\"ru\"). Например, возвращение английской метки notes в русской локали не опровергает ни одно утверждение.",
+      "fix": "Добавить проверки списка и отдельных меток всех шести ID в en и ru после смены локали; отдельно сохранить старую категорию в ru и проверить её текст после смены на en.",
+      "untested": [
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "text": "Сделать чтение всех меток зависимым от текущей локали.",
+      "findings": [
+        1
+      ]
+    },
+    {
+      "text": "Дополнить тесты обеих функций и истории для старых и новых категорий.",
+      "findings": [
+        1,
+        2
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "IDS",
+      "jobs": [
+        "Хранит неизменяемый порядок шести допустимых ID: src/categories.js:3."
+      ],
+      "uses": [],
+      "verdict": "keep"
+    },
+    {
+      "name": "CATEGORY_LABELS",
+      "jobs": [
+        "При импорте вычисляет четыре старых названия; геттеры двух новых вызывают t при чтении: src/category-labels.js:3-10."
+      ],
+      "uses": [
+        "t"
+      ],
+      "verdict": "fix",
+      "findings": [
+        1
+      ]
+    },
+    {
+      "name": "messages",
+      "jobs": [
+        "Хранит переводы ключей в en и ru: src/locale.js:1-18."
+      ],
+      "uses": [],
+      "verdict": "keep"
+    },
+    {
+      "name": "listCategoryOptions",
+      "existing": true,
+      "jobs": [
+        "Читает каждый ID из IDS и метку CATEGORY_LABELS в их порядке: src/categories.js:4-6."
+      ],
+      "uses": [
+        "IDS",
+        "CATEGORY_LABELS"
+      ]
+    },
+    {
+      "name": "labelForCategory",
+      "existing": true,
+      "jobs": [
+        "Возвращает CATEGORY_LABELS по переданному ID: src/categories.js:7."
+      ],
+      "uses": [
+        "CATEGORY_LABELS"
+      ]
+    },
+    {
+      "name": "saveSelection",
+      "existing": true,
+      "jobs": [
+        "Один раз получает строку из labelForCategory и возвращает запись: src/saved-selection.js:3-4."
+      ],
+      "uses": [
+        "labelForCategory"
+      ]
+    },
+    {
+      "name": "t",
+      "existing": true,
+      "jobs": [
+        "Читает messages по текущей locale и ключу: src/locale.js:19-22; setLocale меняет locale."
+      ],
+      "uses": [
+        "messages"
+      ]
+    }
+  ],
+  "target_units": [
+    {
+      "name": "IDS",
+      "jobs": [
+        "Хранит стабильный порядок шести ID."
+      ],
+      "uses": []
+    },
+    {
+      "name": "CATEGORY_LABELS",
+      "jobs": [
+        "Возвращает метку каждого ID через t при чтении."
+      ],
+      "uses": [
+        "t"
+      ]
+    },
+    {
+      "name": "messages",
+      "jobs": [
+        "Хранит переводы для en и ru."
+      ],
+      "uses": []
+    },
+    {
+      "name": "listCategoryOptions",
+      "existing": true,
+      "jobs": [
+        "Строит новый список по IDS и текущим меткам."
+      ],
+      "uses": [
+        "IDS",
+        "CATEGORY_LABELS"
+      ]
+    },
+    {
+      "name": "labelForCategory",
+      "existing": true,
+      "jobs": [
+        "Читает текущую метку по ID."
+      ],
+      "uses": [
+        "CATEGORY_LABELS"
+      ]
+    },
+    {
+      "name": "saveSelection",
+      "existing": true,
+      "jobs": [
+        "Сохраняет строку на момент вызова."
+      ],
+      "uses": [
+        "labelForCategory"
+      ]
+    },
+    {
+      "name": "t",
+      "existing": true,
+      "jobs": [
+        "Переводит ключ по текущей локали."
+      ],
+      "uses": [
+        "messages"
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Чтение перевода при обращении к свойству",
+      "change": "added",
+      "units": [
+        "CATEGORY_LABELS"
+      ],
+      "purpose": "Возвращать актуальную локаль новых категорий при каждом чтении.",
+      "basis": "Требование 3; README.md:3-6; src/category-labels.js:8-9.",
+      "instead": "src/locale.js:21-22 уже предоставляет t, использующий текущую локаль; src/categories.js:4-7 читает словарь при каждом вызове.",
+      "benefit": "После переключения локали новые чтения показывают соответствующий перевод; частота переключений неизвестна, но контракт обязателен.",
+      "cost": "Два вида свойств в одном словаре скрывают разное время вычисления и требуют отслеживать все категории при изменениях.",
+      "decision": "Сохранить отложенное вычисление для всех ID единообразно, используя существующий t.",
+      "evidence": "read",
+      "blocks": [
+        2
+      ],
+      "findings": [
+        1
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/categories.js",
+      "added": "3",
+      "removed": "3",
+      "unit": "IDS",
+      "does": "Дополняет порядок новыми ID.",
+      "serves": [
+        1
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/category-labels.js",
+      "added": "8-9",
+      "unit": "CATEGORY_LABELS",
+      "does": "Добавляет два геттера, переводящие новые ID при чтении.",
+      "serves": [
+        2,
+        3
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/locale.js",
+      "added": "6-8",
+      "removed": "6",
+      "unit": "messages",
+      "does": "Добавляет переводы в en и запятую после archives.",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/locale.js",
+      "added": "14-16",
+      "removed": "12",
+      "unit": "messages",
+      "does": "Добавляет переводы в ru и запятую после archives.",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "test/categories.test.js",
+      "added": "9",
+      "removed": "9",
+      "does": "Проверяет расширенный порядок ID.",
+      "serves": [
+        1
+      ],
+      "verdict": "keep",
+      "kind": "test"
+    },
+    {
+      "path": "test/categories.test.js",
+      "added": "14-18",
+      "does": "Проверяет русские метки двух новых ID.",
+      "serves": [
+        2,
+        3
+      ],
+      "verdict": "fix",
+      "findings": [
+        2
+      ],
+      "kind": "test"
+    },
+    {
+      "path": "test/categories.test.js",
+      "added": "21-23",
+      "removed": "15, 17",
+      "does": "Заменяет проверку сохранения старой en-метки на проверку новой ru-метки после смены локали.",
+      "serves": [
+        4
+      ],
+      "verdict": "fix",
+      "findings": [
+        2
+      ],
+      "kind": "test"
+    }
+  ],
+  "coverage": "Прочитаны brief.md, README.md, все файлы src и тест, package.json, diff и исходные версии изменённых областей. Достижимые входы: публичные функции и supported locales en/ru из README.md:3-10; других контрактов и зависимостей package.json:1-8 не задаёт. Все направления рассмотрены статически. Код приложения, тесты и сборка не запускались по ограничению задания; визуальная проверка не требуется. База ce5e7d339b8a905d6436b70ba7d9c9ea5add9efe, HEAD ec60c1b3d2dd421a5353fda475e3b6300d559c57, SHA-256 diff 38f9cb018d17f10b496313a34719416051ddb8326bae3ee2d48b4851e086705e. Группировка функций в целом подходит: каждая имеет отдельную работу, дополнительное разбиение не снижает связанность; исправление нужно в существующем представлении меток. Проверка структуры и покрытия строк report.mjs check пройдена; это не проверка истинности выводов."
+}

@@ -1,0 +1,340 @@
+{
+  "state": "complete",
+  "reviewModel": "gpt-6.1-terra",
+  "requestedReviewEffort": "xhigh",
+  "implementationModel": "gpt-6.1-terra",
+  "requestedImplementationEffort": "xhigh",
+  "judges": [
+    "openrouter/google/gemini-4-carbon",
+    "openrouter/~z-ai/glm-flash-latest"
+  ],
+  "requestedJudgeEffort": "high",
+  "coreLogicByteIdenticalAcrossSixImplementations": true,
+  "runtimeExecution": false,
+  "cleanTargets": 0,
+  "taskOnlyControl": false,
+  "noSkillControl": false,
+  "sourceContextEnrichedSincePriorRounds": true,
+  "mechanicalObservations": [
+    {
+      "run": "r01",
+      "draft": 23,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 23133,
+      "mechanisms": 2,
+      "insteadFields": 0,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 27,
+          "removed": 62
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    },
+    {
+      "run": "r02",
+      "draft": 25,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 21449,
+      "mechanisms": 2,
+      "insteadFields": 2,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 43,
+          "removed": 65
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    },
+    {
+      "run": "r03",
+      "draft": 25,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 24929,
+      "mechanisms": 2,
+      "insteadFields": 2,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 43,
+          "removed": 61
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    },
+    {
+      "run": "r04",
+      "draft": 23,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 21048,
+      "mechanisms": 3,
+      "insteadFields": 0,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 27,
+          "removed": 64
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    },
+    {
+      "run": "r05",
+      "draft": 23,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 26787,
+      "mechanisms": 3,
+      "insteadFields": 0,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 32,
+          "removed": 61
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    },
+    {
+      "run": "r06",
+      "draft": 25,
+      "reviewFindings": 1,
+      "reviewJsonBytes": 27356,
+      "mechanisms": 3,
+      "insteadFields": 3,
+      "unitSplitsProposed": 0,
+      "changes": {
+        "tests": {
+          "added": 34,
+          "removed": 69
+        },
+        "hook": {
+          "added": 5,
+          "removed": 42
+        },
+        "schema": {
+          "added": 1,
+          "removed": 2
+        }
+      }
+    }
+  ],
+  "interpretation": "Both arms produced the same source-supported simplification and byte-identical core code. The strict overall count differs only because one baseline test has an unused import whose CI consequence remained unresolved for Carbon. This does not establish an architecture benefit from mandatory instead.",
+  "judgmentStatus": {
+    "carbon": "completed",
+    "glm": "completed"
+  },
+  "judgeSessionFormatCorrections": {
+    "glm": 1,
+    "carbon": 0
+  },
+  "judgments": [
+    {
+      "run": "r01",
+      "draft": 23,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "unresolved"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "unresolved",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      },
+      "judgmentDifference": "Carbon leaves overall outcome unresolved because a test retains an unused import and build/lint configuration was absent; GLM regards it as a non-material blemish. No runtime failure was observed."
+    },
+    {
+      "run": "r02",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "supported",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      }
+    },
+    {
+      "run": "r03",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "supported",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      }
+    },
+    {
+      "run": "r04",
+      "draft": 23,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "supported",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      }
+    },
+    {
+      "run": "r05",
+      "draft": 23,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "supported",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      }
+    },
+    {
+      "run": "r06",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        },
+        "glm": {
+          "simplification": "supported",
+          "behaviorPreservation": "supported",
+          "ownershipReadability": "supported",
+          "overallStaticOutcome": "supported"
+        }
+      },
+      "primaryDiagnosisAndRecommendation": "supported by both",
+      "jointOverall": "supported",
+      "jointDimensions": {
+        "simplification": "supported",
+        "behaviorPreservation": "supported",
+        "ownershipReadability": "supported"
+      }
+    }
+  ],
+  "byDraft": {
+    "23": {
+      "runs": 3,
+      "jointlySupportedPrimaryDiagnosisAndRecommendation": 3,
+      "jointlySupportedSimplification": 3,
+      "jointlySupportedBehaviorPreservation": 3,
+      "jointlySupportedOwnershipReadability": 3,
+      "jointOverallSupported": 2,
+      "jointOverallUnresolved": 1
+    },
+    "25": {
+      "runs": 3,
+      "jointlySupportedPrimaryDiagnosisAndRecommendation": 3,
+      "jointlySupportedSimplification": 3,
+      "jointlySupportedBehaviorPreservation": 3,
+      "jointlySupportedOwnershipReadability": 3,
+      "jointOverallSupported": 3,
+      "jointOverallUnresolved": 0
+    }
+  }
+}

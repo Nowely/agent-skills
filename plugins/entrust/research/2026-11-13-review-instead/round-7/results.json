@@ -1,0 +1,194 @@
+{
+  "state": "complete",
+  "evidence": "Static source assessment; no implementation or runtime verification.",
+  "runs": [
+    {
+      "run": "r01",
+      "variant": "full",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    },
+    {
+      "run": "r02",
+      "variant": "without-line-allocation",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    },
+    {
+      "run": "r03",
+      "variant": "without-line-allocation",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    },
+    {
+      "run": "r04",
+      "variant": "full",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    },
+    {
+      "run": "r05",
+      "variant": "full",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    },
+    {
+      "run": "r06",
+      "variant": "without-line-allocation",
+      "primaryRootFindings": 1,
+      "proposedRuleExtractions": 0,
+      "judges": {
+        "carbon": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        },
+        "glm": {
+          "primaryDiagnosis": "supported",
+          "primaryRecommendation": "supported",
+          "targetPreservation": "supported",
+          "actionability": "supported",
+          "structuralUsefulness": "supported",
+          "reportedMaterialMisses": 0,
+          "unsupportedClaimRatings": 0
+        }
+      }
+    }
+  ],
+  "equivalence": {
+    "carbon": [
+      {
+        "runs": [
+          "r05",
+          "r03",
+          "r01",
+          "r06",
+          "r04",
+          "r02"
+        ]
+      }
+    ],
+    "glm": [
+      {
+        "runs": [
+          "r05",
+          "r03",
+          "r01",
+          "r06",
+          "r04",
+          "r02"
+        ]
+      }
+    ]
+  },
+  "formatCorrections": {
+    "carbon": 0,
+    "glm": 1
+  },
+  "interpretation": "No observed semantic quality gain from removing exhaustive line allocation. Keep the full working method; no lighter production mode is justified by this small mixed-cost result.",
+  "aggregation": "The failure bypass and redundant lookup are aspects of the same primary finding, not two independent wins. Zero reported material misses is not proof of completeness."
+}

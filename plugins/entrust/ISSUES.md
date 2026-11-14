@@ -10,6 +10,20 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E142. macOS CI review-eval failed with a missing temporary Git objects directory
+
+**Evidence, level 3 (one observed CI failure).** On commit `fa7856b4759463f5bedaf23da2d5faf42777cdcc`, the
+[macOS job](https://github.com/Nowely/agent-skills/actions/runs/43528474790/job/132239978676) reported `ENOENT`
+for `review-outcome-NKZPTH/work/i01/repo/.git/objects` in the outcome case at `evals/review-eval.test.mjs:168`.
+The case prepares its temporary round and implementation at `:171-175`. The cause and reproducibility have not
+been established; this observation alone does not show a product regression.
+
+A failure at the same place was seen once on #95. A possible cause, not confirmed: `prepare.mjs` commits and the
+run is then copied whole, `.git` included, while housekeeping that the commit started in the background repacks
+`.git/objects`. The instrument's commits now run with `gc.auto=0` and `maintenance.auto=false`. If the failure
+recurs with that in place, the cause is elsewhere.
+The macOS job on `1f2d31d`, the first with that setting, passed review-eval.
+
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
@@ -322,3 +336,23 @@ is refused before the continuation assertions.
 
 **Issue text.** D6 relies on the checkout being an admissible write target, so its result depends on where the
 repository was cloned. Use an isolated admissible fixture repository for this test; keep the production guard.
+
+## E141. An early OpenCode model snapshot can hide available models
+
+**Evidence, level 3.** On OpenCode 2.1.2, an outside-sandbox catalogue read on one fresh server returned
+16 models at 348 ms, then 20 at 1,452 ms, including Carbon and Kimi. Desktop already listed both. The
+`GET /api/model` description explicitly permits a snapshot preceding initial plugin settlement.
+`plugin/skills/opencode/scripts/status.mjs:25-42` reads one snapshot and then closes its server, so the
+observed missing-model report was premature. No model turn or configuration change was needed to reproduce it.
+
+**Related inference, level 2.** `plugin/skills/opencode/scripts/client.mjs:54-64` reads the same snapshot,
+caches it for model resolution and rejects an absent ID. A worker can therefore encounter the same startup
+boundary; a worker refusal was not reproduced in this observation, and the later Carbon judgment started.
+
+**Check.** With a configured plugin-supplied model, compare the initial `/api/model` response with a later
+response from the same server after plugin initialization. Distinguish an incomplete catalogue from a
+settled catalogue that genuinely lacks the requested model; do not silently substitute another model.
+
+**Issue text.** Make model discovery/resolution respect OpenCode's documented plugin-initialization boundary
+before declaring a requested model unavailable. Prefer a readiness signal to an arbitrary fixed sleep.
+No installed adapter or user configuration was changed during the review experiment that found this.

@@ -1,0 +1,61 @@
+{
+  "method": "Unique native response usage summed and checked against cumulative usage. Cached input is part of input; reasoning part of output. All turns and authorization continuations included. Native task durations and session elapsed times are different measures; B01 waited within one turn, B02 ended then resumed, so timings do not isolate coding effort. Judge/coordinator/relay usage excluded; no invoice or causal efficiency claim.",
+  "actors": [
+    {
+      "id": "a01",
+      "phase": "A",
+      "inputTokens": 265228,
+      "cachedInputTokens": 223744,
+      "uncachedInputTokens": 41484,
+      "outputTokens": 2588,
+      "totalTokens": 267816,
+      "sumNativeTaskDurationSeconds": 61.223,
+      "sessionElapsedSeconds": 61.244,
+      "completedTurns": 1,
+      "toolSteps": 6,
+      "authorizationClarification": false
+    },
+    {
+      "id": "a02",
+      "phase": "A",
+      "inputTokens": 255117,
+      "cachedInputTokens": 233856,
+      "uncachedInputTokens": 21261,
+      "outputTokens": 2558,
+      "totalTokens": 257675,
+      "sumNativeTaskDurationSeconds": 57.654,
+      "sessionElapsedSeconds": 57.668,
+      "completedTurns": 1,
+      "toolSteps": 5,
+      "authorizationClarification": false
+    },
+    {
+      "id": "b01",
+      "phase": "B",
+      "inputTokens": 548206,
+      "cachedInputTokens": 540288,
+      "uncachedInputTokens": 7918,
+      "outputTokens": 2536,
+      "totalTokens": 550742,
+      "sumNativeTaskDurationSeconds": 118.476,
+      "sessionElapsedSeconds": 118.488,
+      "completedTurns": 1,
+      "toolSteps": 15,
+      "authorizationClarification": true
+    },
+    {
+      "id": "b02",
+      "phase": "B",
+      "inputTokens": 338743,
+      "cachedInputTokens": 331008,
+      "uncachedInputTokens": 7735,
+      "outputTokens": 2338,
+      "totalTokens": 341081,
+      "sumNativeTaskDurationSeconds": 61.932,
+      "sessionElapsedSeconds": 136.182,
+      "completedTurns": 2,
+      "toolSteps": 8,
+      "authorizationClarification": true
+    }
+  ]
+}

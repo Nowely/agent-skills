@@ -1,0 +1,188 @@
+{
+  "state": "complete",
+  "runs": [
+    {
+      "run": "r01",
+      "judgeId": "u02",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      }
+    },
+    {
+      "run": "r02",
+      "judgeId": "u04",
+      "draft": 28,
+      "judges": {
+        "carbon": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      }
+    },
+    {
+      "run": "r03",
+      "judgeId": "u01",
+      "draft": 28,
+      "judges": {
+        "carbon": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      }
+    },
+    {
+      "run": "r04",
+      "judgeId": "u03",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "F1": "hit",
+          "F2": "hit",
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "not_applicable",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      }
+    }
+  ],
+  "caseFindingInterpretation": "F1 is one root consistency defect; F2 is its test gap. Additional missing-English-label and removed-legacy-test observations remain details of test quality, not independent root-defect wins.",
+  "jointByDraft": {
+    "25": {
+      "reviews": 2,
+      "F1Hits": 2,
+      "F2Hits": 2,
+      "triggeredTraps": 0,
+      "responsibilityBoundaries": "not_applicable"
+    },
+    "28": {
+      "reviews": 2,
+      "F1Hits": 2,
+      "F2Hits": 2,
+      "triggeredTraps": 0,
+      "responsibilityBoundaries": "not_applicable"
+    }
+  },
+  "ratingDisagreements": [],
+  "interpretation": "Both full packages detect the peer-consistency defect and test gap with supported bounded remedies. No incremental detection benefit for draft28 was observed on this formative case. No decomposition outcome was measured.",
+  "limits": [
+    "two reviews per arm",
+    "single small formative case",
+    "no no-skill control",
+    "explicit public current-locale contract",
+    "shared pathname topic cue",
+    "static recommendations; no implementation or runtime verification"
+  ]
+}

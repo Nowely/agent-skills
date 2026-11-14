@@ -1,0 +1,24 @@
+{
+  "sourceAndPackageBytesUnchanged": true,
+  "nativeModelAndEffortConfirmed": true,
+  "usageReconciled": true,
+  "candidateReportsChecked": 4,
+  "projectExecutionObserved": false,
+  "scopeAudit": "Visible reviewer commands read task/source/Git, create report artifacts and run the supplied checker. Judges used file reads and read-only Git/nl/awk/wc. This is a transcript audit, not OS sandbox enforcement.",
+  "judgePacketsUnchanged": true,
+  "judgeFileChanges": [],
+  "publication": "Synthetic text kept substantively intact; only local source/artifact/tool paths relocated. Raw native and adapter traces remain private.",
+  "sameSessionRepair": {
+    "run": "r08",
+    "checkerDiagnostic": "unit importContacts is to split, and the target has no new unit: name what it splits into in target_units",
+    "before": "importContacts directly uses parseCsv, isEmail, normalizeEmail and ContactStore; no new target unit.",
+    "after": "importContacts uses parseCsv, planImport and ContactStore; planImport owns validation, rejected rows and last-valid normalized-email selection.",
+    "meaning": "Target changed after a representation check; do not treat helper count as an independent design outcome. All calls/time/tokens remain included."
+  },
+  "operationalEvents": [
+    "A stale pending host agent reduced concurrent capacity; two r04 dispatch attempts were refused before any session started. Each of the eight measured reviewers ran once.",
+    "A repeated durable copy hit read-only Git object permissions; identical objects were left in place and the checkpoint completed without changing reviewer inputs.",
+    "Private round-6 packet/manifest unavailable in inspected original and durable locations; four reviews and one judge remain blocked."
+  ],
+  "artifactCapture": "Completed reviewer outputs, exact input packets, prompts, criteria, telemetry and judge inputs/outputs checkpointed in durable local storage."
+}

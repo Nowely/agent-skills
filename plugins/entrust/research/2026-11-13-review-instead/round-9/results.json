@@ -1,0 +1,340 @@
+{
+  "state": "complete",
+  "runs": [
+    {
+      "run": "r01",
+      "judgeId": "u03",
+      "draft": 28,
+      "judges": {
+        "carbon": {
+          "items": {
+            "D1": "partial",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "partial",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "items": {
+            "D1": "hit",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "supported",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      },
+      "jointDesignDiagnosis": "disputed: partial vs hit",
+      "jointActionableTarget": "hit"
+    },
+    {
+      "run": "r02",
+      "judgeId": "u04",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "items": {
+            "D1": "partial",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "partial",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "items": {
+            "D1": "hit",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "supported",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      },
+      "jointDesignDiagnosis": "disputed: partial vs hit",
+      "jointActionableTarget": "hit"
+    },
+    {
+      "run": "r03",
+      "judgeId": "u01",
+      "draft": 25,
+      "judges": {
+        "carbon": {
+          "items": {
+            "D1": "partial",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "partial",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "items": {
+            "D1": "hit",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "supported",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      },
+      "jointDesignDiagnosis": "disputed: partial vs hit",
+      "jointActionableTarget": "hit"
+    },
+    {
+      "run": "r04",
+      "judgeId": "u02",
+      "draft": 28,
+      "judges": {
+        "carbon": {
+          "items": {
+            "D1": "partial",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "partial",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        },
+        "glm": {
+          "items": {
+            "D1": "hit",
+            "D2": "hit",
+            "F2": "hit",
+            "F3": "hit",
+            "F4": "hit",
+            "F5": "hit",
+            "F6": "hit",
+            "F7": "hit",
+            "F8": "hit"
+          },
+          "traps": {
+            "X1": "not_triggered",
+            "X2": "not_triggered",
+            "X3": "not_triggered"
+          },
+          "dimensions": {
+            "mechanismIdentification": "supported",
+            "necessityAndCost": "supported",
+            "responsibilityBoundaries": "supported",
+            "behaviorPreservation": "supported"
+          },
+          "unsupportedRecommendations": []
+        }
+      },
+      "jointDesignDiagnosis": "disputed: partial vs hit",
+      "jointActionableTarget": "hit"
+    }
+  ],
+  "ratingDisagreements": [
+    {
+      "run": "r01",
+      "field": "items.D1",
+      "carbon": "partial",
+      "glm": "hit"
+    },
+    {
+      "run": "r01",
+      "field": "dimensions.responsibilityBoundaries",
+      "carbon": "partial",
+      "glm": "supported"
+    },
+    {
+      "run": "r02",
+      "field": "items.D1",
+      "carbon": "partial",
+      "glm": "hit"
+    },
+    {
+      "run": "r02",
+      "field": "dimensions.responsibilityBoundaries",
+      "carbon": "partial",
+      "glm": "supported"
+    },
+    {
+      "run": "r03",
+      "field": "items.D1",
+      "carbon": "partial",
+      "glm": "hit"
+    },
+    {
+      "run": "r03",
+      "field": "dimensions.responsibilityBoundaries",
+      "carbon": "partial",
+      "glm": "supported"
+    },
+    {
+      "run": "r04",
+      "field": "items.D1",
+      "carbon": "partial",
+      "glm": "hit"
+    },
+    {
+      "run": "r04",
+      "field": "dimensions.responsibilityBoundaries",
+      "carbon": "partial",
+      "glm": "supported"
+    }
+  ],
+  "jointByDraft": {
+    "25": {
+      "reviews": 2,
+      "D1FullConsensus": 0,
+      "D1Disputed": 2,
+      "D2Hits": 2,
+      "F2ThroughF8HitsPerItem": 2,
+      "triggeredTraps": 0
+    },
+    "28": {
+      "reviews": 2,
+      "D1FullConsensus": 0,
+      "D1Disputed": 2,
+      "D2Hits": 2,
+      "F2ThroughF8HitsPerItem": 2,
+      "triggeredTraps": 0
+    }
+  },
+  "equivalentGroups": {
+    "carbon": [
+      {
+        "runs": [
+          "r03",
+          "r04",
+          "r01",
+          "r02"
+        ],
+        "reason": "All four reviews reach substantively equivalent conclusions: all hit F2-F8 plus whitespace-row and multiline-CSV defects, avoid traps X1-X3, propose an actionable parseCsv -> normalizeEmail last-valid selection -> single-pass ContactStore target (D2 hit), and stop at partial on D1/responsibilityBoundaries by grounding separation in runtime invariants rather than a concrete reading/change burden. Key differences: u01 and u02 extract a pure helper (planImport/prepareRows) and note shared loop state but leave result.rows removal implicit (with u02 explicitly stating empty-name priority in target), whereas u03 and u04 keep sequential phases inside importContacts and explicitly flag result.rows and options for removal."
+      }
+    ],
+    "glm": [
+      {
+        "runs": [
+          "r03",
+          "r04"
+        ],
+        "reason": "Nearly identical diagnosis, findings and target (parseCsv, isEmail, last-valid-row by normalizeEmail, apply once with counts, rejections keep line); both name a decision-phase helper (planImport/prepareRows). Differences: u02's target adds name-check-before-email-error ordering and a proposed unparsable-file check; u02 names the legacy mode as having no caller; neither flags the extra rows field as an unrequired contract."
+      },
+      {
+        "runs": [
+          "r01",
+          "r02"
+        ],
+        "reason": "Same diagnosis, findings and target, but both keep the coordinator in importContacts without a new helper (u04's coverage explicitly says separate infrastructure is not needed); both flag the extra rows field as an unrequired contract that u01/u02 do not call out."
+      }
+    ]
+  },
+  "interpretation": "Both packages produce supported actionable targets; no incremental advantage of draft28 is observed. Diagnosis depth and responsibility-boundary evidence are disputed between judges, not averaged or called missing. The helper-vs-inline target difference appears once in each arm. No implementation or architectural recovery was measured.",
+  "coordinatorAssessment": "Carbon applies the narrower frozen D1 distinction more strictly: concrete functional coupling is described, but a reading/change burden beyond runtime correctness is not clearly demonstrated. This does not invalidate the jointly supported target. Preserve both original ratings rather than regrading them."
+}

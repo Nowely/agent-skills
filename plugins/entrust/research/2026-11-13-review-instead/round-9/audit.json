@@ -1,0 +1,37 @@
+{
+  "sourceAndPackageBytesUnchanged": true,
+  "finalArtifactChecksPassed": 4,
+  "sameReviewArtifactRepairs": [
+    {
+      "run": "r01",
+      "issue": "Checker rejected split because target_units introduced no new unit. Reviewer changed split to fix, preserving both target and target_units exactly. Later edits refined a reuse decision and qualified retry-error reachability. All same-session work remains included.",
+      "interpretation": "The split-label count depends on report schema semantics. It is not an independent measure of a better responsibility boundary.",
+      "initialUnitVerdict": "split",
+      "finalUnitVerdict": "fix",
+      "targetUnchanged": true,
+      "targetUnitsUnchanged": true,
+      "targetSha256": "eba5c1fc113f9819fefb5fdc6a5a16c260765113c014f9c53a0842ee7ec009f0",
+      "targetUnitsSha256": "2ff135fa17079d1f445ec81b8545aac562f62bd1a64039647266435faec2ee31",
+      "checkerDiagnostic": "unit importContacts is to split, and the target has no new unit: name what it splits into in target_units"
+    }
+  ],
+  "projectExecution": false,
+  "scopeAudit": "Visible commands read source/Git, write report artifacts and execute the supplied report checker. Raw native logs stay local; not an OS-sandbox proof.",
+  "publicReviewCopies": "Substantive content preserved; local run/source/artifact paths relocated. Raw originals retained locally.",
+  "judgePacketUnchanged": true,
+  "judgeFileChanges": [],
+  "judgeOutputFormatCorrections": {
+    "carbon": 0,
+    "glm": 0
+  },
+  "transportEvents": [
+    {
+      "judge": "glm",
+      "event": "Driver returned running after its observation window. Relay reattached to the exact same invocation/report; this did not start a new model session."
+    }
+  ],
+  "coordinatorPreparationErrors": [
+    "Prompt-registration Python input failed UTF-8 parsing before any judge invocation existed; no model ran. The prompt was then written as a UTF-8 file and both registrations succeeded."
+  ],
+  "judgeCommandAudit": "Carbon used read/grep/glob and non-mutating nl/tr display commands; GLM used read/grep, find and read-only Git. No project execution or file change observed."
+}

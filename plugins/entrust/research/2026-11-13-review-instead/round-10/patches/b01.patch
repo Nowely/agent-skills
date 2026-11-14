@@ -1,0 +1,96 @@
+diff --git a/src/contacts/import.js b/src/contacts/import.js
+index f096bb8..14baa94 100644
+--- a/src/contacts/import.js
++++ b/src/contacts/import.js
+@@ -2,6 +2,14 @@ import { parseCsv } from "../lib/csv.js";
+ import { isEmail, normalizeEmail } from "./email.js";
+ 
+ export function importContacts(text, store) {
++  return processImport(text, store, true);
++}
++
++export function previewImport(text, store) {
++  return processImport(text, store, false);
++}
++
++function processImport(text, store, apply) {
+   const rows = parseCsv(text);
+   const result = { created: 0, updated: 0, rejected: [] };
+   const contacts = new Map();
+@@ -22,10 +30,10 @@ export function importContacts(text, store) {
+   for (const [email, name] of contacts) {
+     const existing = store.findByEmail(email);
+     if (existing) {
+-      if (existing.name !== name) store.rename(existing.id, name);
++      if (apply && existing.name !== name) store.rename(existing.id, name);
+       result.updated++;
+     } else {
+-      store.insert({ name, email });
++      if (apply) store.insert({ name, email });
+       result.created++;
+     }
+   }
+diff --git a/test/import.test.js b/test/import.test.js
+index 16413e0..bb35a17 100644
+--- a/test/import.test.js
++++ b/test/import.test.js
+@@ -1,7 +1,7 @@
+ import test from "node:test";
+ import assert from "node:assert/strict";
+ import { ContactStore } from "../src/contacts/store.js";
+-import { importContacts } from "../src/contacts/import.js";
++import { importContacts, previewImport } from "../src/contacts/import.js";
+ import { CsvError } from "../src/lib/csv.js";
+ 
+ test("counts each email once and keeps its last valid name", () => {
+@@ -63,3 +63,50 @@ test("handles quoted names and reports the start of an invalid multiline row", (
+   });
+   assert.equal(store.findByEmail("ann@site.test").name, 'Ann, "Ace"');
+ });
++
++test("preview matches import without writing or mutating stored contacts", () => {
++  const makeStore = () => {
++    const store = new ContactStore();
++    store.insert({ name: "Old", email: "ann@site.test" });
++    store.insert({ name: "Same", email: "same@site.test" });
++    return store;
++  };
++  const store = makeStore();
++  const original = store.all();
++  const snapshot = structuredClone(original);
++  for (const contact of original) Object.freeze(contact);
++  store.insert = () => { throw new Error("preview inserted"); };
++  store.rename = () => { throw new Error("preview renamed"); };
++  const text = 'name,email\r\n\r\nAnn,ann@site.test\r\nAnne, ANN@SITE.TEST \r\nSame,same@site.test\r\nBob,bob@site.test\r\nBobby, BOB@SITE.TEST \r\n,bob@site.test\r\n"Bad\r\nname",invalid\r\n';
++  const expected = {
++    created: 1, updated: 2, rejected: [
++      { line: 8, reason: "name is empty" },
++      { line: 9, reason: "email is not an address" },
++    ],
++  };
++  assert.deepEqual(previewImport(text, store), expected);
++  assert.deepEqual(previewImport(text, store), expected);
++  assert.deepEqual(store.all(), snapshot);
++  assert.deepEqual(importContacts(text, makeStore()), expected);
++});
++
++test("preview propagates parsing errors before any store access", () => {
++  const store = {
++    findByEmail: () => { throw new Error("store read during parse"); },
++    insert: () => { throw new Error("preview inserted"); },
++    rename: () => { throw new Error("preview renamed"); },
++  };
++  for (const invalid of ['"unclosed,bad@site.test', 'Bad"quote,bad@site.test']) {
++    assert.throws(() => previewImport(`name,email\nNew,ann@site.test\n${invalid}`, store), CsvError);
++  }
++});
++
++test("import counts an unchanged existing contact without renaming it", () => {
++  const store = {
++    findByEmail: () => ({ id: 1, name: "Same" }),
++    rename: () => { throw new Error("unnecessary rename"); },
++  };
++  assert.deepEqual(importContacts("name,email\nSame,same@site.test", store), {
++    created: 0, updated: 1, rejected: [],
++  });
++});

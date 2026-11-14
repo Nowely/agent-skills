@@ -1,0 +1,157 @@
+{
+  "pin": "d7e2e664e2961c1b8c651ecd579a80c4dee2bcd9",
+  "case": "contact-import-v2",
+  "variant": "head",
+  "selectedReviews": [
+    "r01",
+    "r04"
+  ],
+  "draftComparison": false,
+  "plannedMainSessions": 5,
+  "phases": {
+    "A": 2,
+    "B": 2,
+    "judge": 1
+  },
+  "judgeModel": "openrouter/google/gemini-4-carbon",
+  "judgeEffort": "high",
+  "conditionalSecondJudge": "Only a concrete material dispute unresolved by source/tests; not part of the default schedule.",
+  "excluded": [
+    "task-only",
+    "clean-target model runs",
+    "extra repeats",
+    "private source",
+    "browser",
+    "images",
+    "shipping skill changes"
+  ],
+  "sourceFiles": {
+    "package.json": "04a545e0e658ca729fcd6206cc676d86e5b6ce5e3127c6027a322ca81c91a6d0",
+    "src/contacts/create.js": "e929f155f744d21489dcff45b284b0d60cb020d3c89b143ed2a23a62be9258e5",
+    "src/contacts/email.js": "60a988b94a95927170df8dd32d983b45bf1ba65d0c11edebc6c160716e736c09",
+    "src/contacts/import.js": "34d27de263dbc87febb8e8743f43f47689d27c1a8fcc9d803ba1c341f5d5b999",
+    "src/contacts/store.js": "843ba36f86675a2ab951683f5329ed96bfd453ff9fbe59129278c20d91e33d76",
+    "src/lib/csv.js": "f42d03c0e8fbed7d091fd1399fa2d537cf4a35bc331e208849b0d6c356ac5a39",
+    "test/create.test.js": "bb710ad2d75667ae60a75bdb03abe2dd5f59629f94ff7943ec760351565fc84a",
+    "test/csv.test.js": "bac2af04b223e26f374ee73072e79c55c2c99ed781775c42741f8ce996acf128",
+    "test/import.test.js": "cc818d813d4861832d7c1d38e738cd73a3a9fbdfcc810c308246a8730dda507d"
+  },
+  "nativeNode": "v24.15.0",
+  "actorModel": "gpt-6.1-terra",
+  "actorEffort": "xhigh",
+  "gateA": "13 original acceptance checks and passing nonempty own test suite; relevance assessed separately without a test-count quota",
+  "failurePolicy": "One failed A: preserve it, advance only the passing path, judge both A outcomes. Both A fail: stop after A, without B/judge.",
+  "state": "complete",
+  "frozenInputs": {
+    "evaluator/old-accept.mjs": "9a07264fa4c2610acdf87aa66088d8fc2d658948d0493244b802c50619c75b17",
+    "evaluator/preview-accept.mjs": "2c595f9677734f852427067bec494a4f1ed5e088195be104739c84b38b78df08",
+    "evaluator/run.mjs": "0da393a8bc3c775e46838ba7e7b80d4de7e1a2a913b505d3c44000e8be605071",
+    "next-requirement.md": "fb62e5ea968a8f9ad2d92f7ea8be2b0d59343d973ecad08f2df3cb63f015602a",
+    "judging/criteria.md": "5654d8928692a883d2e89081c728443633fb6320e3473166f1b8ed24c73fad3c",
+    "judging/schema.json": "105561d777114d62c5c5d79b8062ee2917e16b6bcf67a33a9f4d5620078fca39"
+  },
+  "runs": [
+    {
+      "id": "a01",
+      "phase": "A",
+      "sourceReview": "r01",
+      "parentA": null,
+      "reviewSha256": "5c74b31f09a1bcdd7689b4eb00f783f6b6c4f585d2132dc65607e88c200d26e3",
+      "model": "gpt-6.1-terra",
+      "effort": "xhigh",
+      "snapshotHashes": {
+        "package.json": "04a545e0e658ca729fcd6206cc676d86e5b6ce5e3127c6027a322ca81c91a6d0",
+        "src/contacts/create.js": "e929f155f744d21489dcff45b284b0d60cb020d3c89b143ed2a23a62be9258e5",
+        "src/contacts/email.js": "60a988b94a95927170df8dd32d983b45bf1ba65d0c11edebc6c160716e736c09",
+        "src/contacts/import.js": "5736ee0fe69b779045d12da10e108b7d0a7f751d077189ffda24d8aa7a6ab8ea",
+        "src/contacts/store.js": "843ba36f86675a2ab951683f5329ed96bfd453ff9fbe59129278c20d91e33d76",
+        "src/lib/csv.js": "f42d03c0e8fbed7d091fd1399fa2d537cf4a35bc331e208849b0d6c356ac5a39",
+        "test/create.test.js": "bb710ad2d75667ae60a75bdb03abe2dd5f59629f94ff7943ec760351565fc84a",
+        "test/csv.test.js": "bac2af04b223e26f374ee73072e79c55c2c99ed781775c42741f8ce996acf128",
+        "test/import.test.js": "cecd7df27ca7f727fa9b0c1e0465b51223ce16fc9b24038d064c92b7cf3e4953"
+      }
+    },
+    {
+      "id": "a02",
+      "phase": "A",
+      "sourceReview": "r04",
+      "parentA": null,
+      "reviewSha256": "805c7518ba2a78846277ecd6df61c9a65c47635ac9e35ce15494cbf74dcc55a5",
+      "model": "gpt-6.1-terra",
+      "effort": "xhigh",
+      "snapshotHashes": {
+        "package.json": "04a545e0e658ca729fcd6206cc676d86e5b6ce5e3127c6027a322ca81c91a6d0",
+        "src/contacts/create.js": "e929f155f744d21489dcff45b284b0d60cb020d3c89b143ed2a23a62be9258e5",
+        "src/contacts/email.js": "60a988b94a95927170df8dd32d983b45bf1ba65d0c11edebc6c160716e736c09",
+        "src/contacts/import.js": "d9da7976bf17f204e5f448bed81afb4260aab6d78e7acdd67a112b349cacfde1",
+        "src/contacts/store.js": "843ba36f86675a2ab951683f5329ed96bfd453ff9fbe59129278c20d91e33d76",
+        "src/lib/csv.js": "f42d03c0e8fbed7d091fd1399fa2d537cf4a35bc331e208849b0d6c356ac5a39",
+        "test/create.test.js": "bb710ad2d75667ae60a75bdb03abe2dd5f59629f94ff7943ec760351565fc84a",
+        "test/csv.test.js": "bac2af04b223e26f374ee73072e79c55c2c99ed781775c42741f8ce996acf128",
+        "test/import.test.js": "fa037b176cc9ed2a9d8bdca0dcd72e67b0a52f5cd906a4a03b394beed6f249f8"
+      }
+    },
+    {
+      "id": "b01",
+      "phase": "B",
+      "sourceReview": null,
+      "parentA": "a01",
+      "reviewSha256": null,
+      "model": "gpt-6.1-terra",
+      "effort": "xhigh",
+      "snapshotHashes": {
+        "package.json": "04a545e0e658ca729fcd6206cc676d86e5b6ce5e3127c6027a322ca81c91a6d0",
+        "src/contacts/create.js": "e929f155f744d21489dcff45b284b0d60cb020d3c89b143ed2a23a62be9258e5",
+        "src/contacts/email.js": "60a988b94a95927170df8dd32d983b45bf1ba65d0c11edebc6c160716e736c09",
+        "src/contacts/import.js": "8f4495c9f12ec627639e09e6cbe29d24a4878ab900cab4e59de275db3b0b6ae7",
+        "src/contacts/store.js": "843ba36f86675a2ab951683f5329ed96bfd453ff9fbe59129278c20d91e33d76",
+        "src/lib/csv.js": "f42d03c0e8fbed7d091fd1399fa2d537cf4a35bc331e208849b0d6c356ac5a39",
+        "test/create.test.js": "bb710ad2d75667ae60a75bdb03abe2dd5f59629f94ff7943ec760351565fc84a",
+        "test/csv.test.js": "bac2af04b223e26f374ee73072e79c55c2c99ed781775c42741f8ce996acf128",
+        "test/import.test.js": "10a64e6c7ab046a2aababc3976f65a09225ecb1ce61fc5952ef7d0b178a5d72d"
+      }
+    },
+    {
+      "id": "b02",
+      "phase": "B",
+      "sourceReview": null,
+      "parentA": "a02",
+      "reviewSha256": null,
+      "model": "gpt-6.1-terra",
+      "effort": "xhigh",
+      "snapshotHashes": {
+        "package.json": "04a545e0e658ca729fcd6206cc676d86e5b6ce5e3127c6027a322ca81c91a6d0",
+        "src/contacts/create.js": "e929f155f744d21489dcff45b284b0d60cb020d3c89b143ed2a23a62be9258e5",
+        "src/contacts/email.js": "60a988b94a95927170df8dd32d983b45bf1ba65d0c11edebc6c160716e736c09",
+        "src/contacts/import.js": "54ef429199d16c596b66801575f9240b36bdfe4d2777c3cb6a77999a14418f37",
+        "src/contacts/store.js": "843ba36f86675a2ab951683f5329ed96bfd453ff9fbe59129278c20d91e33d76",
+        "src/lib/csv.js": "f42d03c0e8fbed7d091fd1399fa2d537cf4a35bc331e208849b0d6c356ac5a39",
+        "test/create.test.js": "bb710ad2d75667ae60a75bdb03abe2dd5f59629f94ff7943ec760351565fc84a",
+        "test/csv.test.js": "bac2af04b223e26f374ee73072e79c55c2c99ed781775c42741f8ce996acf128",
+        "test/import.test.js": "a6927c429d5da055222250c3cb592c65063175f506773c8d5e15243e6a3677b4"
+      }
+    }
+  ],
+  "actorsCompleted": 4,
+  "judgeCount": 1,
+  "secondJudgeUsed": false,
+  "judgeMapping": {
+    "p01": {
+      "A": "a02",
+      "B": "b02"
+    },
+    "p02": {
+      "A": "a01",
+      "B": "b01"
+    }
+  },
+  "gateAResults": {
+    "a01": true,
+    "a02": true
+  },
+  "gateBResults": {
+    "b01": true,
+    "b02": true
+  },
+  "judgePacketFilesVerifiedUnchanged": 49
+}

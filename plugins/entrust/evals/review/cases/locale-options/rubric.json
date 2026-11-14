@@ -1,0 +1,72 @@
+{
+  "head": {
+    "fails": [
+      "all option labels follow locale changes after module loading",
+      "individual label reads use the same current locale as the option group"
+    ],
+    "items": [
+      {
+        "id": "F1",
+        "kind": "find",
+        "direction": "behavior",
+        "title": "Partial repair leaves one option group in different locales",
+        "hit": "Traces old labels evaluated at module load versus new getters evaluated at read, and gives a reachable import-en, setLocale-ru, fresh-read scenario producing mixed languages. Proposes completing current-locale behavior for the shared six-option group and its readers without breaking IDs/order or historical snapshots (getters, a factory or another behavior-equivalent design are acceptable). Grading note: full credit whether or not base pre-existence is noted, as adding lazy peers creates a mixed-locale symptom; dismissing it as out-of-scope pre-existing is at most partial. Mentioning saveSelection is not required unless the recommendation affects it. Do not reward multiple findings for the same root cause.",
+        "partial": "Notices eager/lazy inconsistency or a stale label but does not establish the lifecycle and bounded behavior-preserving remedy."
+      },
+      {
+        "id": "F2",
+        "kind": "find",
+        "direction": "tests",
+        "title": "New-label tests miss the shared group contract",
+        "hit": "Identifies that the tests switch locale only for the new entries, so old labels can remain stale while the suite passes. Proposes a post-import locale change followed by checks of existing and new labels through the public reads; no syntax/getter-descriptor assertion is required.",
+        "partial": "Asks for locale testing without specifying the old-plus-new, after-module-load scenario."
+      },
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "Undoing the correct lazy reads",
+        "violated": "Recommends eagerly translating the two new entries merely to match the old syntax, without satisfying current-locale reads for the whole group."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "Making historical selections reactive",
+        "violated": "Requires saved selections to change language after setLocale or changes their labels into live getters. README defines them as creation-time historical records."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Inventing a browser requirement",
+        "violated": "Claims getters themselves cause rerenders, or requires screenshots, browser startup or reactive subscriptions to establish this data-only contract. A bounded manual data-read scenario is valid."
+      }
+    ]
+  },
+  "clean": {
+    "items": [
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "Treating dynamic label evaluation as a defect",
+        "violated": "Calls the current-locale reads or getters unnecessary and proposes eager module-time values, contrary to the documented locale lifecycle."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "Making historical selections reactive",
+        "violated": "Requires saved selections to change language after setLocale or changes their labels into live getters. README defines them as creation-time historical records."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Inventing a browser requirement",
+        "violated": "Claims getters themselves cause rerenders, or requires screenshots, browser startup or reactive subscriptions to establish this data-only contract. A bounded manual data-read scenario is valid."
+      },
+      {
+        "id": "X4",
+        "kind": "trap",
+        "title": "Unbounded uniformity",
+        "violated": "Demands one mechanism for both live category labels and saved historical labels merely for consistency, or requires a new localization framework without a supported need."
+      }
+    ]
+  }
+}

@@ -9,6 +9,44 @@ import { labelFaults } from "./labels.mjs";
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
   [change, (review.mechanisms ?? []).filter((m) => m.change === change).length]);
+export const BLOCK_KINDS = ["code", "test", "other"];
+export function weightCountsText(counts, t) {
+  return BLOCK_KINDS.filter(kind => counts[kind]?.added || counts[kind]?.removed)
+    .map(kind => `${t(`weight.${kind}`)} +${counts[kind].added} / −${counts[kind].removed}`).join(" · ") || t("weight.zero");
+}
+
+// The overview counts each attributed block once within a mechanism, including its shared subset.
+export function weightOverview(weight, t, language) {
+  if (!weight) return [];
+  let plurals;
+  try { plurals = new Intl.PluralRules(language); } catch { plurals = new Intl.PluralRules("en"); }
+  const delta = (counts, shared) => ["added", "removed"].filter(side => counts[side])
+    .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])
+      + (shared[side] ? ` (${t(`weight.shared-count.${plurals.select(shared[side])}`, shared[side])})` : "")).join(", ");
+  return BLOCK_KINDS.flatMap(kind => {
+    const own = weight.exclusive[kind], shared = weight.sharedCounts[kind];
+    const total = { added: own.added + shared.added, removed: own.removed + shared.removed };
+    if (!total.added && !total.removed) return [];
+    return [{ kind, text: delta(total, shared) }];
+  });
+}
+
+function weighMechanisms(mechanisms, blocks) {
+  const users = new Map(blocks.map(b => [b.id, mechanisms.filter(m => m.blocks?.includes(b.id)).map(m => m.name)]));
+  return mechanisms.map(m => {
+    if (m.blocks === undefined) return { ...m, weight: null };
+    const exclusive = Object.fromEntries(BLOCK_KINDS.map(kind => [kind, { added: 0, removed: 0 }])), shared = [];
+    for (const id of m.blocks) {
+      const b = blocks[id - 1], names = users.get(id);
+      if (names.length > 1) shared.push({ block: id, kind: b.kind, ...b.weightLines, with: names.filter(name => name !== m.name) });
+      else { exclusive[b.kind].added += b.weightLines.added; exclusive[b.kind].removed += b.weightLines.removed; }
+    }
+    const sharedCounts = Object.fromEntries(BLOCK_KINDS.map(kind => [kind, { added: 0, removed: 0 }]));
+    for (const b of shared) { sharedCounts[b.kind].added += b.added; sharedCounts[b.kind].removed += b.removed; }
+    return { ...m, weight: { exclusive, shared, sharedCounts } };
+  });
+}
+
 export const VERDICTS = ["keep", "fix", "remove"];
 export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
@@ -136,10 +174,26 @@ export function check(review, files, directory) {
     for (const field of ["name", "purpose", "basis", "benefit", "cost", "decision"])
       if (!text(m[field])) errors.push(`${who} has no "${field}"`);
     if (!MECHANISM_CHANGES.includes(m.change)) errors.push(`${who}: change is one of ${MECHANISM_CHANGES.join(", ")}`);
+    // What the change brings in is weighed against what was already there, so the record must say what was looked at.
+    if (["added", "changed"].includes(m.change)) {
+      if (!text(m.instead)) errors.push(`${who} has no "instead": where this is already available, or what you read that does not supply it`);
+      else if (!/[\w@./-]+\.\w+:\d+/.test(m.instead)) errors.push(`${who}: "instead" cites no place; name the path:line you read`);
+    }
     if (!EVIDENCE.includes(m.evidence)) errors.push(`${who}: evidence is one of ${EVIDENCE.join(", ")}`);
     if (m.units !== undefined && !Array.isArray(m.units)) errors.push(`${who}: units is not a list`);
     else refs(who, m.units, mechanismUnits, "unit");
     refs(who, m.findings, findings, "finding");
+    if (m.blocks !== undefined) {
+      if (!Array.isArray(m.blocks)) errors.push(`${who}: blocks must be an array of 1-based block numbers`);
+      else {
+        if (new Set(m.blocks).size !== m.blocks.length) errors.push(`${who}: duplicate block references`);
+        if (!m.blocks.length && m.change !== "reused") errors.push(`${who}: empty blocks are only valid for reused mechanisms`);
+        for (const id of m.blocks) {
+          if (!Number.isInteger(id) || id < 1 || id > review.blocks.length) errors.push(`${who}: unknown block ${id}`);
+          else if (!BLOCK_KINDS.includes(review.blocks[id - 1].kind)) errors.push(`${who}: block ${id} requires explicit kind for weight`);
+        }
+      }
+    }
   }
 
   const written = (review.target_units ?? []).some((u) => !u.existing && !changed.has(u.name));
@@ -147,6 +201,7 @@ export function check(review, files, directory) {
 
   review.blocks.forEach((block, index) => {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
+    if (block.kind !== undefined && !BLOCK_KINDS.includes(block.kind)) errors.push(`${name}: kind is one of ${BLOCK_KINDS.join(", ")}`);
     if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
     if (!text(block.does)) errors.push(`${name} has no "does"`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
@@ -184,10 +239,14 @@ export function check(review, files, directory) {
 // them, the findings that break them and the ones that leave them untested; units with their blocks; screens with
 // their pictures read; and a name for this review that no other review has. Nothing here is written by the reviewer twice.
 export function modelOf(review, files, owner, directory) {
-  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], added: [], removed: [] }));
+  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], added: [], removed: [], weightLines: { added: 0, removed: 0 } }));
   for (const file of files) for (const line of changedLines(file)) {
     const index = owner.get(`${file.path}\n${address(line)}`);
-    if (index !== undefined) blocks[index][line.kind === "add" ? "added" : "removed"].push(numberOf(line));
+    if (index !== undefined) {
+      const field = line.kind === "add" ? "added" : "removed";
+      blocks[index][field].push(numberOf(line));
+      if (!blank(line)) blocks[index].weightLines[field]++;
+    }
   }
   for (const block of blocks) {
     block.size = block.added.length + block.removed.length;
@@ -200,6 +259,6 @@ export function modelOf(review, files, owner, directory) {
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
   const { labels, ...content } = review;
-  return { blocks, requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
+  return { blocks, mechanisms: weighMechanisms(review.mechanisms ?? [], blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }

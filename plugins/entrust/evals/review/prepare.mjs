@@ -21,8 +21,9 @@ export const VARIANTS = ["head", "clean"];
 export const isMain = (meta) => Boolean(process.argv[1]) && fs.realpathSync(process.argv[1]) === fileURLToPath(meta.url);
 
 // A fixed identity and date, and none of the machine's signing or hooks: the same case gives the same commits.
+// No background housekeeping either: a commit may start one that repacks .git/objects while the run is being copied.
 const GIT = ["-c", "user.name=author", "-c", "user.email=author@example.invalid", "-c", "commit.gpgsign=false",
-  "-c", "core.hooksPath=/dev/null"];
+  "-c", "core.hooksPath=/dev/null", "-c", "gc.auto=0", "-c", "maintenance.auto=false"];
 const DATE = "2026-01-01T00:00:00Z";
 
 export function reviewerPrompt(run, withInstructions) {

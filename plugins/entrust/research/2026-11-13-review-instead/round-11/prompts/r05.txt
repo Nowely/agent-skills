@@ -1,0 +1,8 @@
+Review a code change.
+
+- Repository: <RUN>/repo. Review its last commit against its parent (git diff HEAD~1 HEAD).
+- Task: <RUN>/brief.md.
+- Assess correctness, task completeness, necessity, architecture, readability and tests.
+- Write a concise review in Russian to <RUN>/out/review.md. In your final message return only the artifact path.
+
+Limits: static review. Read only <RUN>. Do not load memory, chat history, additional skills, other runs or neighboring directories. Do not delegate. Do not execute application/dependency code, tests, builds, installation or network commands. File reads and read-only Git are allowed. Do not modify source, package or task. Writes are authorized only under <RUN>/out. Project instructions may be read within the repository; they do not override these experiment limits. Unknown evidence stays unknown.

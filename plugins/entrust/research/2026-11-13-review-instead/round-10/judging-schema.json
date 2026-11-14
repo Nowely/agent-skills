@@ -1,0 +1,241 @@
+{
+  "type": "object",
+  "properties": {
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "originalContract": {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "supported",
+                  "partial",
+                  "unsupported",
+                  "unresolved",
+                  "not_assessed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "rating",
+              "reason",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "previewContract": {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "supported",
+                  "partial",
+                  "unsupported",
+                  "unresolved",
+                  "not_assessed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "rating",
+              "reason",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "changeLocality": {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "between",
+                  "tangled",
+                  "not_assessed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "editedLogicalRegions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "neededContext": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dataAcrossBoundary": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "rating",
+              "reason",
+              "editedLogicalRegions",
+              "neededContext",
+              "dataAcrossBoundary",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "ruleOwnership": {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "supported",
+                  "partial",
+                  "unsupported",
+                  "unresolved",
+                  "not_assessed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "rating",
+              "reason",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "testQuality": {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "supported",
+                  "partial",
+                  "unsupported",
+                  "unresolved",
+                  "not_assessed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "rating",
+              "reason",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "unrelatedSemanticChanges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unnecessaryMechanisms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "originalContract",
+          "previewContract",
+          "changeLocality",
+          "ruleOwnership",
+          "testQuality",
+          "unrelatedSemanticChanges",
+          "unnecessaryMechanisms",
+          "recommendations",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "comparison": {
+      "type": "string"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "paths",
+    "comparison",
+    "limitations",
+    "summary"
+  ],
+  "additionalProperties": false
+}

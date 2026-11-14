@@ -1,0 +1,564 @@
+{
+  "runs": [
+    {
+      "id": "u01",
+      "F1": {
+        "rating": "hit",
+        "reason": "Traces module-load evaluation of the four existing labels against read-time getters for videos and drawings, shows mixed English/Russian output after import and setLocale(\"ru\"), notes base pre-existence as in-scope per brief/README, and proposes read-time translation via t across all six options while keeping saveSelection string snapshots.",
+        "reviewEvidence": [
+          "reviews/u01.json:19-22 (verdict, now, target)",
+          "reviews/u01.json:74-86 (findings[0].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "brief.md:3-6",
+          "source/README.md:3-11",
+          "source/src/category-labels.js:4-9",
+          "source/src/categories.js:3-7",
+          "source/src/locale.js:19-22",
+          "source/src/saved-selection.js:3-5"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that locale switching to Russian is only asserted for the two new IDs via labelForCategory while listCategoryOptions labels and old-category Russian reads go unchecked, and proposes post-import en/ru checks across all six categories for both public read APIs plus old/new saveSelection snapshots.",
+        "reviewEvidence": [
+          "reviews/u01.json:30-35 (steps[1])",
+          "reviews/u01.json:88-100 (findings[1].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "source/test/categories.test.js:7-24",
+          "change.diff:54-74",
+          "source/README.md:3-10"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Keeps lazy read-time evaluation via t and extends it to the four existing categories rather than reverting new entries to eager module-load values.",
+          "reviewEvidence": [
+            "reviews/u01.json:82 (findings[0].fix)",
+            "reviews/u01.json:188 (mechanisms[0].decision)"
+          ],
+          "sourceEvidence": [
+            "source/src/category-labels.js:4-9",
+            "source/README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Explicitly preserves saveSelection copying a plain string at call time rather than storing a live getter or updating historical records after setLocale.",
+          "reviewEvidence": [
+            "reviews/u01.json:21 (target)",
+            "reviews/u01.json:163-170 (units[6])",
+            "reviews/u01.json:195-206 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "source/src/saved-selection.js:3-5",
+            "source/README.md:9-11"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Treats the contract as returned data only, requiring neither UI reactivity, browser execution, nor screenshots.",
+          "reviewEvidence": [
+            "reviews/u01.json:66-70 (requirements[4])",
+            "reviews/u01.json:358 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:6-7"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces initial en state and setLocale/t in locale.js through eager versus getter properties in CATEGORY_LABELS to listCategoryOptions, labelForCategory, and one-time string capture in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u01.json:80-81 (findings[0].what, shown_by)",
+            "reviews/u01.json:111-171 (units[1..6])",
+            "reviews/u01.json:174-207 (mechanisms[0..1])"
+          ],
+          "sourceEvidence": [
+            "source/src/locale.js:19-22",
+            "source/src/category-labels.js:4-9",
+            "source/src/categories.js:4-7",
+            "source/src/saved-selection.js:3-5"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Separates required contract behavior from unrequired state or UI mechanisms, reuses existing t and saveSelection string copy, notes unmeasured read cost without speculation, and states clear keep/extend decisions.",
+          "reviewEvidence": [
+            "reviews/u01.json:66-70 (requirements[4])",
+            "reviews/u01.json:185-189 (mechanisms[0].instead, cost, decision)",
+            "reviews/u01.json:203-206 (mechanisms[1].cost, decision)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/src/locale.js:21-22",
+            "source/src/saved-selection.js:3-5"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "The 44-line fixture already separates locale dictionary, option/label reads, and saved-selection snapshots cleanly with no structural problem to solve; u01 appropriately rejects adding extra layers.",
+          "reviewEvidence": [
+            "reviews/u01.json:209-272 (target_units)",
+            "reviews/u01.json:358 (coverage)"
+          ],
+          "sourceEvidence": [
+            "source/src/categories.js:1-7",
+            "source/src/category-labels.js:1-10",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:1-5"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Static trace of the proposed read-time t evaluation preserves the six-ID order, English and Russian labels, current-locale fresh reads on both public functions, and creation-time string snapshots in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u01.json:21 (target)",
+            "reviews/u01.json:82 (findings[0].fix)",
+            "reviews/u01.json:210-271 (target_units)"
+          ],
+          "sourceEvidence": [
+            "source/README.md:3-11",
+            "source/src/categories.js:3-7",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:3-5"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes inside findings[1] (reviews/u01.json:93-94) that English labels for the newly added videos and drawings (source/src/locale.js:7-8, required by brief.md:3-4) are never asserted in source/test/categories.test.js:8-24."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Complete static diagnosis and bounded in-place remedy for F1 and F2 with no traps triggered; also notes untested English labels for the two new categories while keeping existing module boundaries intact."
+    },
+    {
+      "id": "u02",
+      "F1": {
+        "rating": "hit",
+        "reason": "Traces import-time string evaluation for the four old categories versus read-time getters for videos and drawings after setLocale(\"ru\"), treats the pre-existing defect as required in-scope by brief/README, and proposes uniform read-time getters calling t while preserving IDs/order and saveSelection string copying.",
+        "reviewEvidence": [
+          "reviews/u02.json:19-22 (verdict, now, target)",
+          "reviews/u02.json:74-85 (findings[0].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "brief.md:3-6",
+          "source/README.md:3-11",
+          "source/src/category-labels.js:4-9",
+          "source/src/categories.js:3-7",
+          "source/src/locale.js:19-22",
+          "source/src/saved-selection.js:3-5"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that existing tests check only initial English for one old ID and Russian via labelForCategory for the two new IDs while omitting listCategoryOptions labels and old-category snapshots, and proposes post-switch en/ru assertions across both public read APIs and old/new saved selections.",
+        "reviewEvidence": [
+          "reviews/u02.json:30-35 (steps[1])",
+          "reviews/u02.json:88-100 (findings[1].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "source/test/categories.test.js:7-24",
+          "change.diff:54-74",
+          "source/README.md:3-10"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Explicitly keeps the added getters for videos and drawings and applies the same read-time getter mechanism to the four existing categories.",
+          "reviewEvidence": [
+            "reviews/u02.json:204 (mechanisms[0].decision)",
+            "reviews/u02.json:313-322 (blocks[1])"
+          ],
+          "sourceEvidence": [
+            "source/src/category-labels.js:4-9",
+            "source/README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Keeps saveSelection unchanged as a one-time string copy into a plain object so saved records do not change when locale switches later.",
+          "reviewEvidence": [
+            "reviews/u02.json:81 (findings[0].fix)",
+            "reviews/u02.json:158-166 (units[5])",
+            "reviews/u02.json:211-222 (mechanisms[1])"
+          ],
+          "sourceEvidence": [
+            "source/src/saved-selection.js:3-5",
+            "source/README.md:9-11"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Recognizes that fresh reads require no UI reactivity, subscriptions, browser runs, or visual checks.",
+          "reviewEvidence": [
+            "reviews/u02.json:65-70 (requirements[4])",
+            "reviews/u02.json:199-202 (mechanisms[0].purpose, benefit)",
+            "reviews/u02.json:379 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:6-7"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces initial en state and setLocale/t in locale.js, eager load-time properties versus getters in CATEGORY_LABELS, fresh object construction in listCategoryOptions/labelForCategory, and one-time string capture in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u02.json:80 (findings[0].shown_by)",
+            "reviews/u02.json:112-188 (units[1..7])",
+            "reviews/u02.json:191-223 (mechanisms[0..1])"
+          ],
+          "sourceEvidence": [
+            "source/src/locale.js:19-22",
+            "source/src/category-labels.js:4-9",
+            "source/src/categories.js:4-7",
+            "source/src/saved-selection.js:3-5"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Distinguishes contract-backed requirements from unsupported IDs/locales or reactive state, reuses existing t and saveSelection, notes unknown read frequency without inventing caching, and makes explicit keep/extend decisions.",
+          "reviewEvidence": [
+            "reviews/u02.json:201-205 (mechanisms[0].instead, cost, decision)",
+            "reviews/u02.json:219-222 (mechanisms[1].cost, decision)",
+            "reviews/u02.json:379 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:3-11",
+            "source/src/locale.js:19-22"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "The small fixture exhibits no structural or ownership defect requiring reorganization; u02 explicitly keeps dictionary lookup in locale.js/CATEGORY_LABELS and snapshot creation in saveSelection without extra layers.",
+          "reviewEvidence": [
+            "reviews/u02.json:225-299 (target_units)",
+            "reviews/u02.json:379 (coverage)"
+          ],
+          "sourceEvidence": [
+            "source/src/categories.js:1-7",
+            "source/src/category-labels.js:1-10",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:1-5"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Proposed uniform getters in CATEGORY_LABELS calling t preserve stable six-category IDs/order, en/ru translations, current-locale reads across both public functions, and creation-time string retention in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u02.json:21 (target)",
+            "reviews/u02.json:81 (findings[0].fix)",
+            "reviews/u02.json:225-299 (target_units)"
+          ],
+          "sourceEvidence": [
+            "source/README.md:3-11",
+            "source/src/categories.js:3-7",
+            "source/src/category-labels.js:3-10",
+            "source/src/saved-selection.js:3-5"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes inside findings[1] (reviews/u02.json:94) that English labels for the newly added videos and drawings (source/src/locale.js:7-8, required by brief.md:3-4) are not covered by source/test/categories.test.js:8-24."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Accurate root-cause trace and bounded getter-based remedy for F1 plus complete F2 test-gap diagnosis; avoids all traps, preserves snapshot semantics, and notes missing English assertions for the new categories."
+    },
+    {
+      "id": "u03",
+      "F1": {
+        "rating": "hit",
+        "reason": "Traces eager import-time evaluation of the first four labels under initial en versus read-time getters for videos and drawings after setLocale(\"ru\"), keeps the base defect in scope per brief/README, and proposes read-time t evaluation for all six IDs while preserving IDs/order and saveSelection snapshots.",
+        "reviewEvidence": [
+          "reviews/u03.json:18-21 (verdict, now, target)",
+          "reviews/u03.json:74-85 (findings[0].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "brief.md:3-6",
+          "source/README.md:3-11",
+          "source/src/category-labels.js:4-9",
+          "source/src/categories.js:3-7",
+          "source/src/locale.js:19-22",
+          "source/src/saved-selection.js:3-5"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Shows that the suite checks initial English for one old category and Russian only for the two new categories while skipping listCategoryOptions labels and old-category Russian/snapshot cases, and proposes post-import en/ru checks across listCategoryOptions, labelForCategory, and saveSelection.",
+        "reviewEvidence": [
+          "reviews/u03.json:30-34 (steps[1])",
+          "reviews/u03.json:87-100 (findings[1].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "source/test/categories.test.js:7-24",
+          "change.diff:54-74",
+          "source/README.md:3-10"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Recommends read-time translation via t or getters across all six IDs rather than reverting videos and drawings to eager import-time strings.",
+          "reviewEvidence": [
+            "reviews/u03.json:81 (findings[0].fix)",
+            "reviews/u03.json:220 (mechanisms[0].decision)"
+          ],
+          "sourceEvidence": [
+            "source/src/category-labels.js:4-9",
+            "source/README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Preserves saveSelection copying the resolved string at creation time without recomputing it after later locale changes.",
+          "reviewEvidence": [
+            "reviews/u03.json:20 (target)",
+            "reviews/u03.json:171-181 (units[5])",
+            "reviews/u03.json:103-110 (checks[0])"
+          ],
+          "sourceEvidence": [
+            "source/src/saved-selection.js:3-5",
+            "source/README.md:9-11"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Supplies only a bounded, explicitly unexecuted data-read verification scenario and states that UI reactivity, browser execution, and screenshots are not required.",
+          "reviewEvidence": [
+            "reviews/u03.json:65-70 (requirements[4])",
+            "reviews/u03.json:103-116 (checks[0])",
+            "reviews/u03.json:388 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:6-7"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces import-before-setLocale lifecycle, shared locale state in locale.js, eager properties versus getters in CATEGORY_LABELS, public readers in categories.js, and string-value copying in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u03.json:80 (findings[0].shown_by)",
+            "reviews/u03.json:128-201 (units[1..7])",
+            "reviews/u03.json:204-225 (mechanisms[0])"
+          ],
+          "sourceEvidence": [
+            "source/src/locale.js:19-22",
+            "source/src/category-labels.js:4-9",
+            "source/src/categories.js:4-7",
+            "source/src/saved-selection.js:3-5"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Contrasts existing t capability against stale eager entries, rejects unnecessary UI state, public API additions, or out-of-contract input guards, notes unmeasured runtime cost honestly, and decides to reuse t on read.",
+          "reviewEvidence": [
+            "reviews/u03.json:217-221 (mechanisms[0].instead, benefit, cost, decision)",
+            "reviews/u03.json:388 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:3-11",
+            "source/src/locale.js:19-22"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "This fixture presents no demonstrated structural burden or decomposition opportunity; u03 explicitly confirms that ordered IDs, read-time translation, and snapshot saving already have clear boundaries requiring no extra layer.",
+          "reviewEvidence": [
+            "reviews/u03.json:227-300 (target_units)",
+            "reviews/u03.json:388 (coverage)"
+          ],
+          "sourceEvidence": [
+            "source/src/categories.js:1-7",
+            "source/src/category-labels.js:1-10",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:1-5"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Both behavior-equivalent remedies offered (getters for all six entries in CATEGORY_LABELS or calling t(id) in the public read functions) preserve stable IDs/order, en/ru translations, fresh current-locale reads, and immutable saved snapshots.",
+          "reviewEvidence": [
+            "reviews/u03.json:20 (target)",
+            "reviews/u03.json:81 (findings[0].fix)",
+            "reviews/u03.json:103-110 (checks[0])"
+          ],
+          "sourceEvidence": [
+            "source/README.md:3-11",
+            "source/src/categories.js:3-7",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:3-5"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes in verdict and findings[1] (reviews/u03.json:18, 92-93) that English labels for the newly added videos and drawings (source/src/locale.js:7-8, required by brief.md:3-4) are untested in source/test/categories.test.js:8-24."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Thorough static trace and bounded behavior-equivalent remedies for F1, accurate F2 test-gap coverage including untested new English labels, and a valid unexecuted data-read check with no traps triggered."
+    },
+    {
+      "id": "u04",
+      "F1": {
+        "rating": "hit",
+        "reason": "Traces import-time evaluation of the four existing category labels under initial en versus read-time getters for the two new categories after setLocale(\"ru\"), keeps the base defect in scope per brief/README, and proposes read-time t translation for all six categories while keeping plain-string snapshots in saveSelection.",
+        "reviewEvidence": [
+          "reviews/u04.json:19-22 (verdict, now, target)",
+          "reviews/u04.json:67-78 (findings[0].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "brief.md:3-6",
+          "source/README.md:3-11",
+          "source/src/category-labels.js:4-9",
+          "source/src/categories.js:3-7",
+          "source/src/locale.js:19-22",
+          "source/src/saved-selection.js:3-5"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that Russian locale testing covers only the two new getters via labelForCategory while listCategoryOptions labels and post-switch reads/snapshots of existing categories are omitted, and proposes en->ru->en public-read checks for all categories plus old and new saveSelection checks.",
+        "reviewEvidence": [
+          "reviews/u04.json:30-35 (steps[1])",
+          "reviews/u04.json:81-92 (findings[1].what, shown_by, fix)"
+        ],
+        "sourceEvidence": [
+          "source/test/categories.test.js:7-24",
+          "change.diff:54-74",
+          "source/README.md:3-10"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Preserves read-time getters for the new categories and extends read-time t translation to the existing four rather than reverting to module-load evaluation.",
+          "reviewEvidence": [
+            "reviews/u04.json:74 (findings[0].fix)",
+            "reviews/u04.json:265 (mechanisms[0].decision)",
+            "reviews/u04.json:285-294 (blocks[1])"
+          ],
+          "sourceEvidence": [
+            "source/src/category-labels.js:4-9",
+            "source/README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Explicitly requires storing a copied string rather than a live reference in saveSelection so saved records remain unchanged after later locale switches.",
+          "reviewEvidence": [
+            "reviews/u04.json:21 (target)",
+            "reviews/u04.json:74 (findings[0].fix)",
+            "reviews/u04.json:165-173 (units[7])"
+          ],
+          "sourceEvidence": [
+            "source/src/saved-selection.js:3-5",
+            "source/README.md:9-11"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Treats the task as data-only, explicitly rejecting UI reactivity, visual inspection, and unpermitted execution.",
+          "reviewEvidence": [
+            "reviews/u04.json:58-63 (requirements[3])",
+            "reviews/u04.json:353 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:6-7"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces initial en locale and setLocale/t in locale.js through eager load-time values versus getters in CATEGORY_LABELS to listCategoryOptions, labelForCategory, and string copying in saveSelection.",
+          "reviewEvidence": [
+            "reviews/u04.json:73 (findings[0].shown_by)",
+            "reviews/u04.json:96-173 (units[0..7])",
+            "reviews/u04.json:250-270 (mechanisms[0])"
+          ],
+          "sourceEvidence": [
+            "source/src/locale.js:19-22",
+            "source/src/category-labels.js:4-9",
+            "source/src/categories.js:4-7",
+            "source/src/saved-selection.js:3-5"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Reuses existing t and saveSelection mechanisms, avoids introducing reactive subscriptions, extra interfaces, or out-of-contract unknown-ID/locale checks, notes unmeasured read cost honestly, and makes a concrete keep/extend decision.",
+          "reviewEvidence": [
+            "reviews/u04.json:262-266 (mechanisms[0].instead, benefit, cost, decision)",
+            "reviews/u04.json:353 (coverage)"
+          ],
+          "sourceEvidence": [
+            "brief.md:8-10",
+            "source/README.md:3-11",
+            "source/src/locale.js:19-22"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "The fixture is already concisely partitioned with no structural burden or decomposition opportunity; u04 explicitly justifies keeping the existing short functions and shared dictionary boundaries.",
+          "reviewEvidence": [
+            "reviews/u04.json:175-248 (target_units)",
+            "reviews/u04.json:353 (coverage)"
+          ],
+          "sourceEvidence": [
+            "source/src/categories.js:1-7",
+            "source/src/category-labels.js:1-10",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:1-5"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Evaluating all six category labels on read via t (through getters or central ID lookup) while keeping saveSelection's string copy preserves IDs/order, en/ru labels, fresh current-locale reads, and immutable historical snapshots.",
+          "reviewEvidence": [
+            "reviews/u04.json:21 (target)",
+            "reviews/u04.json:74 (findings[0].fix)",
+            "reviews/u04.json:175-248 (target_units)"
+          ],
+          "sourceEvidence": [
+            "source/README.md:3-11",
+            "source/src/categories.js:3-7",
+            "source/src/locale.js:1-22",
+            "source/src/saved-selection.js:3-5"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [],
+      "unsupportedRecommendations": [],
+      "summary": "Hits both F1 and F2 with a clear lifecycle trace, bounded behavior-preserving remedy, and zero traps triggered; unlike u01-u03, does not separately point out that the new English labels currently lack assertions, though its proposed en->ru->en test covers them."
+    }
+  ],
+  "equivalentGroups": [
+    {
+      "ids": [
+        "u01",
+        "u02",
+        "u03",
+        "u04"
+      ],
+      "reason": "All four reviews reach the same root conclusions: they trace eager module-load evaluation of the four existing category labels versus read-time getters for videos and drawings after setLocale(\"ru\") (F1, noting base pre-existence as in-scope under brief.md and README.md), propose behavior-equivalent read-time translation via existing t across all six categories while preserving stable IDs/order and plain-string snapshots in saveSelection, identify that tests switch locale only for the new categories via labelForCategory while missing listCategoryOptions labels and post-switch old-category coverage (F2), avoid traps X1-X3, and keep existing module boundaries without unnecessary layers. Minor differences do not alter root equivalence: u01-u03 explicitly note that English labels of videos/drawings are currently untested (covered implicitly by u04's en->ru->en test proposal), u02 specifies uniform getters whereas u01/u03/u04 allow getters or calling t(id) on public reads, and u03 adds an unexecuted manual data-read check."
+    }
+  ],
+  "limitations": [
+    "Static evaluation only: neither the reviewed runs nor this judgment executed node --test or runtime code, so behavior preservation of proposed remedies rests on code inspection rather than applied patches.",
+    "Responsibility boundaries are not_applicable on this 44-line, four-file fixture because the codebase already separates locale lookup, option/label reads, and historical snapshots cleanly and presents no structural decomposition problem.",
+    "High ceiling convergence across u01-u04 on a single small synthetic case built alongside candidate instructions limits discriminative power and does not establish held-out reliability."
+  ],
+  "summary": "All four static reviews (u01-u04) independently hit F1 and F2, trigger none of traps X1-X3, and provide well-supported mechanism traces, bounded reuse decisions, and contract-preserving remedies without claiming code execution or inventing structural decomposition work where responsibilityBoundaries is not_applicable. u01, u02, and u03 additionally note in their test diagnosis that the new English translations (Videos, Drawings) lack direct assertions in the current test file."
+}

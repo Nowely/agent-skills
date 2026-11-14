@@ -1,0 +1,43 @@
+{
+  "note": "Raw adapter counters, including same-session format correction. Accounting differs from native Terra usage; do not add these fields to native totals or infer invoice cost. Provider effective effort was not confirmed. Coordinator/relay usage is not included.",
+  "judges": [
+    {
+      "judge": "carbon",
+      "model": "openrouter/google/gemini-4-carbon",
+      "requestedEffort": "high",
+      "effectiveEffort": null,
+      "durationSeconds": 654.016,
+      "adapterReportedUsage": {
+        "input": 204878,
+        "output": 11304,
+        "reasoning": 29804,
+        "cache": {
+          "read": 2589514,
+          "write": 0
+        }
+      },
+      "adapterReportedCost": 1.0797873999999998,
+      "formatCorrections": 0,
+      "toolCalls": 81
+    },
+    {
+      "judge": "glm",
+      "model": "openrouter/~z-ai/glm-flash-latest",
+      "requestedEffort": "high",
+      "effectiveEffort": null,
+      "durationSeconds": 267.619,
+      "adapterReportedUsage": {
+        "input": 164976,
+        "output": 21075,
+        "reasoning": 23160,
+        "cache": {
+          "read": 1702400,
+          "write": 0
+        }
+      },
+      "adapterReportedCost": 0.061122566399999995,
+      "formatCorrections": 1,
+      "toolCalls": 44
+    }
+  ]
+}

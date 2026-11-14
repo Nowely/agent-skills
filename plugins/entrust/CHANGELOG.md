@@ -3,6 +3,33 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- `entrust:codex`: a run whose deadline falls while its own server is still answering a setup request ends
+  as a timeout with its report. The request the deadline cancelled no longer rewrites it as a usage error
+  (E143, seen once on a loaded macOS runner).
+- Interactive reports wrap long prose on narrow screens and give annotation markers a 24-pixel minimum
+  hit target. Feedback notifications can be dismissed with a labeled button; they expire after eight idle
+  seconds, pause while hovered or focused, and clear expired undo state.
+
+### Changed
+
+- `entrust:review` checks related changed and unchanged behavior against shared invariants, assesses
+  demonstrated responsibility costs with structural examples, and scopes visual evidence to the question.
+  An added or changed mechanism's `instead` cites the existing capability or places read that lack it;
+  the report check requires this even for older records that list such mechanisms.
+- Mechanisms can reference typed change-map blocks for attributed nonblank added/removed code, test and
+  other lines. Shared counts are a subset, and unknown attribution remains distinct from verified zero.
+  Benefits, frequency, costs and tradeoffs are recorded separately from line counts.
+- Interactive mechanism cards start collapsed with recommendation and compact weight; expanded details
+  retain the evidence. Passage comments have a draft editor, source marks, full-text export and deletion
+  undo. Legacy comments without anchors remain readable as unlocated.
+- Controlled research found no observed draft 28 advantage over draft 25 on the tested cases; two reviewed
+  implementations also accepted one local preview extension. These results do not establish general
+  architecture gains. See [the research](research/2026-11-13-review-instead/README.md) for limits.
+
 ## 0.37.0 — 2026-11-13
 
 ### Added

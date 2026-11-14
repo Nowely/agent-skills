@@ -4,7 +4,7 @@ What a version of [the review skill](../../plugin/skills/review/SKILL.md) is mea
 
 ## Cases
 
-Each directory under `cases/` is a small fictional repository with the task its author was given, `brief.md`, in three states: `base/` before the change, `head/` the change as first written, and `clean/` an alternative change. `accept.mjs` checks observable requirements: all checks pass on `clean/`, and `head/` fails exactly those listed in `rubric.json`. A behavior-correct `head/` can have no failing checks and still be difficult to understand. Both variants are reviewed; neither the `clean/` label nor passing checks proves that no finding is possible or that its design is the only good one.
+Each directory under `cases/` is a small fictional repository with the task its author was given, `brief.md`, in three states: `base/` before the change, `head/` the change as first written, and `clean/` an alternative change. `accept.mjs` checks observable requirements: all checks pass on `clean/`, and `head/` fails exactly those listed in `rubric.json`. A behavior-correct `head/` can have no failing checks and still be difficult to understand. The general protocol reviews both variants; a scoped round must state any omitted variants and the resulting limits. The [next draft23/25 round](../../research/2026-11-13-review-instead/protocol.md) uses only the original private flawed snapshot. Neither the `clean/` label nor passing checks proves that no finding is possible or that its design is the only good one.
 
 | Case | `head/` | `clean/` |
 |---|---|---|
@@ -14,7 +14,8 @@ Each directory under `cases/` is a small fictional repository with the task its 
 | `overdue-notice` | a notification framework of nine files for one email, whose indirection hides that the email has no content and is sent every night | one step function of twenty lines, called as the job's other step is |
 | `currency-contract` | a fallback and a whitelist in two screens for a currency the installed dependency never omits, read off a stale page; the export forgotten | one conversion where the only lower-case source, the archive, is read |
 | `profile-phone` | phone rules written into the creation of a profile, with a catch and a stripping of separators that the installed library makes needless and a stale page calls for, a crash on what that library returns for no number, the edit path untouched, one fact in three stored fields | one check that creation and edit both call, written to the contract of the installed version, with the library's lower-case country patched where it is read and marked |
-| `slot-edit` | an editor of a delivery slot whose five rules share one variable and win by overwriting it, behind a lookup of what the order already carries, with a cache, a retry and loading state for that lookup, a timer nobody stops, and a decision in the task that rests on a stale page; the rules are skipped when the lookup fails | the rules in the order they win in one function, on the zone the order carries, checked again each minute the way the project's pickup form does it. The timer is needed: the installed form library does not validate on submit |
+| `slot-edit` | an editor of a delivery slot whose five rules share one variable and win by overwriting it, behind a lookup of what the order already carries, with a cache, a retry and loading state for that lookup, a timer nobody stops, and an author's note that follows a stale page; the rules are skipped when the lookup fails | the rules in the order they win in one function, on the zone the order carries, checked again each minute the way the project's pickup form does it. The timer is needed: the installed form library does not validate on submit |
+| `locale-options` | four old labels capture the import-time locale while two added getters use the read-time locale; tests check only the new translated labels | all fresh public label reads use the current locale while saved historical selections retain their creation-time text |
 
 A rubric item is a `find`, with the direction it belongs to (behavior, necessity, design, tests), or a `trap`: a claim a reviewer is tempted to make and the code contradicts. `head` has both; `clean` has only traps, and there the count of unsupported claims is the result.
 
@@ -23,7 +24,7 @@ A case may carry `probes` in its rubric: changes someone will be asked to make a
 ## A round
 
 1. **Arms.** Freeze each skill version under test as a numbered file in the research run. `node evals/review/round.mjs <directory> control name=instructions.md ...` prepares every case in both variants once per arm, or only the cases named after `--cases`, and writes `<directory>/runs.json` with each arm's instruction digest. Run it again on the same directory for another repetition.
-2. **Reviewers.** Give each `prompts/<run>.txt`, unchanged, to a fresh reviewer that has seen no other run, with the same model, effort and tools in every arm, and save its final message as `returns/<run>.md`.
+2. **Reviewers.** Give each `prompts/<run>.txt`, unchanged, to a fresh reviewer that has seen no other run, with the same model, effort and tools in every arm, and save its final message as `returns/<run>.md`. Where the instructions have the reviewer write a `review.json`, give it a directory outside the repository to write in, the same wording in every such arm, and save the file as `returns/<run>.json`.
 3. **Judge.** Per case and variant, give one judge [judge.md](judge.md), the case directory and that target's reviews, named by run id only. The judge is not told the arms and is not the model family under test when another is available. Collect its objects as `<directory>/verdicts.json`. The separate [design calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md) describes a more restricted blind-judging protocol and its limitations.
 4. **Record.** Add the model and effort to the record, and report every run that started, including the ones that failed or were excluded and why. `node evals/review/score.mjs <directory>` prints the table.
 
@@ -38,13 +39,20 @@ What a review says is not what it is for. The second stage measures the code tha
 The table keeps three things apart: the acceptance checks, the probes, and the repository's own tests.
 
 - **Outcome.** On `head` rows a run is `recovered` only when every acceptance check passes and a judge ruled every probe local: the task is done and the code takes the next change in one place. A run that passes the checks is `not assessed` while nobody has ruled on its probes, `disputed` where the judge's anchors are, and `checks only` in a case that has no probes; none of these counts as recovered. On `clean` rows a run is `kept` or `broken` by the checks. The recovered runs per arm are the result, and the three arms are read together: a review is worth what its implementer recovers beyond `task-only`, and the instructions under test are worth what their reviews recover beyond the control's.
+- **Checks passed.** Every acceptance check runs in a process of its own and ends as passed, failed or unfinished: a check whose implementation never returns is `unfinished`, shown beside the count, and the other checks keep their results. `outcome.json` names the failed and the unfinished ones.
 - **Own tests.** `passed`, `failed`, `unfinished` or `none`, with the exit status in `outcome.json`. They are not part of the outcome's word: read them beside it, and do not call a recovered run with failing or unfinished tests a finished solution.
 - **Lines changed.** Code and tests apart. On a `clean` row they measure how far a review moved an implementer, not harm: a useful test or a true finding also changes lines. Harm is read from the patch: a regression, a mechanism nothing needs, or a rewrite with no shown gain. Use the count to find the patches worth reading, not as a gate.
 - **Code against the clean form.** The lines of code the result adds to the code before the change, over the same count for the clean form. It is a size, not a grade: a result may be smaller than the clean form by leaving a requirement out.
 
+## The record's own lines
+
+A review written with the skill saves its record, `review.json`, in which every changed line belongs to a block with a verdict. Save it as `returns/<run>.json`, and `node evals/review/blocks.mjs <directory>` holds those verdicts against the lines the case knows: `lines.remove` in a rubric's `head` are lines no solution of the task keeps, `lines.keep` lines every solution needs. The table follows a removal link by link. `already` in the rubric names mechanisms that something existing makes needless, by words a record would use: the table gives in how many the record lists the mechanism among those the change brought, and in how many its `instead` or `basis` names what was already there. Then the lines: the superfluous ones the review marks `remove`, those it leaves in a block marked `fix`, those in no block, the needed lines it marks `remove`, and the other lines of code it marks `remove`, which show a record that removes everything. On a clean form, any line of code marked `remove`.
+
+No judge takes part, so the count repeats exactly and costs nothing. It is narrower than the judge's ruling: it shows which lines the record marks and which words it contains, not whether the reviewer understood the redundancy or gave a sound reason. A review with no record, as a control's, has no measured counters. The two mechanism columns match words. They can overcount (a name in a denial or an irrelevant sentence) and undercount (different terminology or language); they are not a lower bound or evidence that the alternative was understood. Read both matched and unmatched records. Line dispositions describe proposed removals, not architectural quality; judge behavior preservation and the target separately. `slot-edit` and `profile-phone` list their lines.
+
 ## Admitting a case
 
-A case on which the unaided arms already recover measures nothing: `booking-edit` was found whole by reviewers with no instructions, and an implementer given the task alone wrote the same code as one given the skill's review ([the calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md)). Before a case counts, run `control` and `task-only` on it three times. If they recover more than half of those runs, the case is a regression case: it stays in the round to show that nothing is lost, and its rows are reported apart from the result. Three runs decide where further measuring is worth its cost; they are no evidence of what the skill does. `slot-edit` and `profile-phone` have not been run.
+A case on which the unaided arms already recover measures nothing: `booking-edit` was found whole by reviewers with no instructions, and an implementer given the task alone wrote the same code as one given the skill's review ([the calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md)). Before a case counts, run `control` and `task-only` on it three times. If they recover more than half of those runs, the case is a regression case: it stays in the round to show that nothing is lost, and its rows are reported apart from the result. Three runs decide where further measuring is worth its cost; they are no evidence of what the skill does. For a comparison of arms, run five reviews per arm on each admitted first-written form and three on each clean one: the count of lines costs nothing per review, so the reviews are the whole price, and implementers can follow for three of the five. Give the probes to two judges that do not see each other's rulings. Preserve their original files separately. `outcome.mjs` accepts one judge file at a time: use a working copy at `outcome-verdicts.json`, save each judge's outcome JSON/table before evaluating the next, then intersect successful run IDs. Never concatenate the judgments or overwrite their originals. Missing, disputed and unassessed results stay visible; the coordinator records disagreements with both reasons. The [scoped protocol](../../research/2026-11-13-review-instead/protocol.md#independent-judgments-and-aggregation) defines the private static round's separate evidence assessment. `slot-edit` and `profile-phone` were run once as a pilot, which found their tasks and probes ambiguous ([round 4](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6834922569)); the corrected cases have not been run, and whether a judge rules their clean forms more local than their first-written ones is still to be seen.
 
 ## Reading the table
 
@@ -55,3 +63,35 @@ One run per cell shows that the instrument works and little about which arm is b
 ## What it cannot show
 
 The cases are a few hundred lines of JavaScript each and can be read whole, `slot-edit`, the largest, included. They do not show how a review behaves on a change too large to read whole or in another language. The instructions under test and most cases have one author, and the traps are the temptations that author thought of. The probes are rulings of a judge on code, checked only against the two anchors; an implementer is one more model run, with its own variance, between a review and its result.
+
+
+## Locale-options preparation status
+
+`locale-options` is a newly written fictional case inspired by a partial change to a related value group. Its
+brief defines data-read behavior, not UI reactivity. The reference uses getters, but acceptance checks use only
+public functions and also pass on an alternative with no getters. Two acceptance failures in `head` represent
+one root consistency defect; the rubric does not reward duplicate findings for each entry or consumer.
+
+The case has been checked mechanically and run in the [round-8 diagnostic](../../research/2026-11-13-review-instead/round-8/README.md):
+two Terra reviews each for full draft25 and draft28, independently judged by Carbon and GLM. Both variants
+found the root consistency issue and test gap in both runs; neither triggered the tested traps. It remains
+unadmitted as a discriminating benchmark and showed no incremental detection benefit in that pilot. Its `clean` tree is a deterministic
+reference required by this instrument, not a request to schedule clean-target reviews. It is not added to the
+frozen current pilot automatically and is formative rather than held-out evidence for draft28, which was
+designed alongside it. No architecture probes are supplied: a future passing outcome is `checks only`, not
+verified architectural recovery.
+
+## Contact-import-v2 diagnostic status
+
+[Round 9](../../research/2026-11-13-review-instead/round-9/README.md) compared two full draft25 and two full draft28
+Terra reviews on head only. Carbon and GLM support D2 in all four, but disagree on D1 (partial vs hit); preserve
+that distinction rather than derive an architecture score from the functional findings. No implementation,
+clean target or admission/transfer claim is included. The fixture and rubric remain unchanged.
+
+## Scoped contact-import-v2 outcome probe
+
+[Round 10](../../research/2026-11-13-review-instead/round-10/README.md) applies both draft28 reviews from round9
+and extends their resulting code with previewImport. Its explicitly scoped runner reuses the original 13
+checks and adds 14 frozen preview/compatibility checks, without automatic task-only or clean-target arms.
+Both paths pass and one Carbon assessment rates both changes local. This is a formative case-specific outcome,
+not admission of the fixture as a general architecture benchmark or an unmodified outcome.mjs recovery score.

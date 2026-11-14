@@ -8,7 +8,7 @@ export function checkPhone(typed, store, ownId) {
   // parsePhone ignores spaces, dashes and brackets itself, and returns null for what is not a number.
   const phone = parsePhone(typed);
   if (!phone) return { reason: "phone is not a number" };
-  // @acme/phone 3.1 gives the country in lower case and our codes are upper case. Goes when the library gives ISO case.
+  // @acme/phone gives the country in lower case, as its types say, and our codes are upper case.
   if (!isAllowed(phone.country.toUpperCase())) return { reason: "country is not allowed" };
   const holder = store.findByPhone(phone.e164);
   if (holder && holder.id !== ownId) return { reason: "phone is taken" };
