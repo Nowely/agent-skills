@@ -1,0 +1,224 @@
+{
+  "title": "Overdue invoice notifications",
+  "language": "en",
+  "range": "e557d24a0a5d85b6abe1dfff85b85327759e33a8..b37b6b63b33082014290dd231aaa7505dd528cb0",
+  "change": {
+    "goal": "Notify a customer once when an unpaid invoice becomes overdue.",
+    "why": "The task requests timely, non-duplicate overdue notifications with retry after failed sends.",
+    "parts": [
+      "Add the overdue notification step and marker",
+      "Invoke it from the nightly job",
+      "Test eligibility, message content, repeat runs and failed sends"
+    ],
+    "sources": [
+      "../brief.md:3-9",
+      "base e557d24a0a5d85b6abe1dfff85b85327759e33a8",
+      "head b37b6b63b33082014290dd231aaa7505dd528cb0"
+    ]
+  },
+  "verdict": "The sequential in-memory paths meet the tested requirements, but a UTC-specific test is missing.\n- Overlap and persistence contracts are unavailable; these determine whether the once-only requirement holds in deployment.",
+  "now": "runNightly derives the UTC date, closes paid invoices and awaits notifyOverdue. The latter filters unpaid invoices by marker and date, sends each message, records successful sends and skips failed sends until the next run.",
+  "target": "Keep the cohesive nightly and notification steps, with a test that distinguishes UTC from local dates. If overlapping runs or process restarts are allowed, establish the scheduler, storage and mail delivery contracts before choosing coordination or durable idempotency; do not claim exactly-once delivery without those guarantees.",
+  "recommendation": "Fix the UTC test gap in place; resolve the deployment contracts before accepting the once-only guarantee.",
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Email a customer when an unpaid invoice's due date has passed.",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Scheduler and concurrent updates outside this repository; ../brief.md:3"
+    },
+    {
+      "id": 2,
+      "text": "The email names the invoice number, amount and due date.",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Actual external transport delivery; ../brief.md:5"
+    },
+    {
+      "id": 3,
+      "text": "An invoice is not notified twice.",
+      "source": "task",
+      "not_checked": "Overlapping runs, process restarts, and interruption between delivery and marking; ../brief.md:6"
+    },
+    {
+      "id": 4,
+      "text": "A failed send does not stop others and is retried the next night.",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Scheduler and persistence across process lifetimes; ../brief.md:7"
+    },
+    {
+      "id": 5,
+      "text": "Dates are calendar dates in UTC.",
+      "source": "task",
+      "met": "read",
+      "not_checked": "No test distinguishes UTC from a non-UTC local date; ../brief.md:9"
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "The tests do not distinguish UTC dates from local dates",
+      "direction": "tests",
+      "evidence": "read",
+      "at": "test/nightly.test.js:6",
+      "what": "All test instants are at 01:00 UTC and the process timezone is not controlled, so deriving the date in local time could pass in a UTC environment while producing the wrong eligibility date elsewhere.",
+      "shown_by": "test/nightly.test.js:19-27 exercises date boundaries only with the night helper; src/jobs/nightly.js:6 currently uses toISOString correctly.",
+      "fix": "Add a test near UTC midnight in a controlled non-UTC timezone, with an invoice whose eligibility differs between the UTC and local calendar dates.",
+      "untested": [
+        5
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "notifyOverdue",
+      "jobs": [
+        "For each unpaid invoice skip already notified or due today or later",
+        "Format the amount and await mail delivery",
+        "On rejection increment failed and continue without a marker; on success update the marker and increment sent",
+        "Return sent and failed counts"
+      ],
+      "uses": [
+        "InvoiceRepo",
+        "formatAmount",
+        "mailer.send"
+      ],
+      "verdict": "keep",
+      "reason": "A short ordered eligibility and delivery lifecycle owns its rule; splitting it would add coordination without a demonstrated benefit."
+    },
+    {
+      "name": "runNightly",
+      "jobs": [
+        "Derive today from now in UTC",
+        "Close paid invoices then await overdue notifications and return both results"
+      ],
+      "uses": [
+        "closePaidInvoices",
+        "notifyOverdue"
+      ],
+      "verdict": "keep",
+      "reason": "The coordinator owns date and execution order without interpreting notification internals."
+    },
+    {
+      "name": "InvoiceRepo",
+      "existing": true,
+      "jobs": [
+        "Copy supplied invoices in memory",
+        "Return unpaid invoices by paidAt",
+        "Update matching invoice by id synchronously"
+      ]
+    },
+    {
+      "name": "formatAmount",
+      "existing": true,
+      "jobs": [
+        "Format minor units and currency"
+      ]
+    },
+    {
+      "name": "mailer.send",
+      "existing": true,
+      "jobs": [
+        "Forward to transport.deliver; rejection means not accepted"
+      ]
+    },
+    {
+      "name": "closePaidInvoices",
+      "existing": true,
+      "jobs": [
+        "Close paid invoices from earlier calendar dates"
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Overdue notification lifecycle",
+      "change": "added",
+      "units": [
+        "notifyOverdue",
+        "runNightly"
+      ],
+      "purpose": "Send eligible unpaid invoices and suppress later repeat sends while retrying rejected sends",
+      "basis": "Requirements 1-4; task ../brief.md:3-7. Marker, send and retry belong to one lifecycle; block attribution is unassessed because shared test setup and job integration serve multiple concerns.",
+      "instead": "src/invoices/repo.js:13-18 supplies unpaid selection and synchronous updates but no notification lifecycle; src/mail/mailer.js:1-3 forwards delivery without idempotency; src/jobs/closePaid.js:2-8 supplies an analogous marker-based nightly step, not notification delivery.",
+      "benefit": "A successful sequential send is not repeated and a rejected send is retried on the next run; actual frequency is unknown.",
+      "cost": "The notification marker must survive between runs, and the send and marker span an asynchronous boundary; scheduling and storage guarantees are not in the repository.",
+      "decision": "Keep: the task requires this behavior and no existing lifecycle implements it. Resolve deployment guarantees before adding coordination; omission would lose repeat suppression or retry.",
+      "evidence": "read"
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/invoices/overdue.js",
+      "added": "1, 3-22",
+      "unit": "notifyOverdue",
+      "does": "Import amount formatting and implement eligibility, delivery, failure isolation and marker updates.",
+      "serves": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/jobs/nightly.js",
+      "added": "1, 7",
+      "removed": "6",
+      "unit": "runNightly",
+      "does": "Import and invoke overdue notification after closing paid invoices and return its counts.",
+      "serves": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "6",
+      "does": "Provide a UTC test-time helper, without controlling local timezone.",
+      "serves": [
+        5
+      ],
+      "verdict": "fix",
+      "findings": [
+        1
+      ],
+      "kind": "test"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "7-11, 15, 19-28, 30-36, 38-45",
+      "removed": "8",
+      "does": "Provide invoice and mailer fixtures, adapt the existing paid-invoice test and cover sequential notifications, date boundaries, content, retry and failure isolation.",
+      "serves": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "verdict": "keep",
+      "kind": "test"
+    }
+  ],
+  "questions": [
+    {
+      "at": "src/invoices/overdue.js:9-18",
+      "text": "Can nightly executions overlap? Two concurrent runNightly calls sharing the supplied repo were observed to send twice before either marks the invoice. No scheduler contract is present; if overlap is allowed, establish an atomic coordination and delivery strategy."
+    },
+    {
+      "at": "src/invoices/repo.js:5-6",
+      "text": "Does notification state survive between nights and process restarts? The supplied repository is in-memory only and no scheduler or durable store is present. A successful delivery followed by interruption before the marker also leaves the retry outcome dependent on an absent delivery/idempotency contract."
+    }
+  ],
+  "coverage": "Complete text diff and all repository source and tests reviewed against ../brief.md. Base e557d24a0a5d85b6abe1dfff85b85327759e33a8; head b37b6b63b33082014290dd231aaa7505dd528cb0. Git diff --summary: only non-text metadata is creation of src/invoices/overdue.js with mode 100644; reviewed. Contracts: UTC YYYY-MM-DD src/invoices/repo.js:1; unpaid and update src/invoices/repo.js:13-18; mail rejection src/mail/mailer.js:1-3; formatting src/invoices/money.js:1-3. No external scheduler, persistent store or transport implementation supplied. npm test passed all four tests. A controlled concurrent invocation using the supplied repo and a gated mailer produced two sends; this demonstrates a conditional risk, not an established scheduled overlap. Four independent OpenAI Terra reviewers covered behavior, necessity, design and tests; their results were checked against the source. No visual requirement."
+}

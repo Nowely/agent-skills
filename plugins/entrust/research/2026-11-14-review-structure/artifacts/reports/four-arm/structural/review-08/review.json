@@ -1,0 +1,588 @@
+{
+  "title": "Ревью приёмки пробирок: BSL-2 и urgent-ряд",
+  "language": "ru",
+  "range": "HEAD~1..HEAD",
+  "change": {
+    "goal": "Обеспечить межисследовательскую изоляцию BSL-2 и резервирование urgent-ряда с overflow.",
+    "why": "Требования brief.md:3-9.",
+    "parts": [
+      "Проверка конфликтов соседей и urgent-размещения",
+      "Расширение состояния, флагов, журнала и тестов"
+    ],
+    "sources": [
+      "case/brief.md:1-77",
+      "base e87e4d0a9f05c44c19923c00af768f0180887aa9",
+      "head ceebf83a6f0b47dce2a82df0838176e3e55dedeb",
+      "git diff --no-ext-diff HEAD~1 HEAD sha256 bcc9b9c085500ae8ac77bb1a73492691f4d4de41196ff03227ff0130d9b973d3"
+    ]
+  },
+  "verdict": "По статическому чтению функциональные правила выполняются.\n- Рекомендуется упростить разделённое владение выбором и флагами и удалить недостижимую ветку.\n- Тест не проверяет отказ at-limit при свободном обычном ряде.",
+  "now": "checkinVial выполняет упорядоченные проверки, затем scanBoxSlots мутирует общее состояние с кандидатами и флагами; вызывающий выбирает ячейку и совершает эффекты.",
+  "target": "Оставить упорядоченные проверки, разбор слота и единый предикат соседей; вернуть из сканирования факты, принимать выбор и overflow в одном месте, а флаги формировать после выбора. Сохранить результат, приоритеты и порядок эффектов.",
+  "recommendation": "Упростить владение выбором и флагами и дополнить тест, не меняя контракт.",
+  "steps": [
+    {
+      "text": "Убрать недостижимую отмену и объединить владение решением о выборе и overflow.",
+      "findings": [
+        1,
+        2
+      ]
+    },
+    {
+      "text": "Проверить отказ at-limit при свободном обычном ряде.",
+      "findings": [
+        3
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Проверять входы и значения по умолчанию по brief.md:13-29 с заданным приоритетом ошибок brief.md:44-59.",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 2,
+      "text": "Ортогонально соседние образцы разных исследований конфликтуют при хотя бы одном BSL-2; нормализовать studyId и считать старый отсутствующий hazardClass стандартным (brief.md:21,34-38).",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 3,
+      "text": "Образец на пределе размещать только в urgent-ряду; ниже предела выбирать не urgent, пока там есть совместимая ячейка, иначе разрешить overflow (brief.md:39-42).",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 4,
+      "text": "Для предпочтительной ячейки проверять каноничность, занятость, ряд, конфликт в этом порядке; при автовыборе различать BOX_FULL и NO_COMPATIBLE_SLOT и сканировать по строкам (brief.md:56-63).",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 5,
+      "text": "При ошибке не менять слоты и не вызывать порты; при успехе сохранить нормализованную запись и вызвать печать перед аудитом (brief.md:65-76).",
+      "source": "task",
+      "met": "read"
+    },
+    {
+      "id": 6,
+      "text": "При успехе возвращать slot, overflowUsed и упорядоченные BSL2, AT_THAW_LIMIT, OVERFLOW_URGENT_ROW; передавать нужные данные портам (brief.md:70-77).",
+      "source": "task",
+      "met": "read"
+    }
+  ],
+  "findings": [
+    {
+      "id": 1,
+      "title": "Ветка отмены overflow недостижима",
+      "direction": "necessity",
+      "evidence": "read",
+      "at": "src/checkin.js:87",
+      "what": "scanBoxSlots выставляет overflowUsed только при пустом regularCompatible. Если предпочтительный слот вне urgent-ряда и прошёл проверку конфликта, он открыт и совместим, поэтому тот же обход обязательно добавил его в regularCompatible; при конфликте функция уже вернулась. At-limit тоже не включает overflow. Следовательно, после предыдущих проверок условие никогда не истинно.",
+      "shown_by": "src/box-grid.js:65-89 и src/checkin.js:61-90; оба пути вычисляют совместимость одной hasContainmentConflict.",
+      "fix": "Удалить ветку и фильтрацию флагов; нормальное вычисление overflow и остальная выдача сохраняются."
+    },
+    {
+      "id": 2,
+      "title": "Решение о размещении и флагах разделено общим изменяемым состоянием",
+      "direction": "design",
+      "evidence": "judgment",
+      "at": "src/box-grid.js:52",
+      "what": "scanBoxSlots не просто сканирует: меняет объект вызывающего кода, заранее выставляет флаги и overflow из наличия кандидатов. checkinVial затем отдельно выбирает слот, применяет приоритеты и читает эти промежуточные данные; обе функции дублируют определение urgent-ряда. Даже после удаления недостижимой ветки изменение правил overflow требует одновременно учитывать сканирование, выбор и формирование возвращаемых флагов.",
+      "shown_by": "src/box-grid.js:52-89 и src/checkin.js:49-58,70-103,114-133; сценарий 1.",
+      "fix": "Сосредоточить решение о выборе и overflow в одном владельце: сканирование возвращает факты о доступности, а после успешного выбора один участок формирует overflow и флаги. Сохранить порядок ошибок и эффектов.",
+      "scenarios": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Нет теста отказа at-limit при свободном обычном ряде",
+      "direction": "tests",
+      "evidence": "read",
+      "at": "test/checkin.test.js:388",
+      "what": "Случай NO_COMPATIBLE_SLOT проверен только в однорядной коробке и для образца ниже предела. Регрессия автовыбора, которая при отсутствии совместимой urgent-ячейки размещает at-limit образец в обычном ряду, текущими проверками не обнаруживается.",
+      "shown_by": "test/checkin.test.js:92-114,388-412: at-limit проверяется при пустом urgent-ряду, а тест несовместимости не имеет обычного ряда.",
+      "fix": "Добавить тест: два ряда, urgent-ряд полностью занят, обычная ячейка свободна, thawCount равен пределу; ожидать NO_COMPATIBLE_SLOT без мутаций и вызовов портов.",
+      "untested": [
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "units": [
+    {
+      "name": "checkinVial",
+      "jobs": [
+        "src/checkin.js:5-45: проверяет входы и дубликат в порядке ошибок",
+        "src/checkin.js:47-103: для preferred проверяет формат, занятость, приоритет urgent, затем конфликт; для auto проверяет наличие открытого слота и выбирает первый допустимый",
+        "src/checkin.js:105-135: сохраняет запись, вызывает label затем audit и возвращает флаги"
+      ],
+      "uses": [
+        "parseSlotCode",
+        "hasContainmentConflict",
+        "scanBoxSlots"
+      ],
+      "verdict": "fix",
+      "findings": [
+        1,
+        2
+      ],
+      "reason": "Порядок проверок полезен, но выбор и выходные флаги распределены между общим состоянием и сканированием."
+    },
+    {
+      "name": "hasContainmentConflict",
+      "jobs": [
+        "src/box-grid.js:29-50: проверяет четырёх соседей в границах, trim studyId и хотя бы один BSL-2; отсутствующий hazardClass означает standard"
+      ],
+      "uses": [
+        "formatSlotCode"
+      ],
+      "verdict": "keep",
+      "reason": "Единый предикат используется и сканированием, и проверкой предпочтительного слота."
+    },
+    {
+      "name": "scanBoxSlots",
+      "jobs": [
+        "src/box-grid.js:52-63: вычисляет urgent-ряд и добавляет флаги BSL2/AT_THAW_LIMIT",
+        "src/box-grid.js:65-81: ищет все открытые совместимые ячейки по строкам",
+        "src/box-grid.js:83-89: выставляет overflow до выбора слота, изменяя состояние вызывающего"
+      ],
+      "uses": [
+        "formatSlotCode",
+        "hasContainmentConflict"
+      ],
+      "verdict": "fix",
+      "findings": [
+        2
+      ],
+      "reason": "Сканирование раскрывает и изменяет состояние решения и выдачи."
+    },
+    {
+      "name": "formatSlotCode",
+      "existing": true,
+      "jobs": [
+        "src/box-grid.js:9-11: формирует код по координатам"
+      ]
+    },
+    {
+      "name": "parseSlotCode",
+      "existing": true,
+      "jobs": [
+        "src/box-grid.js:1,13-26: проверяет канонический синтаксис и границы."
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Размещение с containment и резервированием urgent-ряда",
+      "change": "added",
+      "units": [
+        "checkinVial",
+        "scanBoxSlots",
+        "hasContainmentConflict"
+      ],
+      "purpose": "Выбрать допустимую ячейку и вернуть ошибки и overflow согласно спецификации.",
+      "basis": "brief.md:34-63; вес не оценён: блоки одновременно обслуживают несколько правил.",
+      "instead": "src/box-grid.js:13-26 содержит разбор координат; базовый findOpenSlot (base src/box-grid.js:23-45) выбирает открытый слот без containment и urgent-политики и не обеспечивает нужное поведение.",
+      "benefit": "При смешанных исследованиях предотвращает размещение опасных соседей и резервирует urgent-ряд; частота таких случаев неизвестна.",
+      "cost": "Сканирование, состояние кандидатов и зависимость выбора и флагов от общего изменяемого объекта; частоты отказов и цена полного обхода неизвестны.",
+      "decision": "Сохранить обязательный механизм, упростить владение решением и данными без изменения правил.",
+      "evidence": "judgment",
+      "findings": [
+        2
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": 1,
+      "change": "Сохранить обязательное правило overflow при доработке выбора предпочтительной и автоматической ячейки.",
+      "requirements": [
+        3,
+        6
+      ],
+      "now": {
+        "edit": [
+          "src/box-grid.js: scanBoxSlots",
+          "src/checkin.js: checkinVial"
+        ],
+        "read": [
+          "src/box-grid.js:83-89",
+          "src/checkin.js:70-103,114-133"
+        ]
+      },
+      "target": {
+        "edit": [
+          "src/checkin.js: выбор ячейки и overflow"
+        ],
+        "read": [
+          "src/box-grid.js: возвращаемые факты доступности"
+        ]
+      }
+    }
+  ],
+  "target_units": [
+    {
+      "name": "checkinVial",
+      "jobs": [
+        "Проверяет входы в заданном порядке",
+        "Получает факты доступности, решает выбор и overflow, формирует флаги и выполняет эффекты в заданном порядке"
+      ],
+      "uses": [
+        "parseSlotCode",
+        "hasContainmentConflict",
+        "scanBoxSlots"
+      ]
+    },
+    {
+      "name": "scanBoxSlots",
+      "jobs": [
+        "Возвращает факты об открытых и совместимых ячейках без изменения выходных флагов"
+      ],
+      "uses": [
+        "hasContainmentConflict",
+        "formatSlotCode"
+      ]
+    },
+    {
+      "name": "hasContainmentConflict",
+      "jobs": [
+        "Проверяет ортогональные конфликты"
+      ],
+      "uses": [
+        "formatSlotCode"
+      ]
+    },
+    {
+      "name": "parseSlotCode",
+      "existing": true,
+      "jobs": [
+        "Разбирает канонический код и проверяет границы."
+      ]
+    },
+    {
+      "name": "formatSlotCode",
+      "existing": true,
+      "jobs": [
+        "Формирует канонический код по координатам"
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "path": "package.json",
+      "removed": "3",
+      "does": "Предыдущая версия пакета 1.0.0.",
+      "serves": [],
+      "verdict": "keep",
+      "kind": "other"
+    },
+    {
+      "path": "package.json",
+      "does": "Версия пакета",
+      "serves": [],
+      "verdict": "keep",
+      "kind": "other",
+      "added": "3"
+    },
+    {
+      "path": "src/box-grid.js",
+      "removed": "23-27, 29-30, 32, 38-39, 44",
+      "does": "Замена прежней реализации выбора слота новыми правилами",
+      "serves": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/box-grid.js",
+      "does": "Направления ортогонального соседства",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "code",
+      "added": "2-7",
+      "unit": "hasContainmentConflict"
+    },
+    {
+      "path": "src/box-grid.js",
+      "does": "Проверка конфликта соседей и классов",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "code",
+      "added": "29-34, 36-46, 48-50",
+      "unit": "hasContainmentConflict"
+    },
+    {
+      "path": "src/box-grid.js",
+      "does": "Настройка сканирования и предварительные флаги",
+      "serves": [
+        3,
+        6
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "52-56, 58-62",
+      "unit": "scanBoxSlots",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/box-grid.js",
+      "does": "Сбор открытых совместимых ячеек по рядам",
+      "serves": [
+        2,
+        3,
+        4
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "68-78",
+      "unit": "scanBoxSlots",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/box-grid.js",
+      "does": "Вычисление overflow и флага до выбора ячейки",
+      "serves": [
+        3,
+        6
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "83-90",
+      "unit": "scanBoxSlots",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/checkin.js",
+      "removed": "1, 40-43, 46-47, 60, 70",
+      "does": "Замена прежней реализации выбора слота новыми правилами",
+      "serves": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "code"
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Импорт функций сетки",
+      "serves": [
+        2,
+        3,
+        4
+      ],
+      "verdict": "keep",
+      "kind": "code",
+      "added": "1"
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Проверка класса опасности в заданном приоритете",
+      "serves": [
+        1,
+        4
+      ],
+      "verdict": "keep",
+      "kind": "code",
+      "added": "29-35",
+      "unit": "checkinVial"
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Нормализация класса и создание общего состояния",
+      "serves": [
+        1,
+        3,
+        6
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "48-58",
+      "unit": "checkinVial",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Проверка выбранной ячейки, затем приоритет ряда и конфликта",
+      "serves": [
+        2,
+        3,
+        4
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "60-68, 70, 72-76, 78-86",
+      "unit": "checkinVial",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Недостижимая отмена overflow",
+      "serves": [
+        3,
+        6
+      ],
+      "verdict": "remove",
+      "kind": "code",
+      "added": "87-90",
+      "unit": "checkinVial",
+      "findings": [
+        1
+      ]
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Автовыбор или ошибка доступности",
+      "serves": [
+        3,
+        4
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "91-103",
+      "unit": "checkinVial",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "src/checkin.js",
+      "does": "Сохранение класса, выдача флагов и audit",
+      "serves": [
+        5,
+        6
+      ],
+      "verdict": "fix",
+      "kind": "code",
+      "added": "108, 117, 124-125, 129-134",
+      "unit": "checkinVial",
+      "findings": [
+        2
+      ]
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Автовыбор и точные успешные эффекты",
+      "serves": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "42, 45-52, 58-89",
+      "removed": "42, 45, 51-55"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "At-limit и порядок флагов",
+      "serves": [
+        3,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "92, 97, 101-106, 108-113",
+      "removed": "58, 62, 66-67"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Диагональные и одноисследовательские соседи",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "116-128, 130-135, 137-148"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Legacy-сосед и входящий BSL-2",
+      "serves": [
+        2
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "150-161, 163-169"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Автоматический overflow",
+      "serves": [
+        2,
+        3,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "171-186, 188-194, 196-202"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Приоритет ошибок и отсутствие эффектов",
+      "serves": [
+        1,
+        4,
+        5
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "204, 207-214, 217, 220-232, 237-250, 252-265, 267-278, 280-290, 292-303, 305-316, 318-328, 330-338, 342-352, 355-362, 366-376, 378-381, 383, 385",
+      "removed": "70, 73, 78, 82, 86, 90"
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Полная и несовместимая коробка",
+      "serves": [
+        4
+      ],
+      "verdict": "fix",
+      "kind": "test",
+      "added": "388-399, 401-412",
+      "findings": [
+        3
+      ]
+    },
+    {
+      "path": "test/checkin.test.js",
+      "does": "Пользовательский urgent-ряд и предпочтительный overflow",
+      "serves": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "verdict": "keep",
+      "kind": "test",
+      "added": "414-432, 434-439, 441-449"
+    }
+  ],
+  "coverage": "Статически прочитаны brief.md:1-77, полный diff e87e4d0a9f05c44c19923c00af768f0180887aa9..ceebf83a6f0b47dce2a82df0838176e3e55dedeb (SHA-256 bcc9b9c085500ae8ac77bb1a73492691f4d4de41196ff03227ff0130d9b973d3), оба исходных файла и тесты, базовый box-grid.js, package.json и список отслеживаемых файлов. В репозитории нет других вызывающих или зависимостей. Границы box и старых записей приняты из brief.md:15-21; порты заданы brief.md:30-32, семантика исключений портов не определена. Тесты, приложение, сборка и сеть не запускались по ограничению; выводы из чтения. Проверка JSON проверяет структуру и привязку строк, не поведение. report.mjs check: Review data matches the diff; поведение не исполнялось."
+}

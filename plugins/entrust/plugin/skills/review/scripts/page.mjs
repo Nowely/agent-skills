@@ -337,8 +337,21 @@ function structure({ units, target }, t) {
 <section id="structure" class="stack"><h2>${esc(t("structure"))}</h2>
   <div class="pair">${figure(t("as-written"), now)}${figure(t("target"), then)}</div>
   <p class="sub">${esc(t("diagram-note"))}</p>
-  ${table([t("unit"), t("jobs"), t("uses"), t("verdict")], units.filter((u) => !u.existing).map((u) => `<tr><td class="mono">${esc(u.name)}</td><td>${esc(u.jobs.join(", "))}</td>`
-    + `<td class="mono">${esc(u.uses.join(", ")) || esc(t("nothing"))}</td><td><span class="tag ${TONE[u.verdict]}">${esc(t(`verdict.${u.verdict}`))}</span> ${cite(u.findings)}</td></tr>`))}
+  ${table([t("unit"), t("jobs"), t("uses"), t("verdict"), t("reason")], units.filter((u) => !u.existing).map((u) => `<tr><td class="mono">${esc(u.name)}</td><td>${esc(u.jobs.join(", "))}</td>`
+    + `<td class="mono">${esc(u.uses.join(", ")) || esc(t("nothing"))}</td><td><span class="tag ${TONE[u.verdict]}">${esc(t(`verdict.${u.verdict}`))}</span> ${cite(u.findings)}</td><td>${prose(u.reason ?? "")}</td></tr>`))}
+</section>`;
+}
+
+// Each change of the task walked through the code as written and through the target: where it is edited, what is read.
+function scenarios({ scenarios: tried }, t) {
+  if (!tried.length) return "";
+  const side = (s) => !s ? `<td colspan="2" class="sub">${esc(t("as-now"))}</td>`
+    : `<td>${s.edit.map((p) => `<div>${prose(p)}</div>`).join("")}</td><td>${(s.read ?? []).map((p) => `<div>${prose(p)}</div>`).join("") || esc(t("nothing"))}</td>`;
+  return `
+<section id="scenarios" class="stack"><h2>${esc(t("scenarios"))}</h2><p class="sub">${esc(t("scenarios-note"))}</p>
+  ${table(["#", t("scenario"), `${t("as-written")}: ${t("edit")}`, `${t("as-written")}: ${t("read")}`, `${t("target")}: ${t("edit")}`, `${t("target")}: ${t("read")}`, t("findings")],
+    tried.map((s) => `<tr data-where="${esc(`${t("scenarios")} ${s.id}`)}"><td class="n">${esc(s.id)}</td><td>${prose(s.change)}${s.requirements.length ? ` <span class="sub">(${esc(t("requirement").toLowerCase())} ${s.requirements.map(esc).join(", ")})</span>` : ""}</td>`
+      + `${side(s.now)}${side(s.target)}<td class="n">${cite(s.findings)}</td></tr>`))}
 </section>`;
 }
 
@@ -477,13 +490,14 @@ export function page(review, files, model) {
 <style>${STYLE}</style>
 <div class="wrap" id="review-content" tabindex="-1">
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
-<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
+<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${model.scenarios.length ? link("scenarios", "scenarios") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
 ${summary(review, model, t)}
 ${requirements(model, t)}
 ${mechanisms(review, model, t)}
 ${checks(review, t)}
 ${screens(model, t)}
 ${drawn}
+${scenarios(model, t)}
 ${tree(files, model, t)}
 <section class="stack">
   <div class="group map-filters">

@@ -2,6 +2,11 @@
 
 One private target, one fresh reviewer per round. The review instructions changed between most rounds; all observations are static and omit identifying details. “Contract” means the reviewer established the applicable source, “conditional” means it identified relevant evidence but left applicability unresolved. “Structure” is a judgment about a concrete maintenance task, not a line-count metric.
 
+In the later fixture rounds below, “no instructions” means no review-skill instructions: the common
+reviewer prompt still requested correctness, unnecessary complexity, design, readability and tests.
+It is not a baseline consisting only of “review this change”; see the
+[saved control prompt](terra-design-calibration/prompts/control.txt).
+
 | Round | Contract | Structure |
 | --- | --- | --- |
 | 1 | established | no actionable structural recommendation |

@@ -34,7 +34,9 @@ const REVIEW = {
   screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
     differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
     { name: "The page", missing: "No picture was given." }],
-  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
+  scenarios: [{ id: 1, change: "Another <code> format is read.", requirements: [1], now: { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: the row loop"] },
+    target: { edit: ["src/invoices/upper.js: upper"], read: [] } }],
+  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep", reason: "One job, read whole at a glance." }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
     { path: "src/invoices/archive.js", added: "2, 4", removed: "3", unit: "readArchive", does: "Converts the code.", serves: [1], verdict: "keep" },
@@ -210,6 +212,37 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     return render((r) => { r.mechanisms = []; }).status === 0 && !fs.readFileSync(html, "utf8").includes('id="mechanisms"') || "empty inventory is not supported";
   });
 
+test("scenarios render and reference validation survives without a numerical design gate",
+  "a structural tradeoff may improve readability with more edit locations, and a simple review may need no scenario",
+  () => {
+    const DESIGN = { id: 3, title: "A rule cannot change alone", direction: "design", evidence: "judgment", at: "src/invoices/archive.js:2",
+      what: "The format and the conversion share one loop.", shown_by: "Scenario 1.", fix: "Name the conversion; scenario 1 stays in two places without it.", scenarios: [1] };
+    const good = render((r) => { r.findings.push(DESIGN); });
+    if (good.status !== 0) return good.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('id="scenarios"') || !page.includes("Another &lt;code&gt; format is read.") || page.includes("Another <code> format")) return "the scenario is not drawn, or its text is not escaped";
+    if (!page.includes("One job, read whole at a glance.") || !good.stdout.includes("Reason: One job, read whole at a glance.")) return "a kept unit's reason is lost in presentation";
+    if (!good.stdout.includes("## Changes tried") || !good.stdout.includes("1. Another <code> format is read. (requirement 1)") || !good.stdout.includes("Target solution: edit: src/invoices/upper.js: upper. read: nothing.")) return `the printout lacks the scenario:\n${good.stdout}`;
+    const refused = [
+      [(r) => { r.findings.push({ ...DESIGN, scenarios: [9] }); }, "names scenario 9"],
+      [(r) => { r.scenarios[0].now.edit = []; }, '"now.edit" lists no place'],
+      [(r) => { delete r.units[0].reason; }, 'unit readArchive has no "reason"'],
+    ];
+    for (const [change, error] of refused) {
+      const bad = render(change);
+      if (bad.status !== 1 || !bad.stderr.includes(error)) return `not refused with "${error}": ${bad.stderr.slice(0, 300)}`;
+    }
+    const tradeoff = render((r) => {
+      r.findings.push(DESIGN);
+      r.scenarios[0].now = { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: whole loop"] };
+      r.scenarios[0].target = { edit: ["src/invoices/a.js: first", "src/invoices/b.js: second"], read: ["src/invoices/a.js: a short rule"] };
+    });
+    if (tradeoff.status !== 0) return `a tradeoff with more edits and less code to read was refused: ${tradeoff.stderr}`;
+    if (render((r) => { delete r.scenarios[0].target; }).status !== 0) return "a scenario whose target is the code as written was refused";
+    if (render((r) => { delete r.scenarios; }).status !== 0) return "a simple review with changed units was asked for scenarios";
+    return render((r) => { delete r.scenarios; r.findings.push({ ...DESIGN, scenarios: undefined }); }).status === 0 || "a design finding without a scenario was refused";
+  });
+
 test("mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns",
   "shared wiring and test code must not inflate a mechanism's exclusive production weight",
   () => {
@@ -224,6 +257,9 @@ test("mechanism weights count nonblank +/- lines, separate shared blocks and ret
       { path: r.blocks[2].path, hunks: [Array.from({ length: 13 }, (_, i) => added(i + 1))] }];
     const checked = check(r, files, run);
     if (checked.errors.length) return checked.errors.join("; ");
+    // Structural validity is not semantic proof: the checker cannot know which lines serve a mechanism.
+    const falselyAttributed = structuredClone(r); falselyAttributed.mechanisms[0].blocks = [3];
+    if (check(falselyAttributed, files, run).errors.length) return "the checker claims to decide semantic ownership";
     const model = modelOf(r, files, checked.owner, run), [a, b, unknown, reused] = model.mechanisms;
     if (model.blocks[0].added.length !== 3 || model.blocks[0].size !== 4) return "existing block representation changed";
     if (a.weight.exclusive.code.added !== 0 || a.weight.exclusive.test.added !== 7 || b.weight.exclusive.other.added !== 13) return "exclusive/category counts differ";
@@ -338,6 +374,109 @@ test("a block to remove may name a whole file",
   () => {
     const { status, stderr } = render((r) => { Object.assign(r.blocks[1], { added: "all", verdict: "remove" }); });
     return status === 0 || `refused: ${stderr}`;
+  });
+
+test("an unlinked block is not presented as unnecessary",
+  "an absent requirement link does not prove that deleting the block preserves requirements",
+  () => {
+    for (const [language, item, group] of [
+      ["en", "No requirement link recorded", "Blocks without recorded requirement links"],
+      ["ru", "Связь с требованием не указана", "Блоки без указанной связи с требованием"],
+    ]) {
+      const result = render((r) => { r.language = language; r.blocks[0].serves = []; });
+      if (result.status !== 0) return result.stderr;
+      const page = fs.readFileSync(html, "utf8");
+      if (!page.includes(item) || !page.includes(group) || !result.stdout.includes(item))
+        return `${language}: an unlinked block lacks the neutral label`;
+      if (page.includes("No requirement would fail without these") || page.includes("Без этих блоков ни одно требование не нарушается")
+        || result.stdout.includes("Serves nothing")) return `${language}: an unlinked block is presented as unnecessary`;
+    }
+    return true;
+  });
+
+test("the review procedure distinguishes a complete map from an incomplete review",
+  "an unread part must not be presented as a kept block or a checked complete report",
+  () => {
+    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
+    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
+    const interactive = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
+    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
+    const complete = [
+      "After refutation, map every nonblank changed line to exactly one block",
+      "If mapping exposes an analysis gap",
+      "For a complete review, finalize `review.json`",
+      "Without demonstrated coverage of the diff and requested directions, return partial",
+    ];
+    const partial = [
+      "If the diff cannot be covered whole or a requested direction remains unreviewed",
+      "no valid complete review or canonical `review.json` was finalized",
+      "no valid complete line map was finalized",
+      "An unread part is not `keep`",
+      "The checker maps parsed text hunks, not binary changes, file modes or other diff metadata",
+      "If artifact writes are prohibited, return the complete JSON inline",
+    ];
+    const absent = [...complete.filter((text) => !skill.toLowerCase().includes(text.toLowerCase())),
+      ...partial.filter((text) => !page.includes(text)),
+      ...["a partial review has no canonical report to render", "If writes are prohibited"].filter((text) => !interactive.includes(text)),
+      ...["for incomplete coverage", "partial review"].filter((text) => !roles.includes(text))];
+    if (absent.length) return `review instructions omit: ${absent.join("; ")}`;
+    const positions = ["### 5. Refute", complete[0], complete[2]].map((text) => skill.indexOf(text));
+    return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1]))
+      || "full line mapping is not after refutation and before finalization";
+  });
+
+test("the multi procedure assigns analysis and the canonical result without silently changing modes",
+  "these checks verify the written instructions, not whether a coordinator or assistant follows them",
+  () => {
+    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
+    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
+    const multi = roles;
+    const required = [
+      "the coordinator owns connected analysis and coverage across all four directions",
+      "reading the full diff and using helpers' work without repeating every check",
+      "[review direction helpers](../orchestrate/references/roles.md#review-direction-helpers)",
+      "no canonical JSON, complete line map or rendering is required of them",
+      "The coordinator owns the analysis, coherent target, line map and canonical result",
+      "If an approved reviewer or assistant cannot start, fails or is blocked, stop and ask; do not substitute a different mode",
+      "If an assistant returns partial, ask how to proceed; without an answer, return partial",
+      "Never add unauthorized delegation",
+    ];
+    const absent = required.filter((text) => !skill.includes(text));
+    const multiRequired = [
+      "The coordinator chooses what to share",
+      "other helpers' returns when useful",
+      "Sharing need not wait for a completed record",
+      "check the material premises of their conclusions against sources",
+      "identify borrowed evidence",
+      "who ran each reported check",
+      "For a design helper, ask where rules, state and effects are owned",
+      "Compare relevant alternatives: keep, simplify in place, consolidate, extract or",
+      "an unverified need does not establish redundancy",
+      "distinguishing observable changes and owner decisions from equivalent refactoring",
+    ];
+    absent.push(...multiRequired.filter((text) => !multi.includes(text)));
+    if (!roles.includes("it forwards their returns unchanged to the review coordinator"))
+      absent.push("the parent forwards helper returns to the review coordinator");
+    if (!roles.includes("the coordinator shares at its discretion"))
+      absent.push("the coordinator may share work with direction helpers");
+    if ((skill + multi).includes("share no assumptions, conclusions or results") ||
+        roles.includes("no suspected findings and no other helper's return"))
+      absent.push("obsolete restriction on shared analysis remains");
+    return !absent.length || `multi instructions omit: ${absent.join("; ")}`;
+  });
+
+test("a supplied target is assessed without inventing scenario chronology",
+  "a helper may compare the coordinator's provisional target without claiming an earlier scenario",
+  () => {
+    const standard = fs.readFileSync(path.join(SKILL, "references", "design-standard.md"), "utf8");
+    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
+    const required = [
+      "if a target is supplied, assess it as provisional against that scenario",
+      "before sketching a target of your own",
+    ];
+    const absent = required.filter((text) => !standard.includes(text));
+    if (page.includes("written before the target")) absent.push("outdated report-data chronology");
+    return !absent.length || `scenario instructions omit: ${absent.join("; ")}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",

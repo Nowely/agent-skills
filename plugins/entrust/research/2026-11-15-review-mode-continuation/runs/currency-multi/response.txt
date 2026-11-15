@@ -1,0 +1,17 @@
+**Recommendation: reshape the change before accepting it.** Normalize archived currency codes at the archive adapter, then restore both screens’ use of the existing price formatter.
+
+### Findings
+
+1. **Valid currencies are changed to USD** — `src/invoices/price.js:1–8`. The page’s allowlist rejects valid codes outside USD, EUR and GBP. In an executed probe, both a service invoice in CAD and an archive invoice in `jpy` displayed as `USD 10.00`.
+
+2. **CSV still contains lowercase archive codes** — `src/export/csv.js:2`. The archive adapter passes `cur` through unchanged, so the probe exported `jpy` rather than `JPY`.
+
+3. **Price formatting is duplicated** — `src/screens/list.js:4–5`, `src/screens/page.js:6`. Both screens stopped using `formatPrice` and now independently format amounts and currencies. Restoring the shared formatter avoids keeping those rules in sync.
+
+4. **Fallbacks introduce unsupported behavior** — `src/screens/page.js:5–8`. The page catches unexpected errors and displays a fabricated `USD 0.00`. The missing-currency defaults also rely on 1.x documentation, whereas the installed 2.3.0 client and archive schema require currency strings.
+
+5. **Tests miss the affected paths** — `test/price.test.js:10–22`. The suite exercises neither page nor CSV and asserts the unknown-currency fallback. A test covering both sources through all three outputs would catch the demonstrated regressions.
+
+**Checks:** `npm test` passed all four tests; the focused source-to-output probe exposed findings 1 and 2. Visual rendering and historical archive data were not checked. Four independent Terra assistants reviewed the agreed directions; their runtime model settings were not independently inspected.
+
+The complete review and line map are in [`../review.json`](../review.json). Its structural and diff-coverage check passed.

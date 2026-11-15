@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@acme/billing-client": "^2.3.0",
+    "@acme/reports": "^1.2.0"
+  }
+}

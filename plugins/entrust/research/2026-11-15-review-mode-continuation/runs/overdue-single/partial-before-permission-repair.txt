@@ -1,0 +1,7 @@
+## Partial review — no verdict
+
+The four local tests pass (`npm test`). The diff includes tests for the UTC due-date boundary, email content, repeat notification, paid invoices, and retry after a failed send.
+
+**The review is incomplete:** read access was denied for the required review-contract references and `package.json`. I therefore could not validate a canonical `review.json` or complete the required connected-code analysis, and no report was saved. Passing tests alone are not enough to recommend accepting the change.
+
+No project source was modified and no comments were posted. Please grant read access to the required files to complete the review.

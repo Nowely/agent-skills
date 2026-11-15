@@ -1,0 +1,245 @@
+{
+  "title": "Overdue invoice notifications",
+  "language": "en",
+  "range": "e557d24a0a5d85b6abe1dfff85b85327759e33a8..b37b6b63b33082014290dd231aaa7505dd528cb0",
+  "change": {
+    "goal": "Notify customers once when an unpaid invoice becomes overdue, retrying failed sends.",
+    "why": "The task requests a nightly overdue notice.",
+    "parts": [
+      "Add an overdue notification step and store a successful-send marker.",
+      "Run the step after paid-invoice closing.",
+      "Add nightly-job tests."
+    ],
+    "sources": [
+      "../brief.md:1-9",
+      "base e557d24a0a5d85b6abe1dfff85b85327759e33a8",
+      "head b37b6b63b33082014290dd231aaa7505dd528cb0; diff e557d24a0a5d85b6abe1dfff85b85327759e33a8..b37b6b63b33082014290dd231aaa7505dd528cb0"
+    ]
+  },
+  "verdict": "The sequential, retained-repository behavior meets the supplied examples and task paths examined.\n- No confirmed finding; execution and storage lifetimes are unspecified and materially limit the once-only guarantee.\n- Four repository tests passed; an overlapping invocation experiment sent twice.",
+  "now": "runNightly derives a UTC date, closes paid invoices, then notifies unpaid invoices whose due date is earlier and whose marker is absent. After an accepted send it records the date; a rejected send leaves the marker absent and processing continues.",
+  "target": "Keep the existing short coordinator, date comparison, existing amount formatter and per-invoice send/mark loop for sequential runs. Confirm the runtime and storage guarantees before claiming once-only delivery across overlap or restarts; any stronger mechanism depends on those contracts and mail transport capabilities.",
+  "recommendation": "Accept for serialized invocations with retained invoice state; otherwise resolve the delivery and persistence contract before accepting the once-only guarantee.",
+  "requirements": [
+    {
+      "id": 1,
+      "text": "Run the overdue notice from runNightly for an unpaid invoice only after its UTC calendar due date.",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Payments concurrently changing during a run; scheduling and concurrent job execution. Source: ../brief.md:3,9."
+    },
+    {
+      "id": 2,
+      "text": "Name the invoice number, amount and due date in the email sent through mailer.send(to, subject, body).",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Supported currencies and amount conventions beyond the existing formatter; real transport integration. Source: ../brief.md:3-5."
+    },
+    {
+      "id": 3,
+      "text": "Do not notify an invoice twice.",
+      "source": "task",
+      "not_checked": "The test covers sequential runs sharing one repository; overlap duplicates sends and persistence across process restarts is not established. Source: ../brief.md:6."
+    },
+    {
+      "id": 4,
+      "text": "A failed send must not stop other invoices and must be retried the next night.",
+      "source": "task",
+      "met": "ran",
+      "not_checked": "Production scheduling and retained storage across process restarts. Source: ../brief.md:7."
+    }
+  ],
+  "findings": [],
+  "units": [
+    {
+      "name": "notifyOverdue",
+      "jobs": [
+        "Iterate the unpaid snapshot: skip already-notified invoices and dates on or after today.",
+        "Format the amount and await mail delivery; on rejection count failure and continue without marking.",
+        "After acceptance update overdueNotifiedAt and count the send; return counts."
+      ],
+      "uses": [
+        "InvoiceRepo",
+        "formatAmount",
+        "mailer.send"
+      ],
+      "verdict": "keep",
+      "reason": "Ordered eligibility and delivery operations are short and cohesive; scheduler and storage guarantees are unknown."
+    },
+    {
+      "name": "runNightly",
+      "jobs": [
+        "Convert now to a UTC YYYY-MM-DD date.",
+        "Close paid invoices first, then await notification and return both outcomes."
+      ],
+      "uses": [
+        "closePaidInvoices",
+        "notifyOverdue"
+      ],
+      "verdict": "keep",
+      "reason": "The coordinator preserves the existing step and clearly sequences the added step."
+    },
+    {
+      "name": "InvoiceRepo",
+      "existing": true,
+      "jobs": [
+        "Construct shallow copies, return unpaid invoices based on paidAt, and update the in-memory matching record."
+      ]
+    },
+    {
+      "name": "formatAmount",
+      "existing": true,
+      "jobs": [
+        "Render amountMinor divided by 100 with two decimals and a currency prefix."
+      ]
+    },
+    {
+      "name": "mailer.send",
+      "existing": true,
+      "jobs": [
+        "Forward to transport.deliver; its documented rejection means the message was not accepted."
+      ]
+    },
+    {
+      "name": "closePaidInvoices",
+      "existing": true,
+      "jobs": [
+        "Close eligible paid invoices in the supplied repository for the given date."
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "Notification marker and retry on next run",
+      "change": "added",
+      "units": [
+        "notifyOverdue",
+        "runNightly"
+      ],
+      "purpose": "Suppress successful repeat sends and retry rejected sends on later nightly invocations.",
+      "basis": "Task requirements 3 and 4; repository update is in-memory at src/invoices/repo.js:17-18. Attribution is unassessed because blocks include mixed notification and test work.",
+      "instead": "src/invoices/repo.js:13-18 provides unpaid selection and generic update but no existing notification marker or retry; src/mail/mailer.js:1-3 exposes delivery and rejection only.",
+      "benefit": "Without a marker, sequential nightly runs resend every overdue invoice; without leaving failed sends unmarked they cannot be retried. The frequency of failures and replays is unknown.",
+      "cost": "Adds a stored invoice field and sequencing of delivery and update; the marker does not coordinate overlapping runs or establish persistence.",
+      "decision": "Keep for the specified sequential retry and suppression; ask about scheduler, persistence and transport guarantees before prescribing additional coordination.",
+      "evidence": "read"
+    }
+  ],
+  "blocks": [
+    {
+      "path": "src/invoices/overdue.js",
+      "added": "1",
+      "does": "Import the existing formatter.",
+      "serves": [
+        2
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "src/invoices/overdue.js",
+      "added": "3-22",
+      "unit": "notifyOverdue",
+      "does": "Select eligible unpaid invoices, format and send notices, isolate failed sends, mark successes and return counts.",
+      "serves": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "src/jobs/nightly.js",
+      "added": "1",
+      "does": "Import the notification step.",
+      "serves": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "src/jobs/nightly.js",
+      "added": "7",
+      "removed": "6",
+      "unit": "runNightly",
+      "does": "Preserve paid closing and sequence the overdue step, returning both results.",
+      "serves": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "6-11",
+      "does": "Define date, invoice and mailer fixtures.",
+      "serves": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "15",
+      "removed": "8",
+      "does": "Supply a mailer and preserve the existing closed count assertion with the expanded result.",
+      "serves": [
+        1
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "19-28",
+      "does": "Test before, on and after the due date and verify message content.",
+      "serves": [
+        1,
+        2
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "30-36",
+      "does": "Test sequential suppression and paid invoice exclusion.",
+      "serves": [
+        1,
+        3
+      ],
+      "verdict": "keep"
+    },
+    {
+      "path": "test/nightly.test.js",
+      "added": "38-45",
+      "does": "Test a rejected send, continued processing and a retry on a later run.",
+      "serves": [
+        3,
+        4
+      ],
+      "verdict": "keep"
+    }
+  ],
+  "questions": [
+    {
+      "at": "src/invoices/overdue.js:9-18",
+      "text": "Can nightly invocations overlap? A local Promise.all experiment against the public entry point produced two sends for one invoice before either invocation recorded its marker. No scheduler or serialization guarantee is supplied; if overlap is allowed the once-only requirement needs coordination, with transport acceptance semantics considered separately."
+    },
+    {
+      "at": "src/invoices/repo.js:5-6",
+      "text": "Is the repository and overdueNotifiedAt state retained across nightly processes or reconstructed from persisted records? The supplied implementation is in-memory; production construction and persistence are not present. Reconstruction from unmarked inputs would cause a repeat send."
+    },
+    {
+      "at": "src/invoices/money.js:1-2",
+      "text": "What currencies and minor-unit conventions are supported? The reused formatter always divides by 100 and prints two decimal places; the supplied task does not specify the domain."
+    }
+  ],
+  "coverage": "Full textual diff and all tracked repository files read; base nightly and removed test lines examined in the diff. Task: ../brief.md:1-9. Date contract: src/invoices/repo.js:1; unpaid selection and storage: src/invoices/repo.js:5-18; amount formatting: src/invoices/money.js:1-3; transport rejection contract: src/mail/mailer.js:1-3. No scheduler, persistence adapter, external transport implementation, lockfile or production callers are present in the tracked tree. Non-text metadata: git diff --summary reports only creation of src/invoices/overdue.js with mode 100644. Executed npm test: 4 passed. Executed a local overlapping Promise.all of two runNightly calls sharing one InvoiceRepo and an immediately resolving async mailer: two sends and one marker; this demonstrates the API behavior, not scheduler reachability. Base e557d24a0a5d85b6abe1dfff85b85327759e33a8; head b37b6b63b33082014290dd231aaa7505dd528cb0."
+}

@@ -95,6 +95,7 @@ export function check(review, files, directory) {
   for (const field of ["parts", "sources"]) if (!filled(review.change?.[field])) errors.push(`"change.${field}" lists nothing`);
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   if (review.mechanisms !== undefined && !Array.isArray(review.mechanisms)) errors.push('"mechanisms" is not a list');
+  if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
   errors.push(...labelFaults(review));
   if (errors.length) return { errors, owner };
 
@@ -105,6 +106,19 @@ export function check(review, files, directory) {
   };
   const refs = (who, ids, listed, what) => { for (const id of ids ?? []) if (!listed.has(id)) errors.push(`${who} names ${what} ${id}, which is not listed`); };
   const requirements = known(review.requirements, "requirement", "id"), findings = known(review.findings, "finding", "id");
+  // A change of the task walked through the code: where it is edited, and what must be read to make it safely.
+  const scenarios = review.scenarios ?? [], scenarioIds = known(scenarios, "scenario", "id");
+  const places = (list) => Array.isArray(list) && list.every(text);
+  for (const s of scenarios) {
+    const who = `scenario ${s.id}`;
+    if (!text(s.change)) errors.push(`${who} has no "change": the change of the task it walks through`);
+    refs(who, s.requirements, requirements, "requirement");
+    for (const side of ["now", "target"]) {
+      if (side === "target" && s.target === undefined) continue;
+      if (!filled(s[side]?.edit) || !places(s[side].edit)) errors.push(`${who}: "${side}.edit" lists no place to edit`);
+      if (s[side]?.read !== undefined && !places(s[side].read)) errors.push(`${who}: "${side}.read" is not a list of places`);
+    }
+  }
   for (const f of review.findings) {
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
@@ -114,6 +128,7 @@ export function check(review, files, directory) {
     // A missing test breaks no requirement, and only a finding about tests says one is missing.
     if (f.direction === "tests" && f.breaks?.length) errors.push(`finding ${f.id} is about tests: it lists requirements under "untested", not "breaks"`);
     if (f.direction !== "tests" && f.untested?.length) errors.push(`finding ${f.id} is not about tests: it lists requirements under "breaks", not "untested"`);
+    refs(`finding ${f.id}`, f.scenarios, scenarioIds, "scenario");
   }
   for (const r of review.requirements) {
     if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
@@ -161,6 +176,7 @@ export function check(review, files, directory) {
     }
   }
   for (const u of units.filter((u) => !u.existing)) {
+    if (!text(u.reason)) errors.push(`unit ${u.name} has no "reason": why it is to ${u.verdict ?? "keep"}, a unit kept as it is included`);
     if (!UNIT_VERDICTS.includes(u.verdict)) errors.push(`unit ${u.name}: verdict is one of ${UNIT_VERDICTS.join(", ")}`);
     refs(`unit ${u.name}`, u.findings, findings, "finding");
     if (u.verdict !== "keep" && !u.findings?.length) errors.push(`unit ${u.name} is to ${u.verdict} and names no finding`);
@@ -259,6 +275,7 @@ export function modelOf(review, files, owner, directory) {
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
   const { labels, ...content } = review;
-  return { blocks, mechanisms: weighMechanisms(review.mechanisms ?? [], blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
+  const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
+  return { blocks, scenarios, mechanisms: weighMechanisms(review.mechanisms ?? [], blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }

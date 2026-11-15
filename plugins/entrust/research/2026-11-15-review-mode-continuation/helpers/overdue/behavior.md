@@ -1,0 +1,9 @@
+## Behavior review
+
+**Question: can nightly runs overlap?** If so, `src/invoices/overdue.js:9–18` can send the same notification twice: both runs check the unmarked invoice before either awaited send completes and writes the marker. I reproduced this with two concurrent `runNightly` calls sharing the supplied `InvoiceRepo`: the mailer received two sends for one invoice. The repository contains no scheduler or serialization contract, so overlap is not established as a production-reachable condition. If overlap is permitted, preventing duplicates requires coordination around the send; the appropriate mechanism depends on the persistence and delivery guarantees.
+
+**Question: does notification state survive between nightly runs?** `InvoiceRepo` stores cloned invoices only in memory (`src/invoices/repo.js:5–6,17–18`). Sequential runs sharing the same instance retain the marker, as the tests demonstrate. No persistence, reconstruction, or scheduling code is present to establish whether that instance or its updated data survives until the next night. A fresh repo constructed from the original data would send again. The same unknown affects recovery after a successful send but before the marker is recorded.
+
+For the supplied in-memory repository and sequential runs, the inspected code follows the requested UTC date boundary, excludes paid invoices, includes the requested email fields, and continues after a rejected send.
+
+**Checks:** `npm test` passed all four tests; the concurrent-run reproduction above was also executed. Examined the complete diff and connected repository, money, mailer, and nightly-step implementations. No network, source changes, comments, or report artifacts. Scheduler and durable-storage contracts were not available; this is the assigned behavior-direction review, not a complete multi-direction review.

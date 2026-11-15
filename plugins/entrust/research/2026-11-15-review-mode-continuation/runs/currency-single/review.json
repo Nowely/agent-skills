@@ -1,0 +1,56 @@
+{
+  "title": "Invoice currency casing",
+  "language": "en",
+  "range": "e2d6c6cb34ffab5d2d77314969cca38e5470bb08..7763689a9012d268dd34c8c67f24675d82f83678",
+  "change": {
+    "goal": "Show uppercase currency codes in invoice lists, pages, and CSV exports.",
+    "why": "Some older invoices display lower-case currency codes.",
+    "parts": ["Add currency normalization with a three-code allowlist and fallback", "Format list and page prices independently", "Add normalization and list tests"],
+    "sources": ["../brief.md:1-5", "base e2d6c6cb34ffab5d2d77314969cca38e5470bb08", "head 7763689a9012d268dd34c8c67f24675d82f83678"]
+  },
+  "verdict": "The change does not satisfy the task.\n- Archived currencies remain lower-case in CSV.\n- Invoice pages relabel valid currencies outside USD, EUR and GBP as USD.",
+  "now": "The list uppercases its own price, the page applies an allowlist and fallback, and CSV exports the original currency. Both screens duplicate amount formatting.",
+  "target": "Uppercase the archive currency when readArchive adapts archived rows; the installed service client already guarantees uppercase. Restore the shared formatPrice for both screens and leave CSV consuming the normalized invoices. Preserve the original currency and amount without inventing defaults.",
+  "recommendation": "Reshape toward normalization at the archive boundary and restore shared price formatting.",
+  "steps": [
+    {"text": "Normalize archived currency on ingestion, and remove the allowlist and invented fallback while restoring shared screen formatting.", "findings": [1, 2]},
+    {"text": "Test both invoice sources across the list, page, and CSV, including an accepted currency outside the allowlist.", "findings": [3]}
+  ],
+  "requirements": [
+    {"id": 1, "text": "Show the currency code in uppercase in the invoice list.", "source": "task", "met": "ran", "not_checked": "Visual rendering in the desktop application; output strings were exercised directly."},
+    {"id": 2, "text": "Show the invoice's currency code in uppercase on the invoice page.", "source": "task", "not_checked": "Visual rendering in the desktop application."},
+    {"id": 3, "text": "Show the invoice's currency code in uppercase in CSV export.", "source": "task"},
+    {"id": 4, "text": "Handle invoices from the billing service and the local archive.", "source": "task"}
+  ],
+  "findings": [
+    {"id": 1, "title": "The page silently changes valid currencies to USD", "direction": "behavior", "evidence": "ran", "at": "src/invoices/price.js:8", "what": "The allowlist substitutes USD for valid three-letter codes outside USD, EUR and GBP, changing the represented currency rather than just its case. The page applies this to both service and archive invoices.", "shown_by": "A direct run through loadInvoices and renderPage produced USD 10.00 for both a service invoice with CAD and an archive row with cad; list output was CAD 10.00. The service's installed validator accepts CAD (node_modules/@acme/billing-client/index.js:3-14), and data/archive.schema.json:9 accepts cad.", "fix": "Preserve the code and uppercase the archived value at its adapter; remove the allowlist and USD fallback, and use the shared formatter on the page.", "breaks": [2, 4]},
+    {"id": 2, "title": "CSV still exports archived currency in lower case", "direction": "behavior", "evidence": "ran", "at": "src/invoices/archive.js:3", "what": "Uppercasing only in screen paths leaves the CSV consumer with the unmodified archive currency, so the required export remains incorrect.", "shown_by": "A direct run through loadInvoices and toCsv exported A,cad,10.00 for an archive row with cur cad; src/export/csv.js:2 reads invoice.currency directly.", "fix": "Uppercase row.cur in readArchive so CSV and both screens consume the same normalized invoice; the service client already guarantees uppercase.", "breaks": [3, 4]},
+    {"id": 3, "title": "Tests do not cover the page or CSV paths", "direction": "tests", "evidence": "ran", "at": "test/price.test.js:10", "what": "The added tests cover the helper and list only, and explicitly expect an unsupported fallback. They do not exercise either source through all three outputs or check preservation of a code outside the allowlist.", "shown_by": "npm test passes all four tests while the direct CAD/cad reproduction demonstrates both the incorrect page and lower-case CSV.", "fix": "Add tests using an accepted service code and a lowercase archive code, asserting that list, page and CSV preserve the code in uppercase; replace tests that require fabricated USD fallback.", "untested": [2, 3, 4]}
+  ],
+  "units": [
+    {"name": "normalizeCurrency", "jobs": ["For non-string or blank input returns the fallback; otherwise trims and uppercases, then returns the result only for USD/EUR/GBP, else fallback"], "uses": [], "verdict": "remove", "findings": [1, 2], "reason": "The input contracts already guarantee strings and the allowlist changes valid currencies; archive adaptation supplies needed case conversion."},
+    {"name": "renderList", "jobs": ["Maps invoices to number and amount formatted in major units; substitutes USD for nullish currency then uppercases it"], "uses": [], "verdict": "fix", "findings": [2], "reason": "Restore its shared formatter after normalization at the input boundary."},
+    {"name": "renderPage", "jobs": ["Normalizes the code and formats the amount; on any exception returns a fabricated USD zero price; returns the invoice title and price"], "uses": ["normalizeCurrency"], "verdict": "fix", "findings": [1, 2], "reason": "Restore shared formatting and avoid unsupported substitutions and exception masking."},
+    {"name": "formatPrice", "existing": true, "jobs": ["Formats currency and amount in major units"], "uses": []},
+    {"name": "loadInvoices", "existing": true, "jobs": ["Combines validated service invoices with adapted archive rows"], "uses": ["readArchive"]},
+    {"name": "readArchive", "existing": true, "jobs": ["Maps stored archive row fields into invoice fields without changing currency"], "uses": []},
+    {"name": "toCsv", "existing": true, "jobs": ["Serializes the invoice currency and amount directly"], "uses": []}
+  ],
+  "target_units": [
+    {"name": "readArchive", "existing": true, "jobs": ["Maps archive row fields to invoice fields and uppercases the stored three-letter currency"]},
+    {"name": "formatPrice", "existing": true, "jobs": ["Formats the already normalized currency and amount in major units"]},
+    {"name": "renderList", "jobs": ["Maps invoices to number and shared formatted price"], "uses": ["formatPrice"]},
+    {"name": "renderPage", "jobs": ["Returns title and shared formatted price"], "uses": ["formatPrice"]},
+    {"name": "toCsv", "existing": true, "jobs": ["Serializes the normalized invoice currency and amount directly"]}
+  ],
+  "mechanisms": [
+    {"name": "Screen-level currency normalization and fallback", "change": "added", "units": ["normalizeCurrency", "renderList", "renderPage"], "purpose": "Uppercase currencies for screen prices and fall back to USD for selected unexpected inputs.", "basis": "Task requires uppercase at all three outputs (../brief.md:3); archive strings are required lowercase in data/archive.schema.json:5-10 and service strings are validated uppercase in node_modules/@acme/billing-client/index.js:3-14. Weight is unassessed because blocks also contain shared price-formatting work.", "instead": "src/invoices/archive.js:2-3 is the adapter through which archive currency enters all outputs; src/invoices/load.js:5-6 combines it with service results, whose uppercase contract is validated at node_modules/@acme/billing-client/index.js:11-14.", "benefit": "Screen uppercase for archive inputs; fallback would display a price for invalid or absent currency, whose occurrence is unknown and excluded by the documented source contracts.", "cost": "Different screen rules and duplicated amount formatting leave CSV unnormalized, relabel accepted currencies, and hide page errors with a fabricated price.", "decision": "Replace screen-level conversions and fallbacks with uppercase conversion at the archive adapter; reuse the existing shared price formatter. This preserves valid source codes across all outputs without claiming support for invalid inputs.", "evidence": "judgment", "findings": [1, 2]}
+  ],
+  "blocks": [
+    {"path": "src/invoices/price.js", "added": "1, 3-9", "unit": "normalizeCurrency", "does": "Defines the allowed currency list and fallback-based normalizer.", "serves": [2], "verdict": "remove", "findings": [1, 2]},
+    {"path": "src/screens/list.js", "removed": "1, 4", "added": "2-6", "unit": "renderList", "does": "Replaces shared formatting with local null fallback, uppercase conversion and price formatting.", "serves": [1], "verdict": "fix", "findings": [2]},
+    {"path": "src/screens/page.js", "removed": "1, 4", "added": "1, 4-10", "unit": "renderPage", "does": "Replaces shared formatting with normalizer, local amount formatting and catch-all USD zero fallback.", "serves": [2], "verdict": "fix", "findings": [1, 2]},
+    {"path": "test/price.test.js", "removed": "3", "added": "3-4, 10-13, 15-18, 20-22", "does": "Adds helper and list tests and imports, including fallback expectations.", "serves": [1, 2], "verdict": "fix", "findings": [3]}
+  ],
+  "coverage": "Reviewed the complete text diff e2d6c6cb34ffab5d2d77314969cca38e5470bb08..7763689a9012d268dd34c8c67f24675d82f83678, task ../brief.md:1-5, all production files, the test, archive schema, lockfile, installed billing-client 2.3.0 types, implementation and changelog, and billing documentation. The latter describes 1.x, not the directly imported 2.3.0. git diff --summary reported no non-text or mode changes. npm test passed 4 tests; a direct Node reproduction exercised service CAD and archived cad through load, list, page and CSV. No UI rendering was checked. The archive schema is the available stored-row contract; original desktop writer and actual persisted data are unavailable. No network was used. Requirements derive from ../brief.md:3-5. Source snapshots are immutable git revisions; ../brief.md is an external task file and is not preserved in the repository."
+}

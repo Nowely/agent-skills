@@ -1,0 +1,11 @@
+**Recommendation: reshape the change before accepting it.** Normalize archived currency codes at the archive boundary, then reuse the existing shared price formatter for both screens.
+
+1. **The invoice page changes valid currencies to USD** — `src/invoices/price.js:8`. The new allowlist rejects codes beyond USD, EUR and GBP. A run using valid `CAD` service and `cad` archive invoices displayed both as `USD 10.00` on the page. Preserve the original code instead of substituting a currency.
+
+2. **CSV export still contains lowercase archive currencies** — `src/invoices/archive.js:3`, `src/export/csv.js:2`. A run with an archived `cad` invoice exported `cad`, because only the screen paths uppercase it. Normalize the archive value where it enters the application so all three outputs receive it.
+
+3. **Tests miss both regressions** — `test/price.test.js:10`. They cover the helper and list, but not the page or CSV, and they assert the unsupported USD fallback. Add coverage for both sources across all three outputs, including a currency outside the allowlist.
+
+**Verification:** `npm test` passed all four tests; the direct service/archive reproduction exposed both defects. UI rendering was not checked. The original archive writer and actual stored data were unavailable; the review used the supplied archive schema.
+
+The complete review and changed-line map are in [review.json](../review.json); its structural validation passed.

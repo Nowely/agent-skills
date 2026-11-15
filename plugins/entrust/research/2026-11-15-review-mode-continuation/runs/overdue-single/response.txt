@@ -1,0 +1,12 @@
+## Review: conditional acceptance
+
+The change meets the examined task paths for **sequential nightly runs that retain invoice state**. No confirmed defect was found under those conditions. The once-only guarantee cannot yet be established for the production lifecycle.
+
+Two questions affect acceptance:
+
+- **Can runs overlap?** In a local experiment, two concurrent `runNightly` calls sent the same invoice twice before either recorded its marker (`src/invoices/overdue.js:9–18`). No scheduler or serialization contract is present in the repository.
+- **Does invoice state survive between runs?** The supplied repository is in-memory (`src/invoices/repo.js:5–6`). Reconstructing it from records without the notification marker would permit another send; production persistence is not shown.
+
+The existing amount formatter also assumes two decimal places for every currency; the supported currency conventions are unspecified.
+
+**Checks:** all four tests passed. The complete [review record](../review.json) was saved outside the source tree and passed the review-data checker.

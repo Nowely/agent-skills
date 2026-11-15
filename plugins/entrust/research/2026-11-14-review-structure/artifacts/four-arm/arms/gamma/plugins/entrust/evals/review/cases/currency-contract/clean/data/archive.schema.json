@@ -1,0 +1,12 @@
+{
+  "$id": "archive-row",
+  "description": "One invoice as the desktop app stored it. The archive is closed: nothing writes to it any more.",
+  "type": "object",
+  "required": ["id", "no", "cur", "amt"],
+  "properties": {
+    "id": { "type": "string" },
+    "no": { "type": "string", "description": "The invoice number." },
+    "cur": { "type": "string", "pattern": "^[a-z]{3}$", "description": "The currency as the desktop app wrote it: three lower-case letters." },
+    "amt": { "type": "integer", "description": "The amount in minor units." }
+  }
+}

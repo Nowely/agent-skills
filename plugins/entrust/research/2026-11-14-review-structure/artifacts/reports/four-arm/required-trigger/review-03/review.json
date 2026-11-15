@@ -1,0 +1,79 @@
+{
+  "title": "Ревью резервирования причала",
+  "language": "ru",
+  "range": "HEAD~1..HEAD",
+  "change": {
+    "goal": "Реализовать автономное истечение и жизненный цикл броней.",
+    "why": "Задание требует истечения без дальнейших вызовов потребителя.",
+    "parts": ["Таймер на бронь и отмена работы при cancel и close.", "Удаление до уведомления и обработка ошибок callbacks."],
+    "sources": ["case/brief.md:3-11", "base b37f5cadb2eed52449a72e9a0e1f906b7b87f7d0", "head 77151c13ab761fc2465820c3d755e345af206c51", "git diff --no-ext-diff HEAD~1..HEAD -- desk.js SHA-256 6a1718cd8543ca98f1205108399892240e4da555438c2067c9aaf261bd240029"]
+  },
+  "verdict": "Исправить на месте: cancel и has не проверяют id.\n- Защита от устаревшего таймера дублирует гарантию clock.\n- Контракт clock не гарантирует доставку точно в срок.",
+  "now": "createDesk хранит id и объект с handle. reserve регистрирует таймер; callback проверяет идентичность, удаляет бронь и уведомляет. cancel и close очищают таймеры. Проверку id делает только reserve.",
+  "target": "Сохранить таймер на бронь и хранить handle непосредственно в Map. Отменять работу через clearTimeout; callback удаляет id до onExpire и обрабатывает ошибки. Проверять id публичных операций открытого desk; для поиска применять Map.has, поскольку handle может быть ложным значением. Сохранить порядок сроков, реентерабельность, закрытие и обработку ошибок.",
+  "recommendation": "Исправить существующий desk, не меняя внешний API.",
+  "steps": [
+    {"text": "Добавить проверку id в cancel и has и тесты контракта.", "findings": [1, 3]},
+    {"text": "Удалить избыточную защиту идентичности, сохранив отмену и поддержку любых handles.", "findings": [2]}
+  ],
+  "requirements": [
+    {"id": 1, "text": "На открытом desk id — непустая строка, длительность — конечное положительное число; некорректные входы вызывают TypeError.", "source": "task", "reference": "brief.md:3"},
+    {"id": 2, "text": "Активный id нельзя резервировать повторно; срок начинается с clock.now().", "source": "task", "reference": "brief.md:3", "not_checked": "Дубликаты проверены чтением; точность отсчёта при возможной задержке планировщика не установлена."},
+    {"id": 3, "text": "После close reserve и cancel выбрасывают ошибку, has возвращает false; close идемпотентен.", "source": "task", "reference": "brief.md:3", "met": "read"},
+    {"id": 4, "text": "По сроку без нового вызова бронь удаляется и onExpire вызывается ровно раз; id можно сразу переиспользовать, включая callback.", "source": "task", "reference": "brief.md:5", "not_checked": "Гарантия доставки строго в срок не следует из контракта clock; выполнение не запускалось."},
+    {"id": 5, "text": "cancel возвращает факт удаления и отменяет ожидающую работу; close молча снимает все брони и освобождает работу.", "source": "task", "reference": "brief.md:3-5", "met": "read"},
+    {"id": 6, "text": "Каждая бронь регистрирует один deadline; равные сроки доставляются по порядку; удаление предшествует callback; отмена другой недоставленной брони подавляет её callback.", "source": "task", "reference": "brief.md:9", "met": "read"},
+    {"id": 7, "text": "При ошибке onExpire вызвать onError(error, id) один раз и продолжить; ошибки onError подавлять; отмена и close не вызывают callbacks.", "source": "task", "reference": "brief.md:9", "met": "read"},
+    {"id": 8, "text": "Приёмочные тесты запускаются node --test на Node 20+, без пакетов.", "source": "task", "reference": "brief.md:11", "not_checked": "Запуск тестов запрещён заданием на ревью; версия Node не проверялась."}
+  ],
+  "findings": [
+    {"id": 1, "title": "cancel и has принимают некорректный id", "direction": "behavior", "evidence": "read", "at": "desk.js:29-38", "what": "На открытом desk cancel(\"\") и has(42) возвращают false вместо TypeError. Проверка id в reserve не распространяется на остальные входы. Поведение существовало в базе, но новый контракт явно его запрещает.", "shown_by": "brief.md:3 требует непустые строковые id и TypeError для некорректных входов; desk.js:30-32 и 37-38 обращаются к Map без проверки.", "fix": "Проверять id для cancel и has на открытом desk; сохранить ошибку закрытия для cancel и false после close для has.", "breaks": [1]},
+    {"id": 2, "title": "Проверка идентичности дублирует гарантию отмены таймера", "direction": "necessity", "evidence": "read", "at": "desk.js:17-19", "what": "Объект entry и проверка идентичности защищают от доставки устаревшей задачи после cancel или close, но контракт clock исключает доставку очищенной недоставленной задачи. После доставки запись удаляется до пользовательского callback; повторная бронь создаёт новую задачу. Объект требует согласованного чтения timer в cancel и close.", "shown_by": "brief.md:9 гарантирует отсутствие inline вызова и подавление недоставленного callback через clearTimeout; desk.js:20 предшествует desk.js:22, а desk.js:33-34 и 41-44 отменяют оставшиеся задачи.", "fix": "Хранить handle непосредственно, удалить сравнение идентичности, использовать Map.has для различения отсутствия и ложного handle; сохранить очистку и порядок удаления до callback."},
+    {"id": 3, "title": "Нет тестов невалидного id для cancel и has", "direction": "tests", "evidence": "read", "at": "desk.test.js:106-114", "what": "Тест проверяет невалидные аргументы только у reserve: cancel и has могут молча принимать нестроковые и пустые id без падения набора.", "shown_by": "desk.test.js:106-114 проверяет только reserve; остальные тесты используют корректные id.", "fix": "Добавить тесты TypeError для пустых и нестроковых id cancel и has на открытом desk и зафиксировать поведение после close.", "untested": [1]}
+  ],
+  "blocks": [
+    {"path": "desk.js", "added": "2", "removed": "2", "unit": "createDesk", "does": "Заменяет множество активных id на отображение id в запись с таймером.", "serves": [2, 4, 5, 6], "verdict": "keep", "kind": "code"},
+    {"path": "desk.js", "added": "5-7", "unit": "ensureOpen", "does": "Общая проверка закрытия для изменяющих операций.", "serves": [3], "verdict": "keep", "kind": "code"},
+    {"path": "desk.js", "added": "11", "removed": "6", "unit": "reserve", "does": "Вызывает общую проверку закрытия перед валидацией.", "serves": [3], "verdict": "keep", "kind": "code"},
+    {"path": "desk.js", "added": "12-15", "removed": "7", "unit": "reserve", "does": "Проверяет id и длительность reserve.", "serves": [1], "verdict": "keep", "kind": "code"},
+    {"path": "desk.js", "added": "17-18, 26-27", "removed": "9", "unit": "reserve", "does": "Создаёт запись, регистрирует таймер и сохраняет её в активных.", "serves": [2, 4, 5, 6], "verdict": "fix", "findings": [2], "kind": "code"},
+    {"path": "desk.js", "added": "19", "unit": "expire callback", "does": "Сверяет идентичность записи перед доставкой таймера.", "serves": [4, 5, 6], "verdict": "remove", "findings": [2], "kind": "code"},
+    {"path": "desk.js", "added": "20-25", "unit": "expire callback", "does": "Удаляет бронь, уведомляет и изолирует ошибки callbacks.", "serves": [4, 6, 7], "verdict": "keep", "kind": "code"},
+    {"path": "desk.js", "added": "30-35", "removed": "12-13", "unit": "cancel", "does": "Проверяет закрытие, находит бронь, удаляет и отменяет таймер; id не валидируется.", "serves": [1, 3, 5, 6], "verdict": "fix", "findings": [1, 2], "kind": "code"},
+    {"path": "desk.js", "added": "37-39", "removed": "15", "unit": "has", "does": "Проверяет присутствие id; id не валидируется.", "serves": [1, 3], "verdict": "fix", "findings": [1], "kind": "code"},
+    {"path": "desk.js", "added": "40-45", "removed": "16", "unit": "close", "does": "Идемпотентно закрывает desk, отменяет таймеры и очищает записи.", "serves": [3, 5, 7], "verdict": "fix", "findings": [2], "kind": "code"}
+  ],
+  "units": [
+    {"name": "createDesk", "jobs": ["Владеет Map активных броней и состоянием closed; предоставляет публичные методы."], "uses": ["reserve", "cancel", "has", "close", "ensureOpen"], "verdict": "keep", "reason": "Единый владелец состояния жизненного цикла."},
+    {"name": "ensureOpen", "jobs": ["При closed выбрасывает Error; иначе возвращается."], "uses": [], "verdict": "keep", "reason": "Одна проверка используется двумя изменяющими операциями."},
+    {"name": "reserve", "jobs": ["Сначала ensureOpen, затем проверка аргументов, затем проверка дубликата.", "Регистрирует таймер с duration и сохраняет запись; clock не вызывает callback синхронно."], "uses": ["ensureOpen", "clock.setTimeout", "expire callback"], "verdict": "fix", "findings": [2], "reason": "Таймер необходим, но отдельный объект идентичности избыточен при контрактной отмене."},
+    {"name": "expire callback", "jobs": ["После доставки проверяет запись; удаляет её до onExpire.", "Если onExpire бросает, вызывает onError один раз и подавляет его исключение."], "uses": ["onExpire", "onError"], "verdict": "fix", "findings": [2], "reason": "Проверка идентичности не нужна при гарантированной отмене недоставленной работы."},
+    {"name": "cancel", "jobs": ["Сначала ensureOpen; отсутствующая запись даёт false.", "Иначе удалить запись, очистить таймер и вернуть true; проверка id отсутствует."], "uses": ["ensureOpen", "clock.clearTimeout"], "verdict": "fix", "findings": [1, 2], "reason": "Нужна проверка входа и доступ к таймеру без лишней записи идентичности."},
+    {"name": "has", "jobs": ["Возвращает active.has(id); после закрытия Map очищена, но id не валидируется."], "uses": [], "verdict": "fix", "findings": [1], "reason": "Контракт требует TypeError на некорректный id открытого desk."},
+    {"name": "close", "jobs": ["При повторном вызове возвращается; иначе ставит closed, очищает таймеры и Map без callbacks."], "uses": ["clock.clearTimeout"], "verdict": "fix", "findings": [2], "reason": "При упрощении записи передавать в clearTimeout непосредственно handles."},
+    {"name": "clock.setTimeout", "existing": true, "jobs": ["brief.md:9: не вызывает callback inline, регистрирует его не ранее срока и возвращает handle."]},
+    {"name": "clock.clearTimeout", "existing": true, "jobs": ["brief.md:9: предотвращает недоставленный callback; безопасен после доставки."]},
+    {"name": "onExpire", "existing": true, "jobs": ["Пользовательский callback id; может повторно войти в desk или бросить."]},
+    {"name": "onError", "existing": true, "jobs": ["Пользовательский callback ошибки и id; может бросить."]}
+  ],
+  "target_units": [
+    {"name": "createDesk", "jobs": ["Хранит id и handles, состояние закрытия и публичные методы."], "uses": ["reserve", "cancel", "has", "close", "ensureOpen"]},
+    {"name": "ensureOpen", "jobs": ["Проверяет состояние закрытия."]},
+    {"name": "reserve", "jobs": ["Проверяет закрытие, аргументы и дубликат; регистрирует таймер и сохраняет handle."], "uses": ["ensureOpen", "clock.setTimeout", "expire callback"]},
+    {"name": "expire callback", "jobs": ["Удаляет бронь до уведомления; обрабатывает ошибки обоих callbacks."], "uses": ["onExpire", "onError"]},
+    {"name": "cancel", "jobs": ["Проверяет закрытие и id; по наличию удаляет бронь, отменяет её handle и возвращает результат."], "uses": ["ensureOpen", "clock.clearTimeout"]},
+    {"name": "has", "jobs": ["После close возвращает false; иначе проверяет id и его присутствие."]},
+    {"name": "close", "jobs": ["Идемпотентно закрывает desk, отменяет handles и очищает Map без уведомлений."], "uses": ["clock.clearTimeout"]},
+    {"name": "clock.setTimeout", "existing": true, "jobs": ["Регистрирует callback не раньше указанной задержки."]},
+    {"name": "clock.clearTimeout", "existing": true, "jobs": ["Предотвращает недоставленный callback."]},
+    {"name": "onExpire", "existing": true, "jobs": ["Пользовательское уведомление об истечении."]},
+    {"name": "onError", "existing": true, "jobs": ["Пользовательское уведомление об ошибке."]}
+  ],
+  "mechanisms": [
+    {"name": "Таймер и жизненный цикл брони", "change": "added", "units": ["createDesk", "reserve", "expire callback", "cancel", "close"], "purpose": "Автоматически доставить истечение и отменить оставшуюся работу при cancel или close.", "basis": "brief.md:5,9; desk.js:17-27,29-45. Атрибуция не указана: блоки смешивают необходимую работу и дополнительную защиту.", "instead": "В базе desk.js:2-16 (git show b37f5cad:desk.js) имелся только Set; запланированного истечения и очистки таймеров не было. Контракт clock в brief.md:9 уже обеспечивает подавление отменённой задачи.", "benefit": "Живая бронь без нового вызова потребителя может истечь; без таймера обязательное уведомление отсутствует. Частота определяется потребителем и неизвестна.", "cost": "Map с handles, очистка по двум путям, порядок при реентерабельности и тесты callback и ошибок. Дополнительный объект identity связывает expire с cancel и close.", "decision": "Сохранить жизненный цикл и callbacks; убрать сравнение идентичности и объект, непосредственно хранить handles с Map.has. Контракт clock не устанавливает верхней границы задержки доставки.", "evidence": "read", "findings": [2]}
+  ],
+  "coverage": "Статический обзор всего HEAD~1..HEAD: desk.js:1-47 и базовая desk.js:1-18; desk.test.js:1-114 и package.json:1; требования brief.md:3-11 и контракт clock/callback brief.md:7-9. Потребители в поставленном репозитории — тесты; иные потребители и реализация clock не поставлены. Все четыре направления оценены. Тесты, приложение, сборка и сеть не запускались по заданию. Текущий diff и версии зафиксированы в change.sources. Выполнение и поведение сторонних реализаций clock не наблюдались.",
+  "questions": [
+    {"at": "brief.md:5,9", "text": "Должен ли clock гарантировать доставку в точный deadline или хотя бы конечную доставку? Контракт setTimeout задаёт только нижнюю границу, поэтому при задержанной или недоставленной задаче строгое истечение в срок невозможно гарантировать на этом интерфейсе. Уточнить планировщик либо допускаемую задержку."}
+  ]
+}

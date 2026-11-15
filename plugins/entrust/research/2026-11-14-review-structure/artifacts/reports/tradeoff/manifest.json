@@ -1,0 +1,740 @@
+{
+  "scope": "12 synthetic reviewer pairs; no real cases or outputs",
+  "source_aliases": {
+    "initial": "initial run-map and synthetic runs",
+    "followup": "followup run-map and synthetic runs"
+  },
+  "transformations": [
+    "Run paths replaced by case/arm/repetition labels in initial and arbitrary per-case report numbers in followup; source run IDs, absolute paths, session IDs and original run maps omitted.",
+    "Reviewer report and input file contents are byte-for-byte unchanged; per-file SHA-256 records verify this.",
+    "The synthetic followup map records neither arm nor repetition; null means unknown, not an inferred assignment.",
+    "Git base and head trees were exported as plain files; Git diff was generated from the two inspected commits. Two independently inspected synthetic histories are included as unmodified Git objects in newly generated bundles.",
+    "Assessment copies replace source run IDs and machine-specific paths with neutral labels; exact replacement categories, resulting labels and occurrence counts are recorded per file. Original source text is otherwise unchanged.",
+    "Synthetic reviewer-hidden rubric files were copied byte-for-byte after publication review; they are no longer blind benchmark material."
+  ],
+  "pairs": [
+    {
+      "path": "initial/cohesive/baseline-1",
+      "round": "initial",
+      "case": "cohesive",
+      "arm": "baseline",
+      "repetition": 1,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/cohesive/baseline-2",
+      "round": "initial",
+      "case": "cohesive",
+      "arm": "baseline",
+      "repetition": 2,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/cohesive/candidate-1",
+      "round": "initial",
+      "case": "cohesive",
+      "arm": "candidate",
+      "repetition": 1,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/cohesive/candidate-2",
+      "round": "initial",
+      "case": "cohesive",
+      "arm": "candidate",
+      "repetition": 2,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/tangled/baseline-1",
+      "round": "initial",
+      "case": "tangled",
+      "arm": "baseline",
+      "repetition": 1,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/tangled/baseline-2",
+      "round": "initial",
+      "case": "tangled",
+      "arm": "baseline",
+      "repetition": 2,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/tangled/candidate-1",
+      "round": "initial",
+      "case": "tangled",
+      "arm": "candidate",
+      "repetition": 1,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "initial/tangled/candidate-2",
+      "round": "initial",
+      "case": "tangled",
+      "arm": "candidate",
+      "repetition": 2,
+      "source": "run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "followup/cohesive/report-1",
+      "round": "followup",
+      "case": "cohesive",
+      "arm": null,
+      "repetition": null,
+      "source": "followup/run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "followup/cohesive/report-2",
+      "round": "followup",
+      "case": "cohesive",
+      "arm": null,
+      "repetition": null,
+      "source": "followup/run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "followup/tangled/report-1",
+      "round": "followup",
+      "case": "tangled",
+      "arm": null,
+      "repetition": null,
+      "source": "followup/run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    },
+    {
+      "path": "followup/tangled/report-2",
+      "round": "followup",
+      "case": "tangled",
+      "arm": null,
+      "repetition": null,
+      "source": "followup/run-map.json",
+      "files": [
+        "review.md",
+        "review.json"
+      ]
+    }
+  ],
+  "ranges": {
+    "cohesive": {
+      "base": "4f2d09910ffce3ae05bcc3fa1716f7eaded2f9d0",
+      "head": "24e85a8f3e73e174940cf22c6057708d578c918d"
+    },
+    "tangled": {
+      "base": "882ceecc7ab0928c578681d0ef3f6d6de08eb4e1",
+      "head": "a85a9f9ec05141e4f6c9a5214a01c3f3dbe3882e"
+    }
+  },
+  "files": [
+    {
+      "path": "initial/cohesive/baseline-1/review.md",
+      "source": "initial:synthetic-run/cohesive/baseline-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "a0341f08a31d4b388e9c63515bf57b13e5a806f401ca14575b91fb69b4586f80",
+      "published_sha256": "a0341f08a31d4b388e9c63515bf57b13e5a806f401ca14575b91fb69b4586f80",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/baseline-1/review.json",
+      "source": "initial:synthetic-run/cohesive/baseline-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "984a1eeae95c0ada63a60835ea33ab998b8793045c912b038ae1f8d645d21302",
+      "published_sha256": "984a1eeae95c0ada63a60835ea33ab998b8793045c912b038ae1f8d645d21302",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/baseline-2/review.md",
+      "source": "initial:synthetic-run/cohesive/baseline-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "5d604376164ee2a2bbf70f88450b6aec05def668f280a2e9cbdf9dc81c529c56",
+      "published_sha256": "5d604376164ee2a2bbf70f88450b6aec05def668f280a2e9cbdf9dc81c529c56",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/baseline-2/review.json",
+      "source": "initial:synthetic-run/cohesive/baseline-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "18574a99374d179a41527d8fe918c174a50410d73350e6250395ef23adaf27f2",
+      "published_sha256": "18574a99374d179a41527d8fe918c174a50410d73350e6250395ef23adaf27f2",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/candidate-1/review.md",
+      "source": "initial:synthetic-run/cohesive/candidate-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "67c854d14e4f06638ce80a5b99d6d384a9875f98093eef3ca203ad81b85578dc",
+      "published_sha256": "67c854d14e4f06638ce80a5b99d6d384a9875f98093eef3ca203ad81b85578dc",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/candidate-1/review.json",
+      "source": "initial:synthetic-run/cohesive/candidate-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "d953fb3dc018fbfe8b564cea96f1d46c09c7be9f071ae1ccb30567e124f2ed13",
+      "published_sha256": "d953fb3dc018fbfe8b564cea96f1d46c09c7be9f071ae1ccb30567e124f2ed13",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/candidate-2/review.md",
+      "source": "initial:synthetic-run/cohesive/candidate-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "fc911507f51f03fae2e19b3d8596572636978b93f639ae51762836b693b7e4c9",
+      "published_sha256": "fc911507f51f03fae2e19b3d8596572636978b93f639ae51762836b693b7e4c9",
+      "content_changed": false
+    },
+    {
+      "path": "initial/cohesive/candidate-2/review.json",
+      "source": "initial:synthetic-run/cohesive/candidate-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "b61bae2e1cf3be22dfa80ac336156956d701f0774dcf2599200ec691f58fb960",
+      "published_sha256": "b61bae2e1cf3be22dfa80ac336156956d701f0774dcf2599200ec691f58fb960",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/baseline-1/review.md",
+      "source": "initial:synthetic-run/tangled/baseline-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "1412cd9b029b2ef28969776e15a2f84d4cd1117b25afe39a956ea6d5abf69abc",
+      "published_sha256": "1412cd9b029b2ef28969776e15a2f84d4cd1117b25afe39a956ea6d5abf69abc",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/baseline-1/review.json",
+      "source": "initial:synthetic-run/tangled/baseline-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "a1e26a638689d88d0ffed0287497d720b219af5276847335b1da1dc607a4b36e",
+      "published_sha256": "a1e26a638689d88d0ffed0287497d720b219af5276847335b1da1dc607a4b36e",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/baseline-2/review.md",
+      "source": "initial:synthetic-run/tangled/baseline-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "8ab2287b6f4326c3a5d6e13a4c7483d4f6cd5100b1217953b9a303a3b529fc56",
+      "published_sha256": "8ab2287b6f4326c3a5d6e13a4c7483d4f6cd5100b1217953b9a303a3b529fc56",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/baseline-2/review.json",
+      "source": "initial:synthetic-run/tangled/baseline-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "d66d31d445a13bc10f0bd8a51503b013c9fd318d1050fe38dccc2df87df54de1",
+      "published_sha256": "d66d31d445a13bc10f0bd8a51503b013c9fd318d1050fe38dccc2df87df54de1",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/candidate-1/review.md",
+      "source": "initial:synthetic-run/tangled/candidate-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "6bc153495aef2b266a966d97d7089c2aafd46927189ace757cf4f63792676adc",
+      "published_sha256": "6bc153495aef2b266a966d97d7089c2aafd46927189ace757cf4f63792676adc",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/candidate-1/review.json",
+      "source": "initial:synthetic-run/tangled/candidate-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "1a007f23d928c6f1f8c5583a60d1ec763f7c8c92d9718459d3b27b47e2ac6e69",
+      "published_sha256": "1a007f23d928c6f1f8c5583a60d1ec763f7c8c92d9718459d3b27b47e2ac6e69",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/candidate-2/review.md",
+      "source": "initial:synthetic-run/tangled/candidate-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "373dda31459bffc7ac4969ad93a1f2e89a33a5a166222bb84ff4f21cb7da814f",
+      "published_sha256": "373dda31459bffc7ac4969ad93a1f2e89a33a5a166222bb84ff4f21cb7da814f",
+      "content_changed": false
+    },
+    {
+      "path": "initial/tangled/candidate-2/review.json",
+      "source": "initial:synthetic-run/tangled/candidate-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "52a6aa65a168ec82b7d412830d82aa162e9484de7b9f535c21bb3170ea427848",
+      "published_sha256": "52a6aa65a168ec82b7d412830d82aa162e9484de7b9f535c21bb3170ea427848",
+      "content_changed": false
+    },
+    {
+      "path": "followup/cohesive/report-1/review.md",
+      "source": "followup:synthetic-run/cohesive/report-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "93480ceabbe6200637dffaacda1855f20e9632c9a904ba6d474dfee8a7e45963",
+      "published_sha256": "93480ceabbe6200637dffaacda1855f20e9632c9a904ba6d474dfee8a7e45963",
+      "content_changed": false
+    },
+    {
+      "path": "followup/cohesive/report-1/review.json",
+      "source": "followup:synthetic-run/cohesive/report-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "c3c53be483970f3a61802dc063439e9c7247c6281061223dc6ab88a40e625b2c",
+      "published_sha256": "c3c53be483970f3a61802dc063439e9c7247c6281061223dc6ab88a40e625b2c",
+      "content_changed": false
+    },
+    {
+      "path": "followup/cohesive/report-2/review.md",
+      "source": "followup:synthetic-run/cohesive/report-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "35c65da2b78cf1d5db3e5ac3e75146e16bd0178efa906d73edf3fdbc111f7cf7",
+      "published_sha256": "35c65da2b78cf1d5db3e5ac3e75146e16bd0178efa906d73edf3fdbc111f7cf7",
+      "content_changed": false
+    },
+    {
+      "path": "followup/cohesive/report-2/review.json",
+      "source": "followup:synthetic-run/cohesive/report-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "edccdca358bec6647e38a356e52a3830bd09c1c79a20835bbfe37b6db8bf5310",
+      "published_sha256": "edccdca358bec6647e38a356e52a3830bd09c1c79a20835bbfe37b6db8bf5310",
+      "content_changed": false
+    },
+    {
+      "path": "followup/tangled/report-1/review.md",
+      "source": "followup:synthetic-run/tangled/report-1/out/review.md",
+      "kind": "review",
+      "original_sha256": "830bf7b6dc33aa38316d91833a5c2bc42d13a8f1757eac7f070fa0d31b455629",
+      "published_sha256": "830bf7b6dc33aa38316d91833a5c2bc42d13a8f1757eac7f070fa0d31b455629",
+      "content_changed": false
+    },
+    {
+      "path": "followup/tangled/report-1/review.json",
+      "source": "followup:synthetic-run/tangled/report-1/out/review.json",
+      "kind": "review",
+      "original_sha256": "93a13d55135277ec40db8dd52b1e2b6c698c96f20ccf596f4c72f9007677b26d",
+      "published_sha256": "93a13d55135277ec40db8dd52b1e2b6c698c96f20ccf596f4c72f9007677b26d",
+      "content_changed": false
+    },
+    {
+      "path": "followup/tangled/report-2/review.md",
+      "source": "followup:synthetic-run/tangled/report-2/out/review.md",
+      "kind": "review",
+      "original_sha256": "dbc00156972736e840ce4dd21ce9873d1b4f156f9cf95d2ce169d12b459bc0f5",
+      "published_sha256": "dbc00156972736e840ce4dd21ce9873d1b4f156f9cf95d2ce169d12b459bc0f5",
+      "content_changed": false
+    },
+    {
+      "path": "followup/tangled/report-2/review.json",
+      "source": "followup:synthetic-run/tangled/report-2/out/review.json",
+      "kind": "review",
+      "original_sha256": "8cd0b55f725fdc0aec333207630425c5c4d48420856f823bc1534345503d50cd",
+      "published_sha256": "8cd0b55f725fdc0aec333207630425c5c4d48420856f823bc1534345503d50cd",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/base/BRIEF.md",
+      "source": "cohesive:synthetic-git-base/BRIEF.md",
+      "kind": "fixture",
+      "original_sha256": "76e88f7a5a1aee9d1f4f83148fe4f7502d6742f95d1cd6bdc49168196a33cebe",
+      "published_sha256": "76e88f7a5a1aee9d1f4f83148fe4f7502d6742f95d1cd6bdc49168196a33cebe",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/base/package.json",
+      "source": "cohesive:synthetic-git-base/package.json",
+      "kind": "fixture",
+      "original_sha256": "761a7bcd26e395adee8d2bf5a1994bf11299a7e9345f90940d261e7f0ac799c7",
+      "published_sha256": "761a7bcd26e395adee8d2bf5a1994bf11299a7e9345f90940d261e7f0ac799c7",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/base/reminder.js",
+      "source": "cohesive:synthetic-git-base/reminder.js",
+      "kind": "fixture",
+      "original_sha256": "a4ae8c8dac02a8230d6d18666ae4dddcc62e515353b2d31fb4a12090188bda4f",
+      "published_sha256": "a4ae8c8dac02a8230d6d18666ae4dddcc62e515353b2d31fb4a12090188bda4f",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/base/test/acceptance.test.js",
+      "source": "cohesive:synthetic-git-base/test/acceptance.test.js",
+      "kind": "fixture",
+      "original_sha256": "76c117828e20ba86a4eaa135c5acac3face1d1d9a184773e4a27ce7933118336",
+      "published_sha256": "76c117828e20ba86a4eaa135c5acac3face1d1d9a184773e4a27ce7933118336",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/head/BRIEF.md",
+      "source": "cohesive:synthetic-git-head/BRIEF.md",
+      "kind": "fixture",
+      "original_sha256": "76e88f7a5a1aee9d1f4f83148fe4f7502d6742f95d1cd6bdc49168196a33cebe",
+      "published_sha256": "76e88f7a5a1aee9d1f4f83148fe4f7502d6742f95d1cd6bdc49168196a33cebe",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/head/package.json",
+      "source": "cohesive:synthetic-git-head/package.json",
+      "kind": "fixture",
+      "original_sha256": "761a7bcd26e395adee8d2bf5a1994bf11299a7e9345f90940d261e7f0ac799c7",
+      "published_sha256": "761a7bcd26e395adee8d2bf5a1994bf11299a7e9345f90940d261e7f0ac799c7",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/head/reminder.js",
+      "source": "cohesive:synthetic-git-head/reminder.js",
+      "kind": "fixture",
+      "original_sha256": "182e90dbbd3dbe3bba7f628ac210e68bdb3061486e1349fcf4516e493829c79a",
+      "published_sha256": "182e90dbbd3dbe3bba7f628ac210e68bdb3061486e1349fcf4516e493829c79a",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/head/test/acceptance.test.js",
+      "source": "cohesive:synthetic-git-head/test/acceptance.test.js",
+      "kind": "fixture",
+      "original_sha256": "76c117828e20ba86a4eaa135c5acac3face1d1d9a184773e4a27ce7933118336",
+      "published_sha256": "76c117828e20ba86a4eaa135c5acac3face1d1d9a184773e4a27ce7933118336",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/cohesive/change.diff",
+      "source": "cohesive:git-diff-base-head",
+      "kind": "derived-diff",
+      "original_sha256": "b1141f5a096f5d4f5cf96f7991e69961b1d14e392ebb8c53e7235294f94fe60b",
+      "published_sha256": "b1141f5a096f5d4f5cf96f7991e69961b1d14e392ebb8c53e7235294f94fe60b",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/base/package.json",
+      "source": "tangled:synthetic-git-base/package.json",
+      "kind": "fixture",
+      "original_sha256": "2a13017d21e8d663da0bb04d1a7ea6fb88b4fed16768b5d311d8101480ef8bae",
+      "published_sha256": "2a13017d21e8d663da0bb04d1a7ea6fb88b4fed16768b5d311d8101480ef8bae",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/base/src/planDispatches.js",
+      "source": "tangled:synthetic-git-base/src/planDispatches.js",
+      "kind": "fixture",
+      "original_sha256": "92c4a8a951021be1b04b7576bef4fdd4273dc457cdb60b4889f49e4d06eb7731",
+      "published_sha256": "92c4a8a951021be1b04b7576bef4fdd4273dc457cdb60b4889f49e4d06eb7731",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/base/test/planDispatches.test.js",
+      "source": "tangled:synthetic-git-base/test/planDispatches.test.js",
+      "kind": "fixture",
+      "original_sha256": "c5495bc91f279a4d5347c4717baf01cf54ce1dc8f29afc568d1867cf7c89704d",
+      "published_sha256": "c5495bc91f279a4d5347c4717baf01cf54ce1dc8f29afc568d1867cf7c89704d",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/head/README.md",
+      "source": "tangled:synthetic-git-head/README.md",
+      "kind": "fixture",
+      "original_sha256": "cc2e49687e9dd81855be17770fee71cb635abd65b10e334a49d4a84758be06d2",
+      "published_sha256": "cc2e49687e9dd81855be17770fee71cb635abd65b10e334a49d4a84758be06d2",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/head/package.json",
+      "source": "tangled:synthetic-git-head/package.json",
+      "kind": "fixture",
+      "original_sha256": "b01e2642357d1abdb25097fee6d3de2419b8b9d2f849d4b868b945c18d8e22ec",
+      "published_sha256": "b01e2642357d1abdb25097fee6d3de2419b8b9d2f849d4b868b945c18d8e22ec",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/head/src/operatorAids.js",
+      "source": "tangled:synthetic-git-head/src/operatorAids.js",
+      "kind": "fixture",
+      "original_sha256": "b16a08072d718dcec82045d1d36875f6e89b7faedbe1fde68d5a7200426039ed",
+      "published_sha256": "b16a08072d718dcec82045d1d36875f6e89b7faedbe1fde68d5a7200426039ed",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/head/src/planDispatches.js",
+      "source": "tangled:synthetic-git-head/src/planDispatches.js",
+      "kind": "fixture",
+      "original_sha256": "3fd4a7572dbf6b90eb219fb2840125c39cd9e37366b54ebf9e6e672cd2407f8e",
+      "published_sha256": "3fd4a7572dbf6b90eb219fb2840125c39cd9e37366b54ebf9e6e672cd2407f8e",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/head/test/edge.test.js",
+      "source": "tangled:synthetic-git-head/test/edge.test.js",
+      "kind": "fixture",
+      "original_sha256": "464d80bfb0b6d5cea577e0782780384760e90a27d81a4862868c006db89e567f",
+      "published_sha256": "464d80bfb0b6d5cea577e0782780384760e90a27d81a4862868c006db89e567f",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/brief/BRIEF.md",
+      "source": "tangled:synthetic-brief/BRIEF.md",
+      "kind": "fixture",
+      "original_sha256": "5cabc396b833ee4103ab1912a5262515a9dac0d595acbab18a9d91668a45674f",
+      "published_sha256": "5cabc396b833ee4103ab1912a5262515a9dac0d595acbab18a9d91668a45674f",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/brief/acceptance.test.mjs",
+      "source": "tangled:synthetic-brief/acceptance.test.mjs",
+      "kind": "fixture",
+      "original_sha256": "66e569c0b7da1f0806d8d0020a033aa857fb969423b0e24515915acb0a02373c",
+      "published_sha256": "66e569c0b7da1f0806d8d0020a033aa857fb969423b0e24515915acb0a02373c",
+      "content_changed": false
+    },
+    {
+      "path": "fixtures/tangled/change.diff",
+      "source": "tangled:git-diff-base-head",
+      "kind": "derived-diff",
+      "original_sha256": "6e3e06bbf35a247250c954aeb23098a5c53f57fd5935dc2cceb27c00c05fcd38",
+      "published_sha256": "6e3e06bbf35a247250c954aeb23098a5c53f57fd5935dc2cceb27c00c05fcd38",
+      "content_changed": false
+    },
+    {
+      "path": "assessments/initial/cohesive.md",
+      "source": "initial:synthetic-assessment/cohesive",
+      "kind": "assessment",
+      "original_sha256": "b99655a9741ff2fed20dde5b60e0ec697d6934c405fbdfbe1eb2891f64e9a800",
+      "published_sha256": "59bc52623d64858cbcb52dab78403415fac9a3fe33898651dd406cf251cb9782",
+      "content_changed": true,
+      "normalizations": [
+        {
+          "category": "run identifier",
+          "replacement": "initial/cohesive/baseline-2",
+          "count": 5
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/cohesive/candidate-2",
+          "count": 4
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/cohesive/candidate-1",
+          "count": 6
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/cohesive/baseline-1",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "path": "assessments/initial/tangled.md",
+      "source": "initial:synthetic-assessment/tangled",
+      "kind": "assessment",
+      "original_sha256": "e649ee437b540b1a86b78f4ab95a974b1d30e4eb11cedb930da5fc170100ccc3",
+      "published_sha256": "17567b23abf57a44cb83c31327b4929e14763673464cfd3ac360e6d7c3c5e6ad",
+      "content_changed": true,
+      "normalizations": [
+        {
+          "category": "synthetic rubric source path",
+          "replacement": "rubrics/tangled/RUBRIC.md",
+          "count": 1
+        },
+        {
+          "category": "run output directory",
+          "replacement": "initial/tangled/baseline-2/",
+          "count": 4
+        },
+        {
+          "category": "run directory",
+          "replacement": "initial/tangled/baseline-2",
+          "count": 1
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/tangled/baseline-2",
+          "count": 11
+        },
+        {
+          "category": "run output directory",
+          "replacement": "initial/tangled/baseline-1/",
+          "count": 4
+        },
+        {
+          "category": "run directory",
+          "replacement": "initial/tangled/baseline-1",
+          "count": 1
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/tangled/baseline-1",
+          "count": 9
+        },
+        {
+          "category": "run output directory",
+          "replacement": "initial/tangled/candidate-1/",
+          "count": 4
+        },
+        {
+          "category": "run directory",
+          "replacement": "initial/tangled/candidate-1",
+          "count": 1
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/tangled/candidate-1",
+          "count": 8
+        },
+        {
+          "category": "run output directory",
+          "replacement": "initial/tangled/candidate-2/",
+          "count": 4
+        },
+        {
+          "category": "run directory",
+          "replacement": "initial/tangled/candidate-2",
+          "count": 1
+        },
+        {
+          "category": "run identifier",
+          "replacement": "initial/tangled/candidate-2",
+          "count": 11
+        }
+      ]
+    },
+    {
+      "path": "assessments/followup/cohesive.md",
+      "source": "followup:synthetic-assessment/cohesive",
+      "kind": "assessment",
+      "original_sha256": "f1ccb557692b1ab0ba4be0a3fc9f656d18ec42c8950ecb1d285fe27720d05fb0",
+      "published_sha256": "fc8482e38cf430ed40bfbd57881d1165d51f1fb7a40197f804f4c85e2a5cae65",
+      "content_changed": true,
+      "normalizations": [
+        {
+          "category": "synthetic fixture absolute path",
+          "replacement": "fixtures/cohesive/head",
+          "count": 1
+        },
+        {
+          "category": "synthetic rubric absolute path",
+          "replacement": "rubrics/cohesive/RUBRIC.md",
+          "count": 1
+        },
+        {
+          "category": "judge-input absolute path",
+          "replacement": "review-labels/",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assessments/followup/tangled.md",
+      "source": "followup:synthetic-assessment/tangled",
+      "kind": "assessment",
+      "original_sha256": "f4957ba3b66aa2d284a9123128d46b94e4bc5c7fc977d8ade400737350dce780",
+      "published_sha256": "44696f9ceb1f88b16ccf08649a8d3f44f45ddcf453dfbf974f4cc9ef870a77da",
+      "content_changed": true,
+      "normalizations": [
+        {
+          "category": "judge-input relative path",
+          "replacement": "review-labels/",
+          "count": 12
+        }
+      ]
+    },
+    {
+      "path": "rubrics/cohesive/RUBRIC.md",
+      "source": "synthetic-rubric/cohesive",
+      "kind": "rubric",
+      "original_sha256": "2e85a7963ae210eda055b050a37068e4690dc83b9231d64db1192107fbf8397b",
+      "published_sha256": "2e85a7963ae210eda055b050a37068e4690dc83b9231d64db1192107fbf8397b",
+      "content_changed": false,
+      "normalizations": []
+    },
+    {
+      "path": "rubrics/tangled/RUBRIC.md",
+      "source": "synthetic-rubric/tangled-v4",
+      "kind": "rubric",
+      "original_sha256": "e7d8cb29832f74f1a581ad56784ba9cd74dc3292052dd28107b60747621b20d4",
+      "published_sha256": "e7d8cb29832f74f1a581ad56784ba9cd74dc3292052dd28107b60747621b20d4",
+      "content_changed": false,
+      "normalizations": []
+    },
+    {
+      "path": "fixtures/cohesive/history.bundle",
+      "source": "cohesive:synthetic-git-history",
+      "kind": "git-bundle",
+      "original_sha256": null,
+      "published_sha256": "11108ac1b4e95e9d58a46f033e165cdcf50c9c604af092bb14c9b09105619fc6",
+      "content_changed": null
+    },
+    {
+      "path": "fixtures/tangled/history.bundle",
+      "source": "tangled:synthetic-git-history",
+      "kind": "git-bundle",
+      "original_sha256": null,
+      "published_sha256": "a610ae4a208c4cebc67e9cb8b91688dc3b200aedc06aa464a70269112fac23e1",
+      "content_changed": null
+    }
+  ],
+  "followup_assessment_review_labels": {
+    "cohesive": {
+      "review-1": "followup/cohesive/report-2",
+      "review-2": "initial/cohesive/candidate-1",
+      "review-3": "initial/cohesive/candidate-2",
+      "review-4": "followup/cohesive/report-1"
+    },
+    "tangled": {
+      "review-1": "followup/tangled/report-2",
+      "review-2": "initial/tangled/candidate-1",
+      "review-3": "followup/tangled/report-1",
+      "review-4": "initial/tangled/candidate-2"
+    }
+  },
+  "git_bundles": {
+    "cohesive": {
+      "path": "fixtures/cohesive/history.bundle",
+      "source_branch": "main",
+      "reachable_object_count": 10,
+      "commits": 2,
+      "verification": "local clone; exact HEAD and parent; reachable objects equal source and complete object database; diff equals change.diff; git fsck --full --no-reflogs"
+    },
+    "tangled": {
+      "path": "fixtures/tangled/history.bundle",
+      "source_branch": "master",
+      "reachable_object_count": 16,
+      "commits": 2,
+      "verification": "local clone; exact HEAD and parent; reachable objects equal source and complete object database; diff equals change.diff; git fsck --full --no-reflogs"
+    }
+  },
+  "assessment_limits": [
+    "Follow-up evaluator labels were mapped by matching both review.md and review.json bytes to exported reports, not by guessing arm or repetition.",
+    "The initial tangled assessment explicitly identifies the tangled-v4 rubric; follow-up tangled cites matching line ranges but does not identify the original rubric path.",
+    "The shared evaluation template is not included; it describes a broader mixed-case protocol.",
+    "Assessments and rubrics are historical and published for the two synthetic cases only."
+  ]
+}
