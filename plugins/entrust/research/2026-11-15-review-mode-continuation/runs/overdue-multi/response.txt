@@ -1,0 +1,17 @@
+## Recommendation: fix the test gap; confirm once-only guarantees
+
+The sequential in-memory implementation passes the existing tests and has a cohesive structure. Before accepting the once-only guarantee, confirm the scheduler and storage contracts: they are not present in this repository.
+
+### Finding
+
+**UTC regression is not covered** — `test/nightly.test.js:6`
+All test times use `01:00Z`, without controlling the process timezone. An implementation that uses the local calendar date could pass in a UTC environment. Add a test near UTC midnight under a non-UTC timezone where the two dates differ.
+
+### Unresolved deployment risks
+
+- **Overlapping runs:** Two concurrent `runNightly` calls sharing the supplied repository sent the same invoice twice in a controlled test. Whether the scheduler permits overlap is unknown.
+- **Persistence and interruption:** The supplied repository is in-memory. It is unknown whether the notification marker survives between nights or what happens if delivery succeeds but the process stops before marking the invoice.
+
+**Checks:** `npm test` passed all 4 tests. The report’s structure and changed-line map passed validation.
+
+Complete review: [`../review.json`](../review.json).

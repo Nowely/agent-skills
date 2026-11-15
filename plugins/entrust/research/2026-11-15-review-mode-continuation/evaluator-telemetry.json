@@ -1,0 +1,17 @@
+{
+  "astra": {
+    "model": {"providerID": "openai", "id": "gpt-6-astra", "variant": "xhigh"},
+    "outcome": "succeeded",
+    "tokens": {"input": 50072, "output": 20311, "reasoning": 6101, "cache": {"read": 504192, "write": 0}},
+    "host_cost": 0,
+    "scope": "Primary assessment, secondary helper/rubric assessment, and English translation in one session."
+  },
+  "interrupted_terra_evaluator": {
+    "model": {"providerID": "openai", "id": "gpt-6.1-terra", "variant": "default"},
+    "outcome": "interrupted",
+    "tokens": {"input": 36284, "output": 1669, "reasoning": 81, "cache": {"read": 51328, "write": 0}},
+    "host_cost": 0,
+    "scope": "Started before the owner requested Astra; interrupted on that request. No verdict was used."
+  },
+  "limits": "Reported by the host, not an invoice; counters may overlap and do not establish provider request or retry counts."
+}

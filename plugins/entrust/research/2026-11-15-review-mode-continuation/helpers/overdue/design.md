@@ -1,0 +1,7 @@
+**Design assessment: keep the current decomposition.** No independent structural finding emerged from the reviewed scope.
+
+`runNightly` owns sequencing and the UTC calendar date; `notifyOverdue` owns eligibility, message construction, send failure handling and marking; the existing repository and money formatter supply storage access and formatting. The eligibility guard and send/update sequence are short and cohesive. Splitting them into additional helpers would add boundaries without demonstrating a maintenance benefit.
+
+**Boundary question:** `src/invoices/overdue.js:8–18` checks the notification marker before awaiting delivery and writes it afterward. If two nightly runs can overlap, both can send the same invoice before either marks it. The repository contains no scheduler or concurrency contract establishing whether overlap is possible; the mailer exposes no idempotency mechanism. Clarify that contract before choosing a coordination mechanism. Similarly, persistence across process restarts is not established by the in-memory `InvoiceRepo`.
+
+**Checks and scope:** Reviewed the entire supplied diff, `../brief.md`, and connected repository, mailer, money formatter and nightly-step code. `node --test` passed all 4 tests. No network access, source changes, comments, delegation or report artifact. The scheduler, real transport and any durable storage are not present in the examined repository.

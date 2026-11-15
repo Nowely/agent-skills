@@ -48,8 +48,9 @@ For a new round, the owner must agree the cases, repetitions, reviewer models an
 evaluator allocation, budget and stopping rules. Any private inputs or external-service disclosure require
 their own authorization. One [synthetic OpenCode attachment preflight](../2026-11-15-opencode-skill-attachment/)
 did not test the review package or its supporting files. A subsequent [real-package gate preflight and
-mode pilot](../2026-11-15-review-gate-pilot/) reached the plan gate, but all four reviews stopped there;
-they do not assess review quality. Verify the host's activation and observation procedure before claiming
-that an assigned skill was delivered; any further preflight or review/judging run requires approval. A
-small pilot can expose process problems but cannot establish a stable effect or represent a production
-workload.
+mode pilot](../2026-11-15-review-gate-pilot/) reached the plan gate, but all four reviews stopped there.
+A later [continuation](../2026-11-15-review-mode-continuation/) completed four formative reviews with
+permission-repair deviations; it did not establish a general winner. Verify the host's activation and
+observation procedure before claiming that an assigned skill was delivered; any further preflight or
+review/judging run requires approval. A small pilot can expose process problems but cannot establish a
+stable effect or represent a production workload.

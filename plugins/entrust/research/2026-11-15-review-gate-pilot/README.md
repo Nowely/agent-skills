@@ -2,6 +2,9 @@
 
 **Date:** 2026-11-15. **Status:** transferred exploratory record; four assigned reviews incomplete.
 
+The later [continuation](../2026-11-15-review-mode-continuation/) completed four new reviews after
+the owner clarified the prior authorization. It does not replace the attempts recorded here.
+
 The gate-only preflight produced a plan and stopped. All four subsequent assigned review attempts
 also stopped at the approval gate, each returning `Review not performed`. Their host outcomes were
 `succeeded`, meaning generation completed, not that a review succeeded. Completed reviews: **0/4**.

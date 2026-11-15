@@ -1,0 +1,256 @@
+[
+  {
+    "run": "n01",
+    "mode": "multi",
+    "root_model": {
+      "id": "gpt-6.1-terra",
+      "providerID": "openai",
+      "variant": "default"
+    },
+    "root_outcome": "succeeded",
+    "root_tokens": {
+      "input": 64317,
+      "output": 6658,
+      "reasoning": 602,
+      "cache": {
+        "read": 566144,
+        "write": 0
+      }
+    },
+    "root_host_cost": 0,
+    "root_last_turn_ms": 164554,
+    "root_created_to_idle_ms": 645199,
+    "children": [
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 22341,
+          "output": 1552,
+          "reasoning": 36,
+          "cache": {
+            "read": 91648,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 31471,
+          "output": 1494,
+          "reasoning": 10,
+          "cache": {
+            "read": 85248,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 28478,
+          "output": 1163,
+          "reasoning": 16,
+          "cache": {
+            "read": 106496,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 41938,
+          "output": 1116,
+          "reasoning": 16,
+          "cache": {
+            "read": 73088,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      }
+    ]
+  },
+  {
+    "run": "n02",
+    "mode": "single",
+    "root_model": {
+      "id": "gpt-6.1-terra",
+      "providerID": "openai",
+      "variant": "default"
+    },
+    "root_outcome": "succeeded",
+    "root_tokens": {
+      "input": 51788,
+      "output": 4295,
+      "reasoning": 690,
+      "cache": {
+        "read": 310784,
+        "write": 0
+      }
+    },
+    "root_host_cost": 0,
+    "root_last_turn_ms": 91921,
+    "root_created_to_idle_ms": 530499,
+    "children": []
+  },
+  {
+    "run": "n03",
+    "mode": "single",
+    "root_model": {
+      "id": "gpt-6.1-terra",
+      "providerID": "openai",
+      "variant": "default"
+    },
+    "root_outcome": "succeeded",
+    "root_tokens": {
+      "input": 32443,
+      "output": 4737,
+      "reasoning": 139,
+      "cache": {
+        "read": 247424,
+        "write": 0
+      }
+    },
+    "root_host_cost": 0,
+    "root_last_turn_ms": 101976,
+    "root_created_to_idle_ms": 232162,
+    "children": []
+  },
+  {
+    "run": "n04",
+    "mode": "multi",
+    "root_model": {
+      "id": "gpt-6.1-terra",
+      "providerID": "openai",
+      "variant": "default"
+    },
+    "root_outcome": "succeeded",
+    "root_tokens": {
+      "input": 32777,
+      "output": 5177,
+      "reasoning": 416,
+      "cache": {
+        "read": 445440,
+        "write": 0
+      }
+    },
+    "root_host_cost": 0,
+    "root_last_turn_ms": 136028,
+    "root_created_to_idle_ms": 229744,
+    "children": [
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 14739,
+          "output": 901,
+          "reasoning": 231,
+          "cache": {
+            "read": 91904,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 16598,
+          "output": 1036,
+          "reasoning": 107,
+          "cache": {
+            "read": 96000,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 26249,
+          "output": 684,
+          "reasoning": 204,
+          "cache": {
+            "read": 54016,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      },
+      {
+        "model": {
+          "id": "gpt-6.1-terra",
+          "providerID": "openai",
+          "variant": "default"
+        },
+        "agent": "general",
+        "tokens": {
+          "input": 28950,
+          "output": 715,
+          "reasoning": 105,
+          "cache": {
+            "read": 56576,
+            "write": 0
+          }
+        },
+        "host_cost": 0,
+        "outcome": "succeeded",
+        "children": 0
+      }
+    ]
+  }
+]

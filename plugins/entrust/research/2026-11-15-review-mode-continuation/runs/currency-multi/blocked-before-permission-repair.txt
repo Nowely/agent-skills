@@ -1,0 +1,3 @@
+**Review not performed:** the approved multi-review requires all four assistants to use `openai/gpt-6.1-terra`, but the model-lookup tool required to select that model is not available in this session. I cannot verify that launching assistants without an explicit selection would use the approved model.
+
+Please enable model lookup, or authorize proceeding with the assistants’ default model. No review artifact was created.
