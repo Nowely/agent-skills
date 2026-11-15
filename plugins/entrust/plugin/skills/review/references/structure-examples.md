@@ -29,6 +29,19 @@ Evidence is the shared decision state, caller dependency and preserved ordering,
 The finding names what must be read together today and what no longer must be afterwards. The same shape
 proposed for code where nothing is shared between the rules would be a preference, and an idea at most.
 
+## Interleaved rules worth separating
+
+`checkoutError(cart, user)` returns the message to show, or null. It sets `let message = null`, then: if the
+user is a member, sets a lower minimum spend and, inside that branch, checks the coupon's expiry and sets a message;
+outside it checks the minimum and sets another; checks stock and sets a third; and at the end re-checks the empty
+cart "so its message wins". Precedence comes from which assignment runs last; the coupon rule exists twice, once in
+the member branch and once below; and the minimum is set inside a branch that also decides another rule.
+
+Today, letting members also skip the stock check means reading every branch to see which assignment would then run
+last, and editing two places for the coupon. Written as guards with early returns in the order the task gives,
+each reading only its own inputs, the same rules make that change one line, and the coupon rule exists once. One
+function remains enough: the finding is the shared variable and the duplicated rule, not the function's size.
+
 ## Ordered rules that stay together
 
 `shippingQuote(parcel, route)` returns the first refusal that applies, then a price: the route is closed; the

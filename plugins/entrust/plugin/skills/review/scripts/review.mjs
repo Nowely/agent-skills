@@ -77,7 +77,7 @@ function numbers(spec, all) {
 }
 
 // [3, 4, 5, 9] as "3-5, 9".
-function compact(list) {
+export function compact(list) {
   const runs = [];
   for (const n of [...list].sort((a, b) => a - b)) {
     const last = runs.at(-1);
@@ -211,9 +211,6 @@ export function check(review, files, directory) {
       }
     }
   }
-
-  const written = (review.target_units ?? []).some((u) => !u.existing && !changed.has(u.name));
-  for (const u of units.filter((u) => u.verdict === "split")) if (!written) errors.push(`unit ${u.name} is to split, and the target has no new unit: name what it splits into in "target_units"`);
 
   review.blocks.forEach((block, index) => {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);

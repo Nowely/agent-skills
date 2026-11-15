@@ -7,25 +7,24 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
-- `entrust:review` presents the scope, mode, permissions and result as a plan for approval before
-  substantive review. An existing approval of the same concrete plan is reused; without a decision,
-  review stops. `orchestrate` handles this gate before launching a cross-reviewer.
-- `entrust:review` reads "smallest" as the result, not the diff, and assesses concrete structural burdens
-  and their tradeoffs. Grounded change scenarios are optional; each changed unit gives a `reason` for its
-  verdict. The checker validates scenario shape and references when present and requires unit reasons, so
-  older records without the latter need updating. Small research pilots do not establish a general quality
-  improvement.
-- `entrust:review` analyzes connected code before finalizing the full changed-line map. If the diff or a
-  requested direction cannot be covered, it returns a bounded partial review rather than treating unread
-  lines as `keep` or presenting a valid complete `review.json`. The full-review data contract and checker
-  remain unchanged.
-- `entrust:review` multi mode, available only on explicit request after plan approval, keeps one reviewer as
-  coordinator for the connected analysis, final map and report. The coordinator may share working analysis
-  and helper returns across behavior, necessity, design and tests as useful. Helpers verify material premises
-  without rebuilding the full map; the coordinator checks material conclusions and owns the result. Partial
-  results and the approval gate remain, and a refused or failed helper does not change the mode. One reviewer
-  remains the default. In `orchestrate`, an ordinary cross-review stays one independent reviewer and helpers
-  are not required.
+- `entrust:review` shows a plan before every review, each choice with its alternative: one reviewer or a
+  coordinator with four direction helpers; this session or a subagent that this session conducts; a fresh
+  critic and verifier, on by default; the full record and page, by default, or a short review. A request or a
+  parent's brief that already fixes these is the approval. `orchestrate` makes the plan before it launches a
+  cross-reviewer.
+- After refutation a fresh critic argues against each of the reviewer's decisions, what it keeps and what it
+  proposes, and a verifier checks the draft's factual claims against the source; the reviewer settles each
+  point and says what they changed. Scouts fetch bounded facts such as an installed contract or a set of
+  callers. The agents' briefs live in one reference that `orchestrate` links. Not yet measured.
+- `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
+  one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
+  included. A behavior nobody required is an owner question, never a mandatory removal.
+- `report.mjs scaffold` writes the record's mechanical part: the diff's base, head and digest, a saved copy of
+  the diff, and one block per run of changed lines. The reviewer writes only the meaning. The checker no longer
+  requires a unit to split to name a new target unit. The reading required for a review fell from about 7,600
+  words to about 5,000.
+- A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
+  never `keep`.
 - Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
   proof that the blocks serve nothing or can be removed safely.
 

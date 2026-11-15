@@ -4,6 +4,7 @@
 // a page that loads nothing from elsewhere and a printout in the shape SKILL.md gives the report, and that an
 // incomplete one is refused with every fault listed. Run it after an edit to those scripts, to
 // references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -349,7 +350,6 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
-      [(r) => { Object.assign(r.units[0], { verdict: "split", findings: [1] }); r.target_units.pop(); r.target_units[0].uses = []; }, "unit readArchive is to split, and the target has no new unit"],
       [(r) => { r.screens[1].match = true; }, "screen 2 is said to match, and has no mockup picture"],
       [(r) => { r.screens[0].match = true; }, "screen 1 is said to match, and lists differences"],
       [(r) => { delete r.screens[1].missing; }, 'screen 2 has no difference and no "match"'],
@@ -394,89 +394,25 @@ test("an unlinked block is not presented as unnecessary",
     return true;
   });
 
-test("the review procedure distinguishes a complete map from an incomplete review",
-  "an unread part must not be presented as a kept block or a checked complete report",
+test("scaffold writes the record's mechanical part: every changed line in one block, the diff saved and named, and never over a record",
+  "line numbers and coverage were the reviewer's to work out by hand, the commonest reason a record failed its check and a large part of a review's time",
   () => {
-    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
-    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const interactive = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
-    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
-    const complete = [
-      "After refutation, map every nonblank changed line to exactly one block",
-      "If mapping exposes an analysis gap",
-      "For a complete review, finalize `review.json`",
-      "Without demonstrated coverage of the diff and requested directions, return partial",
-    ];
-    const partial = [
-      "If the diff cannot be covered whole or a requested direction remains unreviewed",
-      "no valid complete review or canonical `review.json` was finalized",
-      "no valid complete line map was finalized",
-      "An unread part is not `keep`",
-      "The checker maps parsed text hunks, not binary changes, file modes or other diff metadata",
-      "If artifact writes are prohibited, return the complete JSON inline",
-    ];
-    const absent = [...complete.filter((text) => !skill.toLowerCase().includes(text.toLowerCase())),
-      ...partial.filter((text) => !page.includes(text)),
-      ...["a partial review has no canonical report to render", "If writes are prohibited"].filter((text) => !interactive.includes(text)),
-      ...["for incomplete coverage", "partial review"].filter((text) => !roles.includes(text))];
-    if (absent.length) return `review instructions omit: ${absent.join("; ")}`;
-    const positions = ["### 5. Refute", complete[0], complete[2]].map((text) => skill.indexOf(text));
-    return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1]))
-      || "full line mapping is not after refutation and before finalization";
-  });
-
-test("the multi procedure assigns analysis and the canonical result without silently changing modes",
-  "these checks verify the written instructions, not whether a coordinator or assistant follows them",
-  () => {
-    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
-    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
-    const multi = roles;
-    const required = [
-      "the coordinator owns connected analysis and coverage across all four directions",
-      "reading the full diff and using helpers' work without repeating every check",
-      "[review direction helpers](../orchestrate/references/roles.md#review-direction-helpers)",
-      "no canonical JSON, complete line map or rendering is required of them",
-      "The coordinator owns the analysis, coherent target, line map and canonical result",
-      "If an approved reviewer or assistant cannot start, fails or is blocked, stop and ask; do not substitute a different mode",
-      "If an assistant returns partial, ask how to proceed; without an answer, return partial",
-      "Never add unauthorized delegation",
-    ];
-    const absent = required.filter((text) => !skill.includes(text));
-    const multiRequired = [
-      "The coordinator chooses what to share",
-      "other helpers' returns when useful",
-      "Sharing need not wait for a completed record",
-      "check the material premises of their conclusions against sources",
-      "identify borrowed evidence",
-      "who ran each reported check",
-      "For a design helper, ask where rules, state and effects are owned",
-      "Compare relevant alternatives: keep, simplify in place, consolidate, extract or",
-      "an unverified need does not establish redundancy",
-      "distinguishing observable changes and owner decisions from equivalent refactoring",
-    ];
-    absent.push(...multiRequired.filter((text) => !multi.includes(text)));
-    if (!roles.includes("it forwards their returns unchanged to the review coordinator"))
-      absent.push("the parent forwards helper returns to the review coordinator");
-    if (!roles.includes("the coordinator shares at its discretion"))
-      absent.push("the coordinator may share work with direction helpers");
-    if ((skill + multi).includes("share no assumptions, conclusions or results") ||
-        roles.includes("no suspected findings and no other helper's return"))
-      absent.push("obsolete restriction on shared analysis remains");
-    return !absent.length || `multi instructions omit: ${absent.join("; ")}`;
-  });
-
-test("a supplied target is assessed without inventing scenario chronology",
-  "a helper may compare the coordinator's provisional target without claiming an earlier scenario",
-  () => {
-    const standard = fs.readFileSync(path.join(SKILL, "references", "design-standard.md"), "utf8");
-    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const required = [
-      "if a target is supplied, assess it as provisional against that scenario",
-      "before sketching a target of your own",
-    ];
-    const absent = required.filter((text) => !standard.includes(text));
-    if (page.includes("written before the target")) absent.push("outdated report-data chronology");
-    return !absent.length || `scenario instructions omit: ${absent.join("; ")}`;
+    const out = path.join(run, "scaffold"), target = path.join(out, "review.json");
+    fs.rmSync(out, { recursive: true, force: true });
+    const made = report("scaffold", "HEAD~1..HEAD", target);
+    if (made.status !== 0) return made.stderr;
+    const record = JSON.parse(fs.readFileSync(target, "utf8")), saved = fs.readFileSync(path.join(out, "change.diff"), "utf8");
+    const digest = createHash("sha256").update(saved).digest("hex");
+    if (!record.change.sources.some((s) => s.includes(digest))) return "the saved diff's digest is not in the record";
+    if (record.blocks.some((b) => b.does !== "" || b.verdict !== "")) return "scaffold wrote meaning a reviewer must write";
+    // Filled with any meaning, the scaffold's blocks pass the line check: each changed line is in exactly one.
+    const filled = { ...structuredClone(REVIEW), range: "HEAD~1..HEAD", units: [], scenarios: undefined,
+      blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
+    fs.writeFileSync(data, JSON.stringify(filled));
+    const checked = report("check", data);
+    if (checked.status !== 0) return `the scaffold's blocks do not cover the diff: ${checked.stderr}`;
+    const again = report("scaffold", "HEAD~1..HEAD", target);
+    return again.status !== 0 && again.stderr.includes("never replaces") || "scaffold replaced an existing record";
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",

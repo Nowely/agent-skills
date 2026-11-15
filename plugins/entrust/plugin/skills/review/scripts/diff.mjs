@@ -1,11 +1,16 @@
 // The diff under review as data: its files, hunks and lines, and the address of each changed line.
 import { execFileSync } from "node:child_process";
 
+// The text of `git diff <range>`, as both the parser below and a saved snapshot read it.
+export function diffText(range) {
+  if (typeof range !== "string" || !/^[^-\s]\S*$/.test(range)) throw new Error(`"${range}" is not a git range such as HEAD~1..HEAD`);
+  return execFileSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", range, "--"],
+    { encoding: "utf8", maxBuffer: 1 << 28 });
+}
+
 // The files of `git diff <range>`, each { path, hunks }; a hunk is a list of { kind: add | del | ctx, old, new, text }.
 export function diffOf(range) {
-  if (typeof range !== "string" || !/^[^-\s]\S*$/.test(range)) throw new Error(`"${range}" is not a git range such as HEAD~1..HEAD`);
-  const out = execFileSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", range, "--"],
-    { encoding: "utf8", maxBuffer: 1 << 28 });
+  const out = diffText(range);
   const files = [];
   let file, hunk, oldNo = 0, newNo = 0, oldLeft = 0, newLeft = 0;
   for (const line of out.split("\n")) {

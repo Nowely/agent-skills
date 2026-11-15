@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // A review written as data: checked against its diff, printed as the report, and drawn as a page.
 //
+//   node report.mjs scaffold <range> <review.json>   write the record's mechanical part: one block per run of changed lines
 //   node report.mjs lines <range>          print every changed line of `git diff <range>` with its address
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
@@ -11,12 +12,14 @@
 // nothing defines, and lists every such fault: that every changed line belongs to one block is checked here,
 // not taken on trust.
 
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { address, changedLines, diffOf } from "./diff.mjs";
+import { address, blank, changedLines, diffOf, diffText, numberOf } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, modelOf, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 
@@ -69,9 +72,42 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
   ].join("\n");
 }
 
+// What a script can know of a review before anyone reads the code: the diff's identity, saved beside the record, and
+// one block per run of changed lines with nothing but context between, its lines already numbered. The reviewer
+// writes the meaning: what each block does, what it serves and its verdict, and divides a block that holds two
+// decisions. Every field left empty is a fault `check` names.
+function scaffold(range, target) {
+  if (fs.existsSync(target)) throw new Error(`${target} exists; scaffold writes a new record and never replaces one`);
+  const text = diffText(range), files = diffOf(range), digest = createHash("sha256").update(text).digest("hex");
+  const commit = (ref) => { try { return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { encoding: "utf8" }).trim(); } catch { return null; } };
+  const [from, to] = range.includes("...") ? range.split("...") : range.includes("..") ? range.split("..") : [range, ""];
+  const base = range.includes("...") && commit(from) && commit(to || "HEAD")
+    ? execFileSync("git", ["merge-base", from, to || "HEAD"], { encoding: "utf8" }).trim() : commit(from);
+  const head = range.includes("..") ? commit(to || "HEAD") : null;
+  const blocks = files.flatMap((file) => file.hunks.flatMap((hunk) => {
+    const runs = [[]];
+    for (const line of hunk) if (line.kind === "ctx") { if (runs.at(-1).length) runs.push([]); } else runs.at(-1).push(line);
+    return runs.filter((run) => run.some((line) => !blank(line))).map((run) => {
+      const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
+      return { path: file.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" };
+    });
+  }));
+  const directory = path.dirname(path.resolve(target)), snapshot = path.join(directory, "change.diff");
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(snapshot, text);
+  const review = { title: "", language: "en", range,
+    change: { goal: "", parts: [], sources: [`base ${base ?? from}`, `head ${head ?? "the working tree"}`, `diff sha256 ${digest}, saved as ${path.basename(snapshot)}`] },
+    verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, coverage: "" };
+  fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
+  return { blocks: blocks.length, files: files.length, snapshot };
+}
+
 const [command, argument] = process.argv.slice(2);
 try {
-  if (command === "lines" && argument) {
+  if (command === "scaffold" && argument && process.argv[4]) {
+    const made = scaffold(argument, process.argv[4]);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.snapshot}. Fill in what each block does, serves and its verdict, divide a block that holds two decisions, then run check.`);
+  } else if (command === "lines" && argument) {
     for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
@@ -90,7 +126,7 @@ try {
     if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
     console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs lines <range> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
+    console.error("usage: report.mjs scaffold <range> <review.json> | report.mjs lines <range> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
     process.exit(2);
   }
 } catch (error) {
