@@ -8,21 +8,26 @@ forensics remain in the repository references and release notes.
 ### Changed
 
 - `entrust:review` shows a plan before every review, each choice with its alternative: one reviewer or a
-  coordinator with four direction helpers; this session or a subagent that this session conducts; a fresh
-  critic and verifier, on by default; the full record and page, by default, or a short review. A request or a
-  parent's brief that already fixes these is the approval. `orchestrate` makes the plan before it launches a
-  cross-reviewer.
-- After refutation a fresh critic argues against each of the reviewer's decisions, what it keeps and what it
-  proposes, and a verifier checks the draft's factual claims against the source; the reviewer settles each
-  point and says what they changed. Scouts fetch bounded facts such as an installed contract or a set of
-  callers. The agents' briefs live in one reference that `orchestrate` links. Not yet measured.
+  coordinator with four direction helpers; this session or a subagent that this session conducts; fresh checking
+  agents, on by default; the full record and page, by default, or a short review; and the agents with their models
+  and who starts them. A choice is fixed when the user names it or asks for the defaults. `orchestrate` makes the
+  plan and conducts its cross-reviewer.
+- An independent agent sketches the target from the task and the code before the change, never seeing the change,
+  and the reviewer settles each difference from its own target. After refutation a critic, given the requirements
+  with their sources and the block verdicts, ranks its five strongest points against the draft in both directions
+  and walks one grounded change through another arrangement of the busiest unit; a verifier checks the draft's
+  factual claims. A point is rejected only on a place in the code that refutes it, otherwise it goes to the owner,
+  and the response lists every point. The session that can start agents starts them all. Not yet measured.
 - `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
   one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
-  included. A behavior nobody required is an owner question, never a mandatory removal.
-- `report.mjs scaffold` writes the record's mechanical part: the diff's base, head and digest, a saved copy of
-  the diff, and one block per run of changed lines. The reviewer writes only the meaning. The checker no longer
-  requires a unit to split to name a new target unit. The reading required for a review fell from about 7,600
-  words to about 5,000.
+  included. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
+  owner, never kept silently and never removed as mandatory.
+- `report.mjs scaffold`, run at the start of the analysis, writes the record's mechanical part: the diff's base,
+  head and digest, a saved copy of the diff, and one block per declaration-sized run of changed lines; uncommitted
+  work is recorded as a snapshot with its new files, through a temporary index. The reviewer writes only the
+  meaning. `check` refuses a record checked against another diff and warns when one verdict covers a large block;
+  it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
+  contract, and the reading required for a review fell from about 7,600 words to about 5,800 with the new agents.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`.
 - Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
