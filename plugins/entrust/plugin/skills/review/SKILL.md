@@ -15,6 +15,22 @@ Find the cleanest solution to the task in this codebase, and explain how the cha
 
 Review only: change no project code and post no comments unless asked. Keep to the user's scope and execution limits. Save review artifacts in the user's permitted output location, outside the source tree by default; where writing artifacts is not allowed, return the result inline and state that it was not saved. Never describe a read-through or a proposed manual scenario as an executed check.
 
+## Plan
+
+Before substantive review, inspect only what is needed to identify the diff and base, task and project instruction sources, change size, available tools and permissions. Do not analyze the code, propose findings or sketch the target yet. If the object cannot be identified, ask for it; name missing sources as limits.
+
+Present a short plan with:
+
+- **Object and scope:** the diff identity (base and head, or a snapshot digest for uncommitted changes), task source, requested directions, change size and known limitations.
+- **Mode:** one reviewer by default; independent reviewers by direction on explicit request. Show both choices and the selected mode. For multiple reviewers, name their roles, number, known models, effort and routes, and who synthesizes; mark unknowns and unmeasured cost as unknown.
+- **Execution and result:** permitted reads, tests, network and writes, including the provider receiving review material; intended full coverage or known bounded scope, partial-review rule, and output location or inline result.
+
+Ask the user to approve or correct the plan and wait before analysis or delegation. A request for review alone is not approval of this plan. If the user cannot respond, return the plan, state that review has not been performed, and stop. An earlier user-approved plan covering this exact diff, scope, mode, allocation, permissions and result is sufficient; do not ask twice for it. Approval of review does not authorize edits or posting comments.
+
+Apply corrections to the plan and wait for approval of the corrected plan unless the user has explicitly approved it. Recheck the diff identity after approval and before starting; if it changed, or if scope, allocation, route or permissions must change, present the change and obtain a new decision. If an approved reviewer cannot start or permission is refused, stop and ask how to proceed; do not substitute a different mode.
+
+The parent of a delegated reviewer handles this plan and obtains any missing decision before launch. Pass the approved scope, diff identity, mode, allocation, permissions and result in its brief. A reviewer started under that approval does not ask again; one without it returns the missing decision to its parent without starting the analysis. This also applies to [orchestrate](../orchestrate/SKILL.md) cross-reviewers.
+
 ## Preparation
 
 Identify the exact diff and base, the task, and the project instructions. State the goal and its source. Extract numbered requirements with source labels: `task`, `discussion`, `question` or `assumption`; include a reference to the actual source. A task's recorded decision remains a requirement when code contradicts its premise: record the contradiction and the decision needed, rather than silently replacing it. An unapproved author rationale or stale project doc is an assumption, not a binding requirement: when an authoritative contract refutes it, recommend removing the unnecessary mechanism directly.
@@ -45,19 +61,13 @@ Use the same record for later findings and presentation; do not copy relationshi
 
 ### 2. Check responsibility boundaries and decomposition
 
-Assess readability, rule ownership and dependencies: split intertwined logic, merge scattered ownership, simplify in place, or keep. When a plausible concrete change helps assess a structural tradeoff, record it before the target as a scenario grounded in the task or code, with the places to edit and code to read today. A simple or clean change may need none. Record each unit's decision with its `reason`, a kept unit included.
-
-Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. A useful scenario shows what must be understood or changed together; tracing difficulty alone is a lead.
-
-Compare in-place simplification, separating decisions from effects, consolidation, extraction or removal as useful. For a material burden, sketch the simplest plausible alternative: compare readability, rule ownership, dependencies and boundary or coordination cost. Trace required rules and precedence; preference alone is not an improvement.
+Follow [decomposition assessment](references/design-standard.md#decomposition-assessment).
 
 Keep obvious guards and cohesive ordered decisions together; length and helper counts do not decide. Read [the structural examples](references/structure-examples.md) before finalizing this assessment.
 
 ### 3. Sketch the target
 
-Before the detailed passes, sketch the smallest solution supported by the requirements and contracts: its units, what each owns, what it reuses, and which mechanisms it needs. This is a provisional comparison, not a commitment to preserve the implementation's premises.
-
-Trace requirements, rules and scenarios through the target, including edits and reads. Preserve timing, failure, retry, reload and no-further-input behavior required by the task, owner decision or contract, citing the source. Check the source of a mandatory rule separately from whether a source requires its automatic trigger: the rule alone does not establish that trigger. For a material mechanism of unestablished necessity, sketch the simplest available alternative without it: what triggers required behavior, which inputs it uses, what behavior, convenience or recovery is lost, if any, and what risks or boundary costs it introduces; mark unknowns or why no alternative is established. Compare benefit and cost; absence from the task alone does not mandate removal. Record a material unresolved tradeoff in the mechanism and an owner question or idea. A provisional recommendation is not an owner decision; record uncertainty about whether it works separately. Avoid questions about minor conveniences. Show conflicts between required decisions and contracts and which target parts depend on their resolution. Say if the structure is appropriate; update the target with evidence.
+Follow [target sketch](references/design-standard.md#target-sketch) before the detailed passes.
 
 ### 4. Review all four directions
 
@@ -130,6 +140,6 @@ When asked for an interactive report, render the complete `review.json` against 
 
 One reviewer covering the whole procedure and all four directions is the default.
 
-When the user explicitly asks for independent reviewers, start one per requested direction, four for a full review. Give each the same diff and base, task, project instructions, limits, and this skill's full path. Each analyzes the connected code, checks decomposition and sketches the target; it then reviews its assigned direction, noting other evidence it encounters, refutes its candidates and finalizes its map when coverage permits. Give reviewers neither suspected findings nor one another's results.
+When the user explicitly asks for independent reviewers, start one per requested direction, four for a full review. Give each the same diff and base, task, project instructions, limits, approved scope, allocation and permissions, and this skill's full path. Each analyzes the connected code, checks decomposition and sketches the target; it then reviews its assigned direction, noting other evidence it encounters, refutes its candidates and finalizes its map when coverage permits. Give reviewers neither suspected findings nor one another's results.
 
-Each focused reviewer returns structured report data for the scope it actually examined, marking other directions as unreviewed; if its diff coverage is incomplete, it returns grounded partial findings and unreached scope instead of claiming a valid full map. When they return, reopen the cited code, merge duplicates and resolve disagreements from evidence. Agreement between reviewers is not evidence. If the reconciled work covers the diff and each requested direction, produce one connected map, one coherent target and one canonical `review.json`; trace every requirement and mapped rule through that merged target and identify anything unreviewed. Otherwise return a partial review. If independent reviewers cannot be started, say so rather than silently substituting a single reviewer. In an [orchestrate](../orchestrate/SKILL.md) run, these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
+Each focused reviewer returns structured report data for the scope it actually examined, marking other directions as unreviewed; if its diff coverage is incomplete, it returns grounded partial findings and unreached scope instead of claiming a valid full map. When they return, reopen the cited code, merge duplicates and resolve disagreements from evidence. Agreement between reviewers is not evidence. If the reconciled work covers the diff and each requested direction, produce one connected map, one coherent target and one canonical `review.json`; trace every requirement and mapped rule through that merged target and identify anything unreviewed. Otherwise return a partial review. If independent reviewers cannot be started, stop and ask as in the plan; do not substitute a single reviewer. In an [orchestrate](../orchestrate/SKILL.md) run, these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).

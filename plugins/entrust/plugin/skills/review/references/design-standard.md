@@ -52,6 +52,14 @@ ownership and justified concepts, not the smallest diff or the fewest functions,
     project's closest precedent.
 12. **Names say what, not how.** A name that is hard to pick, or needs "and", points at a unit with two jobs.
 
+## Decomposition assessment
+
+Assess readability, rule ownership and dependencies: split intertwined logic, merge scattered ownership, simplify in place, or keep. When a plausible concrete change helps assess a structural tradeoff, record it before the target as a scenario grounded in the task or code, with the places to edit and code to read today. A simple or clean change may need none. Record each unit's decision with its `reason`, a kept unit included.
+
+Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. A useful scenario shows what must be understood or changed together; tracing difficulty alone is a lead.
+
+Compare in-place simplification, separating decisions from effects, consolidation, extraction or removal as useful. For a material burden, sketch the simplest plausible alternative: compare readability, rule ownership, dependencies and boundary or coordination cost. Trace required rules and precedence; preference alone is not an improvement.
+
 ## Scenarios
 
 When a concrete plausible change helps evaluate a design, derive it from the task or the code before sketching
@@ -65,6 +73,12 @@ costs of changes supported by evidence. Consider the cost and benefit of boundar
 as well as code a maintainer must understand. Numbers of edit or read locations are diagnostics, not an ordered
 score: for example, more small edits can require less code to understand. Keep cohesive code when a split has
 no demonstrated benefit; do not introduce a helper merely to meet a shape preference.
+
+## Target sketch
+
+Before the detailed passes, sketch the smallest solution supported by the requirements and contracts: its units, what each owns, what it reuses, and which mechanisms it needs. This is a provisional comparison, not a commitment to preserve the implementation's premises.
+
+Trace requirements, rules and scenarios through the target, including edits and reads. Preserve timing, failure, retry, reload and no-further-input behavior required by the task, owner decision or contract, citing the source. Check the source of a mandatory rule separately from whether a source requires its automatic trigger: the rule alone does not establish that trigger. For a material mechanism of unestablished necessity, sketch the simplest available alternative without it: what triggers required behavior, which inputs it uses, what behavior, convenience or recovery is lost, if any, and what risks or boundary costs it introduces; mark unknowns or why no alternative is established. Compare benefit and cost; absence from the task alone does not mandate removal. Record a material unresolved tradeoff in the mechanism and an owner question or idea. A provisional recommendation is not an owner decision; record uncertainty about whether it works separately. Avoid questions about minor conveniences. Show conflicts between required decisions and contracts and which target parts depend on their resolution. Say if the structure is appropriate; update the target with evidence.
 
 ## A structural finding
 

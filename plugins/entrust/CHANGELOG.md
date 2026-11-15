@@ -7,6 +7,9 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `entrust:review` presents the scope, mode, permissions and result as a plan for approval before
+  substantive review. An existing approval of the same concrete plan is reused; without a decision,
+  review stops. `orchestrate` handles this gate before launching a cross-reviewer.
 - `entrust:review` reads "smallest" as the result, not the diff, and assesses concrete structural burdens
   and their tradeoffs. Grounded change scenarios are optional; each changed unit gives a `reason` for its
   verdict. The checker validates scenario shape and references when present and requires unit reasons, so
