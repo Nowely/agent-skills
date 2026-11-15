@@ -70,7 +70,9 @@ A case may carry `probes` in its rubric: changes someone will be asked to make a
    copied package is placed in a directory named `skill`; this does not register it or preserve a
    host-specific skill ID. The operator must install or register it under the intended ID using the host's procedure and
    verify the source, ID and package digest in the host before delivery. The registered package path may
-   differ from the prepared copy.
+   differ from the prepared copy. One [OpenCode synthetic attachment preflight](../../research/2026-11-15-opencode-skill-attachment/)
+   observed a marker from a skill attached separately to the text; it did not test the review package or
+   establish delivery on another host or version.
 
    To check either package, set `SKILL_DIR` to its directory and, from `plugins/entrust`, run:
 

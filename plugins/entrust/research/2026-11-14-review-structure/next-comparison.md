@@ -46,6 +46,8 @@ neutral labels. Time and available resource counters are reported independently 
 
 The owner must still agree the cases, repetitions, reviewer models and effort, independent evaluator
 allocation, budget and stopping rules. Any private inputs or external-service disclosure require their
-own authorization. Verify the host's activation and observation procedure before claiming that a skill
-was delivered; a runtime preflight and the review/judging runs require separate approval. A small pilot
-can expose process problems but cannot establish a stable effect or represent a production workload.
+own authorization. One [synthetic OpenCode attachment preflight](../2026-11-15-opencode-skill-attachment/)
+has been run; it did not test the review package or its supporting files. Verify the host's activation and
+observation procedure before claiming that the assigned skill was delivered; a preflight of the real
+package and the review/judging runs require separate approval. A small pilot can expose process problems
+but cannot establish a stable effect or represent a production workload.
