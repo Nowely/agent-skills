@@ -38,7 +38,23 @@ Drafts: [the page](drafts/32-review.md), [agents](drafts/32-agents.md), [design 
 
 ## Regression check
 
-Pending: one synthetic case reviewed by a Sonnet-class model with the skill as merged in #97 and with draft 32 under a conductor, compared by a third session against the case's rubric.
+One synthetic case, `slot-edit/head`, reviewed by Sonnet-class subagents in Claude Code: once with the skill as merged in #97 (package digest `797e55a7d79e`), once with draft 32 (`37dde8b78612`) as a subagent under this session as conductor, which started an independent target at once and a critic and a verifier on the saved draft. A fresh Sonnet-class judge compared both final responses and records against the case's rubric, not told which was which. One run each: a smoke check for regression, not a comparison of quality.
+
+| | Merged in #97 | Draft 32 |
+|---|---|---|
+| Rubric finds hit (F1–F8) | 8 of 8 | 8 of 8 |
+| Traps violated (X1–X4) | none | none |
+| Claims the source refutes | none | none |
+| Judge's verdict | | equal, no regression |
+| Subagent tokens reported | 116k | reviewer 98k + 106k on continuation; independent target 70k, critic 86k, verifier 80k |
+
+- **The independent target**, given only the task and the base code, reached the case's clean form on its own: the zone read from the order, the stale doc to fix, the rules as ordered guards in one function, `withinHours` and `everyMinute` reused. The reviewer's target matched it on every structural point.
+- **The critic** raised five points; the reviewer accepted all five and the review improved: a design scenario grounded in the task replaced an invented one, the stale doc became a step, an overstated design finding became "fragility, not a defect", the 60-second tick was argued, and a missed test gap was added (an editor opened on a stored slot already too soon). It also named a module-level cache shared by all clients.
+- **The verifier** confirmed 27 claims and corrected two (a line number, and "nothing reads `failed`" where the change's own tests do).
+- **The judge** found the merged skill slightly sharper on the main defect's consequence and on a test fixture that violates the installed client's type; draft 32 slightly richer on design cost and test gaps. Neither missed what the other found.
+- **Cost:** the three checking agents alone used about twice the tokens of the whole merged-skill review. The plan's estimate, "likely half again", is wrong for this case.
+
+The case is formative and at the ceiling for both versions: it shows no regression, not an improvement.
 
 ## Status
 
