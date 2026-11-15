@@ -2,7 +2,7 @@
 
 Every agent starts with a fresh context and gets the task, the diff's base and head, the repository, the project
 instructions, the approved scope and permissions, and its brief below. It changes no file but its own return, starts
-no agent, and returns facts with `path:line`, what it ran and what it could not reach. The reviewer, or the
+no agent, invokes no mode or approval, and returns facts with `path:line`, what it ran and what it could not reach. The reviewer, or the
 coordinator, checks each returned point against the source before using it.
 
 ## Reviewer under a conductor
@@ -42,5 +42,5 @@ of its conclusions against the source, says which evidence it borrowed and who r
 shared work without rebuilding the whole record. The design helper asks where rules, state and effects are owned,
 what must be understood or changed together and what that costs; it compares keeping, simplifying in place,
 consolidating, extracting and removing, and for a removal weighs what the mechanism guarantees against what is lost.
-A supported keep is a valid answer. A helper returns candidates, corrections, questions and leads with their places,
+It traces required behavior through any proposed target, telling observable changes and owner decisions from equivalent refactoring. A supported keep is a valid answer. A helper returns candidates, corrections, questions and leads with their places,
 the checks it ran, and the scope it examined and did not reach; no record or line map is asked of it.

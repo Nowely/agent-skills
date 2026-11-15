@@ -35,8 +35,8 @@ Where the literature disagrees, the side this review takes is stated.
    only the previous phase's result; two phases that must agree on a format or decision are one decision split apart.
 8. **Fewest concepts.** Each mechanism, option, layer and piece of state is weighed against its benefit and against
    what existing code, inputs or contracts already provide.
-9. **No speculative generality.** An option, mode, registry, configuration or interface needs a concrete second use
-   in the task or code; one caller alone is not a defect.
+9. **No speculative generality.** An option, mode, registry, configuration or interface needs a concrete need in
+   the task or code; one caller alone is not a defect.
 10. **Trust the contract; check at the boundary.** A guard, fallback or conversion is a claim about the data, checked
     where the data comes from: noise inside a boundary that guarantees it, required at an untrusted one.
 11. **Dependencies point one way.** No cycles, no lower layer knowing a higher one, no caller depending on a callee's
@@ -55,7 +55,7 @@ code, walk a change grounded in the task or code through both arrangements, noti
 read; do not invent future requirements.
 
 Then sketch the target before the detailed passes: its units, what each owns and reuses, and the mechanisms it needs.
-It is provisional and does not inherit the change's premises. Trace every requirement and rule through it. Keep the
+It is provisional and does not inherit the change's premises. A target someone supplied is assessed the same way: kept where the evidence holds, revised where it does not, not rebuilt only because it was supplied. Trace every requirement and rule through it. Keep the
 timing, failure, retry and no-input behavior that the task, an owner decision or a contract requires, citing it; a
 required outcome does not by itself require the automatic way the change reaches it. For a mechanism whose need is
 unproven, sketch the simplest alternative without it: what then triggers the required behavior, what is lost, what is

@@ -90,12 +90,13 @@ conclusion makes a revised record, named as such.
 - **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge` or `remove`, its `reason`,
   and its findings unless kept. `"existing": true` marks untouched code listed because the change calls it or is
   called by it. **Target units** are the same for the target; a name that is neither carried over nor existing is to
-  be written.
+  be written. A unit to split names its pieces there.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
   requirements and contracts), `benefit`, `cost`, `decision` and `evidence`. An added or changed mechanism has
   `instead`, citing the `path:line` read. `benefit` names the scenario served, what is lost without it and how often,
   or that frequency is unknown. `blocks` may list the numbers of blocks wholly the mechanism's, each with a `kind` of
-  `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work.
+  `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work, shared imports
+  included. Weight is a footprint, not a complexity score or an estimate of deletable code.
 - **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` (`keep`, `fix`
   or `remove`, the latter two naming findings) and `unit`. An empty `serves` is a lead, not proof of redundancy.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
@@ -108,5 +109,7 @@ conclusion makes a revised record, named as such.
 ## Visual evidence
 
 Start from the visual question. Use the pictures the task supplied first, checking they show this revision, state
-and viewport. A data-flow problem established from code needs no picture. New screenshots or starting the
-application must be in the approved plan; a needed picture that is missing leaves its conclusion unchecked.
+and viewport; one whose identity cannot be established is uncertain evidence. A difference alone is not a defect: it is
+a supported requirement, an unexplained difference or an unspecified state. A data-flow problem established from code
+needs no picture. New screenshots or starting the application must be in the approved plan; a needed picture that is
+missing leaves its conclusion unchecked. Never generate an image as evidence of what the application does.

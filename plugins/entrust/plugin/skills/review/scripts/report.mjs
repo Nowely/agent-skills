@@ -112,6 +112,10 @@ try {
   } else if (["render", "check"].includes(command) && argument) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
     const directory = path.dirname(path.resolve(argument)), { errors, owner } = check(review, files, directory);
+    // A record scaffolded from one diff is checked against that diff: a moved range or new uncommitted work is another change.
+    const recorded = (review.change?.sources ?? []).join(" ").match(/diff sha256 ([0-9a-f]{64})/)?.[1];
+    if (recorded && createHash("sha256").update(diffText(review.range ?? "")).digest("hex") !== recorded)
+      errors.unshift(`the diff of "${review.range}" is not the one this record was scaffolded from (sha256 ${recorded.slice(0, 12)}…); review the saved change.diff's change or scaffold a new record`);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);

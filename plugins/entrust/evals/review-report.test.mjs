@@ -412,7 +412,12 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     const checked = report("check", data);
     if (checked.status !== 0) return `the scaffold's blocks do not cover the diff: ${checked.stderr}`;
     const again = report("scaffold", "HEAD~1..HEAD", target);
-    return again.status !== 0 && again.stderr.includes("never replaces") || "scaffold replaced an existing record";
+    if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold replaced an existing record";
+    // The record names the diff it was made from; checked against another, it is refused.
+    const moved = { ...filled, range: "HEAD~1..HEAD", change: { ...filled.change, sources: [...filled.change.sources, `diff sha256 ${"0".repeat(64)}, saved as change.diff`] } };
+    fs.writeFileSync(data, JSON.stringify(moved));
+    const refused = report("check", data);
+    return refused.status === 1 && refused.stderr.includes("is not the one this record was scaffolded from") || "a record checked against another diff was accepted";
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
