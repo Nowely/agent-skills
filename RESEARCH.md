@@ -91,9 +91,13 @@ establish that a particular event occurred, but cannot by itself establish a sta
 Do not choose a favourable outcome, subset, interpretation or stopping point after seeing results and
 present it as the original confirmatory analysis. Explicitly label later exploration.
 
-Use the access and safety permissions appropriate to the task, consistently across comparable arms
-apart from the intervention. Do not introduce a separate isolation system by default or claim isolation
-that was not enforced. Record what available logs show and what they cannot establish. Preserve raw
+Start from the user's ordinary host configuration, tools and existing permissions. Do not replace them
+with a special deny-by-default allowlist, sandbox or additional provider/tool restrictions unless the user
+requests them or the approved comparison requires them. Keep existing safety limits and apply agreed
+exceptions consistently across comparable arms, such as excluding a specialized skill from a control.
+If the required access or privacy boundary cannot be met, stop rather than silently changing the setup.
+Do not introduce a separate isolation system by default or claim isolation that was not enforced.
+Record what available logs show and what they cannot establish. Preserve raw
 inputs, transcripts and artifacts only where authorized. Do not publish private project material or
 send it to an external service without explicit authorization and an appropriate disclosure check; do
 not disclose secrets. A hash identifies particular bytes, not their safety, completeness, or the truth
