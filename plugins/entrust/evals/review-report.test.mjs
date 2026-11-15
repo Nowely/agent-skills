@@ -430,9 +430,11 @@ test("the multi procedure assigns analysis and the canonical result without sile
   () => {
     const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
     const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
+    const multi = roles;
     const required = [
-      "the coordinator independently analyzes connected code and all four directions",
-      "assistants independently investigate agreed directions",
+      "the coordinator owns connected analysis and coverage across all four directions",
+      "reading the full diff and using helpers' work without repeating every check",
+      "[review direction helpers](../orchestrate/references/roles.md#review-direction-helpers)",
       "no canonical JSON, complete line map or rendering is required of them",
       "The coordinator owns the analysis, coherent target, line map and canonical result",
       "If an approved reviewer or assistant cannot start, fails or is blocked, stop and ask; do not substitute a different mode",
@@ -440,9 +442,41 @@ test("the multi procedure assigns analysis and the canonical result without sile
       "Never add unauthorized delegation",
     ];
     const absent = required.filter((text) => !skill.includes(text));
+    const multiRequired = [
+      "The coordinator chooses what to share",
+      "other helpers' returns when useful",
+      "Sharing need not wait for a completed record",
+      "check the material premises of their conclusions against sources",
+      "identify borrowed evidence",
+      "who ran each reported check",
+      "For a design helper, ask where rules, state and effects are owned",
+      "Compare relevant alternatives: keep, simplify in place, consolidate, extract or",
+      "an unverified need does not establish redundancy",
+      "distinguishing observable changes and owner decisions from equivalent refactoring",
+    ];
+    absent.push(...multiRequired.filter((text) => !multi.includes(text)));
     if (!roles.includes("it forwards their returns unchanged to the review coordinator"))
       absent.push("the parent forwards helper returns to the review coordinator");
+    if (!roles.includes("the coordinator shares at its discretion"))
+      absent.push("the coordinator may share work with direction helpers");
+    if ((skill + multi).includes("share no assumptions, conclusions or results") ||
+        roles.includes("no suspected findings and no other helper's return"))
+      absent.push("obsolete restriction on shared analysis remains");
     return !absent.length || `multi instructions omit: ${absent.join("; ")}`;
+  });
+
+test("a supplied target is assessed without inventing scenario chronology",
+  "a helper may compare the coordinator's provisional target without claiming an earlier scenario",
+  () => {
+    const standard = fs.readFileSync(path.join(SKILL, "references", "design-standard.md"), "utf8");
+    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
+    const required = [
+      "if a target is supplied, assess it as provisional against that scenario",
+      "before sketching a target of your own",
+    ];
+    const absent = required.filter((text) => !standard.includes(text));
+    if (page.includes("written before the target")) absent.push("outdated report-data chronology");
+    return !absent.length || `scenario instructions omit: ${absent.join("; ")}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",

@@ -54,7 +54,7 @@ ownership and justified concepts, not the smallest diff or the fewest functions,
 
 ## Decomposition assessment
 
-Assess readability, rule ownership and dependencies: split intertwined logic, merge scattered ownership, simplify in place, or keep. When a plausible concrete change helps assess a structural tradeoff, record it before the target as a scenario grounded in the task or code, with the places to edit and code to read today. A simple or clean change may need none. Record each unit's decision with its `reason`, a kept unit included.
+Assess readability, rule ownership and dependencies: split intertwined logic, merge scattered ownership, simplify in place, or keep. When a plausible concrete change helps assess a structural tradeoff, record it as a scenario grounded in the task or code, with the places to edit and code to read today, before sketching a target of your own; if a target is supplied, assess it as provisional against that scenario. A simple or clean change may need none. Record each unit's decision with its `reason`, a kept unit included.
 
 Trace each mechanism's owner, inputs, effects and lifetime. Distinguish missing context from entanglement: overwritten state, flags crossing rules, unrelated work needed to establish an outcome, a scattered rule, or a caller interpreting another unit's partial result. A useful scenario shows what must be understood or changed together; tracing difficulty alone is a lead.
 
@@ -62,8 +62,8 @@ Compare in-place simplification, separating decisions from effects, consolidatio
 
 ## Scenarios
 
-When a concrete plausible change helps evaluate a design, derive it from the task or the code before sketching
-the target. Record the places to edit and code to read today and in the target. Avoid inventing future needs;
+When a concrete plausible change helps evaluate a design, derive it from the task or the code, not a preferred
+target shape. Record the places to edit and code to read today and in the target. Avoid inventing future needs;
 a simple or already cohesive change may need no scenario.
 
 ## Comparing two solutions

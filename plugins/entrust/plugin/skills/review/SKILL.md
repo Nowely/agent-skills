@@ -2,7 +2,7 @@
 name: review
 description: >-
   User-invoked review of a change, branch or PR: assess solution quality, unnecessary code,
-  responsibility boundaries, behavior and tests, alone or with independent assistants.
+  responsibility boundaries, behavior and tests, alone or with direction helpers.
 disable-model-invocation: true
 metadata:
   version: "0.38.0"
@@ -22,7 +22,7 @@ Before substantive review, inspect only what is needed to identify the diff and 
 Present a short plan with:
 
 - **Object and scope:** the diff identity (base and head, or a snapshot digest for uncommitted changes), task source, requested directions, change size and known limitations.
-- **Mode:** one reviewer by default; coordinator and independent assistants by direction on request. Show both choices and the selection. For multi, name roles, directions, number, models, effort, routes, who launches them and synthesizer; mark unknowns and unmeasured cost.
+- **Mode:** one reviewer by default; coordinator and direction helpers on request. Show both choices and the selection. For multi, name roles, directions, number, models, effort, routes, who launches them and synthesizer; mark unknowns and unmeasured cost.
 - **Execution and result:** permitted reads, tests, network and writes, including each provider receiving review material; intended full coverage or known bounded scope, partial-review rule, and output location or inline result.
 
 Ask the user to approve or correct the plan and wait before analysis or delegation. A request for review alone is not approval of this plan. If the user cannot respond, return the plan, state that review has not been performed, and stop. An earlier user-approved plan covering this exact diff, scope, mode, allocation, permissions and result is sufficient; do not ask twice for it. Approval of review does not authorize edits or posting comments.
@@ -67,7 +67,7 @@ Keep obvious guards and cohesive ordered decisions together; length and helper c
 
 ### 3. Sketch the target
 
-Follow [target sketch](references/design-standard.md#target-sketch) before the detailed passes.
+Follow [target sketch](references/design-standard.md#target-sketch) before the detailed passes. Assess and revise a supplied target as provisional instead of rebuilding it solely because it was supplied.
 
 ### 4. Review all four directions
 
@@ -140,8 +140,8 @@ When asked for an interactive report, render the complete `review.json` against 
 
 One reviewer covers the procedure and all four directions by default.
 
-On explicit multi request, the coordinator independently analyzes connected code and all four directions; assistants independently investigate agreed directions, one each, four for a full review. Start only assistants authorized in the plan, with fresh contexts if supported. Otherwise disclose the limit and ask how to proceed.
+On explicit multi request, the coordinator owns connected analysis and coverage across all four directions, reading the full diff and using helpers' work without repeating every check. Assign assistants to agreed directions, one each, four for a full review. Start only assistants authorized in the plan, with fresh contexts if supported. Otherwise disclose the limit and ask how to proceed.
 
-Give all the original task, base and diff, project instructions, approved scope, allocation, limits and permissions, and this skill's full path; assign neutral roles and directions. Assistants use the task focus and relevant instructions without recursively invoking modes, delegation or approval. Until each assistant's initial return, share no assumptions, conclusions or results from the coordinator or others with it; the coordinator may analyze independently without their results.
+Follow [review direction helpers](../orchestrate/references/roles.md#review-direction-helpers) to brief assistants and share available work at the coordinator's discretion. Assistants check material premises against sources without reconstructing the full map.
 
-Assistants return grounded results, questions and incidental leads with references, checks, examined and unreached scope and permission limits; no canonical JSON, complete line map or rendering is required of them. The coordinator checks each return against sources, records its disposition, preserves unknowns, merges duplicates and resolves disagreements from evidence, not agreement. The coordinator owns the analysis, coherent target, line map and canonical result under the report contract, tracing requirements and rules through the target. Without demonstrated coverage of the diff and requested directions, return partial. If an assistant returns partial, ask how to proceed; without an answer, return partial. Never add unauthorized delegation. In orchestrate, assistants are [direction helpers](../orchestrate/references/roles.md).
+Assistants return grounded results, questions and incidental leads with references, checks, examined and unreached scope and permission limits; no canonical JSON, complete line map or rendering is required of them. The coordinator checks material conclusions against sources, records each return's disposition, preserves unknowns, merges duplicates and resolves disagreements from evidence, not agreement. The coordinator owns the analysis, coherent target, line map and canonical result under the report contract, tracing requirements and rules through the target. Without demonstrated coverage of the diff and requested directions, return partial. If an assistant returns partial, ask how to proceed; without an answer, return partial. Never add unauthorized delegation. In orchestrate, assistants are [direction helpers](../orchestrate/references/roles.md).
