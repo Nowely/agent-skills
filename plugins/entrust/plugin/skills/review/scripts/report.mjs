@@ -15,6 +15,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { address, blank, changedLines, diffOf, diffText, numberOf } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
@@ -76,37 +77,59 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
 // one block per run of changed lines with nothing but context between, its lines already numbered. The reviewer
 // writes the meaning: what each block does, what it serves and its verdict, and divides a block that holds two
 // decisions. Every field left empty is a fault `check` names.
-function scaffold(range, target) {
+// Uncommitted work as a commit of its own, new files included, made through a temporary index so the user's index
+// and working tree stay as they are. The commit belongs to no branch; the saved diff is the copy that lasts.
+function snapshot(base) {
+  const index = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "review-index-")), "index");
+  const env = { ...process.env, GIT_INDEX_FILE: index, GIT_AUTHOR_NAME: "review", GIT_AUTHOR_EMAIL: "review@example.invalid",
+    GIT_COMMITTER_NAME: "review", GIT_COMMITTER_EMAIL: "review@example.invalid" };
+  const git = (...args) => execFileSync("git", args, { encoding: "utf8", env }).trim();
+  try {
+    git("read-tree", "HEAD");
+    git("add", "--all");
+    return git("commit-tree", git("write-tree"), "-p", base, "-m", "The working tree under review");
+  } finally { fs.rmSync(path.dirname(index), { recursive: true, force: true }); }
+}
+
+function scaffold(asked, target) {
   if (fs.existsSync(target)) throw new Error(`${target} exists; scaffold writes a new record and never replaces one`);
-  const text = diffText(range), files = diffOf(range), digest = createHash("sha256").update(text).digest("hex");
   const commit = (ref) => { try { return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { encoding: "utf8" }).trim(); } catch { return null; } };
+  // A range with no ".." compares a commit with the working tree: record that tree as a commit, so the range stays one.
+  const range = asked.includes("..") ? asked : `${commit(asked) ?? asked}..${snapshot(commit(asked) ?? asked)}`;
+  const text = diffText(range), files = diffOf(range), digest = createHash("sha256").update(text).digest("hex");
   const [from, to] = range.includes("...") ? range.split("...") : range.includes("..") ? range.split("..") : [range, ""];
   const base = range.includes("...") && commit(from) && commit(to || "HEAD")
     ? execFileSync("git", ["merge-base", from, to || "HEAD"], { encoding: "utf8" }).trim() : commit(from);
   const head = range.includes("..") ? commit(to || "HEAD") : null;
   const blocks = files.flatMap((file) => file.hunks.flatMap((hunk) => {
     const runs = [[]];
-    for (const line of hunk) if (line.kind === "ctx") { if (runs.at(-1).length) runs.push([]); } else runs.at(-1).push(line);
+    // A run ends at unchanged context, and at a declaration: a line at the margin after a blank changed line.
+    for (const line of hunk) {
+      const run = runs.at(-1), last = run.at(-1);
+      if (line.kind === "ctx") { if (run.length) runs.push([]); continue; }
+      if (last && blank(last) && !blank(line) && /^\S/.test(line.text)) runs.push([line]); else run.push(line);
+    }
     return runs.filter((run) => run.some((line) => !blank(line))).map((run) => {
       const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
       return { path: file.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" };
     });
   }));
-  const directory = path.dirname(path.resolve(target)), snapshot = path.join(directory, "change.diff");
+  const directory = path.dirname(path.resolve(target)), saved = path.join(directory, "change.diff");
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(snapshot, text);
+  fs.writeFileSync(saved, text);
   const review = { title: "", language: "en", range,
-    change: { goal: "", parts: [], sources: [`base ${base ?? from}`, `head ${head ?? "the working tree"}`, `diff sha256 ${digest}, saved as ${path.basename(snapshot)}`] },
+    change: { goal: "", parts: [], sources: [`base ${base ?? from}`, `head ${head ?? to}${asked.includes("..") ? "" : `, a snapshot of the working tree over ${asked}`}`,
+      `diff sha256 ${digest}, saved as ${path.basename(saved)}`] },
     verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, coverage: "" };
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
-  return { blocks: blocks.length, files: files.length, snapshot };
+  return { blocks: blocks.length, files: files.length, saved };
 }
 
 const [command, argument] = process.argv.slice(2);
 try {
   if (command === "scaffold" && argument && process.argv[4]) {
     const made = scaffold(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.snapshot}. Fill in what each block does, serves and its verdict, divide a block that holds two decisions, then run check.`);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in what each block does, serves and its verdict, divide a block that holds two decisions, then run check.`);
   } else if (command === "lines" && argument) {
     for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
@@ -120,8 +143,12 @@ try {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
+    const model = modelOf(review, files, owner, directory);
+    // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
+    for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
+      console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
-    const model = modelOf(review, files, owner, directory), target = argument.replace(/(\.json)?$/, ".html");
+    const target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else if (command === "labels") {

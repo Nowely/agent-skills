@@ -1,7 +1,6 @@
 # Design standard
 
-What this review counts as clean structure, and how it compares two solutions. A structural finding shows a
-concrete burden in the code and why another arrangement removes it; a preference for another shape is an idea.
+What this review counts as clean structure, and how it compares two solutions.
 
 ## The measure
 
@@ -66,6 +65,3 @@ To compare two solutions, first both must keep the required behavior. Then compa
 change, how rules are owned, the dependencies, and the boundaries and coordination each adds. Counts of places are
 signals, not a score: several small edits can need less understanding than one. Keep cohesive code when a split shows
 no benefit.
-
-A structural finding names the burden, its evidence and the arrangement that removes it; it still stands with every
-behavior finding fixed in place, and it is labelled `judgment`.

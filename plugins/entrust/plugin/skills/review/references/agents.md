@@ -1,15 +1,25 @@
 # Review agents
 
-Every agent starts with a fresh context and gets the task, the diff's base and head, the repository, the project
-instructions, the approved scope and permissions, and its brief below. It changes no file but its own return, starts
-no agent, invokes no mode or approval, and returns facts with `path:line`, what it ran and what it could not reach. The reviewer, or the
-coordinator, checks each returned point against the source before using it.
+The agents below start with a fresh context and get the task, the diff's base and head (the independent target gets
+only the base), the repository, the project instructions, the approved scope and permissions, and their brief. Each
+changes no file but its own return, starts no agent, invokes no mode or approval, and returns facts with `path:line`,
+what it ran and what it could not reach. The reviewer, or the coordinator, checks each returned point against the
+source before using it.
 
 ## Reviewer under a conductor
 
-The approved plan as given (object, mode, checks, result, scope, limits) and the review skill's path. Run the whole
-review by that page with the plan already approved; return the response and the record's path. Questions that need
-the user go back through the conductor.
+The full reviewer, not a checking agent: it gets the approved plan as given and the review skill's path and runs the
+whole review by that page, with the plan already approved. It cannot start agents; it asks the conductor for each one
+the plan names and saves its record and draft before returning, so a fresh reviewer could continue from them. It
+returns the response and the record's path; questions for the user go back through the conductor.
+
+## Independent target
+
+The task, the project instructions and the repository at the base, not the change. Brief:
+
+> Sketch the cleanest solution to this task in this codebase, by the design standard at `<skill-dir>/references/
+> design-standard.md`: its units, what each owns and reuses, the mechanisms it needs and the ones existing code or
+> contracts already provide, with places. Say which requirements you read from the task and which you assumed.
 
 ## Scout
 
@@ -19,20 +29,23 @@ their places, and what was looked for and not found. No opinion on the change.
 
 ## Critic
 
-The reviewer's draft: verdict, target, findings, units kept and changed, mechanism decisions and questions; not the
-reasoning behind them. Brief:
+The requirements with their sources, the reviewer's saved draft (the record with its block and unit verdicts, the
+mechanisms, the target, the findings and the questions) and the independent target; not the reasoning behind them.
+Brief:
 
-> Argue the strongest case, from the code, against each decision of this draft, in both directions. Against what it
-> keeps: a structure that makes a likely change of the task touch several places or read unrelated code, a mechanism
-> something already provides, an approach a simpler one would replace, a defect or test gap it missed. Against what it
-> proposes: a change, removal or split that removes no burden, adds a boundary or coordination, or loses behavior the
-> task requires. Cite each point's place. Say where you found nothing to argue.
+> Give the five strongest points against this draft, ranked, each with its place. Name any requirement that no
+> source states and the mechanisms kept only for it. For the unit that makes the most decisions, propose another
+> arrangement and walk one change grounded in the task through both, the places edited and the code read in each.
+> Look both ways: what the draft keeps that should change (a structure, a mechanism something already provides, a
+> missed defect or test gap), and what it proposes that should not (a change that removes no burden, adds a boundary
+> or loses required behavior). Where you found nothing to argue, say so.
 
 ## Verifier
 
-Each factual claim in the draft's findings, questions and mechanism decisions: what calls what, what a contract
-guarantees, what is unavailable, what a removal would eliminate, what a test covers. Check each against the source and
-return it as confirmed or refuted, with the place, or as not checkable and why. No new findings.
+Each factual claim in the draft: the source given for each requirement, every `met: read`, what calls what, what a
+contract guarantees, what is unavailable, what a removal would eliminate, what a test covers, the reasons for kept
+units. Check each against the source and return it as confirmed or refuted, with the place, or as not checkable and
+why. No new findings.
 
 ## Direction helpers
 
@@ -42,5 +55,6 @@ of its conclusions against the source, says which evidence it borrowed and who r
 shared work without rebuilding the whole record. The design helper asks where rules, state and effects are owned,
 what must be understood or changed together and what that costs; it compares keeping, simplifying in place,
 consolidating, extracting and removing, and for a removal weighs what the mechanism guarantees against what is lost.
-It traces required behavior through any proposed target, telling observable changes and owner decisions from equivalent refactoring. A supported keep is a valid answer. A helper returns candidates, corrections, questions and leads with their places,
-the checks it ran, and the scope it examined and did not reach; no record or line map is asked of it.
+It traces required behavior through any proposed target, telling observable changes and owner decisions from
+equivalent refactoring. A supported keep is a valid answer. A helper returns candidates, corrections, questions and
+leads with their places, the checks it ran, and the scope it examined and did not reach.

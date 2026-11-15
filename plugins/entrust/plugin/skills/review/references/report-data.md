@@ -4,22 +4,27 @@ The full record of a review: one `review.json` that the response is written from
 
 ## Making it
 
-1. `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, in the reviewed repository, writes
-   the record's mechanical part: the diff's base, head and digest, a copy of the diff beside the record, and one
-   block per run of changed lines with its line numbers. It never replaces an existing record.
-2. Fill in the rest from the analysis. A block that holds two decisions is divided: copy it and split its line
+1. At the start of the analysis, `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, in the
+   reviewed repository, writes the record's mechanical part: the diff's base, head and digest, a copy of the diff
+   beside the record, and one block per declaration-sized run of changed lines, numbered. For uncommitted work it
+   records a snapshot of the working tree, new files included, without touching the index. It never replaces a record.
+2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies. `node "<skill-dir>/scripts/report.mjs" lines <range>` prints every changed line with
    the address a block uses.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
-   references between them and that every changed line belongs to exactly one block; its messages say what to fix.
-   It cannot check that the words are true.
+   references between them, that every changed line belongs to exactly one block and that the diff is the one the
+   record was made from, and it warns about a large block given one verdict. It cannot check that the words are true.
 4. Read the record back as a whole: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
    solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
    its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
-5. Where writes are not allowed, give the record inline and say which checks could not run.
+5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
+   beside it and prints the report as text; the JSON is not changed. Link the page. On it the user marks findings and
+   ideas to apply or skip, comments on any passage and copies those decisions back as text: proposals for the next
+   step, not edits to the source.
 
-A later page is drawn from the same bytes and the saved diff, with no new analysis. New evidence that changes a
-conclusion makes a revised record, named as such.
+Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
+review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
+new evidence that changes a conclusion makes a revised record, named as such.
 
 ## Format
 

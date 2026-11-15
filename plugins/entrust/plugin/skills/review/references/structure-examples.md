@@ -29,18 +29,18 @@ Evidence is the shared decision state, caller dependency and preserved ordering,
 The finding names what must be read together today and what no longer must be afterwards. The same shape
 proposed for code where nothing is shared between the rules would be a preference, and an idea at most.
 
-## Interleaved rules worth separating
+## Rules that read each other's results
 
-`checkoutError(cart, user)` returns the message to show, or null. It sets `let message = null`, then: if the
-user is a member, sets a lower minimum spend and, inside that branch, checks the coupon's expiry and sets a message;
-outside it checks the minimum and sets another; checks stock and sets a third; and at the end re-checks the empty
-cart "so its message wins". Precedence comes from which assignment runs last; the coupon rule exists twice, once in
-the member branch and once below; and the minimum is set inside a branch that also decides another rule.
+`orderTotal(order)` starts from the items' sum and applies, in order: a loyalty discount of 5%, a coupon of a fixed
+amount, free delivery over a threshold, and a cap that a coupon may not take the total below the delivery fee. Each
+rule reads `total` as the previous rule left it: the delivery threshold is tested after the coupon, so whether
+delivery is free depends on whether a coupon was used, and the cap reads the delivery fee that the free-delivery rule
+may have zeroed. The task states the threshold on the items' sum.
 
-Today, letting members also skip the stock check means reading every branch to see which assignment would then run
-last, and editing two places for the coupon. Written as guards with early returns in the order the task gives,
-each reading only its own inputs, the same rules make that change one line, and the coupon rule exists once. One
-function remains enough: the finding is the shared variable and the duplicated rule, not the function's size.
+Today, moving the loyalty discount after the coupon, or adding a second coupon, changes the delivery and cap
+outcomes, and the only way to know is to read every rule. A target computes each discount from the items' sum, the
+threshold included, and adds them up once; then each rule can be changed alone, and the delivery defect the
+ordering hid becomes visible. One function is still enough.
 
 ## Ordered rules that stay together
 
@@ -53,10 +53,3 @@ Nothing here must be read together: a rule is changed by editing its own guard, 
 is the precedence. A function per rule and a coordinator that calls them in the same order would restate the
 function with more names to follow. The verdict is `keep`, with one line saying why. A small calculation
 inside a guard is not by itself a calculation that obscures the order.
-
-## A split that adds no useful boundary
-
-A local decision `attempts < limit && isTransient(error)` is already easy to follow and reuses the existing
-classification utility. Extracting wrappers named `hasAttemptsLeft` and `hasRetryableError` merely moves the
-two obvious conditions. It adds navigation without isolating a meaningful calculation or hiding coordination.
-Keep the decision local unless the actual contracts or callers demonstrate a benefit from another boundary.

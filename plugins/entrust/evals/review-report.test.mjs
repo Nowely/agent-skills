@@ -3,7 +3,7 @@
 // on one prepared case with a review written here; it calls no model. It checks that a complete review becomes
 // a page that loads nothing from elsewhere and a printout in the shape SKILL.md gives the report, and that an
 // incomplete one is refused with every fault listed. Run it after an edit to those scripts, to
-// references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
+// references/report-data.md or to the report's shape in SKILL.md.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -418,6 +418,32 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     fs.writeFileSync(data, JSON.stringify(moved));
     const refused = report("check", data);
     return refused.status === 1 && refused.stderr.includes("is not the one this record was scaffolded from") || "a record checked against another diff was accepted";
+  });
+
+test("scaffold takes uncommitted work with its new files, leaves the index alone, splits at declarations, and check warns on one verdict over a large block",
+  "a whole new file became one block that one keep could pass, and new files of uncommitted work were missing from the record",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "worktree-")), git = (...args) => spawnSync("git", args, { cwd: dir, encoding: "utf8" });
+    git("init", "--quiet"); git("config", "user.email", "t@example.invalid"); git("config", "user.name", "t");
+    fs.writeFileSync(path.join(dir, "a.js"), "export const a = 1;\n");
+    git("add", "a.js"); git("commit", "--quiet", "-m", "base");
+    fs.appendFileSync(path.join(dir, "a.js"), "\nexport function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n");
+    fs.writeFileSync(path.join(dir, "new.js"), `export function big() {\n${Array.from({ length: 44 }, (_, i) => `  const v${i} = ${i};`).join("\n")}\n}\n`);
+    const tool = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, encoding: "utf8" });
+    const made = tool("scaffold", "HEAD", path.join(dir, "out", "review.json"));
+    if (made.status !== 0) return made.stderr;
+    if (git("diff", "--cached", "--name-only").stdout.trim() || !git("status", "--porcelain").stdout.includes("?? new.js")) return "scaffold changed the user's index or working tree";
+    const record = JSON.parse(fs.readFileSync(path.join(dir, "out", "review.json"), "utf8"));
+    if (!record.range.includes("..") || !record.change.sources.some((s) => s.includes("snapshot of the working tree"))) return `the working tree was not recorded as a snapshot: ${record.range}`;
+    const of = (file) => record.blocks.filter((b) => b.path === file);
+    if (of("new.js").length !== 1) return "a new untracked file is missing from the record";
+    if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
+    const filled = { ...structuredClone(REVIEW), range: record.range, change: { ...REVIEW.change, sources: record.change.sources }, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
+      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
+    fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
+    const checked = tool("check", path.join(dir, "out", "review.json"));
+    if (checked.status !== 0) return checked.stderr;
+    return checked.stderr.includes("keeps 46 lines under one verdict") || `no warning about the large block: ${checked.stderr}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
