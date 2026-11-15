@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.39.0 — 2026-11-16
 
 ### Changed
 
@@ -17,8 +17,7 @@ forensics remain in the repository references and release notes.
   improvement.
 - `entrust:review` analyzes connected code before finalizing the full changed-line map. If the diff or a
   requested direction cannot be covered, it returns a bounded partial review rather than treating unread
-  lines as `keep` or presenting a valid complete `review.json`. The full-review data contract and checker
-  remain unchanged.
+  lines as `keep` or presenting a valid complete `review.json`.
 - `entrust:review` multi mode, available only on explicit request after plan approval, keeps one reviewer as
   coordinator for the connected analysis, final map and report. The coordinator may share working analysis
   and helper returns across behavior, necessity, design and tests as useful. Helpers verify material premises
