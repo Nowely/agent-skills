@@ -6,6 +6,8 @@ The later [external evidence review](external-evidence.md) records source-backed
 for future work; it does not revise the pilot results. New comparisons use the
 [review protocol](../../evals/review/protocol.md), including its case-selection and assessment rules.
 The [next-comparison note](next-comparison.md) records open preparation decisions, not an approved round.
+The [existing solutions review](prior-review-solutions.md) surveys documented tools and practices,
+without a comparative product trial.
 
 ## Question
 
