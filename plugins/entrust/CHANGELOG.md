@@ -19,6 +19,12 @@ forensics remain in the repository references and release notes.
   requested direction cannot be covered, it returns a bounded partial review rather than treating unread
   lines as `keep` or presenting a valid complete `review.json`. The full-review data contract and checker
   remain unchanged.
+- `entrust:review` multi mode, available only on explicit request after plan approval, keeps one reviewer as
+  coordinator for the connected analysis, final map and report. Fresh-context helpers investigate behavior,
+  necessity, design or tests without suggested findings and need not return complete maps or canonical reports; the coordinator
+  checks their evidence, keeps partial results and the approval gate, and a refused or failed helper does not
+  change the mode. One reviewer remains the default. In `orchestrate`, an ordinary cross-review stays one
+  independent reviewer and helpers are not required.
 - Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
   proof that the blocks serve nothing or can be removed safely.
 

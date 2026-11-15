@@ -405,7 +405,7 @@ test("the review procedure distinguishes a complete map from an incomplete revie
       "After refutation, map every nonblank changed line to exactly one block",
       "If mapping exposes an analysis gap",
       "For a complete review, finalize `review.json`",
-      "if the reconciled work covers the diff and each requested direction",
+      "Without demonstrated coverage of the diff and requested directions, return partial",
     ];
     const partial = [
       "If the diff cannot be covered whole or a requested direction remains unreviewed",
@@ -423,6 +423,26 @@ test("the review procedure distinguishes a complete map from an incomplete revie
     const positions = ["### 5. Refute", complete[0], complete[2]].map((text) => skill.indexOf(text));
     return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1]))
       || "full line mapping is not after refutation and before finalization";
+  });
+
+test("the multi procedure assigns analysis and the canonical result without silently changing modes",
+  "these checks verify the written instructions, not whether a coordinator or assistant follows them",
+  () => {
+    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
+    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
+    const required = [
+      "the coordinator independently analyzes connected code and all four directions",
+      "assistants independently investigate agreed directions",
+      "no canonical JSON, complete line map or rendering is required of them",
+      "The coordinator owns the analysis, coherent target, line map and canonical result",
+      "If an approved reviewer or assistant cannot start, fails or is blocked, stop and ask; do not substitute a different mode",
+      "If an assistant returns partial, ask how to proceed; without an answer, return partial",
+      "Never add unauthorized delegation",
+    ];
+    const absent = required.filter((text) => !skill.includes(text));
+    if (!roles.includes("it forwards their returns unchanged to the review coordinator"))
+      absent.push("the parent forwards helper returns to the review coordinator");
+    return !absent.length || `multi instructions omit: ${absent.join("; ")}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
