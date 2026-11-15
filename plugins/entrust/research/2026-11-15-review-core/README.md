@@ -56,6 +56,12 @@ One synthetic case, `slot-edit/head`, reviewed by Sonnet-class subagents in Clau
 
 The case is formative and at the ceiling for both versions: it shows no regression, not an improvement.
 
+## Draft 33
+
+Draft 32 less what its own run and a second critic showed unneeded. A Sonnet-class critic checked every rule the verifier had restored against the research records: only the approval rules (four of four pilot reviews stopped at the gate) and "helpers invoke no mode or approval" (pilot briefs had to add it by hand) had an observed failure behind them; the rest were duplicates, text the page or scripts already carry, or guards against failures never seen. About 140 words went; at the owner's word, the comparison with the base for behavior the task did not ask to change stayed, since reading the base and checking unintended changes are different acts. From the regression run: the plan's cost line now says what was measured (the three checking agents cost about two reviews' tokens on one case); the response names only the critic's and verifier's points rejected or sent to the owner, with the accepted ones in a line, since the judge found the full list added little for a reader; and the tests direction checks that test data respects the contracts the code relies on, the one thing the merged skill found that draft 32 missed.
+
+Drafts: [the page](drafts/33-review.md), [agents](drafts/33-agents.md), [design standard](drafts/33-design-standard.md), [data contract](drafts/33-report-data.md), [structural examples](drafts/33-structure-examples.md). About 5,650 words in all. Not run.
+
 ## Status
 
 Not run on a real change. Evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.

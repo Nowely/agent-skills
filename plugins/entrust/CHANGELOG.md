@@ -16,8 +16,8 @@ forensics remain in the repository references and release notes.
   and the reviewer settles each difference from its own target. After refutation a critic, given the requirements
   with their sources and the block verdicts, ranks its five strongest points against the draft in both directions
   and walks one grounded change through another arrangement of the busiest unit; a verifier checks the draft's
-  factual claims. A point is rejected only on a place in the code that refutes it, otherwise it goes to the owner,
-  and the response lists every point. The session that can start agents starts them all. Not yet measured.
+  factual claims. A point is rejected only on a place in the code that refutes it, otherwise it goes to the owner;
+  the response names every point rejected or sent to the owner. The session that can start agents starts them all. Not yet measured.
 - `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
   one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
   included. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
@@ -27,7 +27,7 @@ forensics remain in the repository references and release notes.
   work is recorded as a snapshot with its new files, through a temporary index. The reviewer writes only the
   meaning. `check` refuses a record checked against another diff and warns when one verdict covers a large block;
   it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
-  contract, and the reading required for a review fell from about 7,600 words to about 5,800 with the new agents.
+  contract, and the reading required for a review fell from about 7,600 words to about 5,650 with the new agents.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`.
 - Built-in review report labels describe blocks without recorded requirement links as unlinked, not as

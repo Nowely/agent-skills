@@ -54,7 +54,7 @@ code, walk a change grounded in the task or code through both arrangements, noti
 read; do not invent future requirements.
 
 Then sketch the target before the detailed passes: its units, what each owns and reuses, and the mechanisms it needs.
-It is provisional and does not inherit the change's premises. A target someone supplied is assessed the same way: kept where the evidence holds, revised where it does not, not rebuilt only because it was supplied. Trace every requirement and rule through it. Keep the
+It is provisional and does not inherit the change's premises. Trace every requirement and rule through it. Keep the
 timing, failure, retry and no-input behavior that the task, an owner decision or a contract requires, citing it; a
 required outcome does not by itself require the automatic way the change reaches it. For a mechanism whose need is
 unproven, sketch the simplest alternative without it: what then triggers the required behavior, what is lost, what is

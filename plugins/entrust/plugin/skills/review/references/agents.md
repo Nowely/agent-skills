@@ -55,6 +55,5 @@ of its conclusions against the source, says which evidence it borrowed and who r
 shared work without rebuilding the whole record. The design helper asks where rules, state and effects are owned,
 what must be understood or changed together and what that costs; it compares keeping, simplifying in place,
 consolidating, extracting and removing, and for a removal weighs what the mechanism guarantees against what is lost.
-It traces required behavior through any proposed target, telling observable changes and owner decisions from
-equivalent refactoring. A supported keep is a valid answer. A helper returns candidates, corrections, questions and
+A supported keep is a valid answer. A helper returns candidates, corrections, questions and
 leads with their places, the checks it ran, and the scope it examined and did not reach.
