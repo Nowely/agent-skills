@@ -173,7 +173,8 @@ export function check(review, files, directory) {
     if (item.verdict === "question" && !item.questions?.length) errors.push(`${who} is a question and names none of the questions`);
     else if (!["keep", "question"].includes(item.verdict) && !item.findings?.length) errors.push(`${who} is to ${item.verdict} and names no finding`);
   };
-  // A point against the draft is rejected only on a place in the code that refutes it.
+  // A point against the draft is rejected only on a place, in the code or the task's sources, that refutes it; the
+  // check sees that a place is named, not what it says.
   const place = /[\w@./-]+\.\w+:\d+/;
   (review.challenges ?? []).forEach((c, index) => {
     const who = `challenge ${index + 1}`;

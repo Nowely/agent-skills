@@ -106,6 +106,8 @@ A fresh Opus-class review of draft 34, using the trial, found the chain had brok
 
 Not changed, for real use to decide: how far to divide blocks; whether the reviewer's own target adds anything over the independent one (0 of 2 so far); the multi-mode threshold.
 
+A Sonnet-class critic of draft 35 found every item in place and the Codex fix right and enough, and four things to correct, all done: the weight rule said "wholly theirs" while the total counts every listed block (now "the lines they touch together", with one trigger stated alike in both pages); reading the record back now says the record, not the printout that leaves kept blocks to the page; a rejection whose source has no place goes to the owner, and the check's comment says it sees that a place is named, not what it says; the plan's trial numbers were cut to one clause.
+
 Drafts: [the page](drafts/35-review.md), [agents](drafts/35-agents.md), [design standard](drafts/35-design-standard.md), [data contract](drafts/35-report-data.md), [structural examples](drafts/35-structure-examples.md). About 6,400 words in all.
 
 ## Status

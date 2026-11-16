@@ -18,7 +18,7 @@ The full record of a review: one `review.json` that the response is written from
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
    about a kept unit holding an open block. It cannot check that the words are true, nor that a place named to
    reject a challenge refutes it.
-4. Read the record back as a whole: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
+4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
    solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
    its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
@@ -112,15 +112,15 @@ new evidence that changes a conclusion makes a revised record, named as such.
   or that frequency is unknown. `blocks` may list the numbers of blocks wholly the mechanism's, each with a `kind` of
   `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work, shared imports
   included. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
-  also gives their total, each block counted once.
+  also gives the lines they touch together, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` and `unit`.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
   the list of questions.
 - **Challenges.** Each point of the independent target, the critic or the verifier that could change a requirement, a
   verdict, a finding or a question: `from` (`target`, `critic` or `verifier`), `point`, `outcome` and `note`.
   `accepted` notes what it changed; `rejected` names in `at` the `path:line`, in the code or the task's sources, that
-  refutes it, and the note quotes what that place says and why it contradicts the point; `owner` says what the owner
-  decides. A difference between the two targets is a point from `target`. A corrected citation is fixed in place and
+  refutes it, and the note quotes what that place says and why it contradicts the point (a source with no such place
+  sends the point to the owner); `owner` says what the owner decides. A difference between the two targets is a point from `target`. A corrected citation is fixed in place and
   an agreement is not recorded.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
