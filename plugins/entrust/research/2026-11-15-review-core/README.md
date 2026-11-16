@@ -1,4 +1,4 @@
-# Review core: draft 32
+# Review core: drafts 32 to 34
 
 ## Question
 
@@ -62,6 +62,38 @@ Draft 32 less what its own run and a second critic showed unneeded. A Sonnet-cla
 
 Drafts: [the page](drafts/33-review.md), [agents](drafts/33-agents.md), [design standard](drafts/33-design-standard.md), [data contract](drafts/33-report-data.md), [structural examples](drafts/33-structure-examples.md). About 5,650 words in all. Not run.
 
+## Draft 34
+
+A fresh Opus-class review of draft 33 found the skill's anti-anchoring output invisible: the critic's and verifier's points and the independent target's differences had no place in the record or on the page, the reviewer settled target differences with no evidence bar, a necessity verdict of `unknown` could only be recorded as `keep`, the independent target could inherit the author's framing through "the task", the record stopped checking after one more commit, and the data contract's example was an evaluation case's answer. Draft 34 answers each:
+
+- **Challenges.** Each point of the critic and the verifier, and each difference between the two targets, is a `challenge` in the record (`from`, `point`, `outcome`, `note`, and for a rejection `at`, the place that refutes it), checked and drawn on the page. The independent target's return reaches the reviewer with the critic's and verifier's, under a conductor and in session alike.
+- **Question verdict.** A block or unit whose premise is unread is a `question` naming the question, never `keep`.
+- **Inputs.** The independent target gets the owner's task and discussion; the author's description and commits only marked as the author's account. A requirement only the author states is an `assumption` unless the approved plan made that description the task.
+- **Record.** `scaffold` pins the range to commits and saves the diff named after the record; `check`, `render` and `lines` read the saved diff. `check` also warns about kept blocks that serve no requirement or only assumed ones, and about a kept unit with an open block.
+- **Smaller.** A failed checking agent leaves its check not run instead of stopping the review; the short review skips the record, block map and page; one vocabulary for unit verdicts; the cost line states the measured total; the format example is a neutral domain. Slot-edit's rubric items F5 and X4 are taught by the structural examples, so that case no longer measures design effect.
+
+A Sonnet-class critic of draft 34 confirmed all eight changes and the scripts on a scratch repository, and argued five points. Fixed: the short review contradicted "respond from the record"; the author-only rule would have flagged most kept blocks on a pull request whose description is the only task (now confirmed through the plan); `lines` read live git; a kept unit with an open block went unnoticed; the contract did not say the check cannot judge whether a place refutes a point. Left open for real use: the bookkeeping cost of a challenge per point, and that the independent target now reaches the reviewer only with the critic.
+
+Drafts: [the page](drafts/34-review.md), [agents](drafts/34-agents.md), [design standard](drafts/34-design-standard.md), [data contract](drafts/34-report-data.md), [structural examples](drafts/34-structure-examples.md) (unchanged). About 6,100 words in all.
+
+## Trial on a real change
+
+One real change from this repository's history: `276a94a`, "Driver audit, step 4: one rights model for the three adapters", 669 lines added and 416 removed in 23 files. The owner's task was the audit proposal's step 4 and the owner's decisions; the commit message and implementation notes were the author's account. A Sonnet-class reviewer ran draft 34 in a subagent with this session as conductor, which started a Sonnet-class independent target at once and a Sonnet-class critic and verifier on the saved draft. One run: a trial of the procedure on a real change, not a comparison.
+
+| | Tokens reported | Time |
+|---|---|---|
+| Reviewer, to the saved draft | 287k | 11 min |
+| Independent target | 110k | 1 min |
+| Critic (ran the suites on extracted copies) | 153k | 16 min |
+| Verifier | 139k | 2 min |
+| Reviewer, reconciling | 325k | 3 min |
+
+- **Blocks.** The scaffold made 169 blocks; the reviewer divided them into 198 and wrote a 50 KB script to fill them. 183 ended `keep`, 11 `fix`, 4 `question`. The block map is the largest writing cost of a review this size.
+- **What the checks changed.** The draft said the change does its task, the mailbox module kept, five findings. After the checks: requirement 1 only partly met (the module does not own "record, then answer"; each adapter keeps its own unrecorded-accept branch), the mailbox unit to fix with an `answer()` that owns the order, the plan-time overlap refusal moved to the top as the one regression, and a new behavior finding from the verifier: the Codex read sandbox no longer refuses a TMPDIR that does not resolve (`[null]` equals `[null]`). Three questions answerable from the code were cut. The independent target had proposed the module owning the order (`offer(request, answerFn)`) from the task alone; the reviewer's own draft had accepted the author's primitives.
+- **Challenges.** 25: critic 8 accepted and 2 rejected, verifier 8 accepted, independent target 5 accepted and 2 rejected. One rejection cites a test that confirms the critic's point rather than refuting it (the OpenCode run with no reported rules proceeds and only says so on stderr): the check sees that a place is named, not what it shows.
+- **The reviewer's notes on the procedure:** how to record a target point that agrees, whether a citation correction needs its own challenge, that a unit's verdict follows its least certain block, how to divide a removal-only block, that `uses` must name listed units, how to cite a base line in `instead`, and that 198 blocks are a large input for the critic.
+- **Both defects found are still in the code** (`codex/scripts/driver.mjs:1798`, `orchestrate/scripts/agent-run.mjs:578`); they are reported, not fixed here.
+
 ## Status
 
-Not run on a real change. Evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+One real change reviewed with draft 34 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
