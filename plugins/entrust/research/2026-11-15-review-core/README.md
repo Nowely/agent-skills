@@ -286,8 +286,28 @@ About 660k tokens and 10 minutes; 76 blocks scaffolded, 86 in the end.
   were rejected on quoted lines. The verifier corrected three line numbers.
 - **The owner's decision on the checks:** they stay on by default; they look useful even though they take time.
 
+## Draft 39
+
+From the fifth trial and the Terra comparison, each change answering a failure seen there:
+
+- **An existing path the change keeps beside a new default, or reworks to live with one, is a mechanism it alters.**
+  In both trials on `cb5a409` the remote mode was no mechanism, so the rule for behavior nobody required never reached
+  it. Such a mechanism nobody required is now weighed when it goes to the owner: what the owner later cut, with its cost.
+- **A requirement can come from the project instructions:** `project`. In the fifth trial the version bumps and the
+  docs AGENT.md requires could only be assumptions, and the warning on kept blocks serving only assumptions named 30
+  blocks and was answered in one paragraph.
+- **A test gap holds back acceptance only when a regression of a required behavior would pass;** otherwise adding the
+  test is a step after acceptance. In the Terra comparison both reviews with checks of one case demanded tests before
+  acceptance, which both assessors judged stronger than established.
+
+The planned check of the design-finding bar was dropped: in the fifth trial the simplifications reached findings
+through necessity, and the one turned into an idea went there on a place the critic read. The checking agents stay on
+by default, as the owner decided. Written when the session's quota was nearly spent: no critic and no run yet.
+
+Drafts: [the page](drafts/39-review.md), [agents](drafts/39-agents.md), [design standard](drafts/39-design-standard.md), [data contract](drafts/39-report-data.md), [structural examples](drafts/39-structure-examples.md).
+
 ## Status
 
 Five reviews of four real changes, with drafts 34 to 38 (above), and one plain request on the fourth change.
 The [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate, not
-draft 37; it does not establish a general winner or no regression.
+draft 37; it does not establish a general winner or no regression. Draft 39 awaits its critic and a run on `cb5a409`.

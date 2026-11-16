@@ -33,8 +33,12 @@ forensics remain in the repository references and release notes.
   description the task, and so is one read into the task's words rather than stated by them, such as keeping the old
   way beside a new default; the independent target is asked for such readings too. A behavior nobody required is
   recorded as a mechanism with no requirement behind it and goes to the owner, never kept silently and never removed
-  as mandatory. A block's `remove` means the target has no such code: work that belongs in another change keeps its
-  verdict and a step moves it. The data contract shows where a weighed block's `kind` goes.
+  as mandatory. An existing path the change keeps beside a new default, or reworks to live with one, is a mechanism
+  it alters, and one nobody required is weighed when it goes to the owner. A requirement can come from the project
+  instructions (`project`), so a version bump or a doc the project requires no longer counts as an assumption. A test
+  gap holds back acceptance only when a regression of a required behavior would pass. A block's `remove` means the
+  target has no such code: work that belongs in another change keeps its verdict and a step moves it. The data
+  contract shows where a weighed block's `kind` goes.
 - `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
   part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
   changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a

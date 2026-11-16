@@ -66,7 +66,7 @@ export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
-export const SOURCES = ["task", "discussion", "question", "assumption"];
+export const SOURCES = ["task", "discussion", "project", "question", "assumption"];
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };

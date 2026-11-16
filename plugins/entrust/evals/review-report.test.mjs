@@ -358,7 +358,7 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.checks[0].expect; }, 'check 1 has no "expect"'],
       [(r) => { r.checks[0].requirements = [6]; }, "check 1 names requirement 6, which is not listed"],
       [(r) => { delete r.now; }, '"now" is missing'],
-      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, question, assumption"],
+      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, question, assumption"],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
@@ -501,6 +501,14 @@ test("unsupported or incomplete diffs and records without a saved diff are refus
     fs.writeFileSync(target, JSON.stringify(legacy));
     const result = report("check", target);
     return result.status === 1 && result.stderr.includes("no saved diff") || "a record without a saved diff was accepted";
+  });
+
+test("a block kept for a rule of the project instructions is not warned about as kept for an assumption",
+  "version bumps and docs required by the project could only be labelled assumptions, and the warning named dozens of blocks that asked nothing",
+  () => {
+    const done = render((r) => { r.requirements.find((q) => q.id === 3).source = "project"; r.blocks[0].serves = [3]; });
+    if (done.status !== 0) return done.stderr;
+    return !done.stderr.includes("serve only assumed requirements") || `warned: ${done.stderr}`;
   });
 
 test("a diff whose filename has spaces is read with its file headers",
