@@ -148,6 +148,26 @@ The owner then made two changes on the branch: the scaffold takes a supplied dif
 
 Drafts: [the page](drafts/36-review.md), [agents](drafts/36-agents.md), [design standard](drafts/36-design-standard.md), [data contract](drafts/36-report-data.md), [structural examples](drafts/36-structure-examples.md). About 6,600 words in all.
 
+## Third trial: draft 36 on the owner's head
+
+`b2a1878`, "Driver audit, step 5: the measurements run here, and the probes for the owner's machine", 463 lines added and 21 removed in 12 files, Markdown and new probe scripts. The skill as on the branch after the owner's two changes and the answer to the critic of draft 36 (`5c72bd1`): the scaffold took a diff file the conductor wrote with `git diff --no-renames`. The owner's task was step 5 and the owner's decisions; the commit message was the author's account. Same arrangement as before: Sonnet-class reviewer, target, critic and verifier, this session conducting, every agent kept to the plan's scope. The reviewer saved its own sketch before opening the target's, as an instrument for this trial only.
+
+| | Tokens reported | Time |
+|---|---|---|
+| Reviewer, to the draft | 178k | 6 min |
+| Independent target | 74k | 0.5 min |
+| Critic | 81k | 0.5 min |
+| Verifier | 89k | 1 min |
+| Reviewer, reconciling | 191k | 1 min |
+
+About 610k tokens and 9 minutes.
+
+- **The target wrote its own file and returned only the path**, 45 seconds after the start; the reviewer's sketch was saved two minutes later, before it says it opened the target's. The two sketches agree in structure; the target's per-measurement ask became the review's headline question.
+- **Blocks.** 42 scaffolded, 44 in the end; 36 kept, 35 of them with no `does`. Markdown at headings gave section-sized blocks; the reviewer merged none.
+- **What the checks changed.** The critic moved the owner's unmet rule (each token-spending measurement asked for before it runs; one blanket "go on" is recorded) to the head of the verdict, found that the init check now stops a run whose init lists no tools at all where the base let it pass, that the relay's new sentence was never run without the pasted steps, and that the proposed rename of `wider` was churn. The verifier refuted part of a test-gap finding: a test already compares the two copies of the relay's steps word for word (`agent-contract.test.mjs:200-211`), so the gap shrank to both copies losing the sentence at once.
+- **Challenges.** 11: target 2 accepted and 1 to the owner; critic 5 accepted and 2 to the owner; verifier 1 accepted after its place was read. No rejection; corrected citations fixed in place.
+- **Procedure notes.** The critic, reading the printout, could not reach the files behind kept probe blocks and said so; a design alternative the critic itself does not push fits no outcome (sent to the owner); edits after the critic again needed a one-shot script; warnings and the report share the terminal, so a reviewer grepping both can misread them.
+
 ## Status
 
-Two real changes reviewed, with drafts 34 and 35 (above); draft 36 not run. Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+Three real changes reviewed, with drafts 34, 35 and 36 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
