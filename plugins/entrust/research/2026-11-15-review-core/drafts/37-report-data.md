@@ -121,10 +121,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
   which a kept block may leave out.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
   the list of questions.
-- **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; for a point
-  two raise, the first, the note naming the other), `point`, `outcome` (`accepted`, `rejected` or `owner`) and
-  `note`, which says what it changed, what the refuting place says and why, or what the owner decides; a rejection
-  names that place in `at`.
+- **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
+  between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
+  `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
+  the note quotes it; `owner` is every other point, and the note says what the owner decides.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each

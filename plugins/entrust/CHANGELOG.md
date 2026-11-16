@@ -37,13 +37,13 @@ forensics remain in the repository references and release notes.
   changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a
   snapshot. The reviewer writes in `range` how the diff was obtained and the state its files are read at; a saved
   diff does not establish that it includes the whole change. A diff the scaffold cannot read is refused with the
-  file named and the way out: a binary, empty or mode-only file to leave out and review apart, or for Git the
-  options that give a readable patch under any user configuration. The reviewer writes the meaning, and a kept block needs no `does`. `check`, `render`
-  and `lines` read the saved diff; a saved diff that changed is refused. Older records without one need a new
-  record. `check` warns when one verdict
-  covers a large block, when kept blocks serve no requirement or only assumed ones, and when a kept unit holds an
-  open block; it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
-  contract, and the reading required for a review fell from about 7,600 words to about 6,600 with the new agents and the challenges.
+  files named, all at once, and the way out: binary, empty or mode-changed files to leave out and review apart, or
+  for Git the options that give a readable patch under any user configuration. The reviewer writes the meaning,
+  and a kept block needs no `does`. `check`, `render` and `lines` read the saved diff; a saved diff that changed is
+  refused. Older records without one need a new record. `check` warns when one verdict covers a large block, when
+  kept blocks serve no requirement or only assumed ones, and when a kept unit holds an open block; it no longer
+  requires a unit to split to name a new target unit. The page reference is folded into the data contract, and the
+  reading required for a review fell from about 7,600 words to about 6,700 with the new agents and the challenges.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
   as observed on three real changes (610k to 1M tokens and 8 to 31 minutes for 307 to 1,085 changed lines, about

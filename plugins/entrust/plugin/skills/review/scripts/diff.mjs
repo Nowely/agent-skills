@@ -41,14 +41,14 @@ export function parseDiff(out) {
       file.hunks.push(hunk = []);
     }
     else if (line.startsWith("@@")) throw new Error("Unsupported diff hunk");
-    else if (line.startsWith("old mode ") || line.startsWith("new mode "))
-      throw new Error(`${file?.path ?? "a file"}: a file mode change; leave it out of the diff (for Git, a pathspec that excludes the file, or -c core.fileMode=false for a working-tree diff) and review it separately`);
+    else if ((line.startsWith("old mode ") || line.startsWith("new mode ")) && file) file.mode = true;
     else if (hunk && /^[ +\-]/.test(line)) throw new Error("Unexpected line outside a diff hunk");
   }
   if (oldLeft || newLeft) throw new Error("Incomplete diff hunk");
   if (!files.length) throw new Error(`Diff has no \`diff --git\` file header; a colored or prefix-less diff has none (${GIT})`);
-  const bare = files.filter((f) => !f.hunks.length).map((f) => f.path);
-  if (bare.length) throw new Error(`${bare.join(", ")}: no text lines to review (a binary, empty or mode-only file); leave ${bare.length > 1 ? "them" : "it"} out of the diff and review ${bare.length > 1 ? "them" : "it"} separately`);
+  // Every file the blocks cannot hold, named at once, so one corrected diff is enough.
+  const apart = files.filter((f) => f.mode || !f.hunks.length).map((f) => `${f.path} (${f.mode ? "a file mode change" : "no text lines: binary or empty"})`);
+  if (apart.length) throw new Error(`The blocks cannot hold ${apart.join(", ")}: give the diff without ${apart.length > 1 ? "these files" : "this file"} (for Git, a pathspec that excludes ${apart.length > 1 ? "them" : "it"}) and review ${apart.length > 1 ? "them" : "it"}, text changes included, separately`);
   return files;
 }
 
