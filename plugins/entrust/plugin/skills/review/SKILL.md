@@ -18,12 +18,12 @@ Review only: change no project code and post nothing unless asked; keep to the u
 
 ## Plan
 
-Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size; analyse nothing yet. If the object cannot be identified, ask for it. Then show the plan, each choice with its alternative and the one selected:
+Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size; analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
 
 - **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff one reviewer cannot hold (roughly a thousand changed lines or more) or one with several risky areas. Multi costs two to six times the tokens.
 - **Where:** in this session (default), or in a subagent while this session conducts. A subagent keeps the analysis, often 50–190k tokens, out of the working session.
 - **Checks:** an independent target, a critic and a verifier (default), or none.
-- **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response without the block map, its check or the page.
+- **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page.
 - **Agents:** each agent the choices above start, with its model and the session that starts it, and scouts up to a stated number. By default the independent target and the critic run on the reviewer's model, the verifier and scouts on a lighter one. On the one case measured, the review with its checks cost nearly four times the tokens of a review without them.
 - **Scope and limits:** what will be read; any tests, application or screenshots run; any outside provider that receives the code; where the result goes; what is known to be out of reach.
 
@@ -87,9 +87,9 @@ Save the draft, then give it to the critic and the verifier at once, with the in
 
 ## Record and respond
 
-Fill the record, run `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes and its warnings are answered, read it back as the data contract says, and render the page. A short review writes no record and answers in the response.
+Fill the record, run `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes and its warnings are answered, read it back as the data contract says, and render the page. A short review skips this and answers from its analysis.
 
-Respond from the record, not from a second set of findings. Lead with the verdict and the recommendation (accept, fix in place, or reshape toward the target), what decides it, and its material limits. Then the ordered steps, each structural one with the burden it removes; the findings by impact, each once, with direction, evidence, place, problem and smallest fix; questions; ideas; open owner tradeoffs and their consequences; the challenges rejected or sent to the owner, each with its reason, and in a line what the accepted ones changed; the checks that did not run; what was not read.
+Respond from the record, or a short review's analysis, not from a second set of findings. Lead with the verdict and the recommendation (accept, fix in place, or reshape toward the target), what decides it, and its material limits. Then the ordered steps, each structural one with the burden it removes; the findings by impact, each once, with direction, evidence, place, problem and smallest fix; questions; ideas; open owner tradeoffs and their consequences; the challenges rejected or sent to the owner, each with its reason, and in a line what the accepted ones changed; the checks that did not run; what was not read.
 
 If the diff or a requested direction, a helper's included, could not be covered, review the bounded parts in order of risk and return a partial review: what was compared, grounded findings, what was not read or reviewed, the checks run, and that no complete record exists. Unread code is never `keep`.
 

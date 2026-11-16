@@ -414,6 +414,8 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     fs.writeFileSync(target, JSON.stringify(filled));
     const checked = report("check", target);
     if (checked.status !== 0) return `the scaffold's blocks do not cover the diff: ${checked.stderr}`;
+    const listed = report("lines", target);
+    if (listed.status !== 0 || !listed.stdout.includes("src/invoices/archive.js")) return `lines does not read the record's saved diff: ${listed.stderr}`;
     fs.rmSync(target);
     const again = report("scaffold", "HEAD~1..HEAD", target);
     if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold wrote over an existing saved diff";
@@ -462,9 +464,10 @@ test("a block or unit whose premise is unread is a question, and a point against
     if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
     for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
       if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
-    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1] }; r.blocks[0].serves = [3]; });
+    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3]; });
     if (done.status !== 0) return done.stderr;
     if (!done.stderr.includes("kept blocks 1 serve only assumed requirements")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    if (!done.stderr.includes("unit readArchive is kept, and its blocks 3 are not")) return `no warning about a kept unit with an open block: ${done.stderr}`;
     const page = fs.readFileSync(html, "utf8");
     if (!page.includes('id="challenges"') || !page.includes('href="#q1">Q1</a>') || !page.includes('id="q1"')) return "the page shows no challenges or no link from the block to its question";
     return /## Challenges\n1\. critic: The reader should not convert\. Rejected: .*src\/main\.js:4/.test(done.stdout) && done.stdout.includes("Question (Q1)") || `the printout lacks the challenges or the question:\n${done.stdout}`;

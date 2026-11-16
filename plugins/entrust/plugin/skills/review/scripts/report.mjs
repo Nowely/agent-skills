@@ -2,7 +2,7 @@
 // A review written as data: checked against its diff, printed as the report, and drawn as a page.
 //
 //   node report.mjs scaffold <range> <review.json>   write the record's mechanical part: one block per run of changed lines
-//   node report.mjs lines <range>          print every changed line of `git diff <range>` with its address
+//   node report.mjs lines <range | review.json>   print every changed line of `git diff <range>`, or of a record's saved diff, with its address
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
 //   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
@@ -147,7 +147,10 @@ try {
     const made = scaffold(argument, process.argv[4]);
     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in what each block does, serves and its verdict, divide a block that holds two decisions, then run check.`);
   } else if (command === "lines" && argument) {
-    for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
+    // A record's own diff when given a record, so the addresses are the ones its check reads.
+    const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(
+      changeOf(JSON.parse(fs.readFileSync(argument, "utf8")), path.dirname(path.resolve(argument)))) : diffOf(argument);
+    for (const file of files) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument));
     const { files, fault } = changeOf(review, directory), { errors, owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
@@ -163,6 +166,8 @@ try {
     const kept = model.blocks.filter((b) => b.verdict === "keep"), assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
     for (const [blocks, what] of [[kept.filter((b) => !b.serves.length), "serve no requirement"], [kept.filter(assumed), "serve only assumed requirements"]])
       if (blocks.length) console.error(`warning: kept blocks ${blocks.map((b) => b.id).join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
+    for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
+      console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
     const target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
@@ -173,7 +178,7 @@ try {
     if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
     console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs scaffold <range> <review.json> | report.mjs lines <range> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
+    console.error("usage: report.mjs scaffold <range> <review.json> | report.mjs lines <range | review.json> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
     process.exit(2);
   }
 } catch (error) {

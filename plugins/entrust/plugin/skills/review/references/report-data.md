@@ -10,12 +10,12 @@ The full record of a review: one `review.json` that the response is written from
    lines, numbered. For uncommitted work it records a snapshot of the working tree, new files included, without
    touching the index. It never replaces a record or a saved diff.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
-   ranges between the copies. `node "<skill-dir>/scripts/report.mjs" lines <range>` prints every changed line with
-   the address a block uses.
+   ranges between the copies. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed
+   line of the saved diff with the address a block uses.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, and about kept blocks that serve no requirement or only assumed ones. It
-   cannot check that the words are true.
+   cannot check that the words are true, nor that a place named to reject a challenge refutes it.
 4. Read the record back as a whole: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
    solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
    its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
