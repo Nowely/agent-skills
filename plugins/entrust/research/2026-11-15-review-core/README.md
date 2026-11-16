@@ -180,8 +180,71 @@ For real use to decide: a real tangled code change (the goal itself, shown once)
 
 Drafts: [the page](drafts/37-review.md), [agents](drafts/37-agents.md), [design standard](drafts/37-design-standard.md), [data contract](drafts/37-report-data.md), [structural examples](drafts/37-structure-examples.md).
 
+## Fourth trial: draft 37 on a change the owner later simplified
+
+`cb5a409` ("start OpenCode workers locally by default", 381 lines added, 67 removed, 35 files), chosen because the
+later history says what became of its lines: six days on, `3c70bb3` cut the remote-server mode it had kept beside the
+new default, with the `serverMode` threading, the launcher's override flag and the second copy of the URL rule. What
+an ideal review finds was written down from that history before any agent started. The agents read plain copies of
+the base and head trees and a copy of the skill, with no access to the repository or its history; the task was the
+title, the pull request text the author's account.
+
+| Agent | Tokens | Time |
+| --- | ---: | ---: |
+| Independent target | 80k | 0.5 min |
+| Reviewer, first pass | 169k | 5 min |
+| Critic | 93k | 1 min |
+| Verifier | 99k | 1 min |
+| Reviewer, reconciling | 188k | 1 min |
+
+About 630k tokens and 9 minutes; 76 blocks scaffolded, 83 in the end.
+
+- **Found, and confirmed by the later history.** A server the driver started outlives it: the draft named a signal
+  during startup, and the critic extended it to a kill or crash at any time with a guard tied to the parent's life, the
+  shape the owner built a month later (`6c27a80` cancels a startup; `7b88df6` starts the server under a forked owner
+  whose death ends it). Two docs left describing the old model were later removed. The question "one server per
+  worker or one shared" was fair; the owner kept one per worker. The local-server module, which survives, was kept.
+- **Missed: the simplification.** No agent asked whether the remote mode was still needed. The task's words "by
+  default" led the reviewer and the target alike to record "remote servers still work" as a `task` requirement, so the
+  blocks that keep the remote branch served the task and the existing warning on kept blocks serving only assumptions
+  stayed silent. The second copy of the URL rule was named by the target only, and reached the owner inside another
+  of its points. Two smaller lifecycle defects fixed later (a failed spawn waits two seconds; an early exit is
+  reported without its reason) were not found.
+- **A misleading verdict.** The bundled routing work (25 blocks) was marked `remove`, meaning "move to its own
+  change", beside an owner question on whether it is wanted at all; the page reads as "delete".
+- **What the checks changed.** The critic made the verdict conditional on the open question and carried the main
+  finding to the case the owner later fixed; the target supplied that question; the verifier corrected five
+  citations and changed nothing in substance. The reconciling added one wrong line number.
+
+## A plain request on the same change
+
+One Sonnet-class agent with no skill, the same trees, task and account, and an ordinary request ("does the change do
+its task, and what should change before it is accepted?"): about 110k tokens and 69 seconds. It found the orphaned
+server with the kill case and the module owning its cleanup, the bundled work, and two stale docs, and it came closer
+to the cut than the skill's review: it called the new override flag a duplicate of the backend record, the report's
+mode and the config marker, and proposed that the missing URL alone mean local. It also cited two files by the diff's
+own line numbers (places past the end of 96- and 102-line files) and called reachable error handling unreachable.
+
+On this change the skill's review matched the plain one on what mattered, at about six times the tokens and eight
+times the time; what it added was verified places, owner questions and the record. Neither found the cut. This agrees
+with the [Terra comparison](../2026-11-16-review-comparison/): checks contribute corroborated points in some runs and
+cost more; no general advantage is shown.
+
+## Draft 38
+
+From the fourth trial, each change answering a failure seen in it:
+
+- **A requirement read into the task's words is an assumption** naming those words, such as keeping the old way beside
+  a new default; `task` is what the task states. With it, the kept remote branch in the fourth trial would have served
+  only an assumption, and the existing warning would have asked for it to be named or sent to the owner.
+- **Work nobody required goes to the owner with its blocks:** never removed as mandatory, and not removed because it
+  belongs in another change.
+- **The data contract shows where a weighed block's `kind` goes**, which the reviewer had to find in the script.
+
+Drafts: [the page](drafts/38-review.md), [agents](drafts/38-agents.md), [design standard](drafts/38-design-standard.md), [data contract](drafts/38-report-data.md), [structural examples](drafts/38-structure-examples.md).
+
 ## Status
 
-Three real changes reviewed, with drafts 34, 35 and 36 (above); draft 37 was not run in those trials.
-The later [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate,
-not draft 37; it does not establish a general winner or no regression.
+Four real changes reviewed, with drafts 34, 35, 36 and 37 (above), and one plain request on the fourth.
+The [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate, not
+draft 37; it does not establish a general winner or no regression. Draft 38 is not yet run.

@@ -30,8 +30,10 @@ forensics remain in the repository references and release notes.
   one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
   included. A block or unit whose premise is unread takes the verdict `question`, naming the question, instead of
   `keep`. A requirement only the author's description states is an assumption unless the approved plan made that
-  description the task. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
-  owner, never kept silently and never removed as mandatory.
+  description the task, and so is one read into the task's words rather than stated by them, such as keeping the old
+  way beside a new default. A behavior nobody required is recorded as a mechanism with no requirement behind it and
+  goes to the owner with its blocks, never kept silently, never removed as mandatory and not removed because it
+  belongs in another change. The data contract shows where a weighed block's `kind` goes.
 - `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
   part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
   changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a
@@ -46,7 +48,7 @@ forensics remain in the repository references and release notes.
   reading required for a review fell from about 7,600 words to about 6,700 with the new agents and the challenges.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
-  as observed on three real changes (610k to 1M tokens and 8 to 31 minutes for 307 to 1,085 changed lines, about
+  as observed on four real changes (610k to 1M tokens and 8 to 31 minutes for 307 to 1,085 changed lines, about
   70% of it the checking agents and the reconciling they cause) and their default models.
 - The printed report lists only the blocks not kept or not linked to a requirement, the page keeps the whole map,
   and a mechanism nobody weighed no longer prints three lines saying so. With two or more mechanisms weighed, the

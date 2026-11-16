@@ -74,12 +74,12 @@ new evidence that changes a conclusion makes a revised record, named as such.
                        "purpose": "avoid reading a thumbnail twice", "basis": "assumption 3",
                        "instead": "the storage client caches reads already: src/storage.js:40",
                        "benefit": "one read saved per repeat view; frequency unknown", "cost": "a second cache to invalidate, and its tests",
-                       "decision": "remove the local cache; keep the client's", "evidence": "read", "findings": [1] }],
+                       "decision": "remove the local cache; keep the client's", "evidence": "read", "findings": [1], "blocks": [1] }],
       "target_units": [{ "name": "storeUpload", "jobs": ["checks the file", "writes each size"],
                          "uses": ["thumbnailSizes", "Storage"] },
                        { "name": "thumbnailSizes", "jobs": ["decides the sizes for an upload"] },
                        { "name": "Storage", "existing": true, "jobs": ["keeps the files"] }],
-      "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "storeUpload",
+      "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "storeUpload", "kind": "code",
                    "does": "...", "serves": [1], "verdict": "remove", "findings": [1] },
                  { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
                    "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
@@ -93,7 +93,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 
 ## Fields
 
-- **Requirements.** `source`: `task`, the task as given; `discussion`, a decision made while the work was discussed;
+- **Requirements.** `source`: `task`, what the task states; `discussion`, a decision made while the work was discussed;
   `question`, a point left open; `assumption`, yours or the author's. `met`: `ran`, executed and seen, or `read`,
   followed in the code; left out when unchecked or broken by a finding. A part not checked, such as how it looks,
   goes in `not_checked`, not in `text`. `doubt` says what in the code or a contract contradicts a requirement.
@@ -113,8 +113,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
   requirements and contracts), `benefit`, `cost`, `decision` and `evidence`. An added or changed mechanism has
   `instead`, citing where the existing capability or its absence was read. `benefit` names the scenario served, what is lost without it and how often,
-  or that frequency is unknown. `blocks` may list the numbers of the mechanism's blocks, each with a `kind` of
-  `code`, `test` or `other`, to show its weight; a block two mechanisms list is shown as shared, and a block that
+  or that frequency is unknown. `blocks` may list the numbers of the mechanism's blocks, to show its weight; each
+  block listed then names its own `kind`: `code`, `test` or `other`; a block two mechanisms list is shown as shared, and a block that
   mixes other work, shared imports included, is left out. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
