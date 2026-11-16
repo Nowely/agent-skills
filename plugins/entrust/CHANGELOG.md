@@ -12,24 +12,31 @@ forensics remain in the repository references and release notes.
   agents, on by default; the full record and page, by default, or a short review; and the agents with their models
   and who starts them. A choice is fixed when the user names it or asks for the defaults. `orchestrate` makes the
   plan and conducts its cross-reviewer.
-- An independent agent sketches the target from the task and the code before the change, never seeing the change,
-  and the reviewer settles each difference from its own target. After refutation a critic, given the requirements
-  with their sources and the block verdicts, ranks its five strongest points against the draft in both directions
-  and walks one grounded change through another arrangement of the busiest unit; a verifier checks the draft's
-  factual claims. A point is rejected only on a place in the code that refutes it, otherwise it goes to the owner;
-  the response names every point rejected or sent to the owner. The session that can start agents starts them all. Not yet measured.
+- An independent agent sketches the target from the owner's task and the code before the change, never seeing the
+  change; the author's description and commits reach it only marked as the author's account. After refutation a
+  critic, given the requirements with their sources and the block verdicts, ranks its five strongest points against
+  the draft in both directions and walks one grounded change through another arrangement of the busiest unit; a
+  verifier checks the draft's factual claims. Each of their points, and each difference between the two targets, is
+  a `challenge` in the record with its outcome, checked and drawn on the page: rejected only on a named place in the
+  code, otherwise accepted or sent to the owner. A failed checking agent leaves its check not run, said so, instead
+  of stopping the review. The session that can start agents starts them all.
 - `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
   one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
-  included. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
+  included. A block or unit whose premise is unread takes the verdict `question`, naming the question, instead of
+  `keep`. A requirement only the author's description states is an assumption unless the approved plan made that
+  description the task. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
   owner, never kept silently and never removed as mandatory.
-- `report.mjs scaffold`, run at the start of the analysis, writes the record's mechanical part: the diff's base,
-  head and digest, a saved copy of the diff, and one block per declaration-sized run of changed lines; uncommitted
-  work is recorded as a snapshot with its new files, through a temporary index. The reviewer writes only the
-  meaning. `check` refuses a record checked against another diff and warns when one verdict covers a large block;
-  it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
-  contract, and the reading required for a review fell from about 7,600 words to about 5,650 with the new agents.
+- `report.mjs scaffold`, run at the start of the analysis, writes the record's mechanical part: the range pinned
+  to its base and head commits, a copy of the diff named after the record with its digest, and one block per
+  declaration-sized run of changed lines; uncommitted work is recorded as a snapshot with its new files, through a
+  temporary index. The reviewer writes only the meaning. `check`, `render` and `lines` read the saved diff, so a
+  record stays whole after the branch moves; a saved diff that changed is refused. `check` warns when one verdict
+  covers a large block, when kept blocks serve no requirement or only assumed ones, and when a kept unit holds an
+  open block; it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
+  contract, and the reading required for a review fell from about 7,600 words to about 6,100 with the new agents and the challenges.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
-  never `keep`.
+  never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
+  as measured (nearly four times a review's tokens on one case) and their default models.
 - Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
   proof that the blocks serve nothing or can be removed safely.
 
