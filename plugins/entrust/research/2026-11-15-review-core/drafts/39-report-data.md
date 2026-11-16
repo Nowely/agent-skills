@@ -94,7 +94,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 ## Fields
 
 - **Requirements.** `source`: `task`, what the task states; `discussion`, a decision made while the work was discussed;
-  `project`, a rule of the project instructions, such as a version bump or docs that say what the code does;
+  `project`, a rule of the project instructions named with its place, such as a version bump or docs that say what the code does;
   `question`, a point left open; `assumption`, yours or the author's. `met`: `ran`, executed and seen, or `read`,
   followed in the code; left out when unchecked or broken by a finding. A part not checked, such as how it looks,
   goes in `not_checked`, not in `text`. `doubt` says what in the code or a contract contradicts a requirement.

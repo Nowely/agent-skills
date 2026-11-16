@@ -296,13 +296,27 @@ From the fifth trial and the Terra comparison, each change answering a failure s
 - **A requirement can come from the project instructions:** `project`. In the fifth trial the version bumps and the
   docs AGENT.md requires could only be assumptions, and the warning on kept blocks serving only assumptions named 30
   blocks and was answered in one paragraph.
-- **A test gap holds back acceptance only when a regression of a required behavior would pass;** otherwise adding the
-  test is a step after acceptance. In the Terra comparison both reviews with checks of one case demanded tests before
-  acceptance, which both assessors judged stronger than established.
 
 The planned check of the design-finding bar was dropped: in the fifth trial the simplifications reached findings
 through necessity, and the one turned into an idea went there on a place the critic read. The checking agents stay on
-by default, as the owner decided. Written when the session's quota was nearly spent: no critic and no run yet.
+by default, as the owner decided.
+
+A Sonnet-class critic of the draft, walking the fifth trial's record through it:
+
+- **Accepted: the first change alone asks nothing.** The fifth trial already kept a mechanism on the author's word
+  alone (`serverMode`, basis "author's account", decision "keep"), because "nobody required" was not tied to the basis.
+  A behavior nobody required is now one whose basis holds only assumptions. The kept path is counted with what the
+  change adds to keep it working, since the remote path's own lines are untouched and would weigh almost nothing;
+  "reworks to live with one" had no limit and is gone.
+- **Accepted: `project` names its rule and place**, so an existing contract read from the code cannot be relabelled to
+  quiet the warning; the target is asked for the project's rules too. With `project`, 18 of the 30 warned blocks drop
+  out; the 12 left are the `serverMode` threading and the launcher pin, the code the owner later cut.
+- **Accepted: the test-gap rule is cut.** The Terra assessors judged the strength of the demand, not whether the gaps
+  were real; the mutations showed real regressions of required behavior, so the rule would not have changed those
+  runs, and "a step after acceptance" is no recommendation the skill has.
+- **Not changed.** Filtering the warning by a block's `kind` instead of a new source: `kind` is set only on weighed
+  blocks. A per-block answer to the warning: the 12 left are few and the right ones; the next run shows whether they
+  are still answered in bulk.
 
 Drafts: [the page](drafts/39-review.md), [agents](drafts/39-agents.md), [design standard](drafts/39-design-standard.md), [data contract](drafts/39-report-data.md), [structural examples](drafts/39-structure-examples.md).
 
@@ -310,4 +324,4 @@ Drafts: [the page](drafts/39-review.md), [agents](drafts/39-agents.md), [design 
 
 Five reviews of four real changes, with drafts 34 to 38 (above), and one plain request on the fourth change.
 The [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate, not
-draft 37; it does not establish a general winner or no regression. Draft 39 awaits its critic and a run on `cb5a409`.
+draft 37; it does not establish a general winner or no regression. Draft 39 has had its critic and awaits a run on `cb5a409`.
