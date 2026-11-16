@@ -256,8 +256,38 @@ A Sonnet-class critic of the draft, two points accepted and three left as they w
 
 Drafts: [the page](drafts/38-review.md), [agents](drafts/38-agents.md), [design standard](drafts/38-design-standard.md), [data contract](drafts/38-report-data.md), [structural examples](drafts/38-structure-examples.md).
 
+## Fifth trial: draft 38 on the same change
+
+The same pair, trees and briefs, a fresh copy of the skill at draft 38 in a folder holding nothing of the fourth trial.
+
+| Agent | Tokens | Time |
+| --- | ---: | ---: |
+| Independent target | 84k | 0.5 min |
+| Reviewer, first pass | 175k | 6 min |
+| Critic | 91k | 1 min |
+| Verifier | 116k | 1 min |
+| Reviewer, reconciling | 195k | 1.5 min |
+
+About 660k tokens and 10 minutes; 76 blocks scaffolded, 86 in the end.
+
+- **What draft 38 changed.** The target and the reviewer both recorded "explicit servers still work" as a reading of
+  "by default", an assumption. The routing work went to the owner: 25 blocks `question`, none `remove`. The override
+  flag the plain request called a duplicate became a necessity finding with "remove", and the second copy of the URL
+  rule, raised by the target, became a finding in the draft.
+- **Still missed: the cut.** The remote mode was kept and never asked about: it is no mechanism in the record, since
+  the change did not add it but only reworked it to live beside the new default, and the rule for behavior nobody
+  required reaches only mechanisms. The warning on kept blocks serving only assumptions named 30 blocks (version bumps,
+  docs, the resume code) and was answered in one paragraph of `coverage`: a warning answered in bulk asks nothing.
+- **What the checks changed.** The critic turned the URL-rule finding into an idea: the fix would make the launcher,
+  which imports only Node's own modules, import the OpenCode skill's, and it would lose the launcher's refusals; the
+  reviewer accepted after reading the imports. The critic also showed that an `exit` hook does not run when a signal
+  ends the process, so the fix for the orphaned server became a handler inside the server's start that kills the child
+  and re-raises; and it made the verdict name continuation and concurrent servers as unverified. Two of its points
+  were rejected on quoted lines. The verifier corrected three line numbers.
+- **The owner's decision on the checks:** they stay on by default; they look useful even though they take time.
+
 ## Status
 
-Four real changes reviewed, with drafts 34, 35, 36 and 37 (above), and one plain request on the fourth.
+Five reviews of four real changes, with drafts 34 to 38 (above), and one plain request on the fourth change.
 The [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate, not
-draft 37; it does not establish a general winner or no regression. Draft 38 is not yet run.
+draft 37; it does not establish a general winner or no regression.
