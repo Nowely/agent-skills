@@ -16,11 +16,13 @@ forensics remain in the repository references and release notes.
   change; the author's description and commits reach it only marked as the author's account. After refutation a
   critic, given the requirements with their sources and the block verdicts, ranks its five strongest points against
   the draft in both directions and walks one grounded change through another arrangement of the busiest unit; a
-  verifier checks the draft's factual claims. The independent target starts with the reviewer, which reads it after
-  its own sketch. Each point that could change a requirement, verdict, finding or question, and each such difference
-  between the two targets, is a `challenge` in the record with its outcome, checked and drawn on the page: accepted
-  with what it changed, rejected only on a named place in the code or the task's sources whose words contradict it,
-  otherwise sent to the owner. The critic gets units, mechanisms and findings, not the block map. A failed checking
+  verifier checks the draft's factual claims. The independent target starts with the reviewer, writes its sketch to a
+  file and returns only the path, and the reviewer reads it after its own sketch. Each point that could change a
+  requirement, verdict, finding or question, and each such difference between the two targets, is a `challenge` in
+  the record with its outcome, checked and drawn on the page: accepted with what it changed (a point that adds,
+  promotes or drops a finding or changes the verdict refuted first), rejected only on a named place in the code or
+  the task's sources whose words contradict it, otherwise sent to the owner. The critic and the verifier get the
+  draft's printed report, not the block map. A failed checking
   agent leaves its check not run, said so, instead of stopping the review. The session that can start agents starts
   them all, and every agent gets the plan's scope.
 - `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
@@ -31,27 +33,28 @@ forensics remain in the repository references and release notes.
   owner, never kept silently and never removed as mandatory.
 - `report.mjs scaffold`, run at the start of the analysis, writes the record's mechanical part: the range pinned
   to its base and head commits, a copy of the diff named after the record with its digest, and one block per
-  declaration-sized run of changed lines; uncommitted work is recorded as a snapshot with its new files, through a
-  temporary index. The reviewer writes only the meaning. `check`, `render` and `lines` read the saved diff, so a
+  declaration-sized run of changed lines, a Markdown file divided at its headings; uncommitted work is recorded as a
+  snapshot with its new files, through a temporary index. It names the head to read the changed files at. The
+  reviewer writes only the meaning, and a kept block needs no `does`. `check`, `render` and `lines` read the saved diff, so a
   record stays whole after the branch moves; a saved diff that changed is refused. `check` warns when one verdict
   covers a large block, when kept blocks serve no requirement or only assumed ones, and when a kept unit holds an
   open block; it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
-  contract, and the reading required for a review fell from about 7,600 words to about 6,100 with the new agents and the challenges.
+  contract, and the reading required for a review fell from about 7,600 words to about 6,600 with the new agents and the challenges.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
-  as observed (three to four times a review's tokens; about 1M tokens and 31 minutes for a 1,085-line change) and
-  their default models.
+  as observed on two real changes (about 1M tokens and 31 minutes for 1,085 changed lines, 640k and 8 minutes for
+  307, about 70% of it the checking agents and the reconciling they cause) and their default models.
 - The printed report lists only the blocks not kept or not linked to a requirement, the page keeps the whole map,
   and a mechanism nobody weighed no longer prints three lines saying so. With two or more mechanisms weighed, the
   report gives their total, each shared block counted once, so the weight of several suspect mechanisms can be
   asked for and judged together.
+- Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
+  proof that the blocks serve nothing or can be removed safely.
 
 ### Fixed
 
 - `entrust:codex`: a read run refuses a `$TMPDIR` that does not resolve to a directory again, as before the
   sandbox check became one table, where two unresolvable roots compared equal.
-- Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
-  proof that the blocks serve nothing or can be removed safely.
 
 ## 0.38.0 — 2026-11-14
 

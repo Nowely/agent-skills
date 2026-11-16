@@ -440,17 +440,22 @@ test("scaffold takes uncommitted work with its new files, leaves the index alone
     git("add", "a.js"); git("commit", "--quiet", "-m", "base");
     fs.appendFileSync(path.join(dir, "a.js"), "\nexport function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n");
     fs.writeFileSync(path.join(dir, "new.js"), `export function big() {\n${Array.from({ length: 44 }, (_, i) => `  const v${i} = ${i};`).join("\n")}\n}\n`);
+    fs.writeFileSync(path.join(dir, "notes.md"), "# Results\n\nOne paragraph.\n\nAnother paragraph.\n\n## Round two\n\nA third.\n\nA fourth.\n");
     const tool = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, encoding: "utf8" });
     const made = tool("scaffold", "HEAD", path.join(dir, "out", "review.json"));
     if (made.status !== 0) return made.stderr;
+    if (!/git show [0-9a-f]{40}:<path>/.test(made.stdout)) return `the scaffold does not say how to read the head: ${made.stdout}`;
     if (git("diff", "--cached", "--name-only").stdout.trim() || !git("status", "--porcelain").stdout.includes("?? new.js")) return "scaffold changed the user's index or working tree";
     const record = JSON.parse(fs.readFileSync(path.join(dir, "out", "review.json"), "utf8"));
     if (!record.range.includes("..") || !record.change.sources.some((s) => s.includes("snapshot of the working tree"))) return `the working tree was not recorded as a snapshot: ${record.range}`;
     const of = (file) => record.blocks.filter((b) => b.path === file);
     if (of("new.js").length !== 1) return "a new untracked file is missing from the record";
     if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
+    // Prose is divided at its headings, not at every paragraph.
+    if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
+    // A kept block may leave "does" out; the check asks it only of a block that is not kept.
     const filled = { ...structuredClone(REVIEW), range: record.range, change: { ...REVIEW.change, sources: record.change.sources }, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
-      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
+      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;

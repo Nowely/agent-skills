@@ -69,7 +69,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
     // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
-    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
+    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
       `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
@@ -98,7 +98,7 @@ function snapshot(base) {
 
 function scaffold(asked, target) {
   const saved = target.replace(/(\.json)?$/, ".diff");
-  for (const file of [target, saved]) if (fs.existsSync(file)) throw new Error(`${file} exists; scaffold writes a new record and never replaces one`);
+  for (const file of [target, saved]) if (fs.existsSync(file)) throw new Error(`${file} exists; scaffold writes a new record and never replaces one: to start over, delete ${path.basename(target)} and ${path.basename(saved)}`);
   const commit = (ref) => { try { return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { encoding: "utf8" }).trim(); } catch { return null; } };
   const known = (ref) => commit(ref) ?? (() => { throw new Error(`"${ref}" is not a commit of this repository`); })();
   // The range is pinned to commits, so the record names the same diff after the branch moves; a range with no ".."
@@ -109,12 +109,14 @@ function scaffold(asked, target) {
   const range = `${base}..${head}`;
   const text = diffText(range), files = parseDiff(text), digest = createHash("sha256").update(text).digest("hex");
   const blocks = files.flatMap((file) => file.hunks.flatMap((hunk) => {
-    const runs = [[]];
-    // A run ends at unchanged context, and at a declaration: a line at the margin after a blank changed line.
+    const runs = [[]], prose = /\.(md|markdown)$/i.test(file.path);
+    // A run ends at unchanged context, and at a declaration: in code, a line at the margin after a blank changed
+    // line; in Markdown, a heading, since a paragraph of prose is rarely a decision of its own.
     for (const line of hunk) {
       const run = runs.at(-1), last = run.at(-1);
       if (line.kind === "ctx") { if (run.length) runs.push([]); continue; }
-      if (last && blank(last) && !blank(line) && /^\S/.test(line.text)) runs.push([line]); else run.push(line);
+      const starts = prose ? run.some((l) => !blank(l)) && /^#{1,6}\s/.test(line.text) : last && blank(last) && !blank(line) && /^\S/.test(line.text);
+      if (starts) runs.push([line]); else run.push(line);
     }
     return runs.filter((run) => run.some((line) => !blank(line))).map((run) => {
       const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
@@ -127,7 +129,7 @@ function scaffold(asked, target) {
     change: { goal: "", parts: [], sources: [`asked as ${asked}`, `base ${base}`, `head ${head}${to === null ? `, a snapshot of the working tree over ${from}` : ""}`] },
     verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, challenges: [], coverage: "" };
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
-  return { blocks: blocks.length, files: files.length, saved };
+  return { blocks: blocks.length, files: files.length, saved, head };
 }
 
 // The diff a record judges: the copy saved beside it when it names one, checked against its digest, else `git diff`
@@ -146,7 +148,7 @@ const [command, argument] = process.argv.slice(2);
 try {
   if (command === "scaffold" && argument && process.argv[4]) {
     const made = scaffold(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in what each block does, serves and its verdict, divide a block that holds two decisions, then run check.`);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Read the changed files as they are at the head with \`git show ${made.head}:<path>\`; the working tree may differ. Fill in each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
   } else if (command === "lines" && argument) {
     // A record's own diff when given a record, so the addresses are the ones its check reads.
     const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(

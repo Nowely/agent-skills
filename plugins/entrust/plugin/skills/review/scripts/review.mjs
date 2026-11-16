@@ -248,7 +248,8 @@ export function check(review, files, directory) {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
     if (block.kind !== undefined && !BLOCK_KINDS.includes(block.kind)) errors.push(`${name}: kind is one of ${BLOCK_KINDS.join(", ")}`);
     if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
-    if (!text(block.does)) errors.push(`${name} has no "does"`);
+    // What a block does is written where it asks for something; a kept block's lines speak for themselves.
+    if (block.verdict !== "keep" && !text(block.does)) errors.push(`${name} has no "does": say what a block not kept does`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
@@ -283,7 +284,7 @@ export function check(review, files, directory) {
 // them, the findings that break them and the ones that leave them untested; units with their blocks; screens with
 // their pictures read; and a name for this review that no other review has. Nothing here is written by the reviewer twice.
 export function modelOf(review, files, owner, directory) {
-  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], questions: block.questions ?? [], added: [], removed: [], weightLines: { added: 0, removed: 0 } }));
+  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, does: block.does ?? "", serves: block.serves ?? [], findings: block.findings ?? [], questions: block.questions ?? [], added: [], removed: [], weightLines: { added: 0, removed: 0 } }));
   for (const file of files) for (const line of changedLines(file)) {
     const index = owner.get(`${file.path}\n${address(line)}`);
     if (index !== undefined) {

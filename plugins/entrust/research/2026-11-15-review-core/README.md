@@ -1,4 +1,4 @@
-# Review core: drafts 32 to 35
+# Review core: drafts 32 to 36
 
 ## Question
 
@@ -88,7 +88,7 @@ One real change from this repository's history: `276a94a`, "Driver audit, step 4
 | Verifier | 139k | 2 min |
 | Reviewer, reconciling | 325k | 3 min |
 
-- **Blocks.** The scaffold made 169 blocks; the reviewer divided them into 198 and wrote a 50 KB script to fill them. 183 ended `keep`, 11 `fix`, 4 `question`. The block map is the largest writing cost of a review this size.
+- **Blocks.** The scaffold made 169 blocks; the reviewer divided them into 198 and wrote a 59 KB script to fill them. 183 ended `keep`, 11 `fix`, 4 `question`. The block map is the largest writing cost of a review this size.
 - **What the checks changed.** The draft said the change does its task, the mailbox module kept, five findings. After the checks: requirement 1 only partly met (the module does not own "record, then answer"; each adapter keeps its own unrecorded-accept branch), the mailbox unit to fix with an `answer()` that owns the order, the plan-time overlap refusal moved to the top as the one regression, and a new behavior finding from the verifier: the Codex read sandbox no longer refuses a TMPDIR that does not resolve (`[null]` equals `[null]`). Three questions answerable from the code were cut. The independent target had proposed the module owning the order (`offer(request, answerFn)`) from the task alone; the reviewer's own draft had accepted the author's primitives.
 - **Challenges.** 25: critic 8 accepted and 2 rejected, verifier 8 accepted, independent target 5 accepted and 2 rejected. One rejection cites a test that confirms the critic's point rather than refuting it (the OpenCode run with no reported rules proceeds and only says so on stderr): the check sees that a place is named, not what it shows.
 - **The reviewer's notes on the procedure:** how to record a target point that agrees, whether a citation correction needs its own challenge, that a unit's verdict follows its least certain block, how to divide a removal-only block, that `uses` must name listed units, how to cite a base line in `instead`, and that 198 blocks are a large input for the critic.
@@ -130,6 +130,22 @@ About 640k tokens and 8 minutes on the critical path, against 1M and 31 for the 
 - **Blocks.** 57 scaffolded, 40 in the end: the reviewer merged 28 prose blocks of the results file into 9, judging a paragraph of results not a decision of its own, and split three code blocks. 28 `keep`, 7 `fix`, 5 `question`. No mechanism was weighed; nobody asked.
 - **Procedure notes.** The reviewer read the working tree by mistake for part of the review (it is far ahead of the head here) and found no stated way to read the head; re-running a fill script means deleting the record and the saved diff by hand; renumbering findings means remapping ids by hand; whether a point that only changes a finding's rank is a challenge, and whether "to the owner" covers both a source with no place and a judgment call, are not said.
 
+## Draft 36
+
+An Opus-class review of draft 35 using both trials, a Sonnet-class verifier of its claims (all held but two line numbers), and a Sonnet-class critic of the coordinator's list. The review found the default mode, a review in this session, unable to keep the independent target's sketch back: a background agent's return lands in the starting session at once, and only the conductor path, the one both trials used, held it in a file. Across the trials only the critic changed the review both times; the target mattered when the reviewer had taken the author's structure (trial 1); the verifier's value followed the draft's error count. Reconciliation stayed the weakest link: a false headline accepted (trial 1), a confirming test cited as a refutation (trial 1), an agreement recorded as a rejection (trial 2), each with the anchored reviewer the only judge. The critic of the list moved a re-check of the reconciled record to "needs evidence" (two of its three failures already have a rule, and a disputed verdict outside the record would split the response from it), kept the reviewer's own sketch out of the skill text (an instrument for a trial, not a rule), and moved optional `does` on kept blocks to now: 0 of 211 kept blocks' descriptions were read by any check or finding, while the block map was the largest writing cost and enlarges the context the reconciling resumes.
+
+- **The independent target writes `<out>/target.md` and returns only the path**, in this session as under a conductor; the reviewer opens it after its own sketch. The conductor no longer copies it.
+- **An accepted point that adds, promotes or drops a finding, or changes the verdict, is refuted first** like any candidate.
+- **The critic and the verifier get the draft's printed report** (`render`, which leaves kept blocks to the page), with `report.mjs lines` for a block's lines; the verifier no longer gets the target's sketch.
+- **Challenges:** a point two agents raise is one; a point its agent concluded against is an agreement, not recorded; a change of a finding's rank counts; "to the owner" is every point neither accepted nor refuted by a place.
+- **Scaffold:** Markdown runs end at headings (trial 2's results file: 28 paragraph blocks would be 9); the scaffold names the head to read files at; starting over says to delete the record and its saved diff.
+- **`does` is optional on kept blocks.** Coverage of every line and a verdict per block stay.
+- **Smaller:** the plan gives both trials' numbers and the 70% share; roles.md links the conducting procedure; a mechanism's `blocks` may be shared, as the scripts already allowed.
+
+Not changed, for real use to decide: a re-check of the reconciled record (if refuting accepted points does not stop false accepts); whether the reviewer's own sketch adds anything (a trial can save it as an instrument); the multi-mode threshold; the cost of reconciling, the largest single item, which lighter blocks should reduce.
+
+Drafts: [the page](drafts/36-review.md), [agents](drafts/36-agents.md), [design standard](drafts/36-design-standard.md), [data contract](drafts/36-report-data.md), [structural examples](drafts/36-structure-examples.md). About 6,600 words in all.
+
 ## Status
 
-Two real changes reviewed, with drafts 34 and 35 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+Two real changes reviewed, with drafts 34 and 35 (above); draft 36 not run. Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.

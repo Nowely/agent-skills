@@ -7,8 +7,10 @@ The full record of a review: one `review.json` that the response is written from
 1. At the start of the analysis, `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, in the
    reviewed repository, writes the record's mechanical part: the range pinned to its base and head commits, a copy of
    the diff beside the record (`review.diff`) with its digest, and one block per declaration-sized run of changed
-   lines, numbered. For uncommitted work it records a snapshot of the working tree, new files included, without
-   touching the index. It never replaces a record or a saved diff.
+   lines, numbered: in code a run ends at a declaration, in Markdown at a heading. For uncommitted work it records a
+   snapshot of the working tree, new files included, without touching the index. It names the head to read the
+   changed files at (`git show <head>:<path>`). It never replaces a record or a saved diff: to start over, delete
+   both.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
@@ -18,9 +20,9 @@ The full record of a review: one `review.json` that the response is written from
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
    about a kept unit holding an open block. It cannot check that the words are true, nor that a place named to
    reject a challenge refutes it.
-4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
-   solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
-   its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
+4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict,
+   `now`, `target`, units, mechanism decisions and steps describe one solution; a removal leaves no orphaned state;
+   the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
    not changed. Link the page. On it the user marks findings and
@@ -109,19 +111,22 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
   requirements and contracts), `benefit`, `cost`, `decision` and `evidence`. An added or changed mechanism has
   `instead`, citing the `path:line` read. `benefit` names the scenario served, what is lost without it and how often,
-  or that frequency is unknown. `blocks` may list the numbers of blocks wholly the mechanism's, each with a `kind` of
-  `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work, shared imports
-  included. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
+  or that frequency is unknown. `blocks` may list the numbers of the mechanism's blocks, each with a `kind` of
+  `code`, `test` or `other`, to show its weight; a block two mechanisms list is shown as shared, and a block that
+  mixes other work, shared imports included, is left out. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
-- **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` and `unit`.
+- **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
+  which a kept block may leave out.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
   the list of questions.
 - **Challenges.** Each point of the independent target, the critic or the verifier that could change a requirement, a
-  verdict, a finding or a question: `from` (`target`, `critic` or `verifier`), `point`, `outcome` and `note`.
-  `accepted` notes what it changed; `rejected` names in `at` the `path:line`, in the code or the task's sources, that
-  refutes it, and the note quotes what that place says and why it contradicts the point (a source with no such place
-  sends the point to the owner); `owner` says what the owner decides. A difference between the two targets is a point from `target`. A corrected citation is fixed in place and
-  an agreement is not recorded.
+  verdict, a finding or its rank, or a question: `from` (`target`, `critic` or `verifier`; for a point two raise,
+  the first, the note naming the other), `point`, `outcome` and `note`. `accepted` notes what it changed;
+  `rejected` names in `at` the `path:line`, in the code or the task's sources, that refutes it, and the note quotes
+  what that place says and why it contradicts the point; `owner` is every other point, a judgment call or one whose
+  source has no such place, and the note says what the owner decides. A difference between the two targets is a
+  point from `target`. A corrected citation is fixed in place; an agreement, a point its agent concluded against
+  included, is not recorded.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
