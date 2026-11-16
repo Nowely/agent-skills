@@ -4,19 +4,20 @@ The full record of a review: one `review.json` that the response is written from
 
 ## Making it
 
-1. At the start of the analysis, `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, in the
-   reviewed repository, writes the record's mechanical part: the range pinned to its base and head commits, a copy of
-   the diff beside the record (`review.diff`) with its digest, and one block per declaration-sized run of changed
-   lines, numbered: in code a run ends at a declaration, in Markdown at a heading. For uncommitted work it records a
-   snapshot of the working tree, new files included, without touching the index. It names the head to read the
-   changed files at (`git show <head>:<path>`). It never replaces a record or a saved diff: to start over, delete
-   both.
+1. Obtain the diff for the agreed scope, including new files where requested. At the start of the analysis,
+   `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json` saves a copy beside the record
+   (`review.diff`) with its digest and creates one block per declaration-sized run of changed lines: in code a run
+   ends at a declaration, in Markdown at a heading. The input is a two-sided text patch with `diff --git` file
+   headers and unified hunks, without renames or quoted paths; unsupported changes need separate review. The
+   reviewer records the scope and sources, reads the corresponding file states and checks whether the diff includes
+   the agreed changes. The saved diff does not establish either completeness or that a working tree stayed unchanged.
+   Scaffold never replaces a record or saved diff: to start over, delete both.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the head unless marked `(base)`.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
-   references between them, and that every changed line of the saved diff belongs to exactly one block. It warns
+   references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
    about a kept unit holding an open block. It cannot check that the words are true, nor that a place named to
    reject a challenge refutes it.
@@ -37,9 +38,9 @@ new evidence that changes a conclusion makes a revised record, named as such.
 
     {
       "title": "a short name of the change", "language": "en",
-      "range": "<base commit>..<head commit>", "diff": { "file": "review.diff", "sha256": "the saved diff's digest" },
+      "range": "the scope of the change", "diff": { "file": "review.diff", "sha256": "the saved diff's digest" },
       "change": { "goal": "what the change is for, in a sentence", "why": "the reason, when a source gives one",
-                  "parts": ["what it adds or alters, one line each"], "sources": ["the task text", "the commits"] },
+                  "parts": ["what it adds or alters, one line each"], "sources": ["the task text", "the change"] },
       "verdict": "whether the change does its task\n- what decides that, a line each",
       "now": "the solution as written",
       "target": "the cleanest solution, by the design standard",
@@ -110,7 +111,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
   be written.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
   requirements and contracts), `benefit`, `cost`, `decision` and `evidence`. An added or changed mechanism has
-  `instead`, citing the `path:line` read. `benefit` names the scenario served, what is lost without it and how often,
+  `instead`, citing where the existing capability or its absence was read. `benefit` names the scenario served, what is lost without it and how often,
   or that frequency is unknown. `blocks` may list the numbers of the mechanism's blocks, each with a `kind` of
   `code`, `test` or `other`, to show its weight; a block two mechanisms list is shown as shared, and a block that
   mixes other work, shared imports included, is left out. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
@@ -122,7 +123,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Challenges.** Each point of the independent target, the critic or the verifier that could change a requirement, a
   verdict, a finding or its rank, or a question: `from` (`target`, `critic` or `verifier`; for a point two raise,
   the first, the note naming the other), `point`, `outcome` and `note`. `accepted` notes what it changed;
-  `rejected` names in `at` the `path:line`, in the code or the task's sources, that refutes it, and the note quotes
+  `rejected` names in `at` the place in the code or the task's sources that refutes it, and the note quotes
   what that place says and why it contradicts the point; `owner` is every other point, a judgment call or one whose
   source has no such place, and the note says what the owner decides. A difference between the two targets is a
   point from `target`. A corrected citation is fixed in place; an agreement, a point its agent concluded against

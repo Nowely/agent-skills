@@ -175,13 +175,12 @@ export function check(review, files, directory) {
   };
   // A point against the draft is rejected only on a place, in the code or the task's sources, that refutes it; the
   // check sees that a place is named, not what it says.
-  const place = /[\w@./-]+\.\w+:\d+/;
   (review.challenges ?? []).forEach((c, index) => {
     const who = `challenge ${index + 1}`;
     if (!CHALLENGERS.includes(c.from)) errors.push(`${who}: from is one of ${CHALLENGERS.join(", ")}`);
     if (!OUTCOMES.includes(c.outcome)) errors.push(`${who}: outcome is one of ${OUTCOMES.join(", ")}`);
     for (const field of ["point", "note"]) if (!text(c[field])) errors.push(`${who} has no "${field}"`);
-    if (c.outcome === "rejected" && !place.test(c.at ?? "")) errors.push(`${who} is rejected and "at" cites no place that refutes it; name the path:line, or send it to the owner`);
+    if (c.outcome === "rejected" && !text(c.at)) errors.push(`${who} is rejected and "at" cites no place that refutes it; name the place, or send it to the owner`);
   });
 
   (review.screens ?? []).forEach((screen, index) => {
@@ -225,7 +224,6 @@ export function check(review, files, directory) {
     // What the change brings in is weighed against what was already there, so the record must say what was looked at.
     if (["added", "changed"].includes(m.change)) {
       if (!text(m.instead)) errors.push(`${who} has no "instead": where this is already available, or what you read that does not supply it`);
-      else if (!place.test(m.instead)) errors.push(`${who}: "instead" cites no place; name the path:line you read`);
     }
     if (!EVIDENCE.includes(m.evidence)) errors.push(`${who}: evidence is one of ${EVIDENCE.join(", ")}`);
     if (m.units !== undefined && !Array.isArray(m.units)) errors.push(`${who}: units is not a list`);

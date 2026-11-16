@@ -31,12 +31,13 @@ forensics remain in the repository references and release notes.
   `keep`. A requirement only the author's description states is an assumption unless the approved plan made that
   description the task. A behavior nobody required is recorded as a mechanism with no requirement behind it and goes to the
   owner, never kept silently and never removed as mandatory.
-- `report.mjs scaffold`, run at the start of the analysis, writes the record's mechanical part: the range pinned
-  to its base and head commits, a copy of the diff named after the record with its digest, and one block per
-  declaration-sized run of changed lines, a Markdown file divided at its headings; uncommitted work is recorded as a
-  snapshot with its new files, through a temporary index. It names the head to read the changed files at. The
-  reviewer writes only the meaning, and a kept block needs no `does`. `check`, `render` and `lines` read the saved diff, so a
-  record stays whole after the branch moves; a saved diff that changed is refused. `check` warns when one verdict
+- `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
+  part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
+  changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a
+  snapshot. The reviewer identifies the scope and corresponding file states; a saved diff does not establish that
+  it includes the whole change. The reviewer writes the meaning, and a kept block needs no `does`. `check`, `render`
+  and `lines` read the saved diff; a saved diff that changed is refused. Older records without one need a new
+  record. `check` warns when one verdict
   covers a large block, when kept blocks serve no requirement or only assumed ones, and when a kept unit holds an
   open block; it no longer requires a unit to split to name a new target unit. The page reference is folded into the data
   contract, and the reading required for a review fell from about 7,600 words to about 6,600 with the new agents and the challenges.

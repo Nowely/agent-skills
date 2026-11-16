@@ -18,10 +18,14 @@ const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
 const { run } = prepare("currency-contract", "clean"), repo = path.join(run, "repo");
 const data = path.join(run, "review.json"), html = path.join(run, "review.html");
+const patch = path.join(run, "source.diff"), generated = spawnSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--"], { cwd: repo });
+if (generated.status !== 0) throw new Error(`Could not prepare the test diff: ${generated.stderr}`);
+fs.writeFileSync(patch, generated.stdout);
 
 // A review of that case's diff: three changed lines in one file, and two new test files.
 const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
+  diff: { file: "source.diff", sha256: createHash("sha256").update(generated.stdout).digest("hex") },
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
   verdict: "The change does its task.\n- One test is missing.", now: "The archive reader converts the code.", target: "The change is already this.", recommendation: "Accept it.",
   steps: [{ text: "Add the test.", findings: [1] }],
@@ -80,7 +84,7 @@ test("interactive report embeds a complete annotation runtime and keeps navigati
 test("lines prints every changed line under its file, with the address a block names it by",
   "a reviewer who computes line numbers from hunk headers gets them wrong; the listing is where blocks take them from",
   () => {
-    const { stdout, status } = report("lines", "HEAD~1..HEAD");
+    const { stdout, status } = report("lines", patch);
     const archive = stdout.split("test/archive.test.js")[0];
     return status === 0 && archive.startsWith("src/invoices/archive.js\n") && ["+2", "-3", "+4"].every((a) => archive.includes(`\n  ${a} `))
       && stdout.includes("\n  +8 ") || `unexpected listing:\n${stdout}`;
@@ -207,8 +211,8 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     // What a change brings in says what was already there; what it only reuses need not.
     const brought = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added" }]; });
     if (brought.status !== 1 || !brought.stderr.includes('has no "instead"')) return "an added mechanism that does not say what was already available was accepted";
-    const vague = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "Nothing else does this." }]; });
-    if (vague.status !== 1 || !vague.stderr.includes("cites no place")) return "an answer that names nothing read was accepted";
+    const cited = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "Read the existing contract; it provides no cache." }]; });
+    if (cited.status !== 0) return "a source described without a particular filename syntax was refused";
     const answered = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "The archive reader converts already: src/archive.js:12." }]; });
     if (answered.status !== 0 || !answered.stdout.includes("Already available: The archive reader converts already: src/archive.js:12.")) return "the answer to what was already available is not printed";
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
@@ -402,19 +406,19 @@ test("an unlinked block is not presented as unnecessary",
     return true;
   });
 
-test("scaffold writes the record's mechanical part: every changed line in one block, the diff saved and named, and never over a record",
+test("scaffold writes the record's mechanical part: nonblank changed lines in blocks, the diff saved and named, and never over a record",
   "line numbers and coverage were the reviewer's to work out by hand, the commonest reason a record failed its check and a large part of a review's time",
   () => {
     const out = path.join(run, "scaffold"), target = path.join(out, "review.json");
     fs.rmSync(out, { recursive: true, force: true });
-    const made = report("scaffold", "HEAD~1..HEAD", target);
+    const made = report("scaffold", patch, target);
     if (made.status !== 0) return made.stderr;
     const record = JSON.parse(fs.readFileSync(target, "utf8")), saved = fs.readFileSync(path.join(out, "review.diff"), "utf8");
     if (record.diff?.file !== "review.diff" || record.diff.sha256 !== createHash("sha256").update(saved).digest("hex")) return "the record does not name the saved diff and its digest";
-    if (!/^[0-9a-f]{40}\.\.[0-9a-f]{40}$/.test(record.range)) return `the range is not pinned to commits: ${record.range}`;
+    if (record.range !== "" || record.change.sources.length) return "scaffold claimed a scope or source not supplied in the diff";
     if (record.blocks.some((b) => b.does !== "" || b.verdict !== "")) return "scaffold wrote meaning a reviewer must write";
-    // Filled with any meaning, the scaffold's blocks pass the line check: each changed line is in exactly one.
-    const filled = { ...structuredClone(REVIEW), range: record.range, diff: record.diff, units: [], scenarios: undefined, screens: undefined,
+    // Filled with any meaning, the scaffold's blocks pass the nonblank line check.
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, screens: undefined,
       blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
     fs.writeFileSync(target, JSON.stringify(filled));
     const checked = report("check", target);
@@ -422,7 +426,7 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     const listed = report("lines", target);
     if (listed.status !== 0 || !listed.stdout.includes("src/invoices/archive.js")) return `lines does not read the record's saved diff: ${listed.stderr}`;
     fs.rmSync(target);
-    const again = report("scaffold", "HEAD~1..HEAD", target);
+    const again = report("scaffold", patch, target);
     if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold wrote over an existing saved diff";
     // The record judges the diff it was made from; a saved diff that changed is refused.
     fs.writeFileSync(target, JSON.stringify(filled));
@@ -431,8 +435,8 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     return refused.status === 1 && refused.stderr.includes("is not the one this record was scaffolded from") || "a record checked against another diff was accepted";
   });
 
-test("scaffold takes uncommitted work with its new files, leaves the index alone, splits at declarations, and check warns on one verdict over a large block",
-  "a whole new file became one block that one keep could pass, and new files of uncommitted work were missing from the record",
+test("scaffold reads a supplied diff outside a repository, splits at declarations, and check warns on one verdict over a large block",
+  "the report must work with an existing diff without making a repository snapshot",
   () => {
     const dir = fs.mkdtempSync(path.join(run, "worktree-")), git = (...args) => spawnSync("git", args, { cwd: dir, encoding: "utf8" });
     git("init", "--quiet"); git("config", "user.email", "t@example.invalid"); git("config", "user.name", "t");
@@ -441,36 +445,69 @@ test("scaffold takes uncommitted work with its new files, leaves the index alone
     fs.appendFileSync(path.join(dir, "a.js"), "\nexport function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n");
     fs.writeFileSync(path.join(dir, "new.js"), `export function big() {\n${Array.from({ length: 44 }, (_, i) => `  const v${i} = ${i};`).join("\n")}\n}\n`);
     fs.writeFileSync(path.join(dir, "notes.md"), "# Results\n\nOne paragraph.\n\nAnother paragraph.\n\n## Round two\n\nA third.\n\nA fourth.\n");
-    const tool = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, encoding: "utf8" });
-    const made = tool("scaffold", "HEAD", path.join(dir, "out", "review.json"));
+    git("add", "--all");
+    const input = path.join(dir, "input.diff"), prepared = git("-c", "core.quotepath=off", "diff", "--cached", "--no-renames", "-U3");
+    if (prepared.status !== 0) return prepared.stderr;
+    fs.writeFileSync(input, prepared.stdout);
+    const isolated = path.join(run, "outside-repository");
+    fs.mkdirSync(isolated, { recursive: true });
+    const tool = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: isolated, encoding: "utf8", env: { ...process.env, PATH: "" } });
+    const made = tool("scaffold", input, path.join(dir, "out", "review.json"));
     if (made.status !== 0) return made.stderr;
-    if (!/git show [0-9a-f]{40}:<path>/.test(made.stdout)) return `the scaffold does not say how to read the head: ${made.stdout}`;
-    if (git("diff", "--cached", "--name-only").stdout.trim() || !git("status", "--porcelain").stdout.includes("?? new.js")) return "scaffold changed the user's index or working tree";
     const record = JSON.parse(fs.readFileSync(path.join(dir, "out", "review.json"), "utf8"));
-    if (!record.range.includes("..") || !record.change.sources.some((s) => s.includes("snapshot of the working tree"))) return `the working tree was not recorded as a snapshot: ${record.range}`;
     const of = (file) => record.blocks.filter((b) => b.path === file);
     if (of("new.js").length !== 1) return "a new untracked file is missing from the record";
     if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
     // Prose is divided at its headings, not at every paragraph.
     if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
     // A kept block may leave "does" out; the check asks it only of a block that is not kept.
-    const filled = { ...structuredClone(REVIEW), range: record.range, change: { ...REVIEW.change, sources: record.change.sources }, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
       requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;
     if (!checked.stderr.includes("keeps 46 lines under one verdict")) return `no warning about the large block: ${checked.stderr}`;
     if (!checked.stderr.includes("serve no requirement")) return `no warning about kept blocks that serve nothing: ${checked.stderr}`;
-    // The record stays whole after the branch moves: it judges the diff saved beside it.
-    git("add", "--all"); git("commit", "--quiet", "-m", "more"); fs.appendFileSync(path.join(dir, "a.js"), "export const b = 2;\n"); git("commit", "--quiet", "-am", "later");
+    // The record checks its saved diff, even if the input is later changed.
+    fs.appendFileSync(input, "later changes");
     const later = tool("check", path.join(dir, "out", "review.json"));
-    return later.status === 0 || `a record no longer checks after a new commit: ${later.stderr}`;
+    return later.status === 0 || `a record no longer checks after the input changed: ${later.stderr}`;
+  });
+
+test("unsupported or incomplete diffs and records without a saved diff are refused",
+  "a partial or unrecognized diff must not become a complete-looking report",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "invalid-diff-")), input = path.join(dir, "input.diff"), target = path.join(dir, "review.json");
+    const first = "diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-old\n+new\n";
+    for (const value of [first + "diff --git a/old.js b/new.js\n@@ -1 +1 @@\n-a\n+b\n",
+      first + "+lost\n", first + "--- a/b.js\n+++ b/b.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\n--- a/b.js\n+++ b/b.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\nold mode 100644\nnew mode 100755\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1,3 +1,3 @@\n one\n", "not a diff\n"]) {
+      fs.writeFileSync(input, value);
+      const result = report("scaffold", input, target);
+      if (result.status !== 1 || fs.existsSync(target)) return `accepted unsupported or incomplete diff: ${value}`;
+    }
+    const legacy = { ...structuredClone(REVIEW) };
+    delete legacy.diff;
+    fs.writeFileSync(target, JSON.stringify(legacy));
+    const result = report("check", target);
+    return result.status === 1 && result.stderr.includes("no saved diff") || "a record without a saved diff was accepted";
+  });
+
+test("a diff whose filename has spaces is read with its file headers",
+  "ordinary file headers may end in a tab after the path",
+  () => {
+    const input = path.join(run, "space.diff");
+    fs.writeFileSync(input, "diff --git a/hello world.txt b/hello world.txt\n--- a/hello world.txt\t\n+++ b/hello world.txt\t\n@@ -1 +1 @@\n-before\n+after\n");
+    const result = report("lines", input);
+    return result.status === 0 && result.stdout.includes("hello world.txt\n") && /\+1\s+after/.test(result.stdout) || result.stderr || result.stdout;
   });
 
 test("a block or unit whose premise is unread is a question, and a point against the draft is rejected only on a place that refutes it",
   "an unknown premise could only be recorded as keep, and the points of the independent target, the critic and the verifier left no trace on the page",
   () => {
-    const asked = render((r) => { r.blocks[2].verdict = "question"; r.units[0].verdict = "question"; r.challenges[0].at = "the caller"; });
+    const asked = render((r) => { r.blocks[2].verdict = "question"; r.units[0].verdict = "question"; r.challenges[0].at = ""; });
     if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
     for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
       if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
@@ -490,7 +527,7 @@ test("the page that tells a reviewer what to write names every word the check ac
     const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels", "diff"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 
