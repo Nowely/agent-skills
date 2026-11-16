@@ -110,6 +110,26 @@ A Sonnet-class critic of draft 35 found every item in place and the Codex fix ri
 
 Drafts: [the page](drafts/35-review.md), [agents](drafts/35-agents.md), [design standard](drafts/35-design-standard.md), [data contract](drafts/35-report-data.md), [structural examples](drafts/35-structure-examples.md). About 6,400 words in all.
 
+## Second trial: draft 35 on a smaller real change
+
+`418a605`, "Driver audit, step 5: act on the owner's measurements, and tell every agent how to ask", 286 lines added and 21 removed in 14 files. The author's description was the only statement of the task; the plan said so and was approved uncorrected, so it was the task, acting on the owner's measurements the change itself records. Same arrangement as the first trial: Sonnet-class reviewer in a subagent, this session conducting, a Sonnet-class independent target started with the reviewer and written to `out/target.md`, a fresh critic and verifier on the saved draft, each given the plan's scope (read only, no tests). One run.
+
+| | Tokens reported | Time |
+|---|---|---|
+| Reviewer, to the saved draft | 178k | 5 min |
+| Independent target | 90k | 1 min |
+| Critic | 98k | 1.5 min |
+| Verifier | 83k | 0.6 min |
+| Reviewer, reconciling | 192k | 1 min |
+
+About 640k tokens and 8 minutes on the critical path, against 1M and 31 for the first trial; the critic, kept to the plan's scope, no longer ran the suites.
+
+- **Target timing.** The target's return was in `out/target.md` four minutes before the draft; the reviewer read it after its own sketch, which had already reached the same structure (one rules builder, the refusal sentence owned once). Two differences recorded: one accepted, one to the owner.
+- **Challenges.** 8, against 25 in the first trial: target 1 accepted, 1 to the owner; critic 4 accepted, 1 to the owner, 1 rejected; the verifier refuted nothing, and its three citation fixes were made in place. The one rejection names `drivers.mjs:173-182` and says what it shows (the builder already takes the four CLI-specific strings, and the critic's own walk needs more places), which supports it.
+- **What the checks changed.** The critic found a defect the draft missed: the fix gives a message only to the requested permission, so a sibling pending with it is still rejected without one, and the turn may still end; the unproven fix became the headline finding. It also promoted the rights text that promises asking where the session denies outright (`.git`, `.opencode`, `opencode.json*`) from idea to finding, demoted the duplicated sentence to a small cleanup, and separated two rules no source states into an assumed requirement.
+- **Blocks.** 57 scaffolded, 40 in the end: the reviewer merged 28 prose blocks of the results file into 9, judging a paragraph of results not a decision of its own, and split three code blocks. 28 `keep`, 7 `fix`, 5 `question`. No mechanism was weighed; nobody asked.
+- **Procedure notes.** The reviewer read the working tree by mistake for part of the review (it is far ahead of the head here) and found no stated way to read the head; re-running a fill script means deleting the record and the saved diff by hand; renumbering findings means remapping ids by hand; whether a point that only changes a finding's rank is a challenge, and whether "to the owner" covers both a source with no place and a judgment call, are not said.
+
 ## Status
 
-One real change reviewed with draft 34 (above); draft 35 not run. Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+Two real changes reviewed, with drafts 34 and 35 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
