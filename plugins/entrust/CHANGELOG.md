@@ -31,9 +31,10 @@ forensics remain in the repository references and release notes.
   included. A block or unit whose premise is unread takes the verdict `question`, naming the question, instead of
   `keep`. A requirement only the author's description states is an assumption unless the approved plan made that
   description the task, and so is one read into the task's words rather than stated by them, such as keeping the old
-  way beside a new default. A behavior nobody required is recorded as a mechanism with no requirement behind it and
-  goes to the owner with its blocks, never kept silently, never removed as mandatory and not removed because it
-  belongs in another change. The data contract shows where a weighed block's `kind` goes.
+  way beside a new default; the independent target is asked for such readings too. A behavior nobody required is
+  recorded as a mechanism with no requirement behind it and goes to the owner, never kept silently and never removed
+  as mandatory. A block's `remove` means the target has no such code: work that belongs in another change keeps its
+  verdict and a step moves it. The data contract shows where a weighed block's `kind` goes.
 - `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
   part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
   changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a

@@ -237,9 +237,22 @@ From the fourth trial, each change answering a failure seen in it:
 - **A requirement read into the task's words is an assumption** naming those words, such as keeping the old way beside
   a new default; `task` is what the task states. With it, the kept remote branch in the fourth trial would have served
   only an assumption, and the existing warning would have asked for it to be named or sent to the owner.
-- **Work nobody required goes to the owner with its blocks:** never removed as mandatory, and not removed because it
-  belongs in another change.
+- **`remove` means the target has no such code:** work that belongs in another change keeps its verdict, and a step
+  moves it.
 - **The data contract shows where a weighed block's `kind` goes**, which the reviewer had to find in the script.
+
+A Sonnet-class critic of the draft, two points accepted and three left as they were:
+
+- **Accepted.** The draft first put the second change in the rule for behavior nobody required, which bans the split
+  the project's one-theme rule asks for; it now defines `remove` in the data contract instead. The independent target
+  is asked for readings of the task's words as well, so the two targets label them alike.
+- **Not changed.** The first change alone does not force the question: with requirement 2 an assumption, the warning
+  would name only the two launcher blocks that serve nothing else, and a reviewer can answer it by relabelling; the
+  question has to come from the rule for behavior nobody required, so the next run tests it. The critic's claim that
+  the target's label anchored the reviewer does not hold: the reviewer's own sketch, saved before it opened the
+  target's, already read "remote still works" from the task. On the flag the plain request called a duplicate, the
+  reviewer's own sketch had the same point ("an env override rather than a second mode flag") and the record made it
+  an idea; one run shows no text to change, so the design-finding bar stays as it is and is watched.
 
 Drafts: [the page](drafts/38-review.md), [agents](drafts/38-agents.md), [design standard](drafts/38-design-standard.md), [data contract](drafts/38-report-data.md), [structural examples](drafts/38-structure-examples.md).
 

@@ -120,7 +120,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
   which a kept block may leave out.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
-  the list of questions.
+  the list of questions. `remove` means the target has no such code: work that belongs in another change keeps its
+  verdict, and a step moves it.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and

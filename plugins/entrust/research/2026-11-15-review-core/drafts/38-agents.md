@@ -25,7 +25,7 @@ description and commit messages, if given at all, are marked as the author's acc
 > Sketch the cleanest solution to this task in this codebase, by the design standard at `<skill-dir>/references/
 > design-standard.md`: its units, what each owns and reuses, the mechanisms it needs and the ones existing code or
 > contracts already provide, with places. Say which requirements you read from the task, which you took from the
-> author's account and which you assumed. Write the sketch to `<out>/target.md` and return only that path.
+> author's account and which you assumed, readings of the task's words included. Write the sketch to `<out>/target.md` and return only that path.
 
 ## Scout
 
