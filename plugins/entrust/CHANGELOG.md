@@ -48,13 +48,35 @@ forensics remain in the repository references and release notes.
   and a mechanism nobody weighed no longer prints three lines saying so. With two or more mechanisms weighed, the
   report gives their total, each shared block counted once, so the weight of several suspect mechanisms can be
   asked for and judged together.
-- Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
-  proof that the blocks serve nothing or can be removed safely.
-
 ### Fixed
 
 - `entrust:codex`: a read run refuses a `$TMPDIR` that does not resolve to a directory again, as before the
   sandbox check became one table, where two unresolvable roots compared equal.
+
+## 0.39.0 — 2026-11-16
+
+### Changed
+
+- `entrust:review` presents the scope, mode, permissions and result as a plan for approval before
+  substantive review. An existing approval of the same concrete plan is reused; without a decision,
+  review stops. `orchestrate` handles this gate before launching a cross-reviewer.
+- `entrust:review` reads "smallest" as the result, not the diff, and assesses concrete structural burdens
+  and their tradeoffs. Grounded change scenarios are optional; each changed unit gives a `reason` for its
+  verdict. The checker validates scenario shape and references when present and requires unit reasons, so
+  older records without the latter need updating. Small research pilots do not establish a general quality
+  improvement.
+- `entrust:review` analyzes connected code before finalizing the full changed-line map. If the diff or a
+  requested direction cannot be covered, it returns a bounded partial review rather than treating unread
+  lines as `keep` or presenting a valid complete `review.json`.
+- `entrust:review` multi mode, available only on explicit request after plan approval, keeps one reviewer as
+  coordinator for the connected analysis, final map and report. The coordinator may share working analysis
+  and helper returns across behavior, necessity, design and tests as useful. Helpers verify material premises
+  without rebuilding the full map; the coordinator checks material conclusions and owns the result. Partial
+  results and the approval gate remain, and a refused or failed helper does not change the mode. One reviewer
+  remains the default. In `orchestrate`, an ordinary cross-review stays one independent reviewer and helpers
+  are not required.
+- Built-in review report labels describe blocks without recorded requirement links as unlinked, not as
+  proof that the blocks serve nothing or can be removed safely.
 
 ## 0.38.0 — 2026-11-14
 
