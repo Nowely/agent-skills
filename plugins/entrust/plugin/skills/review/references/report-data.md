@@ -10,17 +10,20 @@ The full record of a review: one `review.json` that the response is written from
    lines, numbered. For uncommitted work it records a snapshot of the working tree, new files included, without
    touching the index. It never replaces a record or a saved diff.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
-   ranges between the copies. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed
-   line of the saved diff with the address a block uses.
+   ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
+   `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
+   diff with the address a block uses. Places cited anywhere in the record are at the head unless marked `(base)`.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every changed line of the saved diff belongs to exactly one block. It warns
-   about a large block given one verdict, and about kept blocks that serve no requirement or only assumed ones. It
-   cannot check that the words are true, nor that a place named to reject a challenge refutes it.
+   about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
+   about a kept unit holding an open block. It cannot check that the words are true, nor that a place named to
+   reject a challenge refutes it.
 4. Read the record back as a whole: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
    solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
    its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
-   beside it and prints the report as text; the JSON is not changed. Link the page. On it the user marks findings and
+   beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
+   not changed. Link the page. On it the user marks findings and
    ideas to apply or skip, comments on any passage and copies those decisions back as text: proposals for the next
    step, not edits to the source.
 
@@ -100,22 +103,25 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Scenarios.** Optional: a change grounded in the task walked through the code and the target, with the places
   edited and read in each (`now`, `target`); a finding may name them in `scenarios`.
 - **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge`, `remove` or `question`, its
-  `reason`, and its `findings`, or for a question its `questions`, unless kept. `"existing": true` marks untouched code listed because the change calls it or is
-  called by it. **Target units** are the same for the target; a name that is neither carried over nor existing is to
+  `reason`, and its `findings`, or for a question its `questions`, unless kept. Each name in `uses` is a unit listed
+  here; `"existing": true` marks untouched code listed because the change calls it or is called by it. **Target units** are the same for the target; a name that is neither carried over nor existing is to
   be written.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
   requirements and contracts), `benefit`, `cost`, `decision` and `evidence`. An added or changed mechanism has
   `instead`, citing the `path:line` read. `benefit` names the scenario served, what is lost without it and how often,
   or that frequency is unknown. `blocks` may list the numbers of blocks wholly the mechanism's, each with a `kind` of
   `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work, shared imports
-  included.
+  included. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
+  also gives their total, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` and `unit`.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
   the list of questions.
-- **Challenges.** Each point the independent target, the critic or the verifier raised: `from` (`target`, `critic`
-  or `verifier`), `point`, `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the
-  `path:line` that refutes it; `owner` says what the owner decides. A difference between the two targets is a point
-  from `target`.
+- **Challenges.** Each point of the independent target, the critic or the verifier that could change a requirement, a
+  verdict, a finding or a question: `from` (`target`, `critic` or `verifier`), `point`, `outcome` and `note`.
+  `accepted` notes what it changed; `rejected` names in `at` the `path:line`, in the code or the task's sources, that
+  refutes it, and the note quotes what that place says and why it contradicts the point; `owner` says what the owner
+  decides. A difference between the two targets is a point from `target`. A corrected citation is fixed in place and
+  an agreement is not recorded.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each

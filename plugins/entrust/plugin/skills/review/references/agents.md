@@ -1,8 +1,9 @@
 # Review agents
 
 The agents below start with a fresh context and get the task, the diff's base and head (the independent target gets
-only the base), the repository, the project instructions, the approved scope and permissions, and their brief. Each
-starts no agent and invokes no mode or approval; each but the reviewer changes no file but its own return. Each
+only the base), the repository, the project instructions, the approved scope and limits, and their brief, and runs
+nothing the scope excludes. Each starts no agent and invokes no mode or approval; each but the reviewer changes no
+file but its own return. Each
 returns facts with `path:line`, what it ran and what it could not reach. The reviewer, or the coordinator, checks each returned point against the
 source before using it.
 
@@ -10,9 +11,10 @@ source before using it.
 
 The full reviewer, not a checking agent: it gets the approved plan as given and the review skill's path and runs the
 whole review by that page, with the plan already approved, and writes only its record, draft and page where the plan
-says. It cannot start agents: it saves its record and draft and returns, asking the conductor for the critic and the
-verifier, and receives their returns with the independent target's; a fresh reviewer could continue from what it
-saved. It returns the response and the record's path; questions for the user go back through the conductor.
+says. After its own sketch of the target it reads the independent target's return from `<out>/target.md` if the
+conductor has written it there. It cannot start agents: it saves its record and draft and returns, asking the
+conductor for the critic and the verifier, and receives their returns, with the independent target's if it had not
+read it; a fresh reviewer could continue from what it saved. It returns the response and the record's path; questions for the user go back through the conductor.
 
 ## Independent target
 
@@ -32,8 +34,9 @@ their places, and what was looked for and not found. No opinion on the change.
 
 ## Critic
 
-The requirements with their sources, the reviewer's saved draft (the record with its block and unit verdicts, the
-mechanisms, the target, the findings and the questions) and the independent target; not the reasoning behind them.
+The requirements with their sources, the reviewer's saved draft (the units with their verdicts, the mechanisms, the
+target, the findings and the questions; the blocks only where a point needs their lines) and the independent target;
+not the reviewer's working notes.
 Brief:
 
 > Give the five strongest points against this draft, ranked, each with its place. Name any requirement that no

@@ -20,14 +20,14 @@ import path from "node:path";
 import { address, blank, changedLines, diffOf, diffText, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview, VERDICTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
 const grounds = (item) => cited(item.verdict === "question" ? item.questions.map((n) => `Q${n}`) : item.findings);
 
 // The review in the shape SKILL.md gives the report.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
@@ -51,24 +51,25 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
-    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), ...mechanisms.flatMap((m) => [
+    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "),
+      ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
+      ...mechanisms.flatMap((m) => [
       `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
       `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
-      `${t("weight")}:`,
-      ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
-        ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`)
-        : [t(m.weight ? "weight.unchanged" : "weight.unknown")]; })(),
-      ...(m.weight?.shared.length ? [`${t("weight.exclusive")}: ${weightCountsText(m.weight.exclusive, t)}`] : []),
-      ...(m.weight?.shared ?? []).map(s => `${t("weight.shared")} ${s.with.join(", ")}: ${weightCountsText({ [s.kind]: s }, t)} (B${s.block})`),
-      ...(m.blocks?.length ? [`${t("weight.evidence")}: ${m.blocks.map(id => `B${id}`).join(", ")}`] : []),
-      t("weight.note"),
+      // Weight is printed for a mechanism whose blocks were named; the others have none to show.
+      ...(m.weight ? [`${t("weight")}:`, ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
+        ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`) : [t("weight.unchanged")]; })(),
+      ...(m.weight.shared.length ? [`${t("weight.exclusive")}: ${weightCountsText(m.weight.exclusive, t)}`] : []),
+      ...m.weight.shared.map(s => `${t("weight.shared")} ${s.with.join(", ")}: ${weightCountsText({ [s.kind]: s }, t)} (B${s.block})`),
+      `${t("weight.evidence")}: ${m.blocks.map(id => `B${id}`).join(", ")}`, t("weight.note")] : []),
       ...["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
     `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${grounds(u)}`)),
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     ...(scenarios.length ? [`## ${t("scenarios")}`, t("scenarios-note"), ...scenarios.map((s) => `${s.id}. ${s.change}${s.requirements.length ? ` (${t("requirement").toLowerCase()} ${s.requirements.join(", ")})` : ""}`
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
-    `## ${t("map")}`,
-    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
+    // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
+    `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
+    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
       `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),

@@ -322,7 +322,12 @@ test("weight is rendered in HTML and text without changing the review record",
     const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
     const summary = card?.match(/<details><summary>([\s\S]*?)<\/summary>/)?.[1];
     if (!summary?.includes("A</h3>") || !summary.includes(MECHANISM.decision) || !summary.includes("Code:") || summary.includes("Shared with")) return "collapsed summary lacks the name, decision or compact weight";
-    return ["Shared with", "Not assessed"].every(text => page.includes(text) && result.stdout.includes(text))
+    // A mechanism nobody weighed says so on its card; the printout, read back by the reviewer, leaves it out.
+    if (!page.includes("Not assessed") || result.stdout.includes("Not assessed")) return "an unweighed mechanism is missing from the page or printed";
+    // Weighed together, a block two mechanisms share counts once: the lines a decision on both would touch.
+    const together = "Weighed mechanisms together, each block counted once (A, B): Code: 2 lines added, 1 line removed";
+    if (!result.stdout.includes(together) || !page.includes("Weighed mechanisms together, each block counted once</strong> (A, B)")) return `no combined weight:\n${result.stdout.split("## Mechanisms")[1]?.slice(0, 400)}`;
+    return page.includes("Shared with") && result.stdout.includes("Shared with")
       && result.stdout.includes("Touched in this change") && !card.includes("Touched in this change") && card.includes("Show counted lines")
       && page.includes('aria-label="Dismiss notification"') && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence or dismiss control missing, redundant heading present, or derived totals persisted";
   });

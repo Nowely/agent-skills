@@ -1790,6 +1790,8 @@ function assertSandbox(thread) {
   const set = (list) => JSON.stringify((list ?? []).map(canonPath).sort());
   const tmp = process.env.TMPDIR;
   if (read && !tmp) fail(EXIT.TRANSPORT, "the read sandbox is not what was asked for (TMPDIR is unset, so the server grants no temp directory at all)");
+  // An unresolvable path maps to null, and two nulls compare equal: the root asked for must resolve.
+  if (read && !canonPath(tmp)) fail(EXIT.TRANSPORT, `the read sandbox is not what was asked for (TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory)`);
   const rows = [
     ["sandbox type", sb.type ?? null, "workspaceWrite"],
     ["networkAccess", Boolean(sb.networkAccess), opts.network],

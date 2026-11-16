@@ -31,6 +31,16 @@ export function weightOverview(weight, t, language) {
   });
 }
 
+// What the weighed mechanisms come to together, each block counted once: the lines a decision to remove them all
+// would touch. Null when fewer than two are weighed.
+export function combinedWeight(mechanisms, blocks) {
+  const weighed = mechanisms.filter((m) => m.weight), ids = new Set(weighed.flatMap((m) => m.blocks));
+  if (weighed.length < 2) return null;
+  const exclusive = Object.fromEntries(BLOCK_KINDS.map((kind) => [kind, { added: 0, removed: 0 }]));
+  for (const id of ids) { const b = blocks[id - 1]; exclusive[b.kind].added += b.weightLines.added; exclusive[b.kind].removed += b.weightLines.removed; }
+  return { names: weighed.map((m) => m.name), exclusive, sharedCounts: Object.fromEntries(BLOCK_KINDS.map((kind) => [kind, { added: 0, removed: 0 }])), shared: [] };
+}
+
 function weighMechanisms(mechanisms, blocks) {
   const users = new Map(blocks.map(b => [b.id, mechanisms.filter(m => m.blocks?.includes(b.id)).map(m => m.name)]));
   return mechanisms.map(m => {
@@ -293,6 +303,7 @@ export function modelOf(review, files, owner, directory) {
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
   const { labels, ...content } = review;
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
-  return { blocks, scenarios, mechanisms: weighMechanisms(review.mechanisms ?? [], blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
+  const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
+  return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }

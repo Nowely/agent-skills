@@ -1,4 +1,4 @@
-# Review core: drafts 32 to 34
+# Review core: drafts 32 to 35
 
 ## Question
 
@@ -92,8 +92,22 @@ One real change from this repository's history: `276a94a`, "Driver audit, step 4
 - **What the checks changed.** The draft said the change does its task, the mailbox module kept, five findings. After the checks: requirement 1 only partly met (the module does not own "record, then answer"; each adapter keeps its own unrecorded-accept branch), the mailbox unit to fix with an `answer()` that owns the order, the plan-time overlap refusal moved to the top as the one regression, and a new behavior finding from the verifier: the Codex read sandbox no longer refuses a TMPDIR that does not resolve (`[null]` equals `[null]`). Three questions answerable from the code were cut. The independent target had proposed the module owning the order (`offer(request, answerFn)`) from the task alone; the reviewer's own draft had accepted the author's primitives.
 - **Challenges.** 25: critic 8 accepted and 2 rejected, verifier 8 accepted, independent target 5 accepted and 2 rejected. One rejection cites a test that confirms the critic's point rather than refuting it (the OpenCode run with no reported rules proceeds and only says so on stderr): the check sees that a place is named, not what it shows.
 - **The reviewer's notes on the procedure:** how to record a target point that agrees, whether a citation correction needs its own challenge, that a unit's verdict follows its least certain block, how to divide a removal-only block, that `uses` must name listed units, how to cite a base line in `instead`, and that 198 blocks are a large input for the critic.
-- **Both defects found are still in the code** (`codex/scripts/driver.mjs:1798`, `orchestrate/scripts/agent-run.mjs:578`); they are reported, not fixed here.
+- **The two defects, read again in the current code.** The Codex one is real but out of reach in practice: the driver makes the run's `$TMPDIR` itself just before the check, so only a directory that vanishes in between would pass; the refusal is restored in one line. The overlap one is not a defect: `orchestrate/references/external.md:396` and the comment above `overlappingRows` state that two rows never write one tree and that writers in sequence are one row and its continuations; whether native rows should be exempt is the owner's question.
+
+## Draft 35
+
+A fresh Opus-class review of draft 34, using the trial, found the chain had broken the anchoring only along one path (independent target → critic → reviewer), the reconciliation the weakest link (the anchored reviewer refuted the letter of a point, not its substance), 25 challenges inflated by agreements and citation fixes, the block map 55% of the record and a third of the printed report with no finding resting on it, the plan's numbers contradicted by the trial, and a hidden rule (`uses` must name listed units) that caused 38 errors. A Sonnet-class critic of the coordinator's list then corrected it: resuming the verifier to re-check rejections would break the adapter's rule that independent verification takes a fresh agent, and a rejection must instead quote its place; the division rule should wait for evidence; the trial's numbers are one observation, and part of them came from a critic that ran suites the plan excluded. The owner kept mechanism weight: a rough weight lets the user ask what several suspect mechanisms weigh together and decide to remove them.
+
+- **The independent target starts with the reviewer**, its return written where the reviewer reads it after its own sketch; differences that could change something are recorded then, the rest come with the critic.
+- **Challenges** are only points that could change a requirement, verdict, finding or question; a citation fix is made in place and an agreement not recorded; an accepted point names what it changed; a rejection names a place in the code or the task's sources, quotes it and says why it contradicts the point.
+- **The critic** gets units, mechanisms, findings, questions and the target, not the block map. Every agent gets the plan's scope; where tests are allowed, one scout runs them once at the start.
+- **The printed report** lists only the blocks not kept or not linked (the trial's printout falls from 9,034 to 5,781 words); a mechanism nobody weighed prints nothing about weight; two or more weighed mechanisms get a total, each block counted once.
+- **Contract:** `uses` names listed units; a divided copy drops the side it no longer has; places are at the head unless marked `(base)`; a unit's verdict follows its least settled block; the short review keeps its challenges in the response; the plan bullet is "Checking agents"; the plan's numbers are the two observations, and the multi-mode threshold is marked unmeasured.
+
+Not changed, for real use to decide: how far to divide blocks; whether the reviewer's own target adds anything over the independent one (0 of 2 so far); the multi-mode threshold.
+
+Drafts: [the page](drafts/35-review.md), [agents](drafts/35-agents.md), [design standard](drafts/35-design-standard.md), [data contract](drafts/35-report-data.md), [structural examples](drafts/35-structure-examples.md). About 6,400 words in all.
 
 ## Status
 
-One real change reviewed with draft 34 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+One real change reviewed with draft 34 (above); draft 35 not run. Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.

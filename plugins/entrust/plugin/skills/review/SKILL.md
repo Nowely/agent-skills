@@ -20,11 +20,11 @@ Review only: change no project code and post nothing unless asked; keep to the u
 
 Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size; analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
 
-- **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff one reviewer cannot hold (roughly a thousand changed lines or more) or one with several risky areas. Multi costs two to six times the tokens.
-- **Where:** in this session (default), or in a subagent while this session conducts. A subagent keeps the analysis, often 50–190k tokens, out of the working session.
-- **Checks:** an independent target, a critic and a verifier (default), or none.
-- **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page.
-- **Agents:** each agent the choices above start, with its model and the session that starts it, and scouts up to a stated number. By default the independent target and the critic run on the reviewer's model, the verifier and scouts on a lighter one. On the one case measured, the review with its checks cost nearly four times the tokens of a review without them.
+- **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff one reviewer cannot hold or one with several risky areas; the size where one reviewer stops holding a diff is unmeasured, and one held 1,085 changed lines in a trial. Multi costs two to six times the tokens.
+- **Where:** in this session (default), or in a subagent while this session conducts. A subagent keeps the analysis out of the working session; the reviewer alone used about 600k tokens on that 1,085-line change.
+- **Checking agents:** an independent target, a critic and a verifier (default), or none.
+- **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page; its checking agents get the draft response, and its challenges go in the response.
+- **Agents:** each agent the choices above start, with its model and the session that starts it, and scouts up to a stated number. By default the independent target and the critic run on the reviewer's model, the verifier and scouts on a lighter one. Observed twice, the checking agents made a review three to four times as costly in tokens; on the 1,085-line change the whole review took about 1M tokens and 31 minutes, the checks about 40% of the tokens. Every agent gets the plan's scope and limits and runs nothing they exclude; where the plan allows tests, one scout runs them once at the start and its result goes to every agent.
 - **Scope and limits:** what will be read; any tests, application or screenshots run; any outside provider that receives the code; where the result goes; what is known to be out of reach.
 
 Wait for approval before analysis. A choice is fixed when the user names it or says to use the defaults; a request or a parent's brief that fixes them all is approval, so show the plan in the first lines and start. A bare request to review is not approval. Ask only for what is missing; a corrected plan waits for its own approval unless the user approved it as corrected. Without an answer, because the user cannot reply or a reviewer was started without an approved plan, return the plan, say the review was not performed, and stop. Recheck the diff before starting; if it, the scope or the agents must change, ask again. If a direction helper fails or is blocked, stop and ask; never switch mode silently. If a checking agent fails, finish without it and say which check did not run. Approving a review approves no edit or comment.
@@ -33,7 +33,7 @@ Wait for approval before analysis. A choice is fixed when the user names it or s
 
 The review's agents are briefed by [the agents reference](references/agents.md): an independent target, scouts, a critic, a verifier and, in multi mode, direction helpers. Start only agents the plan names. The session that can start agents starts all of them: in Claude Code load [the claude adapter](../claude/SKILL.md) first; an outside critic on another provider runs through [codex](../codex/SKILL.md) or [opencode](../opencode/SKILL.md). Where no session can start agents, the plan says so and the checks are none. An agent's return is evidence to check against the source, never a conclusion to copy.
 
-**Conducting.** When the review runs in a subagent, this session makes the plan, starts the reviewer, or the coordinator, with the approved plan and this page's path, and starts every agent the plan names on its behalf: the independent target at once, direction helpers on the coordinator's briefs, the critic and verifier on its saved draft. It hands the independent target's return to the reviewer with the critic's and verifier's, the helpers' as they come, and relays the result without redoing the analysis. The reviewer saves its record and draft before each return, so the review survives a host that cannot continue it. Follow-up questions go to the same reviewer.
+**Conducting.** When the review runs in a subagent, this session makes the plan, starts the reviewer, or the coordinator, with the approved plan and this page's path, and starts every agent the plan names on its behalf: the independent target at the same time as the reviewer, direction helpers on the coordinator's briefs, the critic and verifier on its saved draft. It writes the independent target's return to `<out>/target.md` as soon as it comes, so the reviewer can read it after its own sketch, hands the critic's and verifier's returns to the reviewer, the helpers' as they come, and relays the result without redoing the analysis. The reviewer saves its record and draft before each return, so the review survives a host that cannot continue it. Follow-up questions go to the same reviewer.
 
 ## Read
 
@@ -47,16 +47,13 @@ Read the whole diff, the base version of rewritten logic, the producers of chang
 
 For the full record, start it with `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, as [the data contract](references/report-data.md) says. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check.
 
-The record holds:
+The record's fields are the data contract's. What they mean here:
 
-- **Requirements**, with source and, as the review goes, status.
-- **Blocks:** what each does, the requirement or integration it serves, and its verdict. A missing requirement link is a lead, not proof of redundancy.
-- **Units:** each changed unit, its jobs, what it uses and what calls it, its verdict and the reason. For a unit that decides, the reason rests on its rules with inputs, outcomes and precedence, and on the shared state and the timed or external effects that connect them.
-- **Mechanisms:** each meaningful behavior the change adds or alters, as one lifecycle, with its purpose, basis, benefit and cost, and `instead`: where what it does is already available, read from the code and installed contracts, or the places read that do not supply it.
-- **Challenges:** each point the independent target, the critic and the verifier raise, and what became of it.
-- **Questions and coverage:** what is unexplained and what would settle it; the entries, contracts and existing utilities read, and the unread boundaries.
+- A block's missing requirement link is a lead, not proof of redundancy.
+- A unit that decides is judged by its rules with inputs, outcomes and precedence, and by the shared state and the timed or external effects that connect them; its verdict follows its least settled block.
+- A mechanism is each meaningful behavior the change adds or alters, as one lifecycle, with its purpose, basis, benefit and cost, and `instead`: where what it does is already available, read from the code and installed contracts, or the places read that do not supply it. When the user asks what some mechanisms weigh, or a step removes several, list the blocks wholly theirs, and the report gives each one's weight and their total.
 
-Then assess the grouping and sketch the target as [the design standard](references/design-standard.md#structure-and-target) says, after reading [the structural examples](references/structure-examples.md).
+Then assess the grouping and sketch the target as [the design standard](references/design-standard.md#structure-and-target) says, after reading [the structural examples](references/structure-examples.md). Only then read the independent target's return, if it has come, and record each difference between the two targets that could change a verdict, a finding or a question as a challenge; otherwise it comes with the critic's.
 
 ## Review all four directions
 
@@ -83,7 +80,7 @@ Reopen the code and seek a reason each candidate is wrong: an upstream guarantee
 
 Scrutinise the fixes the same way, and after a large removal reassess what remains. Reconcile into one target and trace every requirement and rule through it. A confirmed problem is a finding, an open premise a question, an improvement the change does not need an idea, and an owner-accepted omission a tradeoff with its source and consequence; a proposal to drop a binding requirement stays a question until its owner accepts it. Mark pre-existing problems apart unless the change worsens or relies on them; an old implementation the new requirement depends on and that does not meet it is in scope.
 
-Save the draft, then give it to the critic and the verifier at once, with the independent target's return: the requirements with their sources, the record with its block and unit verdicts, the mechanisms, the target, the findings and the questions. Record each point they raise, and each difference between your target and the independent one, as a challenge with its outcome. Accept a point that holds; reject one only on a place in the code that refutes it, and name the place; one you would reject on judgment alone goes to the owner. Then reconcile again.
+Save the draft, then give it to the critic and the verifier at once, with the independent target's return: the requirements with their sources, the units with their verdicts and reasons, the mechanisms, the target, the findings and the questions; blocks only where a point needs their lines. A challenge is a point that could change a requirement, a verdict, a finding or a question; a citation the verifier corrects is fixed in place, and an agreement is not recorded. An accepted point names what it changed. Reject one only on a place in the code or the task's sources that refutes it: name the place, quote what it says and why that contradicts the point. One you would reject on judgment alone goes to the owner. Then reconcile again.
 
 ## Record and respond
 

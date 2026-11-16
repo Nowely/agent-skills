@@ -436,7 +436,8 @@ function challenges(review, t) {
 function mechanisms(review, model, t) {
   if (!review.mechanisms?.length) return "";
   return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
-    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${model.mechanisms.map((m, i) => {
+    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>
+    ${model.together ? `<p><strong>${esc(t("weight.together"))}</strong> (${model.together.names.map(esc).join(", ")}): ${weightOverview(model.together, t, languageOf(review)).map((row) => `<strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}`).join(" · ") || esc(t("weight.unchanged"))}</p>` : ""}${model.mechanisms.map((m, i) => {
       const overview = weightOverview(m.weight, t, languageOf(review));
       const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
       return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
