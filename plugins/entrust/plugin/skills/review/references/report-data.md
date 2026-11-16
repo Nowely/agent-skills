@@ -116,7 +116,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
   `instead`, citing where the existing capability or its absence was read. `benefit` names the scenario served, what is lost without it and how often,
   or that frequency is unknown. `blocks` may list the numbers of the mechanism's blocks, to show its weight; each
   block listed then names its own `kind`: `code`, `test` or `other`; a block two mechanisms list is shown as shared, and a block that
-  mixes other work, shared imports included, is left out. Weigh the mechanisms the user asks about and those a step removes; with two or more weighed, the report
+  mixes other work, shared imports included, is left out. Weigh the mechanisms specified in [Analyse](../SKILL.md#analyse); with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
   which a kept block may leave out.
