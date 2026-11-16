@@ -17,7 +17,8 @@ forensics remain in the repository references and release notes.
   critic, given the requirements with their sources and the block verdicts, ranks its five strongest points against
   the draft in both directions and walks one grounded change through another arrangement of the busiest unit; a
   verifier checks the draft's factual claims. The independent target starts with the reviewer, writes its sketch to a
-  file and returns only the path, and the reviewer reads it after its own sketch. Each point that could change a
+  file and returns only the path, and the reviewer reads it after its own sketch. With checks set to none, none of
+  these checking agents is started. Each point that could change a
   requirement, verdict, finding or question, and each such difference between the two targets, is a `challenge` in
   the record with its outcome, checked and drawn on the page: accepted with what it changed (a point that adds,
   promotes or drops a finding or changes the verdict refuted first), rejected only on a named place in the code or

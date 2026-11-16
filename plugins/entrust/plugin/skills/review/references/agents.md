@@ -11,9 +11,11 @@ against the source before using it.
 
 The full reviewer, not a checking agent: it gets the approved plan as given and the review skill's path and runs the
 whole review by that page, with the plan already approved, and writes only its record, draft and page where the plan
-says. After its own sketch of the target it reads `<out>/target.md` if it is there. It cannot start agents: it saves
-its record and draft and returns, asking the conductor for the critic and the verifier, and receives their returns;
-it reads `<out>/target.md` then if it had not. A fresh reviewer could continue from what it saved. It returns the response and the record's path; questions for the user go back through the conductor.
+says. If checking agents are selected, after its own sketch of the target it reads `<out>/target.md` if it is there.
+It cannot start agents: it saves its record and draft and returns, asking the conductor for the critic and verifier,
+and receives their returns; it reads `<out>/target.md` then if it had not. A fresh reviewer could continue from what
+it saved. Otherwise it finishes without them. It returns the response and the record's path; questions for the user go
+back through the conductor.
 
 ## Independent target
 
