@@ -47,8 +47,12 @@ function weighMechanisms(mechanisms, blocks) {
   });
 }
 
-export const VERDICTS = ["keep", "fix", "remove"];
-export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove"];
+// "question": the premise is unread, so the code is neither kept nor removed until the question named is answered.
+export const VERDICTS = ["keep", "fix", "remove", "question"];
+export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "question"];
+// Who raised a point against the draft, and what the review did with it.
+export const CHALLENGERS = ["target", "critic", "verifier"];
+export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
@@ -96,6 +100,7 @@ export function check(review, files, directory) {
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   if (review.mechanisms !== undefined && !Array.isArray(review.mechanisms)) errors.push('"mechanisms" is not a list');
   if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
+  for (const field of ["challenges", "questions"]) if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   errors.push(...labelFaults(review));
   if (errors.length) return { errors, owner };
 
@@ -150,6 +155,23 @@ export function check(review, files, directory) {
   });
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
+  // A question is named by its place in the list, from 1.
+  const questions = new Set((review.questions ?? []).map((_, index) => index + 1));
+  const settled = (who, item) => {
+    refs(who, item.findings, findings, "finding");
+    refs(who, item.questions, questions, "question");
+    if (item.verdict === "question" && !item.questions?.length) errors.push(`${who} is a question and names none of the questions`);
+    else if (!["keep", "question"].includes(item.verdict) && !item.findings?.length) errors.push(`${who} is to ${item.verdict} and names no finding`);
+  };
+  // A point against the draft is rejected only on a place in the code that refutes it.
+  const place = /[\w@./-]+\.\w+:\d+/;
+  (review.challenges ?? []).forEach((c, index) => {
+    const who = `challenge ${index + 1}`;
+    if (!CHALLENGERS.includes(c.from)) errors.push(`${who}: from is one of ${CHALLENGERS.join(", ")}`);
+    if (!OUTCOMES.includes(c.outcome)) errors.push(`${who}: outcome is one of ${OUTCOMES.join(", ")}`);
+    for (const field of ["point", "note"]) if (!text(c[field])) errors.push(`${who} has no "${field}"`);
+    if (c.outcome === "rejected" && !place.test(c.at ?? "")) errors.push(`${who} is rejected and "at" cites no place that refutes it; name the path:line, or send it to the owner`);
+  });
 
   (review.screens ?? []).forEach((screen, index) => {
     const name = `screen ${index + 1}`;
@@ -178,8 +200,7 @@ export function check(review, files, directory) {
   for (const u of units.filter((u) => !u.existing)) {
     if (!text(u.reason)) errors.push(`unit ${u.name} has no "reason": why it is to ${u.verdict ?? "keep"}, a unit kept as it is included`);
     if (!UNIT_VERDICTS.includes(u.verdict)) errors.push(`unit ${u.name}: verdict is one of ${UNIT_VERDICTS.join(", ")}`);
-    refs(`unit ${u.name}`, u.findings, findings, "finding");
-    if (u.verdict !== "keep" && !u.findings?.length) errors.push(`unit ${u.name} is to ${u.verdict} and names no finding`);
+    settled(`unit ${u.name}`, u);
     if (!review.blocks.some((b) => b.unit === u.name)) errors.push(`unit ${u.name} has no block: give its blocks "unit": "${u.name}", or mark it "existing"`);
   }
 
@@ -193,7 +214,7 @@ export function check(review, files, directory) {
     // What the change brings in is weighed against what was already there, so the record must say what was looked at.
     if (["added", "changed"].includes(m.change)) {
       if (!text(m.instead)) errors.push(`${who} has no "instead": where this is already available, or what you read that does not supply it`);
-      else if (!/[\w@./-]+\.\w+:\d+/.test(m.instead)) errors.push(`${who}: "instead" cites no place; name the path:line you read`);
+      else if (!place.test(m.instead)) errors.push(`${who}: "instead" cites no place; name the path:line you read`);
     }
     if (!EVIDENCE.includes(m.evidence)) errors.push(`${who}: evidence is one of ${EVIDENCE.join(", ")}`);
     if (m.units !== undefined && !Array.isArray(m.units)) errors.push(`${who}: units is not a list`);
@@ -219,8 +240,7 @@ export function check(review, files, directory) {
     if (!text(block.does)) errors.push(`${name} has no "does"`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
-    refs(name, block.findings, findings, "finding");
-    if (block.verdict !== "keep" && !block.findings?.length) errors.push(`${name} is to ${block.verdict} and names no finding`);
+    settled(name, block);
     if (block.unit !== undefined && !changed.has(block.unit)) errors.push(`${name}: "${block.unit}" is not a unit of the change`);
     // Code that stays is read line by line; only what goes entirely may be named whole.
     if ([block.added, block.removed].includes("all") && block.verdict !== "remove") errors.push(`${name}: "all" is for a block to remove; a block to ${block.verdict} lists its lines`);
@@ -252,7 +272,7 @@ export function check(review, files, directory) {
 // them, the findings that break them and the ones that leave them untested; units with their blocks; screens with
 // their pictures read; and a name for this review that no other review has. Nothing here is written by the reviewer twice.
 export function modelOf(review, files, owner, directory) {
-  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], added: [], removed: [], weightLines: { added: 0, removed: 0 } }));
+  const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], questions: block.questions ?? [], added: [], removed: [], weightLines: { added: 0, removed: 0 } }));
   for (const file of files) for (const line of changedLines(file)) {
     const index = owner.get(`${file.path}\n${address(line)}`);
     if (index !== undefined) {
@@ -268,7 +288,7 @@ export function modelOf(review, files, owner, directory) {
   const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
   const requirements = review.requirements.map((r) => ({ ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)),
     broken: naming("breaks", r.id), untested: naming("untested", r.id) }));
-  const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
+  const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
   const { labels, ...content } = review;

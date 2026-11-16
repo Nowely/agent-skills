@@ -12,7 +12,7 @@ import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { CATALOGS, LABELS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -44,6 +44,9 @@ const REVIEW = {
     { path: "test/archive.test.js", added: "1-8", does: "Tests it.", serves: [1], verdict: "fix", findings: [1] },
     { path: "test/outputs.test.js", added: "1-13", does: "Tests the three outputs.", serves: [1], verdict: "keep" },
   ],
+  challenges: [{ from: "critic", point: "The reader should not convert.", outcome: "rejected", at: "src/main.js:4", note: "The caller prints the code as read." },
+    { from: "target", point: "The independent target converts where prices are shown.", outcome: "owner", note: "Which unit owns display is the owner's call." },
+    { from: "verifier", point: "Line 2 is not the conversion.", outcome: "accepted", note: "The finding's place was corrected." }],
   questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
 };
 // The two pictures that review names, beside its data: one pixel each.
@@ -401,22 +404,23 @@ test("scaffold writes the record's mechanical part: every changed line in one bl
     fs.rmSync(out, { recursive: true, force: true });
     const made = report("scaffold", "HEAD~1..HEAD", target);
     if (made.status !== 0) return made.stderr;
-    const record = JSON.parse(fs.readFileSync(target, "utf8")), saved = fs.readFileSync(path.join(out, "change.diff"), "utf8");
-    const digest = createHash("sha256").update(saved).digest("hex");
-    if (!record.change.sources.some((s) => s.includes(digest))) return "the saved diff's digest is not in the record";
+    const record = JSON.parse(fs.readFileSync(target, "utf8")), saved = fs.readFileSync(path.join(out, "review.diff"), "utf8");
+    if (record.diff?.file !== "review.diff" || record.diff.sha256 !== createHash("sha256").update(saved).digest("hex")) return "the record does not name the saved diff and its digest";
+    if (!/^[0-9a-f]{40}\.\.[0-9a-f]{40}$/.test(record.range)) return `the range is not pinned to commits: ${record.range}`;
     if (record.blocks.some((b) => b.does !== "" || b.verdict !== "")) return "scaffold wrote meaning a reviewer must write";
     // Filled with any meaning, the scaffold's blocks pass the line check: each changed line is in exactly one.
-    const filled = { ...structuredClone(REVIEW), range: "HEAD~1..HEAD", units: [], scenarios: undefined,
+    const filled = { ...structuredClone(REVIEW), range: record.range, diff: record.diff, units: [], scenarios: undefined, screens: undefined,
       blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
-    fs.writeFileSync(data, JSON.stringify(filled));
-    const checked = report("check", data);
+    fs.writeFileSync(target, JSON.stringify(filled));
+    const checked = report("check", target);
     if (checked.status !== 0) return `the scaffold's blocks do not cover the diff: ${checked.stderr}`;
+    fs.rmSync(target);
     const again = report("scaffold", "HEAD~1..HEAD", target);
-    if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold replaced an existing record";
-    // The record names the diff it was made from; checked against another, it is refused.
-    const moved = { ...filled, range: "HEAD~1..HEAD", change: { ...filled.change, sources: [...filled.change.sources, `diff sha256 ${"0".repeat(64)}, saved as change.diff`] } };
-    fs.writeFileSync(data, JSON.stringify(moved));
-    const refused = report("check", data);
+    if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold wrote over an existing saved diff";
+    // The record judges the diff it was made from; a saved diff that changed is refused.
+    fs.writeFileSync(target, JSON.stringify(filled));
+    fs.appendFileSync(path.join(out, "review.diff"), "\n");
+    const refused = report("check", target);
     return refused.status === 1 && refused.stderr.includes("is not the one this record was scaffolded from") || "a record checked against another diff was accepted";
   });
 
@@ -443,17 +447,37 @@ test("scaffold takes uncommitted work with its new files, leaves the index alone
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;
-    return checked.stderr.includes("keeps 46 lines under one verdict") || `no warning about the large block: ${checked.stderr}`;
+    if (!checked.stderr.includes("keeps 46 lines under one verdict")) return `no warning about the large block: ${checked.stderr}`;
+    if (!checked.stderr.includes("serve no requirement")) return `no warning about kept blocks that serve nothing: ${checked.stderr}`;
+    // The record stays whole after the branch moves: it judges the diff saved beside it.
+    git("add", "--all"); git("commit", "--quiet", "-m", "more"); fs.appendFileSync(path.join(dir, "a.js"), "export const b = 2;\n"); git("commit", "--quiet", "-am", "later");
+    const later = tool("check", path.join(dir, "out", "review.json"));
+    return later.status === 0 || `a record no longer checks after a new commit: ${later.stderr}`;
+  });
+
+test("a block or unit whose premise is unread is a question, and a point against the draft is rejected only on a place that refutes it",
+  "an unknown premise could only be recorded as keep, and the points of the independent target, the critic and the verifier left no trace on the page",
+  () => {
+    const asked = render((r) => { r.blocks[2].verdict = "question"; r.units[0].verdict = "question"; r.challenges[0].at = "the caller"; });
+    if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
+    for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
+      if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
+    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1] }; r.blocks[0].serves = [3]; });
+    if (done.status !== 0) return done.stderr;
+    if (!done.stderr.includes("kept blocks 1 serve only assumed requirements")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('id="challenges"') || !page.includes('href="#q1">Q1</a>') || !page.includes('id="q1"')) return "the page shows no challenges or no link from the block to its question";
+    return /## Challenges\n1\. critic: The reader should not convert\. Rejected: .*src\/main\.js:4/.test(done.stdout) && done.stdout.includes("Question (Q1)") || `the printout lacks the challenges or the question:\n${done.stdout}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {
     const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES].filter((word) => !page.includes(`\`${word}\``));
+    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels", "diff"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 

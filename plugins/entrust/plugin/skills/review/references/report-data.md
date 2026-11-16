@@ -5,15 +5,17 @@ The full record of a review: one `review.json` that the response is written from
 ## Making it
 
 1. At the start of the analysis, `node "<skill-dir>/scripts/report.mjs" scaffold <range> <out>/review.json`, in the
-   reviewed repository, writes the record's mechanical part: the diff's base, head and digest, a copy of the diff
-   beside the record, and one block per declaration-sized run of changed lines, numbered. For uncommitted work it
-   records a snapshot of the working tree, new files included, without touching the index. It never replaces a record.
+   reviewed repository, writes the record's mechanical part: the range pinned to its base and head commits, a copy of
+   the diff beside the record (`review.diff`) with its digest, and one block per declaration-sized run of changed
+   lines, numbered. For uncommitted work it records a snapshot of the working tree, new files included, without
+   touching the index. It never replaces a record or a saved diff.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies. `node "<skill-dir>/scripts/report.mjs" lines <range>` prints every changed line with
    the address a block uses.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
-   references between them, that every changed line belongs to exactly one block and that the diff is the one the
-   record was made from, and it warns about a large block given one verdict. It cannot check that the words are true.
+   references between them, and that every changed line of the saved diff belongs to exactly one block. It warns
+   about a large block given one verdict, and about kept blocks that serve no requirement or only assumed ones. It
+   cannot check that the words are true.
 4. Read the record back as a whole: the verdict, `now`, `target`, units, mechanism decisions and steps describe one
    solution; a removal leaves no orphaned state; the target keeps every required rule; each block's `does` matches
    its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
@@ -30,7 +32,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 
     {
       "title": "a short name of the change", "language": "en",
-      "range": "main...HEAD",
+      "range": "<base commit>..<head commit>", "diff": { "file": "review.diff", "sha256": "the saved diff's digest" },
       "change": { "goal": "what the change is for, in a sentence", "why": "the reason, when a source gives one",
                   "parts": ["what it adds or alters, one line each"], "sources": ["the task text", "the commits"] },
       "verdict": "whether the change does its task\n- what decides that, a line each",
@@ -43,7 +45,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
                          "doubt": "what contradicts it" }],
       "findings": [{ "id": 1, "title": "what is wrong", "direction": "behavior", "evidence": "read",
                      "at": "path:line", "what": "...", "shown_by": "the caller at path:line", "fix": "...", "breaks": [1] },
-                   { "id": 3, "title": "the import cannot take a rule without its writes", "direction": "design", "evidence": "judgment",
+                   { "id": 3, "title": "a size rule cannot change without reading the writes", "direction": "design", "evidence": "judgment",
                      "at": "path:line", "what": "...", "shown_by": "scenario 1", "fix": "...", "scenarios": [1] },
                    { "id": 2, "title": "what no test would catch", "direction": "tests", "evidence": "read",
                      "at": "path:line", "what": "...", "shown_by": "the regression that passes", "fix": "...", "untested": [2] }],
@@ -55,23 +57,28 @@ new evidence that changes a conclusion makes a revised record, named as such.
                                     { "what": "a difference nothing explains", "finding": 1 }],
                     "missing": "what you could not compare, and the picture that would settle it" },
                   { "name": "a screen whose result is the mockup", "mockup": "mockup.png", "after": "after.png", "match": true }],
-      "scenarios": [{ "id": 1, "change": "rows from a blocked domain are rejected with a reason", "requirements": [2],
-                      "now": { "edit": ["src/import.js: importContacts, the loop"], "read": ["src/import.js: the counters and the writes in that loop"] },
-                      "target": { "edit": ["src/import.js: planImport"], "read": [] } }],
-      "units": [{ "name": "importContacts", "jobs": ["parses", "validates", "writes"], "uses": ["ContactStore"],
-                  "verdict": "split", "findings": [3], "reason": "a rule cannot change without reading the writes around it" },
-                { "name": "ContactStore", "existing": true, "jobs": ["keeps the contacts"] }],
-      "mechanisms": [{ "name": "bounded import retries", "change": "added", "units": ["importContacts"],
-                       "purpose": "retry transient writes", "basis": "task requirement 1",
-                       "instead": "the shared writer retries already: src/store.js:40",
-                       "benefit": "survive transient failures; frequency unknown", "cost": "duplicate retry state, latency and tests",
-                       "decision": "remove local retries; retain the shared writer policy", "evidence": "judgment", "findings": [1] }],
-      "target_units": [{ "name": "importContacts", "jobs": ["reads the rows", "applies the plan"],
-                         "uses": ["planImport", "ContactStore"] },
-                       { "name": "planImport", "jobs": ["decides what each row does"] },
-                       { "name": "ContactStore", "existing": true, "jobs": ["keeps the contacts"] }],
-      "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "importContacts",
-                   "does": "...", "serves": [1], "verdict": "remove", "findings": [1] }],
+      "scenarios": [{ "id": 1, "change": "the gallery needs a wider thumbnail", "requirements": [2],
+                      "now": { "edit": ["src/upload.js: storeUpload, the size loop"], "read": ["src/upload.js: the writes and the quota count in that loop"] },
+                      "target": { "edit": ["src/upload.js: thumbnailSizes"], "read": [] } }],
+      "units": [{ "name": "storeUpload", "jobs": ["checks the file", "picks the sizes", "writes"], "uses": ["Storage"],
+                  "verdict": "split", "findings": [3], "reason": "a size rule cannot change without reading the writes around it" },
+                { "name": "Storage", "existing": true, "jobs": ["keeps the files"] }],
+      "mechanisms": [{ "name": "local thumbnail cache", "change": "added", "units": ["storeUpload"],
+                       "purpose": "avoid reading a thumbnail twice", "basis": "assumption 3",
+                       "instead": "the storage client caches reads already: src/storage.js:40",
+                       "benefit": "one read saved per repeat view; frequency unknown", "cost": "a second cache to invalidate, and its tests",
+                       "decision": "remove the local cache; keep the client's", "evidence": "read", "findings": [1] }],
+      "target_units": [{ "name": "storeUpload", "jobs": ["checks the file", "writes each size"],
+                         "uses": ["thumbnailSizes", "Storage"] },
+                       { "name": "thumbnailSizes", "jobs": ["decides the sizes for an upload"] },
+                       { "name": "Storage", "existing": true, "jobs": ["keeps the files"] }],
+      "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "storeUpload",
+                   "does": "...", "serves": [1], "verdict": "remove", "findings": [1] },
+                 { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
+                   "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
+      "challenges": [{ "from": "critic", "point": "...", "outcome": "accepted", "note": "what it changed in the record" },
+                     { "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" },
+                     { "from": "verifier", "point": "...", "outcome": "owner", "note": "what the owner decides" }],
       "questions": [{ "at": "path:line", "text": "what is unexplained, and what would settle it" }],
       "coverage": "what you read and could not check, and the contracts with where you read each",
       "labels": { "findings": "the report's own word, in the user's language" }
@@ -92,8 +99,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Ideas.** `title`, `text`, and `at` when the idea has a place.
 - **Scenarios.** Optional: a change grounded in the task walked through the code and the target, with the places
   edited and read in each (`now`, `target`); a finding may name them in `scenarios`.
-- **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge` or `remove`, its `reason`,
-  and its findings unless kept. `"existing": true` marks untouched code listed because the change calls it or is
+- **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge`, `remove` or `question`, its
+  `reason`, and its `findings`, or for a question its `questions`, unless kept. `"existing": true` marks untouched code listed because the change calls it or is
   called by it. **Target units** are the same for the target; a name that is neither carried over nor existing is to
   be written.
 - **Mechanisms.** `name`, `change` (`added`, `reused`, `changed` or `removed`), `units`, `purpose`, `basis` (the
@@ -102,12 +109,17 @@ new evidence that changes a conclusion makes a revised record, named as such.
   or that frequency is unknown. `blocks` may list the numbers of blocks wholly the mechanism's, each with a `kind` of
   `code`, `test` or `other`, to show its weight; leave it out when the blocks mix other work, shared imports
   included.
-- **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` (`keep`, `fix`
-  or `remove`, the latter two naming findings) and `unit`. An empty `serves` is a lead, not proof of redundancy.
+- **Blocks.** `path`, `added` and `removed` line ranges, `does`, `serves` (requirement ids), `verdict` and `unit`.
+  `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
+  the list of questions.
+- **Challenges.** Each point the independent target, the critic or the verifier raised: `from` (`target`, `critic`
+  or `verifier`), `point`, `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the
+  `path:line` that refutes it; `owner` says what the owner decides. A difference between the two targets is a point
+  from `target`.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
-- **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, and where each
-  contract was read.
+- **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
+  contract was read, and any check that did not run.
 - **Language.** `language` is the session's language code; built-in `en` and `ru` cover every control. Another
   language needs a complete `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
 

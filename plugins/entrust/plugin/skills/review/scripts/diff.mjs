@@ -9,8 +9,10 @@ export function diffText(range) {
 }
 
 // The files of `git diff <range>`, each { path, hunks }; a hunk is a list of { kind: add | del | ctx, old, new, text }.
-export function diffOf(range) {
-  const out = diffText(range);
+export const diffOf = (range) => parseDiff(diffText(range));
+
+// The same, read from the text of a diff, such as the copy saved beside a record.
+export function parseDiff(out) {
   const files = [];
   let file, hunk, oldNo = 0, newNo = 0, oldLeft = 0, newLeft = 0;
   for (const line of out.split("\n")) {

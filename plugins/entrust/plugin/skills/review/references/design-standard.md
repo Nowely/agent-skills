@@ -48,8 +48,9 @@ Trace each mechanism's owner, inputs, effects and lifetime, and tell missing con
 state, flags crossing rules, unrelated work needed to reach an outcome, a scattered rule, a caller reading another
 unit's partial result. Difficulty tracing is a lead, not a finding.
 
-Decide for each unit of the change whether to keep it, simplify it in place, separate its decisions from its effects,
-consolidate, extract or remove, and record the `reason`, a kept unit included. Where the burden is not plain from the
+Decide for each unit of the change: `keep` it, `fix` it in place, `split` it (its decisions from its effects, or two
+jobs apart), `merge` it with a unit it must agree with, or `remove` it; while its premise is unread it is a `question`.
+Record the `reason`, a kept unit included. Where the burden is not plain from the
 code, walk a change grounded in the task or code through both arrangements, noting the places edited and the code
 read; do not invent future requirements.
 

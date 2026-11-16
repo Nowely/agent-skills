@@ -17,12 +17,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { address, blank, changedLines, diffOf, diffText, numberOf } from "./diff.mjs";
+import { address, blank, changedLines, diffOf, diffText, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
 import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
+// What a block or unit rests on: its findings, or for a question the questions it waits on.
+const grounds = (item) => cited(item.verdict === "question" ? item.questions.map((n) => `Q${n}`) : item.findings);
 
 // The review in the shape SKILL.md gives the report.
 function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios }, t) {
@@ -61,14 +63,16 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       ...(m.blocks?.length ? [`${t("weight.evidence")}: ${m.blocks.map(id => `B${id}`).join(", ")}`] : []),
       t("weight.note"),
       ...["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
-    `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${cited(u.findings)}`)),
+    `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${grounds(u)}`)),
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     ...(scenarios.length ? [`## ${t("scenarios")}`, t("scenarios-note"), ...scenarios.map((s) => `${s.id}. ${s.change}${s.requirements.length ? ` (${t("requirement").toLowerCase()} ${s.requirements.join(", ")})` : ""}`
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
     `## ${t("map")}`,
-    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${cited(b.findings)}.`),
+    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
-    `## ${t("questions")}`, ...list(review.questions, (q) => `- \`${q.at}\`: ${q.text}`), "",
+    ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
+      `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
+    `## ${t("questions")}`, ...list(review.questions, (q, index) => `- Q${index + 1} \`${q.at}\`: ${q.text}`), "",
     `## ${t("coverage")}`, review.coverage || t("none"),
   ].join("\n");
 }
@@ -92,15 +96,17 @@ function snapshot(base) {
 }
 
 function scaffold(asked, target) {
-  if (fs.existsSync(target)) throw new Error(`${target} exists; scaffold writes a new record and never replaces one`);
+  const saved = target.replace(/(\.json)?$/, ".diff");
+  for (const file of [target, saved]) if (fs.existsSync(file)) throw new Error(`${file} exists; scaffold writes a new record and never replaces one`);
   const commit = (ref) => { try { return execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { encoding: "utf8" }).trim(); } catch { return null; } };
-  // A range with no ".." compares a commit with the working tree: record that tree as a commit, so the range stays one.
-  const range = asked.includes("..") ? asked : `${commit(asked) ?? asked}..${snapshot(commit(asked) ?? asked)}`;
-  const text = diffText(range), files = diffOf(range), digest = createHash("sha256").update(text).digest("hex");
-  const [from, to] = range.includes("...") ? range.split("...") : range.includes("..") ? range.split("..") : [range, ""];
-  const base = range.includes("...") && commit(from) && commit(to || "HEAD")
-    ? execFileSync("git", ["merge-base", from, to || "HEAD"], { encoding: "utf8" }).trim() : commit(from);
-  const head = range.includes("..") ? commit(to || "HEAD") : null;
+  const known = (ref) => commit(ref) ?? (() => { throw new Error(`"${ref}" is not a commit of this repository`); })();
+  // The range is pinned to commits, so the record names the same diff after the branch moves; a range with no ".."
+  // compares a commit with the working tree, recorded as a commit of its own.
+  const [from, to] = asked.includes("...") ? asked.split("...") : asked.includes("..") ? asked.split("..") : [asked, null];
+  const head = to === null ? snapshot(known(from)) : known(to || "HEAD");
+  const base = asked.includes("...") ? execFileSync("git", ["merge-base", known(from || "HEAD"), head], { encoding: "utf8" }).trim() : known(from || "HEAD");
+  const range = `${base}..${head}`;
+  const text = diffText(range), files = parseDiff(text), digest = createHash("sha256").update(text).digest("hex");
   const blocks = files.flatMap((file) => file.hunks.flatMap((hunk) => {
     const runs = [[]];
     // A run ends at unchanged context, and at a declaration: a line at the margin after a blank changed line.
@@ -114,15 +120,25 @@ function scaffold(asked, target) {
       return { path: file.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" };
     });
   }));
-  const directory = path.dirname(path.resolve(target)), saved = path.join(directory, "change.diff");
-  fs.mkdirSync(directory, { recursive: true });
+  fs.mkdirSync(path.dirname(path.resolve(target)), { recursive: true });
   fs.writeFileSync(saved, text);
-  const review = { title: "", language: "en", range,
-    change: { goal: "", parts: [], sources: [`base ${base ?? from}`, `head ${head ?? to}${asked.includes("..") ? "" : `, a snapshot of the working tree over ${asked}`}`,
-      `diff sha256 ${digest}, saved as ${path.basename(saved)}`] },
-    verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, coverage: "" };
+  const review = { title: "", language: "en", range, diff: { file: path.basename(saved), sha256: digest },
+    change: { goal: "", parts: [], sources: [`asked as ${asked}`, `base ${base}`, `head ${head}${to === null ? `, a snapshot of the working tree over ${from}` : ""}`] },
+    verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, challenges: [], coverage: "" };
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
   return { blocks: blocks.length, files: files.length, saved };
+}
+
+// The diff a record judges: the copy saved beside it when it names one, checked against its digest, else `git diff`
+// of its range. A saved copy keeps the record whole after the branch moves or a snapshot is collected.
+function changeOf(review, directory) {
+  if (review.diff === undefined) return { files: diffOf(review.range ?? "") };
+  const file = path.resolve(directory, String(review.diff?.file ?? ""));
+  if (!review.diff?.file || !fs.existsSync(file)) return { files: [], fault: `the saved diff "${review.diff?.file ?? ""}" is not beside the record` };
+  const text = fs.readFileSync(file, "utf8");
+  if (createHash("sha256").update(text).digest("hex") !== review.diff.sha256)
+    return { files: [], fault: `the saved diff "${review.diff.file}" is not the one this record was scaffolded from; scaffold a new record for another change` };
+  return { files: parseDiff(text) };
 }
 
 const [command, argument] = process.argv.slice(2);
@@ -133,12 +149,8 @@ try {
   } else if (command === "lines" && argument) {
     for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
-    const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
-    const directory = path.dirname(path.resolve(argument)), { errors, owner } = check(review, files, directory);
-    // A record scaffolded from one diff is checked against that diff: a moved range or new uncommitted work is another change.
-    const recorded = (review.change?.sources ?? []).join(" ").match(/diff sha256 ([0-9a-f]{64})/)?.[1];
-    if (recorded && createHash("sha256").update(diffText(review.range ?? "")).digest("hex") !== recorded)
-      errors.unshift(`the diff of "${review.range}" is not the one this record was scaffolded from (sha256 ${recorded.slice(0, 12)}…); review the saved change.diff's change or scaffold a new record`);
+    const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument));
+    const { files, fault } = changeOf(review, directory), { errors, owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
@@ -147,6 +159,10 @@ try {
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
     for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
       console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
+    // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked.
+    const kept = model.blocks.filter((b) => b.verdict === "keep"), assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
+    for (const [blocks, what] of [[kept.filter((b) => !b.serves.length), "serve no requirement"], [kept.filter(assumed), "serve only assumed requirements"]])
+      if (blocks.length) console.error(`warning: kept blocks ${blocks.map((b) => b.id).join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
     const target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
