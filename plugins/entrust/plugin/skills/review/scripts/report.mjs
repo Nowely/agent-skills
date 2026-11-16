@@ -1,27 +1,31 @@
 #!/usr/bin/env node
 // A review written as data: checked against its diff, printed as the report, and drawn as a page.
 //
-//   node report.mjs lines <range>          print every changed line of `git diff <range>` with its address
+//   node report.mjs scaffold <diff> <review.json>   write the record's mechanical part: one block per run of changed lines
+//   node report.mjs lines <diff | review.json>   print every changed line of a diff, or of a record's saved diff, with its address
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
 //   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
 //
-// Run it in the repository under review; references/report-data.md tells the reviewer what to write.
-// `render` refuses a review whose change map leaves a changed line out, puts one in two blocks, or names an id
-// nothing defines, and lists every such fault: that every changed line belongs to one block is checked here,
+// It reads only the files it is given, anywhere; references/report-data.md tells the reviewer what to write.
+// `render` refuses a review whose change map leaves a nonblank changed line out, puts one in two blocks, or names
+// an id nothing defines, and lists every such fault: that every nonblank changed line belongs to one block is checked here,
 // not taken on trust.
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { address, changedLines, diffOf } from "./diff.mjs";
+import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, modelOf, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview, VERDICTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
+// What a block or unit rests on: its findings, or for a question the questions it waits on.
+const grounds = (item) => cited(item.verdict === "question" ? item.questions.map((n) => `Q${n}`) : item.findings);
 
 // The review in the shape SKILL.md gives the report.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
@@ -45,43 +49,105 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
-    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), ...mechanisms.flatMap((m) => [
+    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "),
+      ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
+      ...mechanisms.flatMap((m) => [
       `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
       `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
-      `${t("weight")}:`,
-      ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
-        ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`)
-        : [t(m.weight ? "weight.unchanged" : "weight.unknown")]; })(),
-      ...(m.weight?.shared.length ? [`${t("weight.exclusive")}: ${weightCountsText(m.weight.exclusive, t)}`] : []),
-      ...(m.weight?.shared ?? []).map(s => `${t("weight.shared")} ${s.with.join(", ")}: ${weightCountsText({ [s.kind]: s }, t)} (B${s.block})`),
-      ...(m.blocks?.length ? [`${t("weight.evidence")}: ${m.blocks.map(id => `B${id}`).join(", ")}`] : []),
-      t("weight.note"),
+      // Weight is printed for a mechanism whose blocks were named; the others have none to show.
+      ...(m.weight ? [`${t("weight")}:`, ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
+        ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`) : [t("weight.unchanged")]; })(),
+      ...(m.weight.shared.length ? [`${t("weight.exclusive")}: ${weightCountsText(m.weight.exclusive, t)}`] : []),
+      ...m.weight.shared.map(s => `${t("weight.shared")} ${s.with.join(", ")}: ${weightCountsText({ [s.kind]: s }, t)} (B${s.block})`),
+      `${t("weight.evidence")}: ${m.blocks.map(id => `B${id}`).join(", ")}`, t("weight.note")] : []),
       ...["purpose", "basis", "instead", "benefit", "cost", "decision"].filter((key) => m[key]).map((key) => `${t(key)}: ${m[key]}`), ""]) ] : []),
-    `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${cited(u.findings)}`)),
+    `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${grounds(u)}`)),
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     ...(scenarios.length ? [`## ${t("scenarios")}`, t("scenarios-note"), ...scenarios.map((s) => `${s.id}. ${s.change}${s.requirements.length ? ` (${t("requirement").toLowerCase()} ${s.requirements.join(", ")})` : ""}`
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
-    `## ${t("map")}`,
-    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${cited(b.findings)}.`),
+    // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
+    `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
+    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
-    `## ${t("questions")}`, ...list(review.questions, (q) => `- \`${q.at}\`: ${q.text}`), "",
+    ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
+      `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
+    `## ${t("questions")}`, ...list(review.questions, (q, index) => `- Q${index + 1} \`${q.at}\`: ${q.text}`), "",
     `## ${t("coverage")}`, review.coverage || t("none"),
   ].join("\n");
 }
 
+// What a script can know of a review before anyone reads the code: the diff's identity, saved beside the record, and
+// one block per run of changed lines with nothing but context between, its lines already numbered. The reviewer
+// writes the meaning: what each block does, what it serves and its verdict, and divides a block that holds two
+// decisions. Every field left empty is a fault `check` names.
+function scaffold(input, target) {
+  const saved = target.replace(/(\.json)?$/, ".diff");
+  for (const file of [target, saved]) if (fs.existsSync(file)) throw new Error(`${file} exists; scaffold writes a new record and never replaces one: to start over, delete ${path.basename(target)} and ${path.basename(saved)}`);
+  const bytes = fs.readFileSync(input), files = parseDiff(bytes.toString("utf8")), digest = createHash("sha256").update(bytes).digest("hex");
+  const blocks = files.flatMap((file) => file.hunks.flatMap((hunk) => {
+    const runs = [[]], prose = /\.(md|markdown)$/i.test(file.path);
+    // A run ends at unchanged context, and at a declaration: in code, a line at the margin after a blank changed
+    // line; in Markdown, a heading, since a paragraph of prose is rarely a decision of its own.
+    for (const line of hunk) {
+      const run = runs.at(-1), last = run.at(-1);
+      if (line.kind === "ctx") { if (run.length) runs.push([]); continue; }
+      const starts = prose ? run.some((l) => !blank(l)) && /^#{1,6}\s/.test(line.text) : last && blank(last) && !blank(line) && /^\S/.test(line.text);
+      if (starts) runs.push([line]); else run.push(line);
+    }
+    return runs.filter((run) => run.some((line) => !blank(line))).map((run) => {
+      const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
+      return { path: file.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" };
+    });
+  }));
+  fs.mkdirSync(path.dirname(path.resolve(target)), { recursive: true });
+  fs.writeFileSync(saved, bytes);
+  const review = { title: "", language: "en", range: "", diff: { file: path.basename(saved), sha256: digest },
+    change: { goal: "", parts: [], sources: [] },
+    verdict: "", now: "", target: "", recommendation: "", requirements: [], findings: [], units: [], mechanisms: [], blocks, challenges: [], coverage: "" };
+  fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
+  return { blocks: blocks.length, files: files.length, saved };
+}
+
+// The diff a record judges is the copy saved beside it, checked against its digest.
+function changeOf(review, directory) {
+  if (review.diff === undefined) return { files: [], fault: "the record has no saved diff" };
+  const file = path.resolve(directory, String(review.diff?.file ?? ""));
+  if (!review.diff?.file || !fs.existsSync(file)) return { files: [], fault: `the saved diff "${review.diff?.file ?? ""}" is not beside the record` };
+  const bytes = fs.readFileSync(file);
+  if (createHash("sha256").update(bytes).digest("hex") !== review.diff.sha256)
+    return { files: [], fault: `the saved diff "${review.diff.file}" is not the one this record was scaffolded from; scaffold a new record for another change` };
+  return { files: parseDiff(bytes.toString("utf8")) };
+}
+
 const [command, argument] = process.argv.slice(2);
 try {
-  if (command === "lines" && argument) {
-    for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
+  if (command === "scaffold" && argument && process.argv[4]) {
+    const made = scaffold(argument, process.argv[4]);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
+  } else if (command === "lines" && argument) {
+    // A record's own diff when given a record, so the addresses are the ones its check reads.
+    const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(
+      changeOf(JSON.parse(fs.readFileSync(argument, "utf8")), path.dirname(path.resolve(argument)))) : parseDiff(fs.readFileSync(argument, "utf8"));
+    for (const file of files) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
-    const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
-    const directory = path.dirname(path.resolve(argument)), { errors, owner } = check(review, files, directory);
+    const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument));
+    const { files, fault } = changeOf(review, directory), { errors, owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
+    const model = modelOf(review, files, owner, directory);
+    // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
+    for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
+      console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
+    // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked.
+    const kept = model.blocks.filter((b) => b.verdict === "keep"), assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
+    for (const [blocks, what] of [[kept.filter((b) => !b.serves.length), "serve no requirement"], [kept.filter(assumed), "serve only assumed requirements"]])
+      if (blocks.length) console.error(`warning: kept blocks ${blocks.map((b) => b.id).join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
+    for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
+      console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
-    const model = modelOf(review, files, owner, directory), target = argument.replace(/(\.json)?$/, ".html");
+    const target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else if (command === "labels") {
@@ -90,7 +156,7 @@ try {
     if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
     console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs lines <range> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
     process.exit(2);
   }
 } catch (error) {

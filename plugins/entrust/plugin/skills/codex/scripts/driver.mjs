@@ -30,7 +30,7 @@ import { shortName } from "./launch.mjs";
 const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
 // This plugin's version; evals/package.test.mjs keeps it in step with the manifest.
-const VERSION = "0.39.0";
+const VERSION = "0.40.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's reasoning levels and the server's accepted efforts; preflightModel()
 // checks a requested one against the selected model before the turn.
@@ -1790,6 +1790,8 @@ function assertSandbox(thread) {
   const set = (list) => JSON.stringify((list ?? []).map(canonPath).sort());
   const tmp = process.env.TMPDIR;
   if (read && !tmp) fail(EXIT.TRANSPORT, "the read sandbox is not what was asked for (TMPDIR is unset, so the server grants no temp directory at all)");
+  // An unresolvable path maps to null, and two nulls compare equal: the root asked for must resolve.
+  if (read && !canonPath(tmp)) fail(EXIT.TRANSPORT, `the read sandbox is not what was asked for (TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory)`);
   const rows = [
     ["sandbox type", sb.type ?? null, "workspaceWrite"],
     ["networkAccess", Boolean(sb.networkAccess), opts.network],

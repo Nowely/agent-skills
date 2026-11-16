@@ -3,6 +3,91 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.40.0 — 2026-11-16
+
+### Compatibility
+
+- Review records without their saved diff are no longer supported and need a new record. The scaffold takes a
+  supplied two-sided text diff; it no longer creates a Git snapshot. Unsupported changes are refused for separate
+  review, and compatibility with actual `arc diff` output has not been established.
+
+### Changed
+
+- `entrust:review` shows a plan before every review, each choice with its alternative: one reviewer or a
+  coordinator with four direction helpers; this session or a subagent that this session conducts; fresh checking
+  agents, on by default; the full record and page, by default, or a short review; and the agents with their models
+  and who starts them. A choice is fixed when the user names it or asks for the defaults. `orchestrate` makes the
+  plan and conducts its cross-reviewer.
+- An independent agent sketches the target from the owner's task and the code before the change, never seeing the
+  change; the author's description and commits reach it only marked as the author's account. After refutation a
+  critic, given the requirements with their sources and the block verdicts, ranks its five strongest points against
+  the draft in both directions and walks one grounded change through another arrangement of the busiest unit; a
+  verifier checks the draft's factual claims. The independent target starts with the reviewer, writes its sketch to a
+  file and returns only the path, and the reviewer reads it after its own sketch. With checks set to none, none of
+  these checking agents is started. Each point that could change a
+  requirement, verdict, finding or question, and each such difference between the two targets, is a `challenge` in
+  the record with its outcome, checked and drawn on the page: accepted with what it changed (a point that adds,
+  promotes or drops a finding or changes the verdict refuted first), rejected only on a named place in the code or
+  the task's sources whose words contradict it, otherwise sent to the owner. The critic and the verifier get the
+  draft's printed report, not the block map. A failed checking
+  agent leaves its check not run, said so, instead of stopping the review. The session that can start agents starts
+  them all, and every agent gets the plan's scope.
+- `entrust:review` reads "cleanest" as the result, not the diff, by a design standard of twelve principles and
+  one way to compare two solutions; each unit of the change gives a `reason` for its verdict, a kept one
+  included. A block or unit whose premise is unread takes the verdict `question`, naming the question, instead of
+  `keep`. A requirement only the author's description states is an assumption unless the approved plan made that
+  description the task, and so is one read into the task's words rather than stated by them, such as keeping the old
+  way beside a new default; the independent target is asked for such readings too. A behavior nobody required is
+  recorded as a mechanism with no requirement behind it and goes to the owner, never kept silently and never removed
+  as mandatory; a mechanism whose basis holds only assumptions is such a behavior. An existing path the change keeps
+  beside a new default, with what it adds to keep that path working, is a mechanism it alters, and one nobody required
+  is weighed when it goes to the owner. A requirement can come from the project instructions (`project`, the rule named
+  with its place), so a version bump or a doc the project requires no longer counts as an assumption. A block's `remove` means the
+  target has no such code: work that belongs in another change keeps its verdict and a step moves it. The data
+  contract shows where a weighed block's `kind` goes.
+- `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
+  part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
+  changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a
+  snapshot. The reviewer writes in `range` how the diff was obtained and the state its files are read at; a saved
+  diff does not establish that it includes the whole change. A diff the scaffold cannot read is refused with the
+  files named, all at once, and the way out: binary, empty or mode-changed files to leave out and review apart, or
+  for Git the options that give a readable patch under any user configuration. The reviewer writes the meaning,
+  and a kept block needs no `does`. `check`, `render` and `lines` read the saved diff; a saved diff that changed is
+  refused. Older records without one need a new record. `check` warns when one verdict covers a large block, when
+  kept blocks serve no requirement or only assumed ones, and when a kept unit holds an open block; it no longer
+  requires a unit to split to name a new target unit. The page reference is folded into the data contract, and the
+  reading required for a review fell from about 7,600 words to about 6,700 with the new agents and the challenges.
+- A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
+  never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
+  as observed on four real changes (610k to 1M tokens and 8 to 31 minutes for 307 to 1,085 changed lines, about
+  70% of it the checking agents and the reconciling they cause) and their default models.
+- The printed report lists only the blocks not kept or not linked to a requirement, the page keeps the whole map,
+  and a mechanism nobody weighed no longer prints three lines saying so. With two or more mechanisms weighed, the
+  report gives their total, each shared block counted once, so the weight of several suspect mechanisms can be
+  asked for and judged together.
+
+### Fixed
+
+- `entrust:codex`: a read run refuses a `$TMPDIR` that does not resolve to a directory again, as before the
+  sandbox check became one table, where two unresolvable roots compared equal.
+
+### Validation and limits
+
+- On the versioned tree, skill-page checks passed 8/8, review-report checks 24/24 and CLI checks 126/126.
+  Package checks passed 21 cases; the tag-on-HEAD check was skipped before tagging.
+- Local conformance passed 108 scenarios against schemas generated by `codex-cli 0.160.0`, with Node 24.15.0.
+  The schema validator reports unchecked keywords and unmapped responses; this is not a live-server check.
+- The [formative review comparison](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/2026-11-16-review-comparison/README.md) tested an earlier frozen
+  candidate, not this release head. It found useful contributions from checking agents in some runs but did not
+  establish a general quality advantage or absence of regressions.
+- The live orchestration gate, a fresh Claude session loaded from the candidate and a cross-plugin live probe were
+  not run during release preparation. The live gate was omitted at the owner's direction.
+
+### Known issues
+
+- Open issues E142, E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117, E140 and E141 are
+  described in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.39.0 — 2026-11-16
 
 ### Changed

@@ -29,6 +29,19 @@ Evidence is the shared decision state, caller dependency and preserved ordering,
 The finding names what must be read together today and what no longer must be afterwards. The same shape
 proposed for code where nothing is shared between the rules would be a preference, and an idea at most.
 
+## Rules that read each other's results
+
+`orderTotal(order)` starts from the items' sum and applies, in order: a loyalty discount of 5%, a coupon of a fixed
+amount, free delivery over a threshold, and a cap that a coupon may not take the total below the delivery fee. Each
+rule reads `total` as the previous rule left it: the delivery threshold is tested after the coupon, so whether
+delivery is free depends on whether a coupon was used, and the cap reads the delivery fee that the free-delivery rule
+may have zeroed. The task states the threshold on the items' sum.
+
+Today, moving the loyalty discount after the coupon, or adding a second coupon, changes the delivery and cap
+outcomes, and the only way to know is to read every rule. A target computes each discount from the items' sum, the
+threshold included, and adds them up once; then each rule can be changed alone, and the delivery defect the
+ordering hid becomes visible. One function is still enough.
+
 ## Ordered rules that stay together
 
 `shippingQuote(parcel, route)` returns the first refusal that applies, then a price: the route is closed; the
@@ -40,10 +53,3 @@ Nothing here must be read together: a rule is changed by editing its own guard, 
 is the precedence. A function per rule and a coordinator that calls them in the same order would restate the
 function with more names to follow. The verdict is `keep`, with one line saying why. A small calculation
 inside a guard is not by itself a calculation that obscures the order.
-
-## A split that adds no useful boundary
-
-A local decision `attempts < limit && isTransient(error)` is already easy to follow and reuses the existing
-classification utility. Extracting wrappers named `hasAttemptsLeft` and `hasRetryableError` merely moves the
-two obvious conditions. It adds navigation without isolating a meaningful calculation or hiding coordination.
-Keep the decision local unless the actual contracts or callers demonstrate a benefit from another boundary.

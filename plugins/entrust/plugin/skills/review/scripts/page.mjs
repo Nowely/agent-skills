@@ -45,7 +45,7 @@ code, pre, .mono { font-family: var(--mono); font-size: .92em }
 .steps { margin: 0; padding-left: 1.4rem; max-width: 78ch; display: flex; flex-direction: column; gap: .2rem }
 .doubt { margin-top: .3rem; padding-left: .6rem; border-left: 3px solid var(--fix); color: var(--fix) }
 .v-keep { --v: var(--keep); --v-bg: var(--keep-bg) } .v-fix { --v: var(--fix); --v-bg: var(--fix-bg) } .v-remove { --v: var(--remove); --v-bg: var(--remove-bg) }
-.v-open { --v: var(--muted); --v-bg: var(--line) }
+.v-open, .v-question { --v: var(--muted); --v-bg: var(--line) }
 .tag { display: inline-block; padding: 0 .45rem; border-radius: 3px; background: var(--v-bg); color: var(--v); font-size: .85rem; font-weight: 650; white-space: nowrap }
 .share { display: flex; height: .9rem; border-radius: 3px; overflow: hidden; background: var(--line) }
 .share span { background: var(--v) }
@@ -88,7 +88,7 @@ pre code { display: inline-block; min-width: 100% }
 .seg[data-block] .l.add, .seg[data-block] .l.del { background: color-mix(in srgb, var(--v-bg) 60%, transparent) }
 .l.del i, .l.add i { color: var(--fg); font-weight: 700 }
 .gap { padding: 0 .8rem; color: var(--muted); font-size: .85rem; background: var(--code) }
-.map[data-show="keep"] .seg:not(.v-keep), .map[data-show="fix"] .seg:not(.v-fix), .map[data-show="remove"] .seg:not(.v-remove),
+.map[data-show="keep"] .seg:not(.v-keep), .map[data-show="fix"] .seg:not(.v-fix), .map[data-show="remove"] .seg:not(.v-remove), .map[data-show="question"] .seg:not(.v-question),
 .map[data-show]:not([data-show="all"]) .gap { display: none }
 .finding { background: var(--surface); border: 1px solid var(--line); padding: .7rem 1rem; display: flex; flex-direction: column; gap: .4rem; scroll-margin-top: 4rem; min-width: 0 }
 input[type="text"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .2rem .5rem; width: 100%; max-width: 40rem }
@@ -252,8 +252,10 @@ const sizeOf = (blocks) => blocks.reduce((sum, b) => sum + b.size, 0);
 const of = (blocks, verdict) => blocks.filter((b) => b.verdict === verdict);
 const chip = (b) => `<a class="chip v-${b.verdict}" href="#b${b.id}">B${b.id}</a>`;
 const cite = (ids) => ids.map((id) => `<a href="#f${esc(id)}">${esc(id)}</a>`).join(", ");
+// What a block or unit rests on: its findings, or for a question the questions it waits on.
+const grounds = (item) => item.verdict === "question" ? item.questions.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ") : cite(item.findings);
 const table = (head, rows) => `<div class="table"><table><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table></div>`;
-const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", remove: "v-remove" };
+const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", remove: "v-remove", question: "v-question" };
 
 // The task, the verdict, how the change works now, the target and what to do: each under its own label, in the order a reader decides by.
 function summary(review, { blocks }, t) {
@@ -338,7 +340,7 @@ function structure({ units, target }, t) {
   <div class="pair">${figure(t("as-written"), now)}${figure(t("target"), then)}</div>
   <p class="sub">${esc(t("diagram-note"))}</p>
   ${table([t("unit"), t("jobs"), t("uses"), t("verdict"), t("reason")], units.filter((u) => !u.existing).map((u) => `<tr><td class="mono">${esc(u.name)}</td><td>${esc(u.jobs.join(", "))}</td>`
-    + `<td class="mono">${esc(u.uses.join(", ")) || esc(t("nothing"))}</td><td><span class="tag ${TONE[u.verdict]}">${esc(t(`verdict.${u.verdict}`))}</span> ${cite(u.findings)}</td><td>${prose(u.reason ?? "")}</td></tr>`))}
+    + `<td class="mono">${esc(u.uses.join(", ")) || esc(t("nothing"))}</td><td><span class="tag ${TONE[u.verdict]}">${esc(t(`verdict.${u.verdict}`))}</span> ${grounds(u)}</td><td>${prose(u.reason ?? "")}</td></tr>`))}
 </section>`;
 }
 
@@ -382,10 +384,11 @@ function map(review, files, { blocks, owner }, t) {
   const head = (b) => {
     if (shown.has(b.id)) return `<header><div class="row">${verdict(b)}<a href="#b${b.id}">B${b.id}</a><span class="sub">${esc(t("continued"))}</span></div></header>`;
     shown.add(b.id);
-    return `<header><div class="row">${verdict(b)}<strong>B${b.id}</strong><span>${prose(b.does)}</span></div>`
+    return `<header><div class="row">${verdict(b)}<strong>B${b.id}</strong>${b.does ? `<span>${prose(b.does)}</span>` : ""}</div>`
       + `<div class="row sub"><span>${b.serves.length ? `${esc(t("serves"))} ${b.serves.map(esc).join(", ")}` : esc(t("serves-nothing"))}</span>`
       + `${b.unit ? `<span>${esc(t("in-unit"))} <span class="mono">${esc(b.unit)}</span></span>` : ""}<span class="mono">${esc(b.where)}</span></div>`
       + (b.findings.length ? `<ul>${b.findings.map((id) => `<li><a href="#f${esc(id)}">${esc(id)}. ${esc(finding(id).title)}</a>${decide(id)}</li>`).join("")}</ul>` : "")
+      + (b.questions.length ? `<ul>${b.questions.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(review.questions[n - 1].text)}</li>`).join("")}</ul>` : "")
       + `<input class="act" type="text" id="note-b${b.id}" data-note="b${b.id}" placeholder="${esc(t("note-block"))}" aria-label="${esc(t("note-block"))}: B${b.id}"></header>`;
   };
   const code = (path, run) => `<pre><code>${run.map((l) => `<span class="l ${l.kind}"><b>${l.kind === "del" ? l.old : l.new}</b><i>${{ add: "+", del: "−", ctx: " " }[l.kind]}</i>${highlight(l.text, path)}</span>`).join("")}</code></pre>`;
@@ -418,10 +421,23 @@ function map(review, files, { blocks, owner }, t) {
   return files.map(file).join("\n    ");
 }
 
+// What the independent target, the critic and the verifier raised against the draft, and what became of each point.
+function challenges(review, t) {
+  if (!review.challenges?.length) return "";
+  const tone = { accepted: "v-keep", rejected: "v-remove", owner: "v-open" };
+  return `
+<section id="challenges" class="stack"><h2>${esc(t("challenges"))}</h2><p class="sub">${esc(t("challenges-note"))}</p>
+  ${table(["#", t("raised-by"), t("point"), t("outcome")], review.challenges.map((c, index) => `<tr data-where="${esc(`${t("challenges")} ${index + 1}`)}"><td class="n">${index + 1}</td>`
+    + `<td>${esc(t(`challenger.${c.from}`))}</td><td>${prose(c.point)}</td>`
+    + `<td><span class="tag ${tone[c.outcome]}">${esc(t(`outcome.${c.outcome}`))}</span> ${prose(c.note)}${c.at ? ` <code>${esc(c.at)}</code>` : ""}</td></tr>`))}
+</section>`;
+}
+
 function mechanisms(review, model, t) {
   if (!review.mechanisms?.length) return "";
   return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
-    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>${model.mechanisms.map((m, i) => {
+    <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>
+    ${model.together ? `<p><strong>${esc(t("weight.together"))}</strong> (${model.together.names.map(esc).join(", ")}): ${weightOverview(model.together, t, languageOf(review)).map((row) => `<strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}`).join(" · ") || esc(t("weight.unchanged"))}</p>` : ""}${model.mechanisms.map((m, i) => {
       const overview = weightOverview(m.weight, t, languageOf(review));
       const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
       return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
@@ -490,7 +506,7 @@ export function page(review, files, model) {
 <style>${STYLE}</style>
 <div class="wrap" id="review-content" tabindex="-1">
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
-<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${model.scenarios.length ? link("scenarios", "scenarios") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
+<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${model.scenarios.length ? link("scenarios", "scenarios") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${review.challenges?.length ? link("challenges", "challenges") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
 ${summary(review, model, t)}
 ${requirements(model, t)}
 ${mechanisms(review, model, t)}
@@ -512,7 +528,8 @@ ${tree(files, model, t)}
 </section>
 <section id="findings" class="stack"><h2>${esc(t("findings"))}</h2>${findings || `<p>${esc(t("none"))}</p>`}</section>
 ${offered ? `<section id="ideas" class="stack"><h2>${esc(t("ideas"))}</h2><p class="sub">${esc(t("ideas-note"))}</p>${offered}</section>` : ""}
-<section class="stack"><h2>${esc(t("questions"))}</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q) => `<li><code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : `<p>${esc(t("none"))}</p>`}
+${challenges(review, t)}
+<section class="stack"><h2>${esc(t("questions"))}</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q, index) => `<li id="q${index + 1}"><strong>Q${index + 1}</strong> <code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : `<p>${esc(t("none"))}</p>`}
   <h2>${esc(t("coverage"))}</h2><p>${prose(review.coverage || t("none"))}</p></section>
 <section id="decisions" class="stack act" tabindex="-1"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>

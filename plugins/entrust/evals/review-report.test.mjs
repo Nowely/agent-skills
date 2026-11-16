@@ -3,7 +3,8 @@
 // on one prepared case with a review written here; it calls no model. It checks that a complete review becomes
 // a page that loads nothing from elsewhere and a printout in the shape SKILL.md gives the report, and that an
 // incomplete one is refused with every fault listed. Run it after an edit to those scripts, to
-// references/report-data.md, references/interactive-report.md or to the report's shape in SKILL.md.
+// references/report-data.md or to the report's shape in SKILL.md.
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -11,16 +12,20 @@ import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { CATALOGS, LABELS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
 const { run } = prepare("currency-contract", "clean"), repo = path.join(run, "repo");
 const data = path.join(run, "review.json"), html = path.join(run, "review.html");
+const patch = path.join(run, "source.diff"), generated = spawnSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--"], { cwd: repo });
+if (generated.status !== 0) throw new Error(`Could not prepare the test diff: ${generated.stderr}`);
+fs.writeFileSync(patch, generated.stdout);
 
 // A review of that case's diff: three changed lines in one file, and two new test files.
 const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
+  diff: { file: "source.diff", sha256: createHash("sha256").update(generated.stdout).digest("hex") },
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
   verdict: "The change does its task.\n- One test is missing.", now: "The archive reader converts the code.", target: "The change is already this.", recommendation: "Accept it.",
   steps: [{ text: "Add the test.", findings: [1] }],
@@ -43,6 +48,9 @@ const REVIEW = {
     { path: "test/archive.test.js", added: "1-8", does: "Tests it.", serves: [1], verdict: "fix", findings: [1] },
     { path: "test/outputs.test.js", added: "1-13", does: "Tests the three outputs.", serves: [1], verdict: "keep" },
   ],
+  challenges: [{ from: "critic", point: "The reader should not convert.", outcome: "rejected", at: "src/main.js:4", note: "The caller prints the code as read." },
+    { from: "target", point: "The independent target converts where prices are shown.", outcome: "owner", note: "Which unit owns display is the owner's call." },
+    { from: "verifier", point: "Line 2 is not the conversion.", outcome: "accepted", note: "The finding's place was corrected." }],
   questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
 };
 // The two pictures that review names, beside its data: one pixel each.
@@ -76,7 +84,7 @@ test("interactive report embeds a complete annotation runtime and keeps navigati
 test("lines prints every changed line under its file, with the address a block names it by",
   "a reviewer who computes line numbers from hunk headers gets them wrong; the listing is where blocks take them from",
   () => {
-    const { stdout, status } = report("lines", "HEAD~1..HEAD");
+    const { stdout, status } = report("lines", patch);
     const archive = stdout.split("test/archive.test.js")[0];
     return status === 0 && archive.startsWith("src/invoices/archive.js\n") && ["+2", "-3", "+4"].every((a) => archive.includes(`\n  ${a} `))
       && stdout.includes("\n  +8 ") || `unexpected listing:\n${stdout}`;
@@ -203,8 +211,8 @@ test("mechanisms keep purpose, cost and decision in both renderings and resolve 
     // What a change brings in says what was already there; what it only reuses need not.
     const brought = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added" }]; });
     if (brought.status !== 1 || !brought.stderr.includes('has no "instead"')) return "an added mechanism that does not say what was already available was accepted";
-    const vague = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "Nothing else does this." }]; });
-    if (vague.status !== 1 || !vague.stderr.includes("cites no place")) return "an answer that names nothing read was accepted";
+    const cited = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "Read the existing contract; it provides no cache." }]; });
+    if (cited.status !== 0) return "a source described without a particular filename syntax was refused";
     const answered = render((r) => { r.mechanisms = [{ ...MECHANISM, change: "added", instead: "The archive reader converts already: src/archive.js:12." }]; });
     if (answered.status !== 0 || !answered.stdout.includes("Already available: The archive reader converts already: src/archive.js:12.")) return "the answer to what was already available is not printed";
     if (render((r) => { r.mechanisms = [{ ...MECHANISM, units: undefined }]; }).status !== 0) return "omitted optional units were refused";
@@ -318,7 +326,12 @@ test("weight is rendered in HTML and text without changing the review record",
     const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
     const summary = card?.match(/<details><summary>([\s\S]*?)<\/summary>/)?.[1];
     if (!summary?.includes("A</h3>") || !summary.includes(MECHANISM.decision) || !summary.includes("Code:") || summary.includes("Shared with")) return "collapsed summary lacks the name, decision or compact weight";
-    return ["Shared with", "Not assessed"].every(text => page.includes(text) && result.stdout.includes(text))
+    // A mechanism nobody weighed says so on its card; the printout, read back by the reviewer, leaves it out.
+    if (!page.includes("Not assessed") || result.stdout.includes("Not assessed")) return "an unweighed mechanism is missing from the page or printed";
+    // Weighed together, a block two mechanisms share counts once: the lines a decision on both would touch.
+    const together = "Weighed mechanisms together, each block counted once (A, B): Code: 2 lines added, 1 line removed";
+    if (!result.stdout.includes(together) || !page.includes("Weighed mechanisms together, each block counted once</strong> (A, B)")) return `no combined weight:\n${result.stdout.split("## Mechanisms")[1]?.slice(0, 400)}`;
+    return page.includes("Shared with") && result.stdout.includes("Shared with")
       && result.stdout.includes("Touched in this change") && !card.includes("Touched in this change") && card.includes("Show counted lines")
       && page.includes('aria-label="Dismiss notification"') && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence or dismiss control missing, redundant heading present, or derived totals persisted";
   });
@@ -345,11 +358,10 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.checks[0].expect; }, 'check 1 has no "expect"'],
       [(r) => { r.checks[0].requirements = [6]; }, "check 1 names requirement 6, which is not listed"],
       [(r) => { delete r.now; }, '"now" is missing'],
-      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, question, assumption"],
+      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, question, assumption"],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
-      [(r) => { Object.assign(r.units[0], { verdict: "split", findings: [1] }); r.target_units.pop(); r.target_units[0].uses = []; }, "unit readArchive is to split, and the target has no new unit"],
       [(r) => { r.screens[1].match = true; }, "screen 2 is said to match, and has no mockup picture"],
       [(r) => { r.screens[0].match = true; }, "screen 1 is said to match, and lists differences"],
       [(r) => { delete r.screens[1].missing; }, 'screen 2 has no difference and no "match"'],
@@ -394,96 +406,141 @@ test("an unlinked block is not presented as unnecessary",
     return true;
   });
 
-test("the review procedure distinguishes a complete map from an incomplete review",
-  "an unread part must not be presented as a kept block or a checked complete report",
+test("scaffold writes the record's mechanical part: nonblank changed lines in blocks, the diff saved and named, and never over a record",
+  "line numbers and coverage were the reviewer's to work out by hand, the commonest reason a record failed its check and a large part of a review's time",
   () => {
-    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
-    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const interactive = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
-    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
-    const complete = [
-      "After refutation, map every nonblank changed line to exactly one block",
-      "If mapping exposes an analysis gap",
-      "For a complete review, finalize `review.json`",
-      "Without demonstrated coverage of the diff and requested directions, return partial",
-    ];
-    const partial = [
-      "If the diff cannot be covered whole or a requested direction remains unreviewed",
-      "no valid complete review or canonical `review.json` was finalized",
-      "no valid complete line map was finalized",
-      "An unread part is not `keep`",
-      "The checker maps parsed text hunks, not binary changes, file modes or other diff metadata",
-      "If artifact writes are prohibited, return the complete JSON inline",
-    ];
-    const absent = [...complete.filter((text) => !skill.toLowerCase().includes(text.toLowerCase())),
-      ...partial.filter((text) => !page.includes(text)),
-      ...["a partial review has no canonical report to render", "If writes are prohibited"].filter((text) => !interactive.includes(text)),
-      ...["for incomplete coverage", "partial review"].filter((text) => !roles.includes(text))];
-    if (absent.length) return `review instructions omit: ${absent.join("; ")}`;
-    const positions = ["### 5. Refute", complete[0], complete[2]].map((text) => skill.indexOf(text));
-    return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1]))
-      || "full line mapping is not after refutation and before finalization";
+    const out = path.join(run, "scaffold"), target = path.join(out, "review.json");
+    fs.rmSync(out, { recursive: true, force: true });
+    const made = report("scaffold", patch, target);
+    if (made.status !== 0) return made.stderr;
+    const record = JSON.parse(fs.readFileSync(target, "utf8")), saved = fs.readFileSync(path.join(out, "review.diff"), "utf8");
+    if (record.diff?.file !== "review.diff" || record.diff.sha256 !== createHash("sha256").update(saved).digest("hex")) return "the record does not name the saved diff and its digest";
+    if (record.range !== "" || record.change.sources.length) return "scaffold claimed a scope or source not supplied in the diff";
+    if (record.blocks.some((b) => b.does !== "" || b.verdict !== "")) return "scaffold wrote meaning a reviewer must write";
+    // Filled with any meaning, the scaffold's blocks pass the nonblank line check.
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, screens: undefined,
+      blocks: record.blocks.map((b) => ({ ...b, does: "Something.", verdict: "keep" })) };
+    fs.writeFileSync(target, JSON.stringify(filled));
+    const checked = report("check", target);
+    if (checked.status !== 0) return `the scaffold's blocks do not cover the diff: ${checked.stderr}`;
+    const listed = report("lines", target);
+    if (listed.status !== 0 || !listed.stdout.includes("src/invoices/archive.js")) return `lines does not read the record's saved diff: ${listed.stderr}`;
+    fs.rmSync(target);
+    const again = report("scaffold", patch, target);
+    if (again.status === 0 || !again.stderr.includes("never replaces")) return "scaffold wrote over an existing saved diff";
+    // The record judges the diff it was made from; a saved diff that changed is refused.
+    fs.writeFileSync(target, JSON.stringify(filled));
+    fs.appendFileSync(path.join(out, "review.diff"), "\n");
+    const refused = report("check", target);
+    return refused.status === 1 && refused.stderr.includes("is not the one this record was scaffolded from") || "a record checked against another diff was accepted";
   });
 
-test("the multi procedure assigns analysis and the canonical result without silently changing modes",
-  "these checks verify the written instructions, not whether a coordinator or assistant follows them",
+test("scaffold reads a supplied diff outside a repository, splits at declarations, and check warns on one verdict over a large block",
+  "the report must work with an existing diff without making a repository snapshot",
   () => {
-    const skill = fs.readFileSync(path.join(SKILL, "SKILL.md"), "utf8");
-    const roles = fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "references", "roles.md"), "utf8");
-    const multi = roles;
-    const required = [
-      "the coordinator owns connected analysis and coverage across all four directions",
-      "reading the full diff and using helpers' work without repeating every check",
-      "[review direction helpers](../orchestrate/references/roles.md#review-direction-helpers)",
-      "no canonical JSON, complete line map or rendering is required of them",
-      "The coordinator owns the analysis, coherent target, line map and canonical result",
-      "If an approved reviewer or assistant cannot start, fails or is blocked, stop and ask; do not substitute a different mode",
-      "If an assistant returns partial, ask how to proceed; without an answer, return partial",
-      "Never add unauthorized delegation",
-    ];
-    const absent = required.filter((text) => !skill.includes(text));
-    const multiRequired = [
-      "The coordinator chooses what to share",
-      "other helpers' returns when useful",
-      "Sharing need not wait for a completed record",
-      "check the material premises of their conclusions against sources",
-      "identify borrowed evidence",
-      "who ran each reported check",
-      "For a design helper, ask where rules, state and effects are owned",
-      "Compare relevant alternatives: keep, simplify in place, consolidate, extract or",
-      "an unverified need does not establish redundancy",
-      "distinguishing observable changes and owner decisions from equivalent refactoring",
-    ];
-    absent.push(...multiRequired.filter((text) => !multi.includes(text)));
-    if (!roles.includes("it forwards their returns unchanged to the review coordinator"))
-      absent.push("the parent forwards helper returns to the review coordinator");
-    if (!roles.includes("the coordinator shares at its discretion"))
-      absent.push("the coordinator may share work with direction helpers");
-    if ((skill + multi).includes("share no assumptions, conclusions or results") ||
-        roles.includes("no suspected findings and no other helper's return"))
-      absent.push("obsolete restriction on shared analysis remains");
-    return !absent.length || `multi instructions omit: ${absent.join("; ")}`;
+    const dir = fs.mkdtempSync(path.join(run, "worktree-")), git = (...args) => spawnSync("git", args, { cwd: dir, encoding: "utf8" });
+    git("init", "--quiet"); git("config", "user.email", "t@example.invalid"); git("config", "user.name", "t");
+    fs.writeFileSync(path.join(dir, "a.js"), "export const a = 1;\n");
+    git("add", "a.js"); git("commit", "--quiet", "-m", "base");
+    fs.appendFileSync(path.join(dir, "a.js"), "\nexport function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n");
+    fs.writeFileSync(path.join(dir, "new.js"), `export function big() {\n${Array.from({ length: 44 }, (_, i) => `  const v${i} = ${i};`).join("\n")}\n}\n`);
+    fs.writeFileSync(path.join(dir, "notes.md"), "# Results\n\nOne paragraph.\n\nAnother paragraph.\n\n## Round two\n\nA third.\n\nA fourth.\n");
+    git("add", "--all");
+    const input = path.join(dir, "input.diff"), prepared = git("-c", "core.quotepath=off", "diff", "--cached", "--no-renames", "-U3");
+    if (prepared.status !== 0) return prepared.stderr;
+    fs.writeFileSync(input, prepared.stdout);
+    const isolated = path.join(run, "outside-repository");
+    fs.mkdirSync(isolated, { recursive: true });
+    const tool = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: isolated, encoding: "utf8", env: { ...process.env, PATH: "" } });
+    const made = tool("scaffold", input, path.join(dir, "out", "review.json"));
+    if (made.status !== 0) return made.stderr;
+    const record = JSON.parse(fs.readFileSync(path.join(dir, "out", "review.json"), "utf8"));
+    const of = (file) => record.blocks.filter((b) => b.path === file);
+    if (of("new.js").length !== 1) return "a new untracked file is missing from the record";
+    if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
+    // Prose is divided at its headings, not at every paragraph.
+    if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
+    // A kept block may leave "does" out; the check asks it only of a block that is not kept.
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
+      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
+    fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
+    const checked = tool("check", path.join(dir, "out", "review.json"));
+    if (checked.status !== 0) return checked.stderr;
+    if (!checked.stderr.includes("keeps 46 lines under one verdict")) return `no warning about the large block: ${checked.stderr}`;
+    if (!checked.stderr.includes("serve no requirement")) return `no warning about kept blocks that serve nothing: ${checked.stderr}`;
+    // The record checks its saved diff, even if the input is later changed.
+    fs.appendFileSync(input, "later changes");
+    const later = tool("check", path.join(dir, "out", "review.json"));
+    return later.status === 0 || `a record no longer checks after the input changed: ${later.stderr}`;
   });
 
-test("a supplied target is assessed without inventing scenario chronology",
-  "a helper may compare the coordinator's provisional target without claiming an earlier scenario",
+test("unsupported or incomplete diffs and records without a saved diff are refused",
+  "a partial or unrecognized diff must not become a complete-looking report",
   () => {
-    const standard = fs.readFileSync(path.join(SKILL, "references", "design-standard.md"), "utf8");
-    const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const required = [
-      "if a target is supplied, assess it as provisional against that scenario",
-      "before sketching a target of your own",
-    ];
-    const absent = required.filter((text) => !standard.includes(text));
-    if (page.includes("written before the target")) absent.push("outdated report-data chronology");
-    return !absent.length || `scenario instructions omit: ${absent.join("; ")}`;
+    const dir = fs.mkdtempSync(path.join(run, "invalid-diff-")), input = path.join(dir, "input.diff"), target = path.join(dir, "review.json");
+    const first = "diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-old\n+new\n";
+    for (const value of [first + "diff --git a/old.js b/new.js\n@@ -1 +1 @@\n-a\n+b\n",
+      first + "+lost\n", first + "--- a/b.js\n+++ b/b.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\n--- a/b.js\n+++ b/b.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\nold mode 100644\nnew mode 100755\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-a\n+b\n",
+      "diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1,3 +1,3 @@\n one\n", "not a diff\n"]) {
+      fs.writeFileSync(input, value);
+      const result = report("scaffold", input, target);
+      if (result.status !== 1 || fs.existsSync(target)) return `accepted unsupported or incomplete diff: ${value}`;
+    }
+    // Every file the blocks cannot hold is named in one refusal, so one corrected diff is enough.
+    fs.writeFileSync(input, `${first}diff --git a/logo.png b/logo.png\nindex 1..2 100644\nBinary files a/logo.png and b/logo.png differ\n`
+      + "diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n");
+    const named = report("scaffold", input, target);
+    if (named.status !== 1 || !named.stderr.includes("logo.png (no text lines") || !named.stderr.includes("run.sh (a file mode change)")) return `the files the blocks cannot hold were not all named: ${named.stderr}`;
+    fs.writeFileSync(input, "\x1b[1mdiff --git a/a.js b/a.js\x1b[m\n");
+    const colored = report("scaffold", input, target);
+    if (colored.status !== 1 || !colored.stderr.includes("--no-color")) return `a colored diff gave no way out: ${colored.stderr}`;
+    const legacy = { ...structuredClone(REVIEW) };
+    delete legacy.diff;
+    fs.writeFileSync(target, JSON.stringify(legacy));
+    const result = report("check", target);
+    return result.status === 1 && result.stderr.includes("no saved diff") || "a record without a saved diff was accepted";
+  });
+
+test("a block kept for a rule of the project instructions is not warned about as kept for an assumption",
+  "version bumps and docs required by the project could only be labelled assumptions, and the warning named dozens of blocks that asked nothing",
+  () => {
+    const done = render((r) => { r.requirements.find((q) => q.id === 3).source = "project"; r.blocks[0].serves = [3]; });
+    if (done.status !== 0) return done.stderr;
+    return !done.stderr.includes("serve only assumed requirements") || `warned: ${done.stderr}`;
+  });
+
+test("a diff whose filename has spaces is read with its file headers",
+  "ordinary file headers may end in a tab after the path",
+  () => {
+    const input = path.join(run, "space.diff");
+    fs.writeFileSync(input, "diff --git a/hello world.txt b/hello world.txt\n--- a/hello world.txt\t\n+++ b/hello world.txt\t\n@@ -1 +1 @@\n-before\n+after\n");
+    const result = report("lines", input);
+    return result.status === 0 && result.stdout.includes("hello world.txt\n") && /\+1\s+after/.test(result.stdout) || result.stderr || result.stdout;
+  });
+
+test("a block or unit whose premise is unread is a question, and a point against the draft is rejected only on a place that refutes it",
+  "an unknown premise could only be recorded as keep, and the points of the independent target, the critic and the verifier left no trace on the page",
+  () => {
+    const asked = render((r) => { r.blocks[2].verdict = "question"; r.units[0].verdict = "question"; r.challenges[0].at = ""; });
+    if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
+    for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
+      if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
+    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3]; });
+    if (done.status !== 0) return done.stderr;
+    if (!done.stderr.includes("kept blocks 1 serve only assumed requirements")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    if (!done.stderr.includes("unit readArchive is kept, and its blocks 3 are not")) return `no warning about a kept unit with an open block: ${done.stderr}`;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('id="challenges"') || !page.includes('href="#q1">Q1</a>') || !page.includes('id="q1"')) return "the page shows no challenges or no link from the block to its question";
+    return /## Challenges\n1\. critic: The reader should not convert\. Rejected: .*src\/main\.js:4/.test(done.stdout) && done.stdout.includes("Question (Q1)") || `the printout lacks the challenges or the question:\n${done.stdout}`;
   });
 
 test("the page that tells a reviewer what to write names every word the check accepts, and its example parses",
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {
     const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES].filter((word) => !page.includes(`\`${word}\``));
+    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
     try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
