@@ -144,6 +144,8 @@ An Opus-class review of draft 35 using both trials, a Sonnet-class verifier of i
 
 Not changed, for real use to decide: a re-check of the reconciled record (if refuting accepted points does not stop false accepts); whether the reviewer's own sketch adds anything (a trial can save it as an instrument); the multi-mode threshold; the cost of reconciling, the largest single item, which lighter blocks should reduce.
 
+The owner then made two changes on the branch: the scaffold takes a supplied diff file instead of running Git (review no longer depends on the version-control system, and a staged file under an ignore rule is no longer lost to a temporary index), and a plan with checking agents set to none starts none of them. A Sonnet-class critic of draft 36 confirmed every item and the scripts on a scratch repository, and found four things, all corrected: `<out>` was named nowhere (the plan's scope now names it, and where no `<out>` is allowed the target returns its sketch, which the reviewer sets aside until its own is done); "refuted first" did not say by whom or with what (an accepted point that moves a finding or the verdict is accepted only after the reviewer has read the place it rests on); only a record that passes `check` can be printed for the critic; the challenge paragraph was split into accept, reject and send to the owner, with one wording of each. The page no longer draws an empty description for a kept block.
+
 Drafts: [the page](drafts/36-review.md), [agents](drafts/36-agents.md), [design standard](drafts/36-design-standard.md), [data contract](drafts/36-report-data.md), [structural examples](drafts/36-structure-examples.md). About 6,600 words in all.
 
 ## Status

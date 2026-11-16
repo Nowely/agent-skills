@@ -124,10 +124,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
   verdict, a finding or its rank, or a question: `from` (`target`, `critic` or `verifier`; for a point two raise,
   the first, the note naming the other), `point`, `outcome` and `note`. `accepted` notes what it changed;
   `rejected` names in `at` the place in the code or the task's sources that refutes it, and the note quotes
-  what that place says and why it contradicts the point; `owner` is every other point, a judgment call or one whose
-  source has no such place, and the note says what the owner decides. A difference between the two targets is a
-  point from `target`. A corrected citation is fixed in place; an agreement, a point its agent concluded against
-  included, is not recorded.
+  what that place says and why it contradicts the point; `owner` is every other point, as the review page lists
+  them, and the note says what the owner decides. A difference between the two targets is a point from `target`.
+  A corrected citation is fixed in place. No agreement is recorded, and a point its own agent argued against is an
+  agreement.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each

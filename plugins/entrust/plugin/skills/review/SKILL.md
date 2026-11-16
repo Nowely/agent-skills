@@ -25,7 +25,7 @@ Identify the diff (base and head, or uncommitted work), the task, the project in
 - **Checking agents:** an independent target, a critic and a verifier (default), or none.
 - **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page; its checking agents get the draft response, and its challenges go in the response.
 - **Agents:** each agent the choices above start, with its model and the session that starts it, and scouts up to a stated number. By default the independent target and the critic run on the reviewer's model, the verifier and scouts on a lighter one. Observed on two real changes, a review with them took about 1M tokens and 31 minutes for 1,085 changed lines and 640k and 8 minutes for 307; the checking agents and the reconciling they cause were about 70% of the tokens. Every agent gets the plan's scope; where it allows tests, one scout runs them once at the start for all.
-- **Scope and limits:** what will be read; any tests, application or screenshots run; any outside provider that receives the code; where the result goes; what is known to be out of reach.
+- **Scope and limits:** what will be read; any tests, application or screenshots run; any outside provider that receives the code; `<out>`, the folder where the record, the page and the agents' files go; what is known to be out of reach.
 
 Wait for approval before analysis. A choice is fixed when the user names it or says to use the defaults; a request or a parent's brief that fixes them all is approval, so show the plan in the first lines and start. A bare request to review is not approval. Ask only for what is missing; a corrected plan waits for its own approval unless the user approved it as corrected. Without an answer, because the user cannot reply or a reviewer was started without an approved plan, return the plan, say the review was not performed, and stop. Recheck the diff before starting; if it, the scope or the agents must change, ask again. If a direction helper fails or is blocked, stop and ask; never switch mode silently. If a checking agent fails, finish without it and say which check did not run. Approving a review approves no edit or comment.
 
@@ -37,7 +37,7 @@ The review's agents are briefed by [the agents reference](references/agents.md):
 
 ## Read
 
-If the plan includes the independent target, start it now (under a conductor it already runs), with the owner's task and discussion, the project instructions and the code before the change. The author's description and commit messages go to it, if at all, marked as the author's account to test. It writes its sketch to `<out>/target.md` and returns only the path, so its sketch reaches no one before the reviewer has made its own.
+If the plan includes the independent target, start it now (under a conductor it already runs), with the owner's task and discussion, the project instructions and the code before the change. The author's description and commit messages go to it, if at all, marked as the author's account to test. It writes its sketch to `<out>/target.md` and returns only the path, so its sketch reaches no one before the reviewer has made its own; where no `<out>` is allowed, it returns the sketch, and the reviewer sets it aside until its own sketch is done.
 
 State the goal and its source. Number the requirements, each with its source: `task`, `discussion`, `question` or `assumption`. A requirement that only the author's description or commits state is an `assumption` until the owner's task or word confirms it. A decision recorded in the task stays binding when the code contradicts its premise: record the contradiction and the decision needed. An unapproved author rationale or a stale doc is an assumption; where an authoritative contract refutes it, recommend removing the mechanism resting on it.
 
@@ -80,7 +80,15 @@ Reopen the code and seek a reason each candidate is wrong: an upstream guarantee
 
 Scrutinise the fixes the same way, and after a large removal reassess what remains. Reconcile into one target and trace every requirement and rule through it. A confirmed problem is a finding, an open premise a question, an improvement the change does not need an idea, and an owner-accepted omission a tradeoff with its source and consequence; a proposal to drop a binding requirement stays a question until its owner accepts it. Mark pre-existing problems apart unless the change worsens or relies on them; an old implementation the new requirement depends on and that does not meet it is in scope.
 
-If the plan includes checking agents, save the draft and print it with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A challenge is a point that could change a requirement, a verdict, a finding or its rank, or a question; a point two agents raise is one challenge, a citation the verifier corrects is fixed in place, and an agreement, a point its agent itself concluded against included, is not recorded. An accepted point names what it changed; one that adds, promotes or drops a finding, or changes the verdict, is a candidate first and is refuted as above. Reject a point only on a place in the code or the task's sources that refutes it: name the place, quote what it says and why that contradicts the point. One you would reject on judgment alone, or whose source has no such place, goes to the owner. Then reconcile again.
+If the plan includes checking agents, save the draft record, run `check` until it passes, and print it with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
+
+A challenge is a point that could change a requirement, a verdict, a finding or its rank, or a question. A point two agents raise is one challenge; a citation the verifier corrects is fixed in place. Record no agreement; a point its own agent argued against is an agreement.
+
+- **Accept** a point that holds, and name what it changed. One that adds, promotes or drops a finding, or changes the verdict, is accepted only after you have read the place it rests on and it shows what the point says.
+- **Reject** a point only on a place in the code or the task's sources that refutes it: name the place, quote what it says and why that contradicts the point.
+- **Send to the owner** every other point: one you would reject on judgment alone, one whose place you could not read, or one whose source has no such place.
+
+Then reconcile again.
 
 ## Record and respond
 

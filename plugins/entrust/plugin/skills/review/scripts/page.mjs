@@ -384,7 +384,7 @@ function map(review, files, { blocks, owner }, t) {
   const head = (b) => {
     if (shown.has(b.id)) return `<header><div class="row">${verdict(b)}<a href="#b${b.id}">B${b.id}</a><span class="sub">${esc(t("continued"))}</span></div></header>`;
     shown.add(b.id);
-    return `<header><div class="row">${verdict(b)}<strong>B${b.id}</strong><span>${prose(b.does)}</span></div>`
+    return `<header><div class="row">${verdict(b)}<strong>B${b.id}</strong>${b.does ? `<span>${prose(b.does)}</span>` : ""}</div>`
       + `<div class="row sub"><span>${b.serves.length ? `${esc(t("serves"))} ${b.serves.map(esc).join(", ")}` : esc(t("serves-nothing"))}</span>`
       + `${b.unit ? `<span>${esc(t("in-unit"))} <span class="mono">${esc(b.unit)}</span></span>` : ""}<span class="mono">${esc(b.where)}</span></div>`
       + (b.findings.length ? `<ul>${b.findings.map((id) => `<li><a href="#f${esc(id)}">${esc(id)}. ${esc(finding(id).title)}</a>${decide(id)}</li>`).join("")}</ul>` : "")
