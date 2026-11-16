@@ -182,4 +182,6 @@ Drafts: [the page](drafts/37-review.md), [agents](drafts/37-agents.md), [design 
 
 ## Status
 
-Three real changes reviewed, with drafts 34, 35 and 36 (above); draft 37 not run. The Terra experiment is running; a new one follows its results.
+Three real changes reviewed, with drafts 34, 35 and 36 (above); draft 37 was not run in those trials.
+The later [Terra comparison](../2026-11-16-review-comparison/) evaluated the frozen `1c645249` candidate,
+not draft 37; it does not establish a general winner or no regression.
