@@ -1,4 +1,4 @@
-# Review core: drafts 32 to 36
+# Review core: drafts 32 to 37
 
 ## Question
 
@@ -168,6 +168,18 @@ About 610k tokens and 9 minutes.
 - **Challenges.** 11: target 2 accepted and 1 to the owner; critic 5 accepted and 2 to the owner; verifier 1 accepted after its place was read. No rejection; corrected citations fixed in place.
 - **Procedure notes.** The critic, reading the printout, could not reach the files behind kept probe blocks and said so; a design alternative the critic itself does not push fits no outcome (sent to the owner); edits after the critic again needed a one-shot script; warnings and the report share the terminal, so a reviewer grepping both can misread them.
 
+## Draft 37
+
+An Opus-class review of the skill after the third trial, a Sonnet-class verifier of its claims (all held but three line numbers, and its reading that the target anchored the trial-3 critic: the critic gave the target as its reason, but the target's file proposes no such test), and a Sonnet-class critic of the coordinator's list. The review confirmed the coordinator's reading of the owner's supplied-diff change by running the scripts and found three more refusals: a new empty file, a binary file beside text changes (with the false message "no supported text changes"), and a user's `diff.noprefix` or `color.diff` setting. The critic of the list turned back the larger proposals: a temporary-index recipe would bring back what the owner removed, and listing unreadable files in an unchecked `coverage` is the silent drop the owner rejected; per-agent plan choices, a later start for the target where no `<out>` exists, and the diff for the checkers had no observed failure behind them.
+
+- **Cuts:** the plan's numbers in one clause over three trials; the challenge rules stated once, in the review page, with the data contract giving only the fields; the reviewer under a conductor told once what it does with checking agents and without; a stale "run it in the repository" in the script.
+- **The reviewed state is named:** `range` says how the diff was obtained and the state its files are read at, and places in the record are at that state unless marked `(base)`.
+- **A refusal names the file and the way out:** a file with no text lines (binary, empty, mode only) to leave out and review apart; a header or a colored diff it cannot read, with the Git options that give a readable patch under any user configuration. The refusal stays, as the owner decided.
+
+For real use to decide: a real tangled code change (the goal itself, shown once); whether kept-block verdicts and `serves` produce any finding; the short review and a plan with no checking agents, never run; a re-check of the reconciled record; the multi-mode threshold.
+
+Drafts: [the page](drafts/37-review.md), [agents](drafts/37-agents.md), [design standard](drafts/37-design-standard.md), [data contract](drafts/37-report-data.md), [structural examples](drafts/37-structure-examples.md).
+
 ## Status
 
-Three real changes reviewed, with drafts 34, 35 and 36 (above). Further evaluation is by real use; the experiment proposed for the Terra agent is in the pull request.
+Three real changes reviewed, with drafts 34, 35 and 36 (above); draft 37 not run. The Terra experiment is running; a new one follows its results.

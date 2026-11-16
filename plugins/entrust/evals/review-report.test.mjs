@@ -488,6 +488,13 @@ test("unsupported or incomplete diffs and records without a saved diff are refus
       const result = report("scaffold", input, target);
       if (result.status !== 1 || fs.existsSync(target)) return `accepted unsupported or incomplete diff: ${value}`;
     }
+    // A file with no text lines beside one with them is named, so the reviewer knows what to take out.
+    fs.writeFileSync(input, `${first}diff --git a/logo.png b/logo.png\nindex 1..2 100644\nBinary files a/logo.png and b/logo.png differ\n`);
+    const named = report("scaffold", input, target);
+    if (named.status !== 1 || !named.stderr.includes("logo.png: no text lines to review")) return `a binary file was not named: ${named.stderr}`;
+    fs.writeFileSync(input, "\x1b[1mdiff --git a/a.js b/a.js\x1b[m\n");
+    const colored = report("scaffold", input, target);
+    if (colored.status !== 1 || !colored.stderr.includes("--no-color")) return `a colored diff gave no way out: ${colored.stderr}`;
     const legacy = { ...structuredClone(REVIEW) };
     delete legacy.diff;
     fs.writeFileSync(target, JSON.stringify(legacy));

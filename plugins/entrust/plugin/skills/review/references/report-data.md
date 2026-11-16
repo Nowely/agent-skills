@@ -8,14 +8,15 @@ The full record of a review: one `review.json` that the response is written from
    `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json` saves a copy beside the record
    (`review.diff`) with its digest and creates one block per declaration-sized run of changed lines: in code a run
    ends at a declaration, in Markdown at a heading. The input is a two-sided text patch with `diff --git` file
-   headers and unified hunks, without renames or quoted paths; unsupported changes need separate review. The
-   reviewer records the scope and sources, reads the corresponding file states and checks whether the diff includes
-   the agreed changes. The saved diff does not establish either completeness or that a working tree stayed unchanged.
+   headers and unified hunks, without renames or quoted paths; a refusal names the file and the way out, and what
+   is left out gets separate review. `range` says how the diff was obtained and the state its files are read at,
+   such as the command with its two commits; the reviewer reads the files at that state and checks whether the diff
+   includes the agreed changes. The saved diff does not establish either completeness or that a working tree stayed unchanged.
    Scaffold never replaces a record or saved diff: to start over, delete both.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
-   diff with the address a block uses. Places cited anywhere in the record are at the head unless marked `(base)`.
+   diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
@@ -38,7 +39,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 
     {
       "title": "a short name of the change", "language": "en",
-      "range": "the scope of the change", "diff": { "file": "review.diff", "sha256": "the saved diff's digest" },
+      "range": "how the diff was obtained and the state its files are read at", "diff": { "file": "review.diff", "sha256": "the saved diff's digest" },
       "change": { "goal": "what the change is for, in a sentence", "why": "the reason, when a source gives one",
                   "parts": ["what it adds or alters, one line each"], "sources": ["the task text", "the change"] },
       "verdict": "whether the change does its task\n- what decides that, a line each",
@@ -120,14 +121,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
   which a kept block may leave out.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
   the list of questions.
-- **Challenges.** Each point of the independent target, the critic or the verifier that could change a requirement, a
-  verdict, a finding or its rank, or a question: `from` (`target`, `critic` or `verifier`; for a point two raise,
-  the first, the note naming the other), `point`, `outcome` and `note`. `accepted` notes what it changed;
-  `rejected` names in `at` the place in the code or the task's sources that refutes it, and the note quotes
-  what that place says and why it contradicts the point; `owner` is every other point, as the review page lists
-  them, and the note says what the owner decides. A difference between the two targets is a point from `target`.
-  A corrected citation is fixed in place. No agreement is recorded, and a point its own agent argued against is an
-  agreement.
+- **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; for a point
+  two raise, the first, the note naming the other), `point`, `outcome` (`accepted`, `rejected` or `owner`) and
+  `note`, which says what it changed, what the refuting place says and why, or what the owner decides; a rejection
+  names that place in `at`.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each

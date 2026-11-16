@@ -7,7 +7,7 @@
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
 //   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
 //
-// Run it in the repository under review; references/report-data.md tells the reviewer what to write.
+// It reads only the files it is given, anywhere; references/report-data.md tells the reviewer what to write.
 // `render` refuses a review whose change map leaves a nonblank changed line out, puts one in two blocks, or names
 // an id nothing defines, and lists every such fault: that every nonblank changed line belongs to one block is checked here,
 // not taken on trust.
@@ -123,7 +123,7 @@ const [command, argument] = process.argv.slice(2);
 try {
   if (command === "scaffold" && argument && process.argv[4]) {
     const made = scaffold(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in the change's scope and sources, and each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
   } else if (command === "lines" && argument) {
     // A record's own diff when given a record, so the addresses are the ones its check reads.
     const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(

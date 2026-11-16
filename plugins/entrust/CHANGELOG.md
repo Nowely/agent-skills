@@ -35,8 +35,10 @@ forensics remain in the repository references and release notes.
 - `report.mjs scaffold`, run at the start of the analysis, reads a supplied diff and writes the record's mechanical
   part: a copy of the diff named after the record with its digest, and one block per declaration-sized run of
   changed lines, a Markdown file divided at its headings. It does not call a version-control system or create a
-  snapshot. The reviewer identifies the scope and corresponding file states; a saved diff does not establish that
-  it includes the whole change. The reviewer writes the meaning, and a kept block needs no `does`. `check`, `render`
+  snapshot. The reviewer writes in `range` how the diff was obtained and the state its files are read at; a saved
+  diff does not establish that it includes the whole change. A diff the scaffold cannot read is refused with the
+  file named and the way out: a binary, empty or mode-only file to leave out and review apart, or for Git the
+  options that give a readable patch under any user configuration. The reviewer writes the meaning, and a kept block needs no `does`. `check`, `render`
   and `lines` read the saved diff; a saved diff that changed is refused. Older records without one need a new
   record. `check` warns when one verdict
   covers a large block, when kept blocks serve no requirement or only assumed ones, and when a kept unit holds an
@@ -44,12 +46,13 @@ forensics remain in the repository references and release notes.
   contract, and the reading required for a review fell from about 7,600 words to about 6,600 with the new agents and the challenges.
 - A review that cannot cover the diff or a requested direction returns a partial review, and unread code is
   never `keep`. A short review now skips the record, the block map and the page; the plan states the checks' cost
-  as observed on two real changes (about 1M tokens and 31 minutes for 1,085 changed lines, 640k and 8 minutes for
-  307, about 70% of it the checking agents and the reconciling they cause) and their default models.
+  as observed on three real changes (610k to 1M tokens and 8 to 31 minutes for 307 to 1,085 changed lines, about
+  70% of it the checking agents and the reconciling they cause) and their default models.
 - The printed report lists only the blocks not kept or not linked to a requirement, the page keeps the whole map,
   and a mechanism nobody weighed no longer prints three lines saying so. With two or more mechanisms weighed, the
   report gives their total, each shared block counted once, so the weight of several suspect mechanisms can be
   asked for and judged together.
+
 ### Fixed
 
 - `entrust:codex`: a read run refuses a `$TMPDIR` that does not resolve to a directory again, as before the

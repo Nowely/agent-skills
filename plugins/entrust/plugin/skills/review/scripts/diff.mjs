@@ -1,5 +1,7 @@
 // The diff under review as data: its files, hunks and lines, and the address of each changed line.
-// Read a two-sided patch with `diff --git` headers and ordinary unified hunks.
+// Read a two-sided patch with `diff --git` headers and ordinary unified hunks. Input it cannot read is refused, never
+// dropped; each refusal names the file and what to do, since the reviewer has to make a diff it can read.
+const GIT = "for Git: git -c core.quotepath=off diff --no-color --no-ext-diff --no-renames --src-prefix=a/ --dst-prefix=b/ <base> <head>";
 export function parseDiff(out) {
   const files = [];
   let file, hunk, oldHeader = false, newHeader = false, oldNo = 0, newNo = 0, oldLeft = 0, newLeft = 0;
@@ -22,15 +24,15 @@ export function parseDiff(out) {
       hunk = undefined;
       oldHeader = newHeader = false;
     }
-    else if (line.startsWith("diff --")) throw new Error("Unsupported diff header; provide a two-sided patch without renames or quoted paths");
+    else if (line.startsWith("diff --")) throw new Error(`Unsupported diff header "${line}": provide a two-sided patch with a/ and b/ prefixes, no renames and no quoted paths (${GIT})`);
     else if (line.startsWith("--- ")) {
       if (!file || oldHeader || file.hunks.length || ![ `--- a/${file.path}`, "--- /dev/null" ].includes(fileHeader))
-        throw new Error("Unsupported or mismatched diff file header");
+        throw new Error(`Unsupported or mismatched diff file header "${line}"${file ? ` for ${file.path}` : ""}`);
       oldHeader = true;
     }
     else if (line.startsWith("+++ ")) {
       if (!file || !oldHeader || newHeader || ![ `+++ b/${file.path}`, "+++ /dev/null" ].includes(fileHeader))
-        throw new Error("Unsupported or mismatched diff file header");
+        throw new Error(`Unsupported or mismatched diff file header "${line}"${file ? ` for ${file.path}` : ""}`);
       newHeader = true;
     }
     else if (at) {
@@ -39,11 +41,14 @@ export function parseDiff(out) {
       file.hunks.push(hunk = []);
     }
     else if (line.startsWith("@@")) throw new Error("Unsupported diff hunk");
-    else if (line.startsWith("old mode ") || line.startsWith("new mode ")) throw new Error("Diff contains a file mode change; review it separately");
+    else if (line.startsWith("old mode ") || line.startsWith("new mode "))
+      throw new Error(`${file?.path ?? "a file"}: a file mode change; leave it out of the diff (for Git, a pathspec that excludes the file, or -c core.fileMode=false for a working-tree diff) and review it separately`);
     else if (hunk && /^[ +\-]/.test(line)) throw new Error("Unexpected line outside a diff hunk");
   }
   if (oldLeft || newLeft) throw new Error("Incomplete diff hunk");
-  if (!files.length || files.some((f) => !f.hunks.length)) throw new Error("Diff has no supported text changes; review other changes separately");
+  if (!files.length) throw new Error(`Diff has no \`diff --git\` file header; a colored or prefix-less diff has none (${GIT})`);
+  const bare = files.filter((f) => !f.hunks.length).map((f) => f.path);
+  if (bare.length) throw new Error(`${bare.join(", ")}: no text lines to review (a binary, empty or mode-only file); leave ${bare.length > 1 ? "them" : "it"} out of the diff and review ${bare.length > 1 ? "them" : "it"} separately`);
   return files;
 }
 
