@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `entrust:review` shows its plan as a message the owner can scan: the task in a line with its source, the diff's
+  facts with abbreviated hashes, a table of the four choices with their alternatives and reasons, and short blocks
+  for what the review judges and returns, what each checking agent does, the agents with their exact models and who
+  starts them, the checks named by command or suite, the output folder and snapshot reuse, the limits, and the
+  measured cost with its sample rather than a prediction. A mode reason on an unmeasured size threshold is a
+  judgment; the short review is offered only for a small change; internal scheduling, the history of past artifacts
+  and quotations of the skill page stay out of the plan. Why: on a real 4,043-line review the plan buried the
+  choices in dense paragraphs, omitted the task and its source, the checking agents' measured cost and their exact
+  models, and presented the unmeasured size threshold as fact; an Astra consultation traced each gap to the plan
+  spec, which named the content but not the message.
+
 ## 0.40.0 — 2026-11-16
 
 ### Compatibility
