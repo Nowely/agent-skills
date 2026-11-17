@@ -769,6 +769,33 @@ test("the page renders each B/F/Q anchor once, the counters equal the model, and
     return true;
   });
 
+test("the question tree renders every level once: grandchildren keep their cards, a legacy child is not duplicated",
+  "roots plus direct children lost the grandchildren, and a child without a kind stood twice with one id",
+  () => {
+    const result = render((r) => {
+      Object.assign(r, structuredClone(THEMED));
+      // Q3 -> Q4 -> Q6: three levels of cards; Q7 is a legacy child of Q6; Q8 stays a plain legacy root.
+      r.questions.push(
+        { at: "src/invoices/upper.js:2", text: "Which widths exactly?", kind: "decision", resolver: "owner",
+          parent: { question: 4, variants: ["narrow"] },
+          variants: [{ id: "x", text: "The narrow set", consequences: [{ text: "Less to check.", sources: [{ ref: "/requirements/0" }] }] }] },
+        { at: "docs/billing.md", text: "A legacy child of the grandchild.", parent: { question: 6, variants: ["x"] } },
+        { at: "docs/billing.md", text: "A legacy root." });
+    });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const id of ["q3", "q4", "q6", "q7", "q8"])
+      if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `anchor ${id} does not appear exactly once`;
+    if (!page.includes('data-parent="4"')) return "the grandchild lost its parent link";
+    if (page.includes('<li id="q7"')) return "the legacy child was duplicated into the legacy list";
+    if (!page.includes('class="qlegacy child" id="q7"')) return "the legacy child has no plain line of its own";
+    if (!page.includes('<li id="q8"')) return "the legacy root lost its plain line";
+    const order = ["q3", "q4", "q6", "q7"].map((id) => page.indexOf(`id="${id}"`));
+    if (order.some((at, i) => at < 0 || (i && at <= order[i - 1]))) return "the tree is not drawn root-first down the chain";
+    if ((page.match(/class="qcard/g) ?? []).length !== 6) return "the five themed cards plus the grandchild are not all cards";
+    return true;
+  });
+
 test("texts reach the page as text: a script in a question, markup in a variant, quotes in a comment",
   "the page shows private code; a record's text run as markup is an injection",
   () => {

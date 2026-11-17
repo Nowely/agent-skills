@@ -188,6 +188,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 .qcard { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--v, var(--muted)); padding: .7rem 1rem; display: flex; flex-direction: column; gap: .45rem; scroll-margin-top: 6rem }
 .qcard.decision { --v: var(--accent) } .qcard.fact { --v: var(--number) } .qcard.evidence { --v: var(--fix) }
 .qcard.child { margin-left: 1.6rem; border-left-style: dashed }
+.qlegacy.child { margin-left: 1.6rem; padding: .1rem 0 }
 .qcard.na { opacity: .55 }
 .qcard .qhead { display: flex; flex-wrap: wrap; gap: .3rem .7rem; align-items: baseline }
 .qcard .qhead h3 { font-size: 1.05rem; display: inline }
@@ -545,17 +546,27 @@ function questionCard(q, review, model, t, child) {
 
 function questionsSection(review, model, t) {
   const qs = model.questions, byId = Object.fromEntries(qs.map((q) => [q.id, q]));
-  const legacy = qs.filter((q) => q.kind === undefined);
+  const drawn = new Set();
+  const legacyLine = (q) => `<strong>Q${q.id}</strong> <code>${esc(q.at)}</code> ${prose(q.text)}`;
+  // The whole acyclic tree under each root, every question once: grandchildren keep their cards, and a child
+  // without a kind keeps its plain line beside them, never a second copy in the legacy list.
+  const children = (q) => q.children.map((c) => byId[c] ? subtree(byId[c], true) : "").join("");
+  const subtree = (q, child) => {
+    if (drawn.has(q.id)) return "";
+    drawn.add(q.id);
+    return (q.kind === undefined ? `<div class="qlegacy${child ? " child" : ""}" id="q${q.id}">${legacyLine(q)}</div>`
+      : questionCard(q, review, model, t, child)) + children(q);
+  };
   const group = (kind) => {
     const roots = qs.filter((q) => q.kind === kind && !q.parent);
     if (!roots.length) return "";
-    return `<span class="label qgroup-title">${esc(t(`question.kind.${kind}`))}</span>${roots.map((q) => questionCard(q, review, model, t, false)
-      + q.children.map((c) => questionCard(byId[c], review, model, t, true)).join("")).join("")}`;
+    return `<span class="label qgroup-title">${esc(t(`question.kind.${kind}`))}</span>${roots.map((q) => subtree(q, false)).join("")}`;
   };
+  const legacy = qs.filter((q) => q.kind === undefined && !q.parent);
   return `
 <section id="questions" class="stack decision-sheet" data-where="${esc(t("questions"))}"><h2>${esc(t("questions"))}</h2>
   ${["decision", "fact", "evidence"].map(group).join("")}
-  ${legacy.length ? `<ul class="plain">${legacy.map((q) => `<li id="q${q.id}"><strong>Q${q.id}</strong> <code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : ""}
+  ${legacy.length ? `<ul class="plain">${legacy.map((q) => { drawn.add(q.id); return `<li id="q${q.id}">${legacyLine(q)}${children(q)}</li>`; }).join("")}</ul>` : ""}
   ${!qs.length ? `<p>${esc(t("none"))}</p>` : ""}
 </section>`;
 }
