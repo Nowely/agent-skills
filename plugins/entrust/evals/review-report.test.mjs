@@ -12,7 +12,7 @@ import path from "node:path";
 import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
-import { CATALOGS, LABELS, BASE_KEYS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
+import { CATALOGS, LABELS, BASE_KEYS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -664,17 +664,30 @@ test("modelOf derives children, unique counters, file status and the shortest un
     return true;
   });
 
-test("a custom catalog of the old words still serves a legacy record, and an enriched record asks for the new ones",
-  "the new controls must not break old translations, nor appear silently in English on a new record",
+test("a custom catalog carries the base words plus the keys of the controls the record shows",
+  "the new controls must not break old translations, nor appear silently in English on any record",
   () => {
-    const legacyCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, LABELS[key]]));
     const files = parseThemeDiff();
-    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: legacyCatalog }, files, run);
+    const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
+    const baseOnly = Object.fromEntries(BASE_KEYS.map((key) => [key, LABELS[key]]));
+    // A legacy record needs the old base plus the always-visible controls, the viewer for its pictures, the structure note.
+    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: catalogFor(REVIEW) }, files, run);
     if (legacy.errors.length) return `legacy custom catalog refused: ${legacy.errors.join("; ")}`;
-    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: legacyCatalog }, files, run);
-    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with an old catalog was accepted";
-    const full = check({ ...structuredClone(THEMED), language: "custom", labels: { ...LABELS } }, files, run);
-    return !full.errors.length || `a complete custom catalog was refused: ${full.errors.join("; ")}`;
+    const silent = check({ ...structuredClone(REVIEW), language: "custom", labels: baseOnly }, files, run);
+    if (!silent.errors.some((e) => e.includes("complete labels catalog"))) return "the always-visible new controls fell back to English on a legacy record";
+    // An enriched record asks for the keys of its capabilities; a legacy catalog no longer serves it.
+    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(REVIEW) }, files, run);
+    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with a legacy catalog was accepted";
+    const full = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(THEMED) }, files, run);
+    if (full.errors.length) return `a catalog of the enabled capabilities was refused: ${full.errors.join("; ")}`;
+    // One capability alone asks only for its own keys: a passport without cards needs no question words.
+    const passportOnly = { ...structuredClone(REVIEW), passport: structuredClone(THEMED.passport) };
+    if (requiredKeys(passportOnly).includes("question.kind.decision")) return "a record without cards was asked for the card words";
+    const minimal = check({ ...passportOnly, language: "custom", labels: catalogFor(passportOnly) }, files, run);
+    if (minimal.errors.length) return `a passport-only catalog was refused: ${minimal.errors.join("; ")}`;
+    const missing = catalogFor(passportOnly); delete missing["passport.diffSha"];
+    const refused = check({ ...passportOnly, language: "custom", labels: missing }, files, run);
+    return refused.errors.some((e) => e.includes("passport.diffSha")) || "a missing capability key was not named";
   });
 
 test("the full printout carries the cards, tradeoffs and coverage limits, and the digest of the record's bytes",
@@ -691,7 +704,7 @@ test("the full printout carries the cards, tradeoffs and coverage limits, and th
       if (!out.includes(part)) return `the printout lacks "${part}"`;
     const digest = createHash("sha256").update(fs.readFileSync(data)).digest("hex");
     if (!out.includes(`record ${digest}`)) return "the printout does not carry the record's byte digest";
-    if (!out.includes(`diff ${THEMED.diff.sha256}`)) return "the printout does not carry the diff digest";
+    if (!out.includes(`diff sha256 ${THEMED.diff.sha256}`)) return "the printout does not carry the diff digest";
     // The legacy printout keeps its old shape: no card machinery, no passport, no invented sections.
     const legacy = render();
     if (legacy.status !== 0) return legacy.stderr;
@@ -869,6 +882,33 @@ test("a mechanism's findings stand as related findings, never as an invented con
     const md = result.stdout.split("## Mechanisms")[1].split("## Structure")[0];
     if (!md.includes("Findings: 1, 2") || md.includes("What happens.") || md.includes("Why change it")) return "the printout lacks the neutral related findings or invents a consequence";
     if (!result.stdout.includes("(coverageStructured 2)")) return "the historical screen's sources are missing from the printout";
+    return true;
+  });
+
+test("without scripts the variant radios and zone checks are disabled and say they need JavaScript",
+  "interactive-looking controls that cannot save mislead the no-script reader",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!/<input type="radio" name="vq3"[^>]*disabled>/.test(page)) return "the variant radios are not disabled for the no-script reader";
+    if (!/<input type="checkbox" data-zone="1-0" disabled>/.test(page)) return "the zone checks are not disabled for the no-script reader";
+    if (!page.includes("Choosing here needs JavaScript")) return "the no-script hint is missing";
+    if (!page.includes(".js .nojs-note { display: none }")) return "the hint does not hide once the runtime runs";
+    if (!page.includes('control.disabled = false')) return "the runtime does not enable the controls";
+    return true;
+  });
+
+test("the passport's digest words are localized in the page, the footer and the printout",
+  "hardcoded English words in the passport and the details line stood untranslated in a Russian report",
+  () => {
+    const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes("sha256 diff") || !page.includes("запись")) return "the passport or the footer keeps hardcoded English digest words";
+    if (page.includes("diff sha256")) return "the English digest word leaked into the Russian page";
+    const digest = createHash("sha256").update(fs.readFileSync(data)).digest("hex");
+    if (!result.stdout.includes(`sha256 diff ${THEMED.diff.sha256}`) || !result.stdout.includes(`запись ${digest}`)) return "the printout's digest words are not localized";
     return true;
   });
 

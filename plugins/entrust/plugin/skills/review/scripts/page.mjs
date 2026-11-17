@@ -106,6 +106,8 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .act { display: none }
 .js .act { display: flex }
 .js input.act { display: block }
+/* Without scripts the variant radios and zone checks only read: they are disabled until the runtime enables them. */
+.js .nojs-note { display: none }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth } }
 .accent { --v: var(--accent); --v-bg: color-mix(in srgb, var(--accent) 12%, transparent) }
 .idea { border-color: var(--accent) }
@@ -255,6 +257,8 @@ const SCRIPT = `
   state = D.settle(data.questions, state);
   const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch {} };
   document.documentElement.classList.add("js");
+  // The radios and zone checks ship disabled for the no-script reader; with the runtime they become live.
+  for (const control of all("[data-question-variant], [data-zone]")) control.disabled = false;
   const qEntry = (id) => D.entryOf(state, id);
 
   function decisions() {
@@ -472,7 +476,7 @@ function passport(review, model, t) {
   if (!p) return "";
   return `<details class="passport-card" data-where="${esc(t("passport"))}">
   <summary class="passport">${(p.links ?? []).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}<span>${esc(p.reviewedAt)}</span></summary>
-  <div class="passport-body mono">${esc(p.repository)} · ${esc(t("passport.base"))} ${esc(p.base)} → ${esc(t("passport.head"))} ${esc(p.head)} · diff sha256 ${esc(review.diff?.sha256 ?? "")} · record ${esc(model.recordSha ?? model.key)}</div>
+  <div class="passport-body mono">${esc(p.repository)} · ${esc(t("passport.base"))} ${esc(p.base)} → ${esc(t("passport.head"))} ${esc(p.head)} · ${esc(t("passport.diffSha"))} ${esc(review.diff?.sha256 ?? "")} · ${esc(t("passport.record"))} ${esc(model.recordSha ?? model.key)}</div>
 </details>`;
 }
 
@@ -536,10 +540,10 @@ function questionCard(q, review, model, t, child) {
     ${q.parent ? `<p class="sub">${esc(t("question.parent"))}: <a href="#q${q.parent.question}">Q${q.parent.question}</a> <span class="parent-pending" hidden>${esc(t("decision.parent-pending"))}</span></p>` : ""}
     ${q.context?.length ? `<div class="qctx"><span class="label">${esc(t("question.context"))}</span>${claimsHtml(q.context, review)}</div>` : ""}
     ${variants.length ? `<div class="qopts"><span class="label">${esc(t("question.variants"))}</span>${variants.map((v) => `
-      <label class="qopt"><input type="radio" name="vq${q.id}" value="${esc(v.id)}" data-question-variant="${q.id}"><span><strong>${esc(v.text)}</strong>${v.consequences?.length ? `<span class="sub">${esc(t("question.consequences"))}:</span>${claimsHtml(v.consequences, review)}` : ""}</span></label>`).join("")}</div>` : ""}
+      <label class="qopt"><input type="radio" name="vq${q.id}" value="${esc(v.id)}" data-question-variant="${q.id}" disabled><span><strong>${esc(v.text)}</strong>${v.consequences?.length ? `<span class="sub">${esc(t("question.consequences"))}:</span>${claimsHtml(v.consequences, review)}` : ""}</span></label>`).join("")}<span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></div>` : ""}
     ${q.recommendation ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(q.recommendation.text)}${q.recommendation.variant ? ` <span class="sub">[${esc(q.recommendation.variant)}]</span>` : ""}${q.recommendation.sources?.length ? ` <span class="sub">(${srcHtml(q.recommendation.sources, review)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : ""}
     ${q.remainingEvidence?.length ? `<div class="qremaining-block"><span class="label">${esc(t("question.remaining-evidence"))}</span><ul class="plain">${q.remainingEvidence.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(review.questions[n - 1].text)}</li>`).join("")}</ul></div>` : ""}
-    ${q.zones?.length ? `<div class="qzones"><span class="label">${esc(t("question.zones"))}</span><ul class="plain">${q.zones.map((z, zi) => `<li><label><input type="checkbox" data-zone="${q.id}-${zi}"> <span>${prose(z.text)}${z.sources?.length ? ` <span class="sub">(${srcHtml(z.sources, review)})</span>` : ""}</span></label></li>`).join("")}</ul></div>` : ""}
+    ${q.zones?.length ? `<div class="qzones"><span class="label">${esc(t("question.zones"))}</span><ul class="plain">${q.zones.map((z, zi) => `<li><label><input type="checkbox" data-zone="${q.id}-${zi}" disabled> <span>${prose(z.text)}${z.sources?.length ? ` <span class="sub">(${srcHtml(z.sources, review)})</span>` : ""}</span></label></li>`).join("")}</ul><span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></div>` : ""}
     ${q.kind === "decision" ? `<span class="decide group act" data-finding="q${q.id}"><button type="button" value="accepted">${esc(t("decision.accepted"))}</button><button type="button" value="deferred">${esc(t("decision.deferred"))}</button></span><span class="sub requires-content" hidden></span>${note}` : note}
   </div>`;
 }
@@ -890,7 +894,7 @@ ${coverage(review, t)}
   <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div><div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
 <button type="button" id="comment" class="floating" aria-keyshortcuts="Alt+Shift+M" title="Alt+Shift+M">${esc(t("comment"))}</button>
-<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key} · diff ${esc(review.diff?.sha256 ?? "")} · record ${esc(model.recordSha ?? model.key)}</code></details></footer>
+<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key} · ${esc(t("passport.diffSha"))} ${esc(review.diff?.sha256 ?? "")} · ${esc(t("passport.record"))} ${esc(model.recordSha ?? model.key)}</code></details></footer>
 </div>
 ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
   <div class="zoom-bar">

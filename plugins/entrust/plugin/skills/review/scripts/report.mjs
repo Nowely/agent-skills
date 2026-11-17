@@ -97,7 +97,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     `## ${t("coverage")}`,
     ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
     review.coverage || t("none"), "",
-    `${t("report-details")}: ${review.range} · ${key} · diff ${review.diff?.sha256 ?? t("none")} · record ${recordSha ?? t("none")}`,
+    `${t("report-details")}: ${review.range} · ${key} · ${t("passport.diffSha")} ${review.diff?.sha256 ?? t("none")} · ${t("passport.record")} ${recordSha ?? t("none")}`,
   ].join("\n");
 }
 

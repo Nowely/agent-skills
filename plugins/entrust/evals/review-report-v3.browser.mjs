@@ -97,6 +97,7 @@ console.error("[run] themed section");
   const initial = await page.evaluate(() => ({ js: document.documentElement.classList.contains("js"), qcards: document.querySelectorAll(".qcard").length,
     counters: document.querySelector(".counters")?.textContent ?? "", domNodes: document.querySelectorAll("*").length }));
   check("themed: page runs with five cards", initial.js && initial.qcards === 5, initial);
+  check("themed: the no-JS hint hides and the radios are live under the runtime", await page.locator("#q3 .nojs-note").isHidden() && await page.locator('#q3 input[data-question-variant]').first().isEnabled());
   check("themed: decision counters start at remaining 2", (await progressQ(page)).includes("remaining: 2"), await progressQ(page));
   check("themed: evidence card has no accept control", await page.locator("#q1 .decide").count() === 0);
   // An acceptance without a variant is not a decision: it counts nothing, retires no child, exports "remaining".
@@ -189,6 +190,9 @@ console.error("[run] no-JS section");
   check("no-JS: page stays unscripted", !((await page.locator("html").getAttribute("class")) ?? "").includes("js"));
   check("no-JS: card text reads", (await page.textContent("#q3 .qquestion")).includes("Keep the conversion"));
   check("no-JS: variants and consequences read", (await page.textContent("#q3 .qopts")).includes("No new unit"));
+  check("no-JS: variant radios and zone checks are disabled and say they need JS",
+    await page.locator('#q3 input[data-question-variant]').first().isDisabled() && await page.locator('#q1 input[data-zone]').first().isDisabled()
+    && (await page.textContent("#q3 .qopts")).includes("JavaScript"));
   await page.click("#map-details > summary");
   check("no-JS: the full map opens natively and reads", await page.locator("#b1").isVisible() && (await page.locator("#map .seg[data-block]").count()) === 3);
   await page.click(".passport-card > summary");

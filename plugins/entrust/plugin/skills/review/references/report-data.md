@@ -171,8 +171,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
   of the diff digest or the record digest, which are computed from the bytes.
 - **Language.** `language` is the session's language code; built-in `en` and `ru` cover every control. Another
   language needs a complete `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
-  A record without the new fields needs only the catalog the report had before them; a record that uses them needs
-  the new words too, so a new control is never silently left in English.
+  The catalog a record needs is the old base plus the words of the controls it actually shows: the counters, the
+  file tree's marks and the print profiles on every record, the viewer for pictures, and the cards, passport,
+  coverage, tradeoffs, permission and historical marks for the fields that use them — so a control is never
+  silently left in English.
 
 ## Sources
 

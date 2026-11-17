@@ -113,7 +113,9 @@ Object.assign(LABELS, {
   "decision.remaining": "remaining", "decision.requires-content": "Pick a variant, or say in a comment what you decide.",
   "decision.defer-reason": "Say in a comment why you defer it.", "decision.parent-pending": "Waits for the parent decision.",
   "decision.note": "Comment on the decision", "decision.na-badge": "Not applicable under the variant accepted for the parent question.",
+  "decision.requires-js": "Choosing here needs JavaScript; without it the choices only read.",
   "passport": "Passport", "passport.repository": "Repository", "passport.base": "Base", "passport.head": "Head", "passport.reviewed-at": "Reviewed at",
+  "passport.diffSha": "diff sha256", "passport.record": "record",
   "coverage.ran": "Ran", "coverage.read": "Read", "coverage.not-checked": "Not checked",
   "permission": "permission, not an obligation",
   "scope.files": "files", "scope.added": "added", "scope.removed": "removed",
@@ -342,7 +344,9 @@ Object.assign(CATALOGS.ru, {
   "decision.remaining": "осталось", "decision.requires-content": "Выберите вариант или напишите в комментарии, что решаете.",
   "decision.defer-reason": "Напишите в комментарии, почему откладываете.", "decision.parent-pending": "Ждёт решения родительского вопроса.",
   "decision.note": "Комментарий к решению", "decision.na-badge": "Неприменимо при варианте, принятом для родительского вопроса.",
+  "decision.requires-js": "Выбор здесь требует JavaScript; без него варианты только читаются.",
   "passport": "Паспорт", "passport.repository": "Репозиторий", "passport.base": "База", "passport.head": "Ревизия", "passport.reviewed-at": "Дата ревью",
+  "passport.diffSha": "sha256 diff", "passport.record": "запись",
   "coverage.ran": "Запущено", "coverage.read": "Прочитано", "coverage.not-checked": "Не проверено",
   "permission": "разрешение, не обязательство",
   "scope.files": "файлов", "scope.added": "добавлено", "scope.removed": "удалено",
@@ -363,12 +367,32 @@ Object.assign(CATALOGS.ru, {
 
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
-// Whether a record uses any field of the decision-first report: such a record in a custom language needs the
-// new words too; a legacy record keeps the old catalog complete, and new controls fall back to the built-in words.
-export const enriched = (review) => (review.questions ?? []).some((q) => q.kind !== undefined)
-  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined
-  || (review.requirements ?? []).some((r) => r.permission !== undefined)
-  || (review.screens ?? []).some((s) => s.historical !== undefined);
+// The words every record's page shows, old or new: the counters, the file tree's marks, the print profiles and
+// the skip link. A custom catalog must carry them too, or those controls would silently stand in English.
+const ALWAYS_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
+  "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
+  "print.owner", "print.auditor", "print.omissions", "skip-to-decisions"];
+// The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
+// enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
+// array guards, so they read every list defensively.
+const listOf = (value) => Array.isArray(value) ? value : [];
+const FEATURES = [
+  [(review) => listOf(review.questions).some((q) => q?.kind !== undefined),
+    ["question.kind.decision", "question.kind.fact", "question.kind.evidence", "question.context", "question.variants",
+      "question.consequences", "question.remaining-evidence", "question.zones", "question.recommendation-note",
+      "question.parent", "question.blocks", "decision.accepted", "decision.deferred", "decision.not-applicable",
+      "decision.remaining", "decision.requires-content", "decision.defer-reason", "decision.parent-pending",
+      "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant"]],
+  [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
+  [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
+  [(review) => review.tradeoffs !== undefined, ["tradeoffs", "tradeoff.consequence"]],
+  [(review) => listOf(review.requirements).some((r) => r?.permission !== undefined), ["permission"]],
+  [(review) => listOf(review.screens).some((s) => s?.historical !== undefined), ["screen.historical"]],
+  [(review) => listOf(review.screens).some((s) => ["mockup", "before", "after"].some((shot) => s?.[shot] !== undefined)),
+    ["viewer.open", "viewer.fit", "viewer.actual-size", "viewer.previous", "viewer.next", "viewer.close"]],
+  [(review) => listOf(review.units).length > 0 || listOf(review.target_units).length > 0, ["structure.declared-only"]],
+];
+export const requiredKeys = (review) => [...BASE_KEYS, ...ALWAYS_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
@@ -378,7 +402,7 @@ export function labelsOf(review) {
 
 export function labelFaults(review) {
   if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
-  const required = enriched(review) ? Object.keys(LABELS) : BASE_KEYS;
+  const required = requiredKeys(review);
   const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
     ? required.filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
   const faults = missing.length ? [`language "${review.language}" needs a complete labels catalog; missing: ${missing.join(", ")}`] : [];
