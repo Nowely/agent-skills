@@ -139,6 +139,8 @@ td ol { margin: 0; padding-left: 1.2rem }
 .qcard .qhead h3 { font-size: 1.05rem; display: inline }
 .qcard .qquestion { margin: .2rem 0 }
 .qstatus { flex: none }
+/* The status chip and the NA badge carry whole sentences: they wrap, never push the card wide. */
+.qstatus, .na-badge { white-space: normal }
 .qstatus[data-state="decided"] { --v: var(--keep); --v-bg: var(--keep-bg) }
 .qstatus[data-state="deferred"] { --v: var(--fix); --v-bg: var(--fix-bg) }
 .qstatus[data-state="draft"] { --v: var(--accent); --v-bg: color-mix(in srgb, var(--accent) 12%, var(--surface)) }
@@ -377,7 +379,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 /* Print: every panel prints; the owner profile hides the map and the tree, the auditor opens everything.
    The palette resets to light so both themes print readable; the light token colors are the inline ones. */
 @media print {
-  .bar, .decide, .act, #comment, #annotation-editor, .map-filters, .skip-link, button, .filter-chip, #seg-popover, .code-controls, .qactions, .decisions-tools, .theme-btn { display: none !important }
+  .bar, .decide, .act, #comment, #annotation-editor, .map-filters, .skip-link, button, .filter-chip, #seg-popover, .code-controls, .qactions, .decisions-tools, .theme-btn, .annotation-feedback { display: none !important }
   .panel[hidden] { display: flex !important }
   :root, :root[data-theme="dark"] { --bg: #fff; --surface: #fff; --fg: #000; --muted: #444; --line: #999; --accent: #000; --code: #fff;
     --keep: #1c7449; --keep-bg: #fff; --fix: #8f5b00; --fix-bg: #fff; --remove: #b02e28; --remove-bg: #fff; --open-fg: #475069;
@@ -1517,11 +1519,12 @@ ${coverage(review, t)}
   <p class="sub">${esc(t("export.note"))}</p>
   <div class="export-json"><button type="button" id="export-json">${esc(t("export.download"))}</button><button type="button" id="copy">${esc(t("export.copy-text"))}</button><button type="button" id="print-owner">${esc(t("print.owner"))}</button><button type="button" id="print-audit">${esc(t("print.auditor"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
   <p class="sub">${esc(t("print.omissions"))}</p>
-  <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div><div id="passages" class="stack"></div>
+  <div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
 `)}
 <footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key} · ${esc(t("passport.diffSha"))} ${esc(review.diff?.sha256 ?? "")} · ${esc(t("passport.record"))} ${esc(model.recordSha ?? model.key)}</code></details></footer>
 </div>
+<div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div>
 <div id="seg-popover" role="dialog" aria-label="${esc(t("seg.popover"))}" hidden></div>
 ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
   <div class="zoom-bar">
