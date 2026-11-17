@@ -179,7 +179,7 @@ Object.assign(LABELS, {
 // The v4 decision-card words: the status chip, the draft a deferred or unconfirmed pick leaves, the gate
 // a child shows while its parent is undecided or has accepted an outside variant, and the mobile confirm.
 Object.assign(LABELS, {
-  "decision.status.open": "waiting", "decision.status.decided": "selected: {n}", "decision.status.draft": "confirm: {n}",
+  "decision.status.open": "waiting", "decision.status.decided": "selected: {n}", "decision.status.draft": "draft: {n}",
   "decision.confirm": "Confirm selection", "decision.defer": "Defer", "decision.reset": "Reset",
   "decision.draft-deferred": "Draft: «{n}» — saved but not in effect (the decision is deferred).",
   "decision.draft-mobile": "Draft: «{n}». Press «Confirm selection» to fix the decision.",
@@ -466,7 +466,7 @@ Object.assign(CATALOGS.ru, {
 });
 
 Object.assign(CATALOGS.ru, {
-  "decision.status.open": "ожидает", "decision.status.decided": "выбрано: {n}", "decision.status.draft": "подтвердите: {n}",
+  "decision.status.open": "ожидает", "decision.status.decided": "Выбрано: {n}", "decision.status.draft": "черновик: {n}",
   "decision.confirm": "Подтвердить выбор", "decision.defer": "Отложить", "decision.reset": "Сбросить",
   "decision.draft-deferred": "Черновик: «{n}» — сохранён, но не действует (решение отложено).",
   "decision.draft-mobile": "Черновик: «{n}». Нажмите «Подтвердить выбор», чтобы зафиксировать решение.",
@@ -475,10 +475,103 @@ Object.assign(CATALOGS.ru, {
   "decision.gate-draft": " Сохранённый вариант «{n}» — черновик, не действует.",
   "decision.choose": "Выберите вариант",
   "decision.fact-needed": "Нужен факт:", "decision.evidence-needed": "Нужно доказательство:",
-  "decision.sheet-note": "Выбор варианта фиксирует решение; комментарий его не заменяет. «Отложить» сохраняет вариант как черновик — он не действует. Рекомендация — мнение ревьюера; решает владелец.",
+  "decision.sheet-note": "Выбор варианта фиксирует решение и обратим на любом экране; комментарий его не заменяет. «Отложить» сохраняет вариант как черновик — он не действует. Рекомендация — мнение ревьюера; решает владелец.",
   "decision.export-note": "Как фиксируются и выгружаются решения",
-  "decision.export-method": "Карточки сгруппированы по тому, что спрашивает вопрос. На узком экране тап по варианту — черновик, пока «Подтвердить выбор» не зафиксирует его. Черновик не показан как сделанный выбор и выгружается с пометкой черновика. Решение может изменить требование, но не заменяет доказательство и не переписывает вердикты фрагментов. Варианты и комментарии выгружаются в JSON с digest записи.",
+  "decision.export-method": "Карточки сгруппированы по следующему действию. Выбор варианта фиксирует решение и обратим на любом экране; черновик не показан как сделанный выбор и выгружается с пометкой черновика. Комментарии сохраняются в этом браузере, не отправляются и сразу попадают в выгрузку с любого таба. Решение может изменить требование, но не заменяет доказательство и не переписывает вердикты фрагментов. Варианты, ответы на факты и комментарии выгружаются в JSON с digest записи.",
 });
+
+// The v5 words: the one Choices tab with its subtab filters and action groups, the unified card shell,
+// the reversible choice, the fact answer, the compact comment, the export dialog, the purpose toggles,
+// the tree's reveal and the honest no-script counter. Factual status texts remain the record's own.
+Object.assign(LABELS, {
+  "tab.decisions": "Choices",
+  "choice.filter.all": "All", "choice.filter.q": "Decisions", "choice.filter.f": "Findings", "choice.filter.i": "Ideas",
+  "choice.filter.fact": "Facts · checks", "choice.filter.deferred": "Deferred", "choice.filter.done": "Done",
+  "choice.filters": "Subtab filters of the one choice list",
+  "group.owner": "Owner choice needed", "group.fix": "Proposed fixes", "group.data": "Data or a check needed", "group.settled": "Done · deferred",
+  "card.comment": "Comment", "card.comment-n": "Comment · {n}",
+  "card.comment-saved": "Saved in this browser, not sent.",
+  "card.more-basis": "Basis and sources", "card.more-code": "Related code", "card.more-checks": "Checks · version not verified",
+  "card.no-blocks": "No related fragments.",
+  "card.idea-meta": "idea · optional",
+  "card.limit-absent-idea": "The idea's limit and version are not stated in the record; the idea is optional.",
+  "decision.fix-apply": "Fix", "decision.fix-skip": "Do not fix",
+  "decision.idea-apply": "Take", "decision.idea-skip": "Do not take",
+  "decision.idea-apply-aria": "Take the idea {n}", "decision.idea-skip-aria": "Do not take the idea {n}",
+  "decision.fix-apply-aria": "Fix F{n}", "decision.fix-skip-aria": "Do not fix F{n}",
+  "finding.limit.ran": "Shown by a run in the checked version; the check does not extend to other versions.",
+  "finding.limit.read": "Confirmed by reading the code, without a run.",
+  "finding.limit.judgment": "The reviewer's judgment, not a run or a read.",
+  "decision.answer-label": "Answer / link to evidence (an entered answer does not confirm the check automatically)",
+  "decision.answer-placeholder": "answer or link to evidence",
+  "decision.answered": "answer entered",
+  "decision.answer-row": "Answer entered: {n}",
+  "decision.zone-note": "Marking a zone without evidence is not a confirmation of the check.",
+  "decision.limit-unverified": "Not verified:",
+  "decision.selected-no-variant": "Selected: (no variant named)",
+  "decision.draft-suffix": "draft «{n}» — not in effect",
+  "decision.draft-row": "Draft «{n}» — not in effect",
+  "decision.children": "Subquestions", "decision.children.wait": "wait for",
+  "decision.children.open": "opened by the choice «{n}»", "decision.children.na": "not applicable under the parent's accepted variant",
+  "ideas.optional": "Ideas · optional · {n}", "ideas.not-counted": "not in the mandatory counter",
+  "export.open": "Export answers",
+  "export.dialog-note": "Saved in this browser, not sent. The JSON ties the answers to the record and the diff; the record itself is never changed.",
+  "export.accepted": "Accepted decisions", "export.deferred": "Deferred and drafts", "export.answers": "Fact answers", "export.comments": "Comments",
+  "export.empty-accepted": "No accepted decisions yet.", "export.empty-deferred": "No deferred decisions or drafts.", "export.empty-comments": "No comments.",
+  "export.partial": "Partial export is acceptable.", "export.goto": "Go", "export.text": "Answers as text",
+  "out.passage-context": "Selected text",
+  "nojs.counter-title": "Without JavaScript — a static count of the open items (Q+F); saved answers are not counted.",
+  "tree.reveal-note": "All the file's blocks are shown outside the mode",
+  "chip.hidden": "Hidden: {n}",
+  "seg.comment-details": "Comment · details", "seg.comment-details-n": "Comment · {n} · details",
+});
+Object.assign(CATALOGS.ru, {
+  "tab.decisions": "Выборы",
+  "choice.filter.all": "Все", "choice.filter.q": "Решения", "choice.filter.f": "Замечания", "choice.filter.i": "Идеи",
+  "choice.filter.fact": "Факты · проверки", "choice.filter.deferred": "Отложено", "choice.filter.done": "Завершено",
+  "choice.filters": "Сабтабы-фильтры одного списка выборов",
+  "group.owner": "Нужен выбор владельца", "group.fix": "Предложенные исправления", "group.data": "Нужны данные или проверка", "group.settled": "Завершённые · отложенные",
+  "card.comment": "Комментарий", "card.comment-n": "Комментарий · {n}",
+  "card.comment-saved": "Сохранено в этом браузере, не отправлено.",
+  "card.more-basis": "Обоснование и источники", "card.more-code": "Связанный код", "card.more-checks": "Проверки · версия не проверена",
+  "card.no-blocks": "Связанных фрагментов нет.",
+  "card.idea-meta": "идея · необязательно",
+  "card.limit-absent-idea": "Ограничение и версия для идеи в записи не указаны; идея необязательна.",
+  "decision.fix-apply": "Исправить", "decision.fix-skip": "Не исправлять",
+  "decision.idea-apply": "Взять", "decision.idea-skip": "Не брать",
+  "decision.idea-apply-aria": "Взять идею {n}", "decision.idea-skip-aria": "Не брать идею {n}",
+  "decision.fix-apply-aria": "Исправить F{n}", "decision.fix-skip-aria": "Не исправлять F{n}",
+  "finding.limit.ran": "Показано запуском в проверенной версии; на другие версии проверка не распространяется.",
+  "finding.limit.read": "Подтверждено чтением кода, без запуска.",
+  "finding.limit.judgment": "Оценка ревьюера, не запуск и не чтение.",
+  "decision.answer-label": "Ответ / ссылка на доказательство (внесённый ответ не подтверждает проверку автоматически)",
+  "decision.answer-placeholder": "ответ или ссылка на доказательство",
+  "decision.answered": "ответ внесён",
+  "decision.answer-row": "Ответ внесён: {n}",
+  "decision.zone-note": "Отметка зоны без доказательства — не подтверждение проверки.",
+  "decision.limit-unverified": "Не проверено:",
+  "decision.selected-no-variant": "Выбрано: (вариант не указан)",
+  "decision.draft-suffix": "черновик «{n}» — не действует",
+  "decision.draft-row": "Черновик «{n}» — не действует",
+  "decision.children": "Подвопросы", "decision.children.wait": "ждут решения",
+  "decision.children.open": "открыты выбором «{n}»", "decision.children.na": "неприменимы при принятом варианте родителя",
+  "ideas.optional": "Идеи · необязательно · {n}", "ideas.not-counted": "не входят в счётчик обязательных",
+  "export.open": "Выгрузить ответы",
+  "export.dialog-note": "Сохранено в этом браузере, не отправлено. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
+  "export.accepted": "Принятые решения", "export.deferred": "Отложенные и черновики", "export.answers": "Ответы на факты", "export.comments": "Комментарии",
+  "export.empty-accepted": "Пока нет принятых решений.", "export.empty-deferred": "Нет отложенных решений и черновиков.", "export.empty-comments": "Комментариев нет.",
+  "export.partial": "Частичная выгрузка допустима.", "export.goto": "Перейти", "export.text": "Ответы текстом",
+  "out.passage-context": "Выделенный текст",
+  "nojs.counter-title": "Без JavaScript — статический подсчёт открытых пунктов (Q+F); сохранённые ответы не учитываются.",
+  "tree.reveal-note": "Показаны все блоки файла вне режима",
+  "chip.hidden": "Скрыто: {n}",
+  "seg.comment-details": "Комментарий · подробности", "seg.comment-details-n": "Комментарий · {n} · подробности",
+});
+// The v5 choice is reversible on every screen: the status chip reads «Selected», never a green success.
+LABELS["decision.status.decided"] = "Selected: {n}";
+CATALOGS.ru["decision.status.decided"] = "Выбрано: {n}";
+LABELS["decision.sheet-note"] = "Choosing a variant fixes the decision and is reversible on any screen; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.";
+LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible on any screen; a draft is never shown as a made choice and exports with a draft mark. Comments are saved in this browser, not sent, and travel with the export from any tab. A decision may change a requirement but does not replace evidence and does not rewrite fragment verdicts. Variants, fact answers and comments export to JSON with the record's digest.";
 
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
@@ -503,7 +596,20 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "purpose.production", "purpose.tests", "purpose.styles", "purpose.assets", "purpose.docs", "purpose.config",
   "purpose.lines-note", "purpose.rules.production", "purpose.rules.tests", "purpose.rules.styles",
   "purpose.rules.assets", "purpose.rules.docs", "purpose.rules.config",
-  "export.download", "export.copy-text", "export.note", "nojs.note", "nojs.map"];
+  "export.download", "export.copy-text", "export.note", "nojs.note", "nojs.map",
+  // The v5 chrome stands on every record: the one Choices tab, its subtabs and groups, the unified card
+  // shell with its compact comment, the finding's evidence limit, the export dialog, the purpose toggles'
+  // hidden chip, the tree's reveal note and the honest no-script counter.
+  "choice.filter.all", "choice.filter.q", "choice.filter.f", "choice.filter.i", "choice.filter.fact",
+  "choice.filter.deferred", "choice.filter.done", "choice.filters",
+  "group.owner", "group.fix", "group.data", "group.settled",
+  "card.comment", "card.comment-n", "card.comment-saved", "card.more-basis", "card.more-code", "card.no-blocks",
+  "decision.fix-apply", "decision.fix-skip", "decision.fix-apply-aria", "decision.fix-skip-aria",
+  "finding.limit.ran", "finding.limit.read", "finding.limit.judgment",
+  "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
+  "export.open", "export.dialog-note", "export.accepted", "export.deferred", "export.answers", "export.comments",
+  "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
+  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
 // array guards, so they read every list defensively.
@@ -517,7 +623,13 @@ const FEATURES = [
       "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant", "out.draft",
       "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.confirm", "decision.defer", "decision.reset",
       "decision.draft-deferred", "decision.draft-mobile", "decision.gate-pending", "decision.gate-na", "decision.gate-draft",
-      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method"]],
+      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method",
+      "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
+      "decision.zone-note", "decision.limit-unverified", "card.more-checks",
+      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na"]],
+  [(review) => listOf(review.ideas).length > 0,
+    ["ideas.optional", "ideas.not-counted", "card.idea-meta", "card.limit-absent-idea",
+      "decision.idea-apply", "decision.idea-skip", "decision.idea-apply-aria", "decision.idea-skip-aria"]],
   [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
   [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
   [(review) => review.tradeoffs !== undefined, ["tradeoffs", "tradeoff.consequence"]],
