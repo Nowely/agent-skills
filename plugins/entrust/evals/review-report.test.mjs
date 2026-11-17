@@ -696,6 +696,29 @@ test("deferred needs a reason and never counts as accepted; evidence cannot be d
     return true;
   });
 
+test("an invalid acceptance or deferral is not a decision anywhere: applicability, counters, export",
+  "a bare click exported as accepted retired children and closed decisions the owner never made",
+  () => {
+    // Accepted without a variant: not accepted, and the child stays applicable with its answer.
+    const bare = dstate({ 1: { choice: "accepted" }, 2: { choice: "accepted", variant: "a" } });
+    if (applicable(DQS[1], bare, DQS) !== true) return "an acceptance without a variant retired the child";
+    if (settle(DQS, bare).questions[2]?.choice !== "accepted") return "settle dropped the child's answer under an invalid acceptance";
+    const c = counters(DQS, bare);
+    if (c.accepted !== 1 || c.remaining !== 2) return `an invalid acceptance was counted: ${JSON.stringify(c)}`;
+    const out = exportOf(DQS, settle(DQS, bare), {});
+    if (out.questions.find((q) => q.question === 1).status !== "remaining") return "the export called a bare acceptance accepted";
+    if (out.questions.find((q) => q.question === 2).status === "not-applicable") return "the export retired a child under an invalid acceptance";
+    // Deferred without a reason: not deferred in the export either.
+    const bareDefer = dstate({ 4: { choice: "deferred" } });
+    const deferred = exportOf(DQS, bareDefer, {});
+    if (deferred.questions.find((q) => q.question === 4).status !== "remaining") return "the export called a reasonless deferral deferred";
+    // A valid acceptance of a variant-less decision (a comment) is exported as accepted.
+    const commented = dstate({ 4: { choice: "accepted" } }, { q4: "Keep as is." });
+    if (!validAccept(DQS[3], commented) || exportOf(DQS, commented, {}).questions.find((q) => q.question === 4).status !== "accepted")
+      return "a commented acceptance of a variant-less decision was not exported as accepted";
+    return true;
+  });
+
 test("the export carries the schema, both digests, the question number, the variant id and text, comment and status",
   "an export of ids alone cannot be read back, and one without digests cannot be tied to its revision",
   () => {

@@ -264,10 +264,11 @@ const SCRIPT = `
     const open = data.findings.filter((f) => !state.findings[f.id]);
     const blocks = data.blocks.filter((b) => state.notes["b" + b.id]).map((b) => "- " + b.path + " " + b.where + ": " + state.notes["b" + b.id]);
     const idea = (i) => "- " + i.title + note(i.id), taken = (i) => state.findings[i.id] === "apply";
-    // A question's decision travels with its variant's id and text, never the localized label alone.
+    // A question's decision travels with its variant's id and text, never the localized label alone. The status
+    // is the valid decision: a bare acceptance or deferral is copied without one, never as accepted or deferred.
     const qs = data.questions.filter((q) => q.kind === "decision").filter((q) => { const e = qEntry(q.id); return (e.choice || e.variant) && D.applicable(q, state, data.questions); }).map((q) => {
       const e = qEntry(q.id), v = (q.variants || []).find((v) => v.id === e.variant);
-      const status = e.choice === "accepted" ? t.accepted : e.choice === "deferred" ? t.deferred : "";
+      const status = D.validAccept(q, state) ? t.accepted : D.validDefer(q, state) ? t.deferred : "";
       return "- Q" + q.id + (status ? " [" + status + "]" : "") + (v ? " (" + t.variant + " " + v.id + ": " + v.text + ")" : "") + note("q" + q.id);
     });
     const marked = state.passages.map((p, i) => "- " + (i + 1) + ". " + p.where + (p.anchor ? " [" + p.anchor.id + ":" + p.anchor.start + "-" + p.anchor.end + "]" : "") + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
@@ -302,7 +303,8 @@ const SCRIPT = `
         const missing = (e.choice === "accepted" && !D.validAccept(q, state)) || (e.choice === "deferred" && !D.validDefer(q, state));
         hint.hidden = !missing; hint.textContent = e.choice === "deferred" ? t.deferReason : t.requiresContent; }
       const pending = card.querySelector(".parent-pending");
-      if (pending) pending.hidden = !q.parent || qEntry(q.parent.question).choice === "accepted";
+      if (pending) { const parent = q.parent && data.questions.find((x) => x.id === q.parent.question);
+        pending.hidden = !parent || D.validAccept(parent, state) || D.validDefer(parent, state); }
     }
     for (const z of all("[data-zone]")) z.checked = !!state.zones[z.dataset.zone];
     progress.textContent = t.decided.replace("{n}", data.findings.filter((f) => state.findings[f.id]).length + " / " + data.findings.length);

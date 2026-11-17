@@ -13,18 +13,18 @@ export function decisionRuntime() {
   const entryOf = (state, id) => state.questions[id] || {};
   const noteOf = (state, id) => entryOf(state, id).note || state.notes["q" + id] || "";
   const byIdOf = (questions) => Object.fromEntries(questions.map((q) => [q.id, q]));
-  // A child applies while its parent is undecided, and while the parent's accepted variant is one the child
-  // listed. A selected radio alone never suppresses a child; an accepted variant outside the list does, and a
-  // parent that is itself not applicable takes its children with it.
+  // A child applies while its parent has no valid acceptance, and while the parent's accepted variant is one the
+  // child listed. A selected radio alone never suppresses a child, and neither does an acceptance without its
+  // variant or comment; a valid acceptance of a variant outside the list does, and a parent that is itself not
+  // applicable takes its children with it.
   const applicableIn = (q, state, byId, seen = new Set()) => {
     if (!q.parent) return true;
     if (seen.has(q.id)) return false;
     seen.add(q.id);
     const parent = byId[q.parent.question];
     if (!parent || !applicableIn(parent, state, byId, seen)) return false;
-    const entry = entryOf(state, parent.id);
-    if (entry.choice !== "accepted") return true;
-    return (q.parent.variants || []).includes(entry.variant);
+    if (!validAccept(parent, state)) return true;
+    return (q.parent.variants || []).includes(entryOf(state, parent.id).variant);
   };
   // Settle drops the answers of children that became not applicable, so an old answer never returns silently
   // when the parent changes again; the comment stays. Applicability rests on the parent's accepted variant, not
@@ -68,7 +68,11 @@ export function decisionRuntime() {
       findings: state.findings,
       questions: questions.filter((q) => q.kind === "decision").map((q) => {
         const entry = entryOf(state, q.id), variant = (q.variants ?? []).find((v) => v.id === entry.variant);
-        return { question: q.id, status: applicableIn(q, state, byId) ? (entry.choice ?? "remaining") : "not-applicable",
+        // The export states the valid decision, never a bare click: an acceptance without its variant or comment
+        // and a deferral without a reason stay "remaining".
+        const status = !applicableIn(q, state, byId) ? "not-applicable"
+          : validAccept(q, state) ? "accepted" : validDefer(q, state) ? "deferred" : "remaining";
+        return { question: q.id, status,
           variant: variant ? { id: variant.id, text: variant.text } : null, comment: noteOf(state, q.id) || null };
       }),
       notes: state.notes, zones: state.zones, passages: state.passages,

@@ -99,6 +99,19 @@ console.error("[run] themed section");
   check("themed: page runs with five cards", initial.js && initial.qcards === 5, initial);
   check("themed: decision counters start at remaining 2", (await progressQ(page)).includes("remaining: 2"), await progressQ(page));
   check("themed: evidence card has no accept control", await page.locator("#q1 .decide").count() === 0);
+  // An acceptance without a variant is not a decision: it counts nothing, retires no child, exports "remaining".
+  await accept(page, 3);
+  const bareAccept = await page.evaluate(() => ({ na: document.getElementById("q4").classList.contains("na"),
+    hint: !document.querySelector("#q3 .requires-content").hidden, text: document.getElementById("out").value }));
+  check("themed: acceptance without a variant decides nothing", (await progressQ(page)).includes("accepted: 0") && !bareAccept.na && bareAccept.hint
+    && !bareAccept.text.includes("[accepted]"), { progress: await progressQ(page), ...bareAccept });
+  const [bareDownload] = await Promise.all([page.waitForEvent("download"), page.click("#export-json")]);
+  const barePath = path.join(OUT, "decisions-bare-accept.json");
+  await bareDownload.saveAs(barePath);
+  const bareExport = JSON.parse(fs.readFileSync(barePath, "utf8"));
+  check("themed: bare acceptance exports remaining, child stays active", bareExport.questions.find((q) => q.question === 3)?.status === "remaining"
+    && bareExport.questions.find((q) => q.question === 4)?.status !== "not-applicable", bareExport.questions);
+  await accept(page, 3); // cancel the bare acceptance before the real flow
   // A radio alone never suppresses the child; acceptance under the applicable variant keeps it active.
   await radio(page, 3, "extend");
   check("themed: radio alone keeps the child applicable", !(await page.evaluate(() => document.getElementById("q4").classList.contains("na"))));
