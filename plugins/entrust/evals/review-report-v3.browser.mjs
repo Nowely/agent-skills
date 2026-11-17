@@ -7,6 +7,8 @@
 //
 // playwright-core is a verification tool here, not a dependency of the plugin; the Chromium binary defaults to
 // the Playwright cache's Chrome for Testing. Without the 65507 record on the machine, that part is skipped.
+// PDFJS_DIST=<path to pdfjs-dist/legacy/build/pdf.mjs> adds the real-PDF acceptance (owner and auditor profiles);
+// without it the PDF part is skipped.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -16,6 +18,21 @@ import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE ?? "playwright-core");
+// PDF text extraction, like playwright-core, is a verification tool: resolved from PDFJS_DIST or the environment.
+let pdfjs = null;
+try { pdfjs = await import(process.env.PDFJS_DIST ?? "pdfjs-dist/legacy/build/pdf.mjs"); } catch {}
+const pdfText = async (file) => {
+  const options = { data: new Uint8Array(fs.readFileSync(file)) };
+  if (process.env.PDFJS_DIST) options.standardFontDataUrl = path.join(path.dirname(process.env.PDFJS_DIST), "..", "standard_fonts") + path.sep;
+  const task = pdfjs.getDocument(options), doc = await task.promise;
+  let text = "";
+  for (let i = 1; i <= doc.numPages; i++) text += (await (await doc.getPage(i)).getTextContent()).items.map((item) => item.str).join("") + "\n";
+  await task.destroy();
+  // Chrome's subset fonts map Cyrillic к to U+0138 (ĸ) in the PDF's ToUnicode table; put it back for matching.
+  return text.replaceAll("\u0138", "\u043A");
+};
+// A B address as a whole word: B1 must not match inside B1470.
+const hasB = (text, n) => new RegExp(`(?<![0-9A-Za-z])B${n}(?![0-9])`).test(text);
 const CHROME = process.env.CHROME_FOR_TESTING ?? path.join(process.env.HOME, "Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, "..", "plugin", "skills", "review", "scripts", "report.mjs");
@@ -69,7 +86,8 @@ if (fs.existsSync(path.join(SOURCE, "review.json")) && fs.existsSync(ANN)) {
   const result = spawnSync(process.execPath, [SCRIPT, "render", file], { cwd: dir, encoding: "utf8" });
   if (result.status !== 0) throw new Error(`render 65507 copy: ${result.stderr.slice(0, 500)}`);
   console.error("[setup] 65507 copy rendered");
-  big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size };
+  big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size,
+    screenName: record.screens?.[0]?.name, limit: record.coverageStructured?.find((c) => c.kind === "not_checked")?.text };
 }
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -236,6 +254,26 @@ if (big) {
   results.big = { loadMs, htmlBytes: big.bytes, domNodes: initial.domNodes };
   check("65507: the immutable original is untouched", createHash("sha256").update(fs.readFileSync(path.join(SOURCE, "review.json"))).digest("hex") === bigSha);
 } else results.checks.push({ name: "65507 part", ok: true, detail: "skipped: the record is not on this machine" });
+console.error("[run] PDF section");
+// ---- real PDFs: the owner profile prints the screens and the coverage limits, the auditor every B address ----
+if (big && pdfjs) {
+  const { page, context } = await open(big.url);
+  await page.click("#print-owner");
+  const ownerPdf = path.join(OUT, "65507-owner.pdf");
+  await page.pdf({ path: ownerPdf });
+  const ownerText = await pdfText(ownerPdf);
+  check("PDF owner: the screens and the coverage limits print", ownerText.includes(big.screenName) && ownerText.includes(big.limit)
+    && !hasB(ownerText, 1470), { screen: ownerText.includes(big.screenName), limit: ownerText.includes(big.limit), mapClosed: !hasB(ownerText, 1470) });
+  await page.click("#print-audit");
+  const auditorPdf = path.join(OUT, "65507-auditor.pdf");
+  await page.pdf({ path: auditorPdf });
+  const auditorText = await pdfText(auditorPdf);
+  const missing = [];
+  for (let n = 1; n <= 1470; n++) if (!hasB(auditorText, n)) missing.push(n);
+  check("PDF auditor: all 1470 B addresses are in the PDF text", missing.length === 0, missing.slice(0, 10));
+  await context.close();
+  results.pdf = { ownerBytes: fs.statSync(ownerPdf).size, auditorBytes: fs.statSync(auditorPdf).size };
+} else if (big) results.checks.push({ name: "PDF part", ok: true, detail: "skipped: pdfjs-dist is not available (set PDFJS_DIST)" });
 console.error("[run] annotations section");
 // ---- the legacy annotation runtime still works on the new page ----
 {
