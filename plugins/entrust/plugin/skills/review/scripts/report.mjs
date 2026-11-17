@@ -18,7 +18,7 @@ import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -26,7 +26,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, key, recordSha }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, key, recordSha, purpose }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -69,7 +69,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${s.historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
-    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "),
+    ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), t("weight.limit"),
       ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
       ...mechanisms.flatMap((m) => [
       `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
@@ -89,6 +89,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
     // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
+    `${t("purpose")}: ${PURPOSES.map((p) => `${t(`purpose.${p}`)} ${purpose.counts[p].blocks}`).join("; ")}. ${t("purpose.lines-note")}`,
     ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
