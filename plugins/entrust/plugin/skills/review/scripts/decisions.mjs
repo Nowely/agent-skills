@@ -1,7 +1,9 @@
 // The user's decisions as data, independent of the page: state, the applicability of child questions, counters
 // and the export. Three layers stay apart: the review's verdicts in the record, these decisions, and evidence
 // obtained in a later revision of the record. The same runtime is embedded in the page's script and imported by
-// the tests; it touches no DOM. Decisions are never carried between revisions by question number.
+// the tests; it touches no DOM. A picked variant is the decision (a draft until confirmed on a narrow screen);
+// a deferral or an outside parent variant keeps the pick as a draft, never in effect. Decisions are never
+// carried between revisions by question number.
 export function decisionRuntime() {
   const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {} });
   const normalize = (raw) => {
@@ -27,15 +29,16 @@ export function decisionRuntime() {
     return (q.parent.variants || []).includes(entryOf(state, parent.id).variant);
   };
   // Settle drops the answers of children that became not applicable, so an old answer never returns silently
-  // when the parent changes again; the comment stays. Applicability rests on the parent's accepted variant, not
-  // on the child's own answer, so one pass is stable even down a chain.
+  // when the parent changes again; the picked variant stays as a DRAFT (marked in the export, never shown as
+  // an active choice), and the comment stays. Applicability rests on the parent's accepted variant, not on
+  // the child's own answer, so one pass is stable even down a chain.
   const settle = (questions, state) => {
     const byId = byIdOf(questions), next = { ...state, questions: { ...state.questions } };
     for (const q of questions) {
       if (!q.parent || applicableIn(q, next, byId)) continue;
       const entry = next.questions[q.id];
       if (entry && (entry.choice !== undefined || entry.variant !== undefined)) {
-        const { choice, variant, ...rest } = entry;
+        const { choice, ...rest } = entry;
         if (Object.keys(rest).length) next.questions[q.id] = rest; else delete next.questions[q.id];
       }
     }
@@ -63,18 +66,25 @@ export function decisionRuntime() {
   };
   const exportOf = (questions, state, meta) => {
     const byId = byIdOf(questions);
+    const entries = questions.filter((q) => q.kind === "decision").map((q) => {
+      const entry = entryOf(state, q.id), variant = (q.variants ?? []).find((v) => v.id === entry.variant);
+      // The export states the valid decision, never a bare click: an acceptance without its variant or comment
+      // and a deferral without a reason stay "remaining". A variant saved under a deferral, an outside parent
+      // variant or an unconfirmed pick travels as a DRAFT, never as an accepted decision.
+      const status = !applicableIn(q, state, byId) ? "not-applicable"
+        : validAccept(q, state) ? "accepted" : validDefer(q, state) ? "deferred" : "remaining";
+      return { question: q.id, status,
+        variant: variant ? { id: variant.id, text: variant.text } : null,
+        ...(entry.variant && status !== "accepted" ? { variant_draft: true } : {}),
+        comment: noteOf(state, q.id) || null };
+    });
     return {
-      schema_version: 3, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
+      schema_version: 4, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
       findings: state.findings,
-      questions: questions.filter((q) => q.kind === "decision").map((q) => {
-        const entry = entryOf(state, q.id), variant = (q.variants ?? []).find((v) => v.id === entry.variant);
-        // The export states the valid decision, never a bare click: an acceptance without its variant or comment
-        // and a deferral without a reason stay "remaining".
-        const status = !applicableIn(q, state, byId) ? "not-applicable"
-          : validAccept(q, state) ? "accepted" : validDefer(q, state) ? "deferred" : "remaining";
-        return { question: q.id, status,
-          variant: variant ? { id: variant.id, text: variant.text } : null, comment: noteOf(state, q.id) || null };
-      }),
+      questions: entries,
+      // A decision accepted by comment alone (no variants to pick): named, so a reader never mistakes it for a
+      // missing variant.
+      applyWithoutVariant: entries.filter((e) => e.status === "accepted" && !e.variant).map((e) => e.question),
       notes: state.notes, zones: state.zones, passages: state.passages,
     };
   };

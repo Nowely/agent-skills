@@ -711,7 +711,7 @@ const SCRIPT = `
     // acceptance or deferral, and a draft, are copied without one, never as accepted or deferred.
     const qs = data.questions.filter((q) => q.kind === "decision").filter((q) => { const e = qEntry(q.id); return (e.choice || e.variant) && D.applicable(q, state, data.questions); }).map((q) => {
       const e = qEntry(q.id), v = (q.variants || []).find((v) => v.id === e.variant);
-      const status = D.validAccept(q, state) ? t.accepted : D.validDefer(q, state) ? t.deferred : "";
+      const status = D.validAccept(q, state) ? t.accepted : D.validDefer(q, state) ? t.deferred : e.variant ? t.draft : "";
       return "- Q" + q.id + (status ? " [" + status + "]" : "") + (v ? " (" + t.variant + " " + v.id + ": " + v.text + ")" : "") + note("q" + q.id);
     });
     const marked = state.passages.map((p, i) => "- " + (i + 1) + ". " + p.where + (p.anchor ? " [" + p.anchor.id + ":" + p.anchor.start + "-" + p.anchor.end + "]" : "") + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
@@ -761,8 +761,8 @@ const SCRIPT = `
         let stateName = "open", text = t.status.open;
         if (na) { stateName = "na"; text = t.notApplicable; }
         else if (e.choice === "accepted" && e.variant) { stateName = "decided"; text = t.status.decided.replace("{n}", variantLabel(q.id, e.variant)); }
-        else if (e.choice === "draft" && e.variant) { stateName = "draft"; text = t.status.draft.replace("{n}", variantLabel(q.id, e.variant)); }
         else if (e.choice === "deferred") { stateName = "deferred"; text = t.deferred; }
+        else if (e.variant) { stateName = "draft"; text = t.status.draft.replace("{n}", variantLabel(q.id, e.variant)); }
         chipEl.dataset.state = stateName; chipEl.textContent = text;
       }
       const gate = card.querySelector("[data-qgate]");
@@ -780,7 +780,7 @@ const SCRIPT = `
         if (showDraft) draftEl.textContent = (e.choice === "deferred" ? t.draftDeferred : t.draftMobile).replace("{n}", variantLabel(q.id, e.variant));
       }
       const confirmBtn = card.querySelector("[data-confirm]");
-      if (confirmBtn) confirmBtn.hidden = na || pending || !(e.choice === "draft" && e.variant);
+      if (confirmBtn) confirmBtn.hidden = na || pending || !(e.variant && e.choice !== "accepted");
       for (const radio of card.querySelectorAll("[data-question-variant]")) radio.checked = !na && !pending && (e.choice === "accepted" || e.choice === "draft") && e.variant === radio.value;
       const disabled = na || pending;
       for (const el of card.querySelectorAll(".qopts input, .qactions button, .decide button, [data-note], [data-zone]")) el.disabled = disabled;
@@ -1448,7 +1448,7 @@ export function page(review, files, model, { syntax } = {}) {
     labels: { title: t("out.title"), apply: t("out.apply"), skip: t("out.skip"), ideas: t("out.ideas"), ideaNotes: t("out.idea-notes"), open: t("out.open"), blocks: t("out.blocks"),
       passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied"), clearConfirm: t("clear-confirm"),
       questionsOut: t("out.questions"), variant: t("out.variant"), accepted: t("decision.accepted"), deferred: t("decision.deferred"), notApplicable: t("decision.not-applicable"), remaining: t("decision.remaining"),
-      requiresContent: t("decision.requires-content"), deferReason: t("decision.defer-reason"),
+      requiresContent: t("decision.requires-content"), deferReason: t("decision.defer-reason"), draft: t("out.draft"),
       tabRemaining: t("tab.remaining", "{n}"), copyText: t("export.copy-text"), copyFailed: t("copy.failed"),
       theme: { current: t("theme.current"), next: t("theme.next"), auto: t("theme.auto"), light: t("theme.light"), dark: t("theme.dark") },
       status: { open: t("decision.status.open"), decided: t("decision.status.decided", "{n}"), draft: t("decision.status.draft", "{n}") },

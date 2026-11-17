@@ -131,7 +131,7 @@ Object.assign(LABELS, {
   "skip-to-decisions": "Skip to the decisions",
   "structure.declared-only": "Only the links the reviewer wrote are drawn; a missing arrow does not prove a missing dependency. This is the proposed structure, not a map of the current code's calls.",
   "fragment.what": "What is a fragment?",
-  "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:",
+  "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:", "out.draft": "draft",
 });
 
 // The words of the tabbed v4 page: the tabs, the theme icon, the map reader (segbar, popover, sources),
@@ -421,7 +421,7 @@ Object.assign(CATALOGS.ru, {
   "skip-to-decisions": "К решениям",
   "structure.declared-only": "Показаны только связи, явно записанные ревьюером; отсутствие стрелки не доказывает отсутствие зависимости. Это предлагаемая структура, не карта фактических вызовов текущего кода.",
   "fragment.what": "Что такое фрагмент?",
-  "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:",
+  "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:", "out.draft": "черновик",
 });
 
 // Слова вкладочной страницы v4: вкладки, тема, карта-ридер, фильтры, честный экспорт и читатель без скриптов.
@@ -512,7 +512,7 @@ const FEATURES = [
       "question.consequences", "question.remaining-evidence", "question.zones", "question.recommendation-note",
       "question.parent", "question.blocks", "decision.accepted", "decision.deferred", "decision.not-applicable",
       "decision.remaining", "decision.requires-content", "decision.defer-reason", "decision.parent-pending",
-      "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant",
+      "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant", "out.draft",
       "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.confirm", "decision.defer", "decision.reset",
       "decision.draft-deferred", "decision.draft-mobile", "decision.gate-pending", "decision.gate-na", "decision.gate-draft",
       "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method"]],

@@ -735,7 +735,8 @@ test("a chosen radio alone never suppresses children; an accepted outside varian
     const reverted = dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } });
     if (applicable(DQS[1], reverted, DQS)) return "the child stayed applicable under the accepted outside variant";
     const settled = settle(DQS, reverted);
-    if (settled.questions[2]?.choice || settled.questions[2]?.variant) return "settle kept the answer of a not-applicable child";
+    if (settled.questions[2]?.choice) return "settle kept the answer of a not-applicable child";
+    if (settled.questions[2]?.variant !== "a") return "settle lost the draft variant of a not-applicable child";
     const c = counters(DQS, settled);
     if (c.accepted !== 1 || c.notApplicable !== 1 || c.remaining !== 1) return `counters under the outside variant: ${JSON.stringify(c)}`;
     // The parent's decision is cancelled: the child applies again, but its old answer does not return silently.
@@ -797,7 +798,7 @@ test("the export carries the schema, both digests, the question number, the vari
   () => {
     const state = dstate({ 1: { choice: "accepted", variant: "keep" }, 2: { choice: "accepted", variant: "a" }, 4: { choice: "deferred" } }, { q4: "Later." });
     const out = exportOf(DQS, settle(DQS, state), { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "abc", title: "T", range: "base..head" });
-    if (out.schema_version !== 3 || out.record_sha256 !== "r".repeat(64) || out.diff_sha256 !== "d".repeat(64)) return "the export lacks its schema or digests";
+    if (out.schema_version !== 4 || out.record_sha256 !== "r".repeat(64) || out.diff_sha256 !== "d".repeat(64)) return "the export lacks its schema or digests";
     const q1 = out.questions.find((q) => q.question === 1);
     if (q1.status !== "accepted" || q1.variant?.id !== "keep" || q1.variant?.text !== "Keep") return "the export lacks the variant's id and text";
     const q4 = out.questions.find((q) => q.question === 4);
