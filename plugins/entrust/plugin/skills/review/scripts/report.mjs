@@ -17,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
+import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
 import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES } from "./review.mjs";
 
@@ -176,7 +177,9 @@ try {
       console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
     const target = argument.replace(/(\.json)?$/, ".html");
-    fs.writeFileSync(target, page(review, files, model));
+    // One Shiki highlighter per render: the page receives ready spans and CSS, and the HTML loads nothing.
+    const syntax = await createSyntax(files);
+    fs.writeFileSync(target, page(review, files, model, { syntax }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else if (command === "labels") {
     const code = (argument ?? "en").toLowerCase().split("-")[0];

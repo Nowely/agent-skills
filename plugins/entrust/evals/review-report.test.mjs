@@ -76,7 +76,7 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if ((page.match(/src="data:image\/png;base64,/g) ?? []).length !== 2) return "the two pictures given as files are not in the page";
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
     if (page.includes("HEAD~1..HEAD</span></header>")) return "the range is in the page's header";
-    return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes('id="i1"')
+    return (page.match(/<svg xmlns/g) ?? []).length === 2 && page.includes('--shiki-dark:') && page.includes('id="b1"') && page.includes('id="i1"')
       && [">Task<", ">Verdict<", ">How it works now<", ">Target solution<", ">Recommendations<", "<li>One test is missing.</li>", 'id="files"', '<ol class="steps">', 'id="comment"'].every((part) => page.includes(part))
       || "the page lacks a diagram per structure, highlighted code, a block anchor, the idea, a part of the summary, the verdict's list, the steps, the file tree or the button that comments on a selection";
   });
@@ -823,9 +823,9 @@ test("the page renders each B/F/Q anchor once, the counters equal the model, and
       if (!page.includes(cell)) return `the counters differ from the model: missing ${cell}`;
     if ((page.match(/class="qcard/g) ?? []).length !== 5) return "the five kinded questions did not become cards";
     if (!page.includes('data-parent="3"') || !page.includes('name="vq3"')) return "the child card or the variant radios are missing";
-    // The full map is a closed disclosure of real markup, not a template: readable without scripts.
-    if (!page.includes('<details class="audit-map" id="map-details">') || page.includes("<template")) return "the map is not a no-JS disclosure";
-    if (page.includes('id="map-details" open')) return "the full map starts open";
+    // The full map is real markup in closed per-file disclosures, not a template: readable without scripts.
+    if (!page.includes('<details class="file-details"') || page.includes("<template")) return "the map is not a no-JS disclosure";
+    if (page.includes('class="file-details" open')) return "the full map starts open";
     // Deterministic render, and the digest in the page is the digest of these bytes.
     const again = report("render", data);
     if (again.status !== 0 || !before.equals(fs.readFileSync(data)) || page !== fs.readFileSync(html, "utf8")) return "the themed render is not byte-stable or touched the record";
