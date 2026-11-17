@@ -75,6 +75,21 @@ export const MET = EVIDENCE.filter((word) => word !== "judgment");
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 const SHOTS = ["mockup", "before", "after"];
 
+// What a touched file is for, derived from its path alone: the map and the tree group and filter by it.
+// Deterministic rules, disclosed on the page; a block's own kind only redirects a test block of a production
+// file. Nothing here is a record field: the classification is the model's, computed the same way every render.
+export const PURPOSES = ["production", "tests", "styles", "assets", "docs", "config"];
+export function purposeOfPath(p) {
+  const base = p.split("/").pop().toLowerCase();
+  const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1) : "";
+  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
+  if (["scss", "css", "less", "sass", "styl"].includes(ext)) return "styles";
+  if (["svg", "png", "jpg", "jpeg", "gif", "ico", "webp", "avif", "woff", "woff2", "ttf", "eot"].includes(ext) || /(^|\/)(assets|icons)(\/|$)/.test(p) || /(^|\/)keysets(\/|$)/.test(p)) return "assets";
+  if (["md", "mdx", "rst", "txt"].includes(ext) || /^(changelog|readme|license)/.test(base)) return "docs";
+  if (base === "package.json" || /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|npm-shrinkwrap\.json)$/.test(p) || /^tsconfig(\..*)?\.json$/.test(base) || base === "a.yaml" || ["yaml", "yml", "toml", "ini"].includes(ext) || /^(\.eslintrc|\.prettierrc|babel\.config|jest\.config|vite\.config|webpack\.config)/.test(base)) return "config";
+  return "production";
+}
+
 // A picture the reviewer was given: an https link stays a link, a file is taken in whole so the page needs nothing beside it.
 function pictureOf(source, directory) {
   if (/^https:\/\//.test(source)) return { link: source };
@@ -484,7 +499,13 @@ export function modelOf(review, files, owner, directory) {
     }
     return p;
   };
-  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", short: shortOf(f.path) }));
+  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", short: shortOf(f.path), purpose: purposeOfPath(f.path) }));
+  // A block of tests inside a production file is tests; every other block follows its file.
+  const blockPurpose = Object.fromEntries(blocks.map((b) => [b.id, b.kind === "test" && fileMeta.find((f) => f.path === b.path)?.purpose === "production" ? "tests" : purposeOfPath(b.path)]));
+  const purposeCounts = Object.fromEntries(PURPOSES.map((c) => [c, { files: 0, blocks: 0, lines: 0 }]));
+  for (const f of fileMeta) purposeCounts[f.purpose].files++;
+  for (const b of blocks) { const c = purposeCounts[blockPurpose[b.id]]; c.blocks++; c.lines += b.size; }
+  const blockFile = Object.fromEntries(blocks.map((b) => [b.id, files.findIndex((f) => f.path === b.path)]));
   // Counters over unique sets: a fragment naming two evidence questions is one fragment awaiting evidence.
   const evidenceIds = new Set(questions.filter((q) => q.kind === "evidence").map((q) => q.id));
   const lines = { added: 0, removed: 0 };
@@ -500,5 +521,6 @@ export function modelOf(review, files, owner, directory) {
   };
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
+    purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
     key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }
