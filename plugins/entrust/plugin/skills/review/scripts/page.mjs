@@ -1,15 +1,18 @@
-// A checked review as a page: one file with no dependencies, readable without scripts. With them, the author
-// marks each finding to apply or skip, and the page writes the decisions out as text to hand back.
+// A checked review as a page: one file with no dependencies, readable without scripts. Decision-first: the
+// passport, the authored status, the counters, the verdict and the question cards come before the mechanics.
+// With scripts, the owner accepts or defers decisions, marks findings to apply or skip, comments on any passage,
+// and copies or downloads those decisions. Old records without the new fields render through the same path.
 import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
-import { VERDICTS, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { VERDICTS, mechanismCounts, sourceOf, weightCountsText, weightOverview } from "./review.mjs";
 import { esc } from "./text.mjs";
 import { annotations } from "./annotations.mjs";
+import { decisionRuntime } from "./decisions.mjs";
 
 const STYLE = `
-/* One column: the task, the verdict, how the change works now, the target and the recommendations, each under its own label; the requirements; the structure as two diagrams and a tree of files; the diff cut into blocks with a stripe for each verdict; the findings; the author's decisions. */
+/* One column, decision-first: the passport and the authored status; the counters; the verdict, the recommendation and now beside the target; the question cards; the findings and tradeoffs; the requirements; the mechanics collapsed; the structure as diagrams and a tree of files; the full diff map in a closed disclosure; the author's decisions. */
 :root { --bg: #f5f6f9; --surface: #ffffff; --fg: #1b2230; --muted: #5d6879; --line: #d8dde6; --accent: #3450c0; --code: #fafbfd; --string: #0c6b78; --number: #7b3fae;
   --keep: #1c7449; --keep-bg: #e4f3ea; --fix: #8f5b00; --fix-bg: #faefd3; --remove: #b02e28; --remove-bg: #fae5e2;
   --text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -66,6 +69,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 button { font: inherit; font-size: .92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .15rem .6rem; cursor: pointer }
 button:hover { border-color: var(--muted) }
 button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
+button:disabled { opacity: .5; cursor: default }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 .file { background: var(--surface); border: 1px solid var(--line); min-width: 0 }
 .file > header { padding: .5rem .8rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline }
@@ -77,7 +81,7 @@ button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-co
 .seg li { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: baseline }
 .seg.overruled { --v: var(--muted); --v-bg: transparent }
 .seg.overruled .tag::after { content: " → " var(--kept) }
-.seg:target > header, .finding:target { outline: 2px solid var(--accent); outline-offset: -2px }
+.seg:target > header, .finding:target, .qcard:target { outline: 2px solid var(--accent); outline-offset: -2px }
 summary { padding: .15rem .8rem; font-size: .85rem; color: var(--muted); cursor: pointer; background: var(--code) }
 pre { margin: 0; overflow-x: auto; background: var(--code); padding: .3rem 0; line-height: 1.45 }
 pre code { display: inline-block; min-width: 100% }
@@ -160,18 +164,97 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 .annotation-feedback { position: fixed; z-index: 21; bottom: 1rem; right: 1rem; max-width: calc(100vw - 2rem); padding: .5rem .75rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--surface); box-shadow: 0 2px 8px rgb(0 0 0 / .15) }
 .annotation-feedback:has(#annotation-status:empty):has(button[hidden]) { display: none }
 @media (max-width: 40rem) { .mechanism-tradeoff { grid-template-columns: 1fr } }
-
+/* The decision-first layer: passport, authored status, counters, question cards, tradeoffs, the file tree, the viewer, print. */
+.skip-link { position: absolute; left: -9999px; top: 0; background: var(--accent); color: #fff; padding: .4rem .8rem; z-index: 50 }
+.skip-link:focus { left: 0 }
+.passport-card { background: var(--surface); border: 1px solid var(--line) }
+.passport-card > summary.passport { cursor: pointer; border: 0; display: list-item; padding: .6rem 1rem; font-size: .92rem; background: none; color: var(--fg) }
+.passport-card > summary.passport > * { margin-right: 1.1rem }
+.passport-card > summary.passport:hover { background: var(--code) }
+.passport-body { padding: .5rem 1rem; border-top: 1px solid var(--line); font-size: .82rem; color: var(--muted); overflow-wrap: anywhere }
+.status-strip { display: grid; grid-template-columns: 1fr; gap: .35rem 1.4rem; background: color-mix(in srgb, var(--fix) 8%, var(--surface)); border: 1px solid var(--fix); border-left-width: 4px; padding: .7rem 1rem }
+.status-strip .row { display: flex; gap: .5rem; align-items: baseline }
+.status-strip .label { flex: none; min-width: 7rem }
+@media (min-width: 760px) { .status-strip { grid-template-columns: 1fr 1fr } }
+.counters { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; padding: .5rem 0; font-variant-numeric: tabular-nums }
+.counters .c { display: flex; flex-direction: column; gap: .1rem }
+.counters .c b { font-size: 1.3rem; line-height: 1 }
+.counters .c span { font-size: .82rem; color: var(--muted) }
+.counters .split { border-left: 1px solid var(--line); padding-left: 1.4rem }
+.count-note { flex-basis: 100%; margin: .2rem 0 0; font-size: .82rem }
+.count-note > summary { cursor: pointer; color: var(--muted); background: none; padding: 0 }
+.decision-sheet { display: flex; flex-direction: column; gap: .8rem }
+.qgroup-title { display: block; font-size: .95rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 650; margin-top: .4rem }
+.qcard { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--v, var(--muted)); padding: .7rem 1rem; display: flex; flex-direction: column; gap: .45rem; scroll-margin-top: 6rem }
+.qcard.decision { --v: var(--accent) } .qcard.fact { --v: var(--number) } .qcard.evidence { --v: var(--fix) }
+.qcard.child { margin-left: 1.6rem; border-left-style: dashed }
+.qcard.na { opacity: .55 }
+.qcard .qhead { display: flex; flex-wrap: wrap; gap: .3rem .7rem; align-items: baseline }
+.qcard .qhead h3 { font-size: 1.05rem; display: inline }
+.qcard .qquestion { margin: .2rem 0 }
+.qctx .label, .qopts .label, .qzones .label, .qremaining-block .label { display: block; margin-bottom: .2rem }
+.qctx ul, .qzones ul { margin: 0 }
+.qopts { display: flex; flex-direction: column; gap: .4rem; margin: .3rem 0 }
+.qopt { display: flex; gap: .5rem; align-items: flex-start; padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 4px; cursor: pointer }
+.qopt:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)) }
+.qopt input { margin-top: .25rem }
+.qopt span span { display: block }
+.qadvice { font-size: .92rem; border-left: 3px solid var(--accent); padding-left: .6rem; margin: .3rem 0 }
+.qzones label { display: flex; gap: .4rem; align-items: baseline }
+.tradeoff { background: color-mix(in srgb, var(--keep) 7%, var(--surface)); border: 1px solid var(--keep); border-left-width: 4px; padding: .6rem 1rem; display: flex; flex-direction: column; gap: .3rem }
+.cov-grid { display: grid; grid-template-columns: 10rem minmax(0,1fr); gap: .3rem 1rem }
+.cov-grid .label { padding-top: .1rem }
+.compare { display: flex; flex-direction: column; gap: .4rem }
+.cmp-head, .cmp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem }
+.cmp-head { font-weight: 650; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: .3rem }
+.cmp-row > div { padding: .3rem .6rem; border-left: 3px solid var(--line); display: flex; flex-direction: column; gap: .4rem }
+.cmp-now { border-left-color: var(--muted) !important }
+.cmp-target { border-left-color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 5%, var(--surface)) }
+@media (max-width: 700px) { .cmp-head, .cmp-row { grid-template-columns: 1fr } .cmp-head span:last-child { display: none } }
+.ftree, .ftree ul { margin: 0; padding: 0; list-style: none }
+.ftree ul { margin-left: .5rem; padding-left: .9rem; border-left: 1px solid var(--line) }
+.fdir > summary { cursor: pointer; padding: .15rem 0; background: none }
+.frow { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: baseline; padding: .15rem 0 }
+.fs { display: inline-block; width: 1.3em; text-align: center; font-weight: 700; font-family: var(--mono) }
+.fs-A { color: var(--keep) } .fs-D { color: var(--remove) } .fs-M { color: var(--accent) }
+.tree-nav { background: var(--surface); border: 1px solid var(--line); padding: .6rem .9rem }
+.audit-map > summary { font-size: 1rem; font-weight: 650; padding: .5rem .8rem; background: var(--surface); border: 1px solid var(--line); color: var(--fg) }
+.audit-map[open] > summary { border-bottom: 0 }
+.audit-map > .map-filters { padding: .6rem .8rem; border: 1px solid var(--line); border-top: 0 }
+.audit-map > #map { border: 1px solid var(--line); border-top: 0; padding: .8rem }
+.shot-open { font-size: .82rem; align-self: flex-start }
+img.shot-zoom { cursor: zoom-in }
+img.shot-zoom:focus-visible { outline: 2px solid var(--accent) }
+#zoom-dialog { position: fixed; inset: 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; padding: 0; background: rgb(20 22 28 / .96); color: #eee; z-index: 40 }
+#zoom-dialog::backdrop { background: rgb(0 0 0 / .7) }
+.zoom-bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .6rem 1rem; background: rgb(0 0 0 / .4) }
+.zoom-bar button { background: #2a2f3a; color: #eee; border-color: #444 }
+.zoom-bar button[aria-pressed="true"] { background: #eee; color: #111 }
+.zoom-bar form { margin-left: auto }
+.zoom-scroll { overflow: auto; height: calc(100dvh - 3.6rem); padding: 1rem; display: flex }
+#zoom-dialog[data-mode="fit"] .zoom-scroll img { max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; cursor: zoom-in }
+#zoom-dialog[data-mode="1:1"] .zoom-scroll img { max-width: none; width: auto; height: auto; margin: 0; cursor: zoom-out }
+@media print {
+  .bar, .decide, .act, #comment, #annotation-editor, .map-filters, .skip-link, button, .requires-content { display: none !important }
+  body { background: #fff; color: #000 } .wrap { max-width: none }
+  .seg, .finding, .qcard, .mechanism, .tradeoff { break-inside: avoid }
+  .passport-card, .status-strip, .counters { break-inside: avoid }
+  a { color: #000; text-decoration: underline }
+}
 `;
 
 const SCRIPT = `
 (() => {
   const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key, t = data.labels;
+  const D = (${decisionRuntime.toString()})();
   const all = (selector) => [...document.querySelectorAll(selector)];
-  const map = document.getElementById("map"), out = document.getElementById("out"), progress = document.getElementById("progress");
-  let state = { findings: {}, notes: {}, passages: [] };
-  try { state = { ...state, ...JSON.parse(localStorage.getItem(key) || "{}") }; } catch {}
+  const map = document.getElementById("map"), out = document.getElementById("out"), progress = document.getElementById("progress"), progressQ = document.getElementById("progress-q");
+  let state = D.empty();
+  try { state = D.normalize(JSON.parse(localStorage.getItem(key) || "{}")); } catch {}
+  state = D.settle(data.questions, state);
   const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch {} };
   document.documentElement.classList.add("js");
+  const qEntry = (id) => D.entryOf(state, id);
 
   function decisions() {
     const note = (id) => state.notes[id] ? " — " + state.notes[id] : "";
@@ -181,33 +264,106 @@ const SCRIPT = `
     const open = data.findings.filter((f) => !state.findings[f.id]);
     const blocks = data.blocks.filter((b) => state.notes["b" + b.id]).map((b) => "- " + b.path + " " + b.where + ": " + state.notes["b" + b.id]);
     const idea = (i) => "- " + i.title + note(i.id), taken = (i) => state.findings[i.id] === "apply";
+    // A question's decision travels with its variant's id and text, never the localized label alone.
+    const qs = data.questions.filter((q) => q.kind === "decision").filter((q) => { const e = qEntry(q.id); return (e.choice || e.variant) && D.applicable(q, state, data.questions); }).map((q) => {
+      const e = qEntry(q.id), v = (q.variants || []).find((v) => v.id === e.variant);
+      const status = e.choice === "accepted" ? t.accepted : e.choice === "deferred" ? t.deferred : "";
+      return "- Q" + q.id + (status ? " [" + status + "]" : "") + (v ? " (" + t.variant + " " + v.id + ": " + v.text + ")" : "") + note("q" + q.id);
+    });
     const marked = state.passages.map((p, i) => "- " + (i + 1) + ". " + p.where + (p.anchor ? " [" + p.anchor.id + ":" + p.anchor.start + "-" + p.anchor.end + "]" : "") + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
     const part = (title, lines) => lines.length ? ["", title, ...lines] : [];
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")", ...part(t.apply, of("apply")), ...part(t.skip, of("skip")),
       ...(open.length ? ["", t.open + " " + open.map((f) => f.id).join(", "), ...open.filter((f) => state.notes["f" + f.id]).map(line)] : []),
-      ...part(t.ideas, data.ideas.filter(taken).map(idea)), ...part(t.ideaNotes, data.ideas.filter((i) => !taken(i) && state.notes[i.id]).map(idea)),
+      ...part(t.questionsOut, qs), ...part(t.ideas, data.ideas.filter(taken).map(idea)), ...part(t.ideaNotes, data.ideas.filter((i) => !taken(i) && state.notes[i.id]).map(idea)),
       ...part(t.blocks, blocks), ...part(t.passages, marked)].join("\\n");
   }
 
   function paint() {
-    for (const group of all(".decide")) for (const button of group.querySelectorAll("button"))
-      button.setAttribute("aria-pressed", String(state.findings[group.dataset.finding] === button.value));
+    for (const group of all(".decide")) {
+      const id = group.dataset.finding;
+      const current = id[0] === "q" ? qEntry(id.slice(1)).choice : state.findings[id];
+      for (const button of group.querySelectorAll("button")) button.setAttribute("aria-pressed", String(current === button.value));
+    }
+    for (const radio of all("[data-question-variant]")) radio.checked = qEntry(radio.dataset.questionVariant).variant === radio.value;
     for (const block of data.blocks) {
       const kept = block.findings.length > 0 && block.findings.every((f) => state.findings[f] === "skip");
       for (const part of all('[data-block="' + block.id + '"]')) part.classList.toggle("overruled", kept);
     }
     for (const input of all("[data-note]")) if (document.activeElement !== input) input.value = state.notes[input.dataset.note] || "";
+    for (const card of all(".qcard[data-qid]")) {
+      const q = data.questions.find((x) => String(x.id) === card.dataset.qid);
+      if (!q) continue;
+      const na = !!q.parent && !D.applicable(q, state, data.questions);
+      card.classList.toggle("na", na);
+      for (const control of card.querySelectorAll(".decide button, [data-question-variant], input[data-note]")) control.disabled = na;
+      const badge = card.querySelector(".na-badge"); if (badge) badge.hidden = !na;
+      const hint = card.querySelector(".requires-content");
+      if (hint) { const e = qEntry(q.id);
+        const missing = (e.choice === "accepted" && !D.validAccept(q, state)) || (e.choice === "deferred" && !D.validDefer(q, state));
+        hint.hidden = !missing; hint.textContent = e.choice === "deferred" ? t.deferReason : t.requiresContent; }
+      const pending = card.querySelector(".parent-pending");
+      if (pending) pending.hidden = !q.parent || qEntry(q.parent.question).choice === "accepted";
+    }
+    for (const z of all("[data-zone]")) z.checked = !!state.zones[z.dataset.zone];
     progress.textContent = t.decided.replace("{n}", data.findings.filter((f) => state.findings[f.id]).length + " / " + data.findings.length);
+    if (progressQ && data.questions.some((q) => q.kind === "decision")) { const c = D.counters(data.questions, state);
+      progressQ.textContent = [t.accepted + ": " + c.accepted, t.deferred + ": " + c.deferred, t.notApplicable + ": " + c.notApplicable, t.remaining + ": " + c.remaining].join(" · "); }
     out.value = decisions();
   }
 
+  // A deep link opens every disclosure above its target and brings it into view; the map's filter never hides it.
+  function openTarget(hash) {
+    if (!hash || hash[0] !== "#") return;
+    let el; try { el = document.querySelector(hash); } catch { return; }
+    if (!el) return;
+    const bm = /^#b(\\d+)$/.exec(hash);
+    if (bm && map && map.dataset.show !== "all") {
+      map.dataset.show = "all";
+      for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other.dataset.show === "all"));
+    }
+    for (let p = el; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
+    if (el.matches("article.mechanism")) el.querySelectorAll("details").forEach((d) => { d.open = true; });
+    requestAnimationFrame(() => el.scrollIntoView({ block: "center" }));
+  }
+  window.addEventListener("hashchange", () => openTarget(location.hash));
+
+  // The picture viewer: one dialog, fit or actual size, previous and next, focus returned to the thumbnail.
+  const zd = document.getElementById("zoom-dialog"), shots = all("img.shot-zoom");
+  let zi = 0, zfocus = null;
+  function showZoom(i) {
+    if (!zd || !shots.length) return;
+    zi = (i + shots.length) % shots.length;
+    const img = shots[zi];
+    zd.querySelector(".zoom-scroll img").src = img.src;
+    document.getElementById("zoom-count").textContent = (zi + 1) + " / " + shots.length;
+    document.getElementById("zoom-name").textContent = img.alt || "";
+    document.getElementById("zoom-historical").hidden = img.dataset.historical !== "1";
+    if (!zd.open) { zfocus = document.activeElement; zd.showModal(); }
+  }
+  function zoomMode(mode) {
+    if (!zd) return;
+    zd.dataset.mode = mode;
+    zd.querySelector("[data-zoom-fit]").setAttribute("aria-pressed", String(mode === "fit"));
+    zd.querySelector("[data-zoom-full]").setAttribute("aria-pressed", String(mode === "1:1"));
+  }
+  if (zd) {
+    zd.addEventListener("close", () => { if (zfocus) zfocus.focus(); });
+    zd.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") { e.preventDefault(); showZoom(zi + 1); } else if (e.key === "ArrowLeft") { e.preventDefault(); showZoom(zi - 1); } });
+  }
+
   document.addEventListener("click", (event) => {
+    const zbtn = event.target.closest("button.shot-open"); if (zbtn) { showZoom(+zbtn.dataset.zoom); return; }
+    const img = event.target.closest("img.shot-zoom"); if (img) { showZoom(shots.indexOf(img)); return; }
     const button = event.target.closest("button");
-    if (!button) return;
+    if (!button || button.disabled) return;
     const group = button.closest(".decide");
     if (group) {
       const id = group.dataset.finding;
-      if (state.findings[id] === button.value) delete state.findings[id]; else state.findings[id] = button.value;
+      if (id[0] === "q") {
+        const k = id.slice(1), cur = { ...qEntry(k) };
+        if (cur.choice === button.value) delete cur.choice; else cur.choice = button.value;
+        if (cur.choice || cur.variant) state.questions[k] = cur; else delete state.questions[k];
+      } else if (state.findings[id] === button.value) delete state.findings[id]; else state.findings[id] = button.value;
     } else if (button.dataset.show) {
       map.dataset.show = button.dataset.show;
       for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other === button));
@@ -215,15 +371,25 @@ const SCRIPT = `
     } else if (button.dataset.overlay !== undefined) {
       button.setAttribute("aria-pressed", String(button.closest("article").querySelector(".shots").classList.toggle("overlaid")));
       return;
-    }    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
-    else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = { findings: {}, notes: {}, passages: [] }; annotationUI.reset(); }
+    } else if (button.dataset.zoomFit !== undefined) { zoomMode("fit"); return; }
+    else if (button.dataset.zoomFull !== undefined) { zoomMode("1:1"); return; }
+    else if (button.dataset.zoomPrev !== undefined) { showZoom(zi - 1); return; }
+    else if (button.dataset.zoomNext !== undefined) { showZoom(zi + 1); return; }
+    else if (button.id === "print-owner") { auditorPrint = false; window.print(); return; }
+    else if (button.id === "print-audit") { auditorPrint = true; window.print(); return; }
+    else if (button.id === "export-json") {
+      const payload = D.exportOf(data.questions, state, { recordSha: data.digest.record, diffSha: data.digest.diff, key: data.key, title: data.title, range: data.range });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "decisions-" + data.key + ".json"; a.click(); URL.revokeObjectURL(a.href); return;
+    } else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
+    else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = D.empty(); annotationUI.reset(); }
     else if (button.id === "copy") {
       const done = () => { annotationUI.announce(t.copied); button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
       const select = () => { out.focus(); out.select(); };
       try { navigator.clipboard.writeText(out.value).then(done, select); } catch { select(); }
       return;
     } else return;
-    save(); paint();
+    state = D.settle(data.questions, state); save(); paint();
   });
   document.addEventListener("input", (event) => {
     if (event.target.dataset.blend !== undefined) event.target.closest("article").querySelector(".shots").style.setProperty("--blend", event.target.value / 100);
@@ -232,8 +398,36 @@ const SCRIPT = `
     if (event.target.value.trim()) state.notes[id] = event.target.value.trim(); else delete state.notes[id];
     save(); paint();
   });
+  document.addEventListener("change", (event) => {
+    const qid = event.target.dataset.questionVariant;
+    if (qid) {
+      const cur = { ...qEntry(qid) };
+      if (event.target.value) cur.variant = event.target.value; else delete cur.variant;
+      if (cur.choice || cur.variant) state.questions[qid] = cur; else delete state.questions[qid];
+      state = D.settle(data.questions, state); save(); paint(); return;
+    }
+    const z = event.target.dataset.zone;
+    if (z) { if (event.target.checked) state.zones[z] = true; else delete state.zones[z]; save(); }
+  });
+  document.addEventListener("keydown", (event) => {
+    if ((event.key === "Enter" || event.key === " ") && event.target.matches?.("img.shot-zoom")) { event.preventDefault(); showZoom(shots.indexOf(event.target)); }
+  });
+  // Print profiles are views, not completeness: the owner leaves the full map closed, the auditor opens everything.
+  // Without scripts the page prints what is open; the note beside the buttons says so.
+  let printSnapshot = null, auditorPrint = false;
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = all("details[open]");
+    if (auditorPrint) all("details").forEach((d) => { d.open = true; });
+    else { const audit = document.getElementById("map-details"); if (audit) audit.open = false; }
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    all("details").forEach((d) => { d.open = false; });
+    for (const d of printSnapshot) d.open = true;
+    printSnapshot = null; auditorPrint = false;
+  });
   const annotationUI = (${annotations.toString()})({ state: () => state, changed: () => { save(); paint(); }, t: data.annotationLabels });
-  annotationUI.render(); paint();
+  annotationUI.render(); zoomMode("fit"); paint(); openTarget(location.hash);
 })();
 `;
 
@@ -256,30 +450,120 @@ const cite = (ids) => ids.map((id) => `<a href="#f${esc(id)}">${esc(id)}</a>`).j
 const grounds = (item) => item.verdict === "question" ? item.questions.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ") : cite(item.findings);
 const table = (head, rows) => `<div class="table"><table><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table></div>`;
 const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", remove: "v-remove", question: "v-question" };
+// A claim's sources: an internal ref links to the item it names, an external place stands as text.
+const srcHtml = (sources, review) => (sources ?? []).map((s) => {
+  const { text, anchor } = sourceOf(s, review);
+  return anchor ? `<a href="${anchor}">${esc(text)}</a>` : esc(text);
+}).filter(Boolean).join(", ");
+const claimsHtml = (list, review) => `<ul class="plain">${list.map((c) => `<li>${prose(c.text)}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review)})</span>` : ""}</li>`).join("")}</ul>`;
+const coverageLabel = (kind, t) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
+// The place of a question or finding, shortened to the file's unique suffix; the full place stays in the title.
+const placeHtml = (at, model) => {
+  const i = String(at).lastIndexOf(":"), file = model.files.find((f) => f.path === String(at).slice(0, i));
+  return `<code class="sub" title="${esc(at)}">${esc(file ? file.short + String(at).slice(i) : at)}</code>`;
+};
 
-// The task, the verdict, how the change works now, the target and what to do: each under its own label, in the order a reader decides by.
+// Where the change lives, in one collapsed line: the links and the date; the revisions and digests one click in.
+function passport(review, model, t) {
+  const p = review.passport;
+  if (!p) return "";
+  return `<details class="passport-card" data-where="${esc(t("passport"))}">
+  <summary class="passport">${(p.links ?? []).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}<span>${esc(p.reviewedAt)}</span></summary>
+  <div class="passport-body mono">${esc(p.repository)} · ${esc(t("passport.base"))} ${esc(p.base)} → ${esc(t("passport.head"))} ${esc(p.head)} · diff sha256 ${esc(review.diff?.sha256 ?? "")} · record ${esc(model.recordSha ?? model.key)}</div>
+</details>`;
+}
+
+// The authored status: the reviewer's own words from coverageStructured, never a status read out of prose.
+function statusStrip(review, t) {
+  const cs = review.coverageStructured;
+  if (!cs?.length) return "";
+  const row = (kind) => {
+    const items = cs.filter((c) => c.kind === kind);
+    if (!items.length) return "";
+    return `<div class="row"><span class="label">${esc(coverageLabel(kind, t))}</span><span>${items.map((c) => `${prose(c.text)}${c.revision ? ` <span class="sub mono">@ ${esc(c.revision)}</span>` : ""}`).join("; ")}</span></div>`;
+  };
+  return `<div class="status-strip" data-where="${esc(t("coverage"))}">${["ran", "read", "not_checked"].map(row).join("")}</div>`;
+}
+
+// The scale of the change and what waits on whom, over unique sets; the fragment's definition one click away.
+function counters(model, t) {
+  const c = model.counters;
+  const cell = (n, label, split) => `<div class="c${split ? " split" : ""}"><b>${n}</b><span>${esc(label)}</span></div>`;
+  return `<div class="counters" data-where="${esc(t("summary"))}">
+  ${cell(c.files, `${t("scope.files")} · +${c.lines.added}/−${c.lines.removed}`)}
+  ${cell(c.addedFiles, t("scope.added"))}${cell(c.removedFiles, t("scope.removed"))}${cell(c.modifiedFiles, t("file.status.modified"))}
+  ${cell(c.blocks, `${t("blocks").toLowerCase()}: ${VERDICTS.map((v) => `${t(`verdict.${v}`)} ${c.verdicts[v]}`).join(" · ")}`, true)}
+  ${c.evidenceBlocks ? cell(c.evidenceBlocks, t("counters.evidence-blocks"), true) : ""}
+  ${c.decisions ? cell(c.decisions, t("decisions"), true) : ""}
+  <details class="count-note"><summary>${esc(t("fragment.what"))}</summary><p class="sub">${esc(t("fragment.definition"))} +${c.nonblank.added}/−${c.nonblank.removed}.</p></details>
+</div>`;
+}
+
+// The verdict, the recommendation, now beside the target, and the task: each under its own label, in the order a reader decides by.
 function summary(review, { blocks }, t) {
   const total = sizeOf(blocks) || 1, { change } = review;
   const role = (label, content, tone = "") => `<div class="role ${tone}" data-where="${esc(t(label))}"><span class="label">${esc(t(label))}</span><div class="stack">${content}</div></div>`;
+  const share = `<div class="share" role="img" aria-label="${esc(t("share"))}">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
+    <div class="legend sub"><span>${esc(t("share"))}:</span>${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</div>`;
   return `
 <section id="summary" class="roles">
+  ${role("verdict", lines(review.verdict, ' class="lead"'), "conclusion")}
+  ${role("recommendation", `<p><strong>${prose(review.recommendation)}</strong></p>${review.steps?.length ? `<ol class="steps">${review.steps.map((step) =>
+    `<li>${prose(step.text)}${step.findings?.length ? ` <span class="sub">(${cite(step.findings)})</span>` : ""}</li>`).join("")}</ol>` : ""}<p class="sub"><a href="#questions">${esc(t("questions"))} →</a></p>`, "actions")}
+  <div class="role" data-where="${esc(`${t("now")} → ${t("target")}`)}"><span class="label">${esc(t("now"))} → ${esc(t("target"))}</span><div class="stack">
+    <div class="compare"><div class="cmp-head"><span>${esc(t("now"))}</span><span>${esc(t("target"))}</span></div>
+    <div class="cmp-row"><div class="cmp-now">${lines(review.now)}</div><div class="cmp-target">${lines(review.target)}</div></div></div>
+    ${share}</div></div>
   ${role("task", `<p>${prose(change.goal)}${change.why ? ` ${prose(change.why)}` : ""}</p>
     <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
     <details class="sources"><summary>${esc(t("sources"))}</summary><p class="sub">${change.sources.map(prose).join("; ")}</p></details>`)}
-  ${role("verdict", lines(review.verdict, ' class="lead"'), "conclusion")}
-  ${role("now", `${lines(review.now)}
-    <div class="share" role="img" aria-label="${esc(t("share"))}">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
-    <div class="legend sub"><span>${esc(t("share"))}:</span>${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</div>`)}
-  ${role("target", lines(review.target))}
-  ${role("recommendation", `<p><strong>${prose(review.recommendation)}</strong></p>${review.steps?.length ? `<ol class="steps">${review.steps.map((step) =>
-    `<li>${prose(step.text)}${step.findings?.length ? ` <span class="sub">(${cite(step.findings)})</span>` : ""}</li>`).join("")}</ol>` : ""}`, "actions")}
 </section>`;
 }
 
-// What each requirement gets. "Met" is the reviewer's word, never read off a block; a missing test is not a failure.
+// One question card: the canonical text and place, the reviewer's context, the variants with their confirmed
+// consequences, the recommendation as opinion, and what the decision does not replace. A child declares its
+// parent; the page computes whether it still applies. A question without a kind keeps the old plain line.
+function questionCard(q, review, model, t, child) {
+  const variants = q.variants ?? [];
+  const note = `<input class="act" type="text" data-note="q${q.id}" placeholder="${esc(t("decision.note"))}" aria-label="${esc(t("decision.note"))}: Q${q.id}">`;
+  return `
+  <div class="qcard ${esc(q.kind)}${child ? " child" : ""}" id="q${q.id}" data-qid="${q.id}"${q.parent ? ` data-parent="${q.parent.question}"` : ""} data-where="Q${q.id}">
+    <div class="qhead"><h3>Q${q.id}</h3><span class="tag v-${q.kind === "decision" ? "fix" : q.kind === "evidence" ? "fix" : "question"}">${esc(t(`question.kind.${q.kind}`))}</span>${q.resolver ? `<span class="tag v-open">${esc(q.resolver)}</span>` : ""}${placeHtml(q.at, model)}${q.blocks ? `<span class="sub">${q.blocks} ${esc(t("question.blocks"))}</span>` : ""}<span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span></div>
+    <p class="qquestion">${prose(q.text)}</p>
+    ${q.parent ? `<p class="sub">${esc(t("question.parent"))}: <a href="#q${q.parent.question}">Q${q.parent.question}</a> <span class="parent-pending" hidden>${esc(t("decision.parent-pending"))}</span></p>` : ""}
+    ${q.context?.length ? `<div class="qctx"><span class="label">${esc(t("question.context"))}</span>${claimsHtml(q.context, review)}</div>` : ""}
+    ${variants.length ? `<div class="qopts"><span class="label">${esc(t("question.variants"))}</span>${variants.map((v) => `
+      <label class="qopt"><input type="radio" name="vq${q.id}" value="${esc(v.id)}" data-question-variant="${q.id}"><span><strong>${esc(v.text)}</strong>${v.consequences?.length ? `<span class="sub">${esc(t("question.consequences"))}:</span>${claimsHtml(v.consequences, review)}` : ""}</span></label>`).join("")}</div>` : ""}
+    ${q.recommendation ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(q.recommendation.text)}${q.recommendation.variant ? ` <span class="sub">[${esc(q.recommendation.variant)}]</span>` : ""}${q.recommendation.sources?.length ? ` <span class="sub">(${srcHtml(q.recommendation.sources, review)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : ""}
+    ${q.remainingEvidence?.length ? `<div class="qremaining-block"><span class="label">${esc(t("question.remaining-evidence"))}</span><ul class="plain">${q.remainingEvidence.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(review.questions[n - 1].text)}</li>`).join("")}</ul></div>` : ""}
+    ${q.zones?.length ? `<div class="qzones"><span class="label">${esc(t("question.zones"))}</span><ul class="plain">${q.zones.map((z, zi) => `<li><label><input type="checkbox" data-zone="${q.id}-${zi}"> <span>${prose(z.text)}${z.sources?.length ? ` <span class="sub">(${srcHtml(z.sources, review)})</span>` : ""}</span></label></li>`).join("")}</ul></div>` : ""}
+    ${q.kind === "decision" ? `<span class="decide group act" data-finding="q${q.id}"><button type="button" value="accepted">${esc(t("decision.accepted"))}</button><button type="button" value="deferred">${esc(t("decision.deferred"))}</button></span><span class="sub requires-content" hidden></span>${note}` : note}
+  </div>`;
+}
+
+function questionsSection(review, model, t) {
+  const qs = model.questions, byId = Object.fromEntries(qs.map((q) => [q.id, q]));
+  const legacy = qs.filter((q) => q.kind === undefined);
+  const group = (kind) => {
+    const roots = qs.filter((q) => q.kind === kind && !q.parent);
+    if (!roots.length) return "";
+    return `<span class="label qgroup-title">${esc(t(`question.kind.${kind}`))}</span>${roots.map((q) => questionCard(q, review, model, t, false)
+      + q.children.map((c) => questionCard(byId[c], review, model, t, true)).join("")).join("")}`;
+  };
+  return `
+<section id="questions" class="stack decision-sheet" data-where="${esc(t("questions"))}"><h2>${esc(t("questions"))}</h2>
+  ${["decision", "fact", "evidence"].map(group).join("")}
+  ${legacy.length ? `<ul class="plain">${legacy.map((q) => `<li id="q${q.id}"><strong>Q${q.id}</strong> <code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : ""}
+  ${!qs.length ? `<p>${esc(t("none"))}</p>` : ""}
+</section>`;
+}
+
+// What each requirement gets. "Met" is the reviewer's word, never read off a block; a missing test is not a
+// failure; a permission is not an obligation and is never marked met.
 function requirements({ blocks, requirements: listed }, t) {
   const status = (r) => [
-    r.broken.length ? `<span class="tag v-remove">${esc(t("fails"))}</span> ${cite(r.broken)}`
+    r.permission ? `<span class="tag v-open">${esc(t("permission"))}</span>`
+      : r.broken.length ? `<span class="tag v-remove">${esc(t("fails"))}</span> ${cite(r.broken)}`
       : r.met ? `<span class="tag v-keep">${esc(t("met"))}</span> <span class="sub">${esc(t(`evidence.${r.met}`))}</span>` : r.not_checked ? "" : `<span class="tag v-open">${esc(t("not-checked"))}</span>`,
     // What the reviewer did not check stands beside what they did, never inside the requirement's own text.
     r.not_checked ? `<span class="tag v-open">${esc(t("not-checked"))}</span> <span class="sub">${prose(r.not_checked)}</span>` : "",
@@ -294,6 +578,15 @@ function requirements({ blocks, requirements: listed }, t) {
 </section>`;
 }
 
+// An omission the owner accepted, with what remains and where it was accepted.
+function tradeoffs(review, t) {
+  if (!review.tradeoffs?.length) return "";
+  return `
+<section id="tradeoffs" class="stack"><h2>${esc(t("tradeoffs"))}</h2>${review.tradeoffs.map((x) => `
+  <div class="tradeoff" data-where="${esc(t("tradeoffs"))}"><p>${prose(x.text)}</p><p class="sub"><strong>${esc(t("tradeoff.consequence"))}:</strong> ${prose(x.consequence)}${x.sources?.length ? ` (${srcHtml(x.sources, review)})` : ""}</p></div>`).join("")}
+</section>`;
+}
+
 // Scenarios a person can run to see the change work: where to start, what to do and what to expect.
 function checks(review, t) {
   if (!review.checks?.length) return "";
@@ -304,16 +597,25 @@ function checks(review, t) {
 </section>`;
 }
 
-// What the user sees: the pictures the reviewer was given, side by side or the result laid over the mockup, and each difference.
-function screens({ screens: shown }, t) {
+// What the user sees: the pictures the reviewer was given, each enlargeable in the viewer, a historical picture
+// marked as another revision, and each difference. The overlay stays for a mockup and its result.
+function screens(review, { screens: shown }, t) {
   if (!shown.length) return "";
-  const shot = (name, picture) => !picture ? "" : `<figure class="${name}"><figcaption class="label">${esc(t(name))}</figcaption>`
-    + `${picture.link ? `<a href="${esc(picture.link)}" target="_blank" rel="noopener">${esc(picture.link)}</a>` : `<img src="${picture.data}" alt="${esc(t(name))}">`}</figure>`;
+  let zoom = 0;
+  const shot = (name, picture, s) => {
+    if (!picture) return "";
+    const historical = s.historical ? ` <span class="tag v-fix">${esc(t("screen.historical"))}</span>` : "";
+    const body = picture.link ? `<a href="${esc(picture.link)}" target="_blank" rel="noopener">${esc(picture.link)}</a>`
+      : `<button type="button" class="shot-open act" data-zoom="${zoom++}">${esc(t("viewer.open"))}</button>`
+        + `<img class="shot-zoom" src="${picture.data}" alt="${esc(t(name))}: ${esc(s.name)}" tabindex="0" role="button" data-historical="${s.historical ? 1 : 0}" aria-label="${esc(t("viewer.open"))}: ${esc(t(name))}: ${esc(s.name)}">`;
+    return `<figure class="${name}"><figcaption class="label">${esc(t(name))}${historical}</figcaption>${body}`
+      + `${s.historical && s.revision ? `<p class="sub mono">${esc(s.revision)}</p>` : ""}${s.historical && s.sources?.length ? `<p class="sub">(${srcHtml(s.sources, review)})</p>` : ""}</figure>`;
+  };
   return `
 <section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>${shown.map((s, index) => `
   <article class="finding" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}</h3>
-    <div class="pair shots">${shot("mockup", s.mockup)}${shot("before", s.before)}${shot("after", s.after)}</div>
+    <div class="pair shots">${shot("mockup", s.mockup, s)}${shot("before", s.before, s)}${shot("after", s.after, s)}</div>
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
       + `<label class="group sub" for="blend-${index + 1}">${esc(t("result"))} <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
     ${s.differences.length ? `<ul class="plain">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="sub">${esc(t("reason"))}: ${prose(d.why)}</span>` : ""}`
@@ -324,7 +626,8 @@ function screens({ screens: shown }, t) {
 </section>`;
 }
 
-// The units as written and as they should be, each a diagram of who uses whom.
+// The units as written and as they should be: the target diagram draws only the uses the reviewer wrote, with a
+// text equivalent of every arrow; the as-written diagram keeps its verdict shares.
 function structure({ units, target }, t) {
   if (!units.length) return "";
   const count = (blocks) => `${t("lines").toLowerCase()}: ${sizeOf(blocks)}`;
@@ -335,10 +638,12 @@ function structure({ units, target }, t) {
   const then = target.map((u) => u.existing ? node(u, "existing", t("existing-code")) : written.has(u.name) ? node(u, "v-keep", t("from-change")) : node(u, "new", t("to-write")));
   const figure = (title, nodes) => nodes.length ? `<figure><figcaption class="label">${esc(title)} · ${esc(t("units"))}: ${nodes.filter((n) => n.tone !== "existing").length}</figcaption>`
     + `<div class="scroll">${diagram(nodes, title)}</div></figure>` : "";
+  const edges = then.flatMap((n) => n.uses.filter((used) => used !== n.name).map((used) => `<li>${esc(n.name)} → ${esc(used)}</li>`));
   return `
 <section id="structure" class="stack"><h2>${esc(t("structure"))}</h2>
   <div class="pair">${figure(t("as-written"), now)}${figure(t("target"), then)}</div>
   <p class="sub">${esc(t("diagram-note"))}</p>
+  ${edges.length ? `<details><summary class="sub">${esc(t("uses"))}: ${esc(t("target"))} (${edges.length})</summary><ul class="plain sub">${edges.join("")}</ul><p class="sub">${esc(t("structure.declared-only"))}</p></details>` : `<p class="sub">${esc(t("structure.declared-only"))}</p>`}
   ${table([t("unit"), t("jobs"), t("uses"), t("verdict"), t("reason")], units.filter((u) => !u.existing).map((u) => `<tr><td class="mono">${esc(u.name)}</td><td>${esc(u.jobs.join(", "))}</td>`
     + `<td class="mono">${esc(u.uses.join(", ")) || esc(t("nothing"))}</td><td><span class="tag ${TONE[u.verdict]}">${esc(t(`verdict.${u.verdict}`))}</span> ${grounds(u)}</td><td>${prose(u.reason ?? "")}</td></tr>`))}
 </section>`;
@@ -357,24 +662,42 @@ function scenarios({ scenarios: tried }, t) {
 </section>`;
 }
 
-// Where the change lives: its files as a tree, each with the units in it and its blocks.
-function tree(files, { blocks }, t) {
+// Where the change lives: a tree of the touched files, marked by what the diff did to them (never a verdict),
+// each file linking into the one canonical map below. The full map sits in a closed disclosure, readable without
+// scripts: no template, no second copy of the diff, one instance of every B anchor.
+function filesAndMap(review, files, model, t) {
   const root = { dirs: new Map(), files: [] };
-  for (const { path } of files) {
-    const parts = path.split("/"), name = parts.pop();
+  for (const f of model.files) {
+    const parts = f.path.split("/"), name = parts.pop();
     let at = root;
     for (const part of parts) { if (!at.dirs.has(part)) at.dirs.set(part, { dirs: new Map(), files: [] }); at = at.dirs.get(part); }
-    at.files.push({ name, path });
+    at.files.push({ ...f, name });
   }
-  const file = ({ name, path }) => {
-    const own = blocks.filter((b) => b.path === path), units = [...new Set(own.map((b) => b.unit).filter(Boolean))];
-    return `<li><div><span class="mono">${esc(name)}</span>${units.length ? `<span class="sub mono">${esc(units.join(", "))}</span>` : ""}<span>${own.map(chip).join(" ")}</span></div></li>`;
+  const countFiles = (node) => node.files.length + [...node.dirs.values()].reduce((sum, child) => sum + countFiles(child), 0);
+  const fileRow = (f) => {
+    const own = model.blocks.filter((b) => b.path === f.path);
+    const adds = own.reduce((sum, b) => sum + b.weightLines.added, 0), rems = own.reduce((sum, b) => sum + b.weightLines.removed, 0);
+    const counts = VERDICTS.map((v) => [v, own.filter((b) => b.verdict === v).length]).filter(([, n]) => n);
+    const mark = { A: ["+", "added"], D: ["−", "deleted"], M: ["±", "modified"] }[f.status] ?? ["±", "modified"];
+    return `<li class="frow"><span class="fs fs-${f.status}" role="img" aria-label="${esc(t(`file.status.${mark[1]}`))}" title="${esc(t(`file.status.${mark[1]}`))}">${mark[0]}</span>`
+      + `<a class="mono" href="#b${own[0].id}" title="${esc(f.path)}">${esc(f.short)}</a><span class="sub">+${adds}/−${rems}</span>${counts.map(([v, n]) => `<span class="tag v-${v}">${n}</span>`).join("")}</li>`;
   };
   // A directory with nothing but one directory in it is shown on that directory's line.
   const dir = (name, node) => node.dirs.size === 1 && !node.files.length ? dir(`${name}/${[...node.dirs.keys()][0]}`, [...node.dirs.values()][0])
-    : `<li><div class="mono sub">${esc(name)}/</div>${list(node)}</li>`;
-  const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(file).join("")}</ul>`;
-  return `<section id="files" class="stack"><h2>${esc(t("files"))}</h2><div class="tree">${list(root)}</div></section>`;
+    : `<li><details class="fdir"><summary class="mono sub">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
+  const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(fileRow).join("")}</ul>`;
+  return `
+<section id="files" class="stack"><h2>${esc(t("files"))} · ${model.files.length}</h2>
+  <p class="sub">${esc(t("files.changed-only"))}</p>
+  <div class="tree-nav"><div class="ftree">${list(root)}</div></div>
+  <details class="audit-map" id="map-details"><summary>${esc(t("map"))} · ${model.counters.blocks} ${esc(t("blocks").toLowerCase())}</summary>
+    <div class="group map-filters act"><span class="sub">${esc(t("show"))}</span><button type="button" data-show="all" aria-pressed="true">${esc(t("all"))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</div>
+    <div id="map" class="map stack" data-show="all" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
+      <p class="sub">${esc(t("map-summary", model.blocks.length))}</p>
+      ${map(review, files, model, t)}
+    </div>
+  </details>
+</section>`;
 }
 
 // The diff, file by file, cut into the blocks of the map.
@@ -466,6 +789,21 @@ function mechanisms(review, model, t) {
     }).join("")}</section>`;
 }
 
+// The coverage: the authored statements by kind, and the record's own prose one click away.
+function coverage(review, t) {
+  const cs = review.coverageStructured;
+  const grid = cs?.length ? `<div class="cov-grid">${["ran", "read", "not_checked"].map((kind) => {
+    const items = cs.filter((c) => c.kind === kind);
+    return items.length ? `<span class="label">${esc(coverageLabel(kind, t))}</span><div class="stack">${items.map((c) => `<p>${prose(c.text)}${c.revision ? ` <span class="sub mono">@ ${esc(c.revision)}</span>` : ""}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review)})</span>` : ""}</p>`).join("")}</div>` : "";
+  }).join("")}</div>` : "";
+  const prosePart = `<p>${prose(review.coverage || t("none"))}</p>`;
+  return `
+<section id="coverage" class="stack"><h2>${esc(t("coverage"))}</h2>
+  ${grid}
+  ${cs?.length ? `<details><summary class="sub">${esc(t("coverage"))}: ${esc(t("as-written"))}</summary>${prosePart}</details>` : prosePart}
+</section>`;
+}
+
 const decider = (t) => (id) => `<span class="decide group act" data-finding="${esc(id)}"><button type="button" value="apply">${esc(t("apply"))}</button><button type="button" value="skip">${esc(t("skip"))}</button></span>`;
 
 export function page(review, files, model) {
@@ -474,7 +812,7 @@ export function page(review, files, model) {
   const findings = review.findings.map((f) => `
   <article class="finding" id="f${esc(f.id)}" data-where="${esc(`${t("finding")} ${f.id}`)}">
     <h3>${esc(f.id)}. ${esc(f.title)}</h3>
-    <div class="group sub"><span>${esc(t(`direction.${f.direction}`))}</span><span>${esc(t(`evidence.${f.evidence}`))}</span><code>${esc(f.at)}</code>${model.blocks.filter((b) => b.findings.includes(f.id)).map(chip).join("")}</div>
+    <div class="group sub"><span>${esc(t(`direction.${f.direction}`))}</span><span>${esc(t(`evidence.${f.evidence}`))}</span>${placeHtml(f.at, model)}${model.blocks.filter((b) => b.findings.includes(f.id)).map(chip).join("")}</div>
     <p>${prose(f.what)}${names("breaks", f.breaks)}${names("untested", f.untested)}</p>
     <p><strong>${esc(t("shown-by"))}:</strong> ${prose(f.shown_by)}</p>
     <p><strong>${esc(t("fix"))}:</strong> ${prose(f.fix)}</p>
@@ -486,59 +824,74 @@ export function page(review, files, model) {
   const offered = ideas.map((idea) => `
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
     <h3><span class="tag accent">${esc(t("idea"))}</span> ${esc(idea.title)}</h3>
-    ${idea.at ? `<div class="group sub"><code>${esc(idea.at)}</code></div>` : ""}
+    ${idea.at ? `<div class="group sub">${placeHtml(idea.at, model)}</div>` : ""}
     <p>${prose(idea.text)}</p>
     ${decide(idea.id)}
     <input class="act" type="text" id="note-${idea.id}" data-note="${idea.id}" placeholder="${esc(t("note-idea"))}" aria-label="${esc(t("note-idea"))}: ${esc(idea.title)}">
   </article>`).join("");
-  // The page's script reads what it needs from here: the review's own name for its stored decisions, and the words it writes.
-  const data = { title: review.title, range: review.range, key: model.key, findings: review.findings.map(({ id, title }) => ({ id, title })),
+  // The page's script reads what it needs from here: the review's own name for its stored decisions, the digests
+  // of the bytes it was drawn from, the questions with their variants, and the words it writes.
+  const data = { title: review.title, range: review.range, key: model.key,
+    digest: { record: model.recordSha ?? model.key, diff: review.diff?.sha256 ?? "" },
+    findings: review.findings.map(({ id, title }) => ({ id, title })),
+    questions: model.questions.map(({ id, kind, resolver, parent, children, variants }) => ({ id, kind, resolver, parent, children, variants: (variants ?? []).map(({ id, text }) => ({ id, text })) })),
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map(({ id, path, where, findings: cited }) => ({ id, path, where, findings: cited })),
     labels: { title: t("out.title"), apply: t("out.apply"), skip: t("out.skip"), ideas: t("out.ideas"), ideaNotes: t("out.idea-notes"), open: t("out.open"), blocks: t("out.blocks"),
-      passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied"), clearConfirm: t("clear-confirm") },
+      passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied"), clearConfirm: t("clear-confirm"),
+      questionsOut: t("out.questions"), variant: t("out.variant"), accepted: t("decision.accepted"), deferred: t("decision.deferred"), notApplicable: t("decision.not-applicable"), remaining: t("decision.remaining"),
+      requiresContent: t("decision.requires-content"), deferReason: t("decision.defer-reason") },
     annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t), link = (id, label) => `<a href="#${id}">${esc(t(label))}</a>`;
+  const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
   return `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(t("kind"))}: ${esc(review.title)}</title>
 <style>${STYLE}</style>
+<a class="skip-link" href="#questions">${esc(t("skip-to-decisions"))}</a>
 <div class="wrap" id="review-content" tabindex="-1">
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
-<div class="bar global-nav">    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${model.scenarios.length ? link("scenarios", "scenarios") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${review.challenges?.length ? link("challenges", "challenges") : ""}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span></div>
+<div class="bar global-nav"><nav>${link("summary", "summary")}${link("questions", "questions")}${link("findings", "findings")}${review.tradeoffs?.length ? link("tradeoffs", "tradeoffs") : ""}${link("requirements", "requirements")}${review.mechanisms?.length ? link("mechanisms", "mechanisms") : ""}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${model.scenarios.length ? link("scenarios", "scenarios") : ""}${offered ? link("ideas", "ideas") : ""}${review.challenges?.length ? link("challenges", "challenges") : ""}${link("coverage", "coverage")}${link("decisions", "decisions")}</nav><span class="sub act" id="progress"></span><span class="sub act" id="progress-q"></span></div>
+${passport(review, model, t)}
+${statusStrip(review, t)}
+${counters(model, t)}
 ${summary(review, model, t)}
+${questionsSection(review, model, t)}
+<section id="findings" class="stack"><h2>${esc(t("findings"))}</h2>${findings || `<p>${esc(t("none"))}</p>`}</section>
+${tradeoffs(review, t)}
 ${requirements(model, t)}
 ${mechanisms(review, model, t)}
 ${checks(review, t)}
-${screens(model, t)}
+${screens(review, model, t)}
 ${drawn}
 ${scenarios(model, t)}
-${tree(files, model, t)}
-<section class="stack">
-  <div class="group map-filters">
-
-    <span class="group act"><span class="sub">${esc(t("show"))}</span><button type="button" data-show="all" aria-pressed="true">${esc(t("all"))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</span>
-
-  </div>
-  <div id="map" class="map stack" data-show="all" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
-    <h2>${esc(t("map"))}</h2>
-    ${map(review, files, model, t)}
-  </div>
-</section>
-<section id="findings" class="stack"><h2>${esc(t("findings"))}</h2>${findings || `<p>${esc(t("none"))}</p>`}</section>
+${filesAndMap(review, files, model, t)}
 ${offered ? `<section id="ideas" class="stack"><h2>${esc(t("ideas"))}</h2><p class="sub">${esc(t("ideas-note"))}</p>${offered}</section>` : ""}
 ${challenges(review, t)}
-<section class="stack"><h2>${esc(t("questions"))}</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q, index) => `<li id="q${index + 1}"><strong>Q${index + 1}</strong> <code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : `<p>${esc(t("none"))}</p>`}
-  <h2>${esc(t("coverage"))}</h2><p>${prose(review.coverage || t("none"))}</p></section>
+${coverage(review, t)}
 <section id="decisions" class="stack act" tabindex="-1"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>
-  <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
+  <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="export-json">${esc(t("decisions-text"))} (JSON)</button><button type="button" id="print-owner">${esc(t("print.owner"))}</button><button type="button" id="print-audit">${esc(t("print.auditor"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
+  <p class="sub">${esc(t("print.omissions"))}</p>
   <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div><div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
 <button type="button" id="comment" class="floating" aria-keyshortcuts="Alt+Shift+M" title="Alt+Shift+M">${esc(t("comment"))}</button>
-<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key}</code></details></footer>
+<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key} · diff ${esc(review.diff?.sha256 ?? "")} · record ${esc(model.recordSha ?? model.key)}</code></details></footer>
 </div>
+${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
+  <div class="zoom-bar">
+    <button type="button" data-zoom-fit aria-pressed="true">${esc(t("viewer.fit"))}</button>
+    <button type="button" data-zoom-full aria-pressed="false">${esc(t("viewer.actual-size"))}</button>
+    <button type="button" data-zoom-prev aria-label="${esc(t("viewer.previous"))}">←</button>
+    <span id="zoom-count" class="sub"></span>
+    <button type="button" data-zoom-next aria-label="${esc(t("viewer.next"))}">→</button>
+    <span id="zoom-name" class="sub"></span>
+    <span id="zoom-historical" class="tag v-fix" hidden>${esc(t("screen.historical"))}</span>
+    <form method="dialog"><button type="submit">${esc(t("viewer.close"))}</button></form>
+  </div>
+  <div class="zoom-scroll"><img alt=""></div>
+</dialog>` : ""}
 <dialog id="annotation-editor" aria-labelledby="annotation-heading">
   <h2 id="annotation-heading">${esc(t("note-passage"))}</h2><blockquote></blockquote>
   <textarea aria-label="${esc(t("note-passage"))}" rows="4"></textarea>

@@ -127,6 +127,8 @@ Object.assign(LABELS, {
   "print.omissions": "Printing shows what is open on the page: the owner profile leaves the full map closed, the audit profile opens everything. Without scripts, open the sections you need before printing.",
   "tradeoffs": "Accepted tradeoffs", "tradeoff.consequence": "What remains",
   "skip-to-decisions": "Skip to the decisions",
+  "structure.declared-only": "Only the links the reviewer wrote are drawn; a missing arrow does not prove a missing dependency. This is the proposed structure, not a map of the current code's calls.",
+  "fragment.what": "What is a fragment?",
   "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:",
 });
 
@@ -354,6 +356,8 @@ Object.assign(CATALOGS.ru, {
   "print.omissions": "Печатается то, что открыто на странице: профиль владельца оставляет полную карту закрытой, профиль аудита открывает всё. Без скриптов раскройте нужные разделы перед печатью.",
   "tradeoffs": "Принятые компромиссы", "tradeoff.consequence": "Что остаётся",
   "skip-to-decisions": "К решениям",
+  "structure.declared-only": "Показаны только связи, явно записанные ревьюером; отсутствие стрелки не доказывает отсутствие зависимости. Это предлагаемая структура, не карта фактических вызовов текущего кода.",
+  "fragment.what": "Что такое фрагмент?",
   "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:",
 });
 

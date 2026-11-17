@@ -14,6 +14,7 @@ import { prepare } from "./review/prepare.mjs";
 import { CATALOGS, LABELS, BASE_KEYS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
+import { normalize, settle, applicable, counters, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -698,6 +699,128 @@ test("the full printout carries the cards, tradeoffs and coverage limits, and th
       if (legacy.stdout.includes(absent)) return `the legacy printout grew "${absent}"`;
     if (!legacy.stdout.includes("- Q1 `docs/billing.md`: A question.")) return "the legacy question line changed";
     return legacy.stdout.includes(`record ${createHash("sha256").update(fs.readFileSync(data)).digest("hex")}`) || "the legacy printout lacks the digest";
+  });
+
+// The decision runtime on a small stand: Q1 a decision with two variants, Q2 its child applying under "keep",
+// Q3 evidence, Q4 a decision with no variants. No DOM is involved.
+const DQS = [
+  { id: 1, kind: "decision", variants: [{ id: "keep", text: "Keep" }, { id: "revert", text: "Revert" }] },
+  { id: 2, kind: "decision", parent: { question: 1, variants: ["keep"] }, variants: [{ id: "a", text: "A" }] },
+  { id: 3, kind: "evidence" },
+  { id: 4, kind: "decision" },
+];
+const dstate = (questions = {}, notes = {}) => normalize({ questions, notes });
+
+test("a chosen radio alone never suppresses children; an accepted outside variant does, and no answer returns silently",
+  "applicability rests on the parent's accepted decision, not on a selection the owner has not made",
+  () => {
+    const selected = dstate({ 1: { variant: "keep" }, 2: { choice: "accepted", variant: "a" } });
+    if (!applicable(DQS[1], selected, DQS)) return "a radio selection without acceptance suppressed the child";
+    if (counters(DQS, selected).accepted !== 1) return "the child's acceptance was not counted while the parent is undecided";
+    const kept = dstate({ 1: { choice: "accepted", variant: "keep" }, 2: { choice: "accepted", variant: "a" } });
+    if (!applicable(DQS[1], kept, DQS) || counters(DQS, kept).accepted !== 2) return "the child under the accepted applicable variant was not active";
+    const reverted = dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } });
+    if (applicable(DQS[1], reverted, DQS)) return "the child stayed applicable under the accepted outside variant";
+    const settled = settle(DQS, reverted);
+    if (settled.questions[2]?.choice || settled.questions[2]?.variant) return "settle kept the answer of a not-applicable child";
+    const c = counters(DQS, settled);
+    if (c.accepted !== 1 || c.notApplicable !== 1 || c.remaining !== 1) return `counters under the outside variant: ${JSON.stringify(c)}`;
+    // The parent's decision is cancelled: the child applies again, but its old answer does not return silently.
+    const cancelled = settle(DQS, dstate({ 2: settled.questions[2] }));
+    if (!applicable(DQS[1], cancelled, DQS) || cancelled.questions[2]?.choice) return "the old answer reactivated silently after the parent was cancelled";
+    if (counters(DQS, cancelled).remaining !== 3) return "the re-applicable child was not counted as remaining";
+    // A chain: the grandchild follows its parent's applicability.
+    const chain = [...DQS, { id: 5, kind: "decision", parent: { question: 2, variants: ["a"] } }];
+    const deep = dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" }, 5: { choice: "accepted" } });
+    if (applicable(chain[4], deep, chain)) return "a grandchild stayed applicable while its parent is not";
+    if (settle(chain, deep).questions[5]?.choice) return "settle kept the grandchild's answer";
+    return true;
+  });
+
+test("deferred needs a reason and never counts as accepted; evidence cannot be decided; acceptance needs content",
+  "a counter of accepted decisions inflated by deferrals, evidence closed as decided, or empty acceptances misleads the owner",
+  () => {
+    const bare = dstate({ 4: { choice: "deferred" } });
+    if (validDefer(DQS[3], bare) || counters(DQS, bare).deferred !== 0) return "a deferral without a reason was counted";
+    const reasoned = dstate({ 4: { choice: "deferred" } }, { q4: "Not now: the contract is unsettled." });
+    const c = counters(DQS, reasoned);
+    if (!validDefer(DQS[3], reasoned) || c.deferred !== 1 || c.accepted !== 0 || c.remaining !== 2) return `deferral counters: ${JSON.stringify(c)}`;
+    const evidence = dstate({ 3: { choice: "accepted" } }, { q3: "done" });
+    if (counters(DQS, evidence).accepted !== 0) return "an evidence question was counted as an accepted decision";
+    const emptyAccept = dstate({ 4: { choice: "accepted" } });
+    if (validAccept(DQS[3], emptyAccept) || counters(DQS, emptyAccept).accepted !== 0) return "a decision without variants was accepted with no comment";
+    const commented = dstate({ 4: { choice: "accepted" } }, { q4: "Keep as is." });
+    if (!validAccept(DQS[3], commented) || counters(DQS, commented).accepted !== 1) return "a substantive comment did not accept a variant-less decision";
+    const noVariant = dstate({ 1: { choice: "accepted" } });
+    if (validAccept(DQS[0], noVariant)) return "a decision with variants was accepted without choosing one";
+    return true;
+  });
+
+test("the export carries the schema, both digests, the question number, the variant id and text, comment and status",
+  "an export of ids alone cannot be read back, and one without digests cannot be tied to its revision",
+  () => {
+    const state = dstate({ 1: { choice: "accepted", variant: "keep" }, 2: { choice: "accepted", variant: "a" }, 4: { choice: "deferred" } }, { q4: "Later." });
+    const out = exportOf(DQS, settle(DQS, state), { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "abc", title: "T", range: "base..head" });
+    if (out.schema_version !== 3 || out.record_sha256 !== "r".repeat(64) || out.diff_sha256 !== "d".repeat(64)) return "the export lacks its schema or digests";
+    const q1 = out.questions.find((q) => q.question === 1);
+    if (q1.status !== "accepted" || q1.variant?.id !== "keep" || q1.variant?.text !== "Keep") return "the export lacks the variant's id and text";
+    const q4 = out.questions.find((q) => q.question === 4);
+    if (q4.status !== "deferred" || q4.comment !== "Later.") return "the export lacks the deferral's status or comment";
+    if (out.questions.some((q) => q.question === 3)) return "an evidence question was exported as a decision";
+    const reverted = exportOf(DQS, settle(DQS, dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } })), {});
+    if (reverted.questions.find((q) => q.question === 2).status !== "not-applicable") return "a not-applicable child was exported as active";
+    return true;
+  });
+
+test("the page renders each B/F/Q anchor once, the counters equal the model, and the record's bytes stay untouched",
+  "duplicated anchors break deep links, counters that differ from the model misstate the scale, and a render must not rewrite its record",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8"), before = fs.readFileSync(data);
+    const model = modelOfThemed();
+    for (const id of ["b1", "b2", "b3", "f1", "f2", "q1", "q2", "q3", "q4", "q5"])
+      if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `anchor ${id} does not appear exactly once`;
+    const c = model.counters;
+    for (const cell of [`<b>${c.files}</b>`, `<b>${c.addedFiles}</b>`, `<b>${c.removedFiles}</b>`, `<b>${c.blocks}</b>`,
+      `<b>${c.evidenceBlocks}</b><span>fragments awaiting evidence</span>`, `<b>${c.decisions}</b>`])
+      if (!page.includes(cell)) return `the counters differ from the model: missing ${cell}`;
+    if ((page.match(/class="qcard/g) ?? []).length !== 5) return "the five kinded questions did not become cards";
+    if (!page.includes('data-parent="3"') || !page.includes('name="vq3"')) return "the child card or the variant radios are missing";
+    // The full map is a closed disclosure of real markup, not a template: readable without scripts.
+    if (!page.includes('<details class="audit-map" id="map-details">') || page.includes("<template")) return "the map is not a no-JS disclosure";
+    if (page.includes('id="map-details" open')) return "the full map starts open";
+    // Deterministic render, and the digest in the page is the digest of these bytes.
+    const again = report("render", data);
+    if (again.status !== 0 || !before.equals(fs.readFileSync(data)) || page !== fs.readFileSync(html, "utf8")) return "the themed render is not byte-stable or touched the record";
+    const digest = createHash("sha256").update(before).digest("hex");
+    const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
+    if (embedded.digest.record !== digest || embedded.digest.diff !== THEMED.diff.sha256) return "the page's digests are not the bytes' digests";
+    // A legacy record renders through the same path with no card machinery and no passport.
+    const legacy = render();
+    if (legacy.status !== 0) return legacy.stderr;
+    const old = fs.readFileSync(html, "utf8");
+    for (const absent of ['class="qcard', '<details class="passport-card"', '<div class="status-strip"', 'na-badge" hidden'])
+      if (old.includes(absent)) return `the legacy page grew "${absent}"`;
+    if (!old.includes('<li id="q1"><strong>Q1</strong>')) return "the legacy question lost its plain line";
+    return true;
+  });
+
+test("texts reach the page as text: a script in a question, markup in a variant, quotes in a comment",
+  "the page shows private code; a record's text run as markup is an injection",
+  () => {
+    const result = render((r) => {
+      Object.assign(r, structuredClone(THEMED));
+      r.questions[2].text = 'Keep it? </script><script>alert(1)</script> <img src=x onerror=alert(1)>';
+      r.questions[2].variants[0].text = '<b onclick="x">bold</b> & "quoted"';
+      r.passport.links[0].label = '<script>x</script>';
+    });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (page.includes("</script><script>alert(1)</script>") || page.includes('<img src=x onerror') || page.includes('<b onclick')) return "a record text reached the page as markup";
+    if (!page.includes("&lt;/script&gt;") || !page.includes("&lt;b onclick")) return "the hostile text is not shown escaped";
+    if ((page.match(/<script/g) ?? []).length !== 2) return "the page grew a script element";
+    return true;
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));
