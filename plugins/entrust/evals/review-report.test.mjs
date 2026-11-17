@@ -13,8 +13,9 @@ import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, BASE_KEYS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
+import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
 import { normalize, settle, applicable, counters, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
@@ -970,6 +971,230 @@ test("a copy of the real 65507 record, enriched with the new fields, checks and 
     const again = report("render", copy);
     if (again.status !== 0 || page !== fs.readFileSync(path.join(dir, "review.html"), "utf8")) return "the enriched render is not byte-stable";
     return createHash("sha256").update(fs.readFileSync(recordPath)).digest("hex") === originalSha || "the immutable original was touched";
+  });
+
+// ---- v4: the tabbed page over the same record ----
+
+test("the v4 page is tabs over panels the no-script reader can use, with deep-link targets in the markup",
+  "a tabbed page that hides its content from the no-script reader, or a deep link with no target, loses the map or the decision",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('role="tablist"') || (page.match(/<a role="tab"/g) ?? []).length !== 6 || (page.match(/role="tabpanel"/g) ?? []).length !== 6) return "the six tabs and panels are not ARIA markup";
+    for (const id of ["overview", "decisions", "findings", "code", "checks", "materials"])
+      if (!page.includes(`id="tab-${id}" data-tab="${id}" href="#panel-${id}" aria-controls="panel-${id}"`) || !page.includes(`id="panel-${id}" data-panel="${id}"`)) return `tab ${id} is not an anchor to its panel`;
+    if (/class="panel"[^>]*hidden/.test(page)) return "a panel ships hidden from the no-script reader";
+    if (!page.includes("<noscript>") || !page.includes("Without JavaScript all sections show one after another")) return "the no-script note is missing";
+    // Every deep-link family has its target exactly once: questions, findings, blocks, pictures, panels.
+    for (const id of ["q1", "q2", "q3", "q4", "q5", "f1", "f2", "b1", "b2", "b3", "shot-1", "shot-2"])
+      if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `deep-link target ${id} does not appear exactly once`;
+    const data = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
+    if (!data.blockFile || data.blocks.some((b) => data.blockFile[b.id] === undefined) || data.files.length !== 3) return "the script cannot map blocks to files";
+    if (data.blocks.some((b) => b.firstAdd === undefined || b.firstDel === undefined || !b.purpose || !b.parts)) return "the popover's sources and purpose are not in the data";
+    return data.pr.url === null || "a record without a passport invented a PR link";
+  });
+
+test("purpose is the model's deterministic classification, and the filter bar shows its counters",
+  "a purpose guessed at render time or a counter that differs from the model misstates what the change touches",
+  () => {
+    const model = modelOfThemed();
+    const byPath = Object.fromEntries(model.files.map((f) => [f.path, f.purpose]));
+    if (byPath["src/invoices/archive.js"] !== "production" || byPath["test/archive.test.js"] !== "tests" || byPath["test/outputs.test.js"] !== "tests") return "file purposes differ from the rules";
+    if (model.blocks.some((b) => model.purpose.block[b.id] !== model.purpose.file[b.path])) return "a non-test block follows its file";
+    const total = Object.values(model.purpose.counts).reduce((sum, c) => sum + c.blocks, 0);
+    if (total !== model.blocks.length || model.purpose.counts.tests.blocks !== 2 || model.purpose.counts.production.blocks !== 1) return "purpose counters are not over the blocks";
+    if (model.purpose.counts.tests.lines !== model.blocks.filter((b) => b.path.startsWith("test/")).reduce((sum, b) => sum + b.size, 0)) return "purpose lines are not the sum of block sizes";
+    // The disclosed edge rules: stories are tests, keysets are assets, i18n modules are production, configs are config.
+    const cases = [["src/__stories__/a.stories.tsx", "tests"], ["src/i18n/keysets/en.json", "assets"], ["src/i18n/en.ts", "production"],
+      ["tsconfig.base.json", "config"], ["a.yaml", "config"], ["s.scss", "styles"], ["CHANGELOG.md", "docs"], ["assets/logo.svg", "assets"], ["src/a.test.ts", "tests"]];
+    for (const [p, want] of cases) if (purposeOfPath(p) !== want) return `purposeOfPath(${p}) is not ${want}`;
+    // A test block inside a production file counts as tests; the bar shows the model's numbers.
+    const r = structuredClone(THEMED);
+    r.blocks[0].kind = "test";
+    const files = parseThemeDiff(), checked = check(r, files, run);
+    if (checked.errors.length) return checked.errors.join("; ");
+    const m = modelOf(r, files, checked.owner, run);
+    if (m.purpose.block[1] !== "tests" || m.purpose.counts.production.blocks !== 0) return "a test block of a production file is not tests";
+    const result = render((rr) => Object.assign(rr, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const p of PURPOSES)
+      if (!page.includes(`data-purpose-filter="${p}"`) || !page.includes(`<b>${model.purpose.counts[p].lines}</b>`)) return `the purpose bar lacks ${p} or its model counter`;
+    if (!page.includes("Lines — the sum of block sizes.")) return "the lines caption is missing";
+    // The classification is derived, never written into the record.
+    return !fs.readFileSync(data, "utf8").includes('"purpose"') || "the render persisted a derived field into the record";
+  });
+
+test("the map keeps every block once: 1470 anchors, 1517 fragments, zero duplicate ids, one Q3 banner",
+  "a duplicated anchor breaks deep links, a lost fragment breaks the audit, and 224 blocks must not read as 224 decisions",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const originalSha = createHash("sha256").update(fs.readFileSync(recordPath)).digest("hex");
+    const dir = path.join(run, "v4-map-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review));
+    const drawn = report("render", copy);
+    if (drawn.status !== 0) return drawn.stderr.slice(0, 400);
+    const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
+    const segs = (page.match(/data-block="/g) ?? []).length;
+    const anchors = (page.match(/ id="b\d+"/g) ?? []).length;
+    if (anchors !== 1470 || segs !== 1517) return `the map holds ${anchors} anchors and ${segs} fragments, not 1470/1517`;
+    const ids = [...page.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    const dups = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))];
+    if (dups.length) return `duplicate ids: ${dups.slice(0, 5).join(", ")}`;
+    const banner = page.match(/<div class="evidence-banner v-question"><span class="tag v-question">Q3<\/span><p>([\s\S]*?)<\/p>/)?.[1];
+    if (!banner || !banner.includes("224") || !banner.includes("229") || !/one question|один вопрос/.test(banner) || !/not that many decisions|не столько решений/.test(banner)) return `the Q3 banner is missing or wrong: ${banner?.slice(0, 120)}`;
+    const evidenceWithBlocks = review.questions.filter((q, i) => q.kind === "evidence" && review.blocks.filter((b) => (b.questions ?? []).includes(i + 1)).length >= 2).length;
+    if ((page.match(/class="evidence-banner/g) ?? []).length !== evidenceWithBlocks) return "the banner is not one per evidence question with blocks";
+    if (!page.includes('<b>96</b>')) return "the file counter is not 96";
+    // The full audit is the default-closed per-file disclosure, never a template in the markup.
+    if ((page.match(/<details class="file-details">/g) ?? []).length !== 96 || page.includes("<template")) return "the no-JS map is not 96 closed file disclosures";
+    return createHash("sha256").update(fs.readFileSync(recordPath)).digest("hex") === originalSha || "the immutable original was touched";
+  });
+
+// The contrast math the render-time adjustment must satisfy: every token on the three code backgrounds of each theme.
+const lumOf = (rgb) => { const [r, g, b] = rgb.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const ratioOf = (a, b) => { const l1 = lumOf(a), l2 = lumOf(b); return (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); };
+const hex2rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const LIGHT_BGS = [[250, 251, 253], [230, 255, 236], [255, 235, 233]];
+const DARK_BGS = [[20, 26, 34], [20 + (46 - 20) * .15, 26 + (160 - 26) * .15, 34 + (67 - 34) * .15], [20 + (248 - 20) * .12, 26 + (81 - 26) * .12, 34 + (73 - 34) * .12]];
+
+test("diff lines are painted by change kind, never by verdict, and every token keeps >=4.5 in both themes",
+  "a verdict fill over code hides the change kind, and an unadjusted palette dips below 4.5 on the tinted fields",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    // The three layers are CSS variables, the removed line keeps the foreground color, the gutters are old and new.
+    for (const part of ["--ins-bg: #e6ffec", "--del-bg: #ffebe9", ".l.add { background: var(--ins-bg)", ".l.del { background: var(--del-bg)", "color: var(--fg) }", '<b class="old">', '<b class="new">'])
+      if (!page.includes(part)) return `the diff layers lack "${part}"`;
+    // A kept block's removed line and a question block's added line carry the change colors, not the verdict's.
+    const keepSeg = page.match(/<div class="seg v-keep" data-block="1"[\s\S]*?<\/details><\/div>/)?.[0];
+    const questionSeg = page.match(/<div class="seg v-question" data-block="3"[\s\S]*?<\/details><\/div>/)?.[0];
+    if (!keepSeg?.includes('class="l del"') || !questionSeg?.includes('class="l add"')) return "the kept block has no removed line or the question block no added line";
+    if (keepSeg.includes("--v-bg") && /class="l del"[^>]*style/.test(keepSeg)) return "a verdict fill reached the line";
+    // Every adjusted token span passes 4.5 on all three backgrounds of its theme.
+    const spans = [...page.matchAll(/style="color:(#[0-9a-f]{6});--shiki-dark:(#[0-9a-f]{6})/g)];
+    if (spans.length < 20) return `too few Shiki spans to walk: ${spans.length}`;
+    let minLight = 99, minDark = 99;
+    for (const [, light, dark] of spans) {
+      minLight = Math.min(minLight, ...LIGHT_BGS.map((bg) => ratioOf(hex2rgb(light), bg)));
+      minDark = Math.min(minDark, ...DARK_BGS.map((bg) => ratioOf(hex2rgb(dark), bg)));
+    }
+    if (minLight < 4.5 || minDark < 4.5) return `token contrast below 4.5: light ${minLight.toFixed(2)}, dark ${minDark.toFixed(2)}`;
+    // Context lines drop the syntax color in CSS, and the dark theme switches via --shiki-dark on screen only.
+    if (!page.includes(".l.ctx span[style] { color: inherit !important }") || !page.includes("color: var(--shiki-dark) !important")) return "the context/dual-theme switching is missing";
+    return page.includes("@media screen {") || "the dark switching is not scoped to screen (print keeps the light tokens)";
+  });
+
+test("the Shiki syntax is sequence-wide, deterministic, and falls back honestly",
+  "line-by-line tokenization loses multi-line constructs, a global highlighter leaks between renders, and an unsupported language must stay plain",
+  () => {
+    const files = [{ path: "a.ts", hunks: [[
+      { kind: "ctx", old: 1, new: 1, text: "/* start" },
+      { kind: "del", old: 2, text: "end */ const old = 1;" },
+      { kind: "add", new: 2, text: "end */ const x: number = 2; // tail" },
+      { kind: "add", new: 3, text: "" }]] },
+      { path: "b.bin", hunks: [[{ kind: "add", new: 1, text: "<x> & \"y\"" }]] }];
+    return (async () => {
+      const first = await createSyntax(files), second = await createSyntax(files);
+      if (!first || !second) return "the vendored bundle did not load";
+      const addLine = files[0].hunks[0][2];
+      const html = first.line(addLine, "a.ts");
+      if (!html.includes("--shiki-dark:")) return "the added line has no dual-theme spans";
+      // The comment that began on the context line keeps its comment color on the added line: the sequence was tokenized whole.
+      const ctxColor = first.line(files[0].hunks[0][0], "a.ts").match(/color:(#[0-9a-f]{6})/)?.[1];
+      if (!ctxColor || !html.startsWith(`<span style="color:${ctxColor};`)) return "the multi-line comment lost its coloring across lines";
+      if (first.line(addLine, "a.ts") !== second.line(addLine, "a.ts")) return "two renders differ";
+      if (first.line(files[0].hunks[0][3], "a.ts") !== "") return "a blank line is not empty";
+      if (first.line(files[1].hunks[0][0], "b.bin") !== "&lt;x&gt; &amp; &quot;y&quot;") return "an unsupported language is not escaped plain";
+      // The pattern fallback still draws code when no syntax is given, and page() uses it.
+      if (!highlight("const x = 1;", "a.js").includes('class="t-k"')) return "the pattern fallback broke";
+      const model = modelOfThemed(), legacyPage = page(THEMED, parseThemeDiff(), model);
+      if (!legacyPage.includes('class="t-k"') || legacyPage.includes("--shiki-dark:")) return "page() without a syntax did not fall back";
+      return true;
+    })();
+  });
+
+test("the export marks drafts and comment-only acceptances, and a draft is never a decision",
+  "a draft exported as accepted, or a comment acceptance read as a missing variant, misstates what the owner decided",
+  () => {
+    const draft = dstate({ 1: { choice: "draft", variant: "keep" } });
+    if (validAccept(DQS[0], draft) || counters(DQS, draft).accepted !== 0 || counters(DQS, draft).remaining !== 3) return "a draft counted as a decision";
+    const out = exportOf(DQS, draft, {});
+    const q1 = out.questions.find((q) => q.question === 1);
+    if (out.schema_version !== 4 || q1.status !== "remaining" || q1.variant?.id !== "keep" || q1.variant_draft !== true) return "the draft is not exported as a draft";
+    // A deferred pick and a retired child keep the variant as a draft; an accepted one does not.
+    const deferred = exportOf(DQS, dstate({ 1: { choice: "deferred", variant: "keep" } }, { q1: "Later." }), {});
+    if (deferred.questions.find((q) => q.question === 1).variant_draft !== true) return "a deferred variant is not a draft";
+    const retired = exportOf(DQS, settle(DQS, dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } })), {});
+    const q2 = retired.questions.find((q) => q.question === 2);
+    if (q2.status !== "not-applicable" || q2.variant?.id !== "a" || q2.variant_draft !== true) return "a retired child's pick is not exported as a draft";
+    const accepted = exportOf(DQS, dstate({ 1: { choice: "accepted", variant: "keep" } }), {});
+    if (accepted.questions.find((q) => q.question === 1).variant_draft !== undefined) return "an accepted variant is marked draft";
+    // A variant-less decision accepted by comment: named in applyWithoutVariant, never a missing variant.
+    const commented = exportOf(DQS, dstate({ 4: { choice: "accepted" } }, { q4: "Keep as is." }), {});
+    if (commented.applyWithoutVariant.join() !== "4" || commented.questions.find((q) => q.question === 4).variant !== null) return "a comment acceptance is not named";
+    return exportOf(DQS, dstate({ 1: { choice: "accepted", variant: "keep" } }), {}).applyWithoutVariant.length === 0 || "a variant acceptance landed in applyWithoutVariant";
+  });
+
+test("without scripts the v4 controls are disabled, the panels stack, and the map is complete",
+  "interactive-looking filters that cannot work mislead the no-script reader; a hidden panel loses the content",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const part of ['data-purpose-filter="tests" aria-pressed="false" disabled', 'id="tree-filter-input"', 'id="tree-filter-clear" disabled',
+      'class="fname mono" data-fexpand="0" disabled', 'data-f-filter="1" disabled', 'data-req-filter="1" disabled', 'data-q-filter="1" disabled'])
+      if (!page.includes(part)) return `the no-script control is missing or not disabled: ${part}`;
+    if (!/<input type="radio" name="vq3"[^>]*disabled>/.test(page) || !/<input type="checkbox" data-zone="1-0" disabled>/.test(page)) return "the radios or zones are not disabled";
+    if (!page.includes('fieldset class="qopts" disabled')) return "the variant fieldset is not disabled";
+    if (page.includes("<template") || /class="panel"[^>]*hidden/.test(page) || page.includes('class="file-details" open')) return "the no-JS page hides content or starts open";
+    if ((page.match(/<details class="file-details">/g) ?? []).length !== 3) return "the map is not one closed disclosure per file";
+    if (!page.includes(".js .nojs-note { display: none }") || !page.includes("control.disabled = false")) return "the runtime does not enable the controls or hide the hint";
+    return page.includes('id="theme-toggle" class="theme-btn act"') || "the theme button is not script-only";
+  });
+
+test("the target structure stays closed, C1 is absent, and the print profiles and shot permalinks are present",
+  "a diagram that opens by default buries the verdict; a next-unresolved control was deliberately not ported",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('<details class="structure-target">') || page.includes('class="structure-target" open')) return "the target diagram is not a closed disclosure";
+    if (page.includes("next unresolved") || page.includes("следующее нерешённое") || page.includes("data-next-unresolved")) return "C1 was ported";
+    if (!page.includes('id="print-owner"') || !page.includes('id="print-audit"') || !page.includes(".panel[hidden] { display: flex !important }")) return "the print profiles or their CSS are missing";
+    if (!page.includes('id="shot-1"') || !page.includes('href="#shot-1"') || !page.includes('class="shot-link"')) return "the shot permalinks (C3) are missing";
+    if (!page.includes('id="filter-chip"') || !page.includes('id="filter-prev"') || !page.includes('id="filter-next"') || !page.includes('id="filter-back"') || !page.includes('id="filter-pos" role="status"')) return "the filter chip (C4) is missing";
+    if (!page.includes('id="tree-filter-count" role="status"')) return "the tree filter count (C2) is missing";
+    return page.includes('id="export-json-top"') && page.includes('id="copy-top"') && page.includes('id="export-json"') && page.includes('id="copy"') || "the export controls are missing";
+  });
+
+test("the v4 words are localized, and a custom catalog carries the v4 controls",
+  "a new control silently left in English, or a legacy catalog broken by the v4 chrome, fails the reader",
+  () => {
+    const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const word of ["Обзор", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
+      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Имя файла:", "Подтвердить выбор", "Отложить", "Сбросить", "ожидает"])
+      if (!page.includes(word)) return `the Russian page lacks "${word}"`;
+    for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
+      if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
+    // The always-visible v4 chrome is required of every custom catalog; the card words only of a record with cards.
+    const required = requiredKeys(REVIEW);
+    for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"])
+      if (!required.includes(key)) return `the v4 control ${key} is not required of a legacy catalog`;
+    if (required.includes("decision.confirm")) return "a record without cards was asked for the card words";
+    const files = parseThemeDiff();
+    const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
+    const custom = check({ ...structuredClone(THEMED), language: "custom", labels: catalog }, files, run);
+    return custom.errors.length === 0 || `a complete v4 custom catalog was refused: ${custom.errors.join("; ")}`;
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));
