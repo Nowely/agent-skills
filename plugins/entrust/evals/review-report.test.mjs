@@ -796,6 +796,22 @@ test("the question tree renders every level once: grandchildren keep their cards
     return true;
   });
 
+test("a mechanism's findings stand as related findings, never as an invented consequence; historical screens carry their sources in the printout",
+  "the first finding's text presented as the mechanism's consequence is analysis outside the record; the printout dropped the screen's sources",
+  () => {
+    const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.mechanisms = [{ ...MECHANISM, findings: [1, 2] }]; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const card = page.match(/<article class="finding mechanism" id="m1"[\s\S]*?<\/article>/)?.[0];
+    if (!card) return "the mechanism card is missing";
+    if (card.includes("Why change it") || card.includes("What happens.") || card.includes("What breaks.")) return "a finding's text is presented as the mechanism's consequence";
+    if (!card.includes("Findings:") || !card.includes('href="#f1"') || !card.includes('href="#f2"')) return "the related findings are not listed neutrally";
+    const md = result.stdout.split("## Mechanisms")[1].split("## Structure")[0];
+    if (!md.includes("Findings: 1, 2") || md.includes("What happens.") || md.includes("Why change it")) return "the printout lacks the neutral related findings or invents a consequence";
+    if (!result.stdout.includes("(coverageStructured 2)")) return "the historical screen's sources are missing from the printout";
+    return true;
+  });
+
 test("texts reach the page as text: a script in a question, markup in a variant, quotes in a comment",
   "the page shows private code; a record's text run as markup is an injection",
   () => {

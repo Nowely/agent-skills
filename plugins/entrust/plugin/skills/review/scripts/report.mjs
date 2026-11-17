@@ -66,14 +66,16 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
       `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
     ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
-      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}`,
+      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${s.historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
     ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "),
       ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
       ...mechanisms.flatMap((m) => [
       `### ${m.name} (${word("change", m.change)}; ${word("evidence", m.evidence)})`,
-      `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}${cited(m.findings)}`,
+      `${t("units")}: ${(m.units ?? []).join(", ") || t("none")}`,
+      // The findings a mechanism names stand as related findings, never as an invented consequence of it.
+      ...(m.findings?.length ? [`${t("findings")}: ${m.findings.join(", ")}`] : []),
       // Weight is printed for a mechanism whose blocks were named; the others have none to show.
       ...(m.weight ? [`${t("weight")}:`, ...(() => { const rows = weightOverview(m.weight, t, languageOf(review)); return rows.length
         ? rows.map(row => `${t(`weight.category.${row.kind}`)}: ${row.text}`) : [t("weight.unchanged")]; })(),

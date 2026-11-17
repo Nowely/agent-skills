@@ -788,10 +788,10 @@ function mechanisms(review, model, t) {
             ${(m.weight.shared ?? []).map(s => `<p class="sub">${esc(t("weight.shared"))} ${s.with.map(esc).join(", ")}: ${esc(weightCountsText({ [s.kind]: s }, t))} <a href="#b${s.block}">B${s.block}</a></p>`).join("")}
             <div class="group">${(m.blocks ?? []).map(id => `<a href="#b${id}">B${id}</a>`).join("")}</div><p class="sub">${esc(t("weight.note"))}</p>
           </div></details></div>` : ""}
-        ${findings[0] ? `<p><strong>${esc(t("consequence"))}:</strong> ${prose(findings[0].what)} <a href="#f${esc(findings[0].id)}">${esc(t("shown-by"))}</a></p>` : ""}
+        ${findings.length ? `<p class="sub"><strong>${esc(t("findings"))}:</strong> ${findings.map(f => `<a href="#f${esc(f.id)}">${esc(f.id)}</a>`).join(", ")}</p>` : ""}
         ${m.instead ? `<p><strong>${esc(t("instead"))}:</strong> ${prose(m.instead)}</p>` : ""}
         <div class="mechanism-tradeoff">${["benefit", "cost"].map(key => `<div><strong>${esc(t(key))}</strong>${lines(m[key])}</div>`).join("")}</div>
-        <div class="group sub"><span>${esc(t(`evidence.${m.evidence}`))}</span>${findings.map(f => `<a href="#f${esc(f.id)}">${esc(t("finding"))} ${esc(f.id)}</a>`).join("")}</div>
+        <div class="group sub"><span>${esc(t(`evidence.${m.evidence}`))}</span></div>
         <details><summary>${esc(t("basis"))}</summary><div class="stack">
           <p><strong>${esc(t("purpose"))}:</strong> ${prose(m.purpose)}</p><p>${prose(m.basis)}</p>
           <p><strong>${esc(t("unit"))}:</strong> ${(m.units ?? []).map(name => `<code>${esc(name)}</code>`).join(", ") || esc(t("none"))}</p>
