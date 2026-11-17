@@ -456,7 +456,7 @@ const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", rem
 // A claim's sources: an internal ref links to the item it names, an external place stands as text.
 const srcHtml = (sources, review) => (sources ?? []).map((s) => {
   const { text, anchor } = sourceOf(s, review);
-  return anchor ? `<a href="${anchor}">${esc(text)}</a>` : esc(text);
+  return anchor ? `<a href="${esc(anchor)}">${esc(text)}</a>` : esc(text);
 }).filter(Boolean).join(", ");
 const claimsHtml = (list, review) => `<ul class="plain">${list.map((c) => `<li>${prose(c.text)}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review)})</span>` : ""}</li>`).join("")}</ul>`;
 const coverageLabel = (kind, t) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);

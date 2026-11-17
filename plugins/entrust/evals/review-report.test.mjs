@@ -14,6 +14,7 @@ import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, BASE_KEYS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
+import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
 import { normalize, settle, applicable, counters, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
@@ -577,6 +578,65 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
     const { errors, warnings } = check(thin, files, run);
     return !errors.length && warnings.some((w) => w.includes("names no revision")) && warnings.some((w) => w.includes("has no quote"))
       || `thin card: errors ${errors.join("; ")}; warnings ${warnings.join("; ")}`;
+  });
+
+test("check lists faults instead of throwing on malformed lists, and a run without a revision is warned about",
+  "a non-array field crashed the validation with an exception instead of a fault list; a ran claim on an external source said nothing about its version",
+  () => {
+    const files = parseThemeDiff();
+    const mutations = [
+      [(r) => { r.questions[3].parent.variants = "extend"; }, "parent"],
+      [(r) => { r.questions[2].variants = "status-quo"; }, "variants is not a list"],
+      [(r) => { r.questions[2].context = "plain text"; }, "context is not a list"],
+      [(r) => { r.questions[2].variants[0].consequences = "plain text"; }, "consequences is not a list"],
+      [(r) => { r.questions[2].context[0].sources = "a source"; }, "names no source"],
+      [(r) => { r.questions[2].remainingEvidence = "1"; }, "remainingEvidence is not a list"],
+      [(r) => { r.questions[0].zones = "a zone"; }, "zone is not a list"],
+      [(r) => { r.steps = "a step"; }, '"steps" is not a list'],
+      [(r) => { r.checks = "a check"; }, '"checks" is not a list'],
+      [(r) => { r.ideas = "an idea"; }, '"ideas" is not a list'],
+      [(r) => { r.challenges = "a challenge"; }, '"challenges" is not a list'],
+      [(r) => { r.screens = "a screen"; }, '"screens" is not a list'],
+      [(r) => { r.units = "a unit"; }, '"units" is not a list'],
+      [(r) => { r.target_units = "a unit"; }, '"target_units" is not a list'],
+      [(r) => { r.screens[0].differences = "a difference"; }, "differences is not a list"],
+    ];
+    for (const [change, fault] of mutations) {
+      const r = structuredClone(THEMED); change(r);
+      let result;
+      try { result = check(r, files, run); } catch (error) { return `check threw on ${fault}: ${error.message}`; }
+      if (!result.errors.length || !result.errors.some((e) => e.includes(fault))) return `expected a fault containing "${fault}", got: ${result.errors.join("; ") || "none"}`;
+    }
+    // A ran statement on an external source without a revision: a warning; a read statement without one: none.
+    const ran = structuredClone(THEMED); delete ran.coverageStructured[0].revision;
+    const warned = check(ran, files, run);
+    if (warned.errors.length || !warned.warnings.some((w) => w.includes("without a revision"))) return `a run without a revision was not warned about: ${warned.errors.join("; ")} / ${warned.warnings.join("; ")}`;
+    const read = structuredClone(THEMED);
+    read.coverageStructured = [{ kind: "read", text: "The contract was read.", sources: [{ at: "elsewhere.md:3", quote: "the rule" }] }];
+    read.screens[1].sources = [{ ref: "/coverageStructured/0" }];
+    const readChecked = check(read, files, run);
+    if (readChecked.errors.length) return `the read statement record broke elsewhere: ${readChecked.errors.join("; ")}`;
+    if (readChecked.warnings.some((w) => w.includes("without a revision"))) return "a read statement was asked for a revision";
+    return true;
+  });
+
+test("a finding id is validated, and even a hostile one reaches an href escaped",
+  "an id with a quote or markup rode into a source anchor unescaped; the check accepted any string as an id",
+  () => {
+    const files = parseThemeDiff(), hostile = '1" onmouseover="alert(1)';
+    const r = structuredClone(THEMED);
+    r.findings[0].id = hostile;
+    // Keep the references resolving, so only the id format is at fault and the renderer can be exercised.
+    r.blocks[1].findings = [hostile]; r.steps[0].findings = [hostile]; r.screens[0].differences[1].finding = hostile;
+    r.questions[2].context[0].sources = [{ ref: "/findings/0" }];
+    const { errors } = check(r, files, run);
+    if (!errors.some((e) => e.includes('id is letters, digits'))) return `a hostile finding id was accepted: ${errors.join("; ")}`;
+    // Defense in depth: the renderer escapes the anchor even for a record that never passed the check.
+    const { owner } = check(THEMED, files, run);
+    const html = page(r, files, modelOf(r, files, owner, run));
+    if (html.includes(`href="#f${hostile}"`)) return "the hostile id reached an href unescaped";
+    if (!html.includes(`href="#f1&quot; onmouseover=&quot;alert(1)"`)) return "the hostile id is not shown escaped in the source anchor";
+    return true;
   });
 
 test("modelOf derives children, unique counters, file status and the shortest unique path",

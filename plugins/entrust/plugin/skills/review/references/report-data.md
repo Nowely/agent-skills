@@ -21,7 +21,7 @@ The full record of a review: one `review.json` that the response is written from
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
    about a kept unit holding an open block; for the decision-card fields, about a source named but unreachable, an
-   external source without a quote, a historical picture without a revision, and a card thin without broken links.
+   external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
 4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict,
    `now`, `target`, units, mechanism decisions and steps describe one solution; a removal leaves no orphaned state;
@@ -126,7 +126,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
   and a permission is never marked `met`.
 - **Verdict, now, target.** A few lines each; a line starting `- ` is drawn as a list item.
 - **Steps.** What to do, in order, each naming the findings it settles; left out when the recommendation is one thing.
-- **Findings.** `direction`: `behavior`, `necessity`, `design` or `tests`. `evidence`: `ran`, `read` or `judgment`.
+- **Findings.** `id` is letters, digits, `_` or `-`: it travels into the page's anchors. `direction`: `behavior`, `necessity`, `design` or `tests`. `evidence`: `ran`, `read` or `judgment`.
   `shown_by` is what shows it; a candidate with nothing to put there is a question. `breaks` lists requirements shown
   unmet; a finding about tests lists under `untested` the requirements whose regression no test would catch.
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs.
@@ -161,7 +161,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
   `coverageStructured` lists the same coverage as authored statements — `kind` of `ran`, `read` or `not_checked`,
-  `text`, an optional `revision` for what was run, and `sources`; the page shows these words as written, and never
+  `text`, a `revision` for what was run (a `ran` statement on an external source without one is a warning: a claim
+  about a checked version must name it), and `sources`; the page shows these words as written, and never
   reads a status such as "tests passed" or "merge-ready" out of the prose.
 - **Tradeoffs.** Optional: an omission the owner accepted, with its `text`, its `consequence` (what remains unknown
   or lost) and `sources`. A proposal to drop a binding requirement stays a question until its owner accepts it.

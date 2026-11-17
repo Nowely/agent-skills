@@ -115,7 +115,8 @@ export function check(review, files, directory) {
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   if (review.mechanisms !== undefined && !Array.isArray(review.mechanisms)) errors.push('"mechanisms" is not a list');
   if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
-  for (const field of ["challenges", "questions"]) if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
+  for (const field of ["challenges", "questions", "steps", "checks", "ideas", "screens", "units", "target_units"])
+    if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   errors.push(...labelFaults(review));
   if (errors.length) return { errors, warnings, owner };
 
@@ -163,6 +164,8 @@ export function check(review, files, directory) {
     }
   }
   for (const f of review.findings) {
+    // An id travels into anchors and hrefs: letters, digits, "_" and "-" only, so no quote or markup can ride along.
+    if (!/^[A-Za-z0-9_-]+$/.test(String(f.id))) errors.push(`finding ${f.id}: id is letters, digits, "_" or "-"`);
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
@@ -220,7 +223,8 @@ export function check(review, files, directory) {
           else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
           else variantIds.add(v.id);
           if (!text(v?.text)) errors.push(`${w} has no text`);
-          if (!filled(v?.consequences)) warnings.push(`${w} lists no consequences`);
+          if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
+          else if (!filled(v?.consequences)) warnings.push(`${w} lists no consequences`);
           else claims(w, v.consequences, "consequence");
         }
       }
@@ -246,7 +250,9 @@ export function check(review, files, directory) {
     if (!Number.isInteger(p?.question) || p.question < 1 || p.question > qList.length) errors.push(`${who}: parent names question ${p?.question}, which is not listed`);
     else if (p.question === index + 1) errors.push(`${who}: parent is itself`);
     else {
-      const ids = new Set((qList[p.question - 1].variants ?? []).map((v) => v?.id));
+      const parentVariants = qList[p.question - 1].variants;
+      if (parentVariants !== undefined && !Array.isArray(parentVariants)) errors.push(`${who}: the variants of parent question ${p.question} are not a list`);
+      const ids = new Set((Array.isArray(parentVariants) ? parentVariants : []).map((v) => v?.id));
       if (!filled(p.variants)) errors.push(`${who}: parent lists no variants`);
       else for (const id of p.variants) if (!ids.has(id)) errors.push(`${who}: parent.variants names "${id}", which is not a variant of question ${p.question}`);
     }
@@ -282,10 +288,12 @@ export function check(review, files, directory) {
     for (const shot of SHOTS) if (screen[shot] !== undefined && !pictureOf(screen[shot], directory))
       errors.push(`${name}: ${shot} "${screen[shot]}" is neither a picture file there (${Object.keys(PICTURE_TYPES).join(", ")}) nor an https link`);
     // A match is a claim about two pictures; with nothing found and nothing claimed, the screen was not compared.
+    if (screen.differences !== undefined && !Array.isArray(screen.differences)) errors.push(`${name}: differences is not a list`);
+    const differences = Array.isArray(screen.differences) ? screen.differences : [];
     if (screen.match && (screen.mockup === undefined || screen.after === undefined)) errors.push(`${name} is said to match, and has no ${screen.mockup === undefined ? "mockup" : "after"} picture`);
-    if (screen.match && screen.differences?.length) errors.push(`${name} is said to match, and lists differences`);
-    if (!screen.match && !screen.differences?.length && !text(screen.missing)) errors.push(`${name} has no difference and no "match": say in "missing" what you could not compare`);
-    for (const difference of screen.differences ?? []) {
+    if (screen.match && differences.length) errors.push(`${name} is said to match, and lists differences`);
+    if (!screen.match && !differences.length && !text(screen.missing)) errors.push(`${name} has no difference and no "match": say in "missing" what you could not compare`);
+    for (const difference of differences) {
       if (!text(difference.what)) errors.push(`${name}: a difference has no "what"`);
       if (!text(difference.why) && difference.finding === undefined) errors.push(`${name}: a difference has neither "why" nor "finding"`);
       if (difference.finding !== undefined) refs(name, [difference.finding], findings, "finding");
@@ -316,6 +324,9 @@ export function check(review, files, directory) {
       if (!COVERAGE_KINDS.includes(c?.kind)) errors.push(`${who}: kind is one of ${COVERAGE_KINDS.join(", ")}`);
       if (!text(c?.text)) errors.push(`${who} has no text`);
       if (c?.revision !== undefined && !text(c.revision)) errors.push(`${who}: revision is empty`);
+      // A run is a claim about a checked version: an external source without a revision cannot travel to it.
+      if (c?.kind === "ran" && !text(c.revision) && (Array.isArray(c.sources) ? c.sources : []).some((s) => s && typeof s === "object" && !Array.isArray(s) && s.ref === undefined && text(s.at)))
+        warnings.push(`${who} claims a run on an external source without a revision: name the revision it ran at`);
       sourceFaults(who, c?.sources);
     });
   }
