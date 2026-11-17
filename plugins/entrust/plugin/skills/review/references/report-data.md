@@ -170,11 +170,13 @@ new evidence that changes a conclusion makes a revised record, named as such.
   `repository`, `base`, `head`, `reviewedAt`. `range` remains the source of the scope; the passport stores no copy
   of the diff digest or the record digest, which are computed from the bytes.
 - **Language.** `language` is the session's language code; built-in `en` and `ru` cover every control. Another
-  language needs a complete `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
-  The catalog a record needs is the old base plus the words of the controls it actually shows: the counters, the
-  file tree's marks and the print profiles on every record, the viewer for pictures, and the cards, passport,
-  coverage, tradeoffs, permission and historical marks for the fields that use them — so a control is never
-  silently left in English.
+  language needs a `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
+  The catalog a record needs is the old base set plus, for a record that uses any new field, the chrome words
+  (tabs, theme, map reader, filters, export, no-script notes) and the words of every capability it shows — the
+  viewer for pictures, the cards, passport, coverage, tradeoffs, permission and historical marks — so a control
+  is never silently left in English on a record authored for this version. An old record without the new fields
+  keeps passing with a genuine old catalog (the base set alone); the chrome on such a record falls back to the
+  built-in words.
 
 ## Sources
 
@@ -231,7 +233,8 @@ One renderer draws the page; the v4 layout is presentation over the same record,
 never a new record field:
 
 - **Tabs.** Overview, Decisions, Findings, Code, Checks, Materials — with per-tab scroll memory and deep links
-  (`#qN`, `#fN`, `#bN`, `#mN`, `#shotN`, `#panel-<id>`, `#qN-code`/`#fN-code` for the map filters). Without
+  (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code` for the map filters; a bare
+  `#shotN` lands on the same shot). Without
   JavaScript the panels stack and the tabs are anchor links; the controls that need scripts ship disabled.
 - **Purpose.** Each touched file is classified by its path alone — `production`, `tests`, `styles`, `assets`,
   `docs`, `config` — and the map and the tree filter by it. The rules, disclosed beside the filter: `__tests__/`,

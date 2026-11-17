@@ -4,6 +4,12 @@
 // Runs nothing but the report's own page; no app or source code is executed. Supersedes the v3 acceptance;
 // the v3 core checks (applicability, counters, export, viewer, print, deep links, no-JS) are carried here.
 //
+// Acceptance honesty: the 65507 part renders an ENRICHED COPY (enrich65507 adds the decision cards,
+// recommendations, tradeoffs and coverage limits from the prototype's annotations). The 1470/1517 map and
+// the PDF results describe that copy's page, not the immutable original record: the original carries no
+// Q2/Q8 cards or limits of its own — the renderer shows what the record says. The blocks and the diff are
+// the original's own; the enrichment does not touch them, and the original's bytes are never written.
+//
 //   PLAYWRIGHT_CORE=<path to playwright-core/index.mjs> node evals/review-report-v4.browser.mjs [out-dir]
 //
 // playwright-core is a verification tool here, not a dependency of the plugin. The browser binary defaults to
@@ -16,7 +22,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepare } from "./review/prepare.mjs";
-import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
+import { reportFixtures, enrich65507, hostileFixture, shikiFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
+import { LABELS, BASE_KEYS } from "../plugin/skills/review/scripts/labels.mjs";
+import { page } from "../plugin/skills/review/scripts/page.mjs";
+import { check as reviewCheck, modelOf } from "../plugin/skills/review/scripts/review.mjs";
+import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE ?? "playwright-core");
 let pdfjs = null;
@@ -57,6 +67,32 @@ const render = (record, name) => {
   return { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}` };
 };
 const themed = render(THEMED, "themed.json");
+// Fixtures with their own diff, each in its own directory beside the pictures the record may name.
+const renderFixture = ({ diff, record }, name) => {
+  const dir = path.join(run, name);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "source.diff"), diff);
+  for (const pic of ["before.png", "after.png"]) if (fs.existsSync(path.join(run, pic))) fs.copyFileSync(path.join(run, pic), path.join(dir, pic));
+  const file = path.join(dir, "review.json");
+  fs.writeFileSync(file, JSON.stringify(record));
+  const result = spawnSync(process.execPath, [SCRIPT, "render", file], { cwd: dir, encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`render ${name}: ${result.stderr}`);
+  return { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}` };
+};
+const hostile = renderFixture(hostileFixture(), "hostile");
+const shiki = renderFixture(shikiFixture(), "shiki");
+// A genuine old custom catalog — exactly the released base set, in the reader's own words — on an old record.
+const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+const legacyCatalog = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
+  record: { ...structuredClone(REVIEW), language: "custom", labels: oldCatalog } }, "legacy-catalog");
+// A javascript: PR URL never passes the check; render it straight through page() to prove the popover's
+// defense in depth on a record the check would refuse.
+const jsFixture = hostileFixture();
+jsFixture.record.passport.links[0].url = "javascript:alert(1)"; jsFixture.record.passport.links[0].label = "";
+const jsFiles = parseDiff(jsFixture.diff), jsDir = path.join(run, "hostile");
+const jsHtml = page(jsFixture.record, jsFiles, modelOf(jsFixture.record, jsFiles, reviewCheck(jsFixture.record, jsFiles, jsDir).owner, jsDir));
+fs.writeFileSync(path.join(jsDir, "js-url.html"), jsHtml);
+const jsUrl = { url: `file://${path.join(jsDir, "js-url.html")}` };
 // A block whose only question is a decision: accepting it must cue the resolved block in attention mode.
 const resolvedRecord = structuredClone(THEMED);
 resolvedRecord.blocks[1].questions = [3];
@@ -72,7 +108,8 @@ const legacyRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms
     benefit: "Польза: одно правило на два сценария, без расхождения форматов при выводе списка и отдельной карточки.",
     cost: "Цена: связанность сценариев через общий путь, которую нужно учитывать при изменении формата вывода.",
     decision: "Оставить общий путь и не вводить второй преобразователь для отдельного сценария.", evidence: "read" }] }, "legacy-ru.json");
-// A copy of the immutable 65507 record, enriched; the original is never written.
+// A copy of the immutable 65507 record, enriched with the annotations' cards/limits; the original is never
+// written. Everything this section measures is the enriched copy's page (see the header on acceptance honesty).
 const SOURCE = process.env.REVIEW_65507_DIR ?? "/private/tmp/entrust/cloud-components/65507-review-current";
 const ANN = process.env.REVIEW_65507_ANNOTATIONS ?? "/private/tmp/entrust/65507-review-analysis/prototype/annotations-v2.json";
 let big = null, bigSha = null;
@@ -90,7 +127,7 @@ if (fs.existsSync(path.join(SOURCE, "review.json")) && fs.existsSync(ANN)) {
   big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size,
     screenName: record.screens?.[0]?.name, limit: record.coverageStructured?.find((c) => c.kind === "not_checked")?.text };
 }
-console.error(`[setup] rendered themed, resolved, legacy-ru${big ? ", 65507 copy" : ""}`);
+console.error(`[setup] rendered themed, resolved, legacy-ru, hostile, shiki, legacy-catalog${big ? ", 65507 enriched copy" : ""}`);
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
 const errors = [];
@@ -225,6 +262,9 @@ console.error("[run] themed section");
   await page.goto(themed.url + "#shot-2", { waitUntil: "load" });
   await page.waitForFunction(() => { const r = document.getElementById("shot-2").getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }, null, { timeout: 5000 });
   check("deep link: #shot-2 opens the materials tab (C3)", await page.evaluate(() => document.querySelector('.tabs [aria-selected="true"]').dataset.tab === "materials"));
+  await page.goto(themed.url + "#shot2", { waitUntil: "load" });
+  await page.waitForFunction(() => { const r = document.getElementById("shot-2").getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }, null, { timeout: 5000 });
+  check("deep link: the bare #shot2 lands on the same shot", await page.evaluate(() => document.querySelector('.tabs [aria-selected="true"]').dataset.tab === "materials"));
   await page.goto(themed.url + "#f1-code", { waitUntil: "load" });
   await page.waitForTimeout(300);
   const fChip = await page.evaluate(() => ({ tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, chip: !document.getElementById("filter-chip").hidden,
@@ -311,8 +351,10 @@ console.error("[run] themed section");
   await page.click('[data-segpop="2"]'); await page.waitForTimeout(100);
   await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); });
   await page.click("#seg-popover .pop-copy"); await page.waitForTimeout(150);
-  const popFail = await page.evaluate(() => ({ status: document.querySelector("#seg-popover .pop-copy-status")?.textContent ?? "", btn: document.querySelector("#seg-popover .pop-copy").textContent }));
-  check("popover: a refused source copy says so and selects the source", popFail.status.includes("Ctrl") && popFail.btn !== "Copied", popFail);
+  const popFail = await page.evaluate(() => ({ status: document.querySelector("#seg-popover .pop-copy-status")?.textContent ?? "", btn: document.querySelector("#seg-popover .pop-copy").textContent,
+    selected: getSelection().toString(), copy: document.querySelector("#seg-popover .pop-copy").dataset.copy }));
+  check("popover: a refused source copy says so and selects exactly path:line (revision)", popFail.status.includes("Ctrl") && popFail.btn !== "Copied"
+    && popFail.selected === popFail.copy && /^test\/archive\.test\.js:1 \(.+\)$/.test(popFail.selected), popFail);
   await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__popCopied = t; return Promise.resolve(); }; });
   await page.click("#seg-popover .pop-copy"); await page.waitForTimeout(150);
   check("popover: a confirmed source copy says «Copied» and carries path:line (revision)", await page.evaluate(() => document.querySelector("#seg-popover .pop-copy").textContent === "Copied"
@@ -323,22 +365,47 @@ console.error("[run] themed section");
   // Headless Chromium fires beforeprint on window.print() itself; stub it so the profiles are driven deterministically.
   await page.goto(themed.url, { waitUntil: "load" }); await page.waitForTimeout(200);
   await page.evaluate(() => { window.print = () => {}; });
-  await tab(page, "code"); await page.click('[data-show="attention"]'); await page.waitForTimeout(150);
-  const beforePrint = await page.evaluate(() => ({ inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length }));
+  await tab(page, "code"); await page.click('[data-show="fix"]'); await page.waitForTimeout(150);
+  // An active purpose filter, a tree name query and a chip position: the whole filter view must survive printing.
+  await page.click('[data-purpose-filter="tests"]'); await page.waitForTimeout(150);
+  await page.fill("#tree-filter-input", "archive"); await page.waitForTimeout(150);
+  await page.click("#filter-next"); await page.waitForTimeout(150);
+  const filterView = () => page.evaluate(() => ({
+    inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length,
+    show: document.getElementById("map").dataset.show, purpose: document.getElementById("map").dataset.purpose ?? null,
+    purposePressed: [...document.querySelectorAll("[data-purpose-filter]")].map((b) => b.getAttribute("aria-pressed")),
+    modePressed: [...document.querySelectorAll(".map-filters [data-show]")].map((b) => b.getAttribute("aria-pressed")),
+    rows: [...document.querySelectorAll(".frow")].map((r) => r.style.display),
+    dirs: [...document.querySelectorAll(".fdir")].map((d) => d.style.display),
+    treeCount: document.getElementById("tree-filter-count").textContent,
+    chipHidden: document.getElementById("filter-chip").hidden, chipLabel: document.getElementById("filter-chip-label").textContent,
+    chipPos: document.getElementById("filter-pos").textContent }));
+  const beforePrint = await filterView();
   await tab(page, "materials");
   await page.click("#print-audit");
   await page.evaluate(() => { window.dispatchEvent(new Event("beforeprint")); });
-  const auditPrint = await page.evaluate(() => ({ open: [...document.querySelectorAll("details")].every((d) => d.open), inserted: document.querySelectorAll(".file-lazy .file").length }));
+  const auditPrint = await page.evaluate(() => ({ open: [...document.querySelectorAll("details")].every((d) => d.open), inserted: document.querySelectorAll(".file-lazy .file").length,
+    purposePressed: [...document.querySelectorAll("[data-purpose-filter]")].map((b) => b.getAttribute("aria-pressed")) }));
   check("print: auditor opens every disclosure and file", auditPrint.open && auditPrint.inserted === 3, auditPrint);
+  check("print: the audit clears the filter views while printing", auditPrint.purposePressed.every((p) => p === "false"), auditPrint.purposePressed);
   await page.evaluate(() => { window.dispatchEvent(new Event("afterprint")); });
-  const afterAudit = await page.evaluate(() => ({ inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length, show: document.getElementById("map").dataset.show }));
-  check("print: afterprint restores the lazy files and disclosures", afterAudit.inserted === beforePrint.inserted && afterAudit.open === beforePrint.open && afterAudit.show === "attention", { beforePrint, afterAudit });
+  const afterAudit = await filterView();
+  check("print: afterprint restores the lazy files and disclosures", afterAudit.inserted === beforePrint.inserted && afterAudit.open === beforePrint.open && afterAudit.show === "fix", { beforePrint, afterAudit });
+  check("print: afterprint restores the purpose buttons, tree rows, chip and mode", afterAudit.purpose === "tests"
+    && JSON.stringify(afterAudit.purposePressed) === JSON.stringify(beforePrint.purposePressed)
+    && JSON.stringify(afterAudit.modePressed) === JSON.stringify(beforePrint.modePressed)
+    && JSON.stringify(afterAudit.rows) === JSON.stringify(beforePrint.rows)
+    && JSON.stringify(afterAudit.dirs) === JSON.stringify(beforePrint.dirs)
+    && afterAudit.treeCount === beforePrint.treeCount && afterAudit.chipHidden === beforePrint.chipHidden
+    && afterAudit.chipLabel === beforePrint.chipLabel && afterAudit.chipPos === beforePrint.chipPos, { beforePrint, afterAudit });
   await page.click("#print-owner");
   await page.evaluate(() => { window.dispatchEvent(new Event("beforeprint")); });
   const ownerPrint = await page.evaluate(() => ({ map: document.getElementById("map").style.display, tree: document.querySelector(".tree-col").style.display }));
   check("print: owner hides the map and the tree", ownerPrint.map === "none" && ownerPrint.tree === "none", ownerPrint);
   await page.evaluate(() => { window.dispatchEvent(new Event("afterprint")); });
-  check("print: owner profile restores", await page.evaluate(() => document.getElementById("map").style.display !== "none" && document.querySelector(".tree-col").style.display !== "none"));
+  const afterOwner = await filterView();
+  check("print: owner profile restores", await page.evaluate(() => document.getElementById("map").style.display !== "none" && document.querySelector(".tree-col").style.display !== "none")
+    && afterOwner.purpose === "tests" && JSON.stringify(afterOwner.purposePressed) === JSON.stringify(beforePrint.purposePressed), afterOwner);
   await page.emulateMedia({ media: "print" });
   check("print: controls hidden, every panel prints", await page.evaluate(() => getComputedStyle(document.querySelector(".bar")).display === "none"
     && [...document.querySelectorAll(".panel")].every((p) => getComputedStyle(p).display !== "none")));
@@ -404,6 +471,81 @@ console.error("[run] no-JS section");
   await page.click(".passport-card > summary");
   check("no-JS: passport body reads", (await page.textContent(".passport-body")).includes("example/repo"));
   check("no-JS: tabs are anchor links", await page.evaluate(() => [...document.querySelectorAll(".tabs [role=tab]")].every((t) => t.getAttribute("href") === "#panel-" + t.dataset.tab)));
+  await context.close();
+}
+console.error("[run] hardening section");
+{
+  // D1: a hostile path, PR URL and labels in a real diff — the popover keeps every one of them text.
+  const { page, context } = await open(hostile.url);
+  await tab(page, "code"); await page.click('[data-show="all"]'); await page.waitForTimeout(200);
+  await page.click('[data-segpop="1"]'); await page.waitForTimeout(150);
+  const popState = await page.evaluate(() => {
+    const pop = document.getElementById("seg-popover");
+    const onAttrs = [...pop.querySelectorAll("*")].flatMap((el) => [...el.attributes].filter((a) => /^on/i.test(a.name)).map((a) => a.name));
+    const pr = pop.querySelector("a[target='_blank']");
+    return { visible: !pop.hidden, onAttrs, imgs: pop.querySelectorAll("img").length,
+      copy: pop.querySelector(".pop-copy")?.dataset.copy ?? null,
+      prHref: pr?.getAttribute("href") ?? null, prAttrs: pr ? [...pr.attributes].map((a) => a.name).sort() : null,
+      text: pop.textContent };
+  });
+  check("XSS: a hostile path/URL/labels inject no handler or markup into the popover",
+    popState.visible && popState.onAttrs.length === 0 && popState.imgs === 0
+    && popState.text.includes(HOSTILE_PATH) && popState.text.includes("Добавлено' onmouseover='alert(1)"), popState);
+  check("XSS: the copy value and the PR href carry the hostile values intact",
+    popState.copy === `${HOSTILE_PATH}:1 (h'1)` && popState.prHref === HOSTILE_URL
+    && JSON.stringify(popState.prAttrs) === JSON.stringify(["href", "rel", "target"]), { copy: popState.copy, prHref: popState.prHref, prAttrs: popState.prAttrs });
+  await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+  await page.click("#seg-popover .pop-copy"); await page.waitForTimeout(150);
+  check("XSS: copying the hostile source works and confirms", await page.evaluate(() => window.__copied === document.querySelector("#seg-popover .pop-copy").dataset.copy
+    && document.querySelector("#seg-popover .pop-copy").textContent === "Скопировано"));
+  await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); });
+  await page.click("#seg-popover .pop-copy"); await page.waitForTimeout(150);
+  const hostileFail = await page.evaluate(() => ({ selected: getSelection().toString(), copy: document.querySelector("#seg-popover .pop-copy").dataset.copy,
+    status: document.querySelector("#seg-popover .pop-copy-status")?.textContent ?? "" }));
+  check("XSS: a refused copy selects exactly the hostile path:line (revision)", hostileFail.selected === hostileFail.copy && hostileFail.status.includes("Ctrl"), hostileFail);
+  await context.close();
+}
+{
+  // A javascript: URL on a record the check would refuse: no live href, the address stays text.
+  const { page, context } = await open(jsUrl.url);
+  await tab(page, "code"); await page.click('[data-show="all"]'); await page.waitForTimeout(200);
+  await page.click('[data-segpop="1"]'); await page.waitForTimeout(150);
+  const jsPop = await page.evaluate(() => { const pop = document.getElementById("seg-popover");
+    return { jsHrefs: [...pop.querySelectorAll("a")].filter((a) => /^javascript:/i.test(a.getAttribute("href") ?? "")).length, text: pop.textContent }; });
+  check("XSS: a javascript: PR URL never becomes a link", jsPop.jsHrefs === 0 && jsPop.text.includes("javascript:alert(1)"), jsPop);
+  await context.close();
+}
+{
+  // D2: the removed line inside a ctx-opened comment carries the comment color on both themes;
+  // non-adjacent hunks do not inherit the open construct across the skipped code.
+  const { page, context } = await open(shiki.url);
+  await tab(page, "code"); await page.click('[data-show="all"]'); await page.waitForTimeout(200);
+  await page.evaluate(() => document.querySelectorAll(".segcode").forEach((d) => { d.open = true; }));
+  const colors = await page.evaluate(() => {
+    const inline = (l) => { const s = l?.querySelector("span[style]"); if (!s) return null; const st = s.getAttribute("style");
+      return { light: /color:(#[0-9a-f]{6})/.exec(st)?.[1], dark: /--shiki-dark:(#[0-9a-f]{6})/.exec(st)?.[1] }; };
+    const line = (file, sel, text) => [...document.querySelectorAll(`#file-${file} .l.${sel}`)].find((l) => l.textContent.includes(text));
+    return { cmtDel: inline(line(0, "del", "inside comment")), cmtCtx: inline(line(0, "ctx", "/* begin")),
+      gapDel: inline(line(1, "del", "const c = 3;")), gapAdd: inline(line(1, "add", "const c = 4;")),
+      ctlDel: inline(line(2, "del", "const c = 3;")), ctlAdd: inline(line(2, "add", "const c = 4;")) };
+  });
+  check("Shiki: the removed line inside a comment keeps the comment color (light+dark)",
+    colors.cmtDel && colors.cmtCtx && colors.cmtDel.light === colors.cmtCtx.light && colors.cmtDel.dark === colors.cmtCtx.dark, colors);
+  check("Shiki: non-adjacent hunks do not carry syntax state across the gap",
+    colors.gapDel && colors.ctlDel && colors.gapDel.light === colors.ctlDel.light && colors.gapDel.dark === colors.ctlDel.dark
+    && colors.gapAdd && colors.ctlAdd && colors.gapAdd.light === colors.ctlAdd.light, colors);
+  await context.close();
+}
+{
+  // D4: a genuine old custom catalog on an old record — the page renders, the chrome works, its words
+  // fall back to the built-in catalog (the disclosed degradation), the record's own words are used.
+  const { page, context } = await open(legacyCatalog.url);
+  const legacyState = await page.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
+    tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
+  check("legacy catalog: an old record renders with its old catalog", legacyState.js && legacyState.tabs === 6 && legacyState.own, legacyState);
+  await tab(page, "code"); await page.click('[data-show="all"]'); await page.waitForTimeout(200);
+  await page.click('[data-purpose-filter="tests"]'); await page.waitForTimeout(150);
+  check("legacy catalog: the chrome works on the old catalog", await page.evaluate(() => document.getElementById("map").dataset.purpose === "tests" && !document.getElementById("filter-chip").hidden));
   await context.close();
 }
 console.error("[run] 65507 section");

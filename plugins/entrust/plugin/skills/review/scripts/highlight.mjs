@@ -42,7 +42,7 @@ export function highlight(text, path) {
   return html + esc(text.slice(last));
 }
 
-// The render-time Shiki syntax: one highlighter per render, the old and the new line sequences tokenized
+// The render-time Shiki syntax: one highlighter per render, each hunk's old and new line sequences tokenized
 // whole (a multi-line comment or template keeps its coloring across lines), both themes in every span, and
 // every token color pre-adjusted to >=4.5:1 on the three code backgrounds of each theme — the GitHub
 // palettes alone dip below that on the tinted added/removed fields. Returns null when the bundle is absent;
@@ -81,22 +81,25 @@ export async function createSyntax(files) {
   for (const f of files) {
     const lang = SH_LANG[f.path.slice(f.path.lastIndexOf(".") + 1).toLowerCase()];
     if (!lang) continue; // an unsupported language stays escaped plain text
-    const lines = f.hunks.flat();
-    // The old sequence is what the base file holds (removed + context), the new what the head holds (added + context).
-    for (const [side, keep] of [["old", (l) => l.kind === "del"], ["new", (l) => l.kind !== "del"]]) {
-      const seq = lines.filter(keep);
-      const text = seq.map((l) => l.text).join("\n");
-      if (!text.trim()) continue;
-      let tokens;
-      try { tokens = hl.codeToTokens(text, { lang, themes: { light: "github-light", dark: "github-dark" } }).tokens; } catch { continue; }
-      seq.forEach((l, i) => {
-        const html = (tokens[i] ?? []).map((tok) => {
-          const light = adjustToken(String(tok.htmlStyle?.color ?? tok.color ?? "#24292e").toLowerCase(), LIGHT_BGS, false);
-          const dark = adjustToken(String(tok.htmlStyle?.["--shiki-dark"] ?? light).toLowerCase(), DARK_BGS, true);
-          return `<span style="color:${light};--shiki-dark:${dark}${fontOf(tok.fontStyle)}">${esc(tok.content)}</span>`;
-        }).join("");
-        if (html) byLine.set(l, html);
-      });
+    // The old sequence is what the base file holds (removed + context), the new what the head holds (added +
+    // context). Each hunk is tokenized on its own: the diff skips the code between hunks, and a comment or
+    // template left open at a hunk's end must not color the next hunk across that gap.
+    for (const hunk of f.hunks) {
+      for (const [side, keep] of [["old", (l) => l.kind !== "add"], ["new", (l) => l.kind !== "del"]]) {
+        const seq = hunk.filter(keep);
+        const text = seq.map((l) => l.text).join("\n");
+        if (!text.trim()) continue;
+        let tokens;
+        try { tokens = hl.codeToTokens(text, { lang, themes: { light: "github-light", dark: "github-dark" } }).tokens; } catch { continue; }
+        seq.forEach((l, i) => {
+          const html = (tokens[i] ?? []).map((tok) => {
+            const light = adjustToken(String(tok.htmlStyle?.color ?? tok.color ?? "#24292e").toLowerCase(), LIGHT_BGS, false);
+            const dark = adjustToken(String(tok.htmlStyle?.["--shiki-dark"] ?? light).toLowerCase(), DARK_BGS, true);
+            return `<span style="color:${light};--shiki-dark:${dark}${fontOf(tok.fontStyle)}">${esc(tok.content)}</span>`;
+          }).join("");
+          if (html) byLine.set(l, html);
+        });
+      }
     }
   }
   return { line: (l) => byLine.get(l) ?? esc(l.text) };

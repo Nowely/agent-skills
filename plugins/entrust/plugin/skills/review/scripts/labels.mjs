@@ -482,11 +482,13 @@ Object.assign(CATALOGS.ru, {
 
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
-// The words every record's page shows, old or new: the counters, the file tree's marks, the print profiles,
-// the skip link, and the v4 chrome every page carries — tabs, theme, the map reader, the purpose and tree
-// filters, the filter chip, the honest export and the no-script notes. A custom catalog must carry them too,
-// or those controls would silently stand in English.
-const ALWAYS_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
+// The words of the page's chrome: the counters, the file tree's marks, the print profiles, the skip link,
+// and the v4 controls — tabs, theme, the map reader, the purpose and tree filters, the filter chip, the
+// honest export and the no-script notes. One renderer draws them on every record, old or new, but a catalog
+// written before these controls existed must keep working: an old record without the new fields is checked
+// against the old base set alone, and its chrome falls back to the built-in words. A record that uses any
+// new field must carry the chrome words too — no silent English on a record authored for this version.
+const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
   "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
   "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
   "tab.overview", "tab.decisions", "tab.findings", "tab.code", "tab.checks", "tab.materials", "tablist", "tab.remaining",
@@ -530,7 +532,16 @@ const FEATURES = [
   [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
     ["banner.await", "banner.one", "banner.not-many", "banner.show"]],
 ];
-export const requiredKeys = (review) => [...BASE_KEYS, ...ALWAYS_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)];
+// The new record fields of the decision-first contract: a record carrying any of them was authored for this
+// version's page, so its catalog owes the chrome words and the keys of every capability it shows. The
+// predicates run before the check's array guards, so they read every list defensively.
+const usesNewFields = (review) =>
+  listOf(review.questions).some((q) => q && ["kind", "resolver", "context", "variants", "recommendation", "remainingEvidence", "parent", "zones"].some((key) => q[key] !== undefined))
+  || listOf(review.requirements).some((r) => r?.permission !== undefined)
+  || listOf(review.screens).some((s) => s?.historical !== undefined)
+  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined;
+export const requiredKeys = (review) => [...BASE_KEYS, ...(usesNewFields(review)
+  ? [...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)] : [])];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {

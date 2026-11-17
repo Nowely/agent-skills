@@ -11,7 +11,7 @@ import vm from "node:vm";
 import path from "node:path";
 import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
+import { reportFixtures, enrich65507, hostileFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, BASE_KEYS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
@@ -666,22 +666,23 @@ test("modelOf derives children, unique counters, file status and the shortest un
   });
 
 test("a custom catalog carries the base words plus the keys of the controls the record shows",
-  "the new controls must not break old translations, nor appear silently in English on any record",
+  "the new controls must not break old translations, nor appear silently in English on a record authored for them",
   () => {
     const files = parseThemeDiff();
     const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
-    const baseOnly = Object.fromEntries(BASE_KEYS.map((key) => [key, LABELS[key]]));
-    // A legacy record needs the old base plus the always-visible controls, the viewer for its pictures, the structure note.
-    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: catalogFor(REVIEW) }, files, run);
-    if (legacy.errors.length) return `legacy custom catalog refused: ${legacy.errors.join("; ")}`;
-    const silent = check({ ...structuredClone(REVIEW), language: "custom", labels: baseOnly }, files, run);
-    if (!silent.errors.some((e) => e.includes("complete labels catalog"))) return "the always-visible new controls fell back to English on a legacy record";
-    // An enriched record asks for the keys of its capabilities; a legacy catalog no longer serves it.
-    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(REVIEW) }, files, run);
-    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with a legacy catalog was accepted";
+    // The genuine old catalog: exactly the base set the released report asked for, in the reader's own words.
+    const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: oldCatalog }, files, run);
+    if (legacy.errors.length) return `a genuine old catalog was refused on an old record: ${legacy.errors.join("; ")}`;
+    const thin = { ...oldCatalog }; delete thin["findings"];
+    const baseFault = check({ ...structuredClone(REVIEW), language: "custom", labels: thin }, files, run);
+    if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the old base set stopped being required";
+    // An enriched record asks for the chrome and the keys of its capabilities; the old catalog no longer serves it.
+    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: oldCatalog }, files, run);
+    if (!enriched.errors.some((e) => e.includes("complete labels catalog") && e.includes("tab.overview"))) return "an enriched record with an old catalog was accepted, or the chrome keys were not named";
     const full = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(THEMED) }, files, run);
     if (full.errors.length) return `a catalog of the enabled capabilities was refused: ${full.errors.join("; ")}`;
-    // One capability alone asks only for its own keys: a passport without cards needs no question words.
+    // One capability alone asks only for its own keys plus the chrome: a passport without cards needs no question words.
     const passportOnly = { ...structuredClone(REVIEW), passport: structuredClone(THEMED.passport) };
     if (requiredKeys(passportOnly).includes("question.kind.decision")) return "a record without cards was asked for the card words";
     const minimal = check({ ...passportOnly, language: "custom", labels: catalogFor(passportOnly) }, files, run);
@@ -1092,15 +1093,26 @@ test("diff lines are painted by change kind, never by verdict, and every token k
     return page.includes("@media screen {") || "the dark switching is not scoped to screen (print keeps the light tokens)";
   });
 
-test("the Shiki syntax is sequence-wide, deterministic, and falls back honestly",
-  "line-by-line tokenization loses multi-line constructs, a global highlighter leaks between renders, and an unsupported language must stay plain",
+test("the Shiki syntax is sequence-wide per hunk, deterministic, and falls back honestly",
+  "line-by-line tokenization loses multi-line constructs, a global highlighter leaks between renders, state must not cross the gap between hunks, and an unsupported language must stay plain",
   () => {
     const files = [{ path: "a.ts", hunks: [[
       { kind: "ctx", old: 1, new: 1, text: "/* start" },
       { kind: "del", old: 2, text: "end */ const old = 1;" },
       { kind: "add", new: 2, text: "end */ const x: number = 2; // tail" },
-      { kind: "add", new: 3, text: "" }]] },
-      { path: "b.bin", hunks: [[{ kind: "add", new: 1, text: "<x> & \"y\"" }]] }];
+      { kind: "add", new: 3, text: "" }], [
+      // A comment that opens on a context line and closes after the removed line: the removed line is comment.
+      { kind: "ctx", old: 10, new: 10, text: "/* begin" },
+      { kind: "del", old: 11, text: "inside comment" },
+      { kind: "add", new: 11, text: "inside comment v2" },
+      { kind: "ctx", old: 12, new: 12, text: "*/" }]] },
+      { path: "b.bin", hunks: [[{ kind: "add", new: 1, text: "<x> & \"y\"" }]] },
+      // Non-adjacent hunks: the first ends inside an open template (new side) / comment (old side); the
+      // second hunk's code must be tokenized as itself, not as the continuation of the skipped construct.
+      { path: "c.ts", hunks: [[{ kind: "add", new: 1, text: "const a = `template" }], [{ kind: "add", new: 5, text: "const b = 2;" }]] },
+      { path: "d.ts", hunks: [[{ kind: "add", new: 1, text: "const b = 2;" }]] },
+      { path: "e.ts", hunks: [[{ kind: "ctx", old: 1, new: 1, text: "/* open" }, { kind: "del", old: 2, text: "inside" }], [{ kind: "del", old: 6, text: "const c = 3;" }]] },
+      { path: "f.ts", hunks: [[{ kind: "del", old: 1, text: "const c = 3;" }]] }];
     return (async () => {
       const first = await createSyntax(files), second = await createSyntax(files);
       if (!first || !second) return "the vendored bundle did not load";
@@ -1110,6 +1122,17 @@ test("the Shiki syntax is sequence-wide, deterministic, and falls back honestly"
       // The comment that began on the context line keeps its comment color on the added line: the sequence was tokenized whole.
       const ctxColor = first.line(files[0].hunks[0][0], "a.ts").match(/color:(#[0-9a-f]{6})/)?.[1];
       if (!ctxColor || !html.startsWith(`<span style="color:${ctxColor};`)) return "the multi-line comment lost its coloring across lines";
+      // The old side is del+ctx together: the removed line inside the comment carries the comment color,
+      // on both themes, not the plain code color.
+      const delInside = files[0].hunks[1][1], ctxOpen = files[0].hunks[1][0];
+      const delHtml = first.line(delInside, "a.ts"), openHtml = first.line(ctxOpen, "a.ts");
+      const delColor = delHtml.match(/color:(#[0-9a-f]{6})/)?.[1], openColor = openHtml.match(/color:(#[0-9a-f]{6})/)?.[1];
+      const delDark = delHtml.match(/--shiki-dark:(#[0-9a-f]{6})/)?.[1], openDark = openHtml.match(/--shiki-dark:(#[0-9a-f]{6})/)?.[1];
+      if (!delColor || delColor !== openColor || !delDark || delDark !== openDark) return `the removed line inside a comment lost the comment color: del ${delColor}/${delDark}, ctx ${openColor}/${openDark}`;
+      if (delHtml.includes("const") || !delHtml.includes("inside comment")) return "the removed line's text is wrong";
+      // State does not cross the gap between non-adjacent hunks, on either side.
+      if (first.line(files[2].hunks[1][0], "c.ts") !== first.line(files[3].hunks[0][0], "d.ts")) return "the new side carried an open template across the gap between hunks";
+      if (first.line(files[4].hunks[1][0], "e.ts") !== first.line(files[5].hunks[0][0], "f.ts")) return "the old side carried an open comment across the gap between hunks";
       if (first.line(addLine, "a.ts") !== second.line(addLine, "a.ts")) return "two renders differ";
       if (first.line(files[0].hunks[0][3], "a.ts") !== "") return "a blank line is not empty";
       if (first.line(files[1].hunks[0][0], "b.bin") !== "&lt;x&gt; &amp; &quot;y&quot;") return "an unsupported language is not escaped plain";
@@ -1186,15 +1209,116 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
-    // The always-visible v4 chrome is required of every custom catalog; the card words only of a record with cards.
-    const required = requiredKeys(REVIEW);
-    for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"])
-      if (!required.includes(key)) return `the v4 control ${key} is not required of a legacy catalog`;
-    if (required.includes("decision.confirm")) return "a record without cards was asked for the card words";
+    // The chrome words are owed by a record that uses the new fields; an old record keeps its old catalog.
+    const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
+    for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"]) {
+      if (oldRequired.includes(key)) return `the v4 control ${key} was demanded of a genuine old catalog`;
+      if (!newRequired.includes(key)) return `the v4 control ${key} is not required of a record with the new fields`;
+    }
+    if (oldRequired.length !== BASE_KEYS.length) return "an old record was asked for words beyond the old base set";
+    if (newRequired.includes("decision.confirm") === false) return "a record with cards was not asked for the card words";
     const files = parseThemeDiff();
     const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
     const custom = check({ ...structuredClone(THEMED), language: "custom", labels: catalog }, files, run);
     return custom.errors.length === 0 || `a complete v4 custom catalog was refused: ${custom.errors.join("; ")}`;
+  });
+
+// The popover builds its HTML from the record's own paths, URLs and labels: a hostile value must stay text.
+// The fixture's diff carries an apostrophe and a handler-injection attempt in the path itself.
+const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
+const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
+
+test("the popover escapes every attribute and label, apostrophe included, and only links http(s)",
+  "a path with an apostrophe broke out of a single-quoted attribute and injected a handler; localized strings rode in unescaped",
+  () => {
+    const { diff, record } = hostileFixture();
+    const files = parseDiff(diff), r = record;
+    const { owner } = check(r, files, run);
+    const html = page(r, files, modelOf(r, files, owner, run));
+    const script = scriptOf(html), data = dataOf(html);
+    const escsSrc = script.match(/const escs = [^\n]+/)[0];
+    const popSrc = script.slice(script.indexOf("function openPop"), script.indexOf("pop.addEventListener"));
+    if (/\+\s*t\./.test(popSrc)) return "a localized string is concatenated into the popover HTML without escs";
+    const pop = { innerHTML: "", hidden: true, style: {}, offsetWidth: 100, offsetHeight: 100, querySelector: () => ({ value: "", focus() {} }) };
+    const ctx = vm.createContext({ data, t: data.labels, state: { notes: {} }, pop, innerWidth: 1000, innerHeight: 800,
+      blockById: Object.fromEntries(data.blocks.map((b) => [String(b.id), b])),
+      qById: Object.fromEntries(data.questions.map((q) => [String(q.id), q])) });
+    vm.runInContext(escsSrc, ctx);
+    if (vm.runInContext(`escs("'&<>\\\"")`, ctx) !== "&#39;&amp;&lt;&gt;&quot;") return "escs does not escape all five markup characters";
+    vm.runInContext(popSrc + `\nopenPop("1", { getBoundingClientRect: () => ({ left: 10, bottom: 10 }) });`, ctx);
+    const built = pop.innerHTML;
+    if (built.includes("' onmouseover='") || built.includes("<img")) return "the hostile path, URL or label injected markup into the popover";
+    if (!built.includes("&#39;")) return "the apostrophe is not escaped in the popover HTML";
+    const decode = (s) => s.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const copies = [...built.matchAll(/data-copy='([^']*)'/g)].map((m) => decode(m[1]));
+    if (copies[0] !== `${HOSTILE_PATH}:1 (${data.pr.head})` || copies[1] !== `${HOSTILE_PATH}:1 (${data.pr.base})`) return `the copy values are wrong: ${JSON.stringify(copies)}`;
+    const href = built.match(/href='(https[^']*)'/);
+    if (!href || decode(href[1]) !== HOSTILE_URL) return "the PR URL did not survive escaped in its href";
+    // A non-http(s) scheme never becomes a live href, even on a record that never passed the check.
+    const js = hostileFixture().record; js.passport.links[0].url = "javascript:alert(1)"; js.passport.links[0].label = "";
+    const jsHtml = page(js, files, modelOf(js, files, owner, run));
+    const jsData = dataOf(jsHtml), jsPop = { innerHTML: "", hidden: true, style: {}, offsetWidth: 100, offsetHeight: 100, querySelector: () => ({ value: "", focus() {} }) };
+    const jsCtx = vm.createContext({ data: jsData, t: jsData.labels, state: { notes: {} }, pop: jsPop, innerWidth: 1000, innerHeight: 800,
+      blockById: Object.fromEntries(jsData.blocks.map((b) => [String(b.id), b])),
+      qById: Object.fromEntries(jsData.questions.map((q) => [String(q.id), q])) });
+    vm.runInContext(escsSrc + "\n" + popSrc + `\nopenPop("1", { getBoundingClientRect: () => ({ left: 10, bottom: 10 }) });`, jsCtx);
+    if (jsPop.innerHTML.includes("href='javascript:")) return "a javascript: URL became a link in the popover";
+    return jsPop.innerHTML.includes("javascript:alert(1)") || "the refused URL is not shown as text";
+  });
+
+test("a refused source copy selects exactly the data-copy value, not the row around it",
+  "the fallback selected the label, the path and the revision without the parentheses — not the value the copy carries",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const script = scriptOf(fs.readFileSync(html, "utf8"));
+    const clickSrc = script.slice(script.indexOf('pop.addEventListener("click"'), script.indexOf('document.addEventListener("keydown"'));
+    const txt = "src/a'1.js:2 (rev'1)";
+    let rangeTarget = null, statusEl = null;
+    const el = () => ({ className: "", textContent: "", setAttribute() {}, after(next) { this.next = next; } });
+    const cp = { dataset: { copy: txt }, textContent: "copy", closest: () => p };
+    const p = { after(next) { statusEl = next; } };
+    const pop = { innerHTML: "", hidden: false, querySelector: () => null, addEventListener: (ev, fn) => { pop.handler = fn; } };
+    const ctx = vm.createContext({ pop, t: { copied: "Copied", copyFailed: "Failed. Ctrl/⌘+C." },
+      document: { createElement: el, createRange: () => ({ selectNodeContents: (node) => { rangeTarget = node; } }) },
+      getSelection: () => ({ removeAllRanges() {}, addRange() {} }),
+      navigator: { clipboard: { writeText: () => Promise.reject(new Error("denied")) } }, setTimeout });
+    vm.runInContext(clickSrc, ctx);
+    pop.handler({ target: { closest: (sel) => (sel === ".pop-copy" ? cp : null) } });
+    return new Promise((resolve) => setImmediate(() => {
+      if (!rangeTarget || rangeTarget.textContent !== txt) return resolve(`the selection is not the exact copy value: ${rangeTarget?.textContent}`);
+      if (!statusEl || !statusEl.textContent.includes("Ctrl")) return resolve("the refusal is not announced");
+      resolve(true);
+    }));
+  });
+
+test("afterprint restores every filter view from the snapshot, not the dataset alone",
+  "the purpose buttons stayed unpressed and the tree stayed unfiltered after the audit print, while the map said otherwise",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const script = scriptOf(fs.readFileSync(html, "utf8"));
+    const before = script.slice(script.indexOf('window.addEventListener("beforeprint"'), script.indexOf('window.addEventListener("afterprint"'));
+    const after = script.slice(script.indexOf('window.addEventListener("afterprint"'), script.indexOf("const annotationUI"));
+    if (!before.includes("chipIdx")) return "the snapshot does not keep the chip position";
+    for (const part of ['[data-purpose-filter]', '[data-show]', "applyTreeFilter()", "applySegFilter()", "printSnapshot.chipIdx"])
+      if (!after.includes(part)) return `afterprint does not restore "${part}"`;
+    if (!/aria-pressed.*purposeFilter === map\.dataset\.purpose/s.test(after)) return "the purpose buttons' pressed state is not restored from the map";
+    // The shot deep link accepts the canonical #shot-N and the bare #shotN alike.
+    const open = script.slice(script.indexOf("function openTarget"), script.indexOf('window.addEventListener("hashchange"'));
+    const norm = open.match(/const shot = (\/.*?\/)\.exec\(hash\); if \(shot\) hash = "#shot-"/);
+    return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
+  });
+
+test("a genuine old custom catalog renders an old record end to end; a new record owes the v4 keys",
+  "the check alone can pass while the render refuses, and a new record must not silently take English chrome",
+  () => {
+    const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+    const ok = render((r) => { r.language = "custom"; r.labels = oldCatalog; });
+    if (ok.status !== 0) return `an old record with a genuine old catalog was refused: ${ok.stderr}`;
+    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
+    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = oldCatalog; });
+    return refused.status === 1 && refused.stderr.includes("tab.overview") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));

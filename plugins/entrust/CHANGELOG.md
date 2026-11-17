@@ -21,12 +21,14 @@ forensics remain in the repository references and release notes.
   quote); the full Markdown report carries the cards, tradeoffs, limits and screen sources so the critic and
   verifier check the same content the page shows.
 - The report becomes a tabbed page over the same record: Overview, Decisions, Findings, Code, Checks, Materials
-  — with per-tab scroll memory, keyboard navigation and deep links (`#qN`, `#fN`, `#bN`, `#mN`, `#shotN`,
+  — with per-tab scroll memory, keyboard navigation and deep links (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`,
   `#panel-<id>`, `#qN-code`/`#fN-code`) that open the right tab and reveal the target in any map mode. Without
   JavaScript the panels stack, the tabs are anchor links and the controls ship disabled.
 - A map reader: one line per fragment (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
   details popover), the code in a disclosure, a sticky file header, and the fragment's sources in the popover —
   an added line at the head revision, a removed line at the base, each copyable as `path:line (revision)`.
+  Every popover value — path, URL, revision, localized label — is escaped for the attribute that holds it,
+  apostrophe included, and only an http(s) PR address becomes a link.
   Kept fragments start collapsed; «Need attention» is the default view, the full audit one click away. One
   banner per evidence question keeps its many blocks from reading as many decisions (65507: 224 blocks,
   229 fragments, one Q3).
@@ -35,10 +37,12 @@ forensics remain in the repository references and release notes.
   name filter (C2), shot permalinks (C3), a filter chip with ‹› jumps and a way back plus a resolved-question
   cue that never hides a block (C4), and finding/requirement/question map filters (F).
 - Syntax highlighting by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned @shikijs 4.6.0, JavaScript
-  regex engine — no WASM, no network, no install): the old and new line sequences tokenized whole, both GitHub
-  themes in every span, token colors pre-adjusted at render time to ≥4.5:1 on the context/added/removed
-  backgrounds of both themes. The diff's three layers paint by change kind, never by verdict: added/removed
-  backgrounds, a readable removed line, old/new gutters, muted context; the verdict stays a border and a badge.
+  regex engine — no WASM, no network, no install): each hunk's old (removed+context) and new (added+context)
+  line sequences tokenized whole, so a multi-line comment keeps its color on removed lines too and no syntax
+  state crosses the gap between non-adjacent hunks; both GitHub themes in every span, token colors pre-adjusted
+  at render time to ≥4.5:1 on the context/added/removed backgrounds of both themes. The diff's three layers paint
+  by change kind, never by verdict: added/removed backgrounds, a readable removed line, old/new gutters, muted
+  context; the verdict stays a border and a badge.
 - A 32px theme icon (auto/light/dark, prefers-color-scheme default), a 14px base with ≥12px secondary text and
   ≥32px tap targets, and the weight's limit on the mechanism surface with the methodology in the details.
 - Decision cards v4: the variant radio is the decision (a draft to confirm on a narrow screen), a status chip
@@ -46,10 +50,16 @@ forensics remain in the repository references and release notes.
   and fact/evidence cards without apply/skip. The export moves to schema 4 with `variant_draft` (a deferral,
   an outside parent variant or an unconfirmed pick keeps the variant as a draft, never in effect) and
   `applyWithoutVariant`; «Copied» appears only after the clipboard confirms, and a refusal selects the text
-  and says to press Ctrl/⌘+C — the popover's source copy is honest the same way.
+  and says to press Ctrl/⌘+C — the popover's source copy is honest the same way, selecting exactly the
+  `path:line (revision)` value the copy carries, not the row around it.
 - Owner/auditor print profiles over the tabs: the owner prints the screens and the coverage limits without the
-  map and the tree, the auditor everything (all 1470 fragments on the real 65507 record); afterprint restores
-  the page, lazy files included. Browser acceptance runs on Chromium and Yandex with real PDFs (pdfjs-dist).
+  map and the tree, the auditor everything (all 1470 fragments on an enriched copy of the real 65507 record);
+  afterprint restores the page — lazy files, disclosures and every filter view (purpose and mode buttons, tree
+  rows, the chip and its position). Browser acceptance runs on Chromium and Yandex with real PDFs (pdfjs-dist).
+  The acceptance numbers describe the enriched copy's page: `enrich65507` adds the decision cards,
+  recommendations, tradeoffs and coverage limits from the prototype's annotations; the immutable original
+  record carries none of them (the renderer shows what the record says), and its blocks and diff — the
+  1470/1517 map — are the original's own, untouched by the enrichment.
 
 ### Changed
 
@@ -61,10 +71,12 @@ forensics remain in the repository references and release notes.
   recommendation with its basis and the checks the choice does not replace; never turn a permission into an
   obligation, an opinion into a fact, or an owner mark into a check result. The verifier checks the card facts,
   consequences, bases, limits and tradeoff sources.
-- The label catalog keys follow the enabled controls; a record using the new fields requires their translations
-  (no silent English for new required controls). The catalogs gain the v4 words in en/ru; the always-visible
-  chrome (tabs, theme, map reader, filters, export, no-script notes) is required of every custom catalog, the
-  card and banner words only of the records that show them.
+- The label catalog keys follow the enabled controls. A record that uses any new field requires the chrome
+  words (tabs, theme, map reader, filters, export, no-script notes) and the keys of every capability it shows —
+  no silent English for new required controls. An old record without the new fields is checked against the old
+  base set alone: a genuine legacy custom catalog keeps passing, and the chrome on such a record falls back to
+  the built-in words. The catalogs gain the v4 words in en/ru; the card and banner words are required only of
+  the records that show them.
 - The full map lives in closed per-file disclosures (no template in the markup); with scripts each file moves
   into a template and materializes lazily for the current mode or filter. One canonical instance of every
   B/F/Q anchor; the annotation «go to passage» reveal activates the source tab.
@@ -72,10 +84,13 @@ forensics remain in the repository references and release notes.
 
 ### Compatibility
 
-- Old records render with the previous semantics and pass `check` without warnings. A legacy custom catalog must
-  include the always-visible control keys (v3 and v4); the card, banner and new-field keys are required only of
-  the records that show them. Decisions stored by the v3 page keep their key and shape; a bare variant pick is
-  still not a decision.
+- Old records render with the previous semantics — no card machinery, passport or invented sections — and pass
+  `check` without warnings. A legacy custom catalog (the old base set of words) keeps passing on an old record;
+  the v4 chrome still renders there through the one renderer, with its words falling back to the built-in
+  catalog. A record that uses any new field must translate the chrome and every capability it shows. These two
+  requirements are reconciled by the record, not claimed of every catalog at once: the old catalog is owed the
+  old base set, the new record the full set of its controls. Decisions stored by the v3 page keep their key and
+  shape; a bare variant pick is still not a decision.
 - Deferred: word-diff inside del/add pairs, split/unified toggle, diff search, a revision selector,
   cross-revision decision import, rename heuristics (the tree marks A/M/D only), scenario groups and revision
   history. C1 («next unresolved») was deliberately not ported.

@@ -618,6 +618,7 @@ const SCRIPT = `
   // ---- deep links: a tab, a filtered map view, a block in any mode, or any anchor in its panel ----
   function openTarget(hash) {
     if (!hash || hash[0] !== "#") return;
+    const shot = /^#shot(\\d+)$/.exec(hash); if (shot) hash = "#shot-" + shot[1]; // the canonical anchor is #shot-N; #shotN lands too
     const pm = /^#panel-(\\w+)$/.exec(hash); if (pm) { activate(pm[1]); return; }
     const fm = /^#(q|req|f)(\\d+)-code$/.exec(hash); if (fm) { jumpToFilter(fm[1], fm[2], false); return; }
     const bm = /^#b(\\d+)$/.exec(hash);
@@ -648,30 +649,33 @@ const SCRIPT = `
   // ---- the fragment popover: details, sources (add at head, del at base), an honest copy, a comment ----
   const pop = document.getElementById("seg-popover");
   let popReturn = null;
-  const escs = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Every value that reaches this innerHTML is escaped for a single-quoted attribute: & < > " and ' alike.
+  const escs = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function closePop() { if (pop.hidden) return; pop.hidden = true; if (popReturn && popReturn.isConnected) popReturn.focus({ preventScroll: true }); popReturn = null; }
   function openPop(id, anchor) {
     const b = blockById[String(id)]; if (!b) return;
     popReturn = anchor;
     const finds = (b.findings || []).map((fid) => { const f = data.findings.find((x) => String(x.id) === String(fid)); return f ? "<li><a href='#f" + escs(fid) + "'>" + escs(fid) + "</a> " + escs(f.title) + "</li>" : ""; }).join("");
-    const qs = (b.questions || []).map((n) => { const q = qById[String(n)]; return "<li><a href='#q" + n + "'>Q" + n + "</a> " + escs(q ? q.text : "") + "</li>"; }).join("");
-    const srcRow = (label, line, rev) => "<p class='sub'>" + label + ": <span class='mono'>" + escs(b.path) + ":" + line + "</span>" +
-      (rev ? " · " + t.revision + " <span class='mono'>" + escs(rev) + "</span> <button type='button' class='pop-copy' data-copy='" + escs(b.path + ":" + line + " (" + rev + ")") + "'>" + t.copySource + "</button>"
-        : " <button type='button' class='pop-copy' data-copy='" + escs(b.path + ":" + line) + "'>" + t.copySourcePlain + "</button>") + "</p>";
-    const srcHtml = (data.pr.url ? "<p class='sub'>" + t.source + ": <a href='" + escs(data.pr.url) + "' target='_blank' rel='noopener'>" + escs(data.pr.label || data.pr.url) + " ↗</a></p>" : "") +
+    const qs = (b.questions || []).map((n) => { const q = qById[String(n)]; return "<li><a href='#q" + escs(n) + "'>Q" + escs(n) + "</a> " + escs(q ? q.text : "") + "</li>"; }).join("");
+    const srcRow = (label, line, rev) => "<p class='sub'>" + escs(label) + ": <span class='mono'>" + escs(b.path) + ":" + escs(line) + "</span>" +
+      (rev ? " · " + escs(t.revision) + " <span class='mono'>" + escs(rev) + "</span> <button type='button' class='pop-copy' data-copy='" + escs(b.path + ":" + line + " (" + rev + ")") + "'>" + escs(t.copySource) + "</button>"
+        : " <button type='button' class='pop-copy' data-copy='" + escs(b.path + ":" + line) + "'>" + escs(t.copySourcePlain) + "</button>") + "</p>";
+    // Only an http(s) address becomes a link: any other scheme (javascript:, data:) stays escaped text.
+    const prUrl = data.pr.url && /^https?:\\/\\//i.test(data.pr.url) ? data.pr.url : null;
+    const srcHtml = (data.pr.url ? "<p class='sub'>" + escs(t.source) + ": " + (prUrl ? "<a href='" + escs(prUrl) + "' target='_blank' rel='noopener'>" + escs(data.pr.label || data.pr.url) + " ↗</a>" : escs(data.pr.label || data.pr.url)) + "</p>" : "") +
       (b.firstAdd != null ? srcRow(t.addedLine, b.firstAdd, data.pr.head) : "") +
       (b.firstDel != null ? srcRow(t.removedLine, b.firstDel, data.pr.base) : "") +
-      (b.firstAdd == null && b.firstDel == null ? "<p class='sub'>" + t.noLine + "</p>" : "");
+      (b.firstAdd == null && b.firstDel == null ? "<p class='sub'>" + escs(t.noLine) + "</p>" : "");
     pop.innerHTML =
-      "<div class='pop-head'><strong class='mono'>B" + b.id + "</strong><span class='tag v-" + b.verdict + "'>" + escs(t.verdict[b.verdict] || b.verdict) + "</span>" +
+      "<div class='pop-head'><strong class='mono'>B" + escs(b.id) + "</strong><span class='tag v-" + escs(b.verdict) + "'>" + escs(t.verdict[b.verdict] || b.verdict) + "</span>" +
       "<button type='button' class='pop-close' aria-label='" + escs(t.close) + "'>×</button></div>" +
-      (b.does ? "<p>" + escs(b.does) + "</p>" : "<p class='sub'>" + t.keptNoDoes + "</p>") +
-      (finds ? "<div><span class='label'>" + t.findings + "</span><ul>" + finds + "</ul></div>" : "") +
-      (qs ? "<div><span class='label'>" + t.questions + "</span><ul>" + qs + "</ul></div>" : "") +
+      (b.does ? "<p>" + escs(b.does) + "</p>" : "<p class='sub'>" + escs(t.keptNoDoes) + "</p>") +
+      (finds ? "<div><span class='label'>" + escs(t.findings) + "</span><ul>" + finds + "</ul></div>" : "") +
+      (qs ? "<div><span class='label'>" + escs(t.questions) + "</span><ul>" + qs + "</ul></div>" : "") +
       "<p class='sub'>" + escs(b.serves && b.serves.length ? t.serves + " " + b.serves.join(", ") : t.servesNothing) +
-      (b.unit ? " · " + t.inUnit + " " + escs(b.unit) : "") + " · <span class='mono'>" + escs(b.where) + "</span></p>" +
+      (b.unit ? " · " + escs(t.inUnit) + " " + escs(b.unit) : "") + " · <span class='mono'>" + escs(b.where) + "</span></p>" +
       srcHtml +
-      "<label for='pop-note'>" + t.noteBlock + "</label><input type='text' id='pop-note' data-note='b" + b.id + "'>";
+      "<label for='pop-note'>" + escs(t.noteBlock) + "</label><input type='text' id='pop-note' data-note='b" + escs(b.id) + "'>";
     pop.querySelector("[data-note]").value = state.notes["b" + b.id] || "";
     pop.hidden = false;
     const r = anchor.getBoundingClientRect();
@@ -685,15 +689,19 @@ const SCRIPT = `
     const cp = e.target.closest(".pop-copy");
     if (cp) {
       const txt = cp.dataset.copy, original = cp.textContent;
-      const done = () => { pop.querySelector(".pop-copy-status")?.remove(); cp.textContent = t.copied; setTimeout(() => { cp.textContent = original; }, 1200); };
+      const done = () => { pop.querySelector(".pop-copy-status")?.remove(); pop.querySelector(".pop-copy-value")?.remove(); cp.textContent = t.copied; setTimeout(() => { cp.textContent = original; }, 1200); };
       const fail = () => {
-        // Select the visible source text and say plainly that automatic copying failed.
-        const p = cp.closest("p"), r = document.createRange();
-        r.setStart(p.firstChild, 0); r.setEndBefore(cp);
-        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+        // Select exactly the value the copy carries — path:line (revision) — not the label and row around it,
+        // and say plainly that automatic copying failed.
+        const p = cp.closest("p");
         let status = pop.querySelector(".pop-copy-status");
         if (!status) { status = document.createElement("p"); status.className = "sub pop-copy-status"; status.setAttribute("role", "status"); p.after(status); }
         status.textContent = t.copyFailed;
+        let value = pop.querySelector(".pop-copy-value");
+        if (!value) { value = document.createElement("p"); value.className = "sub mono pop-copy-value"; status.after(value); }
+        value.textContent = txt;
+        const r = document.createRange(); r.selectNodeContents(value);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
       };
       try { navigator.clipboard.writeText(txt).then(done, fail); } catch { fail(); }
     }
@@ -910,7 +918,7 @@ const SCRIPT = `
   let printSnapshot = null, auditorPrint = false;
   window.addEventListener("beforeprint", () => {
     const treeCol = document.querySelector(".tree-col");
-    printSnapshot = { inserted: new Set(inserted), openDetails: all("details[open]"), show: map.dataset.show, req: map.dataset.req, q: map.dataset.q, f: map.dataset.f, purpose: map.dataset.purpose, mapDisplay: map.style.display, treeDisplay: treeCol ? treeCol.style.display : null };
+    printSnapshot = { inserted: new Set(inserted), openDetails: all("details[open]"), show: map.dataset.show, req: map.dataset.req, q: map.dataset.q, f: map.dataset.f, purpose: map.dataset.purpose, chipIdx, chipPos: chipPos.textContent, chipNav: chipPrev.disabled, mapDisplay: map.style.display, treeDisplay: treeCol ? treeCol.style.display : null };
     if (auditorPrint) { clearFilters(); setMode("all"); insertAll(); all("details").forEach(progOpen); }
     else { map.style.display = "none"; if (treeCol) treeCol.style.display = "none"; }
   });
@@ -929,7 +937,17 @@ const SCRIPT = `
     if (printSnapshot.q) map.dataset.q = printSnapshot.q;
     if (printSnapshot.f) map.dataset.f = printSnapshot.f;
     if (printSnapshot.purpose) map.dataset.purpose = printSnapshot.purpose;
+    // Every view of the filter returns from the snapshot, not the dataset alone: the mode and purpose
+    // buttons, the tree's rows and directories, and the chip with its position in the matches.
+    for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other.dataset.show === map.dataset.show));
+    for (const b of all("[data-purpose-filter]")) b.setAttribute("aria-pressed", String(b.dataset.purposeFilter === map.dataset.purpose));
+    applyTreeFilter();
     applySegFilter();
+    // The chip's position is restored as it stood: the matches cannot be re-measured from another tab,
+    // and the filter state is the same, so the painted position still holds.
+    chipIdx = printSnapshot.chipIdx;
+    chipPos.textContent = printSnapshot.chipPos;
+    chipPrev.disabled = chipNext.disabled = printSnapshot.chipNav;
     printSnapshot = null; auditorPrint = false;
   });
 
