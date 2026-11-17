@@ -97,6 +97,39 @@ export const LABELS = {
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
+// The catalog a legacy record needs: a custom language that translated the report before the decision cards
+// keeps working on a record without the new fields. A record that uses them needs the new words too.
+export const BASE_KEYS = Object.keys(LABELS);
+
+// The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
+// the file tree, the picture viewer and the print profiles. Factual status texts are the record's own, not these.
+Object.assign(LABELS, {
+  "question.kind.decision": "decision", "question.kind.fact": "fact to settle", "question.kind.evidence": "evidence to obtain",
+  "question.context": "Context", "question.variants": "Variants", "question.consequences": "Consequences",
+  "question.remaining-evidence": "What this decision does not replace", "question.no-context": "No reviewer context was added.",
+  "question.zones": "Zones to check", "question.recommendation-note": "The reviewer's opinion; the owner decides.",
+  "question.parent": "Depends on", "question.blocks": "fragments",
+  "decision.accepted": "accepted", "decision.deferred": "deferred", "decision.not-applicable": "not applicable",
+  "decision.remaining": "remaining", "decision.requires-content": "Pick a variant, or say in a comment what you decide.",
+  "decision.defer-reason": "Say in a comment why you defer it.", "decision.parent-pending": "Waits for the parent decision.",
+  "decision.note": "Comment on the decision", "decision.na-badge": "Not applicable under the variant accepted for the parent question.",
+  "passport": "Passport", "passport.repository": "Repository", "passport.base": "Base", "passport.head": "Head", "passport.reviewed-at": "Reviewed at",
+  "coverage.ran": "Ran", "coverage.read": "Read", "coverage.not-checked": "Not checked",
+  "permission": "permission, not an obligation",
+  "scope.files": "files", "scope.added": "added", "scope.removed": "removed",
+  "fragment.definition": "A fragment is one small self-contained part of the diff — a branch, guard, parameter, constant, test or cohesive body — the reviewer's unit of work. Every nonblank changed line belongs to exactly one fragment. Verdicts are the review's, not the owner's decisions and not an independent re-check; a fragment is not a defect, a test or a file.",
+  "counters.evidence-blocks": "fragments awaiting evidence",
+  "file.status.added": "added", "file.status.modified": "modified", "file.status.deleted": "deleted",
+  "files.changed-only": "Only files the diff touches are listed; a file's mark is its change in the diff (added, modified, deleted), not a review verdict.",
+  "screen.historical": "historical revision",
+  "viewer.open": "Enlarge", "viewer.fit": "Fit", "viewer.actual-size": "100%", "viewer.previous": "Previous picture", "viewer.next": "Next picture", "viewer.close": "Close",
+  "print.owner": "Print (owner)", "print.auditor": "Print (full audit)",
+  "print.omissions": "Printing shows what is open on the page: the owner profile leaves the full map closed, the audit profile opens everything. Without scripts, open the sections you need before printing.",
+  "tradeoffs": "Accepted tradeoffs", "tradeoff.consequence": "What remains",
+  "skip-to-decisions": "Skip to the decisions",
+  "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:",
+});
+
 export const CATALOGS = { en: LABELS, ru: {
   "mechanism-change": "В рассматриваемом изменении",
   "consequence": "Почему менять",
@@ -297,18 +330,53 @@ export const CATALOGS = { en: LABELS, ru: {
   "change.removed": "удалено"
 } };
 
+Object.assign(CATALOGS.ru, {
+  "question.kind.decision": "решение", "question.kind.fact": "уточнить факт", "question.kind.evidence": "получить доказательство",
+  "question.context": "Контекст", "question.variants": "Варианты", "question.consequences": "Последствия",
+  "question.remaining-evidence": "Что решение не заменяет", "question.no-context": "Контекст ревьюера не добавлен.",
+  "question.zones": "Зоны проверки", "question.recommendation-note": "Мнение ревьюера; решает владелец.",
+  "question.parent": "Зависит от", "question.blocks": "фрагментов",
+  "decision.accepted": "принято", "decision.deferred": "отложено", "decision.not-applicable": "неприменимо",
+  "decision.remaining": "осталось", "decision.requires-content": "Выберите вариант или напишите в комментарии, что решаете.",
+  "decision.defer-reason": "Напишите в комментарии, почему откладываете.", "decision.parent-pending": "Ждёт решения родительского вопроса.",
+  "decision.note": "Комментарий к решению", "decision.na-badge": "Неприменимо при варианте, принятом для родительского вопроса.",
+  "passport": "Паспорт", "passport.repository": "Репозиторий", "passport.base": "База", "passport.head": "Ревизия", "passport.reviewed-at": "Дата ревью",
+  "coverage.ran": "Запущено", "coverage.read": "Прочитано", "coverage.not-checked": "Не проверено",
+  "permission": "разрешение, не обязательство",
+  "scope.files": "файлов", "scope.added": "добавлено", "scope.removed": "удалено",
+  "fragment.definition": "Фрагмент — небольшая самостоятельная часть изменения (ветка, guard, параметр, константа, тест или связный участок), единица работы ревьюера. Каждая непустая изменённая строка входит ровно в один фрагмент. Вердикты принадлежат ревью: это не решения владельца и не независимая перепроверка; фрагмент — не дефект, не тест и не файл.",
+  "counters.evidence-blocks": "фрагментов ждут доказательств",
+  "file.status.added": "добавлен", "file.status.modified": "изменён", "file.status.deleted": "удалён",
+  "files.changed-only": "Перечислены только файлы, которых касается diff; отметка файла — его изменение в diff (добавлен, изменён, удалён), а не вердикт ревью.",
+  "screen.historical": "архивная ревизия",
+  "viewer.open": "Увеличить", "viewer.fit": "Вписать", "viewer.actual-size": "100%", "viewer.previous": "Предыдущее изображение", "viewer.next": "Следующее изображение", "viewer.close": "Закрыть",
+  "print.owner": "Печать (владелец)", "print.auditor": "Печать (полный аудит)",
+  "print.omissions": "Печатается то, что открыто на странице: профиль владельца оставляет полную карту закрытой, профиль аудита открывает всё. Без скриптов раскройте нужные разделы перед печатью.",
+  "tradeoffs": "Принятые компромиссы", "tradeoff.consequence": "Что остаётся",
+  "skip-to-decisions": "К решениям",
+  "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:",
+});
+
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
+
+// Whether a record uses any field of the decision-first report: such a record in a custom language needs the
+// new words too; a legacy record keeps the old catalog complete, and new controls fall back to the built-in words.
+export const enriched = (review) => (review.questions ?? []).some((q) => q.kind !== undefined)
+  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined
+  || (review.requirements ?? []).some((r) => r.permission !== undefined)
+  || (review.screens ?? []).some((s) => s.historical !== undefined);
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
   const own = review.labels ?? {}, base = CATALOGS[languageOf(review)] ?? LABELS;
-  return (key, n) => String(own[key] ?? base[key]).replace("{n}", n);
+  return (key, n) => String(own[key] ?? base[key] ?? LABELS[key]).replace("{n}", n);
 }
 
 export function labelFaults(review) {
   if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
+  const required = enriched(review) ? Object.keys(LABELS) : BASE_KEYS;
   const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
-    ? Object.keys(LABELS).filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
+    ? required.filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
   const faults = missing.length ? [`language "${review.language}" needs a complete labels catalog; missing: ${missing.join(", ")}`] : [];
   if (review.labels === undefined) return faults;
   if (typeof review.labels !== "object" || review.labels === null || Array.isArray(review.labels)) return ['"labels" is not an object of label to wording'];

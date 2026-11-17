@@ -11,8 +11,9 @@ import vm from "node:vm";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { CATALOGS, LABELS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { CATALOGS, LABELS, BASE_KEYS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
+import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
+import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -540,11 +541,139 @@ test("the page that tells a reviewer what to write names every word the check ac
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {
     const page = fs.readFileSync(path.join(SKILL, "references", "report-data.md"), "utf8");
-    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES].filter((word) => !page.includes(`\`${word}\``));
+    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES, ...QUESTION_KINDS, ...COVERAGE_KINDS].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    // The example carries the optional fields of the decision cards too; the legacy REVIEW below renders without them.
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
+  });
+
+// A second record on the same diff, of another theme and order: evidence first, a fact, then a decision whose
+// child applies under one variant; two evidence questions, variants with no "base", a permission, a tradeoff.
+const THEMED = (() => {
+  const r = structuredClone(REVIEW);
+  r.title = "Where the conversion lives";
+  r.requirements.push({ id: 4, text: "The contract may change outside legacy.", source: "discussion", permission: true });
+  r.questions = [
+    { at: "src/invoices/archive.js:2", text: "What does the contract guarantee for empty codes?", kind: "evidence",
+      zones: [{ text: "empty input", sources: [{ ref: "/requirements/0" }] }] },
+    { at: "src/main.js:4", text: "Who consumes the converted code?", kind: "fact", resolver: "author" },
+    { at: "src/invoices/archive.js:4", text: "Keep the conversion in the reader or move it to display?", kind: "decision", resolver: "owner",
+      context: [{ text: "The reader converts today.", sources: [{ ref: "/blocks/0" }] }],
+      variants: [
+        { id: "status-quo", text: "Keep the conversion in the reader", consequences: [{ text: "No new unit; the display stays simple.", sources: [{ ref: "/requirements/0" }] }] },
+        { id: "extend", text: "Move it to a display unit", consequences: [{ text: "A unit to write; the reader stays raw.", sources: [{ ref: "/target_units/1" }] }] }],
+      recommendation: { text: "Keep it in this change.", variant: "status-quo", sources: [{ ref: "/requirements/0" }] },
+      remainingEvidence: [1, 5] },
+    { at: "src/invoices/upper.js:1", text: "Which widths should the display unit cover?", kind: "decision", resolver: "owner",
+      parent: { question: 3, variants: ["extend"] },
+      variants: [{ id: "narrow", text: "Narrow cards only", consequences: [{ text: "Less to check.", sources: [{ ref: "/questions/0" }] }] }] },
+    { at: "test/archive.test.js:5", text: "The visual check of the list was not run.", kind: "evidence" },
+  ];
+  r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1, 5], unit: "readArchive" };
+  r.tradeoffs = [{ text: "Legacy keeps the old path.", consequence: "External consumers of it are unknown.", sources: [{ ref: "/requirements/3" }] }];
+  r.coverageStructured = [
+    { kind: "ran", text: "The suite ran on the working copy.", revision: "head", sources: [{ at: "test/archive.test.js:5", quote: "assert upper" }] },
+    { kind: "not_checked", text: "The list was not seen on screen.", sources: [{ ref: "/questions/4" }] }];
+  r.passport = { links: [{ kind: "task", label: "TASK-9", url: "https://tracker.example/TASK-9" }], repository: "example/repo", base: "HEAD~1", head: "HEAD", reviewedAt: "2026-01-01" };
+  r.screens[1] = { ...r.screens[1], historical: true, revision: "abc123", sources: [{ ref: "/coverageStructured/1" }] };
+  return r;
+})();
+const parseThemeDiff = () => parseDiff(generated.stdout.toString("utf8"));
+const modelOfThemed = () => {
+  const files = parseThemeDiff(), { errors, owner } = check(THEMED, files, run);
+  if (errors.length) throw new Error(errors.join("; "));
+  return modelOf(THEMED, files, owner, run);
+};
+
+test("a legacy record stays valid and warning-free; the themed record with decision cards passes check",
+  "optional fields must not make old records deficient, and a record of another theme and order must stand on its own",
+  () => {
+    const files = parseThemeDiff();
+    const legacy = check(REVIEW, files, run);
+    if (legacy.errors.length || legacy.warnings.length) return `legacy record: ${[...legacy.errors, ...legacy.warnings].join("; ")}`;
+    const themed = check(THEMED, files, run);
+    if (themed.errors.length) return `themed record: ${themed.errors.join("; ")}`;
+    // The external source carries a quote and its file is not beside the record: named, unreachable, a warning only.
+    if (!themed.warnings.some((w) => w.includes("not beside the record"))) return `no warning for an unreachable source: ${themed.warnings}`;
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    return result.status === 0 || `themed render refused: ${result.stderr}`;
+  });
+
+test("check refuses broken card references: cycles, self-parent, bad refs, duplicate variant ids, permission met",
+  "a card whose links do not resolve reads as grounded when it is not",
+  () => {
+    const files = parseThemeDiff();
+    const faults = [
+      [(r) => { r.questions[2].parent = { question: 4, variants: ["narrow"] }; }, "parent chain is a cycle"],
+      [(r) => { r.questions[2].parent = { question: 3, variants: ["status-quo"] }; }, "parent is itself"],
+      [(r) => { r.questions[3].parent = { question: 9, variants: ["x"] }; }, "parent names question 9"],
+      [(r) => { r.questions[3].parent.variants = ["absent"]; }, 'names "absent", which is not a variant of question 3'],
+      [(r) => { r.questions[2].context[0].sources = [{ ref: "/requirements/99" }]; }, 'source ref "/requirements/99" names nothing'],
+      [(r) => { r.questions[2].context[0].sources = [{ ref: "/nope/0" }]; }, "names nothing in the record"],
+      [(r) => { r.questions[2].context[0].sources = []; }, "names no source"],
+      [(r) => { r.questions[2].variants[1].id = "status-quo"; }, 'variant id "status-quo" appears twice'],
+      [(r) => { r.questions[2].recommendation.variant = "absent"; }, 'names variant "absent", which is not listed'],
+      [(r) => { r.questions[2].remainingEvidence = [2]; }, "which is not of kind evidence"],
+      [(r) => { r.questions[2].remainingEvidence = [9]; }, "names question 9, which is not listed"],
+      [(r) => { r.questions[0].kind = "visual"; }, "kind is one of decision, fact, evidence"],
+      [(r) => { r.requirements[3].met = "read"; }, "is a permission, not an obligation"],
+      [(r) => { r.coverageStructured[0].kind = "guessed"; }, "kind is one of ran, read, not_checked"],
+      [(r) => { r.tradeoffs[0].sources = undefined; }, "names no source"],
+      [(r) => { r.passport.links[0].url = "javascript:alert(1)"; }, "url is an http(s) link"],
+      [(r) => { r.questions[3].parent.variants = []; }, "parent lists no variants"],
+    ];
+    for (const [change, fault] of faults) {
+      const r = structuredClone(THEMED); change(r);
+      const { errors } = check(r, files, run);
+      if (!errors.some((e) => e.includes(fault))) return `expected "${fault}", got: ${errors.join("; ") || "no errors"}`;
+    }
+    // Warnings, not faults: a historical picture without a revision, an external source without a quote.
+    const thin = structuredClone(THEMED);
+    delete thin.screens[1].revision;
+    thin.questions[1].context = [{ text: "A claim.", sources: [{ at: "elsewhere.md:3" }] }];
+    const { errors, warnings } = check(thin, files, run);
+    return !errors.length && warnings.some((w) => w.includes("names no revision")) && warnings.some((w) => w.includes("has no quote"))
+      || `thin card: errors ${errors.join("; ")}; warnings ${warnings.join("; ")}`;
+  });
+
+test("modelOf derives children, unique counters, file status and the shortest unique path",
+  "stored children drift from parents, summed counters double-count, and a fixed short path guesses the package root",
+  () => {
+    const model = modelOfThemed();
+    if (model.questions[2].children.join() !== "4" || model.questions[3].children.length) return "children are not derived from parent alone";
+    if (model.questions[0].blocks !== 1 || model.questions[4].blocks !== 1) return "per-question fragment counts differ";
+    // One fragment names both evidence questions: it is one fragment awaiting evidence, not two.
+    if (model.counters.evidenceBlocks !== 1) return `evidence fragments double-counted: ${model.counters.evidenceBlocks}`;
+    if (model.counters.decisions !== 2 || model.counters.blocks !== 3) return "decision or block counters differ";
+    const byPath = Object.fromEntries(model.files.map((f) => [f.path, f]));
+    if (byPath["src/invoices/archive.js"].status !== "M" || byPath["test/archive.test.js"].status !== "A" || byPath["test/outputs.test.js"].status !== "A") return "file status is not taken from the diff headers";
+    if (model.counters.addedFiles !== 2 || model.counters.removedFiles !== 0 || model.counters.modifiedFiles !== 1) return "file counters differ from the statuses";
+    const shorts = model.files.map((f) => f.short);
+    if (new Set(shorts).size !== shorts.length) return "short paths collide";
+    for (const f of model.files) if (!f.path.endsWith(f.short)) return `short path is not a suffix: ${f.short}`;
+    if (byPath["src/invoices/archive.js"].short !== "archive.js") return "the shortest unique suffix was not chosen";
+    // A deleted file keeps its status; the source of a claim resolves to the item it names.
+    const deleted = parseDiff("diff --git a/gone.js b/gone.js\n--- a/gone.js\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n");
+    if (deleted[0].status !== "D") return "a deleted file is not marked D";
+    if (sourceOf({ ref: "/requirements/3" }, THEMED).text !== "R4") return "an internal source does not resolve to its requirement id";
+    if (sourceOf({ ref: "/questions/0" }, THEMED).anchor !== "#q1") return "an internal source has no anchor";
+    if (!sourceOf({ at: "a.js:1", revision: "abc", quote: "x" }, THEMED).text.includes("@ abc")) return "an external source loses its revision";
+    return true;
+  });
+
+test("a custom catalog of the old words still serves a legacy record, and an enriched record asks for the new ones",
+  "the new controls must not break old translations, nor appear silently in English on a new record",
+  () => {
+    const legacyCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, LABELS[key]]));
+    const files = parseThemeDiff();
+    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: legacyCatalog }, files, run);
+    if (legacy.errors.length) return `legacy custom catalog refused: ${legacy.errors.join("; ")}`;
+    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: legacyCatalog }, files, run);
+    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with an old catalog was accepted";
+    const full = check({ ...structuredClone(THEMED), language: "custom", labels: { ...LABELS } }, files, run);
+    return !full.errors.length || `a complete custom catalog was refused: ${full.errors.join("; ")}`;
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));

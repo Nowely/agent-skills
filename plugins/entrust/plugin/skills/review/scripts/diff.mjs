@@ -4,7 +4,7 @@
 const GIT = "for Git: git -c core.quotepath=off diff --no-color --no-ext-diff --no-renames --src-prefix=a/ --dst-prefix=b/ <base> <head>";
 export function parseDiff(out) {
   const files = [];
-  let file, hunk, oldHeader = false, newHeader = false, oldNo = 0, newNo = 0, oldLeft = 0, newLeft = 0;
+  let file, hunk, oldHeader = false, newHeader = false, oldNull = false, newNull = false, oldNo = 0, newNo = 0, oldLeft = 0, newLeft = 0;
   for (const line of out.split("\n")) {
     if (oldLeft > 0 || newLeft > 0) {
       const kind = { " ": "ctx", "+": "add", "-": "del" }[line[0]];
@@ -22,18 +22,22 @@ export function parseDiff(out) {
     if (header) {
       files.push(file = { path: header[1], hunks: [] });
       hunk = undefined;
-      oldHeader = newHeader = false;
+      oldHeader = newHeader = oldNull = newNull = false;
     }
     else if (line.startsWith("diff --")) throw new Error(`Unsupported diff header "${line}": provide a two-sided patch with a/ and b/ prefixes, no renames and no quoted paths (${GIT})`);
     else if (line.startsWith("--- ")) {
       if (!file || oldHeader || file.hunks.length || ![ `--- a/${file.path}`, "--- /dev/null" ].includes(fileHeader))
         throw new Error(`Unsupported or mismatched diff file header "${line}"${file ? ` for ${file.path}` : ""}`);
       oldHeader = true;
+      oldNull = fileHeader === "--- /dev/null";
     }
     else if (line.startsWith("+++ ")) {
       if (!file || !oldHeader || newHeader || ![ `+++ b/${file.path}`, "+++ /dev/null" ].includes(fileHeader))
         throw new Error(`Unsupported or mismatched diff file header "${line}"${file ? ` for ${file.path}` : ""}`);
       newHeader = true;
+      newNull = fileHeader === "+++ /dev/null";
+      // What happened to the file, from its headers: added, deleted or modified. Never a review verdict.
+      file.status = oldNull ? "A" : newNull ? "D" : "M";
     }
     else if (at) {
       if (!file || !oldHeader || !newHeader) throw new Error("Diff hunk has no supported file header");
