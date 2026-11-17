@@ -18,23 +18,42 @@ import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, weightCountsText, weightOverview, VERDICTS } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
 const grounds = (item) => cited(item.verdict === "question" ? item.questions.map((n) => `Q${n}`) : item.findings);
 
-// The review in the shape SKILL.md gives the report.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together }, t) {
+// The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
+// the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, key, recordSha }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
-  const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
+  const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
+  const srcs = (sources) => (sources ?? []).map((s) => sourceOf(s, review).text).filter(Boolean).join("; ");
+  // A question with a kind is printed as the whole card: the checking agents read these words, not the page.
+  const questionText = (q, index) => {
+    const n = index + 1;
+    if (q.kind === undefined) return `- Q${n} \`${q.at}\`: ${q.text}`;
+    const lines = [`- Q${n} \`${q.at}\`: ${q.text} (${word("question.kind", q.kind)}${q.resolver ? `; ${q.resolver}` : ""})`];
+    if (q.parent) lines.push(`  ${t("question.parent")}: Q${q.parent.question} (${q.parent.variants.join(", ")})`);
+    if (q.context?.length) lines.push(`  ${t("question.context")}:`, ...q.context.map((c) => `  - ${c.text} (${srcs(c.sources)})`));
+    if (q.variants?.length) lines.push(`  ${t("question.variants")}:`, ...q.variants.flatMap((v) => [`  - ${v.id}: ${v.text}`,
+      ...(v.consequences ?? []).map((c) => `    ${t("question.consequences")}: ${c.text} (${srcs(c.sources)})`)]));
+    if (q.recommendation) lines.push(`  ${t("recommendation")}: ${q.recommendation.text}${q.recommendation.variant ? ` [${q.recommendation.variant}]` : ""} (${srcs(q.recommendation.sources)}) — ${t("question.recommendation-note")}`);
+    if (q.remainingEvidence?.length) lines.push(`  ${t("question.remaining-evidence")}: ${q.remainingEvidence.map((m) => `Q${m}`).join(", ")}`);
+    if (q.zones?.length) lines.push(`  ${t("question.zones")}:`, ...q.zones.map((z) => `  - ${z.text} (${srcs(z.sources)})`));
+    return lines.join("\n");
+  };
+  const state = (r) => [r.permission ? t("permission") : r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
     r.not_checked && `${t("not-checked")}: ${r.not_checked}`, r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
   const unit = (u, status) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${capital(status)}.${u.reason ? ` ${t("reason")}: ${u.reason}` : ""}`;
   const side = (s) => s ? `${t("edit")}: ${s.edit.join("; ")}. ${t("read")}: ${(s.read ?? []).join("; ") || t("nothing")}.` : t("as-now");
   const written = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   const names = (label, ids) => ids?.length ? ` ${t(label)} ${ids.join(", ")}.` : "";
   return [
+    ...(review.passport ? [`${t("passport")}: ${(review.passport.links ?? []).map((l) => `${l.label} (${l.url})`).join("; ")}${review.passport.links?.length ? "; " : ""}`
+      + `${review.passport.repository} · ${t("passport.base")} ${review.passport.base} → ${t("passport.head")} ${review.passport.head} · ${t("passport.reviewed-at")} ${review.passport.reviewedAt}`, ""] : []),
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
     `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}; ${state(r)})${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
@@ -43,10 +62,11 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
       + `${names("breaks", f.breaks)}${names("untested", f.untested)}\n${t("shown-by")}: ${f.shown_by}\n${t("fix")}: ${f.fix}\n`), "",
     `## ${t("ideas")}`, ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
+    ...(review.tradeoffs?.length ? [`## ${t("tradeoffs")}`, ...review.tradeoffs.map((x) => `- ${x.text} ${t("tradeoff.consequence")}: ${x.consequence} (${srcs(x.sources)})`), ""] : []),
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
       `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
     ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
-      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
+      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
       ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
     ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "),
@@ -71,8 +91,11 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
       `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
-    `## ${t("questions")}`, ...list(review.questions, (q, index) => `- Q${index + 1} \`${q.at}\`: ${q.text}`), "",
-    `## ${t("coverage")}`, review.coverage || t("none"),
+    `## ${t("questions")}`, ...list(review.questions, questionText), "",
+    `## ${t("coverage")}`,
+    ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
+    review.coverage || t("none"), "",
+    `${t("report-details")}: ${review.range} · ${key} · diff ${review.diff?.sha256 ?? t("none")} · record ${recordSha ?? t("none")}`,
   ].join("\n");
 }
 
@@ -130,13 +153,15 @@ try {
       changeOf(JSON.parse(fs.readFileSync(argument, "utf8")), path.dirname(path.resolve(argument)))) : parseDiff(fs.readFileSync(argument, "utf8"));
     for (const file of files) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (["render", "check"].includes(command) && argument) {
-    const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument));
-    const { files, fault } = changeOf(review, directory), { errors, owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
+    const bytes = fs.readFileSync(argument), review = JSON.parse(bytes.toString("utf8")), directory = path.dirname(path.resolve(argument));
+    const { files, fault } = changeOf(review, directory), { errors, warnings = [], owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
-    const model = modelOf(review, files, owner, directory);
+    // The record's identity is computed from its bytes, never stored in it; the page and the printout carry it.
+    const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex") };
+    for (const warning of warnings) console.error(`warning: ${warning}`);
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
     for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
       console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);

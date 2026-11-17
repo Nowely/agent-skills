@@ -1,5 +1,8 @@
 // A line of code as markup with its comments, strings, numbers and keywords marked, by the file's extension.
 // One line at a time and by pattern: enough to read a diff by, not a parser.
+// Partial port: the v3 design replaces this with Shiki (a pinned runtime dependency, one highlighter per render,
+// tokenized old/new sequences, both themes and print). That delivery is deferred; this pattern highlighter stays
+// so the report keeps working with no dependencies. See the port architecture's "Shiki" section.
 import { esc } from "./text.mjs";
 
 const SLASH = String.raw`\/\/.*|\/\*.*?(?:\*\/|$)|^\s*\*(?:[ /].*)?$`, HASH = "#.*", DASH = "--.*";

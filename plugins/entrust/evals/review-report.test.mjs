@@ -676,4 +676,28 @@ test("a custom catalog of the old words still serves a legacy record, and an enr
     return !full.errors.length || `a complete custom catalog was refused: ${full.errors.join("; ")}`;
   });
 
+test("the full printout carries the cards, tradeoffs and coverage limits, and the digest of the record's bytes",
+  "the critic and verifier read text, not HTML: an analytical field that lives only on the page is unchecked",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const out = result.stdout;
+    for (const part of ["TASK-9 (https://tracker.example/TASK-9)", "example/repo", "## Accepted tradeoffs", "Legacy keeps the old path.",
+      "What remains: External consumers of it are unknown.", "R4", "(decision; owner)", "status-quo: Keep the conversion in the reader",
+      "Consequences: No new unit; the display stays simple. (R1)", "Keep it in this change. [status-quo]", "The reviewer's opinion; the owner decides.",
+      "What this decision does not replace: Q1, Q5", "Depends on: Q3 (extend)", "Zones to check:", "Ran: The suite ran on the working copy. @ head",
+      "Not checked: The list was not seen on screen.", "(historical revision @ abc123)", "permission, not an obligation"])
+      if (!out.includes(part)) return `the printout lacks "${part}"`;
+    const digest = createHash("sha256").update(fs.readFileSync(data)).digest("hex");
+    if (!out.includes(`record ${digest}`)) return "the printout does not carry the record's byte digest";
+    if (!out.includes(`diff ${THEMED.diff.sha256}`)) return "the printout does not carry the diff digest";
+    // The legacy printout keeps its old shape: no card machinery, no passport, no invented sections.
+    const legacy = render();
+    if (legacy.status !== 0) return legacy.stderr;
+    for (const absent of ["## Accepted tradeoffs", "Passport:", "(decision", "Ran:"])
+      if (legacy.stdout.includes(absent)) return `the legacy printout grew "${absent}"`;
+    if (!legacy.stdout.includes("- Q1 `docs/billing.md`: A question.")) return "the legacy question line changed";
+    return legacy.stdout.includes(`record ${createHash("sha256").update(fs.readFileSync(data)).digest("hex")}`) || "the legacy printout lacks the digest";
+  });
+
 process.exit(summarize(await runCases(TESTS), TESTS.length));
