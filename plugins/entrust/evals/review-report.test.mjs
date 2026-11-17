@@ -9,8 +9,9 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
-import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
+import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
+import { reportFixtures, enrich65507 } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, BASE_KEYS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS } from "../plugin/skills/review/scripts/review.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -24,37 +25,7 @@ const patch = path.join(run, "source.diff"), generated = spawnSync("git", ["-c",
 if (generated.status !== 0) throw new Error(`Could not prepare the test diff: ${generated.stderr}`);
 fs.writeFileSync(patch, generated.stdout);
 
-// A review of that case's diff: three changed lines in one file, and two new test files.
-const REVIEW = {
-  title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
-  diff: { file: "source.diff", sha256: createHash("sha256").update(generated.stdout).digest("hex") },
-  change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
-  verdict: "The change does its task.\n- One test is missing.", now: "The archive reader converts the code.", target: "The change is already this.", recommendation: "Accept it.",
-  steps: [{ text: "Add the test.", findings: [1] }],
-  requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "read", not_checked: "How the list draws it." },
-    { id: 2, text: "A requirement nothing serves.", source: "discussion", doubt: "The contract says otherwise." },
-    { id: 3, text: "A requirement that fails.", source: "assumption" }],
-  findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "read", at: "test/archive.test.js:5", what: "What happens.", shown_by: "The regression that passes.", fix: "The fix.", untested: [1] },
-    { id: 2, title: "A defect", direction: "behavior", evidence: "read", at: "src/invoices/archive.js:2", what: "What breaks.", shown_by: "The caller at `src/main.js:4`.", fix: "The fix.", breaks: [3] }],
-  checks: [{ from: "An invoice in the archive.", do: ["Open the list.", "Find the invoice."], expect: "Its currency is in upper case.", requirements: [1] }],
-  ideas: [{ title: "An idea", at: "src/invoices/archive.js:2", text: "What it gains." }],
-  screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
-    differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
-    { name: "The page", missing: "No picture was given." }],
-  scenarios: [{ id: 1, change: "Another <code> format is read.", requirements: [1], now: { edit: ["src/invoices/archive.js: readArchive"], read: ["src/invoices/archive.js: the row loop"] },
-    target: { edit: ["src/invoices/upper.js: upper"], read: [] } }],
-  units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep", reason: "One job, read whole at a glance." }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
-  target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
-  blocks: [
-    { path: "src/invoices/archive.js", added: "2, 4", removed: "3", unit: "readArchive", does: "Converts the code.", serves: [1], verdict: "keep" },
-    { path: "test/archive.test.js", added: "1-8", does: "Tests it.", serves: [1], verdict: "fix", findings: [1] },
-    { path: "test/outputs.test.js", added: "1-13", does: "Tests the three outputs.", serves: [1], verdict: "keep" },
-  ],
-  challenges: [{ from: "critic", point: "The reader should not convert.", outcome: "rejected", at: "src/main.js:4", note: "The caller prints the code as read." },
-    { from: "target", point: "The independent target converts where prices are shown.", outcome: "owner", note: "Which unit owns display is the owner's call." },
-    { from: "verifier", point: "Line 2 is not the conversion.", outcome: "accepted", note: "The finding's place was corrected." }],
-  questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
-};
+const { REVIEW, THEMED } = reportFixtures(createHash("sha256").update(generated.stdout).digest("hex"));
 // The two pictures that review names, beside its data: one pixel each.
 for (const name of ["before.png", "after.png"])
   fs.writeFileSync(path.join(run, name), Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
@@ -550,37 +521,6 @@ test("the page that tells a reviewer what to write names every word the check ac
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 
-// A second record on the same diff, of another theme and order: evidence first, a fact, then a decision whose
-// child applies under one variant; two evidence questions, variants with no "base", a permission, a tradeoff.
-const THEMED = (() => {
-  const r = structuredClone(REVIEW);
-  r.title = "Where the conversion lives";
-  r.requirements.push({ id: 4, text: "The contract may change outside legacy.", source: "discussion", permission: true });
-  r.questions = [
-    { at: "src/invoices/archive.js:2", text: "What does the contract guarantee for empty codes?", kind: "evidence",
-      zones: [{ text: "empty input", sources: [{ ref: "/requirements/0" }] }] },
-    { at: "src/main.js:4", text: "Who consumes the converted code?", kind: "fact", resolver: "author" },
-    { at: "src/invoices/archive.js:4", text: "Keep the conversion in the reader or move it to display?", kind: "decision", resolver: "owner",
-      context: [{ text: "The reader converts today.", sources: [{ ref: "/blocks/0" }] }],
-      variants: [
-        { id: "status-quo", text: "Keep the conversion in the reader", consequences: [{ text: "No new unit; the display stays simple.", sources: [{ ref: "/requirements/0" }] }] },
-        { id: "extend", text: "Move it to a display unit", consequences: [{ text: "A unit to write; the reader stays raw.", sources: [{ ref: "/target_units/1" }] }] }],
-      recommendation: { text: "Keep it in this change.", variant: "status-quo", sources: [{ ref: "/requirements/0" }] },
-      remainingEvidence: [1, 5] },
-    { at: "src/invoices/upper.js:1", text: "Which widths should the display unit cover?", kind: "decision", resolver: "owner",
-      parent: { question: 3, variants: ["extend"] },
-      variants: [{ id: "narrow", text: "Narrow cards only", consequences: [{ text: "Less to check.", sources: [{ ref: "/questions/0" }] }] }] },
-    { at: "test/archive.test.js:5", text: "The visual check of the list was not run.", kind: "evidence" },
-  ];
-  r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1, 5], unit: "readArchive" };
-  r.tradeoffs = [{ text: "Legacy keeps the old path.", consequence: "External consumers of it are unknown.", sources: [{ ref: "/requirements/3" }] }];
-  r.coverageStructured = [
-    { kind: "ran", text: "The suite ran on the working copy.", revision: "head", sources: [{ at: "test/archive.test.js:5", quote: "assert upper" }] },
-    { kind: "not_checked", text: "The list was not seen on screen.", sources: [{ ref: "/questions/4" }] }];
-  r.passport = { links: [{ kind: "task", label: "TASK-9", url: "https://tracker.example/TASK-9" }], repository: "example/repo", base: "HEAD~1", head: "HEAD", reviewedAt: "2026-01-01" };
-  r.screens[1] = { ...r.screens[1], historical: true, revision: "abc123", sources: [{ ref: "/coverageStructured/1" }] };
-  return r;
-})();
 const parseThemeDiff = () => parseDiff(generated.stdout.toString("utf8"));
 const modelOfThemed = () => {
   const files = parseThemeDiff(), { errors, owner } = check(THEMED, files, run);
@@ -821,6 +761,48 @@ test("texts reach the page as text: a script in a question, markup in a variant,
     if (!page.includes("&lt;/script&gt;") || !page.includes("&lt;b onclick")) return "the hostile text is not shown escaped";
     if ((page.match(/<script/g) ?? []).length !== 2) return "the page grew a script element";
     return true;
+  });
+
+// The real record of review 65507 is immutable; this case works on a COPY enriched with the new fields, taking
+// the approved prototype's annotations as the example content. The original's bytes are verified untouched.
+const SOURCE_65507 = process.env.REVIEW_65507_DIR ?? "/private/tmp/entrust/cloud-components/65507-review-current";
+const ANN_65507 = process.env.REVIEW_65507_ANNOTATIONS ?? "/private/tmp/entrust/65507-review-analysis/prototype/annotations-v2.json";
+test("a copy of the real 65507 record, enriched with the new fields, checks and renders its cards",
+  "the port must stand on a real record of another scale and language, without touching the immutable original",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const originalBytes = fs.readFileSync(recordPath), originalSha = createHash("sha256").update(originalBytes).digest("hex");
+    const ann = JSON.parse(fs.readFileSync(ANN_65507, "utf8"));
+    const dir = path.join(run, "enriched-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = JSON.parse(originalBytes.toString("utf8"));
+    enrich65507(review, ann);
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review, null, 2));
+    const checked = report("check", copy);
+    if (checked.status !== 0) return `the enriched copy does not check: ${checked.stderr.slice(0, 800)}`;
+    const drawn = report("render", copy);
+    if (drawn.status !== 0) return `the enriched copy does not render: ${drawn.stderr.slice(0, 800)}`;
+    const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
+    if ((page.match(/class="qcard/g) ?? []).length !== 13) return "the thirteen questions did not become cards";
+    if (!page.includes('data-parent="2"') || !page.includes('id="q9"')) return "the conditional children are not linked to Q2";
+    if (!page.includes("CLOUDFRONT-65507") || !page.includes("Паспорт")) return "the passport is missing";
+    if (!page.includes("status-strip") || !page.includes("2049")) return "the authored status strip is missing";
+    if (!drawn.stdout.includes("## Принятые компромиссы") || !drawn.stdout.includes("Варианты:")) return "the Russian printout lacks the tradeoffs or the cards";
+    // The counters on the page equal the model computed from the same bytes.
+    const files = parseDiff(fs.readFileSync(path.join(dir, "review.diff"), "utf8"));
+    const { errors, owner } = check(review, files, dir);
+    if (errors.length) return errors.join("; ");
+    const model = modelOf(review, files, owner, dir);
+    for (const cell of [`<b>${model.counters.files}</b>`, `<b>${model.counters.blocks}</b>`, `<b>${model.counters.evidenceBlocks}</b>`, `<b>${model.counters.decisions}</b>`])
+      if (!page.includes(cell)) return `the page counters differ from the model: missing ${cell}`;
+    if (model.counters.evidenceBlocks !== 224 + 4 - model.blocks.filter((b) => b.questions.includes(3) && b.questions.includes(5)).length) return "evidence fragments are not a unique set";
+    // Deterministic at this scale, and the immutable original never changed.
+    const again = report("render", copy);
+    if (again.status !== 0 || page !== fs.readFileSync(path.join(dir, "review.html"), "utf8")) return "the enriched render is not byte-stable";
+    return createHash("sha256").update(fs.readFileSync(recordPath)).digest("hex") === originalSha || "the immutable original was touched";
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));
