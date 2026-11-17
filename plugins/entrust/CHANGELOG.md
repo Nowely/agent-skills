@@ -3,6 +3,43 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.41.0 — 2026-11-17
+
+### Added
+
+- `entrust:review` reports lead with the owner's decision instead of the audit trail: question decision cards
+  (kind decision/fact/evidence, self-sufficient context, variants with confirmed consequences, a recommendation
+  with its basis, the checks the choice does not replace, declarative parent applicability, zones), a passport
+  with task/PR/Figma links, a status strip from structured coverage, scope counters with a definition of a
+  review fragment, a now→target comparison, a target structure diagram from the recorded uses, a file tree with
+  the full change map readable without JavaScript, a screen viewer, and owner/auditor print profiles.
+- A decision runtime with one valid status shared by the page, the copied text and the JSON export: accepting
+  requires a chosen variant, deferring requires a reason, an evidence question is not decided, and a child's
+  applicability follows the parent's accepted variant. The export carries the schema version, the record and
+  diff digests, the question number, the variant id and text, the comment and the status.
+- Additive optional record fields and a single source format (internal reference, or place with revision and
+  quote); the full Markdown report carries the cards, tradeoffs, limits and screen sources so the critic and
+  verifier check the same content the page shows.
+
+### Changed
+
+- `check` validates the new fields (parent cycles, variant and source references, permission against met) and
+  warns on unavailable or non-portable sources and on a run-claim without a revision; it never throws on a
+  malformed list. Records without the new fields stay clean.
+- The reviewer brief: classify each question and give a self-sufficient context, confirmed consequences, a
+  recommendation with its basis and the checks the choice does not replace; never turn a permission into an
+  obligation, an opinion into a fact, or an owner mark into a check result. The verifier checks the card facts,
+  consequences, bases, limits and tradeoff sources.
+- The label catalog keys follow the enabled controls; a record using the new fields requires their translations
+  (no silent English for new required controls).
+
+### Compatibility
+
+- Old records render with the previous semantics and pass `check` without warnings. A legacy custom catalog must
+  include the always-visible control keys; the new-field keys are required only when those fields are present.
+- Highlighting remains the built-in tokenizer. Shiki, lazy map materialization, cross-revision decision import,
+  rename heuristics, scenario groups and revision history are deferred to later changes.
+
 ## 0.40.1 — 2026-11-16
 
 ### Changed
