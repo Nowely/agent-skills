@@ -1687,16 +1687,15 @@ function scenarios({ scenarios: tried }, t) {
 </section>`;
 }
 
-// The map reader: one line per fragment (the segbar), its details and comment, the code in a disclosure.
-// Context lines attach to the fragment they surround, so the code reads continuously within a hunk. Each
-// file lives in a closed disclosure for the no-script reader; the runtime materializes it lazily.
+// One block header, metadata and comment surround its fragments; gaps preserve hunk boundaries.
+// Files remain closed disclosures for no-script readers and are materialized lazily at runtime.
 function map(review, files, model, t, hl, partCount) {
   const { blocks, owner } = model;
-  const shown = new Set(), finding = (id) => review.findings.find((f) => f.id === id);
+  const finding = (id) => review.findings.find((f) => f.id === id);
   const qtext = (n) => review.questions[n - 1]?.text ?? "";
   const pr = review.passport?.links?.find((l) => l.kind === "pr");
   const metaTitle = (b) => [b.does, b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing"), b.unit ? `${t("in-unit")} ${b.unit}` : "", `${t("lines").toLowerCase()}: ${b.where}`].filter(Boolean).join(" · ");
-  const segbar = (b, cont) => {
+  const segbar = (b) => {
     const fq = [...b.findings.map((id) => `<a href="#f${esc(id)}" title="${esc(finding(id)?.title ?? "")}">F${esc(id)}</a>`),
       ...b.questions.map((n) => `<a href="#q${n}" title="${esc(qtext(n))}">Q${n}</a>`)].join("");
     const srcBits = [];
@@ -1705,32 +1704,31 @@ function map(review, files, model, t, hl, partCount) {
     const srcTitle = (srcBits.join(" ; ") || `${b.path} · ${t("seg.no-line")}`) + (pr ? ` · ${t("seg.source-open")}` : "");
     const src = pr ? `<a class="src" href="${esc(pr.url)}" target="_blank" rel="noopener" title="${esc(srcTitle)}" aria-label="${esc(t("seg.source"))} B${b.id}: ${esc(srcTitle)}">↗</a>` : "";
     return `<div class="segbar" title="${esc(metaTitle(b))}"><span class="dot" aria-hidden="true"></span><a class="bnum mono" href="#b${b.id}" title="${esc(t("seg.permalink", b.id))}">B${b.id}</a>`
-      + (cont ? `<span class="sub does">${esc(t("continued"))}</span>` : `<span class="does">${b.does ? prose(b.does) : esc(t(`verdict.${b.verdict}`))}</span>`)
+      + `<span class="does">${b.does ? prose(b.does) : esc(t(`verdict.${b.verdict}`))}</span>`
       + `<span class="tag v-${b.verdict}">${esc(t(`verdict.${b.verdict}`))}</span><span class="links">${fq}</span>${src}`
       + `<button type="button" class="act" data-segpop="${b.id}" aria-label="${esc(t("seg.popover-open", b.id))}" aria-haspopup="dialog">ⓘ</button></div>`;
   };
-  const segmeta = (b, first) => `<details class="segmeta"><summary>${esc(t(first ? "seg.comment-details" : "seg.details"))}</summary><div class="segmeta-body">
+  const segmeta = (b) => `<details class="segmeta"><summary>${esc(t("seg.comment-details"))}</summary><div class="segmeta-body">
       <p class="sub">${b.serves.length ? `${esc(t("serves"))} ${b.serves.map(esc).join(", ")}` : esc(t("serves-nothing"))}${b.unit ? ` · ${esc(t("in-unit"))} <span class="mono">${esc(b.unit)}</span>` : ""} · <span class="mono">${esc(b.where)}</span></p>
       ${b.findings.length ? `<ul>${b.findings.map((id) => `<li><a href="#f${esc(id)}">${esc(id)}. ${esc(finding(id)?.title ?? "")}</a></li>`).join("")}</ul>` : ""}
       ${b.questions.length ? `<p class="sub">${esc(t("questions"))}: ${b.questions.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ")}</p>` : ""}
-      ${first ? `<div class="block-comment act" data-blockcomment="b${b.id}"><label class="sub" for="note-b${b.id}">${esc(t("note-block"))}: B${b.id}</label>
-      <input class="act" type="text" id="note-b${b.id}" data-note="b${b.id}" placeholder="${esc(t("note-block"))}" aria-label="${esc(t("note-block"))}: B${b.id}"></div>` : ""}
+      <div class="block-comment act" data-blockcomment="b${b.id}"><label class="sub" for="note-b${b.id}">${esc(t("note-block"))}: B${b.id}</label>
+      <input class="act" type="text" id="note-b${b.id}" data-note="b${b.id}" placeholder="${esc(t("note-block"))}" aria-label="${esc(t("note-block"))}: B${b.id}"></div>
     </div></details>`;
   const code = (path, run, title) => `<pre${title ? ` title="${esc(title)}"` : ""}><code>${run.map((l) => `<span class="l ${l.kind}"><b class="old">${l.kind === "add" ? "" : l.old}</b><b class="new">${l.kind === "del" ? "" : l.new}</b><i>${{ add: "+", del: "−", ctx: " " }[l.kind]}</i>${hl(l, path)}</span>`).join("")}</code></pre>`;
   const segment = (path, run) => {
     if (run.block === undefined) return run.lines.length ? `<div class="seg">${code(path, run.lines)}</div>` : "";
-    const b = blocks[run.block], first = !shown.has(b.id);
-    shown.add(b.id);
-    partCount[b.id] = (partCount[b.id] || 0) + 1;
-    const open = b.verdict !== "keep" && run.lines.length <= 40 ? " open" : "";
-    return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}"${first ? ` id="b${b.id}"` : ""}>`
-      + segbar(b, !first) + segmeta(b, first)
-      + `<details class="segcode"${open}><summary>${esc(t("lines"))}: ${run.lines.length}</summary>${code(path, run.lines, b.does)}</details></div>`;
+    const b = blocks[run.block], count = run.fragments.reduce((n, r) => n + r.lines.length, 0);
+    partCount[b.id] = run.fragments.length;
+    const open = b.verdict !== "keep" && count <= 40 ? " open" : "";
+    return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}" id="b${b.id}">`
+      + segbar(b) + segmeta(b)
+      + `<details class="segcode"${open}><summary>${esc(t("lines"))}: ${count}</summary>${run.fragments.map((r, i) =>
+        `${i ? `<div class="gap">⋯ ${esc(t("continued"))}</div>` : ""}<div data-fragment="${b.id}">${code(path, r.lines, b.does)}</div>`).join("")}</details></div>`;
   };
   const file = ({ path, hunks }, idx) => {
     const parts = [];
     hunks.forEach((hunk, at) => {
-      if (at) parts.push('<div class="gap">⋯</div>');
       const runs = [];
       let run = null, ctxBuf = [];
       for (const line of hunk) {
@@ -1747,12 +1745,16 @@ function map(review, files, model, t, hl, partCount) {
         run.lines.push(line);
       }
       if (run) run.lines.push(...ctxBuf);
-      for (const r of runs) parts.push(segment(path, r));
+      for (const r of runs) {
+        const previous = parts.at(-1);
+        if (r.block !== undefined && previous?.block === r.block) previous.fragments.push(r);
+        else parts.push({ ...r, fragments: [r], gap: at > 0 && r === runs[0] });
+      }
     });
     const own = blocks.filter((b) => b.path === path);
     const cat = model.purpose.file[path];
     const adds = own.reduce((sum, b) => sum + b.weightLines.added, 0), rems = own.reduce((sum, b) => sum + b.weightLines.removed, 0);
-    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks").toLowerCase())}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.join("")}</div>`;
+    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks").toLowerCase())}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.map((r) => (r.gap ? '<div class="gap">⋯</div>' : "") + segment(path, r)).join("")}</div>`;
     return `<div class="file-lazy" data-file="${idx}" id="file-${idx}"><details class="file-details"><summary class="mono" title="${esc(path)}">${esc(model.files[idx].short)} <span class="sub">· ${own.length} ${esc(t("blocks").toLowerCase())} · ${sizeOf(own)} ${esc(t("lines").toLowerCase())}</span></summary>${inner}</details></div>`;
   };
   return files.map(file).join("\n    ");
