@@ -31,7 +31,7 @@ const STYLE = `
 * { box-sizing: border-box }
 html { font-size: 87.5% }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--text) }
-.wrap { max-width: 90rem; margin: 0 auto; padding-block: 1rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+.wrap { max-width: 100rem; margin: 0 auto; padding-block: 1rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; flex-direction: column; gap: 1.25rem }
 h1 { font-size: 1.5rem; line-height: 1.25; margin: 0; text-wrap: balance }
 h2 { font-size: 1.2rem; margin: 0 0 .6rem }
@@ -105,7 +105,7 @@ td ol { margin: 0; padding-left: 1.2rem }
 .count-note > summary { cursor: pointer; color: var(--muted); background: none; padding: 0 }
 /* Cards v5: one neutral surface, no nested frames or side stripe. Order: head (type, id, status) → essence →
    limit → choice → comment → disclosures. Metadata 12px; essence/consequences/limits 14px; title 16px. */
-.decision-intro, .decision-sheet { max-width: 950px }
+.decision-intro, .decision-sheet { max-width: 90ch }
 .decision-intro { display: flex; flex-direction: column; gap: .4rem }
 .decision-intro p { max-width: 90ch }
 .decision-sheet { display: flex; flex-direction: column; gap: 1.1rem }
