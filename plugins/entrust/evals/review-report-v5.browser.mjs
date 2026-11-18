@@ -27,7 +27,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, shikiFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
-import { LABELS, BASE_KEYS } from "../plugin/skills/review/scripts/labels.mjs";
+import { LABELS, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { check as reviewCheck, modelOf } from "../plugin/skills/review/scripts/review.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -92,7 +92,7 @@ const renderFixture = ({ diff, record }, name) => {
 };
 const hostile = renderFixture(hostileFixture(), "hostile");
 const shiki = renderFixture(shikiFixture(), "shiki");
-const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
 const legacyCatalog = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
   record: { ...structuredClone(REVIEW), language: "custom", labels: oldCatalog } }, "legacy-catalog");
 const jsFixture = hostileFixture();
@@ -555,10 +555,10 @@ console.error("[run] hardening section");
   const { page: p } = await open(legacyCatalog.url);
   const legacyState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
     tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
-  check("legacy catalog: an old record renders with its old catalog on the v5 page", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
+  check("legacy catalog: an old record renders with its upgraded catalog", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
   await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
-  check("legacy catalog: the chrome works on the old catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
+  check("legacy catalog: the chrome works on the upgraded catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
     && JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
 }
 console.error("[run] legacy annotations section");
@@ -669,7 +669,7 @@ if (big) {
     results.shell = shell;
     check("65507: the shell — 16px title, 12px meta, 14px limit/consequences, no side stripe or nested option frames",
       shell.titlePx === 16 && shell.metaPx <= 13 && shell.limitPx === 14 && shell.consPx === 14
-      && shell.borderLeftWidth === "1px" && shell.optBorderTop === "1px" && shell.optBorderLeft === "0px" && shell.qoptsBorder === "0px", shell);
+      && shell.borderLeftWidth === "0px" && shell.optBorderTop === "1px" && shell.optBorderLeft === "0px" && shell.qoptsBorder === "0px", shell);
     check("65507: Q2/Q8 uncertainty on the surface; the idea's explicit absence; F/I choices; the fact answer discoverable",
       shell.limitOnSurface && shell.q8limit && shell.ideaLimit === null && shell.ideaOptional && shell.legendPx === 14
       && shell.f1buttons.join() === "Исправить,Не исправлять" && shell.i1buttons.join() === "Взять,Не брать"

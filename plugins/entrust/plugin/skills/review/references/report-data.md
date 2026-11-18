@@ -175,8 +175,11 @@ new evidence that changes a conclusion makes a revised record, named as such.
   (tabs, theme, map reader, filters, export, no-script notes) and the words of every capability it shows — the
   viewer for pictures, the cards, passport, coverage, tradeoffs, permission and historical marks — so a control
   is never silently left in English on a record authored for this version. An old record without the new fields
-  keeps passing with a genuine old catalog (the base set alone); the chrome on such a record falls back to the
-  built-in words.
+  still falls back to built-in words for the older chrome. **Breaking change:** every custom catalog, including
+  one on an old record, must also translate the exact `code.requirement`, `code.all-requirements`, `code.files`,
+  `code.units`, `code.select-requirement`, `code.no-related`, `code.no-visible`, `code.no-unit`, `code.linked`,
+  `code.visible`, and `code.filters-cleared` keys. `check` names missing keys; the two empty states require
+  distinct, accurate translations. Built-in `en` and `ru` need no catalog updates.
 
 ## Sources
 
@@ -265,12 +268,21 @@ never a new record field:
   The counters are the model's; the lines are the sum of block sizes.
 - **The tree and the map reader.** The tree opens statically, one line per file (the diff mark, the basename,
   +N/−M, the count not kept); the name filter highlights the match and Enter opens the first; a click reveals
-  ALL the file's blocks in any verdict mode through every ancestor (no empty shells); the scrollspy marks the
+  the file's blocks in any verdict mode through every ancestor, subject to the active requirement and purpose
+  filters; the scrollspy marks the
   current file; the collapse persists. One line per fragment (verdict dot, B-permalink, what it does, verdict
   tag, F/Q links, source, details), the code in a disclosure, a popover with the fragment's sources: an added
   line at the head revision, a removed line at the base, each copyable as `path:line (revision)`; without a
   passport the copy is `path:line` alone. Kept fragments start collapsed; the default view shows what needs
   attention, the full audit is one click away.
+- **Code by requirement.** The Code tab's requirement selector uses each block's recorded `serves` links;
+  counts are unique blocks, not lines or fragments, and a block can serve more than one requirement. A
+  requirement with no linked blocks is distinct from an empty intersection with the current filters.
+  Selecting a requirement replaces the active question or finding context while keeping hidden purposes.
+  Files and Units are navigation views of the same slice, not separate copies of the diff. Units group blocks
+  by their recorded `unit`; they do not assert a parent-child relationship between blocks. Following a block
+  opens the canonical fragment in the map. Without JavaScript the selector and unit navigation are disabled
+  and the full static map remains available.
 - **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned
   `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): both GitHub themes in every span, token
   colors pre-adjusted to ≥4.5:1 on the context, added and removed backgrounds of both themes. The old and the new

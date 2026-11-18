@@ -485,6 +485,13 @@ Object.assign(CATALOGS.ru, {
 // the tree's reveal and the honest no-script counter. Factual status texts remain the record's own.
 Object.assign(LABELS, {
   "tab.decisions": "Choices",
+  "code.requirement": "Requirement", "code.all-requirements": "All requirements",
+  "code.files": "Files", "code.units": "Units",
+  "code.select-requirement": "Select a requirement to browse its units.",
+  "code.no-related": "No blocks are linked to this requirement.",
+  "code.no-visible": "No blocks match the current filters.",
+  "code.no-unit": "Without a unit", "code.linked": "Linked blocks", "code.visible": "Visible",
+  "code.filters-cleared": "Filters were cleared to show the linked block.",
   "choice.filter.all": "All", "choice.filter.q": "Decisions", "choice.filter.f": "Findings", "choice.filter.i": "Ideas",
   "choice.filter.fact": "Facts · checks", "choice.filter.deferred": "Deferred", "choice.filter.done": "Done",
   "choice.filters": "Subtab filters of the one choice list",
@@ -525,6 +532,13 @@ Object.assign(LABELS, {
 });
 Object.assign(CATALOGS.ru, {
   "tab.decisions": "Выборы",
+  "code.requirement": "Требование", "code.all-requirements": "Все требования",
+  "code.files": "Файлы", "code.units": "Юниты",
+  "code.select-requirement": "Выберите требование, чтобы просмотреть его юниты.",
+  "code.no-related": "С этим требованием не связаны блоки.",
+  "code.no-visible": "Нет блоков, соответствующих текущим фильтрам.",
+  "code.no-unit": "Без юнита", "code.linked": "Связано блоков", "code.visible": "Видно",
+  "code.filters-cleared": "Фильтры сброшены, чтобы показать выбранный блок.",
   "choice.filter.all": "Все", "choice.filter.q": "Решения", "choice.filter.f": "Замечания", "choice.filter.i": "Идеи",
   "choice.filter.fact": "Факты · проверки", "choice.filter.deferred": "Отложено", "choice.filter.done": "Завершено",
   "choice.filters": "Сабтабы-фильтры одного списка выборов",
@@ -602,7 +616,7 @@ export const languageOf = (review) => (review.language ?? "en").toLowerCase().sp
 // and the v4 controls — tabs, theme, the map reader, the purpose and tree filters, the filter chip, the
 // honest export and the no-script notes. One renderer draws them on every record, old or new, but a catalog
 // written before these controls existed must keep working: an old record without the new fields is checked
-// against the old base set alone, and its chrome falls back to the built-in words. A record that uses any
+// against the old base set plus the v7 Code keys, and its older chrome falls back to the built-in words. A record that uses any
 // new field must carry the chrome words too — no silent English on a record authored for this version.
 const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
   "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
@@ -680,7 +694,9 @@ const usesNewFields = (review) =>
   || listOf(review.requirements).some((r) => r?.permission !== undefined)
   || listOf(review.screens).some((s) => s?.historical !== undefined)
   || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined;
-export const requiredKeys = (review) => [...BASE_KEYS, ...(usesNewFields(review)
+const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
+  "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];
+export const requiredKeys = (review) => [...BASE_KEYS, ...CODE_KEYS, ...(usesNewFields(review)
   ? [...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)] : [])];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.

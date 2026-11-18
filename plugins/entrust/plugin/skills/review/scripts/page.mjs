@@ -11,7 +11,7 @@ import { decisionRuntime } from "./decisions.mjs";
 const STYLE = `
 /* One column per tab, decision-first. Every size is in rem on a 14px base (html 87.5%); code is .92em of it,
    secondary text never drops below 12px, and standalone controls keep a 32px tap target. */
-:root { --bg: #f5f6f9; --surface: #ffffff; --fg: #1b2230; --muted: #5d6879; --line: #d8dde6; --accent: #3450c0; --code: #fafbfd; --string: #0c6b78; --number: #7b3fae;
+:root { --bg: #faf9f7; --surface: #ffffff; --fg: #242424; --muted: #68645e; --line: #d8d6d1; --accent: #38352f; --code: #f4f3ef; --string: #0c6b78; --number: #7b3fae;
   --keep: #1c7449; --keep-bg: #e4f3ea; --fix: #8f5b00; --fix-bg: #faefd3; --remove: #b02e28; --remove-bg: #fae5e2; --open-fg: #475069;
   --ins-bg: #e6ffec; --ins-line: #2da44a; --ins-text: #1a7f37; --del-bg: #ffebe9; --del-line: #cf222e;
   --bar-h: 3.6rem;
@@ -26,10 +26,10 @@ const STYLE = `
 * { box-sizing: border-box }
 html { font-size: 87.5% }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--text) }
-.wrap { max-width: 1600px; margin: 0 auto; padding-block: 1rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+.wrap { max-width: 1600px; margin: 0 auto; padding-block: 2rem 4rem; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
   display: flex; flex-direction: column; gap: 1.25rem }
-h1 { font-size: 1.5rem; line-height: 1.25; margin: 0; text-wrap: balance }
-h2 { font-size: 1.2rem; margin: 0 0 .6rem }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -.7px; line-height: 1.25; margin: 0; text-wrap: balance }
+h2 { font-size: 18px; font-weight: 600; margin: 0 0 .6rem }
 h3 { font-size: 1rem; margin: 0 }
 p { margin: 0; max-width: 78ch }
 p, li, h1, h2, h3, summary, blockquote { overflow-wrap: anywhere }
@@ -67,14 +67,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .tabs { display: flex; gap: .2rem; overflow-x: auto; scrollbar-width: thin; flex: 1 1 30rem; min-width: 0; padding-bottom: 2px }
 .tabs [role="tab"] { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .8rem; min-height: 36px; border: 1px solid transparent; border-bottom: 2px solid transparent;
   border-radius: 6px 6px 0 0; color: var(--muted); text-decoration: none; font-weight: 600; white-space: nowrap; font-size: .95rem }
-.tabs [role="tab"]:hover { color: var(--fg); background: var(--surface) }
-.tabs [role="tab"][aria-selected="true"] { color: var(--fg); background: var(--surface); border-color: var(--line); border-bottom-color: var(--accent) }
+.tabs [role="tab"]:hover { color: var(--fg); background: var(--code) }
+.tabs [role="tab"][aria-selected="true"] { color: var(--fg); background: transparent; border-color: transparent; border-bottom-color: var(--accent) }
 .tab-count { font-size: 12px; background: var(--line); color: var(--fg); border-radius: 1rem; padding: 0 .45rem; font-variant-numeric: tabular-nums }
 .panel { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0 }
 .skip-link { position: absolute; left: -9999px; top: 0; background: var(--accent); color: #fff; padding: .4rem .8rem; z-index: 50 }
 .skip-link:focus { left: 0 }
 /* Editorial overview: one neutral card, the verdict leads; the change context is a closed disclosure. */
-.overview { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .8rem 1.1rem }
+.overview { background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 1rem 0 }
 .lead { font-size: 1.15rem; font-weight: 600; line-height: 1.4 }
 .context-change > summary { cursor: pointer; font-weight: 650; padding: .2rem 0; background: none; color: var(--fg) }
 .context-change .stack { padding-top: .5rem }
@@ -108,7 +108,7 @@ td ol { margin: 0; padding-left: 1.2rem }
 .dgroup-title { font-size: 1.15rem; font-weight: 650; margin: .3rem 0 0; line-height: 1.3 }
 .dgroup-body { display: flex; flex-direction: column; gap: 1rem; min-width: 0 }
 .dunit { min-width: 0 }
-.qcard, .finding { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .8rem 1.1rem; display: flex; flex-direction: column; gap: .5rem; min-width: 0 }
+.qcard, .finding { background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 1rem 0; display: flex; flex-direction: column; gap: .5rem; min-width: 0 }
 .qcard > *, .finding > * { min-width: 0 }
 .qcard.child { margin-left: .9rem }
 .qlegacy.child { margin-left: 1.6rem; padding: .1rem 0 }
@@ -235,7 +235,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .purpose-bar button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--fg); border-color: var(--accent) }
 .purpose-bar button[aria-pressed="true"]::before { content: "✓ "; color: var(--accent) }
 .map-filters { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center }
-.code-layout { display: grid; grid-template-columns: var(--tree-w, 17rem) minmax(0, 1fr); gap: 1rem; align-items: start; position: relative }
+.code-layout { display: grid; grid-template-columns: var(--tree-w, 17rem) minmax(0, 1fr); gap: 1.5rem; align-items: start; position: relative }
 .code-layout.hide-tree { grid-template-columns: minmax(0, 1fr) }
 .code-layout.hide-tree .tree-col, .code-layout.hide-tree .tree-resize { display: none }
 .tree-col { position: sticky; top: calc(var(--bar-h) + .5rem); max-height: calc(100dvh - var(--bar-h) - 1rem); overflow: auto; min-width: 0 }
@@ -251,7 +251,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
   .code-layout[data-mview="tree"] .diff-col { display: none }
   .code-layout[data-mview="diff"] .tree-col { display: none }
 }
-.tree-nav { background: var(--surface); border: 1px solid var(--line); padding: .5rem .7rem }
+.tree-nav { background: transparent; border: 0; padding: .5rem 0 }
 .tree-head { gap: .3rem .5rem }
 .tree-head .label { flex: 1 1 auto }
 .tree-modes button, .tree-head button { font-size: 12px; padding: .15rem .5rem }
@@ -259,6 +259,14 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .tree-filter input { flex: 1 1 100%; max-width: none; width: auto }
 .tree-root { padding: .1rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ftree, .ftree ul { margin: 0; padding: 0; list-style: none }
+.requirements-filter { display: flex; align-items: center; gap: .6rem; min-width: 0 }
+.requirements-filter select { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; min-width: 0; max-width: min(50rem, 100%); min-height: 32px }
+.unit-tree { min-width: 0 }
+.js .unit-tree.act { display: block }
+.unit-tree details { border-top: 1px solid var(--line); padding: .4rem 0 }
+.unit-tree summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere }
+.unit-tree button { display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: .4rem .6rem; overflow-wrap: anywhere }
+.unit-tree button:hover { background: var(--code) }
 .ftree ul { margin-left: .25rem; padding-left: .45rem; border-left: 1px solid var(--line) }
 .fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .frow { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; gap: .25rem .4rem; padding: .02rem 0 }
@@ -288,7 +296,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .evidence-banner p { flex: 1 1 20rem; font-size: .95rem }
 /* The map: one line per fragment, the code in a disclosure, the file header sticky. */
 .map { display: flex; flex-direction: column; gap: .8rem }
-.file { background: var(--surface); border: 1px solid var(--line); min-width: 0 }
+.file { background: var(--surface); border: 0; border-top: 1px solid var(--line); min-width: 0 }
 .file > header { position: sticky; top: var(--bar-h); z-index: 3; background: var(--surface); padding: .45rem .8rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline }
 .file > header > * { min-width: 0 }
 .file > header strong.mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; max-width: 100%; overflow-wrap: normal }
@@ -298,7 +306,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .seg.overruled { --v: var(--muted); --v-bg: transparent }
 .seg.overruled .segbar .tag::after { content: " → " var(--kept) }
 .seg:target > .segbar, .finding:target, .qcard:target { outline: 2px solid var(--accent); outline-offset: -2px }
-.segbar { display: flex; align-items: center; gap: .5rem; padding: .15rem .6rem; min-height: 32px; font-size: .88rem; background: color-mix(in srgb, var(--v-bg) 55%, var(--surface)); border-bottom: 1px solid var(--line) }
+.segbar { display: flex; align-items: center; gap: .5rem; padding: .3rem .6rem; min-height: 32px; font-size: .88rem; background: var(--surface); border-bottom: 1px solid var(--line) }
 .segbar > * { min-width: 0 }
 .segbar .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--v); flex: none }
 .segbar .bnum { font-weight: 700; flex: none; text-decoration: none; color: var(--fg) }
@@ -467,7 +475,7 @@ const SCRIPT = `
   const save = () => { try { localStorage.setItem(key, JSON.stringify({ ...state, theme })); } catch {} };
   document.documentElement.classList.add("js");
   // Radios, zones, answers and filters ship disabled for the no-script reader; the runtime enables them.
-  for (const control of all("[data-question-variant], [data-zone], [data-answer], button[disabled]:not([data-purpose-empty]), input[disabled]")) control.disabled = false;
+  for (const control of all("[data-question-variant], [data-zone], [data-answer], button[disabled]:not([data-purpose-empty]), input[disabled], select[disabled]")) control.disabled = false;
   for (const fieldset of all("fieldset.qopts")) fieldset.disabled = false;
   const qEntry = (id) => D.entryOf(state, id);
   const qById = Object.fromEntries(data.questions.map((q) => [String(q.id), q]));
@@ -523,13 +531,15 @@ const SCRIPT = `
       if (opts.focus && opts.focus.isConnected) opts.focus.focus({ preventScroll: true });
     });
   }
-  for (const tb of tabs) tb.addEventListener("click", (e) => { e.preventDefault(); activate(tb.dataset.tab); history.replaceState(null, "", "#panel-" + tb.dataset.tab); });
+  const tabHash = (id) => id === "code" && (map.dataset.req || map.dataset.q || map.dataset.f)
+    ? "#" + (map.dataset.req ? "req" + map.dataset.req : map.dataset.q ? "q" + map.dataset.q : "f" + map.dataset.f) + "-code" : "#panel-" + id;
+  for (const tb of tabs) tb.addEventListener("click", (e) => { e.preventDefault(); activate(tb.dataset.tab); history.replaceState(null, "", tabHash(tb.dataset.tab)); });
   document.querySelector(".tabs").addEventListener("keydown", (e) => {
     const i = tabs.indexOf(document.activeElement); if (i < 0) return;
     let j = null;
     if (e.key === "ArrowRight") j = (i + 1) % tabs.length; else if (e.key === "ArrowLeft") j = (i - 1 + tabs.length) % tabs.length;
     else if (e.key === "Home") j = 0; else if (e.key === "End") j = tabs.length - 1;
-    if (j == null) return; e.preventDefault(); tabs[j].focus(); activate(tabs[j].dataset.tab); history.replaceState(null, "", "#panel-" + tabs[j].dataset.tab);
+    if (j == null) return; e.preventDefault(); tabs[j].focus(); activate(tabs[j].dataset.tab); history.replaceState(null, "", tabHash(tabs[j].dataset.tab));
   });
 
   // ---- the lazy map: closed disclosures become templates; materialize what the mode/filter needs; one B anchor ----
@@ -580,15 +590,19 @@ const SCRIPT = `
   function setMode(v) {
     all("#map .file.reveal").forEach((file) => file.classList.remove("reveal"));
     map.dataset.show = v;
+    const wasSelecting = selectingRequirement;
+    selectingRequirement = true;
     if (v === "all") insertAll();
     else if (v === "attention") filesMatching((b) => b.verdict !== "keep").forEach(insertFile);
     else filesMatching((b) => b.verdict === v).forEach(insertFile);
+    selectingRequirement = wasSelecting;
     for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other.dataset.show === v));
     applySegFilter();
   }
   // Purpose toggles hide groups (several at once) in map AND tree; additive state beside the decisions;
   // a reset or a deep link to a hidden block brings the group back.
   function togglePurpose(cat) {
+    document.getElementById("code-notice").textContent = "";
     const hidden = hiddenPurposes();
     state.hiddenPurposes = hidden.includes(cat) ? hidden.filter((x) => x !== cat) : [...hidden, cat];
     save();
@@ -600,11 +614,15 @@ const SCRIPT = `
   // ---- C2: tree name filter, highlighted match, AND hidden purposes; Enter opens the first ----
   const treeInput = document.getElementById("tree-filter-input"), treeClear = document.getElementById("tree-filter-clear"), treeCount = document.getElementById("tree-filter-count");
   function applyTreeFilter() {
-    const hidden = hiddenPurposes(), query = treeInput.value.trim().toLowerCase();
+    const hidden = hiddenPurposes(), query = treeInput.value.trim().toLowerCase(), req = map.dataset.req;
+    const matchingFiles = req || hidden.length ? filesMatching((b) => (!req || (b.serves || []).includes(+req)) && !hidden.includes(b.purpose)) : null;
+    const filesWithBlocks = matchingFiles && !req ? filesMatching(() => true) : null;
     let visible = 0;
     for (const row of all(".frow")) {
       const path = (data.files[+row.dataset.frow] || "").toLowerCase();
-      const show = !hidden.includes(row.dataset.purpose) && (!query || path.includes(query));
+      const purposeVisible = !matchingFiles || matchingFiles.has(row.dataset.frow)
+        || (filesWithBlocks && !filesWithBlocks.has(row.dataset.frow) && !hidden.includes(row.dataset.purpose));
+      const show = purposeVisible && (!query || path.includes(query));
       row.style.display = show ? "" : "none"; if (show) visible++;
       const button = row.querySelector(".fname");
       const name = button.title.split("/").pop(), at = name.toLowerCase().indexOf(query);
@@ -619,9 +637,9 @@ const SCRIPT = `
     treeCount.textContent = query || hidden.length ? t.files + ": " + visible + " / " + data.files.length : "";
     treeClear.disabled = !query;
   }
-  treeInput.addEventListener("input", applyTreeFilter);
+  treeInput.addEventListener("input", () => { document.getElementById("code-notice").textContent = ""; applyTreeFilter(); });
   treeInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { const first = all(".frow").find((row) => row.style.display !== "none"); if (first) { event.preventDefault(); first.querySelector(".fname").click(); } } });
-  treeClear.addEventListener("click", () => { treeInput.value = ""; applyTreeFilter(); treeInput.focus(); });
+  treeClear.addEventListener("click", () => { document.getElementById("code-notice").textContent = ""; treeInput.value = ""; applyTreeFilter(); treeInput.focus(); });
   function resetTreeFilter() { treeInput.value = ""; applyTreeFilter(); }
 
   // Flatten in place so reveal, search and scrollspy retain the same rows.
@@ -648,10 +666,11 @@ const SCRIPT = `
   const chip = document.getElementById("filter-chip"), chipLabel = document.getElementById("filter-chip-label");
   const chipPos = document.getElementById("filter-pos"), chipPrev = document.getElementById("filter-prev"), chipNext = document.getElementById("filter-next"), chipBack = document.getElementById("filter-back");
   let returnState = null, chipIdx = 0, chipKey = "";
-  const chipMatches = () => [...document.querySelectorAll("#map .seg[id][data-block]")].filter((s) => s.style.display !== "none" && s.offsetParent !== null);
+  const chipMatches = () => [...document.querySelectorAll("#map .seg[id][data-block]")].filter((s) => s.style.display !== "none" && s.closest(".file")?.style.display !== "none");
   function paintChipPos(n) { chipPos.textContent = n ? (chipIdx + 1) + " / " + n : "0"; chipPrev.disabled = chipNext.disabled = !n; }
   function updateChip() {
     const q = map.dataset.q, req = map.dataset.req, f = map.dataset.f, hidden = hiddenPurposes();
+    updateRequirementViews();
     if (!q && !req && !f && !hidden.length) { chip.hidden = true; chipKey = ""; return; }
     const ck = q ? "q" + q : req ? "req" + req : f ? "f" + f : "hidden:" + hidden.join(",");
     if (ck !== chipKey) { chipKey = ck; chipIdx = 0; }
@@ -659,7 +678,8 @@ const SCRIPT = `
     if (q || req || f) {
       const bs = q ? data.blocks.filter((b) => (b.questions || []).includes(+q)) : req ? data.blocks.filter((b) => (b.serves || []).includes(+req)) : data.blocks.filter((b) => (b.findings || []).includes(+f));
       const n = bs.length, parts = bs.reduce((s, b) => s + (b.parts || 1), 0);
-      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + t.blocksWord + ": " + n + (parts > n ? " · " + t.fragments + ": " + parts + " (" + t.withParts + ")" : "");
+      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + (req ? t.code.linked : t.blocksWord) + ": " + n + (req ? " · " + t.code.visible + ": " + chipMatches().length : parts > n ? " · " + t.fragments + ": " + parts + " (" + t.withParts + ")" : "")
+        + (hidden.length ? " · " + t.chip.hidden.replace("{n}", hidden.map((x) => data.purposeLabels[x] || x).join(", ")) : "");
     } else {
       const hiddenBlocks = data.blocks.filter((b) => hidden.includes(b.purpose)).length;
       label = t.chip.hidden.replace("{n}", hidden.map((x) => data.purposeLabels[x] || x).join(", ")) + " · " + (data.blocks.length - hiddenBlocks) + "/" + data.blocks.length;
@@ -675,6 +695,7 @@ const SCRIPT = `
     const m = chipMatches(); if (!m.length) return;
     chipIdx = (chipIdx + delta + m.length) % m.length;
     const seg = m[chipIdx];
+    updateUnitContext(seg);
     progOpen(seg.querySelector(".segcode"));
     seg.scrollIntoView({ block: "start" });
     if (!seg.matches("[tabindex]")) seg.tabIndex = -1;
@@ -684,6 +705,8 @@ const SCRIPT = `
   chipPrev.addEventListener("click", () => chipJump(-1));
   chipNext.addEventListener("click", () => chipJump(1));
   function jumpToFilter(kind, id, push) {
+    document.getElementById("code-notice").textContent = "";
+    updateUnitContext(null);
     returnState = { scroll: window.scrollY, tab: activeTab, focus: document.activeElement };
     activate("code");
     delete map.dataset.req; delete map.dataset.q; delete map.dataset.f;
@@ -692,6 +715,7 @@ const SCRIPT = `
     if (kind === "q") map.dataset.q = String(id); else if (kind === "f") map.dataset.f = String(id); else map.dataset.req = String(id);
     filesMatching((b) => kind === "q" ? (b.questions || []).includes(+id) : kind === "f" ? (b.findings || []).includes(+id) : (b.serves || []).includes(+id)).forEach(insertFile);
     applySegFilter();
+    applyTreeFilter();
     if (push !== false) history.pushState(null, "", "#" + (kind === "q" ? "q" + id : kind === "f" ? "f" + id : "req" + id) + "-code");
     requestAnimationFrame(() => {
       const first = [...document.querySelectorAll("#map .seg[data-block]")].find((s) => s.style.display !== "none" && s.offsetParent !== null);
@@ -700,9 +724,11 @@ const SCRIPT = `
   }
   function clearFilters(opts) {
     opts = opts || {};
+    updateUnitContext(null);
     delete map.dataset.req; delete map.dataset.q; delete map.dataset.f;
     state.hiddenPurposes = []; save();
     for (const b of all("[data-purpose-filter]")) b.setAttribute("aria-pressed", "true");
+    restoreUnfilteredFiles();
     applyTreeFilter();
     applySegFilter();
     if (opts.back && returnState) {
@@ -711,23 +737,117 @@ const SCRIPT = `
       history.replaceState(null, "", "#panel-" + rs.tab);
     }
   }
-  chipBack.addEventListener("click", () => clearFilters({ back: true }));
-  document.getElementById("filter-clear").addEventListener("click", () => { clearFilters(); history.replaceState(null, "", "#panel-code"); });
+  chipBack.addEventListener("click", () => { document.getElementById("code-notice").textContent = ""; clearFilters({ back: true }); });
+  document.getElementById("filter-clear").addEventListener("click", () => { document.getElementById("code-notice").textContent = ""; clearFilters(); history.replaceState(null, "", "#panel-code"); });
+
+  // Unit navigation is derived from the selected requirement; the code stays in the canonical map.
+  let navigationView = "files", unitSignature = "", selectingRequirement = false;
+  function updateUnitContext(target) {
+    all("#map .unit-context").forEach((node) => node.remove());
+    const block = target && blockById[target.dataset.block], bar = target?.querySelector(".segbar");
+    if (map.dataset.req && block?.unit && bar) {
+      const context = document.createElement("span");
+      context.className = "unit-context sub";
+      context.textContent = t.inUnit + " " + block.unit;
+      bar.append(context);
+    }
+  }
+  function showMobileDiff() {
+    if (codeLayout.dataset.mview !== "tree") return;
+    codeLayout.dataset.mview = "diff";
+    for (const b of all("[data-mview]")) b.setAttribute("aria-pressed", String(b.dataset.mview === "diff"));
+  }
+  function restoreUnfilteredFiles() {
+    if (map.dataset.show !== "all") return;
+    const wasSelecting = selectingRequirement;
+    selectingRequirement = true;
+    insertAll();
+    selectingRequirement = wasSelecting;
+  }
+  function updateRequirementViews() {
+    const select = document.getElementById("code-requirement"), container = document.getElementById("unit-tree");
+    const empty = document.getElementById("requirement-empty"), req = map.dataset.req || "";
+    if (!select || !container || !empty) return;
+    select.value = req;
+    if (selectingRequirement) return;
+    const linked = req ? data.blocks.filter((b) => (b.serves || []).includes(+req)) : [];
+    const matching = linked.filter((b) => {
+      const host = document.getElementById("file-" + data.blockFile[b.id]);
+      const mode = map.dataset.show || "attention";
+      const verdict = host?.querySelector(".file.reveal") || mode === "all" || (mode === "attention" ? b.verdict !== "keep" : b.verdict === mode);
+      return verdict && !hiddenPurposes().includes(b.purpose);
+    });
+    empty.textContent = !req ? "" : !linked.length ? t.code.noRelated : !matching.length ? t.code.noVisible : "";
+    if (navigationView !== "units") return;
+    const signature = JSON.stringify([req, matching.map((b) => b.id)]);
+    if (signature === unitSignature) return;
+    unitSignature = signature;
+    const open = new Set([...container.querySelectorAll("details[open]")].map((d) => d.dataset.unit));
+    container.replaceChildren();
+    if (!req) { container.textContent = t.code.selectRequirement; return; }
+    const groups = new Map();
+    for (const b of matching) { const name = b.unit || t.code.noUnit; if (!groups.has(name)) groups.set(name, []); groups.get(name).push(b); }
+    for (const [name, blocks] of groups) {
+      const details = document.createElement("details"), summary = document.createElement("summary");
+      details.dataset.unit = name; details.open = open.has(name);
+      summary.textContent = name + " · " + blocks.length;
+      details.append(summary);
+      for (const block of blocks) {
+        const button = document.createElement("button");
+        button.type = "button"; button.dataset.unitBlock = String(block.id);
+        button.textContent = "B" + block.id + " · " + (block.does || block.path);
+        button.title = block.path + (block.where ? " · " + block.where : "");
+        details.append(button);
+      }
+      container.append(details);
+    }
+  }
+  document.getElementById("code-requirement").addEventListener("change", (event) => {
+    const id = event.target.value;
+    document.getElementById("code-notice").textContent = "";
+    updateUnitContext(null);
+    delete map.dataset.q; delete map.dataset.f;
+    selectingRequirement = true;
+    if (id) {
+      map.dataset.req = id;
+      map.dataset.show = "all";
+      for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other.dataset.show === "all"));
+      filesMatching((b) => (b.serves || []).includes(+id)).forEach(insertFile);
+      history.pushState(null, "", "#req" + id + "-code");
+    } else {
+      delete map.dataset.req;
+      restoreUnfilteredFiles();
+      history.pushState(null, "", "#panel-code");
+    }
+    selectingRequirement = false;
+    applyTreeFilter(); applySegFilter();
+  });
 
   // ---- deep links: a tab, a filtered map view, a block in any mode, or any anchor in its panel ----
   function openTarget(hash) {
     if (!hash || hash[0] !== "#") return;
     const shot = /^#shot(\\d+)$/.exec(hash); if (shot) hash = "#shot-" + shot[1]; // the canonical anchor is #shot-N; #shotN lands too
-    const pm = /^#panel-(\\w+)$/.exec(hash); if (pm) { activate(pm[1] === "findings" ? "decisions" : pm[1]); return; } // the v4 Findings tab lives in Choices now
+    const pm = /^#panel-(\\w+)$/.exec(hash);
+    if (pm) {
+      if (pm[1] === "code" && (map.dataset.req || map.dataset.q || map.dataset.f)) {
+        delete map.dataset.req; delete map.dataset.q; delete map.dataset.f;
+        document.getElementById("code-notice").textContent = "";
+        updateUnitContext(null); restoreUnfilteredFiles(); applyTreeFilter(); applySegFilter();
+      }
+      activate(pm[1] === "findings" ? "decisions" : pm[1]); return;
+    } // the v4 Findings tab lives in Choices now
     const fm = /^#(q|req|f)(\\d+)-code$/.exec(hash); if (fm) { jumpToFilter(fm[1], fm[2], false); return; }
     const bm = /^#b(\\d+)$/.exec(hash);
     let el = null;
     if (bm) {
+      const filtered = !!(map.dataset.req || map.dataset.q || map.dataset.f || hiddenPurposes().length || treeInput.value.trim() || (map.dataset.show || "attention") !== "all");
       clearFilters();
       resetTreeFilter();
       activate("code");
       // A deep link reveals its block in ANY verdict mode: the full audit, not just the filters.
       setMode("all");
+      showMobileDiff();
+      document.getElementById("code-notice").textContent = filtered ? t.code.filtersCleared : "";
       el = document.getElementById("b" + bm[1]);
       if (el) progOpen(el.querySelector(".segcode"));
     } else { try { el = document.querySelector(hash); } catch { return; } }
@@ -1215,6 +1335,29 @@ const SCRIPT = `
     const segpop = event.target.closest("[data-segpop]"); if (segpop) { openPop(segpop.dataset.segpop, segpop); return; }
     const button = event.target.closest("button");
     if (!button || button.disabled) return;
+    if (button.dataset.navigationView) {
+      navigationView = button.dataset.navigationView;
+      document.getElementById("files-tree").hidden = navigationView !== "files";
+      document.getElementById("unit-tree").hidden = navigationView !== "units";
+      for (const b of all("[data-navigation-view]")) b.setAttribute("aria-pressed", String(b.dataset.navigationView === navigationView));
+      updateRequirementViews();
+      return;
+    }
+    if (button.dataset.unitBlock) {
+      const id = button.dataset.unitBlock;
+      insertFile(data.blockFile[id]);
+      const target = document.getElementById("b" + id);
+      if (target && target.style.display !== "none") {
+        showMobileDiff();
+        updateUnitContext(target);
+        const index = chipMatches().indexOf(target);
+        if (index >= 0) { chipIdx = index; paintChipPos(chipMatches().length); }
+        progOpen(target.querySelector(".segcode"));
+        target.tabIndex = -1;
+        requestAnimationFrame(() => { target.scrollIntoView({ block: "start" }); target.focus({ preventScroll: true }); });
+      }
+      return;
+    }
     const group = button.closest(".decide");
     if (group) {
       const id = group.dataset.finding;
@@ -1223,7 +1366,7 @@ const SCRIPT = `
         if (cur.choice === button.value) delete cur.choice; else cur.choice = button.value;
         if (cur.choice || cur.variant) state.questions[k] = cur; else delete state.questions[k];
       } else if (state.findings[id] === button.value) delete state.findings[id]; else state.findings[id] = button.value;
-    } else if (button.dataset.show) { setMode(button.dataset.show); return; }
+    } else if (button.dataset.show) { if (button.dataset.show !== map.dataset.show) document.getElementById("code-notice").textContent = ""; setMode(button.dataset.show); return; }
     else if (button.dataset.purposeFilter) { togglePurpose(button.dataset.purposeFilter); return; }
     else if (button.dataset.reqFilter !== undefined) { jumpToFilter("req", button.dataset.reqFilter); return; }
     else if (button.dataset.qFilter !== undefined) { jumpToFilter("q", button.dataset.qFilter); return; }
@@ -1299,7 +1442,7 @@ const SCRIPT = `
   let printSnapshot = null, auditorPrint = false;
   window.addEventListener("beforeprint", () => {
     const treeCol = document.querySelector(".tree-col");
-    printSnapshot = { inserted: new Set(inserted), openDetails: all("details[open]"), show: map.dataset.show, req: map.dataset.req, q: map.dataset.q, f: map.dataset.f, hiddenPurposes: [...hiddenPurposes()], chipIdx, chipPos: chipPos.textContent, chipNav: chipPrev.disabled, mapDisplay: map.style.display, treeDisplay: treeCol ? treeCol.style.display : null };
+    printSnapshot = { inserted: new Set(inserted), revealedFiles: all("#map .file.reveal").map((file) => file.closest(".file-lazy").dataset.file), openDetails: all("details[open]"), openUnits: all("#unit-tree details[open]").map((d) => d.dataset.unit), unitBlock: document.querySelector("#map .unit-context")?.closest(".seg[id][data-block]")?.dataset.block, show: map.dataset.show, req: map.dataset.req, q: map.dataset.q, f: map.dataset.f, hiddenPurposes: [...hiddenPurposes()], chipIdx, chipPos: chipPos.textContent, chipNav: chipPrev.disabled, mapDisplay: map.style.display, treeDisplay: treeCol ? treeCol.style.display : null };
     if (auditorPrint) {
       clearFilters(); setMode("all"); insertAll();
       // Build the lazy bodies first, then open everything: the clones' nested disclosures print open too.
@@ -1323,6 +1466,7 @@ const SCRIPT = `
     all("details").forEach((d) => d.open = false);
     for (const d of printSnapshot.openDetails) progOpen(d);
     map.dataset.show = printSnapshot.show;
+    if (auditorPrint) for (const host of all(".file-lazy")) host.querySelector(".file")?.classList.toggle("reveal", printSnapshot.revealedFiles.includes(host.dataset.file));
     if (printSnapshot.req) map.dataset.req = printSnapshot.req;
     if (printSnapshot.q) map.dataset.q = printSnapshot.q;
     if (printSnapshot.f) map.dataset.f = printSnapshot.f;
@@ -1332,6 +1476,8 @@ const SCRIPT = `
     for (const b of all("[data-purpose-filter]")) b.setAttribute("aria-pressed", String(!state.hiddenPurposes.includes(b.dataset.purposeFilter)));
     applyTreeFilter();
     applySegFilter();
+    if (auditorPrint && printSnapshot.unitBlock) updateUnitContext(document.getElementById("b" + printSnapshot.unitBlock));
+    for (const d of all("#unit-tree details")) d.open = printSnapshot.openUnits.includes(d.dataset.unit);
     chipIdx = printSnapshot.chipIdx;
     chipPos.textContent = printSnapshot.chipPos;
     chipPrev.disabled = chipNext.disabled = printSnapshot.chipNav;
@@ -1755,7 +1901,7 @@ function treeNav(files, model, t) {
   const dir = (name, node) => node.dirs.size === 1 && !node.files.length ? dir(`${name}/${[...node.dirs.keys()][0]}`, [...node.dirs.values()][0])
     : `<li><details class="fdir" open><summary class="mono sub" title="${esc(name)}/">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
   const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(fileRow).join("")}</ul>`;
-  return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
+  return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
   <div class="tree-filter act"><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" aria-label="${esc(t("tree.filter"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
   ${rootLabel ? `<div class="tree-root sub mono" title="${esc(rootLabel)}">${esc(rootLabel)}/</div>` : ""}
   <div class="ftree" id="ftree-folder">${list(root)}</div></div>`;
@@ -1776,6 +1922,9 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
 <section id="files" class="stack"><h2>${esc(t("files"))} · ${model.files.length}</h2>
   <div class="code-controls">
     ${purposeBar}
+    <label class="requirements-filter act" for="code-requirement">${esc(t("code.requirement"))}:
+      <select id="code-requirement" disabled><option value="">${esc(t("code.all-requirements"))}</option>${model.requirements.map((r) => `<option value="${esc(r.id)}">T${esc(r.id)} — ${esc(r.text)} (${r.blocks.length})</option>`).join("")}</select>
+    </label>
     <div class="map-filters">
       <span class="group act" role="group" aria-label="${esc(t("map"))}"><span class="sub">${esc(t("show"))}:</span><button type="button" data-show="attention" aria-pressed="true">${esc(t("map.attention", nonkeep))}</button><button type="button" data-show="all" aria-pressed="false">${esc(t("map.all", model.blocks.length))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</span>
       <button type="button" id="show-tree" hidden disabled>${esc(t("tree.show"))}</button>
@@ -1784,10 +1933,19 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
     </div>
   </div>
   <div class="code-layout" id="code-layout" data-mview="both">
-    <aside class="tree-col">${treeNav(files, model, t)}</aside>
+    <aside class="tree-col">
+      <div class="group act" role="group" aria-label="${esc(t("tree.title"))}">
+        <button type="button" data-navigation-view="files" aria-pressed="true" disabled>${esc(t("code.files"))}</button>
+        <button type="button" data-navigation-view="units" aria-pressed="false" disabled>${esc(t("code.units"))}</button>
+        <button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button>
+      </div>
+      ${treeNav(files, model, t)}<div class="unit-tree act" id="unit-tree" hidden></div>
+    </aside>
     <div class="tree-resize" id="tree-resize" role="separator" aria-orientation="vertical" tabindex="0" aria-label="${esc(t("tree.resize"))}" title="${esc(t("tree.resize"))}" aria-valuemin="168" aria-valuemax="560"></div>
     <div class="diff-col">
       <div class="filter-chip" id="filter-chip" hidden><span id="filter-chip-label"></span><span class="chip-nav"><button type="button" id="filter-prev" aria-label="${esc(t("chip.prev"))}">‹</button><span class="chip-pos" id="filter-pos" role="status"></span><button type="button" id="filter-next" aria-label="${esc(t("chip.next"))}">›</button></span><button type="button" id="filter-back">${esc(t("chip.back"))}</button><button type="button" id="filter-clear">${esc(t("reset"))}</button></div>
+      <p class="sub" id="code-notice" role="status"></p>
+      <p id="requirement-empty" role="status"></p>
       ${banners}
       <noscript><p class="sub">${esc(t("nojs.map"))}</p></noscript>
       <div id="map" class="map" data-show="attention" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
@@ -1914,6 +2072,7 @@ export function page(review, files, model, { syntax } = {}) {
       copySource: t("seg.copy-source"), copySourcePlain: t("seg.copy-source-plain"), noLine: t("seg.no-line"), keptNoDoes: t("seg.kept-no-does"),
       noteBlock: t("note-block"), close: t("viewer.close"),
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
+      code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
       blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files") },
     annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);

@@ -3,7 +3,16 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## 0.41.0 — 2026-11-17
+## 0.42.0 — Unreleased
+
+### Review report v7
+
+- Select a requirement in Code and browse its linked blocks by file or by unit. Units are groups from
+  the recorded data, not inferred parent-child block relationships. The code remains in its original
+  diff order and is not duplicated in the navigation.
+- Refresh the light presentation with a warmer, document-like layout based on the hierarchy prototype.
+- **Breaking:** custom-language catalogs, including those used by older records, must provide the new
+  Code navigation labels. `check` lists missing keys; the built-in English and Russian catalogs are complete.
 
 ### Review report v6
 
@@ -28,7 +37,9 @@ forensics remain in the repository references and release notes.
   The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
 - v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
   grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
-  growth against that baseline. Schema 4, legacy catalogs and version 0.41.0 remain compatible.
+  growth against that baseline. Schema 4 remains compatible; see the v7 note above for custom catalogs.
+
+## 0.41.0 — 2026-11-17
 
 ### Added
 

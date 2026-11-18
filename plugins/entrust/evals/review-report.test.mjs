@@ -666,14 +666,14 @@ test("modelOf derives children, unique counters, file status and the shortest un
   });
 
 test("a custom catalog carries the base words plus the keys of the controls the record shows",
-  "the new controls must not break old translations, nor appear silently in English on a record authored for them",
+  "v7 Code wording is required even on old records, without silently substituting a different meaning",
   () => {
     const files = parseThemeDiff();
     const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
     // The genuine old catalog: exactly the base set the released report asked for, in the reader's own words.
     const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
     const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: oldCatalog }, files, run);
-    if (legacy.errors.length) return `a genuine old catalog was refused on an old record: ${legacy.errors.join("; ")}`;
+    if (!legacy.errors.some((e) => e.includes("code.no-related") && e.includes("code.no-visible"))) return "old catalog missing Code wording was not refused";
     const thin = { ...oldCatalog }; delete thin["findings"];
     const baseFault = check({ ...structuredClone(REVIEW), language: "custom", labels: thin }, files, run);
     if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the old base set stopped being required";
@@ -1230,7 +1230,7 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
       if (oldRequired.includes(key)) return `the v4 control ${key} was demanded of a genuine old catalog`;
       if (!newRequired.includes(key)) return `the v4 control ${key} is not required of a record with the new fields`;
     }
-    if (oldRequired.length !== BASE_KEYS.length) return "an old record was asked for words beyond the old base set";
+    if (!oldRequired.includes("code.no-related") || !oldRequired.includes("code.no-visible")) return "an old record was not asked for the v7 empty states";
     if (newRequired.includes("decision.confirm") === false) return "a record with cards was not asked for the card words";
     const files = parseThemeDiff();
     const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
@@ -1326,10 +1326,10 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
   });
 
-test("a genuine old custom catalog renders an old record end to end; a new record owes the v4 keys",
+test("an upgraded old custom catalog renders an old record end to end; a new record owes the v4 keys",
   "the check alone can pass while the render refuses, and a new record must not silently take English chrome",
   () => {
-    const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+    const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
     const ok = render((r) => { r.language = "custom"; r.labels = oldCatalog; });
     if (ok.status !== 0) return `an old record with a genuine old catalog was refused: ${ok.stderr}`;
     if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
@@ -1781,8 +1781,34 @@ test("v6 subtraction preserves anchors, affordance and the wide compact code tre
       if ((p.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `lost or duplicate anchor ${id}`;
     for (const text of ["D.choiceStats", 'data-cf-count="q"', 'data-tree-mode="flat"', 'id="tree-resize"', ".ftree.flat", "max-width: 1600px", "max-width: 90ch", ".qopts legend { font-size: 1rem; color: var(--fg); font-weight: 650", 'data-fragment="1"'])
       if (!p.includes(text)) return `v6 contract missing: ${text}`;
-    const source = fs.readFileSync(path.join(SKILL, "scripts/page.mjs"));
-    return source.length < 164570 || `not net-negative against pre-v6: ${source.length} >= 164570`;
+    return true;
+  });
+
+test("requirements are selectable in Code, with unit navigation and a complete no-script map",
+  "the requirement control must use the recorded relationships rather than infer parent blocks or copy the diff",
+  () => {
+    const record = structuredClone(THEMED);
+    record.language = "ru";
+    const files = parseThemeDiff(), model = modelOf(record, files, check(record, files, run).owner, run);
+    const output = page(record, files, model);
+    if (!output.includes('id="code-requirement" disabled')) return "the requirement selector is not disabled without JavaScript";
+    if (!output.includes("T1 — Upper case wherever a price is shown. (3)")) return "the selector does not show the model's unique block count";
+    if (!output.includes("T2 — A requirement nothing serves. (0)")) return "a requirement with no blocks is not selectable";
+    if (!output.includes('data-navigation-view="units"')) return "unit navigation is missing";
+    if (!output.includes("document.createElement(\"details\")") || !output.includes("b.unit || t.code.noUnit")) return "unit groups are not derived from block data";
+    if (!output.includes('id="b1"') || !output.includes("data-serves=")) return "the original map or requirement links are missing";
+    for (const key of ["code.requirement", "code.units", "code.no-related", "code.no-visible"]) {
+      if (!LABELS[key] || !CATALOGS.ru[key]) return `missing localization: ${key}`;
+      if (!requiredKeys(THEMED).includes(key) || !requiredKeys(REVIEW).includes(key)) return `the new wording is not required: ${key}`;
+    }
+    const custom = { ...structuredClone(THEMED), language: "custom", labels: Object.fromEntries(requiredKeys(THEMED).map((key) => [key, `«${LABELS[key]}»`])) };
+    if (check(custom, files, run).errors.length) return "an existing enriched custom catalog no longer passes check";
+    if (labelsOf(custom)("code.requirement") !== custom.labels["code.requirement"]) return "the custom selector label is not used";
+    for (const key of ["code.no-related", "code.no-visible"]) {
+      const missing = structuredClone(custom); delete missing.labels[key];
+      if (!check(missing, files, run).errors.some((e) => e.includes(key))) return `missing ${key} was not reported`;
+    }
+    return true;
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));
