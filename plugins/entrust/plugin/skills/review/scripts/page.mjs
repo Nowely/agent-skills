@@ -1,9 +1,4 @@
-// A checked review as a tabbed page: one file with no dependencies, readable without scripts (the panels
-// stack, the map is complete in closed disclosures). Decision-first: the passport, the authored status, the
-// counters, the verdict and the question cards come before the mechanics. With scripts: tabs with per-tab
-// scroll memory and deep links, a map reader (segbar, popover, sources) with purpose/verdict/question filters,
-// decision cards whose variant radio is the decision (a draft on a narrow screen until confirmed), an honest
-// export, and owner/auditor print profiles. Old records without the new fields render through the same path.
+// Self-contained review; no-script panels stack and retain the complete map.
 import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
@@ -31,7 +26,7 @@ const STYLE = `
 * { box-sizing: border-box }
 html { font-size: 87.5% }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--text) }
-.wrap { max-width: 100rem; margin: 0 auto; padding-block: 1rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+.wrap { max-width: 1600px; margin: 0 auto; padding-block: 1rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; flex-direction: column; gap: 1.25rem }
 h1 { font-size: 1.5rem; line-height: 1.25; margin: 0; text-wrap: balance }
 h2 { font-size: 1.2rem; margin: 0 0 .6rem }
@@ -482,8 +477,6 @@ const SCRIPT = `
   const isNA = (q) => !!q.parent && !D.applicable(q, state, data.questions);
   const parentPending = (q) => { if (!q.parent) return false; const p = qById[String(q.parent.question)]; return !!p && !D.validAccept(p, state) && !D.validDefer(p, state); };
   const hiddenPurposes = () => state.hiddenPurposes || [];
-  // The one quantity and every subtab badge come from ONE derivative (choiceStats) over validAccept/validDefer/
-  // applicability — never a DOM tally, so the tab, the subtabs and the export cannot disagree after Q2=keep.
   const stats = () => D.choiceStats(data.questions, state, data.findings, data.ideas);
   let settledMap = {};
   const midPath = (p) => { if (p.length <= 46) return p; const m = /^(.*?)(:\\d+.*)?$/.exec(p), path = m[1], suffix = m[2] || ""; const parts = path.split("/"); let tail = parts.slice(-2).join("/"); if (tail.length > 40) tail = parts[parts.length - 1]; return "…/" + tail + suffix; };
@@ -631,9 +624,7 @@ const SCRIPT = `
   treeClear.addEventListener("click", () => { treeInput.value = ""; applyTreeFilter(); treeInput.focus(); });
   function resetTreeFilter() { treeInput.value = ""; applyTreeFilter(); }
 
-  // ---- M5: the tree's folder/list mode and resizable width — the code view's own UI state, stored additively.
-  // The list mode flattens the SAME rows in place (display:contents, no second copy); search, reveal and
-  // scrollspy keep working because there is still exactly one set of rows. ----
+  // Flatten in place so reveal, search and scrollspy retain the same rows.
   function setTreeMode(mode) {
     state.treeMode = mode; save();
     const folder = document.getElementById("ftree-folder");
@@ -918,13 +909,11 @@ const SCRIPT = `
   function decisionsText() {
     const m = exportModel();
     const part = (title, rows) => rows.length ? ["", title, ...rows.map((r) => "- " + r.text)] : [];
-    // The name and the answers lead; the technical binding (record/diff digests) sits below them, not above.
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")",
       ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred),
       ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments), "", m.remaining,
       t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12)].join("\\n");
   }
-  // The preview reads the SAME exportModel as the text; DOM API only; every row a «Go» link.
   function buildPreview() {
     const host = document.getElementById("export-preview");
     host.textContent = "";
@@ -960,8 +949,6 @@ const SCRIPT = `
     history.replaceState(null, "", hash);
     openTarget(hash);
   });
-  // «Copied» only after the clipboard confirms, in the ONE status line (never also on the button); on refusal
-  // select the dialog textarea and say Ctrl/⌘+C.
   function copyDecisionsText() {
     if (outDirty) syncOut();
     const done = () => { document.getElementById("export-status").textContent = t.copied; };
@@ -972,7 +959,6 @@ const SCRIPT = `
     try { navigator.clipboard.writeText(out.value).then(done, fail); } catch { fail(); }
   }
   function downloadJson() {
-    // The SAME payload the preview and the text are built from — one source, no second builder.
     const payload = exportModel().payload;
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "decisions-" + data.key + ".json"; a.click(); URL.revokeObjectURL(a.href);
@@ -1018,7 +1004,7 @@ const SCRIPT = `
         const chipEl = card.querySelector("[data-qstatus], [data-fstatus]");
         sum.textContent = "";
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
-        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = chipEl ? chipEl.textContent : "";
+        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = (chipEl ? chipEl.textContent : "") + (st === "deferred" ? " · " + t.status.open : "");
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
         // The row reads name → the answer given → id; expanding it is the way back to the card («Изменить»).
         const edit = document.createElement("span"); edit.className = "sr-edit"; edit.textContent = t.commentEdit;
@@ -1029,7 +1015,6 @@ const SCRIPT = `
     }
     document.getElementById("settled-count").textContent = "· " + settledBody.children.length;
   }
-  // The children disclosure: waiting, opened by the accepted variant, or not applicable.
   function paintChildren() {
     for (const det of all("[data-qchildren]")) {
       const pid = det.dataset.qchildren, parent = qById[pid]; if (!parent) continue;
@@ -1044,9 +1029,6 @@ const SCRIPT = `
       if (det.dataset.lastPV !== pv) { det.dataset.lastPV = pv; if (pv && !na) det.open = true; else if (na) det.open = false; }
     }
   }
-  // Unified comments: «Comment» / «Comment · 1»; the saved text compact with an edit action; never a
-  // permanent empty textarea. The same pattern on cards and on blocks. The «saved in this browser, not sent»
-  // status is said once, in the export dialog — never repeated under every saved comment.
   const commentView = () => {
     const view = document.createElement("div"); view.className = "comment-view";
     const p = document.createElement("p"); p.className = "comment-text";
@@ -1427,15 +1409,12 @@ const placeHtml = (at, model) => {
 function passport(review, model, t) {
   const p = review.passport;
   if (!p) return "";
-  return `<details class="passport-card" data-where="${esc(t("passport"))}">
+  return `<details class="passport-card" id="passport" data-where="${esc(t("passport"))}">
   <summary class="passport">${(p.links ?? []).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}<span>${esc(p.reviewedAt)}</span></summary>
   <div class="passport-body mono">${esc(p.repository)} · ${esc(t("passport.base"))} ${esc(p.base)} → ${esc(t("passport.head"))} ${esc(p.head)} · ${esc(t("passport.diffSha"))} ${esc(review.diff?.sha256 ?? "")} · ${esc(t("passport.record"))} ${esc(model.recordSha ?? model.key)}</div>
 </details>`;
 }
 
-// The editorial conclusion: one verdict, the recommendation with its steps, the short task — and the
-// now→target comparison, the line composition and the task's parts/sources folded into a closed «Change
-// context». No label column, no side rails, no amber absence blocks; the full coverage lives in Materials.
 function summary(review, { blocks }, t) {
   const { change } = review;
   const legend = `<p class="legend sub">${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</p>`;
@@ -1510,8 +1489,6 @@ function questionCard(q, review, model, t, child, partCount) {
   </div>`;
 }
 
-// A finding in the same shell: the evidence limit from the record's evidence word, the fix as consequence,
-// «Fix / Do not fix» for the owner.
 function findingCard(f, review, model, t) {
   const blocks = model.blocks.filter((b) => b.findings.includes(f.id));
   return `
@@ -1529,8 +1506,6 @@ function findingCard(f, review, model, t) {
   </article>`;
 }
 
-// An idea in the same shell, optional, outside the counter. «Optional» is said once in the group header; the
-// card carries no invented limit slot — the record states none, and absence is not a risk beside a failed check.
 function ideaCard(idea, model, t) {
   return `
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
@@ -1542,8 +1517,6 @@ function ideaCard(idea, model, t) {
   </article>`;
 }
 
-// The one list of choices grouped by next action: owner decisions (children under parent), proposed fixes with
-// optional ideas, facts and checks, the settled group the runtime fills. Each card once; legacy keeps its line.
 function decisionSheet(review, model, t, ideas, partCount) {
   const qs = model.questions, byId = Object.fromEntries(qs.map((q) => [q.id, q]));
   const drawn = new Set();
@@ -1618,8 +1591,6 @@ function checks(review, t) {
 </section>`;
 }
 
-// What the user sees: the pictures the reviewer was given, each with a permalink and enlargeable in the
-// viewer, a historical picture marked as another revision, and each difference.
 function screens(review, { screens: shown }, t) {
   if (!shown.length) return "";
   let zoom = 0;
@@ -1720,14 +1691,13 @@ function map(review, files, model, t, hl, partCount) {
     if (run.block === undefined) return run.lines.length ? `<div class="seg">${code(path, run.lines)}</div>` : "";
     const b = blocks[run.block], count = run.fragments.reduce((n, r) => n + r.lines.length, 0);
     partCount[b.id] = run.fragments.length;
-    const open = b.verdict !== "keep" && count <= 40 ? " open" : "";
     return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}" id="b${b.id}">`
       + segbar(b) + segmeta(b)
-      + `<details class="segcode"${open}><summary>${esc(t("lines"))}: ${count}</summary>${run.fragments.map((r, i) =>
+      + `<details class="segcode"><summary>${esc(t("lines"))}: ${count}</summary>${run.fragments.map((r, i) =>
         `${i ? `<div class="gap">⋯ ${esc(t("continued"))}</div>` : ""}<div data-fragment="${b.id}">${code(path, r.lines, b.does)}</div>`).join("")}</details></div>`;
   };
   const file = ({ path, hunks }, idx) => {
-    const parts = [];
+    const parts = [], grouped = new Map();
     hunks.forEach((hunk, at) => {
       const runs = [];
       let run = null, ctxBuf = [];
@@ -1746,9 +1716,13 @@ function map(review, files, model, t, hl, partCount) {
       }
       if (run) run.lines.push(...ctxBuf);
       for (const r of runs) {
-        const previous = parts.at(-1);
-        if (r.block !== undefined && previous?.block === r.block) previous.fragments.push(r);
-        else parts.push({ ...r, fragments: [r], gap: at > 0 && r === runs[0] });
+        const previous = grouped.get(r.block);
+        if (previous) previous.fragments.push(r);
+        else {
+          const part = { ...r, fragments: [r], gap: at > 0 && r === runs[0] };
+          parts.push(part);
+          if (r.block !== undefined) grouped.set(r.block, part);
+        }
       }
     });
     const own = blocks.filter((b) => b.path === path);
@@ -1760,10 +1734,6 @@ function map(review, files, model, t, hl, partCount) {
   return files.map(file).join("\n    ");
 }
 
-// The tree: one line per file — the diff mark (never a verdict), basename (full path in title), +N/−M, the
-// count not kept. Open by default for the no-script reader; the name filter (C2) highlights, Enter opens.
-// The root every file shares is named once above the tree, not repeated down each branch; a folder/list mode
-// toggle and a resizable width are the code view's own UI state (never a new filter axis).
 function treeNav(files, model, t) {
   const split = files.map((f) => f.path.split("/"));
   let common = 0;
@@ -1794,8 +1764,6 @@ function treeNav(files, model, t) {
   <div class="ftree" id="ftree-folder">${list(root)}</div></div>`;
 }
 
-// The code tab: the purpose filter, the map modes, the tree and the map reader, the filter chip, and one
-// banner per evidence question whose blocks could read as many decisions.
 function codePanel(review, files, model, t, mapHtml, partCount) {
   const nonkeep = model.blocks.filter((b) => b.verdict !== "keep").length;
   const totalParts = Object.values(partCount).reduce((sum, n) => sum + n, 0);
@@ -1894,8 +1862,6 @@ function coverage(review, t) {
 </section>`;
 }
 
-// The Choices first screen: one working phrase, the record's unchecked global limit, and a link to the verdict.
-// The full verdict and recommendation live only in Overview; the instructions sit in a disclosure.
 function decisionIntro(review, t) {
   const limits = (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => c.text);
   return `<div class="decision-intro">
@@ -1955,8 +1921,6 @@ export function page(review, files, model, { syntax } = {}) {
     annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
-  // The one quantity: main decisions open + findings not processed; ideas never enter. Without scripts the
-  // badge is the static count of the same items, and its title says so honestly.
   const staticRemaining = model.questions.filter((q) => q.kind === "decision" && !q.parent).length + review.findings.length;
   const tabs = [
     ["overview", t("tab.overview"), ""],
@@ -1967,8 +1931,6 @@ export function page(review, files, model, { syntax } = {}) {
   ];
   const tablist = tabs.map(([id, label, count]) => `<a role="tab" id="tab-${id}" data-tab="${id}" href="#panel-${id}" aria-controls="panel-${id}" aria-selected="${id === "decisions"}"${id !== "decisions" ? ' tabindex="-1"' : ""}>${esc(label)}${count}</a>`).join("");
   const panel = (id, content) => `<section class="panel" id="panel-${id}" data-panel="${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1">${content}</section>`;
-  // The no-script badges are the static counts of the same items choiceStats counts with scripts: main decision
-  // roots, findings, ideas, fact/evidence requests; nothing is deferred or done before a choice is saved.
   const cfStatic = { q: model.questions.filter((q) => q.kind === "decision" && !q.parent).length, f: review.findings.length,
     i: ideas.length, fact: model.questions.filter((q) => q.kind === "fact" || q.kind === "evidence").length, deferred: 0, done: 0 };
   const subtabs = `<nav class="choice-filters act" role="group" aria-label="${esc(t("choice.filters"))}">${[["all", t("choice.filter.all")], ["q", t("choice.filter.q")], ["f", t("choice.filter.f")], ["i", t("choice.filter.i")], ["fact", t("choice.filter.fact")], ["deferred", t("choice.filter.deferred")], ["done", t("choice.filter.done")]]
@@ -2016,7 +1978,7 @@ ${coverage(review, t)}
   <h3 class="label">${esc(t("passages"))}</h3>
   <div id="passages" class="stack"></div></section>
 `)}
-<footer class="sub"><a href="#passport">${esc(t("report-details"))} →</a> · <code>${esc(model.recordSha ?? model.key)}</code></footer>
+<footer class="sub">${review.passport ? `<a href="#passport">${esc(t("report-details"))} →</a>` : `<code>${esc(review.range)} · ${esc(review.diff?.sha256 ?? "")}</code>`} · <code>${esc(model.recordSha ?? model.key)}</code></footer>
 </div>
 <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div>
 <div id="seg-popover" role="dialog" aria-label="${esc(t("seg.popover"))}" hidden></div>
