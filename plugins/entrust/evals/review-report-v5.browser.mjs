@@ -1281,11 +1281,12 @@ if (big) {
       const d = JSON.parse(document.getElementById("data").textContent);
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const segs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => s.style.display !== "none");
-      const testsSegs = d.blocks.filter(b => b.purpose === "tests").reduce((s, b) => s + (b.parts || 1), 0);
-      return { rows: rows.length, segs: segs.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes };
+      const tests = d.blocks.filter(b => b.purpose === "tests");
+      const testsSegs = tests.reduce((s, b) => s + (b.parts || 1), 0);
+      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
-      && purpose.testsToggle.segs === 1470 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsSegs >= 388
+      && purpose.testsToggle.segs === 1470 - purpose.testsToggle.testsBlocks && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
       && purpose.testsToggle.stored.join() === "tests" && purpose.testsToggle.chip.startsWith("Скрыто:"), purpose.testsToggle);
     await p.click('.evidence-banner [data-q-filter="3"]'); await p.waitForTimeout(400);
     purpose.qWithHiddenTests = await ev(() => {
@@ -1453,7 +1454,7 @@ if (big) {
     })) };
     check("65507: owner print hides map/tree, keeps screens/limits, opens EVERY decisions disclosure", print.owner.mapHidden && print.owner.treeHidden
       && print.owner.screensVisible && print.owner.limitsVisible && print.owner.decisionsDetailsOpen && print.owner.settledVisible, print.owner);
-    check("65507: owner print opens every nested «Где в коде» disclosure (588/588)", print.owner.nestedCount === 588 && print.owner.nestedOpen, { count: print.owner.nestedCount, open: print.owner.nestedOpen });
+    check("65507: owner print opens every nested «Где в коде» disclosure (572/572 grouped blocks)", print.owner.nestedCount === 572 && print.owner.nestedOpen, { count: print.owner.nestedCount, open: print.owner.nestedOpen });
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-owner-print.png`) });
     await ev(() => window.dispatchEvent(new Event("afterprint")));
     await p.emulateMedia({ media: "screen" }); await p.waitForTimeout(250);
