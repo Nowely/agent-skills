@@ -219,44 +219,74 @@ Numbering stays positional from 1 (`blocks.questions`, `units.questions`, the ch
 the review's verdicts in the record, the user's decisions on the page (stored and exported), and evidence obtained
 in a later revision of the record. Accepting a decision needs a chosen variant, or — where there are no variants —
 a substantive comment; deferring needs a reason in a comment; an evidence question cannot be closed as "decided".
-On the page a variant radio is the decision: on a wide screen picking it accepts at once, on a narrow one
-(≤700px) the pick is a draft until «Confirm selection» fixes it; a draft is never shown as a made choice. Deferring
-keeps a picked variant as a draft, and a child retired by its parent keeps its pick as a draft too — neither is in
-effect, and neither returns silently when the parent changes again. The export (schema 4) carries the record and
-diff digests, the question number, the variant id and text, the comment and the status; `variant_draft` marks a
-saved variant that is not in effect (deferred, not applicable, or unconfirmed), and `applyWithoutVariant` lists the
-questions accepted by comment alone. Decisions are never carried between revisions by question number.
+On the page a variant radio is the decision on every screen size: picking it accepts at once, another pick changes
+it, Reset clears it — one reversible choice, no separate mobile draft-and-confirm step. A made choice reads as a
+neutral «Selected», never a success badge. Deferring keeps a picked variant as a draft, and a child retired by its
+parent keeps its pick as a draft too — neither is in effect, and neither returns silently when the parent changes
+again. A fact or evidence card carries an answer field on its surface: an entered answer reads «answer entered»
+(amber), never «verified» — it is the owner's input, not a checked result, and a zone mark without evidence is not
+a confirmation either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens
+with «Однозначной рекомендации нет» / «No clear recommendation» and names no `variant`: the page shows that text
+in the card's limit slot on the surface, not as a direction. The export (schema 4) carries the record and diff
+digests, the question number, the variant id and text, the comment and the status; `variant_draft` marks a saved
+variant that is not in effect (deferred or not applicable), `applyWithoutVariant` lists the questions accepted by
+comment alone, and `factAnswers` carries the entered fact answers apart from the comments. Decisions are never
+carried between revisions by question number.
 
 ## The page
 
-One renderer draws the page; the v4 layout is presentation over the same record, and every part of it is derived,
+One renderer draws the page; the v5 layout is presentation over the same record, and every part of it is derived,
 never a new record field:
 
-- **Tabs.** Overview, Decisions, Findings, Code, Checks, Materials — with per-tab scroll memory and deep links
-  (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code` for the map filters; a bare
-  `#shotN` lands on the same shot). Without
-  JavaScript the panels stack and the tabs are anchor links; the controls that need scripts ship disabled.
+- **Tabs.** Overview, Choices, Code, Checks, Materials — the page starts at Choices. The Q decisions, F findings
+  and I ideas stand in ONE list there (each card exactly once), grouped by the next action: the owner's choice
+  (conditional children under their parent), the proposed fixes with the optional ideas, the facts and checks,
+  and the settled group. Subtab filters (All / Decisions / Findings / Ideas / Facts·checks / Deferred / Done)
+  filter that one list; settled cards move into compact expandable rows and return home when the choice reverts,
+  with the focus on the row's summary. The read-only matter — passport, status, counters, verdict, now→target,
+  structure, tradeoffs, mechanisms — lives in Overview; the requirements, manual checks and challenges in Checks;
+  screens, coverage and the print controls in Materials. Per-tab scroll memory and deep links (`#qN`, `#fN`,
+  `#iN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code`; the v4 `#panel-findings` aliases to
+  Choices; a bare `#shotN` lands on the same shot). Without JavaScript the panels stack, the tabs are anchor
+  links, the controls ship disabled, and the Choices badge is the static count of the open main decisions plus
+  findings with a title that says saved answers are not counted.
+- **Cards.** One shell for Q/F/I/fact: head (type, id, status) → essence → limit on the surface → choice →
+  comment → disclosures (basis and sources, related code, checks). The limit slot shows the record's own words —
+  the «no clear recommendation» text, the finding's evidence kind, the idea's explicit absence of limit data —
+  never invented ones. Comments are one compact pattern on cards and blocks: closed by default, the saved text
+  with «Edit» and «saved in this browser, not sent»; the export collects them from every tab.
 - **Purpose.** Each touched file is classified by its path alone — `production`, `tests`, `styles`, `assets`,
-  `docs`, `config` — and the map and the tree filter by it. The rules, disclosed beside the filter: `__tests__/`,
-  `*.test.*`, `*.spec.*`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` are styles;
-  pictures, fonts and `assets/`, `icons/`, `keysets/` are assets; `.md/.mdx/.rst/.txt` and changelog/readme/license
-  are docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like are config; the rest is
-  production. A block whose own `kind` is `test` in a production file counts as tests. The counters are the
-  model's; the lines are the sum of block sizes.
-- **The map reader.** One line per fragment (verdict dot, B-permalink, what it does, verdict tag, F/Q links,
-  source, details), the code in a disclosure, a popover with the fragment's sources: an added line at the head
-  revision, a removed line at the base, each copyable as `path:line (revision)`; without a passport the copy is
-  `path:line` alone. Kept fragments start collapsed; the default view shows what needs attention, the full audit
-  is one click away. The file tree filters by name and purpose together.
+  `docs`, `config` — and the purpose toggles hide groups (several at once) in the map AND the tree, with a
+  «Hidden» chip; a reset or a deep link to a hidden block restores them. The rules, disclosed beside the filter:
+  `__tests__/`, `*.test.*`, `*.spec.*`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` are
+  styles; pictures, fonts and `assets/`, `icons/`, `keysets/` are assets; `.md/.mdx/.rst/.txt` and
+  changelog/readme/license are docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like
+  are config; the rest is production. A block whose own `kind` is `test` in a production file counts as tests.
+  The counters are the model's; the lines are the sum of block sizes.
+- **The tree and the map reader.** The tree opens statically, one line per file (the diff mark, the basename,
+  +N/−M, the count not kept); the name filter highlights the match and Enter opens the first; a click reveals
+  ALL the file's blocks in any verdict mode through every ancestor (no empty shells); the scrollspy marks the
+  current file; the collapse persists. One line per fragment (verdict dot, B-permalink, what it does, verdict
+  tag, F/Q links, source, details), the code in a disclosure, a popover with the fragment's sources: an added
+  line at the head revision, a removed line at the base, each copyable as `path:line (revision)`; without a
+  passport the copy is `path:line` alone. Kept fragments start collapsed; the default view shows what needs
+  attention, the full audit is one click away.
 - **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned
   `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): both GitHub themes in every span, token
   colors pre-adjusted to ≥4.5:1 on the context, added and removed backgrounds of both themes. The old and the new
   line sequences are tokenized whole, so multi-line constructs keep their coloring. Without the bundle the
   built-in pattern highlighter draws the code; an unsupported language is escaped plain text. Rebuild the bundle
   as `scripts/vendor/README.md` says.
-- **Export.** «Download JSON» writes the decisions (schema 4 above); «Copy text» says «Copied» only after the
-  clipboard confirms, and on refusal selects the text and says to press Ctrl/⌘+C. The popover's source copy is
-  honest the same way.
+- **Export.** «Export answers» in the header above the tabs opens a native dialog from any tab. ONE model feeds
+  the preview, the text and the JSON: the accepted Q/F/I (including «Do not fix»/«Do not take»), the deferred
+  with or without a variant, drafts, not-applicable children, fact answers and every comment with its context
+  and a «Go» link that opens the tab and target. «Download JSON» writes schema 4 (above); «Copy text» says
+  «Copied» only after the clipboard confirms, and on refusal selects the readonly text and says to press
+  Ctrl/⌘+C. The popover's source copy is honest the same way. A partial export is acceptable; the counter of
+  what remains travels with it.
+- **Print.** The owner profile hides the map and the tree and prints the decisions complete — the lazy «related
+  code» bodies are built first, then every nested disclosure opens; the auditor prints everything, every
+  fragment. After printing, the page returns to what it was, lazy files and filter views included.
 
 ## Fallback
 

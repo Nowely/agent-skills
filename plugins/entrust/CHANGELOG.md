@@ -20,10 +20,10 @@ forensics remain in the repository references and release notes.
 - Additive optional record fields and a single source format (internal reference, or place with revision and
   quote); the full Markdown report carries the cards, tradeoffs, limits and screen sources so the critic and
   verifier check the same content the page shows.
-- The report becomes a tabbed page over the same record: Overview, Decisions, Findings, Code, Checks, Materials
-  — with per-tab scroll memory, keyboard navigation and deep links (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`,
-  `#panel-<id>`, `#qN-code`/`#fN-code`) that open the right tab and reveal the target in any map mode. Without
-  JavaScript the panels stack, the tabs are anchor links and the controls ship disabled.
+- The report becomes a tabbed page over the same record — per-tab scroll memory, keyboard navigation and deep
+  links (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code`) that open the right tab and
+  reveal the target in any map mode. Without JavaScript the panels stack, the tabs are anchor links and the
+  controls ship disabled. (The v5 composition below reorganizes the tabs into the one Choices list.)
 - A map reader: one line per fragment (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
   details popover), the code in a disclosure, a sticky file header, and the fragment's sources in the popover —
   an added line at the head revision, a removed line at the base, each copyable as `path:line (revision)`.
@@ -45,10 +45,10 @@ forensics remain in the repository references and release notes.
   context; the verdict stays a border and a badge.
 - A 32px theme icon (auto/light/dark, prefers-color-scheme default), a 14px base with ≥12px secondary text and
   ≥32px tap targets, and the weight's limit on the mechanism surface with the methodology in the details.
-- Decision cards v4: the variant radio is the decision (a draft to confirm on a narrow screen), a status chip
+- Decision cards v4: the variant radio is the decision, a status chip
   (waiting/selected/deferred/not applicable/draft), the parent gate with its explanation, a comment textarea,
-  and fact/evidence cards without apply/skip. The export moves to schema 4 with `variant_draft` (a deferral,
-  an outside parent variant or an unconfirmed pick keeps the variant as a draft, never in effect) and
+  and fact/evidence cards without apply/skip. The export moves to schema 4 with `variant_draft` (a deferral
+  or an outside parent variant keeps the variant as a draft, never in effect) and
   `applyWithoutVariant`; «Copied» appears only after the clipboard confirms, and a refusal selects the text
   and says to press Ctrl/⌘+C — the popover's source copy is honest the same way, selecting exactly the
   `path:line (revision)` value the copy carries, not the row around it.
@@ -60,6 +60,48 @@ forensics remain in the repository references and release notes.
   recommendations, tradeoffs and coverage limits from the prototype's annotations; the immutable original
   record carries none of them (the renderer shows what the record says), and its blocks and diff — the
   1470/1517 map — are the original's own, untouched by the enrichment.
+- Report v5 — one Choices list: the page starts at the Choices tab; the Q decisions, F findings and I ideas
+  move into ONE list (no duplicate ids) grouped by the next action — «Owner choice needed», «Proposed fixes»
+  (with the optional ideas outside the mandatory counter), «Data or a check needed», «Done · deferred» — with
+  segmented subtab filters over that list (All / Decisions / Findings / Ideas / Facts·checks / Deferred / Done).
+  The counter is one quantity: the main decisions still open plus the findings not processed; the conditional
+  children sit under their parent (keep opens them, an outside variant retires them with the draft kept).
+  Settled cards move into compact expandable rows and return home when the choice reverts — the same card, no
+  second copy — with the focus captured before the move and landed on the row's summary (keyboard and touch,
+  rAF for the touch-click). The read-only matter (passport, status, counters, now→target, closed structure,
+  tradeoffs, mechanisms) lives in Overview; evidence requests and challenges in Checks. The first screen leads
+  with the verdict's lead line, the recommendation and the record's unchecked limits; the instructions sit in a
+  closed disclosure.
+- Unified card shell and reversible choice: one neutral surface for Q/F/I/fact — head (16px type, id, status) →
+  essence → limit on the surface → choice → comment → disclosures (basis and sources, related code built lazily
+  from the canonical templates, checks). The limit slot shows the record's own words: the «no clear
+  recommendation» text, the finding's evidence kind, the idea's explicit absence of limit data — nothing
+  invented. A made choice reads neutral «Selected», never a green success. The variant radio is the decision on
+  every screen size — accepted at once, changed by another pick, cleared by Reset; the mobile draft-and-confirm
+  rule is gone. A fact or evidence card carries an answer field on its surface: «answer entered» (amber), never
+  «verified»; the answer exports as `factAnswers` in schema 4, apart from the comments.
+- The export becomes a native dialog opened from the header above the tabs, from any tab: ONE model feeds the
+  preview, the text and the JSON — accepted Q/F/I including «Do not fix»/«Do not take», deferred with or without
+  a variant, drafts, not-applicable children, fact answers and every comment (card, block, selected text) with
+  its context and a «Go» link that opens the tab and target and closes the dialog; the counter of what remains
+  travels with it, a partial export is acceptable. The clipboard stays honest: «Copied» only on a confirmed
+  success, a refusal selects the readonly text and says Ctrl/⌘+C. Comments become one compact pattern on cards
+  and blocks: closed by default, the saved text with «Edit» and «saved in this browser, not sent», focusout
+  collapses the editor; the related-code clones cut the comment wrapper.
+- Purpose becomes multi-toggles: several groups can hide at once in the map AND the tree, the state stored
+  additively beside the decisions, a «Hidden: …» chip with the remaining share, reset and deep links to hidden
+  blocks restore them. The tree opens statically (the no-script reader sees every file), one line per file —
+  the diff mark, the basename, +N/−M, the count not kept; the name filter highlights the match and Enter opens
+  the first; a click reveals ALL the file's blocks in any verdict mode through every ancestor (576/576, zero
+  empty shells); the scrollspy marks the current file (96/96); the collapse persists; on mobile the tree and the
+  diff both show by default.
+- Editorial visual: no nested frames, tag soup or colored side stripes on the cards; metadata secondary at
+  12–13px, essence/consequences/limits at 14px; the neutral filter chip; the 14px base, dual themes and ≥4.5
+  contrast tokens kept. Mobile touch targets ≥44px in a media block placed last (the theme icon stays 32px by
+  plan), the diff gutters 2.2em on narrow screens. The no-JS Choices badge is the static Q+F count with an honest
+  title («saved answers are not counted»). Owner print builds the lazy «related code» bodies first, then opens
+  every nested disclosure (588/588 on the enriched copy); the auditor prints all 1470/1517; afterprint restores
+  the page, the hidden purposes included.
 
 ### Changed
 
@@ -80,20 +122,33 @@ forensics remain in the repository references and release notes.
 - The full map lives in closed per-file disclosures (no template in the markup); with scripts each file moves
   into a template and materializes lazily for the current mode or filter. One canonical instance of every
   B/F/Q anchor; the annotation «go to passage» reveal activates the source tab.
+- v5 changes the composition, not the record contract: the Findings tab merges into Choices (the v4
+  `#panel-findings` deep link aliases there), the inclusive purpose filter becomes multi-toggles, the mobile
+  draft-and-confirm becomes the one reversible choice, and the export moves from the Materials section into the
+  header dialog. The decision semantics are unchanged — accepting needs a variant or a substantive comment,
+  deferring needs a reason, an invalid decision never counts, a retired child's answer never returns silently —
+  and the state keeps its shape: `answers`, `hiddenPurposes` and `treeHidden` are additive keys an old store
+  normalizes clean, and schema 4 gains only `factAnswers`. The label catalogs gain the v5 words in en/ru, owed
+  by the same capability rules; the card words for the confirm step stay in the catalog for old custom catalogs
+  but no longer render.
 - The version is unified at 0.41.0 across plugin.json, every SKILL.md and the driver.
 
 ### Compatibility
 
 - Old records render with the previous semantics — no card machinery, passport or invented sections — and pass
   `check` without warnings. A legacy custom catalog (the old base set of words) keeps passing on an old record;
-  the v4 chrome still renders there through the one renderer, with its words falling back to the built-in
+  the v5 chrome still renders there through the one renderer, with its words falling back to the built-in
   catalog. A record that uses any new field must translate the chrome and every capability it shows. These two
   requirements are reconciled by the record, not claimed of every catalog at once: the old catalog is owed the
-  old base set, the new record the full set of its controls. Decisions stored by the v3 page keep their key and
-  shape; a bare variant pick is still not a decision.
+  old base set, the new record the full set of its controls. Decisions stored by the v3/v4 page keep their key
+  and shape; a bare variant pick is still not a decision. The v5 additions are derived models, UI and state —
+  no new record fields, no new `check` rules — and the immutable original record's bytes stay untouched
+  (sha256 fb7ce806… verified before and after the acceptance).
 - Deferred: word-diff inside del/add pairs, split/unified toggle, diff search, a revision selector,
   cross-revision decision import, rename heuristics (the tree marks A/M/D only), scenario groups and revision
-  history. C1 («next unresolved») was deliberately not ported.
+  history. C1 («next unresolved») was deliberately not ported. Native browser zoom is not exposed to headless
+  automation: the acceptance checks CSS zoom:2 and marks it as such; the owner DoD without hints stays a
+  separate user test, not replaced by the automated functional scenario.
 
 ## 0.40.1 — 2026-11-16
 
