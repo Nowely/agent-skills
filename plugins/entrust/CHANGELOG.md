@@ -3,29 +3,35 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## 0.42.0 — Unreleased
+## 0.42.0 — 2026-11-18
 
 ### Review report v8
 
+- Read a selected file without expanding each block. Attention code is visible by default, and without
+  JavaScript one file disclosure exposes its full diff. Findings show their title and proposed fix beside
+  the code and link directly to the corresponding block from Choices.
+- Keep a focused card in place while making choices so settling a previous card does not swallow the next click.
+  The export preview and copied text show non-applicable decisions separately from deferrals and drafts.
 - **Breaking:** each question requires an explicit `kind`; records without it fail `check` and `render`.
   Current exports use schema 5, question comments come from `notes`, and old `questions[id].note` values are no
   longer read. Decision runtime consumers use `choiceStats` and `validAccept`/`validDefer` instead of the removed
-  `counters` and `remainingCount` helpers. Files named `*.browser.*` count as tests.
+  `counters` and `remainingCount` helpers. Files named `*.browser.mjs` count as tests.
 - **Breaking:** passage annotations use the current `quote`, `where`, `note` and optional identity `proof` shape;
-  old passage state and anchors are not read. Unproven current passages remain in export without a location link.
+  the old `anchor` is no longer exported. Current reports do not read, migrate or delete old browser state.
+  Unproven current passages remain in export without a location link.
 - Within a single context or consequence list, identical nonempty ordered source sets are shown once with an
   explicit attribution to each item; different source data and separate groups remain separate.
 - **Breaking:** custom-language catalogs need `source.each` when such a shared set is rendered. `check` names
   the missing key; built-in English and Russian include it.
 - Keep file tree entries compact and on one line while retaining both ends of long names; full paths remain
   available to assistive technology and in tooltips.
-- **Breaking:** custom-language catalogs, including older records, must translate the v8 storage, counter and
+- **Breaking:** custom-language catalogs must translate the v8 storage, counter and
   tree labels and the export/source labels for the capabilities used by the record. `check` lists every missing
   key; built-in English and Russian are complete. See `report-data.md` for the exact keys and conditions.
 - **Breaking:** `annotation.added` is a separate in-memory notification required of custom catalogs; invalid
   language tags are rejected instead of being rendered as English. Current annotations use identity proof for
   supported text and code ranges, including multiline and continuation code fragments; unsupported selections
-  remain unlocated with a warning. Compatibility with strict schema-5 clients is unknown.
+  remain unlocated with a warning.
 - **Breaking:** storage-sensitive wording uses `export.storage-explanation`, `decision.export-local-method`,
   `decision.draft-local`, and `decision.gate-draft-local` instead of their older override keys. Custom catalogs
   must supply the new keys when used, plus `choice.filter-editing`.
@@ -41,7 +47,7 @@ forensics remain in the repository references and release notes.
   the recorded data, not inferred parent-child block relationships. The code remains in its original
   diff order and is not duplicated in the navigation.
 - Refresh the light presentation with a warmer, document-like layout based on the hierarchy prototype.
-- **Breaking:** custom-language catalogs, including those used by older records, must provide the new
+- **Breaking:** custom-language catalogs must provide the new
   Code navigation labels. `check` lists missing keys; the built-in English and Russian catalogs are complete.
 
 ### Review report v6
@@ -64,7 +70,6 @@ forensics remain in the repository references and release notes.
   (M10). The first fragment owns the block's header, metadata disclosure, comment and B anchor;
   later fragments stay in file-line order with a light continuation link and line range.
   Hunk gaps, block filters, annotations, no-script access and print coverage remain intact (M11).
-  The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
 - v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
   grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
   growth against that baseline. See the v7 note above for custom catalogs.
