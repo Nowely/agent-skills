@@ -519,6 +519,7 @@ Object.assign(LABELS, {
   "export.accepted": "Accepted decisions", "export.deferred": "Deferred and drafts", "export.answers": "Fact answers", "export.comments": "Comments",
   "export.empty-accepted": "No accepted decisions yet.", "export.empty-deferred": "No deferred decisions or drafts.", "export.empty-comments": "No comments.",
   "export.partial": "Partial export is acceptable.", "export.goto": "Go", "export.text": "Answers as text",
+  "export.zones": "Marked zones", "decision.zone-marked": "marked, not a confirmation",
   "out.passage-context": "Selected text",
   "nojs.counter-title": "Without JavaScript — a static count of the open items (Q+F); saved answers are not counted.",
   "tree.reveal-note": "All the file's blocks are shown outside the mode",
@@ -561,6 +562,7 @@ Object.assign(CATALOGS.ru, {
   "export.accepted": "Принятые решения", "export.deferred": "Отложенные и черновики", "export.answers": "Ответы на факты", "export.comments": "Комментарии",
   "export.empty-accepted": "Пока нет принятых решений.", "export.empty-deferred": "Нет отложенных решений и черновиков.", "export.empty-comments": "Комментариев нет.",
   "export.partial": "Частичная выгрузка допустима.", "export.goto": "Перейти", "export.text": "Ответы текстом",
+  "export.zones": "Отмеченные зоны", "decision.zone-marked": "отмечена, не подтверждение",
   "out.passage-context": "Выделенный текст",
   "nojs.counter-title": "Без JavaScript — статический подсчёт открытых пунктов (Q+F); сохранённые ответы не учитываются.",
   "tree.reveal-note": "Показаны все блоки файла вне режима",
@@ -609,6 +611,7 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
   "export.open", "export.dialog-note", "export.accepted", "export.deferred", "export.answers", "export.comments",
   "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
+  "export.zones", "decision.zone-marked",
   "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's

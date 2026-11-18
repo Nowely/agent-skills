@@ -14,7 +14,8 @@ forensics remain in the repository references and release notes.
   review fragment, a now→target comparison, a target structure diagram from the recorded uses, a file tree with
   the full change map readable without JavaScript, a screen viewer, and owner/auditor print profiles.
 - A decision runtime with one valid status shared by the page, the copied text and the JSON export: accepting
-  requires a chosen variant, deferring requires a reason, an evidence question is not decided, and a child's
+  requires a chosen variant when the question offers variants, or a substantive comment where it offers none;
+  deferring requires a reason, an evidence question is not decided, and a child's
   applicability follows the parent's accepted variant. The export carries the schema version, the record and
   diff digests, the question number, the variant id and text, the comment and the status.
 - Additive optional record fields and a single source format (internal reference, or place with revision and
@@ -46,16 +47,20 @@ forensics remain in the repository references and release notes.
 - A 32px theme icon (auto/light/dark, prefers-color-scheme default), a 14px base with ≥12px secondary text and
   ≥32px tap targets, and the weight's limit on the mechanism surface with the methodology in the details.
 - Decision cards v4: the variant radio is the decision, a status chip
-  (waiting/selected/deferred/not applicable/draft), the parent gate with its explanation, a comment textarea,
+  (waiting/selected/deferred/not applicable/draft), the parent gate with its explanation, a comment textarea
+  (the v5 compact comment interface below replaces the permanent textarea),
   and fact/evidence cards without apply/skip. The export moves to schema 4 with `variant_draft` (a deferral
   or an outside parent variant keeps the variant as a draft, never in effect) and
   `applyWithoutVariant`; «Copied» appears only after the clipboard confirms, and a refusal selects the text
   and says to press Ctrl/⌘+C — the popover's source copy is honest the same way, selecting exactly the
   `path:line (revision)` value the copy carries, not the row around it.
 - Owner/auditor print profiles over the tabs: the owner prints the screens and the coverage limits without the
-  map and the tree, the auditor everything (all 1470 fragments on an enriched copy of the real 65507 record);
+  map and the tree, the auditor everything (all 1470 blocks / 1517 fragments on an enriched copy of the real 65507 record);
   afterprint restores the page — lazy files, disclosures and every filter view (purpose and mode buttons, tree
-  rows, the chip and its position). Browser acceptance runs on Chromium and Yandex with real PDFs (pdfjs-dist).
+  rows, the chip and its position). Honest caveat on the owner profile's current composition: it opens the
+  nested choice disclosures, so the related-code clones («Где в коде») print expanded too — the owner PDF is
+  not a compact card-only profile yet; whether the clones stay expanded or the owner profile becomes compact
+  is the owner's pending decision. Browser acceptance runs on Chromium and Yandex with real PDFs (pdfjs-dist).
   The acceptance numbers describe the enriched copy's page: `enrich65507` adds the decision cards,
   recommendations, tradeoffs and coverage limits from the prototype's annotations; the immutable original
   record carries none of them (the renderer shows what the record says), and its blocks and diff — the
@@ -81,13 +86,15 @@ forensics remain in the repository references and release notes.
   rule is gone. A fact or evidence card carries an answer field on its surface: «answer entered» (amber), never
   «verified»; the answer exports as `factAnswers` in schema 4, apart from the comments.
 - The export becomes a native dialog opened from the header above the tabs, from any tab: ONE model feeds the
-  preview, the text and the JSON — accepted Q/F/I including «Do not fix»/«Do not take», deferred with or without
-  a variant, drafts, not-applicable children, fact answers and every comment (card, block, selected text) with
-  its context and a «Go» link that opens the tab and target and closes the dialog; the counter of what remains
-  travels with it, a partial export is acceptable. The clipboard stays honest: «Copied» only on a confirmed
-  success, a refusal selects the readonly text and says Ctrl/⌘+C. Comments become one compact pattern on cards
-  and blocks: closed by default, the saved text with «Edit» and «saved in this browser, not sent», focusout
-  collapses the editor; the related-code clones cut the comment wrapper.
+  preview, the text and the JSON — all three are views of the SAME schema-4 payload the JSON downloads, not
+  two builders reading the state apart. It carries accepted Q/F/I including «Do not fix»/«Do not take»,
+  deferred with or without a variant, drafts, not-applicable children, fact answers, marked zones (a mark is
+  never a confirmation) and every comment — card, block, selected text, and the legacy note stored in
+  `questions[id].note` — with its context and a «Go» link that opens the tab and target and closes the dialog;
+  the counter of what remains travels with it, a partial export is acceptable. The clipboard stays honest:
+  «Copied» only on a confirmed success, a refusal selects the readonly text and says Ctrl/⌘+C. Comments become
+  one compact pattern on cards and blocks: closed by default, the saved text with «Edit» and «saved in this
+  browser, not sent», focusout collapses the editor; the related-code clones cut the comment wrapper.
 - Purpose becomes multi-toggles: several groups can hide at once in the map AND the tree, the state stored
   additively beside the decisions, a «Hidden: …» chip with the remaining share, reset and deep links to hidden
   blocks restore them. The tree opens statically (the no-script reader sees every file), one line per file —

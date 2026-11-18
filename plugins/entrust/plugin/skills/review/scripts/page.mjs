@@ -832,28 +832,39 @@ const SCRIPT = `
   const exportDialog = document.getElementById("export-dialog");
   let outDirty = true;
   function syncOut() { out.value = decisionsText(); buildPreview(); outDirty = false; }
+  // The ONE source: the schema-4 payload the JSON downloads. The preview and the text are views of this
+  // same object, never a second builder reading the state apart — they cannot disagree with the JSON.
+  function exportPayload() {
+    return D.exportOf(data.questions, state, { recordSha: data.digest.record, diffSha: data.digest.diff, key: data.key, title: data.title, range: data.range });
+  }
   // Accepted Q/F/I (incl. «Do not fix»/«Do not take»), deferred with or without a variant, drafts, NA children,
-  // fact answers and every comment — each row with a place to go to.
+  // fact answers, marked zones and every comment — card, block, selected text, and the legacy note stored in
+  // questions[id].note (the payload's comment is noteOf: the entry's note or the shared notes) — each row
+  // with a place to go to.
   function exportModel() {
-    const accepted = [], deferred = [], answers = [], comments = [];
-    const draftSuffix = (e, q) => e.variant ? " · " + t.draftSuffix.replace("{n}", variantLabel(q.id, e.variant)) : "";
-    for (const q of data.questions) {
-      const ans = state.answers["q" + q.id];
-      if (ans) answers.push({ text: "Q" + q.id + " · " + t.answerRow.replace("{n}", ans), hash: "#q" + q.id });
-      if (q.kind !== "decision") continue;
-      const e = qEntry(q.id);
-      if (isNA(q)) { deferred.push({ text: "Q" + q.id + " · " + t.notApplicable + " (Q" + q.parent.question + ")" + draftSuffix(e, q), hash: "#q" + q.id, draft: true }); continue; }
-      if (!e.choice && !e.variant) continue;
-      if (D.validAccept(q, state)) accepted.push({ text: "Q" + q.id + " · " + (e.variant ? t.status.decided.replace("{n}", variantLabel(q.id, e.variant)) : t.selectedNoVariant), hash: "#q" + q.id });
-      else if (D.validDefer(q, state)) deferred.push({ text: "Q" + q.id + " · " + t.deferred + draftSuffix(e, q), hash: "#q" + q.id, draft: !!e.variant });
-      else if (e.variant) deferred.push({ text: "Q" + q.id + " · " + t.draftRow.replace("{n}", variantLabel(q.id, e.variant)), hash: "#q" + q.id, draft: true });
+    const j = exportPayload();
+    const accepted = [], deferred = [], answers = [], zones = [], comments = [];
+    const draftSuffix = (e) => e.variant ? " · " + t.draftSuffix.replace("{n}", e.variant.text) : "";
+    for (const e of j.questions) {
+      const hash = "#q" + e.question;
+      if (e.status === "not-applicable") deferred.push({ text: "Q" + e.question + " · " + t.notApplicable + " (Q" + qById[e.question].parent.question + ")" + draftSuffix(e), hash, draft: true });
+      else if (e.status === "accepted") accepted.push({ text: "Q" + e.question + " · " + (e.variant ? t.status.decided.replace("{n}", e.variant.text) : t.selectedNoVariant), hash });
+      else if (e.status === "deferred") deferred.push({ text: "Q" + e.question + " · " + t.deferred + draftSuffix(e), hash, draft: !!e.variant });
+      else if (e.variant) deferred.push({ text: "Q" + e.question + " · " + t.draftRow.replace("{n}", e.variant.text), hash, draft: true });
     }
-    for (const f of data.findings) { const v = state.findings[f.id];
+    for (const f of data.findings) { const v = j.findings[f.id];
       if (v === "apply") accepted.push({ text: "F" + f.id + " · " + t.fixApply + " — " + f.title, hash: "#f" + f.id });
       else if (v === "skip") accepted.push({ text: "F" + f.id + " · " + t.fixSkip + " — " + f.title, hash: "#f" + f.id }); }
-    for (const i of data.ideas) { const v = state.findings[i.id];
+    for (const i of data.ideas) { const v = j.findings[i.id];
       if (v === "apply") accepted.push({ text: i.id.toUpperCase() + " · " + t.ideaApply + " — " + i.title, hash: "#" + i.id });
       else if (v === "skip") accepted.push({ text: i.id.toUpperCase() + " · " + t.ideaSkip + " — " + i.title, hash: "#" + i.id }); }
+    for (const [aid, val] of Object.entries(j.factAnswers)) answers.push({ text: aid.toUpperCase() + " · " + t.answerRow.replace("{n}", val), hash: "#" + aid });
+    for (const [zid, marked] of Object.entries(j.zones)) {
+      if (!marked) continue;
+      const cut = zid.lastIndexOf("-"), qid = zid.slice(0, cut), zi = Number(zid.slice(cut + 1));
+      const zone = ((qById[qid] || {}).zones || [])[zi];
+      zones.push({ text: "Q" + qid + " · " + (zone ?? zid) + " · " + t.zoneMarked, hash: "#q" + qid });
+    }
     const ctxOf = (id) => {
       if (id[0] === "q" && qById[id.slice(1)]) return "Q" + id.slice(1) + " · " + (qById[id.slice(1)].text || "").slice(0, 90);
       if (id[0] === "f") { const f = data.findings.find((x) => "f" + x.id === id); return f ? "F" + f.id + " · " + f.title : id.toUpperCase(); }
@@ -861,11 +872,18 @@ const SCRIPT = `
       if (id[0] === "b") { const b = blockById[id.slice(1)]; return b ? "B" + b.id + " · " + b.path + " " + b.where : id.toUpperCase(); }
       return id.toUpperCase();
     };
-    for (const [id, value] of Object.entries(state.notes)) comments.push({ text: ctxOf(id) + ": " + value, hash: "#" + id });
-    for (const p of state.passages) comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : ""), hash: p.anchor && p.anchor.id ? "#" + p.anchor.id : "#passages" });
-    const open = data.findings.filter((f) => !state.findings[f.id]).map((f) => "F" + f.id);
-    const remaining = t.tabRemaining.replace("{n}", remainingCount()) + (open.length ? " · " + t.open + " " + open.join(", ") : "");
-    return { accepted, deferred, answers, comments, remaining };
+    // A question's comment travels as the payload's comment (noteOf covers the legacy entry note); the
+    // shared notes add the block/idea/finding comments and any question note the payload does not carry.
+    for (const e of j.questions) if (e.comment) comments.push({ text: ctxOf("q" + e.question) + ": " + e.comment, hash: "#q" + e.question });
+    for (const [id, value] of Object.entries(j.notes)) {
+      if (id[0] === "q" && j.questions.some((e) => "q" + e.question === id && e.comment)) continue;
+      comments.push({ text: ctxOf(id) + ": " + value, hash: "#" + id });
+    }
+    for (const p of j.passages) comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : ""), hash: p.anchor && p.anchor.id ? "#" + p.anchor.id : "#passages" });
+    const open = data.findings.filter((f) => !j.findings[f.id]).map((f) => "F" + f.id);
+    const remainingN = j.questions.filter((e) => e.status === "remaining" && !qById[e.question].parent).length + open.length;
+    const remaining = t.tabRemaining.replace("{n}", remainingN) + (open.length ? " · " + t.open + " " + open.join(", ") : "");
+    return { accepted, deferred, answers, zones, comments, remaining, payload: j };
   }
   function decisionsText() {
     const m = exportModel();
@@ -873,7 +891,7 @@ const SCRIPT = `
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")",
       t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12),
       ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred),
-      ...part(t.export.answers, m.answers), ...part(t.export.comments, m.comments), "", m.remaining].join("\\n");
+      ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments), "", m.remaining].join("\\n");
   }
   // The preview reads the SAME exportModel as the text; DOM API only; every row a «Go» link.
   function buildPreview() {
@@ -895,6 +913,7 @@ const SCRIPT = `
     sec(t.export.accepted, m.accepted, t.export.emptyAccepted);
     sec(t.export.deferred, m.deferred, t.export.emptyDeferred);
     if (m.answers.length) sec(t.export.answers, m.answers, "");
+    if (m.zones.length) sec(t.export.zones, m.zones, "");
     sec(t.export.comments, m.comments, t.export.emptyComments);
     const cnt = document.createElement("p"); cnt.className = "xp-count";
     cnt.textContent = m.remaining + ". " + t.export.partial;
@@ -921,7 +940,8 @@ const SCRIPT = `
     try { navigator.clipboard.writeText(out.value).then(done, fail); } catch { fail(); }
   }
   function downloadJson() {
-    const payload = D.exportOf(data.questions, state, { recordSha: data.digest.record, diffSha: data.digest.diff, key: data.key, title: data.title, range: data.range });
+    // The SAME payload the preview and the text are built from — one source, no second builder.
+    const payload = exportModel().payload;
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "decisions-" + data.key + ".json"; a.click(); URL.revokeObjectURL(a.href);
   }
@@ -1878,7 +1898,7 @@ export function page(review, files, model, { syntax } = {}) {
   const data = { title: review.title, range: review.range, key: model.key,
     digest: { record: model.recordSha ?? model.key, diff: review.diff?.sha256 ?? "" },
     findings: review.findings.map(({ id, title }) => ({ id, title })),
-    questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })) })),
+    questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks, zones }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })), zones: (zones ?? []).map((z) => z.text) })),
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, where: b.where, verdict: b.verdict, serves: b.serves, questions: b.questions, unit: b.unit, findings: b.findings,
       does: b.does, size: b.size, purpose: model.purpose.block[b.id], firstAdd: b.added[0] ?? null, firstDel: b.removed[0] ?? null, parts: partCount[b.id] ?? 1 })),
@@ -1893,12 +1913,13 @@ export function page(review, files, model, { syntax } = {}) {
       status: { open: t("decision.status.open"), decided: t("decision.status.decided", "{n}"), draft: t("decision.status.draft", "{n}") },
       answered: t("decision.answered"), fixApply: t("decision.fix-apply"), fixSkip: t("decision.fix-skip"), ideaApply: t("decision.idea-apply"), ideaSkip: t("decision.idea-skip"),
       selectedNoVariant: t("decision.selected-no-variant"), draftSuffix: t("decision.draft-suffix", "{n}"), draftRow: t("decision.draft-row", "{n}"), answerRow: t("decision.answer-row", "{n}"),
+      zoneMarked: t("decision.zone-marked"),
       draftDeferred: t("decision.draft-deferred", "{n}"),
       gatePending: t("decision.gate-pending", "{n}"), gateNa: t("decision.gate-na", "{n}"), gateDraft: t("decision.gate-draft", "{n}"),
       children: t("decision.children"), childrenWait: t("decision.children.wait"), childrenOpen: t("decision.children.open", "{n}"), childrenNa: t("decision.children.na"),
       cardComment: t("card.comment"), cardCommentN: t("card.comment-n", "{n}"), commentSaved: t("card.comment-saved"), commentEdit: t("annotation.edit"),
       segCommentDetails: t("seg.comment-details"), segCommentDetailsN: t("seg.comment-details-n", "{n}"), whereEmpty: t("card.no-blocks"),
-      export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), comments: t("export.comments"),
+      export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), zones: t("export.zones"), comments: t("export.comments"),
         emptyAccepted: t("export.empty-accepted"), emptyDeferred: t("export.empty-deferred"), emptyComments: t("export.empty-comments"),
         partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"),
         versionRecord: t("passport.record"), versionDiff: t("passport.diffSha") },

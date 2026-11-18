@@ -896,8 +896,10 @@ if (big) {
 
     // ---- the export dialog: parity preview === text === JSON from EVERY tab ----
     const pageData = await ev(() => JSON.parse(document.getElementById("data").textContent));
-    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Ответы на факты", "Комментарии"];
-    // The expected rows are reconstructed HERE from the downloaded JSON, independent of the page's builders.
+    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
+    // The expected rows are reconstructed HERE from the downloaded JSON alone — every user datum the
+    // schema-4 payload carries (Q/F/I choices and drafts, factAnswers, zones, passages, block notes and
+    // questions[].comment including the legacy questions[id].note) — independent of the page's builders.
     const expectedRows = (j) => {
       const d = pageData, rows = Object.fromEntries(BUCKETS.map(b => [b, []]));
       const draftSuffix = (q) => q.variant ? " · черновик «" + q.variant.text + "» — не действует" : "";
@@ -915,6 +917,13 @@ if (big) {
         if (v === "apply") rows["Принятые решения"].push({ text: i.id.toUpperCase() + " · Взять — " + i.title, hash: "#" + i.id });
         else if (v === "skip") rows["Принятые решения"].push({ text: i.id.toUpperCase() + " · Не брать — " + i.title, hash: "#" + i.id }); }
       for (const [aid, val] of Object.entries(j.factAnswers || {})) rows["Ответы на факты"].push({ text: aid.toUpperCase() + " · Ответ внесён: " + val, hash: "#" + aid });
+      for (const [zid, marked] of Object.entries(j.zones || {})) {
+        if (!marked) continue;
+        const cut = zid.lastIndexOf("-"), qid = zid.slice(0, cut), zi = Number(zid.slice(cut + 1));
+        const meta = d.questions.find(x => String(x.id) === qid);
+        const zone = (meta?.zones || [])[zi];
+        rows["Отмеченные зоны"].push({ text: "Q" + qid + " · " + (zone ?? zid) + " · отмечена, не подтверждение", hash: "#q" + qid });
+      }
       const ctxOf = (id) => {
         if (id[0] === "q") { const q = d.questions.find(x => String(x.id) === id.slice(1)); return q ? "Q" + id.slice(1) + " · " + (q.text || "").slice(0, 90) : id.toUpperCase(); }
         if (id[0] === "f") { const f = d.findings.find(x => "f" + x.id === id); return f ? "F" + f.id + " · " + f.title : id.toUpperCase(); }
@@ -922,7 +931,12 @@ if (big) {
         if (id[0] === "b") { const b = d.blocks.find(x => String(x.id) === id.slice(1)); return b ? "B" + b.id + " · " + b.path + " " + b.where : id.toUpperCase(); }
         return id.toUpperCase();
       };
-      for (const [id, val] of Object.entries(j.notes)) rows["Комментарии"].push({ text: ctxOf(id) + ": " + val, hash: "#" + id });
+      // questions[].comment is noteOf: the legacy entry note OR the shared notes — both must reach the text.
+      for (const q of j.questions) if (q.comment) rows["Комментарии"].push({ text: ctxOf("q" + q.question) + ": " + q.comment, hash: "#q" + q.question });
+      for (const [id, val] of Object.entries(j.notes)) {
+        if (id[0] === "q" && j.questions.some(q => "q" + q.question === id && q.comment)) continue;
+        rows["Комментарии"].push({ text: ctxOf(id) + ": " + val, hash: "#" + id });
+      }
       for (const passage of j.passages) rows["Комментарии"].push({ text: "Выделенный текст · " + passage.where + ": «" + passage.quote + "»" + (passage.note ? " — " + passage.note : ""), hash: passage.anchor && passage.anchor.id ? "#" + passage.anchor.id : "#passages" });
       const roots = d.questions.filter(q => q.kind === "decision" && !q.parent);
       const remaining = roots.filter(q => { const e = j.questions.find(x => x.question === q.id); return !e || (e.status !== "accepted" && e.status !== "deferred"); }).length
@@ -956,6 +970,16 @@ if (big) {
     };
     // A block comment (code tab) and a passage (overview) so the export must gather cross-tab data.
     await reloadClean(p);
+    // A LEGACY note in questions[id].note (the v1/v3 store shape, not state.notes): the export must carry it
+    // through noteOf into questions[].comment AND into the preview/text, not only into the JSON.
+    await ev(() => {
+      const d = JSON.parse(document.getElementById("data").textContent);
+      const k = "review-report:" + d.key, s = JSON.parse(localStorage.getItem(k) || "{}");
+      s.questions = s.questions || {};
+      s.questions["6"] = { ...(s.questions["6"] || {}), note: "legacy-заметка в questions[6].note" };
+      localStorage.setItem(k, JSON.stringify(s));
+    });
+    await reloadClean(p);
     await tab(p, "code");
     await ev(() => { const d = document.querySelector("#map .segmeta"); d.open = true; d.scrollIntoView({ block: "center" }); });
     const blockNoteId = await ev(() => document.querySelector("#map .segmeta input[data-note]").dataset.note);
@@ -979,6 +1003,7 @@ if (big) {
     const zones = (await ls()).zones;
     check("65507: a zone mark without proof is stored, never a confirmation", Object.keys(zones).length >= 1, zones);
     const exportPerTab = {};
+    let negativeParity = null;
     const stubClipboard = (mode) => ev((m) => {
       Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (txt) => { window.__lastCopy = txt; return m === "ok" ? Promise.resolve() : Promise.reject(new DOMException("denied", "NotAllowedError")); } } });
     }, mode);
@@ -993,21 +1018,43 @@ if (big) {
         hasBlockNote: document.getElementById("export-preview").textContent.includes("комментарий к блоку из таба Код"),
         hasPassage: document.getElementById("export-preview").textContent.includes("комментарий к выделенному тексту"),
         hasCardNote: document.getElementById("export-preview").textContent.includes("отложено: нужно обсудить с командой"),
+        hasLegacyNote: document.getElementById("export-preview").textContent.includes("legacy-заметка в questions[6].note"),
+        hasZone: document.getElementById("export-preview").textContent.includes("отмечена, не подтверждение"),
         draftMarked: document.getElementById("export-preview").textContent.includes("не действует"),
         outReadonly: document.getElementById("out").readOnly
       }));
       const [dl] = await Promise.all([p.waitForEvent("download"), p.click("#export-json-top")]);
       const dj = JSON.parse(fs.readFileSync(await dl.path(), "utf8"));
-      perTab.json = { schema: dj.schema_version, record: dj.record_sha256, diff: dj.diff_sha256, applyWithoutVariant: dj.applyWithoutVariant, keys: Object.keys(dj).sort(), factAnswers: dj.factAnswers };
-      perTab.parity = checkParity(dj, await capturePreview(), "tab " + id);
+      perTab.json = { schema: dj.schema_version, record: dj.record_sha256, diff: dj.diff_sha256, applyWithoutVariant: dj.applyWithoutVariant, keys: Object.keys(dj).sort(), factAnswers: dj.factAnswers, zones: dj.zones,
+        legacyComment: dj.questions.find(q => q.question === 6)?.comment ?? null };
+      const cap = await capturePreview();
+      perTab.parity = checkParity(dj, cap, "tab " + id);
       exportPerTab[id] = perTab;
-      check(`65507: export from ${id} — schema 4, digests, factAnswers, parity preview===text===JSON`, dj.schema_version === 4
+      check(`65507: export from ${id} — schema 4, digests, factAnswers, zones, legacy note, parity preview===text===JSON`, dj.schema_version === 4
         && dj.record_sha256 === bigRecordSha && Array.isArray(dj.applyWithoutVariant) && dj.applyWithoutVariant.length === 0
-        && typeof dj.factAnswers === "object" && perTab.dialogOpen && perTab.hasBlockNote && perTab.hasPassage && perTab.hasCardNote && perTab.draftMarked
+        && typeof dj.factAnswers === "object" && Object.keys(dj.zones || {}).length >= 1
+        && perTab.json.legacyComment === "legacy-заметка в questions[6].note"
+        && perTab.dialogOpen && perTab.hasBlockNote && perTab.hasPassage && perTab.hasCardNote && perTab.hasLegacyNote && perTab.hasZone && perTab.draftMarked
         && perTab.outReadonly && perTab.parity.ok, { json: perTab.json, parity: perTab.parity });
+      if (id === initial.tabs[0]) {
+        // The parity test must be SENSITIVE: a builder that drops the zones or the legacy note fails it.
+        // Strip those rows from a real capture and demand the comparison go red — no false confidence.
+        const exp = expectedRows(dj);
+        check("65507: the parity comparison covers the zone mark and the legacy questions[].note",
+          exp["Отмеченные зоны"].length >= 1 && exp["Комментарии"].some(r => r.text.includes("legacy-заметка в questions[6].note")),
+          { zones: exp["Отмеченные зоны"], legacy: exp["Комментарии"].filter(r => r.text.includes("legacy-заметка")) });
+        const strip = (needle) => ({ ...cap,
+          sections: cap.sections.map(s => ({ ...s, rows: s.rows.filter(r => !r.text.includes(needle)) })),
+          out: cap.out.split("\n").filter(l => !l.includes(needle)).join("\n") });
+        const negZones = checkParity(dj, strip("отмечена, не подтверждение"), "negative: zones dropped");
+        const negLegacy = checkParity(dj, strip("legacy-заметка в questions[6].note"), "negative: legacy note dropped");
+        check("65507: negative parity — dropping the zone rows or the legacy note FAILS the comparison",
+          !negZones.ok && !negLegacy.ok, { zones: negZones.problems, legacy: negLegacy.problems });
+        negativeParity = { zones: negZones, legacy: negLegacy };
+      }
       await p.locator("#export-dialog form button").click(); await p.waitForTimeout(120);
     }
-    results.export = { perTab: exportPerTab };
+    results.export = { perTab: exportPerTab, negativeParity };
     // «Перейти» opens the tab + target and closes the dialog; «Закрыть» returns the scroll and the focus.
     await tab(p, "code");
     await ev(() => window.scrollTo(0, 500)); await p.waitForTimeout(150);
@@ -1683,9 +1730,13 @@ if (big) {
       const v4dir = path.join(OUT, "v4-baseline");
       fs.mkdirSync(path.join(v4dir, "scripts", "vendor"), { recursive: true });
       const gitRoot = path.join(HERE, "..", "..", "..");
-      const v4commit = spawnSync("git", ["rev-list", "-1", "HEAD", "--", "plugins/entrust/plugin/skills/review/scripts/page.mjs"], { cwd: gitRoot, encoding: "utf8" }).stdout.trim();
-      // The commit before the v5 page commit carries the v4 renderer.
-      const v4ref = spawnSync("git", ["log", "--format=%H", "-2", "--", "plugins/entrust/plugin/skills/review/scripts/page.mjs"], { cwd: gitRoot, encoding: "utf8" }).stdout.trim().split("\n")[1];
+      // The baseline is the commit just before the FIRST v5 commit in page.mjs's history — stable no
+      // matter how many v5 fixes land afterwards, and honest (skipped) if a squash erased the series.
+      const history = spawnSync("git", ["log", "--format=%H%x09%s", "--", "plugins/entrust/plugin/skills/review/scripts/page.mjs"], { cwd: gitRoot, encoding: "utf8" }).stdout.trim().split("\n");
+      const entries = history.map(l => l.split("\t"));
+      const firstV5 = entries.map(([, subject]) => /\bv5\b/i.test(subject)).lastIndexOf(true);
+      const v4ref = firstV5 >= 0 ? entries[firstV5 + 1]?.[0] : undefined;
+      if (!v4ref) throw new Error("no pre-v5 page.mjs commit found");
       for (const f of ["page.mjs", "review.mjs", "labels.mjs", "decisions.mjs", "report.mjs", "diff.mjs", "diagram.mjs", "highlight.mjs", "annotations.mjs", "text.mjs", "vendor/shiki.mjs"]) {
         const content = spawnSync("git", ["show", `${v4ref}:plugins/entrust/plugin/skills/review/scripts/${f}`], { cwd: gitRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
         if (content.status !== 0) throw new Error(`git show ${f}: ${content.stderr}`);
@@ -1700,7 +1751,7 @@ if (big) {
       const v5page = fs.statSync(path.join(HERE, "..", "plugin", "skills", "review", "scripts", "page.mjs")).size;
       results.growth = { html: +(100 * (big.bytes / v4html - 1)).toFixed(2), page: +(100 * (v5page / v4page - 1)).toFixed(2), v4html, v5html: big.bytes, v4page, v5page, v4ref };
       check("growth: the HTML stays within 5% of the v4 baseline", results.growth.html < 5, results.growth);
-      results.checks.push({ name: "growth: the script (reported, the contract asks «reasonable»)", ok: true, detail: results.growth });
+      check("growth: page.mjs stays under the 175KB budget", v5page < 175 * 1024, results.growth);
     } catch (e) { results.growth = { error: String(e).slice(0, 200) }; results.checks.push({ name: "growth baseline", ok: true, detail: "v4 baseline unavailable: " + String(e).slice(0, 120) }); }
   } catch (e) {
     check("65507 matrix completed without an exception", false, String(e).slice(0, 400));

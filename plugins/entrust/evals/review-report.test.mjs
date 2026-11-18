@@ -1510,9 +1510,86 @@ test("the export dialog is native and fed by one model; every control keeps its 
     const text = script.slice(script.indexOf("function decisionsText"), script.indexOf("function buildPreview"));
     const preview = script.slice(script.indexOf("function buildPreview"), script.indexOf("function openExportDialog"));
     if (!text.includes("exportModel()") || !preview.includes("exportModel()")) return "the text and the preview do not share the one model";
+    // ONE source: the model is a view of the schema-4 payload, and the JSON downloads that same payload —
+    // never a second builder reading the state apart.
+    const payloadFn = script.slice(script.indexOf("function exportPayload"), script.indexOf("function exportModel"));
+    const model = script.slice(script.indexOf("function exportModel"), script.indexOf("function decisionsText"));
+    const download = script.slice(script.indexOf("function downloadJson"), script.indexOf("// ---- paint"));
+    if (!payloadFn.includes("D.exportOf") || !model.includes("exportPayload()")) return "the export model is not built from the one schema-4 payload";
+    if (!download.includes("exportModel().payload")) return "the JSON download is a second builder, not the one payload";
+    if (!model.includes("j.zones") || !model.includes("e.comment")) return "the model drops the zones or the payload's comment (the legacy entry note)";
+    if (!text.includes("m.zones") || !preview.includes("m.zones")) return "the marked zones do not reach the text and the preview";
     if (!script.includes("xp-goto") || !script.includes("openTarget(hash)")) return "the preview rows have no working Go link";
     if (!script.includes("factAnswers") && !script.includes("D.exportOf")) return "the JSON export is missing";
     return true;
+  });
+
+test("the export payload carries every user datum: the legacy entry note, zones, passages and fact answers",
+  "a datum that reaches only the JSON but not the preview/text (or the reverse) is a diverging export; the legacy questions[id].note must travel as the comment",
+  () => {
+    const state = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "legacy note in the entry" } },
+      notes: { b1: "block note" }, zones: { "1-0": true }, answers: { q3: "proof" },
+      passages: [{ where: "a.js:1", quote: "x", note: "n", anchor: { id: "b1" } }] });
+    const out = exportOf(DQS, state, {});
+    if (out.questions.find((q) => q.question === 1).comment !== "legacy note in the entry") return "the legacy questions[id].note did not reach the export comment";
+    if (out.zones?.["1-0"] !== true || out.factAnswers?.q3 !== "proof" || out.passages?.length !== 1 || out.notes?.b1 !== "block note")
+      return "the export drops the zones, factAnswers, passages or block notes";
+    // noteOf prefers the entry note over the shared notes: the export states the effective comment.
+    const both = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "entry" } }, notes: { q1: "shared" } });
+    if (exportOf(DQS, both, {}).questions.find((q) => q.question === 1).comment !== "entry") return "noteOf did not prefer the entry note over the shared notes";
+    // The page's data carries the zone texts, so the preview can name a marked zone without the record's DOM.
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(fs.readFileSync(html, "utf8"))[1]);
+    const withZones = embedded.questions.find((q) => (THEMED.questions[q.id - 1]?.zones ?? []).length > 0);
+    if (!withZones) return "the themed record has no zones to check";
+    if (JSON.stringify(withZones.zones) !== JSON.stringify(THEMED.questions[withZones.id - 1].zones.map((z) => z.text))) return "the page's data lacks the zone texts";
+    return true;
+  });
+
+test("the page script stays inside its size budget",
+  "an unbounded page.mjs grows the shipped payload and the embedded runtime with nothing to catch it",
+  () => {
+    const size = fs.statSync(path.join(SKILL, "scripts", "page.mjs")).size;
+    return size < 175 * 1024 || `page.mjs is ${size} bytes, past the 175KB budget`;
+  });
+
+test("the enriched HTML stays within 5% of the v4 baseline",
+  "the v5 composition must not inflate the page without a measured bound; the baseline is the last pre-v5 renderer from git",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const dir = path.join(run, "v5-budget-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review));
+    if (report("render", copy).status !== 0) return "the enriched copy does not render";
+    const v5html = fs.statSync(path.join(dir, "review.html")).size;
+    const gitRoot = path.join(ROOT, "..", "..", "..");
+    const history = spawnSync("git", ["-C", gitRoot, "log", "--format=%H%x09%s", "--", "plugins/entrust/plugin/skills/review/scripts/page.mjs"], { encoding: "utf8" });
+    if (history.status !== 0) return skip("no git history here, so there is no v4 baseline to compare");
+    // The baseline is the commit just before the FIRST v5 commit in page.mjs's history — stable no matter
+    // how many v5 fixes land afterwards, and honest (skipped) if a squash erased the series.
+    const entries = history.stdout.trim().split("\n").map((l) => l.split("\t"));
+    const firstV5 = entries.map(([, subject]) => /\bv5\b/i.test(subject)).lastIndexOf(true);
+    const v4ref = firstV5 >= 0 ? entries[firstV5 + 1]?.[0] : undefined;
+    if (!v4ref) return skip("no pre-v5 page.mjs commit in this history");
+    const v4dir = path.join(run, "v4-baseline-budget");
+    fs.mkdirSync(path.join(v4dir, "scripts", "vendor"), { recursive: true });
+    for (const f of ["page.mjs", "review.mjs", "labels.mjs", "decisions.mjs", "report.mjs", "diff.mjs", "diagram.mjs", "highlight.mjs", "annotations.mjs", "text.mjs", "vendor/shiki.mjs"]) {
+      const content = spawnSync("git", ["-C", gitRoot, "show", `${v4ref}:plugins/entrust/plugin/skills/review/scripts/${f}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+      if (content.status !== 0) return `git show ${f}: ${content.stderr.slice(0, 200)}`;
+      fs.writeFileSync(path.join(v4dir, "scripts", f), content.stdout);
+    }
+    fs.copyFileSync(copy, path.join(v4dir, "review.json"));
+    fs.copyFileSync(path.join(dir, "review.diff"), path.join(v4dir, "review.diff"));
+    const v4render = spawnSync(process.execPath, [path.join(v4dir, "scripts", "report.mjs"), "render", path.join(v4dir, "review.json")], { cwd: v4dir, encoding: "utf8" });
+    if (v4render.status !== 0) return `the v4 baseline does not render: ${v4render.stderr.slice(0, 200)}`;
+    const v4html = fs.statSync(path.join(v4dir, "review.html")).size;
+    const growth = 100 * (v5html / v4html - 1);
+    return growth < 5 || `the enriched HTML grew ${growth.toFixed(2)}% over the v4 baseline (${v4html} -> ${v5html} bytes)`;
   });
 
 test("the purpose toggles hide groups in map and tree; reset and deep links restore them",

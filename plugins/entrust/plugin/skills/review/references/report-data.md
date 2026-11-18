@@ -278,10 +278,12 @@ never a new record field:
   built-in pattern highlighter draws the code; an unsupported language is escaped plain text. Rebuild the bundle
   as `scripts/vendor/README.md` says.
 - **Export.** «Export answers» in the header above the tabs opens a native dialog from any tab. ONE model feeds
-  the preview, the text and the JSON: the accepted Q/F/I (including «Do not fix»/«Do not take»), the deferred
-  with or without a variant, drafts, not-applicable children, fact answers and every comment with its context
-  and a «Go» link that opens the tab and target. «Download JSON» writes schema 4 (above); «Copy text» says
-  «Copied» only after the clipboard confirms, and on refusal selects the readonly text and says to press
+  the preview, the text and the JSON: all three are views of the SAME schema-4 payload «Download JSON» writes,
+  never a second builder reading the state apart. It carries the accepted Q/F/I (including «Do not fix»/«Do not
+  take»), the deferred with or without a variant, drafts, not-applicable children, fact answers, marked zones
+  (a mark is never a confirmation) and every comment with its context — card, block, selected text, and the
+  legacy note stored in `questions[id].note` — each with a «Go» link that opens the tab and target. «Copy text»
+  says «Copied» only after the clipboard confirms, and on refusal selects the readonly text and says to press
   Ctrl/⌘+C. The popover's source copy is honest the same way. A partial export is acceptable; the counter of
   what remains travels with it.
 - **Print.** The owner profile hides the map and the tree and prints the decisions complete — the lazy «related
