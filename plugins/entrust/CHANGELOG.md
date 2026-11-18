@@ -5,12 +5,36 @@ forensics remain in the repository references and release notes.
 
 ## 0.41.0 — 2026-11-17
 
+### Review report v6
+
+- One canonical surface per fact (M1–M2): remove the numeric strip, duplicate progress/export controls
+  and bulk acceptance; keep the verdict in Overview, technical coverage in Materials, and local evidence
+  limits at the action. Annotation targets and the single card instance remain intact.
+- One `choiceStats` derivative feeds the tab, subtab badges, settled rows and export (M3). Accepted Q2
+  remains on the active sheet while applicable children need answers; only root decisions and findings
+  enter the mandatory remainder. Reasoned deferrals leave that remainder without becoming completed;
+  ideas are optional and a fact answer is not verification.
+- Equal choice affordance for questions, findings, ideas and facts; compact one-line file navigation
+  with folder/list modes and a persisted, keyboard/pointer-resizable tree (M4–M5).
+- Editorial Overview and a lighter code toolbar (M6–M7): neutral conclusion card, closed change context,
+  file units at purpose toggles, explicit selection marks, and counting methodology in one disclosure.
+  Export leads with answers, labels the findings-only remainder list, exposes a copy-text label and
+  reports copy success once (M8). Optionality, screen warnings, mechanism caveats and comment instructions
+  no longer repeat in each card; settled rows retain the original cards and their reversible actions (M9).
+- A 1600px outer canvas lets the code fill the available width while choice prose stays within 90ch
+  (M10). Consecutive fragments share one block header, metadata disclosure and comment; code fragments
+  retain hunk gaps, one B anchor, filters, annotations, no-script access and print coverage (M11).
+  The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
+- v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
+  grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
+  growth against that baseline. Schema 4, legacy catalogs and version 0.41.0 remain compatible.
+
 ### Added
 
 - `entrust:review` reports lead with the owner's decision instead of the audit trail: question decision cards
   (kind decision/fact/evidence, self-sufficient context, variants with confirmed consequences, a recommendation
   with its basis, the checks the choice does not replace, declarative parent applicability, zones), a passport
-  with task/PR/Figma links, a status strip from structured coverage, scope counters with a definition of a
+  with task/PR/Figma links, structured coverage, scope counts with a definition of a
   review fragment, a now→target comparison, a target structure diagram from the recorded uses, a file tree with
   the full change map readable without JavaScript, a screen viewer, and owner/auditor print profiles.
 - A decision runtime with one valid status shared by the page, the copied text and the JSON export: accepting
@@ -25,7 +49,7 @@ forensics remain in the repository references and release notes.
   links (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code`) that open the right tab and
   reveal the target in any map mode. Without JavaScript the panels stack, the tabs are anchor links and the
   controls ship disabled. (The v5 composition below reorganizes the tabs into the one Choices list.)
-- A map reader: one line per fragment (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
+- A map reader: one line per block (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
   details popover), the code in a disclosure, a sticky file header, and the fragment's sources in the popover —
   an added line at the head revision, a removed line at the base, each copyable as `path:line (revision)`.
   Every popover value — path, URL, revision, localized label — is escaped for the attribute that holds it,
@@ -45,7 +69,7 @@ forensics remain in the repository references and release notes.
   by change kind, never by verdict: added/removed backgrounds, a readable removed line, old/new gutters, muted
   context; the verdict stays a border and a badge.
 - A 32px theme icon (auto/light/dark, prefers-color-scheme default), a 14px base with ≥12px secondary text and
-  ≥32px tap targets, and the weight's limit on the mechanism surface with the methodology in the details.
+  ≥32px tap targets, and a section-wide weight limit with the methodology in the details.
 - Decision cards v4: the variant radio is the decision, a status chip
   (waiting/selected/deferred/not applicable/draft), the parent gate with its explanation, a comment textarea
   (the v5 compact comment interface below replaces the permanent textarea),
