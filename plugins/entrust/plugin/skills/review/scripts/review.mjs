@@ -60,6 +60,9 @@ function weighMechanisms(mechanisms, blocks) {
 // "question": the premise is unread, so the code is neither kept nor removed until the question named is answered.
 export const VERDICTS = ["keep", "fix", "remove", "question"];
 export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "question"];
+// What a question asks of its resolver: a choice, a fact, or evidence. The number never decides the kind.
+export const QUESTION_KINDS = ["decision", "fact", "evidence"];
+export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
 // Who raised a point against the draft, and what the review did with it.
 export const CHALLENGERS = ["target", "critic", "verifier"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
@@ -71,6 +74,21 @@ export const MET = EVIDENCE.filter((word) => word !== "judgment");
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 const SHOTS = ["mockup", "before", "after"];
+
+// What a touched file is for, derived from its path alone: the map and the tree group and filter by it.
+// Deterministic rules, disclosed on the page; a block's own kind only redirects a test block of a production
+// file. Nothing here is a record field: the classification is the model's, computed the same way every render.
+export const PURPOSES = ["production", "tests", "styles", "assets", "docs", "config"];
+export function purposeOfPath(p) {
+  const base = p.split("/").pop().toLowerCase();
+  const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1) : "";
+  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
+  if (["scss", "css", "less", "sass", "styl"].includes(ext)) return "styles";
+  if (["svg", "png", "jpg", "jpeg", "gif", "ico", "webp", "avif", "woff", "woff2", "ttf", "eot"].includes(ext) || /(^|\/)(assets|icons)(\/|$)/.test(p) || /(^|\/)keysets(\/|$)/.test(p)) return "assets";
+  if (["md", "mdx", "rst", "txt"].includes(ext) || /^(changelog|readme|license)/.test(base)) return "docs";
+  if (base === "package.json" || /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|npm-shrinkwrap\.json)$/.test(p) || /^tsconfig(\..*)?\.json$/.test(base) || base === "a.yaml" || ["yaml", "yml", "toml", "ini"].includes(ext) || /^(\.eslintrc|\.prettierrc|babel\.config|jest\.config|vite\.config|webpack\.config)/.test(base)) return "config";
+  return "production";
+}
 
 // A picture the reviewer was given: an https link stays a link, a file is taken in whole so the page needs nothing beside it.
 function pictureOf(source, directory) {
@@ -101,8 +119,10 @@ export function compact(list) {
 }
 
 // Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
+// Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
+// without the optional fields of the decision-first report gets none of them.
 export function check(review, files, directory) {
-  const errors = [], owner = new Map();
+  const errors = [], warnings = [], owner = new Map();
   const text = (v) => typeof v === "string" && v.trim() !== "", filled = (v) => Array.isArray(v) && v.length > 0;
   for (const field of ["title", "range", "verdict", "now", "target", "recommendation"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
   if (!text(review.change?.goal)) errors.push('"change.goal" is missing');
@@ -110,9 +130,10 @@ export function check(review, files, directory) {
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   if (review.mechanisms !== undefined && !Array.isArray(review.mechanisms)) errors.push('"mechanisms" is not a list');
   if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
-  for (const field of ["challenges", "questions"]) if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
+  for (const field of ["challenges", "questions", "steps", "checks", "ideas", "screens", "units", "target_units"])
+    if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   errors.push(...labelFaults(review));
-  if (errors.length) return { errors, owner };
+  if (errors.length) return { errors, warnings, owner };
 
   const known = (items, what, key) => {
     const seen = new Set();
@@ -120,6 +141,29 @@ export function check(review, files, directory) {
     return seen;
   };
   const refs = (who, ids, listed, what) => { for (const id of ids ?? []) if (!listed.has(id)) errors.push(`${who} names ${what} ${id}, which is not listed`); };
+  // One source format everywhere: an internal ref the check resolves mechanically, or an external place.
+  // An analytical claim without a source is a fault; a source that cannot travel with the record is a warning.
+  const sourceFaults = (who, sources) => {
+    if (!filled(sources)) { errors.push(`${who} names no source: an analytical claim needs one`); return; }
+    for (const s of sources) {
+      if (typeof s !== "object" || s === null || Array.isArray(s)) { errors.push(`${who}: a source is {ref} or {at, revision?, quote?}`); continue; }
+      if (s.ref !== undefined) {
+        const m = /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(s.ref)), list = m && review[m[1]];
+        if (!m || !Array.isArray(list) || +m[2] >= list.length) errors.push(`${who}: source ref "${s.ref}" names nothing in the record`);
+      } else if (text(s.at)) {
+        if (s.revision !== undefined && !text(s.revision)) errors.push(`${who}: a source's revision is empty`);
+        if (s.quote !== undefined && !text(s.quote)) errors.push(`${who}: a source's quote is empty`);
+        if (!text(s.quote)) warnings.push(`${who}: source "${s.at}" has no quote; it does not travel without the file`);
+        const place = /^(.+?):\d+(?:-\d+)?$/.exec(s.at);
+        if (place && /[./]/.test(place[1]) && !fs.existsSync(path.resolve(directory, place[1]))) warnings.push(`${who}: source "${s.at}" is named but not beside the record`);
+      } else errors.push(`${who}: a source needs "ref" or "at"`);
+    }
+  };
+  const claims = (who, list, what) => {
+    if (list === undefined) return;
+    if (!Array.isArray(list)) { errors.push(`${who}: ${what} is not a list`); return; }
+    list.forEach((c, i) => { const w = `${who} ${what} ${i + 1}`; if (!text(c?.text)) errors.push(`${w} has no text`); sourceFaults(w, c?.sources); });
+  };
   const requirements = known(review.requirements, "requirement", "id"), findings = known(review.findings, "finding", "id");
   // A change of the task walked through the code: where it is edited, and what must be read to make it safely.
   const scenarios = review.scenarios ?? [], scenarioIds = known(scenarios, "scenario", "id");
@@ -135,6 +179,8 @@ export function check(review, files, directory) {
     }
   }
   for (const f of review.findings) {
+    // An id travels into anchors and hrefs: letters, digits, "_" and "-" only, so no quote or markup can ride along.
+    if (!/^[A-Za-z0-9_-]+$/.test(String(f.id))) errors.push(`finding ${f.id}: id is letters, digits, "_" or "-"`);
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
@@ -152,6 +198,9 @@ export function check(review, files, directory) {
     const breaking = review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id);
     if (r.met !== undefined && breaking.length) errors.push(`requirement ${r.id} is marked met, and finding ${breaking.join(", ")} breaks it`);
     if (r.not_checked !== undefined && !text(r.not_checked)) errors.push(`requirement ${r.id}: "not_checked" says what of it you did not check, or is left out`);
+    // A permission allows; it does not oblige, so there is nothing to mark met.
+    if (r.permission !== undefined && typeof r.permission !== "boolean") errors.push(`requirement ${r.id}: permission is true, or left out`);
+    if (r.permission === true && r.met !== undefined) errors.push(`requirement ${r.id} is a permission, not an obligation: it cannot be marked met`);
   }
   (review.steps ?? []).forEach((step, index) => {
     if (!text(step.text)) errors.push(`step ${index + 1} has no "text"`);
@@ -165,8 +214,73 @@ export function check(review, files, directory) {
   });
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
-  // A question is named by its place in the list, from 1.
-  const questions = new Set((review.questions ?? []).map((_, index) => index + 1));
+  // A question is named by its place in the list, from 1. A question without a kind keeps the old shape:
+  // its place and text, no invented variants, and no part in the owner's decision counters.
+  const qList = review.questions ?? [];
+  const questions = new Set(qList.map((_, index) => index + 1));
+  qList.forEach((q, index) => {
+    const who = `question ${index + 1}`;
+    if (q.kind === undefined) return;
+    if (!QUESTION_KINDS.includes(q.kind)) errors.push(`${who}: kind is one of ${QUESTION_KINDS.join(", ")}`);
+    if (!text(q.at)) errors.push(`${who} has no "at"`);
+    if (!text(q.text)) errors.push(`${who} has no "text"`);
+    if (q.resolver !== undefined && !text(q.resolver)) errors.push(`${who}: resolver is a role name, or left out`);
+    claims(who, q.context, "context");
+    claims(who, q.zones, "zone");
+    const variantIds = new Set();
+    if (q.variants !== undefined) {
+      if (!Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
+      else {
+        if (!q.variants.length && q.kind === "decision") warnings.push(`${who} is a decision with no variants`);
+        for (const v of q.variants) {
+          const w = `${who} variant ${v?.id}`;
+          if (!text(v?.id)) errors.push(`${who}: a variant has no id`);
+          else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
+          else variantIds.add(v.id);
+          if (!text(v?.text)) errors.push(`${w} has no text`);
+          if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
+          else if (!filled(v?.consequences)) warnings.push(`${w} lists no consequences`);
+          else claims(w, v.consequences, "consequence");
+        }
+      }
+    }
+    if (q.recommendation !== undefined) {
+      const w = `${who} recommendation`;
+      if (!text(q.recommendation?.text)) errors.push(`${w} has no text`);
+      if (q.recommendation?.variant !== undefined && !variantIds.has(q.recommendation.variant)) errors.push(`${w} names variant "${q.recommendation.variant}", which is not listed`);
+      sourceFaults(w, q.recommendation?.sources);
+    }
+    if (q.remainingEvidence !== undefined) {
+      if (!Array.isArray(q.remainingEvidence)) errors.push(`${who}: remainingEvidence is not a list`);
+      else for (const n of q.remainingEvidence) {
+        if (!Number.isInteger(n) || n < 1 || n > qList.length) errors.push(`${who}: remainingEvidence names question ${n}, which is not listed`);
+        else if (qList[n - 1].kind !== "evidence") errors.push(`${who}: remainingEvidence names question ${n}, which is not of kind evidence`);
+      }
+    }
+  });
+  // A child declares the variants of its parent under which it still applies; the parent stores no children.
+  qList.forEach((q, index) => {
+    if (q.parent === undefined) return;
+    const who = `question ${index + 1}`, p = q.parent;
+    if (!Number.isInteger(p?.question) || p.question < 1 || p.question > qList.length) errors.push(`${who}: parent names question ${p?.question}, which is not listed`);
+    else if (p.question === index + 1) errors.push(`${who}: parent is itself`);
+    else {
+      const parentVariants = qList[p.question - 1].variants;
+      if (parentVariants !== undefined && !Array.isArray(parentVariants)) errors.push(`${who}: the variants of parent question ${p.question} are not a list`);
+      const ids = new Set((Array.isArray(parentVariants) ? parentVariants : []).map((v) => v?.id));
+      if (!filled(p.variants)) errors.push(`${who}: parent lists no variants`);
+      else for (const id of p.variants) if (!ids.has(id)) errors.push(`${who}: parent.variants names "${id}", which is not a variant of question ${p.question}`);
+    }
+  });
+  for (let i = 0; i < qList.length; i++) {
+    const seen = new Set();
+    for (let at = i; qList[at]?.parent !== undefined;) {
+      if (seen.has(at)) { errors.push(`question ${i + 1}: the parent chain is a cycle`); break; }
+      seen.add(at);
+      at = qList[at].parent.question - 1;
+      if (!qList[at]) break;
+    }
+  }
   const settled = (who, item) => {
     refs(who, item.findings, findings, "finding");
     refs(who, item.questions, questions, "question");
@@ -189,15 +303,64 @@ export function check(review, files, directory) {
     for (const shot of SHOTS) if (screen[shot] !== undefined && !pictureOf(screen[shot], directory))
       errors.push(`${name}: ${shot} "${screen[shot]}" is neither a picture file there (${Object.keys(PICTURE_TYPES).join(", ")}) nor an https link`);
     // A match is a claim about two pictures; with nothing found and nothing claimed, the screen was not compared.
+    if (screen.differences !== undefined && !Array.isArray(screen.differences)) errors.push(`${name}: differences is not a list`);
+    const differences = Array.isArray(screen.differences) ? screen.differences : [];
     if (screen.match && (screen.mockup === undefined || screen.after === undefined)) errors.push(`${name} is said to match, and has no ${screen.mockup === undefined ? "mockup" : "after"} picture`);
-    if (screen.match && screen.differences?.length) errors.push(`${name} is said to match, and lists differences`);
-    if (!screen.match && !screen.differences?.length && !text(screen.missing)) errors.push(`${name} has no difference and no "match": say in "missing" what you could not compare`);
-    for (const difference of screen.differences ?? []) {
+    if (screen.match && differences.length) errors.push(`${name} is said to match, and lists differences`);
+    if (!screen.match && !differences.length && !text(screen.missing)) errors.push(`${name} has no difference and no "match": say in "missing" what you could not compare`);
+    for (const difference of differences) {
       if (!text(difference.what)) errors.push(`${name}: a difference has no "what"`);
       if (!text(difference.why) && difference.finding === undefined) errors.push(`${name}: a difference has neither "why" nor "finding"`);
       if (difference.finding !== undefined) refs(name, [difference.finding], findings, "finding");
     }
+    // A historical picture is evidence of another revision; absence of the mark is unknown, not the current one.
+    if (screen.historical !== undefined) {
+      if (typeof screen.historical !== "boolean") errors.push(`${name}: historical is true, or left out`);
+      else if (screen.historical) {
+        if (!text(screen.revision)) warnings.push(`${name} is historical and names no revision`);
+        sourceFaults(name, screen.sources);
+      }
+    }
   });
+
+  if (review.tradeoffs !== undefined) {
+    if (!Array.isArray(review.tradeoffs)) errors.push('"tradeoffs" is not a list');
+    else review.tradeoffs.forEach((x, index) => {
+      const who = `tradeoff ${index + 1}`;
+      if (!text(x?.text)) errors.push(`${who} has no text`);
+      if (!text(x?.consequence)) errors.push(`${who} has no consequence`);
+      sourceFaults(who, x?.sources);
+    });
+  }
+  if (review.coverageStructured !== undefined) {
+    if (!Array.isArray(review.coverageStructured)) errors.push('"coverageStructured" is not a list');
+    else review.coverageStructured.forEach((c, index) => {
+      const who = `coverageStructured ${index + 1}`;
+      if (!COVERAGE_KINDS.includes(c?.kind)) errors.push(`${who}: kind is one of ${COVERAGE_KINDS.join(", ")}`);
+      if (!text(c?.text)) errors.push(`${who} has no text`);
+      if (c?.revision !== undefined && !text(c.revision)) errors.push(`${who}: revision is empty`);
+      // A run is a claim about a checked version: an external source without a revision cannot travel to it.
+      if (c?.kind === "ran" && !text(c.revision) && (Array.isArray(c.sources) ? c.sources : []).some((s) => s && typeof s === "object" && !Array.isArray(s) && s.ref === undefined && text(s.at)))
+        warnings.push(`${who} claims a run on an external source without a revision: name the revision it ran at`);
+      sourceFaults(who, c?.sources);
+    });
+  }
+  if (review.passport !== undefined) {
+    const p = review.passport;
+    if (typeof p !== "object" || p === null || Array.isArray(p)) errors.push('"passport" is not an object');
+    else {
+      for (const field of ["repository", "base", "head", "reviewedAt"]) if (!text(p[field])) errors.push(`passport has no "${field}"`);
+      if (p.links !== undefined) {
+        if (!Array.isArray(p.links)) errors.push('"passport.links" is not a list');
+        else p.links.forEach((l, index) => {
+          const who = `passport link ${index + 1}`;
+          if (!text(l?.label)) errors.push(`${who} has no label`);
+          if (!/^https?:\/\//.test(String(l?.url ?? ""))) errors.push(`${who}: url is an http(s) link`);
+          if (l?.kind !== undefined && !text(l.kind)) errors.push(`${who}: kind is empty`);
+        });
+      }
+    }
+  }
 
   const units = review.units ?? [], changed = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   for (const [where, list] of [["units", units], ["target_units", review.target_units ?? []]]) {
@@ -275,7 +438,25 @@ export function check(review, files, directory) {
     if (loose.length) errors.push(`${file.path}: no block covers ${[["added", of("add")], ["removed", of("del")]]
       .filter(([, lines]) => lines).map(([field, lines]) => `${field} ${lines}`).join("; ")}`);
   }
-  return { errors, owner };
+  return { errors, warnings, owner };
+}
+
+// A source as the words both renderings share: an internal ref resolves to the item it names, an external
+// source to its place, revision and quote. The anchor is where the page links it; nothing here is invented.
+export function sourceOf(source, review) {
+  if (source?.ref !== undefined) {
+    const m = /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(source.ref));
+    if (!m) return { text: String(source.ref) };
+    const [, field, at] = m, index = +at, item = Array.isArray(review[field]) ? review[field][index] : undefined;
+    const anchors = { requirements: "#requirements", findings: `#f${item?.id}`, questions: `#q${index + 1}`, blocks: `#b${index + 1}`,
+      mechanisms: `#m${index + 1}`, ideas: `#i${index + 1}`, checks: "#checks", scenarios: "#scenarios", screens: "#screens",
+      challenges: "#challenges", units: "#structure", target_units: "#structure", tradeoffs: "#tradeoffs", coverageStructured: "#coverage" };
+    const names = { requirements: `R${item?.id}`, findings: `F${item?.id}`, questions: `Q${index + 1}`, blocks: `B${index + 1}`, mechanisms: `M${index + 1}` };
+    const anchor = anchors[field] && (item !== undefined || !["requirements", "findings"].includes(field)) ? anchors[field] : undefined;
+    return { text: names[field] ?? `${field} ${index + 1}`, anchor };
+  }
+  if (source?.at !== undefined) return { text: [source.at, source.revision && `@ ${source.revision}`, source.quote && `“${source.quote}”`].filter(Boolean).join(" ") };
+  return { text: "" };
 }
 
 // What the renderings read: blocks with their number, lines and size; requirements with the blocks that serve
@@ -304,6 +485,42 @@ export function modelOf(review, files, owner, directory) {
   const { labels, ...content } = review;
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
   const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
+  // Questions keep their place as their number; children are derived from parent, never stored twice.
+  const questions = (review.questions ?? []).map((q, index) => ({ ...q, id: index + 1, children: [], blocks: 0 }));
+  for (const q of questions) if (q.parent && questions[q.parent.question - 1]) questions[q.parent.question - 1].children.push(q.id);
+  for (const b of blocks) for (const n of new Set(b.questions)) if (questions[n - 1]) questions[n - 1].blocks++;
+  // The shortest suffix that names each file alone among the touched paths; the full path stays beside it.
+  const paths = files.map((f) => f.path);
+  const shortOf = (p) => {
+    const parts = p.split("/");
+    for (let n = 1; n < parts.length; n++) {
+      const suffix = parts.slice(-n).join("/");
+      if (paths.filter((other) => other === suffix || other.endsWith(`/${suffix}`)).length === 1) return suffix;
+    }
+    return p;
+  };
+  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", short: shortOf(f.path), purpose: purposeOfPath(f.path) }));
+  // A block of tests inside a production file is tests; every other block follows its file.
+  const blockPurpose = Object.fromEntries(blocks.map((b) => [b.id, b.kind === "test" && fileMeta.find((f) => f.path === b.path)?.purpose === "production" ? "tests" : purposeOfPath(b.path)]));
+  const purposeCounts = Object.fromEntries(PURPOSES.map((c) => [c, { files: 0, blocks: 0, lines: 0 }]));
+  for (const f of fileMeta) purposeCounts[f.purpose].files++;
+  for (const b of blocks) { const c = purposeCounts[blockPurpose[b.id]]; c.blocks++; c.lines += b.size; }
+  const blockFile = Object.fromEntries(blocks.map((b) => [b.id, files.findIndex((f) => f.path === b.path)]));
+  // Counters over unique sets: a fragment naming two evidence questions is one fragment awaiting evidence.
+  const evidenceIds = new Set(questions.filter((q) => q.kind === "evidence").map((q) => q.id));
+  const lines = { added: 0, removed: 0 };
+  for (const f of files) for (const l of changedLines(f)) lines[l.kind === "add" ? "added" : "removed"]++;
+  const counters = {
+    files: files.length, lines,
+    addedFiles: fileMeta.filter((f) => f.status === "A").length, removedFiles: fileMeta.filter((f) => f.status === "D").length,
+    modifiedFiles: fileMeta.filter((f) => f.status === "M").length,
+    blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])),
+    nonblank: { added: blocks.reduce((sum, b) => sum + b.weightLines.added, 0), removed: blocks.reduce((sum, b) => sum + b.weightLines.removed, 0) },
+    evidenceBlocks: new Set(blocks.filter((b) => b.questions.some((n) => evidenceIds.has(n))).map((b) => b.id)).size,
+    decisions: questions.filter((q) => q.kind === "decision").length,
+  };
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
+    questions, files: fileMeta, counters,
+    purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
     key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }

@@ -35,8 +35,11 @@ const added = (numstat) => code(numstat).reduce((sum, [plus]) => sum + Number(pl
 const touched = (list) => list.reduce((sum, [plus, minus]) => sum + Number(plus) + Number(minus), 0);
 
 // How the repository's own tests ended. No test is not a pass, and a run that did not end is not a failure of a test.
-function testsOf(repo) {
-  const run = spawnSync(process.execPath, ["--test"], { cwd: repo, encoding: "utf8", timeout: 120_000 });
+export function testsOf(repo) {
+  // The suite itself may run under `node --test`: its NODE_TEST_CONTEXT makes a nested runner skip every file
+  // and exit 0, which would read as "no tests". The measurement must not depend on the ambient runner.
+  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  const run = spawnSync(process.execPath, ["--test"], { cwd: repo, encoding: "utf8", timeout: 120_000, env });
   const count = (word) => Number(new RegExp(`^(?:#|ℹ) ${word} (\\d+)`, "m").exec(run.stdout ?? "")?.[1] ?? 0);
   const pass = count("pass"), fail = count("fail"), ended = !run.error && run.signal === null;
   return { status: !ended ? "unfinished" : fail || run.status !== 0 ? "failed" : pass ? "passed" : "none", pass, fail,

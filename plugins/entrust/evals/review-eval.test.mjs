@@ -14,7 +14,7 @@ import { CASES, VARIANTS, packageDigest, prepare } from "./review/prepare.mjs";
 import { PROTOCOL, round } from "./review/round.mjs";
 import { rubricOf, score, table } from "./review/score.mjs";
 import { TASK_ONLY, implement } from "./review/implement.mjs";
-import { outcome, table as outcomeTable } from "./review/outcome.mjs";
+import { outcome, table as outcomeTable, testsOf } from "./review/outcome.mjs";
 import { blocks, numbers, table as blocksTable } from "./review/blocks.mjs";
 
 const { cases: TESTS, test } = registry();
@@ -492,6 +492,26 @@ test("the repository's own tests end as passed, failed, unfinished or none, and 
     if (status[heads[0].id].status !== "failed" || status[heads[0].id].exit === 0) return `a failing test is "${status[heads[0].id].status}"`;
     if (status[heads[1].id].status !== "none") return `a repository with no tests is "${status[heads[1].id].status}"`;
     return status[heads[2].id].status === "passed" || `untouched tests are "${status[heads[2].id].status}"`;
+  });
+
+test("the own-tests measurement survives the suite running under node --test itself",
+  "the ambient runner's NODE_TEST_CONTEXT made the nested runner skip every file and exit 0, reading a failing repository as having no tests",
+  () => {
+    const dir = tempDir("review-nested-runner-"), repo = path.join(dir, "repo");
+    fs.mkdirSync(path.join(repo, "test"), { recursive: true });
+    fs.writeFileSync(path.join(repo, "test", "broken.test.js"), 'import test from "node:test";\ntest("fails", () => { throw new Error("no"); });\n');
+    const before = process.env.NODE_TEST_CONTEXT;
+    process.env.NODE_TEST_CONTEXT = "child-v8";
+    try {
+      const failing = testsOf(repo);
+      if (failing.status !== "failed" || failing.fail !== 1) return `under the runner context a failing test read as ${JSON.stringify(failing)}`;
+      fs.writeFileSync(path.join(repo, "test", "broken.test.js"), 'import test from "node:test";\ntest("passes", () => {});\n');
+      const passing = testsOf(repo);
+      if (passing.status !== "passed" || passing.pass !== 1) return `under the runner context a passing test read as ${JSON.stringify(passing)}`;
+      fs.rmSync(path.join(repo, "test"), { recursive: true });
+      const empty = testsOf(repo);
+      return empty.status === "none" || `a repository with no tests read as ${JSON.stringify(empty)}`;
+    } finally { if (before === undefined) delete process.env.NODE_TEST_CONTEXT; else process.env.NODE_TEST_CONTEXT = before; }
   });
 
 test("an acceptance check that never ends is unfinished, and the checks beside it keep their results",

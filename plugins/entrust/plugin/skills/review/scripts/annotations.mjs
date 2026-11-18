@@ -1,5 +1,7 @@
 // Embedded in the standalone report; anchors refer to static text, never to inserted controls.
-export function annotations({ state, changed, t }) {
+// `reveal(el)` (provided by the host page) activates the source tab/panel and unhides the target;
+// without it the fallback only opens ancestor details.
+export function annotations({ state, changed, t, reveal }) {
   const root = document.getElementById('review-content');
   const list = document.getElementById('passages'), trigger = document.getElementById('comment');
   const editor = document.getElementById('annotation-editor'), field = editor.querySelector('textarea');
@@ -23,7 +25,7 @@ export function annotations({ state, changed, t }) {
   feedback.addEventListener('focusin', () => clearTimeout(feedbackTimer));
   feedback.addEventListener('pointerleave', scheduleFeedback);
   feedback.addEventListener('focusout', () => queueMicrotask(scheduleFeedback));
-  root.querySelectorAll('section, article, .seg, tr[data-where]').forEach((el, i) => {
+  root.querySelectorAll('section, article, .seg, .qcard, .mechanism, tr[data-where]').forEach((el, i) => {
     if (!el.id) el.id = 'source-' + i;
     el.dataset.anchor = '';
   });
@@ -64,7 +66,8 @@ export function annotations({ state, changed, t }) {
     if (!selected.trim()) return null;
     const lineAt = node => {
       const line = node?.parentElement.closest('.l'), file = line?.closest('.file');
-      return file ? file.querySelector('header strong').textContent + ':' + line.querySelector('i').textContent.trim() + line.querySelector('b').textContent.trim() : null;
+      const num = line && (line.querySelector(line.classList.contains('del') ? 'b.old' : 'b.new') || line.querySelector('b'));
+      return file && num ? file.querySelector('header strong').textContent + ':' + line.querySelector('i').textContent.trim() + num.textContent.trim() : null;
     };
     const firstLine = lineAt(firstNode), lastLine = lineAt(lastNode), heading = el.querySelector('h2,h3');
     const where = firstLine ? firstLine + (lastLine && lastLine !== firstLine ? ' .. ' + lastLine : '')
@@ -114,7 +117,11 @@ export function annotations({ state, changed, t }) {
       edit.addEventListener('click', () => open(p, index, edit)); actions.append(edit);
       if (found) {
         const back = document.createElement('button'); back.type = 'button'; back.textContent = t.source;
-        back.addEventListener('click', () => { for (let el = marker.parentElement; el; el = el.parentElement) if (el.tagName === 'DETAILS') el.open = true; marker.scrollIntoView({ block: 'center' }); marker.focus({ preventScroll: true }); });
+        back.addEventListener('click', () => {
+          if (reveal) reveal(marker);
+          else for (let el = marker.parentElement; el; el = el.parentElement) if (el.tagName === 'DETAILS') el.open = true;
+          requestAnimationFrame(() => { marker.scrollIntoView({ block: 'center' }); marker.focus({ preventScroll: true }); });
+        });
         actions.append(back);
       } else { const missing = document.createElement('span'); missing.className = 'sub'; missing.textContent = t.unlocated; actions.append(missing); }
       row.append(title, excerpt, note, actions); list.append(row);

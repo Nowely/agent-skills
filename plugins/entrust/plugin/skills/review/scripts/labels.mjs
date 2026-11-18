@@ -97,6 +97,102 @@ export const LABELS = {
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
+// The catalog a legacy record needs: a custom language that translated the report before the decision cards
+// keeps working on a record without the new fields. A record that uses them needs the new words too.
+export const BASE_KEYS = Object.keys(LABELS);
+
+// The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
+// the file tree, the picture viewer and the print profiles. Factual status texts are the record's own, not these.
+Object.assign(LABELS, {
+  "question.kind.decision": "decision", "question.kind.fact": "fact to settle", "question.kind.evidence": "evidence to obtain",
+  "question.context": "Context", "question.variants": "Variants", "question.consequences": "Consequences",
+  "question.remaining-evidence": "What this decision does not replace", "question.no-context": "No reviewer context was added.",
+  "question.zones": "Zones to check", "question.recommendation-note": "The reviewer's opinion; the owner decides.",
+  "question.parent": "Depends on", "question.blocks": "fragments",
+  "decision.accepted": "accepted", "decision.deferred": "deferred", "decision.not-applicable": "not applicable",
+  "decision.remaining": "remaining", "decision.requires-content": "Pick a variant, or say in a comment what you decide.",
+  "decision.defer-reason": "Say in a comment why you defer it.", "decision.parent-pending": "Waits for the parent decision.",
+  "decision.note": "Comment on the decision", "decision.na-badge": "Not applicable under the variant accepted for the parent question.",
+  "decision.requires-js": "Choosing here needs JavaScript; without it the choices only read.",
+  "passport": "Passport", "passport.repository": "Repository", "passport.base": "Base", "passport.head": "Head", "passport.reviewed-at": "Reviewed at",
+  "passport.diffSha": "diff sha256", "passport.record": "record",
+  "coverage.ran": "Ran", "coverage.read": "Read", "coverage.not-checked": "Not checked",
+  "permission": "permission, not an obligation",
+  "scope.files": "files", "scope.added": "added", "scope.removed": "removed",
+  "fragment.definition": "A fragment is one small self-contained part of the diff — a branch, guard, parameter, constant, test or cohesive body — the reviewer's unit of work. Every nonblank changed line belongs to exactly one fragment. Verdicts are the review's, not the owner's decisions and not an independent re-check; a fragment is not a defect, a test or a file.",
+  "counters.evidence-blocks": "fragments awaiting evidence",
+  "file.status.added": "added", "file.status.modified": "modified", "file.status.deleted": "deleted",
+  "files.changed-only": "Only files the diff touches are listed; a file's mark is its change in the diff (added, modified, deleted), not a review verdict.",
+  "screen.historical": "historical revision",
+  "viewer.open": "Enlarge", "viewer.fit": "Fit", "viewer.actual-size": "100%", "viewer.previous": "Previous picture", "viewer.next": "Next picture", "viewer.close": "Close",
+  "print.owner": "Print (owner)", "print.auditor": "Print (full audit)",
+  "print.omissions": "The owner profile prints the screens and the coverage limits without the change map and the file tree; the audit profile prints everything, every fragment. Without scripts, open the sections you need before printing.",
+  "tradeoffs": "Accepted tradeoffs", "tradeoff.consequence": "What remains",
+  "skip-to-decisions": "Skip to the decisions",
+  "structure.declared-only": "Only the links the reviewer wrote are drawn; a missing arrow does not prove a missing dependency. This is the proposed structure, not a map of the current code's calls.",
+  "fragment.what": "What is a fragment?",
+  "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:", "out.draft": "draft",
+});
+
+// The words of the tabbed v4 page: the tabs, the theme icon, the map reader (segbar, popover, sources),
+// the purpose filter, the tree filter, the filter chip, the honest export and the no-script reader.
+Object.assign(LABELS, {
+  "tab.overview": "Overview", "tab.decisions": "Decisions", "tab.findings": "Findings", "tab.code": "Code", "tab.checks": "Checks", "tab.materials": "Materials",
+  "tablist": "Report sections", "tab.remaining": "{n} remaining",
+  "theme.toggle": "Toggle theme", "theme.current": "Theme:", "theme.next": "Switch to",
+  "theme.auto": "auto", "theme.light": "light", "theme.dark": "dark",
+  "map.attention": "Need attention ({n})", "map.all": "All {n}",
+  "map.audit-note": "The default view shows the blocks that need attention; the full audit keeps every block. Every nonblank changed line is in exactly one block; a block may continue in several fragments.",
+  "fragments": "fragments",
+  "seg.details": "details", "seg.details-first": "details and comment",
+  "seg.popover": "Fragment details", "seg.popover-open": "Details of fragment B{n}", "seg.permalink": "Permanent link to fragment B{n}",
+  "seg.source": "Fragment source", "seg.source-open": "open the source", "seg.added-line": "Added line", "seg.removed-line": "Removed line", "seg.revision": "revision",
+  "seg.copy-source": "copy with revision", "seg.copy-source-plain": "copy path:line",
+  "seg.no-line": "The exact line is not determined; open the source and find the file manually.",
+  "seg.kept-no-does": "The fragment is kept as is; no description is required.",
+  "copy.failed": "Automatic copying failed. The text is selected — press Ctrl/⌘+C.",
+  "map.lines-sum": "lines — the sum of this file's block sizes",
+  "tree.title": "File tree", "tree.expand": "expand all", "tree.collapse": "collapse all",
+  "tree.filter": "File name:", "tree.filter-placeholder": "part of the path, case-insensitive", "tree.hide": "hide tree", "tree.show": "show tree",
+  "mview.tree": "Tree", "code.top": "↑ top",
+  "reset": "reset", "chip.prev": "Previous match", "chip.next": "Next match", "chip.back": "← back",
+  "chip.requirement": "Requirement {n}", "chip.finding": "Finding F{n}", "chip.purpose": "Purpose: {n}", "chip.with-parts": "with continuations",
+  "map.open-filter": "Show in the map",
+  "purpose.production": "Production code", "purpose.tests": "Tests", "purpose.styles": "Styles", "purpose.assets": "Assets", "purpose.docs": "Docs", "purpose.config": "Config",
+  "purpose.lines-note": "Lines — the sum of block sizes.",
+  "purpose.rules.production": ".ts/.tsx/.js/.jsx/.mjs and other non-test code, i18n modules included",
+  "purpose.rules.tests": "__tests__/, *.test.*, *.spec.*, __stories__/*.stories.* (dev runs and demos)",
+  "purpose.rules.styles": ".scss/.css/.less/.sass/.styl",
+  "purpose.rules.assets": ".svg/.png/… and the assets/, icons/, keysets/ directories (i18n data)",
+  "purpose.rules.docs": ".md/.mdx/.rst/.txt, changelog/readme/license",
+  "purpose.rules.config": "package.json/lock files/tsconfig*/a.yaml/.eslintrc and the like",
+  "banner.await": "await evidence", "banner.one": "one question", "banner.not-many": "not that many decisions", "banner.show": "Show only Q{n}",
+  "export.download": "Download JSON", "export.copy-text": "Copy text",
+  "export.note": "The JSON carries the record and diff digests to tie it to its revision; the record itself is never changed.",
+  "shot.permalink": "Permanent link to this picture",
+  "nojs.note": "Without JavaScript all sections show one after another; the tabs work as anchor links. The change map is complete: each file is a closed disclosure, opened by its name. Decision variants, zones and controls are disabled — they need JavaScript; decisions are fixed only with scripts.",
+  "nojs.map": "Without JavaScript the map below is complete: open a file by its name. Filters and modes need JavaScript; the tabs above work as anchor links.",
+  "weight.limit": "Weight is not complexity, cost or necessity; shared blocks do not sum.",
+  "structure.target": "Target structure: who uses whom",
+});
+
+// The v4 decision-card words: the status chip, the draft a deferred or unconfirmed pick leaves, the gate
+// a child shows while its parent is undecided or has accepted an outside variant, and the mobile confirm.
+Object.assign(LABELS, {
+  "decision.status.open": "waiting", "decision.status.decided": "selected: {n}", "decision.status.draft": "draft: {n}",
+  "decision.confirm": "Confirm selection", "decision.defer": "Defer", "decision.reset": "Reset",
+  "decision.draft-deferred": "Draft: «{n}» — saved but not in effect (the decision is deferred).",
+  "decision.draft-mobile": "Draft: «{n}». Press «Confirm selection» to fix the decision.",
+  "decision.gate-pending": "Decide Q{n} first: under the variants listed there this question opens; under another accepted variant it becomes not applicable.",
+  "decision.gate-na": "Not applicable: the variant accepted for Q{n} is outside this question's list — no answer is needed.",
+  "decision.gate-draft": " The saved variant «{n}» is a draft, not in effect.",
+  "decision.choose": "Choose a variant",
+  "decision.fact-needed": "Fact needed:", "decision.evidence-needed": "Evidence needed:",
+  "decision.sheet-note": "Choosing a variant fixes the decision; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.",
+  "decision.export-note": "How decisions are fixed and exported",
+  "decision.export-method": "Cards group by what each question asks. On a narrow screen a tap on a variant is a draft until «Confirm selection» fixes it. A draft is never shown as a made choice and exports with a draft mark. A decision may change a requirement but does not replace evidence and does not rewrite fragment verdicts. Variants and comments export to JSON with the record's digest.",
+});
+
 export const CATALOGS = { en: LABELS, ru: {
   "mechanism-change": "В рассматриваемом изменении",
   "consequence": "Почему менять",
@@ -297,18 +393,282 @@ export const CATALOGS = { en: LABELS, ru: {
   "change.removed": "удалено"
 } };
 
+Object.assign(CATALOGS.ru, {
+  "question.kind.decision": "решение", "question.kind.fact": "уточнить факт", "question.kind.evidence": "получить доказательство",
+  "question.context": "Контекст", "question.variants": "Варианты", "question.consequences": "Последствия",
+  "question.remaining-evidence": "Что решение не заменяет", "question.no-context": "Контекст ревьюера не добавлен.",
+  "question.zones": "Зоны проверки", "question.recommendation-note": "Мнение ревьюера; решает владелец.",
+  "question.parent": "Зависит от", "question.blocks": "фрагментов",
+  "decision.accepted": "принято", "decision.deferred": "отложено", "decision.not-applicable": "неприменимо",
+  "decision.remaining": "осталось", "decision.requires-content": "Выберите вариант или напишите в комментарии, что решаете.",
+  "decision.defer-reason": "Напишите в комментарии, почему откладываете.", "decision.parent-pending": "Ждёт решения родительского вопроса.",
+  "decision.note": "Комментарий к решению", "decision.na-badge": "Неприменимо при варианте, принятом для родительского вопроса.",
+  "decision.requires-js": "Выбор здесь требует JavaScript; без него варианты только читаются.",
+  "passport": "Паспорт", "passport.repository": "Репозиторий", "passport.base": "База", "passport.head": "Ревизия", "passport.reviewed-at": "Дата ревью",
+  "passport.diffSha": "sha256 diff", "passport.record": "запись",
+  "coverage.ran": "Запущено", "coverage.read": "Прочитано", "coverage.not-checked": "Не проверено",
+  "permission": "разрешение, не обязательство",
+  "scope.files": "файлов", "scope.added": "добавлено", "scope.removed": "удалено",
+  "fragment.definition": "Фрагмент — небольшая самостоятельная часть изменения (ветка, guard, параметр, константа, тест или связный участок), единица работы ревьюера. Каждая непустая изменённая строка входит ровно в один фрагмент. Вердикты принадлежат ревью: это не решения владельца и не независимая перепроверка; фрагмент — не дефект, не тест и не файл.",
+  "counters.evidence-blocks": "фрагментов ждут доказательств",
+  "file.status.added": "добавлен", "file.status.modified": "изменён", "file.status.deleted": "удалён",
+  "files.changed-only": "Перечислены только файлы, которых касается diff; отметка файла — его изменение в diff (добавлен, изменён, удалён), а не вердикт ревью.",
+  "screen.historical": "архивная ревизия",
+  "viewer.open": "Увеличить", "viewer.fit": "Вписать", "viewer.actual-size": "100%", "viewer.previous": "Предыдущее изображение", "viewer.next": "Следующее изображение", "viewer.close": "Закрыть",
+  "print.owner": "Печать (владелец)", "print.auditor": "Печать (полный аудит)",
+  "print.omissions": "Профиль владельца печатает экраны и ограничения охвата без карты изменений и дерева файлов; профиль аудита печатает всё, каждый фрагмент. Без скриптов раскройте нужные разделы перед печатью.",
+  "tradeoffs": "Принятые компромиссы", "tradeoff.consequence": "Что остаётся",
+  "skip-to-decisions": "К решениям",
+  "structure.declared-only": "Показаны только связи, явно записанные ревьюером; отсутствие стрелки не доказывает отсутствие зависимости. Это предлагаемая структура, не карта фактических вызовов текущего кода.",
+  "fragment.what": "Что такое фрагмент?",
+  "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:", "out.draft": "черновик",
+});
+
+// Слова вкладочной страницы v4: вкладки, тема, карта-ридер, фильтры, честный экспорт и читатель без скриптов.
+Object.assign(CATALOGS.ru, {
+  "tab.overview": "Обзор", "tab.decisions": "Решения", "tab.findings": "Замечания", "tab.code": "Код", "tab.checks": "Проверки", "tab.materials": "Материалы",
+  "tablist": "Разделы отчёта", "tab.remaining": "{n} осталось",
+  "theme.toggle": "Переключить тему оформления", "theme.current": "Тема:", "theme.next": "Переключить на",
+  "theme.auto": "авто", "theme.light": "светлая", "theme.dark": "тёмная",
+  "map.attention": "Требуют внимания ({n})", "map.all": "Все {n}",
+  "map.audit-note": "По умолчанию показаны блоки, требующие внимания; полный аудит сохраняет каждый блок. Каждая непустая изменённая строка входит ровно в один блок; блок может продолжаться в нескольких фрагментах.",
+  "fragments": "фрагментов",
+  "seg.details": "подробности", "seg.details-first": "подробности и комментарий",
+  "seg.popover": "Подробности фрагмента", "seg.popover-open": "Подробности фрагмента B{n}", "seg.permalink": "Постоянная ссылка на фрагмент B{n}",
+  "seg.source": "Источник фрагмента", "seg.source-open": "открыть источник", "seg.added-line": "Добавленная строка", "seg.removed-line": "Удалённая строка", "seg.revision": "ревизия",
+  "seg.copy-source": "копировать с ревизией", "seg.copy-source-plain": "копировать path:line",
+  "seg.no-line": "Точная строка не определена; откройте источник и найдите файл вручную.",
+  "seg.kept-no-does": "Фрагмент оставлен как есть; описание не требуется.",
+  "copy.failed": "Автоматически скопировать не удалось. Текст выделен — нажмите Ctrl/⌘+C.",
+  "map.lines-sum": "строки — сумма размеров блоков этого файла",
+  "tree.title": "Дерево файлов", "tree.expand": "раскрыть всё", "tree.collapse": "свернуть всё",
+  "tree.filter": "Имя файла:", "tree.filter-placeholder": "часть пути, без учёта регистра", "tree.hide": "скрыть дерево", "tree.show": "показать дерево",
+  "mview.tree": "Дерево", "code.top": "↑ наверх",
+  "reset": "сбросить", "chip.prev": "Предыдущее совпадение", "chip.next": "Следующее совпадение", "chip.back": "← вернуться",
+  "chip.requirement": "Требование {n}", "chip.finding": "Замечание F{n}", "chip.purpose": "Назначение: {n}", "chip.with-parts": "с продолжениями",
+  "map.open-filter": "Показать в карте",
+  "purpose.production": "Основной код", "purpose.tests": "Тесты", "purpose.styles": "Стили", "purpose.assets": "Ассеты", "purpose.docs": "Документация", "purpose.config": "Конфигурация",
+  "purpose.lines-note": "Строки — сумма размеров блоков.",
+  "purpose.rules.production": ".ts/.tsx/.js/.jsx/.mjs и прочий не-тестовый код, включая i18n-модули",
+  "purpose.rules.tests": "__tests__/, *.test.*, *.spec.*, __stories__/*.stories.* (dev-прогонки и демо)",
+  "purpose.rules.styles": ".scss/.css/.less/.sass/.styl",
+  "purpose.rules.assets": ".svg/.png/… и каталоги assets/, icons/, keysets/ (данные i18n)",
+  "purpose.rules.docs": ".md/.mdx/.rst/.txt, changelog/readme/license",
+  "purpose.rules.config": "package.json/lock-файлы/tsconfig*/a.yaml/.eslintrc и подобные",
+  "banner.await": "ждут доказательств", "banner.one": "один вопрос", "banner.not-many": "не столько решений", "banner.show": "Показать только Q{n}",
+  "export.download": "Скачать JSON", "export.copy-text": "Копировать текст",
+  "export.note": "JSON содержит digest записи и diff для сверки ревизии; исходная запись не изменяется.",
+  "shot.permalink": "Постоянная ссылка на этот снимок",
+  "nojs.note": "Без JavaScript все разделы показаны подряд; вкладки работают как якорные ссылки. Карта изменений полная: каждый файл — закрытый раскрывающийся блок, открывается по имени. Варианты решений, зоны и кнопки управления отключены — они требуют JavaScript; решения фиксируются только со скриптами.",
+  "nojs.map": "Без JavaScript карта ниже полная: откройте файл по имени. Фильтры и режимы требуют JavaScript; вкладки сверху работают как якорные ссылки.",
+  "weight.limit": "Вес — не сложность, не стоимость и не необходимость; общие блоки не складываются.",
+  "structure.target": "Целевая структура: кто кого использует",
+});
+
+Object.assign(CATALOGS.ru, {
+  "decision.status.open": "ожидает", "decision.status.decided": "Выбрано: {n}", "decision.status.draft": "черновик: {n}",
+  "decision.confirm": "Подтвердить выбор", "decision.defer": "Отложить", "decision.reset": "Сбросить",
+  "decision.draft-deferred": "Черновик: «{n}» — сохранён, но не действует (решение отложено).",
+  "decision.draft-mobile": "Черновик: «{n}». Нажмите «Подтвердить выбор», чтобы зафиксировать решение.",
+  "decision.gate-pending": "Сначала решите Q{n}: при перечисленных там вариантах вопрос откроется, при другом принятом варианте станет неприменимым.",
+  "decision.gate-na": "Неприменимо: для Q{n} принят вариант вне списка этого вопроса — отвечать не нужно.",
+  "decision.gate-draft": " Сохранённый вариант «{n}» — черновик, не действует.",
+  "decision.choose": "Выберите вариант",
+  "decision.fact-needed": "Нужен факт:", "decision.evidence-needed": "Нужно доказательство:",
+  "decision.sheet-note": "Выбор варианта фиксирует решение и обратим на любом экране; комментарий его не заменяет. «Отложить» сохраняет вариант как черновик — он не действует. Рекомендация — мнение ревьюера; решает владелец.",
+  "decision.export-note": "Как фиксируются и выгружаются решения",
+  "decision.export-method": "Карточки сгруппированы по следующему действию. Выбор варианта фиксирует решение и обратим на любом экране; черновик не показан как сделанный выбор и выгружается с пометкой черновика. Комментарии сохраняются в этом браузере, не отправляются и сразу попадают в выгрузку с любого таба. Решение может изменить требование, но не заменяет доказательство и не переписывает вердикты фрагментов. Варианты, ответы на факты и комментарии выгружаются в JSON с digest записи.",
+});
+
+// The v5 words: the one Choices tab with its subtab filters and action groups, the unified card shell,
+// the reversible choice, the fact answer, the compact comment, the export dialog, the purpose toggles,
+// the tree's reveal and the honest no-script counter. Factual status texts remain the record's own.
+Object.assign(LABELS, {
+  "tab.decisions": "Choices",
+  "choice.filter.all": "All", "choice.filter.q": "Decisions", "choice.filter.f": "Findings", "choice.filter.i": "Ideas",
+  "choice.filter.fact": "Facts · checks", "choice.filter.deferred": "Deferred", "choice.filter.done": "Done",
+  "choice.filters": "Subtab filters of the one choice list",
+  "group.owner": "Owner choice needed", "group.fix": "Proposed fixes", "group.data": "Data or a check needed", "group.settled": "Done · deferred",
+  "card.comment": "Comment", "card.comment-n": "Comment · {n}",
+  "card.comment-saved": "Saved in this browser, not sent.",
+  "card.more-basis": "Basis and sources", "card.more-code": "Related code", "card.more-checks": "Checks · version not verified",
+  "card.no-blocks": "No related fragments.",
+  "card.idea-meta": "idea · optional",
+  "card.limit-absent-idea": "The idea's limit and version are not stated in the record; the idea is optional.",
+  "decision.fix-apply": "Fix", "decision.fix-skip": "Do not fix",
+  "decision.idea-apply": "Take", "decision.idea-skip": "Do not take",
+  "decision.idea-apply-aria": "Take the idea {n}", "decision.idea-skip-aria": "Do not take the idea {n}",
+  "decision.fix-apply-aria": "Fix F{n}", "decision.fix-skip-aria": "Do not fix F{n}",
+  "finding.limit.ran": "Shown by a run in the checked version; the check does not extend to other versions.",
+  "finding.limit.read": "Confirmed by reading the code, without a run.",
+  "finding.limit.judgment": "The reviewer's judgment, not a run or a read.",
+  "decision.answer-label": "Answer / link to evidence (an entered answer does not confirm the check automatically)",
+  "decision.answer-placeholder": "answer or link to evidence",
+  "decision.answered": "answer entered",
+  "decision.answer-row": "Answer entered: {n}",
+  "decision.zone-note": "Marking a zone without evidence is not a confirmation of the check.",
+  "decision.limit-unverified": "Not verified:",
+  "decision.selected-no-variant": "Selected: (no variant named)",
+  "decision.draft-suffix": "draft «{n}» — not in effect",
+  "decision.draft-row": "Draft «{n}» — not in effect",
+  "decision.children": "Subquestions", "decision.children.wait": "wait for",
+  "decision.children.open": "opened by the choice «{n}»", "decision.children.na": "not applicable under the parent's accepted variant",
+  "ideas.optional": "Ideas · optional · {n}", "ideas.not-counted": "not in the mandatory counter",
+  "export.open": "Export answers",
+  "export.dialog-note": "Saved in this browser, not sent. The JSON ties the answers to the record and the diff; the record itself is never changed.",
+  "export.accepted": "Accepted decisions", "export.deferred": "Deferred and drafts", "export.answers": "Fact answers", "export.comments": "Comments",
+  "export.empty-accepted": "No accepted decisions yet.", "export.empty-deferred": "No deferred decisions or drafts.", "export.empty-comments": "No comments.",
+  "export.partial": "Partial export is acceptable.", "export.goto": "Go", "export.text": "Answers as text",
+  "export.zones": "Marked zones", "decision.zone-marked": "marked, not a confirmation",
+  "out.passage-context": "Selected text",
+  "nojs.counter-title": "Without JavaScript — a static count of the open items (Q+F); saved answers are not counted.",
+  "tree.reveal-note": "All the file's blocks are shown outside the mode",
+  "chip.hidden": "Hidden: {n}",
+  "seg.comment-details": "Comment · details", "seg.comment-details-n": "Comment · {n} · details",
+});
+Object.assign(CATALOGS.ru, {
+  "tab.decisions": "Выборы",
+  "choice.filter.all": "Все", "choice.filter.q": "Решения", "choice.filter.f": "Замечания", "choice.filter.i": "Идеи",
+  "choice.filter.fact": "Факты · проверки", "choice.filter.deferred": "Отложено", "choice.filter.done": "Завершено",
+  "choice.filters": "Сабтабы-фильтры одного списка выборов",
+  "group.owner": "Нужен выбор владельца", "group.fix": "Предложенные исправления", "group.data": "Нужны данные или проверка", "group.settled": "Завершённые · отложенные",
+  "card.comment": "Комментарий", "card.comment-n": "Комментарий · {n}",
+  "card.comment-saved": "Сохранено в этом браузере, не отправлено.",
+  "card.more-basis": "Обоснование и источники", "card.more-code": "Связанный код", "card.more-checks": "Проверки · версия не проверена",
+  "card.no-blocks": "Связанных фрагментов нет.",
+  "card.idea-meta": "идея · необязательно",
+  "card.limit-absent-idea": "Ограничение и версия для идеи в записи не указаны; идея необязательна.",
+  "decision.fix-apply": "Исправить", "decision.fix-skip": "Не исправлять",
+  "decision.idea-apply": "Взять", "decision.idea-skip": "Не брать",
+  "decision.idea-apply-aria": "Взять идею {n}", "decision.idea-skip-aria": "Не брать идею {n}",
+  "decision.fix-apply-aria": "Исправить F{n}", "decision.fix-skip-aria": "Не исправлять F{n}",
+  "finding.limit.ran": "Показано запуском в проверенной версии; на другие версии проверка не распространяется.",
+  "finding.limit.read": "Подтверждено чтением кода, без запуска.",
+  "finding.limit.judgment": "Оценка ревьюера, не запуск и не чтение.",
+  "decision.answer-label": "Ответ / ссылка на доказательство (внесённый ответ не подтверждает проверку автоматически)",
+  "decision.answer-placeholder": "ответ или ссылка на доказательство",
+  "decision.answered": "ответ внесён",
+  "decision.answer-row": "Ответ внесён: {n}",
+  "decision.zone-note": "Отметка зоны без доказательства — не подтверждение проверки.",
+  "decision.limit-unverified": "Не проверено:",
+  "decision.selected-no-variant": "Выбрано: (вариант не указан)",
+  "decision.draft-suffix": "черновик «{n}» — не действует",
+  "decision.draft-row": "Черновик «{n}» — не действует",
+  "decision.children": "Подвопросы", "decision.children.wait": "ждут решения",
+  "decision.children.open": "открыты выбором «{n}»", "decision.children.na": "неприменимы при принятом варианте родителя",
+  "ideas.optional": "Идеи · необязательно · {n}", "ideas.not-counted": "не входят в счётчик обязательных",
+  "export.open": "Выгрузить ответы",
+  "export.dialog-note": "Сохранено в этом браузере, не отправлено. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
+  "export.accepted": "Принятые решения", "export.deferred": "Отложенные и черновики", "export.answers": "Ответы на факты", "export.comments": "Комментарии",
+  "export.empty-accepted": "Пока нет принятых решений.", "export.empty-deferred": "Нет отложенных решений и черновиков.", "export.empty-comments": "Комментариев нет.",
+  "export.partial": "Частичная выгрузка допустима.", "export.goto": "Перейти", "export.text": "Ответы текстом",
+  "export.zones": "Отмеченные зоны", "decision.zone-marked": "отмечена, не подтверждение",
+  "out.passage-context": "Выделенный текст",
+  "nojs.counter-title": "Без JavaScript — статический подсчёт открытых пунктов (Q+F); сохранённые ответы не учитываются.",
+  "tree.reveal-note": "Показаны все блоки файла вне режима",
+  "chip.hidden": "Скрыто: {n}",
+  "seg.comment-details": "Комментарий · подробности", "seg.comment-details-n": "Комментарий · {n} · подробности",
+});
+// The v5 choice is reversible on every screen: the status chip reads «Selected», never a green success.
+LABELS["decision.status.decided"] = "Selected: {n}";
+CATALOGS.ru["decision.status.decided"] = "Выбрано: {n}";
+LABELS["decision.sheet-note"] = "Choosing a variant fixes the decision and is reversible on any screen; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.";
+LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible on any screen; a draft is never shown as a made choice and exports with a draft mark. Comments are saved in this browser, not sent, and travel with the export from any tab. A decision may change a requirement but does not replace evidence and does not rewrite fragment verdicts. Variants, fact answers and comments export to JSON with the record's digest.";
+
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
+
+// The words of the page's chrome: the counters, the file tree's marks, the print profiles, the skip link,
+// and the v4 controls — tabs, theme, the map reader, the purpose and tree filters, the filter chip, the
+// honest export and the no-script notes. One renderer draws them on every record, old or new, but a catalog
+// written before these controls existed must keep working: an old record without the new fields is checked
+// against the old base set alone, and its chrome falls back to the built-in words. A record that uses any
+// new field must carry the chrome words too — no silent English on a record authored for this version.
+const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
+  "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
+  "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
+  "tab.overview", "tab.decisions", "tab.findings", "tab.code", "tab.checks", "tab.materials", "tablist", "tab.remaining",
+  "theme.toggle", "theme.current", "theme.next", "theme.auto", "theme.light", "theme.dark",
+  "map.attention", "map.all", "map.audit-note", "fragments", "map.lines-sum", "map.open-filter",
+  "seg.details", "seg.details-first", "seg.popover", "seg.popover-open", "seg.permalink",
+  "seg.source", "seg.source-open", "seg.added-line", "seg.removed-line", "seg.revision",
+  "seg.copy-source", "seg.copy-source-plain", "seg.no-line", "seg.kept-no-does", "copy.failed",
+  "tree.title", "tree.expand", "tree.collapse", "tree.filter", "tree.filter-placeholder", "tree.hide", "tree.show",
+  "mview.tree", "code.top", "reset", "chip.prev", "chip.next", "chip.back",
+  "chip.requirement", "chip.finding", "chip.purpose", "chip.with-parts",
+  "purpose.production", "purpose.tests", "purpose.styles", "purpose.assets", "purpose.docs", "purpose.config",
+  "purpose.lines-note", "purpose.rules.production", "purpose.rules.tests", "purpose.rules.styles",
+  "purpose.rules.assets", "purpose.rules.docs", "purpose.rules.config",
+  "export.download", "export.copy-text", "export.note", "nojs.note", "nojs.map",
+  // The v5 chrome stands on every record: the one Choices tab, its subtabs and groups, the unified card
+  // shell with its compact comment, the finding's evidence limit, the export dialog, the purpose toggles'
+  // hidden chip, the tree's reveal note and the honest no-script counter.
+  "choice.filter.all", "choice.filter.q", "choice.filter.f", "choice.filter.i", "choice.filter.fact",
+  "choice.filter.deferred", "choice.filter.done", "choice.filters",
+  "group.owner", "group.fix", "group.data", "group.settled",
+  "card.comment", "card.comment-n", "card.comment-saved", "card.more-basis", "card.more-code", "card.no-blocks",
+  "decision.fix-apply", "decision.fix-skip", "decision.fix-apply-aria", "decision.fix-skip-aria",
+  "finding.limit.ran", "finding.limit.read", "finding.limit.judgment",
+  "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
+  "export.open", "export.dialog-note", "export.accepted", "export.deferred", "export.answers", "export.comments",
+  "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
+  "export.zones", "decision.zone-marked",
+  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n"];
+// The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
+// enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
+// array guards, so they read every list defensively.
+const listOf = (value) => Array.isArray(value) ? value : [];
+const FEATURES = [
+  [(review) => listOf(review.questions).some((q) => q?.kind !== undefined),
+    ["question.kind.decision", "question.kind.fact", "question.kind.evidence", "question.context", "question.variants",
+      "question.consequences", "question.remaining-evidence", "question.zones", "question.recommendation-note",
+      "question.parent", "question.blocks", "decision.accepted", "decision.deferred", "decision.not-applicable",
+      "decision.remaining", "decision.requires-content", "decision.defer-reason", "decision.parent-pending",
+      "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant", "out.draft",
+      "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.confirm", "decision.defer", "decision.reset",
+      "decision.draft-deferred", "decision.draft-mobile", "decision.gate-pending", "decision.gate-na", "decision.gate-draft",
+      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method",
+      "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
+      "decision.zone-note", "decision.limit-unverified", "card.more-checks",
+      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na"]],
+  [(review) => listOf(review.ideas).length > 0,
+    ["ideas.optional", "ideas.not-counted", "card.idea-meta", "card.limit-absent-idea",
+      "decision.idea-apply", "decision.idea-skip", "decision.idea-apply-aria", "decision.idea-skip-aria"]],
+  [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
+  [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
+  [(review) => review.tradeoffs !== undefined, ["tradeoffs", "tradeoff.consequence"]],
+  [(review) => listOf(review.requirements).some((r) => r?.permission !== undefined), ["permission"]],
+  [(review) => listOf(review.screens).some((s) => s?.historical !== undefined), ["screen.historical"]],
+  [(review) => listOf(review.screens).some((s) => ["mockup", "before", "after"].some((shot) => s?.[shot] !== undefined)),
+    ["viewer.open", "viewer.fit", "viewer.actual-size", "viewer.previous", "viewer.next", "viewer.close", "shot.permalink"]],
+  [(review) => listOf(review.units).length > 0 || listOf(review.target_units).length > 0, ["structure.declared-only", "structure.target"]],
+  [(review) => listOf(review.mechanisms).length > 0, ["weight.limit"]],
+  // The banner that keeps many evidence blocks from reading as many decisions: one per evidence question
+  // that has blocks of its own.
+  [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
+    ["banner.await", "banner.one", "banner.not-many", "banner.show"]],
+];
+// The new record fields of the decision-first contract: a record carrying any of them was authored for this
+// version's page, so its catalog owes the chrome words and the keys of every capability it shows. The
+// predicates run before the check's array guards, so they read every list defensively.
+const usesNewFields = (review) =>
+  listOf(review.questions).some((q) => q && ["kind", "resolver", "context", "variants", "recommendation", "remainingEvidence", "parent", "zones"].some((key) => q[key] !== undefined))
+  || listOf(review.requirements).some((r) => r?.permission !== undefined)
+  || listOf(review.screens).some((s) => s?.historical !== undefined)
+  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined;
+export const requiredKeys = (review) => [...BASE_KEYS, ...(usesNewFields(review)
+  ? [...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)] : [])];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
   const own = review.labels ?? {}, base = CATALOGS[languageOf(review)] ?? LABELS;
-  return (key, n) => String(own[key] ?? base[key]).replace("{n}", n);
+  return (key, n) => String(own[key] ?? base[key] ?? LABELS[key]).replace("{n}", n);
 }
 
 export function labelFaults(review) {
   if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
+  const required = requiredKeys(review);
   const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
-    ? Object.keys(LABELS).filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
+    ? required.filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
   const faults = missing.length ? [`language "${review.language}" needs a complete labels catalog; missing: ${missing.join(", ")}`] : [];
   if (review.labels === undefined) return faults;
   if (typeof review.labels !== "object" || review.labels === null || Array.isArray(review.labels)) return ['"labels" is not an object of label to wording'];

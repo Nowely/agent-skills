@@ -1,5 +1,7 @@
 // A line of code as markup with its comments, strings, numbers and keywords marked, by the file's extension.
-// One line at a time and by pattern: enough to read a diff by, not a parser.
+// One line at a time and by pattern: enough to read a diff by, not a parser. This is the fallback: the report
+// renders with the vendored Shiki bundle (createSyntax below) when it is present, and with this highlighter
+// when it is not. See vendor/README.md for the bundle's provenance and rebuild.
 import { esc } from "./text.mjs";
 
 const SLASH = String.raw`\/\/.*|\/\*.*?(?:\*\/|$)|^\s*\*(?:[ /].*)?$`, HASH = "#.*", DASH = "--.*";
@@ -38,4 +40,67 @@ export function highlight(text, path) {
     last = match.index + match[0].length;
   }
   return html + esc(text.slice(last));
+}
+
+// The render-time Shiki syntax: one highlighter per render, each hunk's old and new line sequences tokenized
+// whole (a multi-line comment or template keeps its coloring across lines), both themes in every span, and
+// every token color pre-adjusted to >=4.5:1 on the three code backgrounds of each theme — the GitHub
+// palettes alone dip below that on the tinted added/removed fields. Returns null when the bundle is absent;
+// the caller falls back to the pattern highlighter above. Nothing here reaches the network.
+const SH_LANG = { ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx", mjs: "javascript", cjs: "javascript", scss: "scss", css: "css", json: "json", md: "markdown", markdown: "markdown", mdx: "markdown", svg: "xml", xml: "xml", html: "xml", yml: "yaml", yaml: "yaml" };
+// Exactly the page's code backgrounds: light --code/--ins-bg/--del-bg; dark --code with the rgba tints blended over it.
+const LIGHT_BGS = [[250, 251, 253], [230, 255, 236], [255, 235, 233]];
+const DARK_BGS = [[20, 26, 34], [20 + (46 - 20) * .15, 26 + (160 - 26) * .15, 34 + (67 - 34) * .15], [20 + (248 - 20) * .12, 26 + (81 - 26) * .12, 34 + (73 - 34) * .12]];
+const TOKEN_TARGET = 4.6; // a margin over the 4.5 requirement
+const hex2rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const rgb2hex = (c) => "#" + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+const lumOf = (rgb) => { const [r, g, b] = rgb.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const ratioOf = (a, b) => { const l1 = lumOf(a), l2 = lumOf(b); return (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); };
+
+export async function createSyntax(files) {
+  let mod;
+  try { mod = await import("./vendor/shiki.mjs"); } catch { return null; }
+  const hl = await mod.createHighlighterCore({ themes: mod.themes, langs: mod.langs, engine: mod.createJavaScriptRegexEngine() });
+  const adjustCache = new Map();
+  const adjustToken = (hex, bgs, lighten) => {
+    const ck = hex + (lighten ? "d" : "l");
+    if (adjustCache.has(ck)) return adjustCache.get(ck);
+    const base = hex2rgb(hex);
+    const minRatio = (c) => Math.min(...bgs.map((bg) => ratioOf(c, bg)));
+    let out = hex;
+    if (minRatio(base) < TOKEN_TARGET) {
+      let lo = 0, hi = 1; // mix toward white (dark theme) or black (light theme) until every background passes
+      for (let i = 0; i < 24; i++) { const t = (lo + hi) / 2; const c = base.map((v) => lighten ? v + (255 - v) * t : v * (1 - t)); if (minRatio(c) >= TOKEN_TARGET) hi = t; else lo = t; }
+      out = rgb2hex(base.map((v) => lighten ? v + (255 - v) * hi : v * (1 - hi)));
+    }
+    adjustCache.set(ck, out);
+    return out;
+  };
+  const fontOf = (style) => !style ? "" : `${style & 1 ? ";font-style:italic" : ""}${style & 2 ? ";font-weight:bold" : ""}${style & 4 ? ";text-decoration:underline" : ""}`;
+  const byLine = new Map();
+  for (const f of files) {
+    const lang = SH_LANG[f.path.slice(f.path.lastIndexOf(".") + 1).toLowerCase()];
+    if (!lang) continue; // an unsupported language stays escaped plain text
+    // The old sequence is what the base file holds (removed + context), the new what the head holds (added +
+    // context). Each hunk is tokenized on its own: the diff skips the code between hunks, and a comment or
+    // template left open at a hunk's end must not color the next hunk across that gap.
+    for (const hunk of f.hunks) {
+      for (const [side, keep] of [["old", (l) => l.kind !== "add"], ["new", (l) => l.kind !== "del"]]) {
+        const seq = hunk.filter(keep);
+        const text = seq.map((l) => l.text).join("\n");
+        if (!text.trim()) continue;
+        let tokens;
+        try { tokens = hl.codeToTokens(text, { lang, themes: { light: "github-light", dark: "github-dark" } }).tokens; } catch { continue; }
+        seq.forEach((l, i) => {
+          const html = (tokens[i] ?? []).map((tok) => {
+            const light = adjustToken(String(tok.htmlStyle?.color ?? tok.color ?? "#24292e").toLowerCase(), LIGHT_BGS, false);
+            const dark = adjustToken(String(tok.htmlStyle?.["--shiki-dark"] ?? light).toLowerCase(), DARK_BGS, true);
+            return `<span style="color:${light};--shiki-dark:${dark}${fontOf(tok.fontStyle)}">${esc(tok.content)}</span>`;
+          }).join("");
+          if (html) byLine.set(l, html);
+        });
+      }
+    }
+  }
+  return { line: (l) => byLine.get(l) ?? esc(l.text) };
 }
