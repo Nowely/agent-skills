@@ -2,6 +2,8 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
+See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [fallback](#fallback).
+
 ## Making it
 
 1. Obtain the diff for the agreed scope, including new files where requested. At the start of the analysis,
