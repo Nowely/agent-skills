@@ -598,9 +598,12 @@ if (big) {
     results.v6Initial = await ev(() => ({
       badges: Object.fromEntries([...document.querySelectorAll("[data-cf-count]")].map(e => [e.dataset.cfCount, +e.textContent])),
       removed: document.querySelectorAll("#progress-q, #apply-all, #export-json, #copy, .counters-strip, .status-strip").length,
+      filtersWidth: document.querySelector(".choice-filters").getBoundingClientRect().width,
+      sheetWidth: document.querySelector(".decision-sheet").getBoundingClientRect().width,
     }));
     check("v6: one canonical surface and badges 4/7/4/6/0/0", results.v6Initial.removed === 0 &&
-      JSON.stringify(Object.values(results.v6Initial.badges)) === "[4,7,4,6,0,0]", results.v6Initial);
+      JSON.stringify(Object.values(results.v6Initial.badges)) === "[4,7,4,6,0,0]" &&
+      results.v6Initial.filtersWidth <= results.v6Initial.sheetWidth, results.v6Initial);
     check("65507: starts at Choices, five tabs, the four action groups, the seven subtabs", initial.active === "decisions"
       && initial.tabs.join() === "overview,decisions,code,checks,materials"
       && initial.groups.join() === "group-owner,group-fix,group-data,group-settled"
@@ -710,6 +713,9 @@ if (big) {
       rows: document.querySelectorAll(".frow").length,
       display: getComputedStyle(document.querySelector(".fdir")).display,
       whiteSpace: getComputedStyle(document.querySelector(".fname")).whiteSpace,
+      folderWhiteSpace: getComputedStyle(document.querySelector(".fdir > summary")).whiteSpace,
+      emptyMarker: getComputedStyle(document.querySelector("[data-purpose-empty]"), "::before").content,
+      emptyDisabled: document.querySelector("[data-purpose-empty]").disabled,
       before: document.querySelector(".tree-col").getBoundingClientRect().width
     }));
     await p.locator("#tree-resize").focus(); await p.keyboard.press("ArrowRight");
@@ -719,7 +725,8 @@ if (big) {
     })));
     await p.click('[data-tree-mode="folder"]');
     check("v6: compact folder/list tree keeps 96 rows and resizes", results.v6Tree.flat && results.v6Tree.rows === 96 &&
-      results.v6Tree.display === "contents" && results.v6Tree.whiteSpace === "nowrap" && results.v6Tree.after > results.v6Tree.before, results.v6Tree);
+      results.v6Tree.display === "contents" && results.v6Tree.whiteSpace === "nowrap" && results.v6Tree.folderWhiteSpace === "nowrap" &&
+      results.v6Tree.emptyDisabled && results.v6Tree.emptyMarker === "none" && results.v6Tree.after > results.v6Tree.before, results.v6Tree);
     check("65507: the full audit materializes 96 files, 1470 unique blocks, 1517 fragments", fullMap.insertedFiles === 96 && fullMap.uniqueBlocks === 1470
       && fullMap.segsTotal === 1470 && await ev(() => document.querySelectorAll("#map [data-fragment]").length) === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
     const diffSel = await ev(() => {

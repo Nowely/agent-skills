@@ -173,7 +173,7 @@ textarea.qnote { width: 100%; min-height: 3.4rem; font: .92rem/1.45 var(--text);
 .qzones label { display: flex; gap: .4rem; align-items: baseline; min-height: 32px }
 .qzones .zone-note { font-size: 12px; color: var(--muted); margin: .2rem 0 0 }
 /* Subtabs: one segmented filter over the single card list (the Arcanum merge-checks pattern). */
-.choice-filters { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; max-width: 100%; margin: .2rem 0 .4rem }
+.choice-filters { display: inline-flex; align-self: flex-start; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; max-width: min(100%, 90ch); margin: .2rem 0 .4rem }
 .choice-filters button { border: 0; border-radius: 0; background: none; min-height: 32px; padding: .35rem .8rem; font-size: .92rem; color: var(--muted); box-shadow: inset 0 -2px transparent }
 .choice-filters button + button { border-left: 1px solid var(--line) }
 .choice-filters button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--fg); font-weight: 650; box-shadow: inset 0 -2px var(--accent) }
@@ -227,8 +227,8 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .purpose-bar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center }
 .purpose-bar button { font-size: .88rem; padding: .25rem .6rem }
 .purpose-bar button b { font-variant-numeric: tabular-nums }
-.purpose-bar button[data-purpose-empty] { border-color: transparent; background: none; color: var(--muted) }
-.purpose-bar button[data-purpose-empty]::before { content: none }
+.purpose-bar button[data-purpose-empty]:disabled { border-color: transparent; background: none; color: var(--muted) }
+.purpose-bar button[data-purpose-empty]:disabled::before { content: none }
 .ftree.flat ul, .ftree.flat li:not(.frow), .ftree.flat details { display: contents }
 .ftree.flat .fdir > summary { display: none }
 /* A purpose toggle reads as a weak selected surface with an explicit on-mark, not an inverted fill. */
@@ -260,7 +260,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .tree-root { padding: .1rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ftree, .ftree ul { margin: 0; padding: 0; list-style: none }
 .ftree ul { margin-left: .25rem; padding-left: .45rem; border-left: 1px solid var(--line) }
-.fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 12px }
+.fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .frow { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; gap: .25rem .4rem; padding: .02rem 0 }
 .frow .fname { overflow: hidden; text-overflow: ellipsis; min-width: 0 }
 .frow.current { background: var(--line) }
@@ -1758,7 +1758,7 @@ function treeNav(files, model, t) {
       + `<button type="button" class="fname mono" data-fexpand="${idx}" disabled title="${esc(path)}">${esc(name)}</button><span class="sub req-count">+${adds}/−${rems}</span>${nonkeep ? `<span class="sub req-count" title="${esc(t("map.attention", nonkeep))}">•${nonkeep}</span>` : ""}</li>`;
   };
   const dir = (name, node) => node.dirs.size === 1 && !node.files.length ? dir(`${name}/${[...node.dirs.keys()][0]}`, [...node.dirs.values()][0])
-    : `<li><details class="fdir" open><summary class="mono sub">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
+    : `<li><details class="fdir" open><summary class="mono sub" title="${esc(name)}/">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
   const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(fileRow).join("")}</ul>`;
   return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
   <div class="tree-filter act"><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" aria-label="${esc(t("tree.filter"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
