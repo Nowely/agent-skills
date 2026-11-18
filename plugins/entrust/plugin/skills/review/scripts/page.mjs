@@ -1688,7 +1688,7 @@ function map(review, files, model, t, hl, partCount) {
       <div class="block-comment act" data-blockcomment="b${b.id}"><label class="sub" for="note-b${b.id}">${esc(t("note-block"))}: B${b.id}</label>
       <input class="act" type="text" id="note-b${b.id}" data-note="b${b.id}" placeholder="${esc(t("note-block"))}" aria-label="${esc(t("note-block"))}: B${b.id}"></div>
     </div></details>`;
-  const code = (path, run, title) => `<pre${title ? ` title="${esc(title)}"` : ""}><code>${run.map((l) => `<span class="l ${l.kind}"><b class="old">${l.kind === "add" ? "" : l.old}</b><b class="new">${l.kind === "del" ? "" : l.new}</b><i>${{ add: "+", del: "−", ctx: " " }[l.kind]}</i>${hl(l, path)}</span>`).join("")}</code></pre>`;
+  const code = (path, run, title, fragment) => `<pre${fragment ? ` data-fragment="${fragment}"` : ""}${title ? ` title="${esc(title)}"` : ""}><code>${run.map((l) => `<span class="l ${l.kind}"><b class="old">${l.kind === "add" ? "" : l.old}</b><b class="new">${l.kind === "del" ? "" : l.new}</b><i>${{ add: "+", del: "−", ctx: " " }[l.kind]}</i>${hl(l, path)}</span>`).join("")}</code></pre>`;
   const segment = (path, run) => {
     if (run.block === undefined) return run.lines.length ? `<div class="seg">${code(path, run.lines)}</div>` : "";
     const b = blocks[run.block], count = run.fragments.reduce((n, r) => n + r.lines.length, 0);
@@ -1696,7 +1696,7 @@ function map(review, files, model, t, hl, partCount) {
     return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}" id="b${b.id}">`
       + segbar(b) + segmeta(b)
       + `<details class="segcode"><summary>${esc(t("lines"))}: ${count}</summary>${run.fragments.map((r, i) =>
-        `${i ? `<div class="gap">⋯ ${esc(t("continued"))}</div>` : ""}<div data-fragment="${b.id}">${code(path, r.lines, b.does)}</div>`).join("")}</details></div>`;
+        `${i ? `<div class="gap">⋯ ${esc(t("continued"))}</div>` : ""}${code(path, r.lines, b.does, b.id)}`).join("")}</details></div>`;
   };
   const file = ({ path, hunks }, idx) => {
     const parts = [], grouped = new Map();

@@ -1516,6 +1516,9 @@ if (big) {
       panelsInMarkup: document.querySelectorAll(".panel").length,
       hiddenPanelsInMarkup: document.querySelectorAll(".panel[hidden]").length,
       qcardsReadable: document.querySelectorAll(".qcard").length,
+      domNodes: document.querySelectorAll("*").length,
+      fragments: document.querySelectorAll("#map [data-fragment]").length,
+      blockCodeClosed: document.querySelectorAll("#map .segcode:not([open])").length,
       mapSegs: document.querySelectorAll("#map .seg[data-block]").length,
       mapUniqueBlocks: new Set([...document.querySelectorAll("#map .seg[data-block]")].map(s => s.dataset.block)).size,
       fileDetails: document.querySelectorAll("#map details.file-details").length,
@@ -1539,6 +1542,7 @@ if (big) {
     }));
     results.noJs = noJs;
     check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1470
+      && noJs.fragments === 1517 && noJs.blockCodeClosed === 1470 && noJs.domNodes < 102296
       && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
     check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
