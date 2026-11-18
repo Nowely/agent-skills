@@ -245,32 +245,38 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .purpose-bar button { font-size: .88rem; padding: .25rem .6rem }
 .purpose-bar button b { font-variant-numeric: tabular-nums }
 .map-filters { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center }
-.code-layout { display: grid; grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr); gap: 1rem; align-items: start }
+.code-layout { display: grid; grid-template-columns: var(--tree-w, 17rem) minmax(0, 1fr); gap: 1rem; align-items: start; position: relative }
 .code-layout.hide-tree { grid-template-columns: minmax(0, 1fr) }
-.code-layout.hide-tree .tree-col { display: none }
+.code-layout.hide-tree .tree-col, .code-layout.hide-tree .tree-resize { display: none }
 .tree-col { position: sticky; top: calc(var(--bar-h) + .5rem); max-height: calc(100dvh - var(--bar-h) - 1rem); overflow: auto; min-width: 0 }
 .diff-col { min-width: 0; display: flex; flex-direction: column; gap: .6rem }
+.tree-resize { position: absolute; top: 0; bottom: 0; left: var(--tree-w, 17rem); width: 10px; margin-left: -5px; cursor: col-resize; z-index: 3; touch-action: none }
+.tree-resize:hover, .tree-resize:focus-visible { background: color-mix(in srgb, var(--accent) 25%, transparent) }
 .mview-toggle { display: none }
 @media (max-width: 900px) {
   .code-layout { grid-template-columns: minmax(0, 1fr) }
   .tree-col { position: static; max-height: 40dvh }
+  .tree-resize { display: none }
   .mview-toggle { display: flex; gap: .4rem }
   .code-layout[data-mview="tree"] .diff-col { display: none }
   .code-layout[data-mview="diff"] .tree-col { display: none }
 }
-.tree-nav { background: var(--surface); border: 1px solid var(--line); padding: .6rem .9rem }
-.tree-filter { flex-wrap: wrap; gap: .4rem; align-items: center; margin: .4rem 0 }
-.tree-filter label { flex: none }
-.tree-filter input { flex: 1 1 8rem; max-width: none }
+.tree-nav { background: var(--surface); border: 1px solid var(--line); padding: .5rem .7rem }
+.tree-head { gap: .3rem .5rem }
+.tree-head .label { flex: 1 1 auto }
+.tree-modes button, .tree-head button { font-size: 12px; padding: .15rem .5rem }
+.tree-filter { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .4rem 0 }
+.tree-filter input { flex: 1 1 100%; max-width: none; width: auto }
+.tree-root { padding: .1rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ftree, .ftree ul { margin: 0; padding: 0; list-style: none }
-.ftree ul { margin-left: .5rem; padding-left: .9rem; border-left: 1px solid var(--line) }
-.fdir > summary { cursor: pointer; padding: .15rem 0; background: none }
-.frow { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; gap: .3rem .6rem; padding: .15rem 0 }
+.ftree ul { margin-left: .25rem; padding-left: .45rem; border-left: 1px solid var(--line) }
+.fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 12px }
+.frow { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; gap: .25rem .4rem; padding: .02rem 0 }
 .frow .fname { overflow: hidden; text-overflow: ellipsis; min-width: 0 }
 .frow.current { background: var(--line) }
-.fname { background: none; border: 0; padding: .1rem 0; min-height: 32px; cursor: pointer; color: var(--accent); font-size: .92rem; text-align: left }
+.fname { background: none; border: 0; padding: .05rem 0; min-height: 32px; cursor: pointer; color: var(--accent); font-size: 12px; text-align: left }
 .fname:hover { text-decoration: underline }
-.fs { display: inline-block; width: 1.3em; text-align: center; font-weight: 700; font-family: var(--mono) }
+.fs { display: inline-block; width: 1.1em; text-align: center; font-weight: 700; font-family: var(--mono); font-size: 12px }
 .fs-A { color: var(--keep) } .fs-D { color: var(--remove) } .fs-M { color: var(--accent) }
 .file-lazy:not(:has(.file)) { display: none }
 /* A revealed file shows all its blocks in any verdict mode; the inline filter hiding still wins. */
@@ -629,6 +635,35 @@ const SCRIPT = `
   treeInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { const first = all(".frow").find((row) => row.style.display !== "none"); if (first) { event.preventDefault(); first.querySelector(".fname").click(); } } });
   treeClear.addEventListener("click", () => { treeInput.value = ""; applyTreeFilter(); treeInput.focus(); });
   function resetTreeFilter() { treeInput.value = ""; applyTreeFilter(); }
+
+  // ---- M5: the tree's folder/list mode and resizable width — the code view's own UI state, stored additively.
+  // The flat list MOVES the same rows (no second copy, ids/data-frow preserved); search, reveal and scrollspy
+  // keep working because there is still exactly one set of rows. ----
+  const treeHome = new Map();
+  function setTreeMode(mode) {
+    state.treeMode = mode; save();
+    const folder = document.getElementById("ftree-folder"), flat = document.getElementById("ftree-flat");
+    for (const b of all("[data-tree-mode]")) b.setAttribute("aria-pressed", String(b.dataset.treeMode === mode));
+    if (mode === "flat") {
+      const rows = all("#ftree-folder .frow").sort((a, b) => (data.files[+a.dataset.frow] < data.files[+b.dataset.frow] ? -1 : 1));
+      for (const r of rows) { if (!treeHome.has(r)) { const parent = r.parentElement; treeHome.set(r, { parent, siblings: [...parent.children] }); } flat.append(r); }
+      folder.hidden = true; flat.hidden = false;
+    } else {
+      for (const [r, home] of treeHome) { if (!home.parent.isConnected) continue; const next = home.siblings.slice(home.siblings.indexOf(r) + 1).find((s) => s.isConnected && s.parentElement === home.parent); home.parent.insertBefore(r, next || null); }
+      folder.hidden = false; flat.hidden = true;
+    }
+    applyTreeFilter();
+  }
+  const codeLayout = document.getElementById("code-layout"), treeResize = document.getElementById("tree-resize");
+  const clampW = (w) => Math.max(168, Math.min(560, Math.round(w)));
+  function applyTreeWidth(w) { if (w) codeLayout.style.setProperty("--tree-w", w + "px"); else codeLayout.style.removeProperty("--tree-w"); treeResize.setAttribute("aria-valuenow", w || 238); }
+  let dragging = false;
+  treeResize.addEventListener("pointerdown", (e) => { dragging = true; treeResize.setPointerCapture(e.pointerId); e.preventDefault(); });
+  treeResize.addEventListener("pointermove", (e) => { if (dragging) applyTreeWidth(clampW(e.clientX - codeLayout.getBoundingClientRect().left)); });
+  const endDrag = () => { if (!dragging) return; dragging = false; state.treeWidth = clampW(codeLayout.querySelector(".tree-col").getBoundingClientRect().width); save(); applyTreeWidth(state.treeWidth); };
+  treeResize.addEventListener("pointerup", endDrag);
+  treeResize.addEventListener("pointercancel", endDrag);
+  treeResize.addEventListener("keydown", (e) => { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); state.treeWidth = clampW((state.treeWidth || 238) + (e.key === "ArrowRight" ? 16 : -16)); save(); applyTreeWidth(state.treeWidth); });
 
   // ---- C4: the filter chip with prev/next matches and a way back; the hidden purposes read as one chip ----
   const chip = document.getElementById("filter-chip"), chipLabel = document.getElementById("filter-chip-label");
@@ -1228,6 +1263,7 @@ const SCRIPT = `
       document.getElementById("hide-tree").hidden = on;
       return;
     }
+    else if (button.dataset.treeMode) { setTreeMode(button.dataset.treeMode); return; }
     else if (button.dataset.mview) { document.getElementById("code-layout").dataset.mview = button.dataset.mview; for (const b of all("[data-mview]")) b.setAttribute("aria-pressed", String(b.dataset.mview === button.dataset.mview)); return; }
     else if (button.id === "code-top") { window.scrollTo({ top: 0 }); return; }
     else if (button.dataset.fexpand !== undefined) {
@@ -1341,6 +1377,8 @@ const SCRIPT = `
   document.getElementById("code-layout").classList.toggle("hide-tree", !!state.treeHidden);
   document.getElementById("show-tree").hidden = !state.treeHidden;
   document.getElementById("hide-tree").hidden = !!state.treeHidden;
+  setTreeMode(state.treeMode === "flat" ? "flat" : "folder");
+  applyTreeWidth(state.treeWidth);
   paint();
   // The scrollspy marks the tree row of the file at the viewport top line while the code tab scrolls.
   let spyScheduled = false;
@@ -1729,10 +1767,16 @@ function map(review, files, model, t, hl, partCount) {
 
 // The tree: one line per file — the diff mark (never a verdict), basename (full path in title), +N/−M, the
 // count not kept. Open by default for the no-script reader; the name filter (C2) highlights, Enter opens.
+// The root every file shares is named once above the tree, not repeated down each branch; a folder/list mode
+// toggle and a resizable width are the code view's own UI state (never a new filter axis).
 function treeNav(files, model, t) {
+  const split = files.map((f) => f.path.split("/"));
+  let common = 0;
+  if (split.length > 1) { outer: for (let i = 0; i < split[0].length - 1; i++) { for (const p of split) if (p[i] !== split[0][i]) break outer; common = i + 1; } }
+  const rootLabel = split[0].slice(0, common).join("/");
   const root = { dirs: new Map(), files: [] };
   files.forEach(({ path }, idx) => {
-    const parts = path.split("/"), name = parts.pop();
+    const parts = path.split("/").slice(common), name = parts.pop();
     let at = root;
     for (const part of parts) { if (!at.dirs.has(part)) at.dirs.set(part, { dirs: new Map(), files: [] }); at = at.dirs.get(part); }
     at.files.push({ name, path, idx });
@@ -1749,10 +1793,10 @@ function treeNav(files, model, t) {
   const dir = (name, node) => node.dirs.size === 1 && !node.files.length ? dir(`${name}/${[...node.dirs.keys()][0]}`, [...node.dirs.values()][0])
     : `<li><details class="fdir" open><summary class="mono sub">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
   const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(fileRow).join("")}</ul>`;
-  return `<div class="tree-nav" id="files-tree"><div class="group"><span class="label">${esc(t("tree.title"))}</span><button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
-  <div class="tree-filter act"><label class="sub" for="tree-filter-input">${esc(t("tree.filter"))}</label><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
-  <details class="count-note"><summary>${esc(t("files"))}</summary><p class="sub">${esc(t("files.changed-only"))}</p></details>
-  <div class="ftree">${list(root)}</div></div>`;
+  return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
+  <div class="tree-filter act"><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" aria-label="${esc(t("tree.filter"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
+  ${rootLabel ? `<div class="tree-root sub mono" title="${esc(rootLabel)}">${esc(rootLabel)}/</div>` : ""}
+  <div class="ftree" id="ftree-folder">${list(root)}</div><ul class="ftree ftree-flat" id="ftree-flat" hidden></ul></div>`;
 }
 
 // The code tab: the purpose filter, the map modes, the tree and the map reader, the filter chip, and one
@@ -1783,6 +1827,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
   </div>
   <div class="code-layout" id="code-layout" data-mview="both">
     <aside class="tree-col">${treeNav(files, model, t)}</aside>
+    <div class="tree-resize" id="tree-resize" role="separator" aria-orientation="vertical" tabindex="0" aria-label="${esc(t("tree.resize"))}" title="${esc(t("tree.resize"))}" aria-valuemin="168" aria-valuemax="560"></div>
     <div class="diff-col">
       <div class="filter-chip" id="filter-chip" hidden><span id="filter-chip-label"></span><span class="chip-nav"><button type="button" id="filter-prev" aria-label="${esc(t("chip.prev"))}">‹</button><span class="chip-pos" id="filter-pos" role="status"></span><button type="button" id="filter-next" aria-label="${esc(t("chip.next"))}">›</button></span><button type="button" id="filter-back">${esc(t("chip.back"))}</button><button type="button" id="filter-clear">${esc(t("reset"))}</button></div>
       ${banners}
