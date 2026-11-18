@@ -145,20 +145,24 @@ td ol { margin: 0; padding-left: 1.2rem }
 /* A made choice reads neutral «Selected», never a green success; a draft and an entered fact answer are amber. */
 .qstatus[data-state="decided"], .qstatus[data-state="na"], .qstatus[data-state="deferred"] { --v: var(--fg); --v-bg: var(--line) }
 .qstatus[data-state="draft"], .qstatus[data-state="answered"] { --v: var(--fix); --v-bg: var(--fix-bg) }
-.fact-answer-label { font-size: 12px; color: var(--muted); font-weight: 600 }
+.fact-answer-label { font-size: 1rem; color: var(--fg); font-weight: 650 }
 .js label.fact-answer-label { display: block }
+/* The choice zone on F/I cards is named at the same weight as the Q legend: here is where you act. */
+.choice-label { display: block; font-size: 1rem; font-weight: 650; color: var(--fg); margin: .5rem 0 .3rem }
 .qgate { color: var(--fix); margin: .1rem 0; font-size: 1rem }
 .qcard.na .qgate { color: var(--muted) }
 .qdraft { color: var(--fix); margin: .1rem 0; font-size: 1rem }
 .qadvice { font-size: 1rem; margin: .1rem 0 }
-.qopts { border: 0; padding: 0; margin: .2rem 0; display: flex; flex-direction: column; gap: 0 }
-.qopts legend { font-size: 12px; color: var(--muted); font-weight: 600; padding: 0; margin-bottom: .2rem }
+.qopts { border: 0; padding: 0; margin: .7rem 0 .2rem; display: flex; flex-direction: column; gap: 0 }
+.qopts legend { font-size: 1rem; color: var(--fg); font-weight: 650; padding: 0; margin-bottom: .3rem }
 .qopt { display: flex; gap: .55rem; align-items: flex-start; padding: .55rem .4rem; border-top: 1px solid var(--line); cursor: pointer; min-height: 32px }
 .qopt:last-of-type { border-bottom: 1px solid var(--line) }
-.qopt:has(input:checked) { background: color-mix(in srgb, var(--accent) 8%, var(--surface)) }
+.qopt:has(input:checked) { background: color-mix(in srgb, var(--accent) 10%, var(--surface)) }
 .qopt input { margin-top: .3rem; flex: none; width: 1.1rem; height: 1.1rem }
 .qopt strong { font-size: 1rem; font-weight: 600 }
-.qopt .qcons { display: block; font-size: 1rem; color: var(--muted) }
+/* Consequences are decision-critical main text under the variant, not muted metadata; the first one leads. */
+.qopt .qcons { display: block; font-size: 1rem; color: var(--fg); font-weight: 600; margin-top: .15rem }
+.qopt ul.plain { margin: .1rem 0 0 }
 .qopt:has(input:disabled) { cursor: not-allowed; opacity: .7 }
 .qactions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center }
 .qchildren { margin: .2rem 0 0 }
@@ -223,6 +227,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .js .act { display: flex }
 .js input.act, .js textarea.act { display: block }
 .js .card-comment.act { display: block }
+.js .choice-label.act { display: block }
 .js .nojs-note { display: none }
 /* Mechanisms: the v3 card, the weight's limit on the surface, the methodology in the details. */
 .mechanism { padding: 1rem 1.2rem; gap: .75rem }
@@ -1130,6 +1135,9 @@ const SCRIPT = `
         const missing = (e.choice === "accepted" && !D.validAccept(q, state)) || (e.choice === "deferred" && !D.validDefer(q, state));
         hint.hidden = !missing; hint.textContent = e.choice === "deferred" ? t.deferReason : t.requiresContent;
       }
+      // «Reset» only when there is a choice or draft to clear; an untouched card offers nothing to reset.
+      const resetBtn = card.querySelector("[data-qreset]");
+      if (resetBtn) resetBtn.hidden = !(e.choice || e.variant);
       const ansInput = card.querySelector("[data-answer]");
       if (ansInput && document.activeElement !== ansInput) ansInput.value = state.answers["q" + q.id] || "";
     }
@@ -1437,11 +1445,11 @@ function questionCard(q, review, model, t, child, partCount) {
     : q.kind !== "decision" && q.remainingEvidence?.length ? `${esc(t("decision.limit-unverified"))} ${q.remainingEvidence.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ")}` : "";
   const advice = rec && !asLimit ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(rec.text)}${rec.variant ? ` <span class="sub">[${esc(rec.variant)}]</span>` : ""}${rec.sources?.length ? ` <span class="sub">(${srcHtml(rec.sources, review)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : "";
   const actions = q.kind === "decision" && variants.length ? `
-    <div class="qactions act"><button type="button" data-defer="${q.id}" aria-label="${esc(t("decision.defer"))}: Q${q.id}">${esc(t("decision.defer"))}</button><button type="button" data-qreset="${q.id}" aria-label="${esc(t("decision.reset"))}: Q${q.id}">${esc(t("decision.reset"))}</button></div>
+    <div class="qactions act"><button type="button" data-defer="${q.id}" aria-label="${esc(t("decision.defer"))}: Q${q.id}">${esc(t("decision.defer"))}</button><button type="button" data-qreset="${q.id}" aria-label="${esc(t("decision.reset"))}: Q${q.id}" hidden>${esc(t("decision.reset"))}</button></div>
     <p class="qdraft sub" data-qdraft="${q.id}" hidden></p>` : "";
   const decide = q.kind === "decision" && !variants.length ? `<div class="card-choice"><span class="decide group act" data-finding="q${q.id}"><button type="button" value="accepted">${esc(t("decision.accepted"))}</button><button type="button" value="deferred">${esc(t("decision.deferred"))}</button></span></div>` : "";
   const answer = q.kind === "fact" || q.kind === "evidence" ? `
-    <label class="fact-answer-label act sub" for="answer-q${q.id}">${esc(t("decision.answer-label"))}</label>
+    <label class="fact-answer-label act" for="answer-q${q.id}">${esc(t("decision.answer-label"))}</label>
     <input type="text" class="act" id="answer-q${q.id}" data-answer="q${q.id}" placeholder="${esc(t("decision.answer-placeholder"))}" aria-label="${esc(t("decision.answer-label"))}: Q${q.id}" disabled>` : "";
   const qparts = q.blocks ? model.blocks.filter((b) => b.questions.includes(q.id)).reduce((sum, b) => sum + (partCount[b.id] ?? 1), 0) : 0;
   const where = q.blocks ? `<details class="qwhere" data-qwhere="${q.id}"><summary>${esc(t("card.more-code"))} · ${placeHtml(q.at, model)} · ${qparts} ${esc(t("fragments"))}</summary><div class="qwhere-body"></div><p><button type="button" class="req-link" data-q-filter="${q.id}" disabled>${esc(t("map.open-filter"))} →</button></p></details>` : "";
@@ -1449,7 +1457,7 @@ function questionCard(q, review, model, t, child, partCount) {
   const checks = q.kind === "decision" && q.remainingEvidence?.length ? `<details class="qchecks"><summary>${esc(t("card.more-checks"))}</summary><div class="stack">${remaining}</div></details>` : "";
   return `
   <div class="qcard ${esc(q.kind)}${child ? " child" : ""}" id="q${q.id}" data-qid="${q.id}"${q.parent ? ` data-parent="${q.parent.question}"` : ""} data-where="Q${q.id}">
-    <div class="card-head"><h3 class="card-title">${esc(t(`question.kind.${q.kind}`))}${q.resolver ? ` · ${esc(q.resolver)}` : ""}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${placeHtml(q.at, model)}</span></div>
+    <div class="card-head"><h3 class="card-title">${q.kind === "decision" && q.resolver === "owner" ? esc(t("question.owner-decision")) : esc(t(`question.kind.${q.kind}`)) + (q.resolver ? ` · ${esc(q.resolver)}` : "")}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${placeHtml(q.at, model)}</span></div>
     <p class="card-question">${lead}${prose(q.text)}</p>
     ${q.parent ? `<p class="qgate sub" data-qgate="${q.id}" hidden></p><p class="sub">${esc(t("question.parent"))}: <a href="#q${q.parent.question}">Q${q.parent.question}</a></p>` : ""}
     ${limit ? `<p class="card-limit">${limit}</p>` : ""}
@@ -1483,7 +1491,7 @@ function findingCard(f, review, model, t) {
     <p class="card-question">${prose(f.what)}${names(t, "breaks", f.breaks)}${names(t, "untested", f.untested)}</p>
     <p class="card-limit">${esc(t(`finding.limit.${f.evidence}`))}</p>
     <p class="card-consequence"><strong>${esc(t("fix"))}:</strong> ${prose(f.fix)}</p>
-    <div class="card-choice"><span class="decide group act" data-finding="${esc(f.id)}"><button type="button" value="apply" aria-label="${esc(t("decision.fix-apply-aria", f.id))}">${esc(t("decision.fix-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.fix-skip-aria", f.id))}">${esc(t("decision.fix-skip"))}</button></span></div>
+    <div class="card-choice"><span class="choice-label act">${esc(t("decision.your-decision"))}</span><span class="decide group act" data-finding="${esc(f.id)}"><button type="button" value="apply" aria-label="${esc(t("decision.fix-apply-aria", f.id))}">${esc(t("decision.fix-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.fix-skip-aria", f.id))}">${esc(t("decision.fix-skip"))}</button></span></div>
     ${commentBox("f" + esc(f.id), t, t("note-finding"))}
     <div class="card-more">
       <details class="qdetail"><summary>${esc(t("card.more-basis"))}</summary><div class="stack"><p><strong>${esc(t("shown-by"))}:</strong> ${prose(f.shown_by)}</p><p class="sub mono">${esc(f.at)}</p></div></details>
@@ -1499,7 +1507,7 @@ function ideaCard(idea, model, t) {
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
     <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="card-meta">${esc(t("idea"))}</span></div>
     <p class="card-question">${prose(idea.text)}</p>
-    <div class="card-choice"><span class="decide group act" data-finding="${idea.id}"><button type="button" value="apply" aria-label="${esc(t("decision.idea-apply-aria", idea.title))}">${esc(t("decision.idea-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.idea-skip-aria", idea.title))}">${esc(t("decision.idea-skip"))}</button></span></div>
+    <div class="card-choice"><span class="choice-label act">${esc(t("decision.your-choice"))}</span><span class="decide group act" data-finding="${idea.id}"><button type="button" value="apply" aria-label="${esc(t("decision.idea-apply-aria", idea.title))}">${esc(t("decision.idea-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.idea-skip-aria", idea.title))}">${esc(t("decision.idea-skip"))}</button></span></div>
     ${commentBox(idea.id, t, t("note-idea"))}
     ${idea.at ? `<div class="card-more"><details class="qwhere"><summary>${esc(t("card.more-code"))} · ${placeHtml(idea.at, model)}</summary><div class="qwhere-body"><p class="sub mono">${esc(idea.at)}</p></div></details></div>` : ""}
   </article>`;
