@@ -69,16 +69,7 @@ export function decisionRuntime() {
   // The one quantity the page counts: the main decisions still open (the roots, not their conditional
   // children) plus the findings not processed. Ideas are optional and never enter it; an invalid acceptance
   // or a reasonless deferral leaves its question open.
-  const remainingCount = (questions, state, findings) => {
-    const byId = byIdOf(questions);
-    let n = 0;
-    for (const q of questions) {
-      if (q.kind !== "decision" || q.parent) continue;
-      if (applicableIn(q, state, byId) && !validAccept(q, state) && !validDefer(q, state)) n++;
-    }
-    for (const f of findings) if (!state.findings[f.id]) n++;
-    return n;
-  };
+  const remainingCount = (questions, state, findings) => choiceStats(questions, state, findings).remaining;
   // The ONE derivative behind every counter: the subtab badges, the global remainder, the settled rows and the
   // export's remainder all read this — never a DOM tally, so they cannot disagree after Q2=keep. A main decision
   // is open until it has a valid decision; its conditional children are actionable under it but never enter the

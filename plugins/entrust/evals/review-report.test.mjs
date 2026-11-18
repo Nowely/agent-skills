@@ -1051,6 +1051,17 @@ test("the map keeps every block once: 1470 anchors, 1517 fragments, zero duplica
     if ((page.match(/class="segbar"/g) ?? []).length !== 1470 || (page.match(/data-blockcomment="/g) ?? []).length !== 1470) return "headers or comments are duplicated per fragment";
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
     if (embedded.blocks.reduce((n, b) => n + b.parts, 0) !== 1517) return "runtime fragment accounting differs";
+    const fileBodies = page.split('class="file"').slice(1);
+    if (fileBodies.length !== 96) return `line-order coverage: ${fileBodies.length} files`;
+    if ((page.match(/class="l (?:add|del|ctx)"/g) ?? []).length !== 6740) return "diff line coverage differs from 6740";
+    for (const [idx, body] of fileBodies.entries()) for (const side of ["old", "new"]) {
+      let previous = 0;
+      for (const [, value] of body.matchAll(new RegExp(`<b class="${side}">(\\d+)</b>`, "g"))) {
+        const n = Number(value);
+        if (n < previous) return `file ${idx}, ${side}: backwards ${previous} → ${n}`;
+        previous = n;
+      }
+    }
     if (/<details class="segcode" open/.test(page)) return "no-JS block code is not closed";
     const banner = page.match(/<div class="evidence-banner v-question"><p>([^]*?)<\/p>/)?.[1];
     if (!banner || !banner.includes("224") || !banner.includes('href="#q3"')) return `the Q3 banner is missing or wrong: ${banner?.slice(0, 120)}`;
@@ -1752,6 +1763,10 @@ test("v6 choiceStats keeps accepted parents active until children settle; ideas 
     s.findings.i1 = "apply"; s.answers.q4 = "proof";
     if (stats().remaining !== 1 || stats().fact !== 0 || stats().i !== 0) return "optional idea or fact changes mandatory count";
     if (exportOf(qs, s, {}).questions.some(q => q.question === 4)) return "fact promoted to decision";
+    s = normalize(JSON.parse(JSON.stringify(s)));
+    if (remainingCount(qs, s, fs) !== stats().remaining) return "reload remaining differs";
+    delete s.questions[2]; delete s.notes.q2;
+    if (remainingCount(qs, s, fs) !== 2 || stats().q !== 1) return "reset remaining differs";
     return true;
   });
 

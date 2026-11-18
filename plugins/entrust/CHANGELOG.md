@@ -22,8 +22,9 @@ forensics remain in the repository references and release notes.
   reports copy success once (M8). Optionality, screen warnings, mechanism caveats and comment instructions
   no longer repeat in each card; settled rows retain the original cards and their reversible actions (M9).
 - A 1600px outer canvas lets the code fill the available width while choice prose stays within 90ch
-  (M10). Fragments of the same block share one header, metadata disclosure and comment; code fragments
-  retain hunk gaps, one B anchor, filters, annotations, no-script access and print coverage (M11).
+  (M10). The first fragment owns the block's header, metadata disclosure, comment and B anchor;
+  later fragments stay in file-line order with a light continuation link and line range.
+  Hunk gaps, block filters, annotations, no-script access and print coverage remain intact (M11).
   The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
 - v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
   grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
@@ -99,12 +100,11 @@ forensics remain in the repository references and release notes.
   second copy — with the focus captured before the move and landed on the row's summary (keyboard and touch,
   rAF for the touch-click). The read-only matter (passport, status, counters, now→target, closed structure,
   tradeoffs, mechanisms) lives in Overview; evidence requests and challenges in Checks. The first screen leads
-  with the verdict's lead line, the recommendation and the record's unchecked limits; the instructions sit in a
-  closed disclosure.
+  with a short working instruction and a link to the conclusion in Overview; the unchecked limits remain explicit.
 - Unified card shell and reversible choice: one neutral surface for Q/F/I/fact — head (16px type, id, status) →
   essence → limit on the surface → choice → comment → disclosures (basis and sources, related code built lazily
   from the canonical templates, checks). The limit slot shows the record's own words: the «no clear
-  recommendation» text, the finding's evidence kind, the idea's explicit absence of limit data — nothing
+  recommendation» text and the finding's evidence kind — nothing
   invented. A made choice reads neutral «Selected», never a green success. The variant radio is the decision on
   every screen size — accepted at once, changed by another pick, cleared by Reset; the mobile draft-and-confirm
   rule is gone. A fact or evidence card carries an answer field on its surface: «answer entered» (amber), never
@@ -117,8 +117,8 @@ forensics remain in the repository references and release notes.
   `questions[id].note` — with its context and a «Go» link that opens the tab and target and closes the dialog;
   the counter of what remains travels with it, a partial export is acceptable. The clipboard stays honest:
   «Copied» only on a confirmed success, a refusal selects the readonly text and says Ctrl/⌘+C. Comments become
-  one compact pattern on cards and blocks: closed by default, the saved text with «Edit» and «saved in this
-  browser, not sent», focusout collapses the editor; the related-code clones cut the comment wrapper.
+  one compact pattern on cards and blocks: closed by default, the saved text with «Edit»;
+  storage guidance lives in export, focusout collapses the editor; the related-code clones cut the comment wrapper.
 - Purpose becomes multi-toggles: several groups can hide at once in the map AND the tree, the state stored
   additively beside the decisions, a «Hidden: …» chip with the remaining share, reset and deep links to hidden
   blocks restore them. The tree opens statically (the no-script reader sees every file), one line per file —
@@ -131,7 +131,7 @@ forensics remain in the repository references and release notes.
   contrast tokens kept. Mobile touch targets ≥44px in a media block placed last (the theme icon stays 32px by
   plan), the diff gutters 2.2em on narrow screens. The no-JS Choices badge is the static Q+F count with an honest
   title («saved answers are not counted»). Owner print builds the lazy «related code» bodies first, then opens
-  every nested disclosure (588/588 on the enriched copy); the auditor prints all 1470/1517; afterprint restores
+  every nested disclosure (572/572 on the enriched copy); the auditor prints all 1470/1517; afterprint restores
   the page, the hidden purposes included.
 
 ### Changed

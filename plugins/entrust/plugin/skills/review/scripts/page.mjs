@@ -648,7 +648,7 @@ const SCRIPT = `
   const chip = document.getElementById("filter-chip"), chipLabel = document.getElementById("filter-chip-label");
   const chipPos = document.getElementById("filter-pos"), chipPrev = document.getElementById("filter-prev"), chipNext = document.getElementById("filter-next"), chipBack = document.getElementById("filter-back");
   let returnState = null, chipIdx = 0, chipKey = "";
-  const chipMatches = () => [...document.querySelectorAll("#map .seg[data-block]")].filter((s) => s.style.display !== "none" && s.offsetParent !== null);
+  const chipMatches = () => [...document.querySelectorAll("#map .seg[id][data-block]")].filter((s) => s.style.display !== "none" && s.offsetParent !== null);
   function paintChipPos(n) { chipPos.textContent = n ? (chipIdx + 1) + " / " + n : "0"; chipPrev.disabled = chipNext.disabled = !n; }
   function updateChip() {
     const q = map.dataset.q, req = map.dataset.req, f = map.dataset.f, hidden = hiddenPurposes();
@@ -772,7 +772,8 @@ const SCRIPT = `
         s.removeAttribute("id");
         s.querySelectorAll(".block-comment").forEach((n) => n.remove());
         s.querySelectorAll("label[for]").forEach((n) => n.removeAttribute("for"));
-        const code = s.querySelector(".segcode"); if (code) code.open = false;
+        const code = s.querySelector(".segcode");
+        if (code) { if (s.querySelector(".segbar")) code.open = false; else code.replaceWith(code.querySelector("pre")); }
         wrap.append(s);
       }
       body.append(wrap);
@@ -1605,8 +1606,7 @@ function screens(review, { screens: shown }, t) {
   };
   return `
 <section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>
-  ${shown.some((s) => s.historical) ? `<p class="sub">${esc(t("screen.historical"))}</p>` : ""}
-  ${[...new Set(shown.map((s) => s.missing).filter(Boolean))].map((missing) => `<p class="sub">${esc(t("not-compared"))}: ${prose(missing)}</p>`).join("")}
+  ${shown.some((s) => s.historical || s.missing) ? `<p class="sub">${shown.some((s) => s.historical) ? `${esc(t("screen.historical"))}. ` : ""}${shown.some((s) => s.missing) ? `${esc(t("not-compared"))}: ` : ""}${[...new Set(shown.map((s) => s.missing).filter(Boolean))].map(prose).join(" ")}</p>` : ""}
   ${shown.map((s, index) => `
   <article class="finding" id="shot-${index + 1}" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}<a class="shot-link" href="#shot-${index + 1}" aria-label="${esc(t("shot.permalink"))} ${index + 1}: ${esc(s.name)}" title="${esc(t("shot.permalink"))}">#</a></h3>
@@ -1660,7 +1660,7 @@ function scenarios({ scenarios: tried }, t) {
 </section>`;
 }
 
-// One block header, metadata and comment surround its fragments; gaps preserve hunk boundaries.
+// First fragments own the header and comment; continuations stay in diff order.
 // Files remain closed disclosures for no-script readers and are materialized lazily at runtime.
 function map(review, files, model, t, hl, partCount) {
   const { blocks, owner } = model;
@@ -1691,15 +1691,18 @@ function map(review, files, model, t, hl, partCount) {
   const code = (path, run, title, fragment) => `<pre${fragment ? ` data-fragment="${fragment}"` : ""}${title ? ` title="${esc(title)}"` : ""}><code>${run.map((l) => `<span class="l ${l.kind}"><b class="old">${l.kind === "add" ? "" : l.old}</b><b class="new">${l.kind === "del" ? "" : l.new}</b><i>${{ add: "+", del: "−", ctx: " " }[l.kind]}</i>${hl(l, path)}</span>`).join("")}</code></pre>`;
   const segment = (path, run) => {
     if (run.block === undefined) return run.lines.length ? `<div class="seg">${code(path, run.lines)}</div>` : "";
-    const b = blocks[run.block], count = run.fragments.reduce((n, r) => n + r.lines.length, 0);
-    partCount[b.id] = run.fragments.length;
-    return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}" id="b${b.id}">`
-      + segbar(b) + segmeta(b)
-      + `<details class="segcode"><summary>${esc(t("lines"))}: ${count}</summary>${run.fragments.map((r, i) =>
-        `${i ? `<div class="gap">⋯ ${esc(t("continued"))}</div>` : ""}${code(path, r.lines, b.does, b.id)}`).join("")}</details></div>`;
+    const b = blocks[run.block], continued = partCount[b.id];
+    partCount[b.id] = (continued || 0) + 1;
+    const range = ["old", "new"].map((side) => {
+      const ns = run.lines.filter((l) => l.kind !== (side === "old" ? "add" : "del")).map((l) => l[side]);
+      return ns.length ? `${side === "old" ? "−" : "+"}${ns[0]}–${ns.at(-1)}` : "";
+    }).filter(Boolean).join(" / ");
+    return `<div class="seg v-${b.verdict}" data-block="${b.id}" data-verdict="${b.verdict}" data-serves="${b.serves.join(" ")}" data-q="${b.questions.join(" ")}" data-f="${b.findings.join(" ")}" data-purpose="${esc(model.purpose.block[b.id])}"${continued ? "" : ` id="b${b.id}"`}>`
+      + (continued ? `<div class="sub"><a href="#b${b.id}">B${b.id} · ${esc(t("continued"))}</a> · ${esc(t("lines"))}: ${range}</div>` : segbar(b) + segmeta(b))
+      + `<details class="segcode"><summary>${esc(t("lines"))}: ${run.lines.length}</summary>${code(path, run.lines, b.does, b.id)}</details></div>`;
   };
   const file = ({ path, hunks }, idx) => {
-    const parts = [], grouped = new Map();
+    const parts = [];
     hunks.forEach((hunk, at) => {
       const runs = [];
       let run = null, ctxBuf = [];
@@ -1717,15 +1720,7 @@ function map(review, files, model, t, hl, partCount) {
         run.lines.push(line);
       }
       if (run) run.lines.push(...ctxBuf);
-      for (const r of runs) {
-        const previous = grouped.get(r.block);
-        if (previous) previous.fragments.push(r);
-        else {
-          const part = { ...r, fragments: [r], gap: at > 0 && r === runs[0] };
-          parts.push(part);
-          if (r.block !== undefined) grouped.set(r.block, part);
-        }
-      }
+      for (const r of runs) parts.push({ ...r, gap: at > 0 && r === runs[0] });
     });
     const own = blocks.filter((b) => b.path === path);
     const cat = model.purpose.file[path];
@@ -1923,18 +1918,16 @@ export function page(review, files, model, { syntax } = {}) {
     annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
-  const staticRemaining = model.questions.filter((q) => q.kind === "decision" && !q.parent).length + review.findings.length;
+  const D = decisionRuntime(), cfStatic = D.choiceStats(model.questions, D.empty(), review.findings, ideas);
   const tabs = [
     ["overview", t("tab.overview"), ""],
-    ["decisions", t("tab.decisions"), `<span class="tab-count" id="count-decisions" title="${esc(t("nojs.counter-title"))}">${esc(t("tab.remaining", staticRemaining))}</span>`],
+    ["decisions", t("tab.decisions"), `<span class="tab-count" id="count-decisions" title="${esc(t("nojs.counter-title"))}">${esc(t("tab.remaining", cfStatic.remaining))}</span>`],
     ["code", t("tab.code"), `<span class="tab-count">${files.length}</span>`],
     ["checks", t("tab.checks"), ""],
     ["materials", t("tab.materials"), ""],
   ];
   const tablist = tabs.map(([id, label, count]) => `<a role="tab" id="tab-${id}" data-tab="${id}" href="#panel-${id}" aria-controls="panel-${id}" aria-selected="${id === "decisions"}"${id !== "decisions" ? ' tabindex="-1"' : ""}>${esc(label)}${count}</a>`).join("");
   const panel = (id, content) => `<section class="panel" id="panel-${id}" data-panel="${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1">${content}</section>`;
-  const cfStatic = { q: model.questions.filter((q) => q.kind === "decision" && !q.parent).length, f: review.findings.length,
-    i: ideas.length, fact: model.questions.filter((q) => q.kind === "fact" || q.kind === "evidence").length, deferred: 0, done: 0 };
   const subtabs = `<nav class="choice-filters act" role="group" aria-label="${esc(t("choice.filters"))}">${[["all", t("choice.filter.all")], ["q", t("choice.filter.q")], ["f", t("choice.filter.f")], ["i", t("choice.filter.i")], ["fact", t("choice.filter.fact")], ["deferred", t("choice.filter.deferred")], ["done", t("choice.filter.done")]]
     .map(([value, label]) => {
       const badge = value === "all" ? "" : `<span class="cf-count" data-cf-count="${value}" data-zero="${cfStatic[value] ? 0 : 1}">${cfStatic[value]}</span>`;

@@ -139,7 +139,7 @@ console.error(`[setup] rendered themed, resolved, legacy-ru, hostile, shiki, leg
 
 // ---- the browser: a persistent profile per browser, as the contract asks ----
 const launch = (name, options = {}) => chromium.launchPersistentContext(path.join(OUT, "profile-" + name), {
-  executablePath: BINARY, headless: true, hasTouch: true, viewport: { width: 1366, height: 900 },
+  executablePath: BINARY, headless: process.env.HEADED !== "1", hasTouch: true, viewport: { width: 1366, height: 900 },
   args: ["--no-first-run", ...(USED === "Chromium" ? ["--disable-gpu", "--disable-dev-shm-usage"] : [])],
   dumpio: USED === "Chromium", ...options });
 const ctx = await launch(USED.toLowerCase());
@@ -454,7 +454,7 @@ console.error("[run] themed v5 section");
   check("tap targets >= 32px on every tab", Object.values(tap).every((v) => v >= 32), tap);
   await p.screenshot({ path: path.join(OUT, "themed-first-screen.png") });
   results.themed = { htmlBytes: fs.statSync(themed.html).size, domNodes: initial.domNodes };
-  } catch (e) { check("themed section completed without an exception", false, String(e).slice(0, 400)); }
+  } catch (e) { console.error(e); check("themed section completed without an exception", false, String(e).slice(0, 400)); }
 }
 console.error("[run] resolved-cue section");
 {
@@ -613,6 +613,28 @@ if (big) {
     check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11 осталось" && initial.exportInHeader
       && initial.qcards === 13 && initial.findings === 7 && initial.ideas === 4 && initial.templates === 96 && initial.structureTargetClosed, initial);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-first-screen.png`) });
+    const choiceCounts = () => ev(() => {
+      document.getElementById("export-open").click();
+      const counts = {
+        q: +document.querySelector('[data-cf-count="q"]').textContent,
+        f: +document.querySelector('[data-cf-count="f"]').textContent,
+        tab: parseInt(document.getElementById("count-decisions").textContent),
+        exported: parseInt(document.querySelector(".xp-count").textContent)
+      };
+      document.getElementById("export-dialog").close();
+      return counts;
+    });
+    results.choiceCounts = [await choiceCounts()];
+    await p.check('#q2 input[value="keep"]');
+    results.choiceCounts.push(await choiceCounts());
+    await reloadClean(p);
+    results.choiceCounts.push(await choiceCounts());
+    await p.click('#q2 [data-qreset]');
+    results.choiceCounts.push(await choiceCounts());
+    await reloadClean(p);
+    results.choiceCounts.push(await choiceCounts());
+    check("v6: Q2 keep/reset/reload shares tab, subtabs and export: 11→10→10→11→11",
+      results.choiceCounts.every((c, i) => c.tab === [11, 10, 10, 11, 11][i] && c.q + c.f === c.tab && c.exported === c.tab), results.choiceCounts);
 
     // ---- the unified shell ----
     const shell = await ev(() => {
@@ -696,17 +718,33 @@ if (big) {
       delLines: document.querySelectorAll("#map .l.del").length
     }));
     results.fullMap = fullMap;
+    check("v6: all 6740 diff lines survive", fullMap.addLines === 4043 && fullMap.delLines === 1597 && fullMap.ctxLines === 1100, fullMap);
     results.v6Map = await ev(() => ({
       headers: document.querySelectorAll("#map .segbar").length,
       fragments: document.querySelectorAll("#map [data-fragment]").length,
       comments: document.querySelectorAll("#map .block-comment").length,
-      b40: { headers: document.querySelectorAll("#b40 .segbar").length, fragments: document.querySelectorAll("#b40 [data-fragment]").length },
+      b40: { headers: document.querySelectorAll("#b40 .segbar").length, fragments: document.querySelectorAll('#map [data-fragment="40"]').length },
       dom: document.querySelectorAll("*").length,
       duplicateIds: [...document.querySelectorAll("[id]")].map(e => e.id).filter((id, i, ids) => ids.indexOf(id) !== i)
     }));
     check("v6: grouped 1470 headers/comments, 1517 fragments, B40 one header/two fragments, no duplicate ids",
       results.v6Map.headers === 1470 && results.v6Map.comments === 1470 && results.v6Map.fragments === 1517 &&
       results.v6Map.b40.headers === 1 && results.v6Map.b40.fragments === 2 && results.v6Map.duplicateIds.length === 0, results.v6Map);
+    results.lineOrder = await ev(() => {
+      const files = [...document.querySelectorAll("#map .file")], backwards = [];
+      for (const [file, node] of files.entries()) for (const side of ["old", "new"]) {
+        let last = 0;
+        for (const cell of node.querySelectorAll(".l > ." + side)) {
+          const n = Number(cell.textContent);
+          if (!n) continue;
+          if (n < last) backwards.push({ file, side, last, n });
+          last = n;
+        }
+      }
+      return { files: files.length, backwards };
+    });
+    check("v6: all 96 files retain monotonic old/new diff order", results.lineOrder.files === 96 && !results.lineOrder.backwards.length, results.lineOrder);
+    check("v6: screens have one section warning", await ev(() => document.querySelectorAll("#screens > p.sub").length === 1));
     await p.click('[data-tree-mode="flat"]');
     results.v6Tree = await ev(() => ({
       flat: document.getElementById("ftree-folder").classList.contains("flat"),
@@ -728,7 +766,7 @@ if (big) {
       results.v6Tree.display === "contents" && results.v6Tree.whiteSpace === "nowrap" && results.v6Tree.folderWhiteSpace === "nowrap" &&
       results.v6Tree.emptyDisabled && results.v6Tree.emptyMarker === "none" && results.v6Tree.after > results.v6Tree.before, results.v6Tree);
     check("65507: the full audit materializes 96 files, 1470 unique blocks, 1517 fragments", fullMap.insertedFiles === 96 && fullMap.uniqueBlocks === 1470
-      && fullMap.segsTotal === 1470 && await ev(() => document.querySelectorAll("#map [data-fragment]").length) === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
+      && fullMap.segsTotal === 1517 && await ev(() => document.querySelectorAll("#map [data-fragment]").length) === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
     const diffSel = await ev(() => {
       const mark = (l, name) => { if (!l) return null; window.__po(l.closest(".segcode")); l.dataset.probe = name; return `[data-probe="${name}"]`; };
       return {
@@ -1293,7 +1331,7 @@ if (big) {
       return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
-      && purpose.testsToggle.segs === 1470 - purpose.testsToggle.testsBlocks && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
+      && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
       && purpose.testsToggle.stored.join() === "tests" && purpose.testsToggle.chip.startsWith("Скрыто:"), purpose.testsToggle);
     await p.click('.evidence-banner [data-q-filter="3"]'); await p.waitForTimeout(400);
     purpose.qWithHiddenTests = await ev(() => {
@@ -1340,8 +1378,8 @@ if (big) {
       rows: [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none").length,
       chipHidden: document.getElementById("filter-chip").hidden
     }));
-    check("65507: the reset restores the FULL coverage 1470/1517/96", purpose.clearCoverage.uniqueBlocks === 1470 && purpose.clearCoverage.segs === 1470
-      && purpose.clearCoverage.visibleSegs === 1470 && purpose.clearCoverage.rows === 96 && purpose.clearCoverage.chipHidden, purpose.clearCoverage);
+    check("65507: the reset restores the FULL coverage 1470/1517/96", purpose.clearCoverage.uniqueBlocks === 1470 && purpose.clearCoverage.segs === 1517
+      && purpose.clearCoverage.visibleSegs === 1517 && purpose.clearCoverage.rows === 96 && purpose.clearCoverage.chipHidden, purpose.clearCoverage);
     await tab(p, "decisions"); await ev(() => window.scrollTo(0, 400)); await p.waitForTimeout(150);
     const preScroll = await ev(() => window.scrollY);
     await ev(() => { document.querySelector("#q2 .qwhere").open = true; }); await p.waitForTimeout(300);
@@ -1481,7 +1519,7 @@ if (big) {
       segcodeOpen: document.querySelectorAll("#map .segcode[open]").length,
       mapVisible: getComputedStyle(document.getElementById("map")).display !== "none"
     }));
-    check("65507: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1470 && print.auditor.segcodeOpen === 1470 && print.auditor.mapVisible, print.auditor);
+    check("65507: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1517 && print.auditor.segcodeOpen === 1517 && print.auditor.mapVisible, print.auditor);
     await ev(() => window.dispatchEvent(new Event("afterprint"))); await p.waitForTimeout(350);
     print.restored = await ev(() => ({ inserted: document.querySelectorAll(".file-lazy .file").length, show: document.getElementById("map").dataset.show }));
     check("65507: auditor afterprint removes the audit-only files", print.restored.inserted === beforeAudit && beforeAudit < 96, { ...print.restored, beforeAudit });
@@ -1549,8 +1587,8 @@ if (big) {
       counterTitle: document.getElementById("count-decisions").title
     }));
     results.noJs = noJs;
-    check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1470
-      && noJs.fragments === 1517 && noJs.blockCodeClosed === 1470 && noJs.domNodes < 102296
+    check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1517
+      && noJs.fragments === 1517 && noJs.blockCodeClosed === 1517 && noJs.domNodes < 102296
       && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
     check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
