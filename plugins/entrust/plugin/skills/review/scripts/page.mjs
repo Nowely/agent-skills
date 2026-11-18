@@ -107,21 +107,12 @@ td.state { min-width: 13rem }
 td ol { margin: 0; padding-left: 1.2rem }
 .req-count { font-variant-numeric: tabular-nums; white-space: nowrap }
 .req-link { font-size: 12px; padding: .15rem .5rem; min-height: 32px }
-/* The passport, the authored status, the counters. */
+/* The passport. */
 .passport-card { background: var(--surface); border: 1px solid var(--line) }
 .passport-card > summary.passport { cursor: pointer; border: 0; display: list-item; padding: .6rem 1rem; font-size: .92rem; background: none; color: var(--fg) }
 .passport-card > summary.passport > * { margin-right: 1.1rem }
 .passport-card > summary.passport:hover { background: var(--code) }
 .passport-body { padding: .5rem 1rem; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); overflow-wrap: anywhere }
-.status-strip { display: grid; grid-template-columns: 1fr; gap: .35rem 1.4rem; background: color-mix(in srgb, var(--fix) 8%, var(--surface)); border: 1px solid var(--fix); border-left-width: 4px; padding: .7rem 1rem }
-.status-strip .row { display: flex; gap: .5rem; align-items: baseline }
-.status-strip .label { flex: none; min-width: 7rem }
-@media (min-width: 760px) { .status-strip { grid-template-columns: 1fr 1fr } }
-.counters { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; padding: .5rem 0; font-variant-numeric: tabular-nums }
-.counters .c { display: flex; flex-direction: column; gap: .1rem }
-.counters .c b { font-size: 1.3rem; line-height: 1 }
-.counters .c span { font-size: 12px; color: var(--muted) }
-.counters .split { border-left: 1px solid var(--line); padding-left: 1.4rem }
 .count-note { flex-basis: 100%; margin: .2rem 0 0; font-size: 12px }
 .count-note > summary { cursor: pointer; color: var(--muted); background: none; padding: 0 }
 /* Cards v5: one neutral surface, no nested frames or side stripe. Order: head (type, id, status) → essence →
@@ -180,7 +171,6 @@ td ol { margin: 0; padding-left: 1.2rem }
 .comment-view { display: flex; flex-direction: column; gap: .3rem; padding: .3rem 0 }
 .comment-view p { margin: 0 }
 .comment-text { font-size: 1rem; white-space: pre-wrap; overflow-wrap: anywhere }
-.comment-saved { font-size: 12px; color: var(--muted) }
 .comment-edit { font-size: 12px; padding: .15rem .6rem; min-height: 32px; align-self: flex-start }
 textarea.qnote { width: 100%; min-height: 3.4rem; font: .92rem/1.45 var(--text); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .4rem .6rem; field-sizing: content; resize: vertical }
 .card-more { display: flex; flex-direction: column; gap: .1rem }
@@ -191,6 +181,8 @@ textarea.qnote { width: 100%; min-height: 3.4rem; font: .92rem/1.45 var(--text);
 .qdetail .stack { padding: .5rem 0 }
 .qctx .label, .qzones .label, .qremaining-block .label { display: block; margin-bottom: .2rem }
 .qctx ul, .qzones ul { margin: 0 }
+/* A zone row is a checkbox, not a list item: no second bullet marker beside the box. */
+.qzones ul { list-style: none; padding-left: 0 }
 .qzones label { display: flex; gap: .4rem; align-items: baseline; min-height: 32px }
 .qzones .zone-note { font-size: 12px; color: var(--muted); margin: .2rem 0 0 }
 /* Subtabs: one segmented filter over the single card list (the Arcanum merge-checks pattern). */
@@ -202,7 +194,8 @@ textarea.qnote { width: 100%; min-height: 3.4rem; font: .92rem/1.45 var(--text);
 .settled-row:first-child { border-top: 0 }
 .settled-row > summary { cursor: pointer; padding: .4rem .2rem; font-size: .95rem; display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: baseline }
 .settled-row > summary .sr-id { font-weight: 650; font-family: var(--mono); font-size: 12px }
-.settled-row > summary .sr-title { color: var(--muted); font-size: 12px }
+.settled-row > summary .sr-title { color: var(--fg); font-size: .95rem }
+.settled-row > summary .sr-note { color: var(--muted); font-size: 12px }
 .settled-row .dunit { padding: .3rem 0 .6rem }
 #group-settled > summary, .ideas-opt > summary { cursor: pointer; font-weight: 650; font-size: 1.05rem; padding: .2rem 0 }
 #group-settled .dgroup-body, .ideas-opt .dgroup-body { padding-top: .5rem }
@@ -448,7 +441,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
   .code-layout { display: block } .tree-col { position: static; max-height: none; overflow: visible; margin-bottom: 1rem }
   .file > header { position: static }
   .seg, .finding, .qcard, .mechanism, .tradeoff { break-inside: avoid }
-  .passport-card, .status-strip, .counters { break-inside: avoid }
+  .passport-card, .count-note { break-inside: avoid }
   a { color: #000; text-decoration: underline }
 }
 `;
@@ -458,7 +451,7 @@ const SCRIPT = `
   const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key, t = data.labels;
   const D = (${decisionRuntime.toString()})();
   const all = (selector) => [...document.querySelectorAll(selector)];
-  const map = document.getElementById("map"), out = document.getElementById("out"), progressQ = document.getElementById("progress-q");
+  const map = document.getElementById("map"), out = document.getElementById("out");
   let raw = {};
   try { raw = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
   let theme = raw.theme || "auto";
@@ -929,10 +922,11 @@ const SCRIPT = `
     history.replaceState(null, "", hash);
     openTarget(hash);
   });
-  // «Copied» only after the clipboard confirms; on refusal select the dialog textarea and say Ctrl/⌘+C.
-  function copyDecisionsText(button) {
+  // «Copied» only after the clipboard confirms, in the ONE status line (never also on the button); on refusal
+  // select the dialog textarea and say Ctrl/⌘+C.
+  function copyDecisionsText() {
     if (outDirty) syncOut();
-    const done = () => { document.getElementById("export-status").textContent = t.copied; button.textContent = t.copied; setTimeout(() => { button.textContent = t.copyText; }, 1500); };
+    const done = () => { document.getElementById("export-status").textContent = t.copied; };
     const fail = () => {
       out.focus({ preventScroll: true }); out.select();
       document.getElementById("export-status").textContent = t.copyFailed;
@@ -997,8 +991,9 @@ const SCRIPT = `
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
         const chipClone = document.createElement("span"); chipClone.className = "tag v-open qstatus"; chipClone.dataset.state = chipEl ? chipEl.dataset.state : "decided"; chipClone.textContent = chipEl ? chipEl.textContent : "";
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
-        sum.append(idEl, chipClone, titleEl);
-        if (state.notes[card.id]) { const n = document.createElement("span"); n.className = "sr-title"; n.textContent = "· " + t.cardComment.toLowerCase(); sum.append(n); }
+        // The row reads name → the answer given → id; expanding it is the way back to the card («Изменить»).
+        sum.append(titleEl, chipClone, idEl);
+        if (state.notes[card.id]) { const n = document.createElement("span"); n.className = "sr-note"; n.textContent = "· " + t.cardComment.toLowerCase(); sum.append(n); }
         row.dataset.state = unit.dataset.settled;
       }
     }
@@ -1020,13 +1015,13 @@ const SCRIPT = `
     }
   }
   // Unified comments: «Comment» / «Comment · 1»; the saved text compact with an edit action; never a
-  // permanent empty textarea. The same pattern on cards and on blocks.
+  // permanent empty textarea. The same pattern on cards and on blocks. The «saved in this browser, not sent»
+  // status is said once, in the export dialog — never repeated under every saved comment.
   const commentView = () => {
     const view = document.createElement("div"); view.className = "comment-view";
     const p = document.createElement("p"); p.className = "comment-text";
-    const saved = document.createElement("p"); saved.className = "comment-saved"; saved.textContent = t.commentSaved;
     const edit = document.createElement("button"); edit.type = "button"; edit.className = "comment-edit"; edit.textContent = t.commentEdit;
-    view.append(p, saved, edit);
+    view.append(p, edit);
     return view;
   };
   function paintComments() {
@@ -1137,7 +1132,6 @@ const SCRIPT = `
     paintChildren();
     paintComments();
     const remaining = t.tabRemaining.replace("{n}", remainingCount());
-    if (progressQ) progressQ.textContent = remaining;
     const cnt = document.getElementById("count-decisions"); if (cnt) cnt.textContent = remaining;
     applyChoiceFilter(choiceFilter);
     if (exportDialog.open) syncOut(); else outDirty = true;
@@ -1229,10 +1223,8 @@ const SCRIPT = `
     else if (button.dataset.overlay !== undefined) { button.setAttribute("aria-pressed", String(button.closest("article").querySelector(".shots").classList.toggle("overlaid"))); return; }
     else if (button.id === "print-owner") { auditorPrint = false; window.print(); return; }
     else if (button.id === "print-audit") { auditorPrint = true; window.print(); return; }
-    else if (button.id === "export-json" || button.id === "export-json-top") { downloadJson(); return; }
-    else if (button.id === "copy") { openExportDialog(); copyDecisionsText(document.getElementById("copy-top")); return; }
-    else if (button.id === "copy-top") { copyDecisionsText(button); return; }
-    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
+    else if (button.id === "export-json-top") { downloadJson(); return; }
+    else if (button.id === "copy-top") { copyDecisionsText(); return; }
     else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = D.empty(); annotationUI.reset(); clearFilters(); }
     else return;
     settleFocus = true; state = D.settle(data.questions, state); save(); paint();
@@ -1391,32 +1383,6 @@ function passport(review, model, t) {
 </details>`;
 }
 
-// The authored status: the reviewer's own words from coverageStructured, never a status read out of prose.
-function statusStrip(review, t) {
-  const cs = review.coverageStructured;
-  if (!cs?.length) return "";
-  const row = (kind) => {
-    const items = cs.filter((c) => c.kind === kind);
-    if (!items.length) return "";
-    return `<div class="row"><span class="label">${esc(coverageLabel(kind, t))}</span><span>${items.map((c) => `${prose(c.text)}${c.revision ? ` <span class="sub mono">@ ${esc(c.revision)}</span>` : ""}`).join("; ")}</span></div>`;
-  };
-  return `<div class="status-strip" data-where="${esc(t("coverage"))}">${["ran", "read", "not_checked"].map(row).join("")}</div>`;
-}
-
-// The scale of the change and what waits on whom, over unique sets; the fragment's definition one click away.
-function counters(model, t) {
-  const c = model.counters;
-  const cell = (n, label, split) => `<div class="c${split ? " split" : ""}"><b>${n}</b><span>${esc(label)}</span></div>`;
-  return `<div class="counters" data-where="${esc(t("summary"))}">
-  ${cell(c.files, `${t("scope.files")} · +${c.lines.added}/−${c.lines.removed}`)}
-  ${cell(c.addedFiles, t("scope.added"))}${cell(c.removedFiles, t("scope.removed"))}${cell(c.modifiedFiles, t("file.status.modified"))}
-  ${cell(c.blocks, `${t("blocks").toLowerCase()}: ${VERDICTS.map((v) => `${t(`verdict.${v}`)} ${c.verdicts[v]}`).join(" · ")}`, true)}
-  ${c.evidenceBlocks ? cell(c.evidenceBlocks, t("counters.evidence-blocks"), true) : ""}
-  ${c.decisions ? cell(c.decisions, t("decisions"), true) : ""}
-  <details class="count-note"><summary>${esc(t("fragment.what"))}</summary><p class="sub">${esc(t("fragment.definition"))} +${c.nonblank.added}/−${c.nonblank.removed}.</p></details>
-</div>`;
-}
-
 // The verdict, the recommendation, now beside the target, and the task: each under its own label, in the order a reader decides by.
 function summary(review, { blocks }, t) {
   const total = sizeOf(blocks) || 1, { change } = review;
@@ -1469,7 +1435,7 @@ function questionCard(q, review, model, t, child, partCount) {
   const checks = q.kind === "decision" && q.remainingEvidence?.length ? `<details class="qchecks"><summary>${esc(t("card.more-checks"))}</summary><div class="stack">${remaining}</div></details>` : "";
   return `
   <div class="qcard ${esc(q.kind)}${child ? " child" : ""}" id="q${q.id}" data-qid="${q.id}"${q.parent ? ` data-parent="${q.parent.question}"` : ""} data-where="Q${q.id}">
-    <div class="card-head"><h3 class="card-title">${esc(t(`question.kind.${q.kind}`))}${q.resolver ? ` · ${esc(q.resolver)}` : ""}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${placeHtml(q.at, model)}${q.blocks ? ` · ${q.blocks} ${esc(t("question.blocks"))}` : ""}</span></div>
+    <div class="card-head"><h3 class="card-title">${esc(t(`question.kind.${q.kind}`))}${q.resolver ? ` · ${esc(q.resolver)}` : ""}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${placeHtml(q.at, model)}</span></div>
     <p class="card-question">${lead}${prose(q.text)}</p>
     ${q.parent ? `<p class="qgate sub" data-qgate="${q.id}" hidden></p><p class="sub">${esc(t("question.parent"))}: <a href="#q${q.parent.question}">Q${q.parent.question}</a></p>` : ""}
     ${limit ? `<p class="card-limit">${limit}</p>` : ""}
@@ -1512,14 +1478,13 @@ function findingCard(f, review, model, t) {
   </article>`;
 }
 
-// An idea in the same shell, optional, outside the counter. The record states no limit or version for an
-// idea: the slot says exactly that, never an invented one.
+// An idea in the same shell, optional, outside the counter. «Optional» is said once in the group header; the
+// card carries no invented limit slot — the record states none, and absence is not a risk beside a failed check.
 function ideaCard(idea, model, t) {
   return `
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
-    <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="card-meta">${esc(t("card.idea-meta"))}</span></div>
+    <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="card-meta">${esc(t("idea"))}</span></div>
     <p class="card-question">${prose(idea.text)}</p>
-    <p class="card-limit">${esc(t("card.limit-absent-idea"))}</p>
     <div class="card-choice"><span class="decide group act" data-finding="${idea.id}"><button type="button" value="apply" aria-label="${esc(t("decision.idea-apply-aria", idea.title))}">${esc(t("decision.idea-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.idea-skip-aria", idea.title))}">${esc(t("decision.idea-skip"))}</button></span></div>
     ${commentBox(idea.id, t, t("note-idea"))}
     ${idea.at ? `<div class="card-more"><details class="qwhere"><summary>${esc(t("card.more-code"))} · ${placeHtml(idea.at, model)}</summary><div class="qwhere-body"><p class="sub mono">${esc(idea.at)}</p></div></details></div>` : ""}
@@ -1609,18 +1574,17 @@ function screens(review, { screens: shown }, t) {
   let zoom = 0;
   const shot = (name, picture, s) => {
     if (!picture) return "";
-    const historical = s.historical ? ` <span class="tag v-fix">${esc(t("screen.historical"))}</span>` : "";
     const body = picture.link ? `<a href="${esc(picture.link)}" target="_blank" rel="noopener">${esc(picture.link)}</a>`
       : `<button type="button" class="shot-open act" data-zoom="${zoom++}">${esc(t("viewer.open"))}</button>`
         + `<img class="shot-zoom" src="${picture.data}" alt="${esc(t(name))}: ${esc(s.name)}" tabindex="0" role="button" data-historical="${s.historical ? 1 : 0}" aria-label="${esc(t("viewer.open"))}: ${esc(t(name))}: ${esc(s.name)}">`;
-    return `<figure class="${name}"><figcaption class="label">${esc(t(name))}${historical}</figcaption>${body}`
-      + `${s.historical && s.revision ? `<p class="sub mono">${esc(s.revision)}</p>` : ""}${s.historical && s.sources?.length ? `<p class="sub">(${srcHtml(s.sources, review)})</p>` : ""}</figure>`;
+    return `<figure class="${name}"><figcaption class="label">${esc(t(name))}</figcaption>${body}</figure>`;
   };
   return `
 <section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>${shown.map((s, index) => `
   <article class="finding" id="shot-${index + 1}" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}<a class="shot-link" href="#shot-${index + 1}" aria-label="${esc(t("shot.permalink"))} ${index + 1}: ${esc(s.name)}" title="${esc(t("shot.permalink"))}">#</a></h3>
     <div class="pair shots">${shot("mockup", s.mockup, s)}${shot("before", s.before, s)}${shot("after", s.after, s)}</div>
+    ${s.historical ? `<p class="sub"><span class="tag v-fix">${esc(t("screen.historical"))}</span>${s.revision ? ` <span class="mono">${esc(s.revision)}</span>` : ""}${s.sources?.length ? ` (${srcHtml(s.sources, review)})` : ""}</p>` : ""}
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
       + `<label class="group sub" for="blend-${index + 1}">${esc(t("result"))} <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
     ${s.differences.length ? `<ul class="plain">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="sub">${esc(t("reason"))}: ${prose(d.why)}</span>` : ""}`
@@ -1803,6 +1767,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
       <noscript><p class="sub">${esc(t("nojs.map"))}</p></noscript>
       <div id="map" class="map" data-show="attention" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
         <p class="sub">${esc(t("map.audit-note"))} ${esc(t("blocks"))}: ${model.blocks.length} · ${esc(t("fragments"))}: ${totalParts}.</p>
+        <details class="count-note"><summary>${esc(t("fragment.what"))}</summary><p class="sub">${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
         ${mapHtml}
       </div>
     </div>
@@ -1826,20 +1791,20 @@ function mechanisms(review, model, t) {
   if (!review.mechanisms?.length) return "";
   return `<section id="mechanisms" class="stack"><h2>${esc(t("mechanisms"))}</h2>
     <p class="sub">${esc(t("mechanism-change"))}: ${mechanismCounts(review).map(([change, count]) => `${esc(t(`change.${change}`))}: ${count}`).join(" · ")}</p>
-    ${model.together ? `<p><strong>${esc(t("weight.together"))}</strong> (${model.together.names.map(esc).join(", ")}): ${weightOverview(model.together, t, languageOf(review)).map((row) => `<strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}`).join(" · ") || esc(t("weight.unchanged"))}</p>` : ""}${model.mechanisms.map((m, i) => {
+    ${model.together ? `<p><strong>${esc(t("weight.together"))}</strong> (${model.together.names.map(esc).join(", ")}): ${weightOverview(model.together, t, languageOf(review)).map((row) => `<strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}`).join(" · ") || esc(t("weight.unchanged"))}</p>` : ""}${model.mechanisms.some((m) => m.weight) ? `<details class="count-note"><summary>${esc(t("weight.limit"))}</summary><p class="sub">${esc(t("weight.note"))}</p></details>` : ""}${model.mechanisms.map((m, i) => {
       const overview = weightOverview(m.weight, t, languageOf(review));
       const findings = (m.findings ?? []).map(id => review.findings.find(f => f.id === id));
       return `<article class="finding mechanism" id="m${i + 1}" data-where="${esc(t("mechanisms") + ': ' + m.name)}">
         <details><summary><h3>${esc(m.name)}</h3>
           <span class="mechanism-summary"><span class="mechanism-decision"><strong>${esc(t("recommendation"))}:</strong> ${prose(m.decision)}</span><br>
           ${overview.length ? overview.map(row => `<span><strong>${esc(t(`weight.category.${row.kind}`))}:</strong> ${esc(row.text)}</span>`).join(" · ")
-            : esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}<br><span class="sub">${esc(t("weight.limit"))}</span></span></summary>
+            : esc(t(m.weight ? "weight.unchanged" : "weight.unknown"))}</span></summary>
         <div class="stack mechanism-content">
         ${overview.length ? `<div class="stack mechanism-weight">
           <details><summary>${esc(t("weight.evidence"))}</summary><div class="stack">
             <p>${esc(t("weight.exclusive"))}: ${esc(weightCountsText(m.weight.exclusive, t))}</p>
             ${(m.weight.shared ?? []).map(s => `<p class="sub">${esc(t("weight.shared"))} ${s.with.map(esc).join(", ")}: ${esc(weightCountsText({ [s.kind]: s }, t))} <a href="#b${s.block}">B${s.block}</a></p>`).join("")}
-            <div class="group">${(m.blocks ?? []).map(id => `<a href="#b${id}">B${id}</a>`).join("")}</div><p class="sub">${esc(t("weight.note"))}</p>
+            <div class="group">${(m.blocks ?? []).map(id => `<a href="#b${id}">B${id}</a>`).join("")}</div>
           </div></details></div>` : ""}
         ${findings.length ? `<p class="sub"><strong>${esc(t("findings"))}:</strong> ${findings.map(f => `<a href="#f${esc(f.id)}">${esc(f.id)}</a>`).join(", ")}</p>` : ""}
         ${m.instead ? `<p><strong>${esc(t("instead"))}:</strong> ${prose(m.instead)}</p>` : ""}
@@ -1870,14 +1835,12 @@ function coverage(review, t) {
 </section>`;
 }
 
-// The Choices first screen: the verdict's lead line, the recommendation, the record's unchecked limits on the
-// surface; the full verdict stays in Overview, the instructions in a disclosure.
+// The Choices first screen: one working phrase, the record's unchecked global limit, and a link to the verdict.
+// The full verdict and recommendation live only in Overview; the instructions sit in a disclosure.
 function decisionIntro(review, t) {
-  const lead = String(review.verdict).split("\n").map((line) => line.trim()).filter(Boolean)[0] ?? "";
   const limits = (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => c.text);
   return `<div class="decision-intro">
-  <p>${prose(lead)}</p>
-  <p><strong>${esc(t("recommendation"))}:</strong> ${prose(review.recommendation)}</p>
+  <p>${esc(t("decision.intro-work"))} <a href="#summary">${esc(t("summary"))} →</a></p>
   ${limits.length ? `<p class="card-limit">${esc(t("decision.limit-unverified"))} ${limits.map(esc).join("; ")}</p>` : ""}
 </div>`;
 }
@@ -1917,7 +1880,7 @@ export function page(review, files, model, { syntax } = {}) {
       draftDeferred: t("decision.draft-deferred", "{n}"),
       gatePending: t("decision.gate-pending", "{n}"), gateNa: t("decision.gate-na", "{n}"), gateDraft: t("decision.gate-draft", "{n}"),
       children: t("decision.children"), childrenWait: t("decision.children.wait"), childrenOpen: t("decision.children.open", "{n}"), childrenNa: t("decision.children.na"),
-      cardComment: t("card.comment"), cardCommentN: t("card.comment-n", "{n}"), commentSaved: t("card.comment-saved"), commentEdit: t("annotation.edit"),
+      cardComment: t("card.comment"), cardCommentN: t("card.comment-n", "{n}"), commentEdit: t("annotation.edit"),
       segCommentDetails: t("seg.comment-details"), segCommentDetailsN: t("seg.comment-details-n", "{n}"), whereEmpty: t("card.no-blocks"),
       export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), zones: t("export.zones"), comments: t("export.comments"),
         emptyAccepted: t("export.empty-accepted"), emptyDeferred: t("export.empty-deferred"), emptyComments: t("export.empty-comments"),
@@ -1959,8 +1922,6 @@ export function page(review, files, model, { syntax } = {}) {
 <noscript><p class="sub">${esc(t("nojs.note"))}</p></noscript>
 ${panel("overview", `
 ${passport(review, model, t)}
-${statusStrip(review, t)}
-${counters(model, t)}
 ${summary(review, model, t)}
 ${drawn}
 ${scenarios(model, t)}
@@ -1970,7 +1931,6 @@ ${mechanisms(review, model, t)}
 ${panel("decisions", `
 ${decisionIntro(review, t)}
 ${subtabs}
-<span class="sub act" id="progress-q"></span>
 ${sheet}
 `)}
 ${panel("code", codePanel(review, files, model, t, mapHtml, partCount))}
@@ -1984,8 +1944,7 @@ ${screens(review, model, t)}
 ${coverage(review, t)}
 <section id="decisions" class="stack act" tabindex="-1"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>
-  <p class="sub">${esc(t("export.note"))}</p>
-  <div class="export-json"><button type="button" id="export-json">${esc(t("export.download"))}</button><button type="button" id="copy">${esc(t("export.copy-text"))}</button><button type="button" id="print-owner">${esc(t("print.owner"))}</button><button type="button" id="print-audit">${esc(t("print.auditor"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
+  <div class="export-json"><button type="button" id="print-owner">${esc(t("print.owner"))}</button><button type="button" id="print-audit">${esc(t("print.auditor"))}</button><button type="button" id="clear">${esc(t("clear-all"))}</button></div>
   <p class="sub">${esc(t("print.omissions"))}</p>
   <h3 class="label">${esc(t("passages"))}</h3>
   <div id="passages" class="stack"></div></section>

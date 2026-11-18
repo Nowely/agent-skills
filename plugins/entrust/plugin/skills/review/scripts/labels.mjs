@@ -490,11 +490,8 @@ Object.assign(LABELS, {
   "choice.filters": "Subtab filters of the one choice list",
   "group.owner": "Owner choice needed", "group.fix": "Proposed fixes", "group.data": "Data or a check needed", "group.settled": "Done · deferred",
   "card.comment": "Comment", "card.comment-n": "Comment · {n}",
-  "card.comment-saved": "Saved in this browser, not sent.",
   "card.more-basis": "Basis and sources", "card.more-code": "Related code", "card.more-checks": "Checks · version not verified",
   "card.no-blocks": "No related fragments.",
-  "card.idea-meta": "idea · optional",
-  "card.limit-absent-idea": "The idea's limit and version are not stated in the record; the idea is optional.",
   "decision.fix-apply": "Fix", "decision.fix-skip": "Do not fix",
   "decision.idea-apply": "Take", "decision.idea-skip": "Do not take",
   "decision.idea-apply-aria": "Take the idea {n}", "decision.idea-skip-aria": "Do not take the idea {n}",
@@ -533,11 +530,8 @@ Object.assign(CATALOGS.ru, {
   "choice.filters": "Сабтабы-фильтры одного списка выборов",
   "group.owner": "Нужен выбор владельца", "group.fix": "Предложенные исправления", "group.data": "Нужны данные или проверка", "group.settled": "Завершённые · отложенные",
   "card.comment": "Комментарий", "card.comment-n": "Комментарий · {n}",
-  "card.comment-saved": "Сохранено в этом браузере, не отправлено.",
   "card.more-basis": "Обоснование и источники", "card.more-code": "Связанный код", "card.more-checks": "Проверки · версия не проверена",
   "card.no-blocks": "Связанных фрагментов нет.",
-  "card.idea-meta": "идея · необязательно",
-  "card.limit-absent-idea": "Ограничение и версия для идеи в записи не указаны; идея необязательна.",
   "decision.fix-apply": "Исправить", "decision.fix-skip": "Не исправлять",
   "decision.idea-apply": "Взять", "decision.idea-skip": "Не брать",
   "decision.idea-apply-aria": "Взять идею {n}", "decision.idea-skip-aria": "Не брать идею {n}",
@@ -575,6 +569,33 @@ CATALOGS.ru["decision.status.decided"] = "Выбрано: {n}";
 LABELS["decision.sheet-note"] = "Choosing a variant fixes the decision and is reversible on any screen; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.";
 LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible on any screen; a draft is never shown as a made choice and exports with a draft mark. Comments are saved in this browser, not sent, and travel with the export from any tab. A decision may change a requirement but does not replace evidence and does not rewrite fragment verdicts. Variants, fact answers and comments export to JSON with the record's digest.";
 
+// The v6 words: the deduplicated first screen (one working phrase, the verdict only in Overview), the
+// human-readable owner-decision title, the choice-zone labels, the subtab counters, the editorial change
+// context, the lighter code toolbar, the folder/list tree modes and the honest export remainder.
+Object.assign(LABELS, {
+  "decision.intro-work": "Decide the cards below. The full verdict and recommendation:",
+  "question.owner-decision": "Owner decision",
+  "decision.your-decision": "Your decision", "decision.your-choice": "Your choice",
+  "context.change": "Change context",
+  "purpose.show": "Show",
+  "export.open-findings": "unprocessed findings",
+  "tree.mode.folder": "By folder", "tree.mode.flat": "List", "tree.resize": "Tree width",
+  "choice.counter-aria": "{label}: {n} left",
+});
+Object.assign(CATALOGS.ru, {
+  "decision.intro-work": "Решите карточки ниже. Полный вывод и рекомендации:",
+  "question.owner-decision": "Решение владельца",
+  "decision.your-decision": "Ваше решение", "decision.your-choice": "Ваш выбор",
+  "context.change": "Контекст изменения",
+  "purpose.show": "Показывать",
+  "export.open-findings": "необработанные замечания",
+  "tree.mode.folder": "По папкам", "tree.mode.flat": "Списком", "tree.resize": "Ширина дерева",
+  "choice.counter-aria": "{label}: осталось {n}",
+});
+// The export textarea is the text to copy; the technical binding (digests) sits below the answers, not above.
+LABELS["export.text"] = "Text to copy";
+CATALOGS.ru["export.text"] = "Текст для копирования";
+
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
 // The words of the page's chrome: the counters, the file tree's marks, the print profiles, the skip link,
@@ -605,14 +626,18 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "choice.filter.all", "choice.filter.q", "choice.filter.f", "choice.filter.i", "choice.filter.fact",
   "choice.filter.deferred", "choice.filter.done", "choice.filters",
   "group.owner", "group.fix", "group.data", "group.settled",
-  "card.comment", "card.comment-n", "card.comment-saved", "card.more-basis", "card.more-code", "card.no-blocks",
+  "card.comment", "card.comment-n", "card.more-basis", "card.more-code", "card.no-blocks",
   "decision.fix-apply", "decision.fix-skip", "decision.fix-apply-aria", "decision.fix-skip-aria",
   "finding.limit.ran", "finding.limit.read", "finding.limit.judgment",
   "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
   "export.open", "export.dialog-note", "export.accepted", "export.deferred", "export.answers", "export.comments",
   "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
   "export.zones", "decision.zone-marked",
-  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n"];
+  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n",
+  // The v6 chrome: the deduplicated first screen, the choice-zone label, the subtab counters, the editorial
+  // change context, the lighter code toolbar, the tree modes and the honest export remainder.
+  "decision.intro-work", "decision.your-decision", "choice.counter-aria", "context.change", "purpose.show",
+  "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
 // array guards, so they read every list defensively.
@@ -629,9 +654,9 @@ const FEATURES = [
       "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method",
       "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
       "decision.zone-note", "decision.limit-unverified", "card.more-checks",
-      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na"]],
+      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na", "question.owner-decision"]],
   [(review) => listOf(review.ideas).length > 0,
-    ["ideas.optional", "ideas.not-counted", "card.idea-meta", "card.limit-absent-idea",
+    ["ideas.optional", "ideas.not-counted", "decision.your-choice",
       "decision.idea-apply", "decision.idea-skip", "decision.idea-apply-aria", "decision.idea-skip-aria"]],
   [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
   [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
