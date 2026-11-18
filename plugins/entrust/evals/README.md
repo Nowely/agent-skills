@@ -8,6 +8,19 @@ prompts that must stay silent. `review/` is the instrument a version of the revi
 cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round, the one that scores a judge's verdicts, and the two that hand each review to an implementer and measure the code that is left
 ([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it draws; its records live in `review/report-fixtures.mjs`, shared with `review-report-v5.browser.mjs`, the browser acceptance of the v5 decision-first page (needs playwright-core and a Chromium binary — Chromium and Yandex both run it, `BROWSER=yandex|chromium`; pdfjs-dist adds the real-PDF check; see its header).
 
+`review-code-public.browser.mjs` is a separate offline Chromium desktop acceptance: it generates a
+600-line public diff and checks code visibility, navigation and persisted settlement with JavaScript,
+plus code and links without it. It is not part of `run-all` and needs Playwright Chromium (or `playwright-core` and an
+explicit Chromium binary):
+
+```bash
+PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs CHROME_FOR_TESTING=/path/to/chrome \
+  node plugins/entrust/evals/review-code-public.browser.mjs
+```
+
+Omit both variables when Playwright or `playwright-core` and its default Chromium are installed. The generated
+record and HTML remain in a temporary directory printed by the test; no network fixture is needed.
+
 ## Running the suites
 
 ```bash

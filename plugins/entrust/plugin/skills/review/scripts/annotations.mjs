@@ -295,33 +295,31 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
     return sha256(JSON.stringify([pieces.map(piece => {
       const entry = staticRegion(piece.object);
       return entry && [piece.object, entry.path, entry.signature, piece.start, piece.end, piece.visible];
-    }), quote, ...(where === undefined ? [] : [where])]));
+    }), quote, where]));
   }
   function staticProof(range, quote) {
     const pieces = staticPieces(range), where = relatedInRange(range);
     if (!pieces || !where) return null;
-    return { version: 8, document: identity.document, record: identity.record, object: pieces[0].object,
+    return { kind: 'range', document: identity.document, record: identity.record, object: pieces[0].object,
       pieces, where, structure: staticBinding(pieces, quote, where) };
   }
   function locateStatic(p) {
     const proof = p.proof, pieces = proof.pieces;
-    if (proof.version === 8) {
-      if (!Array.isArray(proof.where) || proof.where.some(entry => !entry || typeof entry.object !== 'string'
-        || !/^[a-f0-9]{64}$/.test(entry.structure || ''))) return null;
-      for (const entry of proof.where) {
-        const owner = staticRegion(entry.object)?.el;
-        if (!owner?.matches('.qcard[id]')) return null;
-        const matches = [...owner.querySelectorAll('.qwhere[data-qwhere]')].filter(details =>
-          details.closest('.qcard[id]') === owner && details.dataset.qwhere === owner.dataset.qid);
-        if (matches.length !== 1) return null;
-        ensureWhere(matches[0]);
-      }
+    if (!Array.isArray(proof.where) || proof.where.some(entry => !entry || typeof entry.object !== 'string'
+      || !/^[a-f0-9]{64}$/.test(entry.structure || ''))) return null;
+    for (const entry of proof.where) {
+      const owner = staticRegion(entry.object)?.el;
+      if (!owner?.matches('.qcard[id]')) return null;
+      const matches = [...owner.querySelectorAll('.qwhere[data-qwhere]')].filter(details =>
+        details.closest('.qcard[id]') === owner && details.dataset.qwhere === owner.dataset.qid);
+      if (matches.length !== 1) return null;
+      ensureWhere(matches[0]);
     }
     if (!Array.isArray(pieces) || !pieces.length || pieces[0]?.object !== proof.object || typeof p.quote !== 'string'
       || pieces.some(piece => !piece || typeof piece.object !== 'string' || !Number.isInteger(piece.start)
         || !Number.isInteger(piece.end) || piece.start < 0 || piece.end <= piece.start || typeof piece.visible !== 'boolean'
         || !staticRegion(piece.object))) return null;
-    if (staticBinding(pieces, p.quote, proof.version === 8 ? proof.where : undefined) !== proof.structure) return null;
+    if (staticBinding(pieces, p.quote, proof.where) !== proof.structure) return null;
     const parts = [], all = [];
     for (const piece of pieces) {
       const region = staticRegion(piece.object).el;
@@ -347,7 +345,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
       else normalized.push({ ...piece, visible: true });
     }
     if (JSON.stringify(staticPieces(range, false)) !== JSON.stringify(normalized)) return null;
-    if (proof.version === 8 && JSON.stringify(relatedInRange(range)) !== JSON.stringify(proof.where)) return null;
+    if (JSON.stringify(relatedInRange(range)) !== JSON.stringify(proof.where)) return null;
     return { el: root, parts };
   }
   function codeFragment(file, index, block) {
@@ -376,7 +374,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
     }
     if (!visible.length) return null;
     const structure = sha256(JSON.stringify([origin.file, origin.index, block, fileBaselines.get(origin.file), from, to, exact, quote, visible]));
-    return { version: 9, document: identity.document, record: identity.record, object: 'b' + block,
+    return { kind: 'code', document: identity.document, record: identity.record, object: 'b' + block,
       file: origin.file, fragment: origin.index, block, start: from, end: to, visible, structure };
   }
   function locateCode(p) {
@@ -424,7 +422,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
         offset += node.length;
       }
       if (!visible.length) return null;
-      return { version: 7, document: identity.document, record: identity.record, object: owner.id,
+      return { kind: 'related-code', document: identity.document, record: identity.record, object: owner.id,
         structure: sha256(JSON.stringify([owner.id, ownerSignature(owner), ownerSignature(startWhere, true, true), from, to, exact, selected, visible])),
         start: from, end: to, visible };
     }
@@ -452,56 +450,51 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
     }
     const exact = from === null ? '' : text.map((node) => node.data).join('').slice(from, to);
     if (!exact || exact !== selected) return staticProof(range, selected);
-    return { version: 6, document: identity.document, record: identity.record, object: owner.id, field: name,
+    return { kind: 'field', document: identity.document, record: identity.record, object: owner.id, field: name,
       structure: sha256(fieldBinding(owner, name, from, to, exact)), start: from, end: to, text: exact };
   }
   function locate(p) {
     const proof = p.proof;
-    if (!proof || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(proof.version) || proof.document !== identity?.document || proof.record !== identity?.record
+    if (!proof || !['field', 'related-code', 'range', 'code'].includes(proof.kind) || proof.document !== identity?.document || proof.record !== identity?.record
       || !/^[a-f0-9]{64}$/.test(identity?.document || '') || !/^[a-f0-9]{64}$/.test(identity?.record || '')) return null;
-    if (proof.version === 5 || proof.version === 8) return locateStatic(p);
-    if (proof.version === 9) return locateCode(p);
+    if (proof.kind === 'range') return locateStatic(p);
+    if (proof.kind === 'code') return locateCode(p);
     const owner = document.getElementById(proof.object);
     if (!owner || ownerOf(owner) !== owner
       || !baseline.get(owner.id) || baseline.get(owner.id) !== ownerSignature(owner)) return null;
     let el;
-    if (proof.version === 2 || proof.version === 3 || proof.version === 7) {
+    if (proof.kind === 'related-code') {
       el = whereOf(owner);
-      if (!el || (proof.version === 7 && whereFullBaseline.get(el) !== ownerSignature(el, true, true))) return null;
-    } else if (proof.version === 4) {
-      el = owner;
+      if (!el || whereFullBaseline.get(el) !== ownerSignature(el, true, true)) return null;
     } else {
       if (typeof proof.field !== 'string') return null;
       const fields = [...owner.querySelectorAll(fieldSelector)].filter((item) => fieldName(item, owner) === proof.field && item.closest(ownerSelector) === owner && !item.closest('.qwhere'));
       if (fields.length !== 1) return null;
       el = fields[0];
     }
-    const text = proof.version === 4 ? ownerNodes(el) : proof.version === 7 ? whereNodes(el) : nodes(el), full = text.map(n => n.data).join('');
+    const text = proof.kind === 'related-code' ? whereNodes(el) : nodes(el), full = text.map(n => n.data).join('');
     const from = proof.start, to = proof.end;
     if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > full.length || to <= from) return null;
-    const expected = proof.version === 7 ? full.slice(from, to) : proof.text;
-    if (typeof expected !== 'string' || !expected || ((proof.version < 3 || proof.version === 6) && expected !== p.quote)
+    const expected = proof.kind === 'related-code' ? full.slice(from, to) : proof.text;
+    if (typeof expected !== 'string' || !expected || (proof.kind === 'field' && expected !== p.quote)
       || full.slice(from, to) !== expected) return null;
-    if (proof.version === 7 && (!Array.isArray(proof.visible) || !proof.visible.length
+    if (proof.kind === 'related-code' && (!Array.isArray(proof.visible) || !proof.visible.length
       || proof.visible.some((part, i) => !Array.isArray(part) || part.length !== 2 || !Number.isInteger(part[0])
         || !Number.isInteger(part[1]) || part[0] < from || part[1] > to || part[1] <= part[0]
         || (i && part[0] < proof.visible[i - 1][1])))) return null;
-    let structure = proof.version === 2 || proof.version === 3 || proof.version === 7
-      ? JSON.stringify([owner.id, ownerSignature(owner), ownerSignature(el, true, proof.version === 7), from, to, expected,
-        ...(proof.version === 3 || proof.version === 7 ? [p.quote] : []), ...(proof.version === 7 ? [proof.visible] : [])])
-      : proof.version === 4 ? JSON.stringify([owner.id, ownerSignature(owner), from, to, expected, p.quote])
+    const structure = proof.kind === 'related-code'
+      ? JSON.stringify([owner.id, ownerSignature(owner), ownerSignature(el, true, true), from, to, expected, p.quote, proof.visible])
       : fieldBinding(owner, proof.field, from, to, expected);
-    if (proof.version >= 3) structure = sha256(structure);
-    if (structure !== proof.structure) return null;
+    if (sha256(structure) !== proof.structure) return null;
     let offset = 0; const parts = [];
     for (const node of text) {
-      for (const [a, b] of proof.version === 7 ? proof.visible : [[from, to]]) {
+      for (const [a, b] of proof.kind === 'related-code' ? proof.visible : [[from, to]]) {
         const start = Math.max(0, a - offset), end = Math.min(node.length, b - offset);
         if (end > start) parts.push({ node, start, end });
       }
       offset += node.length;
     }
-    return parts.length && (proof.version === 7 || parts.map(({ node, start, end }) => node.data.slice(start, end)).join('') === expected) ? { el, parts } : null;
+    return parts.length && (proof.kind === 'related-code' || parts.map(({ node, start, end }) => node.data.slice(start, end)).join('') === expected) ? { el, parts } : null;
   }
   function capture() {
     const selection = getSelection();
@@ -530,7 +523,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
     const where = firstLine ? firstLine + (lastLine && lastLine !== firstLine ? ' .. ' + lastLine : '')
       : el.dataset.where || (el !== root && heading ? nodes(heading).map(n => n.data).join('') : t.report);
     const proof = selected.trim() ? proofFor(range, quoteText) : null;
-    return { quote: quoteText, where, note: '', anchor: { id: el.id, start: from ?? 0, end: to, text: quoteText }, ...(proof ? { proof } : {}), rect: range.getBoundingClientRect() };
+    return { quote: quoteText, where, note: '', ...(proof ? { proof } : {}), rect: range.getBoundingClientRect() };
   }
   function close() {
     editor.close(); draft = null;
@@ -559,7 +552,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
     if (!marker?.isConnected || !passage) return false;
     const found = locate(passage);
     if (!found || !found.el.contains(marker) || !marker.closest(`mark[data-annotation="${index}"]`)) return false;
-    if (passage.proof.version === 5 || passage.proof.version === 7 || passage.proof.version === 8 || passage.proof.version === 9) {
+    if (passage.proof.kind !== 'field') {
       const selected = new Set(found.parts.map(part => part.node));
       if (found.parts.some(part => part.start !== 0 || part.end !== part.node.length || !part.node.parentElement.closest(`mark[data-annotation="${index}"]`))) return false;
       for (const mark of root.querySelectorAll(`mark[data-annotation="${index}"]`)) {
@@ -568,7 +561,7 @@ export function annotations({ state, changed, t, identity, reveal, sha256, ensur
       return true;
     }
     let offset = 0;
-    for (const node of passage.proof.version === 4 ? ownerNodes(found.el) : nodes(found.el)) {
+    for (const node of nodes(found.el)) {
       const end = offset + node.length, marked = !!node.parentElement.closest(`mark[data-annotation="${index}"]`);
       if (node.length && ((offset < passage.proof.end && end > passage.proof.start) !== marked
         || (marked && (offset < passage.proof.start || end > passage.proof.end)))) return false;

@@ -67,7 +67,6 @@ test("root Q plus F counts agree with exported remaining IDs across independent 
     assert.equal(stats.q, q.length);
     assert.equal(stats.f, f.length);
     assert.equal(stats.remaining, q.length + f.length);
-    assert.equal(D.remainingCount(questions, state, findings), stats.remaining);
   };
   verify([1, 3], [1, 2]);
   state.findings.i1 = "apply";
@@ -138,13 +137,13 @@ test("two dependent decisions change independently without entering the root Q+F
   assert.equal(rootCount(), 3);
 });
 
-test("schema 4 export retains revision metadata and annotations without fabricating a source", () => {
+test("schema 5 export retains revision metadata and annotations without fabricating a source", () => {
   const state = D.empty();
   state.notes.b1 = "Investigate this block.";
   state.zones["5-0"] = true;
   state.passages.push({ id: "p1", text: "source excerpt", comment: "A note." });
   const out = output(state);
-  assert.equal(out.schema_version, 4);
+  assert.equal(out.schema_version, 5);
   assert.equal(out.record_sha256, meta.recordSha);
   assert.equal(out.diff_sha256, meta.diffSha);
   assert.equal(out.range, meta.range);

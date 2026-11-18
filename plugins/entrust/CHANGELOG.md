@@ -7,6 +7,12 @@ forensics remain in the repository references and release notes.
 
 ### Review report v8
 
+- **Breaking:** each question requires an explicit `kind`; records without it fail `check` and `render`.
+  Current exports use schema 5, question comments come from `notes`, and old `questions[id].note` values are no
+  longer read. Decision runtime consumers use `choiceStats` and `validAccept`/`validDefer` instead of the removed
+  `counters` and `remainingCount` helpers. Files named `*.browser.*` count as tests.
+- **Breaking:** passage annotations use the current `quote`, `where`, `note` and optional identity `proof` shape;
+  old passage state and anchors are not read. Unproven current passages remain in export without a location link.
 - Within a single context or consequence list, identical nonempty ordered source sets are shown once with an
   explicit attribution to each item; different source data and separate groups remain separate.
 - **Breaking:** custom-language catalogs need `source.each` when such a shared set is rendered. `check` names
@@ -17,20 +23,17 @@ forensics remain in the repository references and release notes.
   tree labels and the export/source labels for the capabilities used by the record. `check` lists every missing
   key; built-in English and Russian are complete. See `report-data.md` for the exact keys and conditions.
 - **Breaking:** `annotation.added` is a separate in-memory notification required of custom catalogs; invalid
-  language tags are rejected instead of being rendered as English. Legacy annotations without identity proof
-  remain in state/export but are unlocated. New annotations use an additive identity proof for supported text
-  and code ranges, including multiline and continuation code fragments; unsupported selections remain unlocated
-  with a warning. New proofs use structure digests, and new legacy anchor text contains only the visible quote.
-  Schema 4 remains; compatibility with strict clients is unknown.
+  language tags are rejected instead of being rendered as English. Current annotations use identity proof for
+  supported text and code ranges, including multiline and continuation code fragments; unsupported selections
+  remain unlocated with a warning. Compatibility with strict schema-5 clients is unknown.
 - **Breaking:** storage-sensitive wording uses `export.storage-explanation`, `decision.export-local-method`,
   `decision.draft-local`, and `decision.gate-draft-local` instead of their older override keys. Custom catalogs
   must supply the new keys when used, plus `choice.filter-editing`.
-- Schema 4 adds `waitingForParent` entries `{question, parent, kind}` for unanswered applicable questions waiting
+- Schema 5 includes `waitingForParent` entries `{question, parent, kind}` for unanswered applicable questions waiting
   for an ancestor. `factAnswerStatuses` separately maps known nonblank fact/evidence answers to `entered`,
   `waiting-parent` (with the parent ID), or `not-applicable`; raw answers and zones stay untouched and none of
   those statuses means verified. An accepted decision awaiting an ancestor also has `waiting_parent: N` on its
-  question entry without becoming unanswered. Unknown and blank IDs receive no invented status. These are additive
-  schema-4 fields; compatibility with strict external schema-4 parsers is unknown.
+  question entry without becoming unanswered. Unknown and blank IDs receive no invented status.
 
 ### Review report v7
 
@@ -64,7 +67,7 @@ forensics remain in the repository references and release notes.
   The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
 - v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
   grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
-  growth against that baseline. Schema 4 remains compatible; see the v7 note above for custom catalogs.
+  growth against that baseline. See the v7 note above for custom catalogs.
 
 ## 0.41.0 — 2026-11-17
 

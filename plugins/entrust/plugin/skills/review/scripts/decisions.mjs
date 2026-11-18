@@ -5,7 +5,7 @@
 // or an outside parent variant keeps the pick as a draft, never in effect. An answer entered on a fact card is
 // not a checked result. Decisions are never carried between revisions by question number.
 export function decisionRuntime() {
-  // answers: fact answers entered on the surface (additive, schema 4 exports them as factAnswers);
+  // answers: fact answers entered on the surface, exported as factAnswers;
   // hiddenPurposes/treeHidden/treeWidth/treeMode: the code view's UI state, stored beside the decisions, never exported.
   const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {}, answers: {}, hiddenPurposes: [], treeHidden: false, treeWidth: 0, treeMode: "folder" });
   const normalize = (raw) => {
@@ -15,7 +15,7 @@ export function decisionRuntime() {
     return state;
   };
   const entryOf = (state, id) => state.questions[id] || {};
-  const noteOf = (state, id) => entryOf(state, id).note || state.notes["q" + id] || "";
+  const noteOf = (state, id) => state.notes["q" + id] || "";
   const byIdOf = (questions) => Object.fromEntries(questions.map((q) => [q.id, q]));
   // A child applies while its parent has no valid acceptance, and while the parent's accepted variant is one the
   // child listed. A selected radio alone never suppresses a child, and neither does an acceptance without its
@@ -82,28 +82,12 @@ export function decisionRuntime() {
     }
     return statuses;
   };
-  const counters = (questions, state) => {
-    const byId = byIdOf(questions);
-    let accepted = 0, deferred = 0, notApplicable = 0, total = 0;
-    for (const q of questions) {
-      if (q.kind !== "decision") continue;
-      total++;
-      if (!applicableIn(q, state, byId)) { notApplicable++; continue; }
-      if (validAccept(q, state)) accepted++;
-      else if (validDefer(q, state)) deferred++;
-    }
-    return { accepted, deferred, notApplicable, remaining: total - accepted - deferred - notApplicable };
-  };
-  // The one quantity the page counts: the main decisions still open (the roots, not their conditional
-  // children) plus the findings not processed. Ideas are optional and never enter it; an invalid acceptance
-  // or a reasonless deferral leaves its question open.
-  const remainingCount = (questions, state, findings) => choiceStats(questions, state, findings).remaining;
   // The ONE derivative behind every counter: the subtab badges, the global remainder, the settled rows and the
   // export's remainder all read this — never a DOM tally, so they cannot disagree after Q2=keep. A main decision
   // is open until it has a valid decision; its conditional children are actionable under it but never enter the
   // mandatory count (the parent's accepted variant may retire them), and the parent's unit stays unsettled until
   // every applicable child is accepted. A reasoned deferral is excluded from the remainder — not done, but not
-  // open work either (the port's remainingCount semantics, unified). Ideas are optional and never enter the
+  // open work either. Ideas are optional and never enter the
   // remainder. A fact/evidence request is open until an answer is entered; an entered answer is not a verified
   // check. `settled` maps the unit ids that move to compact rows (main Q roots, findings, ideas) to done/deferred.
   const choiceStats = (questions, state, findings, ideas = []) => {
@@ -152,7 +136,7 @@ export function decisionRuntime() {
         comment: noteOf(state, q.id) || null };
     });
     return {
-      schema_version: 4, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
+      schema_version: 5, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
       findings: state.findings,
       questions: entries,
       // A decision accepted by comment alone (no variants to pick): named, so a reader never mistakes it for a
@@ -168,10 +152,10 @@ export function decisionRuntime() {
         .map((q) => ({ question: q.id, parent: waitingParentIn(q, state, byId), kind: q.kind })),
     };
   };
-  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
+  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
     applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)),
     waitingParent: (q, state, questions) => waitingParentIn(q, state, byIdOf(questions)) };
 }
 
 const runtime = decisionRuntime();
-export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;
+export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;

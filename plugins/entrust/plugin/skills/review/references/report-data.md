@@ -2,7 +2,7 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [fallback](#fallback).
+See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [optional fields](#optional-fields).
 
 ## Making it
 
@@ -202,61 +202,21 @@ new evidence that changes a conclusion makes a revised record, named as such.
   storage write. Built-in `en` and `ru` need no catalog updates. Invalid language tags are rejected by `check`
   using `Intl.getCanonicalLocales`; previously accepted invalid tags must be corrected.
 
-  Schema 4 adds `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
+  Schema 5 includes `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
   unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions
   and requests with an answer are excluded; their existing data remains in the export. The list does not change
-  applicability or mean an answer is verified. A deferred parent retains its existing behavior. Compatibility
-  with external strict schema-4 parsers is unknown. An accepted decision whose ancestor is still unresolved
+  applicability or mean an answer is verified. A deferred parent retains its existing behavior. An accepted decision whose ancestor is still unresolved
   has an additive `waiting_parent: N` on its question entry: the choice remains recorded, not an unanswered
-  item, but is conditional on QN. The additive `factAnswerStatuses` object maps each known
+  item, but is conditional on QN. The `factAnswerStatuses` object maps each known
   fact/evidence answer ID with nonblank content to `{status: "entered"}`, `{status: "waiting-parent", parent: N}`,
   or `{status: "not-applicable"}`. It uses the same applicability and parent gate as the page. IDs that do not
-  identify a known fact/evidence question (including legacy questions), and blank answers, remain untouched in
+  identify a known fact/evidence question, and blank answers, remain untouched in
   `factAnswers` without an invented status. The statuses never mean
-  verified; raw answers and zones remain unchanged. Strict external schema-4 parser compatibility is unknown.
-  **Breaking annotation binding:** every legacy passage without a supported proof remains in browser state and
-  JSON with its original quote, comment, location and offsets, but is unlocated. To create a new binding, reselect
-  the passage and copy the comment into a new annotation; the old entry remains until explicitly removed.
-  Coincident old offsets and text do not establish field identity. A passage may add a proof alongside the unchanged
-  legacy `anchor`. `document` is SHA-256 of the complete generated static HTML with a fixed digest placeholder;
-  `record` is SHA-256 of `JSON.stringify([review, parsedDiffFiles])`. In version-1 and version-6 field proofs,
-  `object` identifies a unique canonical
-  Q/F/B, and `field` identifies its marked text/source/claim or canonical B line (`line.kind.old.new`; only the
-  first B fragment). `structure` binds the owner, field, offsets and text to the owner's static rendered text
-  and structure, excluding mutable controls, annotation marks and related-code copies. The runtime compares the
-  owner to its initial static DOM/template baseline when
-  capturing and restoring, and invalidates installed markers if that structure changes. UTF-16 offsets and exact
-  text are checked inside that field. A changed record, renderer, object structure or
-  ambiguous identity fails closed; SHA-256 here is an identity guard, not an authenticity signature.
-  A version-2 proof can also bind an exact text range in a question's lazily built related-code copy: it identifies
-  the unique Q and its unique related-code disclosure, and stores its selected-text offsets and the observed
-  related-code structure. The baseline is recorded when the disclosure is built from templates; restoration
-  waits for that build. Mutable controls and fragment metadata are excluded from the version-2 signature. Versions 1–4
-  remain readable; versions 1 and 2 store the full structure and may consume substantial storage. An intermediate
-  version-5 proof can become unlocated if its normalization differs.
-  New version-6 field proofs and version-7 related-code proofs store SHA-256 digests instead of that full
-  structure. Version 7 also records the visible subranges selected at capture. Version 8 binds general static
-  ranges, including ranges between owners, to the initial identity, structural path and normalized signature of
-  each selected static region, their offsets and their order. Intermediate static text is included; controls
-  and dynamic related-code bodies are not treated as static regions. A hidden, already-built related-code body
-  crossed by the range has its own baseline and digest checked, and is rebuilt if needed on reload. A range
-  crossing visible related-code content from outside its disclosure remains unlocated. A version-8 proof can grow with the number
-  of selected regions and visibility transitions. `source-N` alone is not proof: a shifted structural path
-  fails closed, so unrelated insertions can make an otherwise unchanged generic passage unlocated.
-  The selected DOM text can include hidden content or differ in line breaks from the visible quote. For new
-  range proofs, hidden parts remain in the structural check but receive no highlight; opening them later does not
-  expand the original highlight. New `anchor.text` values contain the visible quote; `anchor.start` and `end`
-  remain DOM-text offsets and need not describe its rendered line breaks. Version 9 additionally binds a range
-  within one canonical code fragment, including continuation fragments, to its file's template structure and
-  the fragment's original position. It restores after that file is materialized; an unproven fragment remains
-  unlocated. Marked parts are rechecked after mutations and may survive a settled move only
-  when their proven range still agrees. Once a live marker is invalidated it stays unlocated for that page session;
-  a reload rechecks the stored proof. SHA-256 here is an identity guard, not an authenticity signature.
-  The report marks unsupported selections—including unproven dynamic clones—
-  unlocated without deleting their comments. No guessed relocation
-  occurs. Exact offsets on their own, including old `source-N` anchors, do not prove identity. Schema version 4
-  remains; the additive proof and changed binding policy are breaking for annotations, and compatibility with
-  unknown strict schema-4 consumers is not established.
+  verified; raw answers and zones remain unchanged.
+  A current passage contains `quote`, `where`, and `note`, and optionally a `proof` of kind `field`,
+  `related-code`, `range`, or `code`. The report checks the document and relevant structure before locating a
+  passage; unsupported or unconfirmed passages remain saved and exported without a location link. It does not
+  guess a relocation. Old passage state and old anchors are not read.
 
 ## Sources
 
@@ -274,9 +234,9 @@ the verifier's work.
 
 ## Decision cards
 
-A question with a `kind` is a card: `decision` (a choice), `fact` (a fact to settle) or `evidence` (evidence to
-obtain). The kind comes from what the question asks, never from its number. `text` and `at` remain the only
-canonical text and place; the card adds:
+A question is a card: `decision` (a choice), `fact` (a fact to settle) or `evidence` (evidence to
+obtain). The required `kind` comes from what the question asks, never from its number. The required `text` and
+`at` give the question and place; the card can also include:
 
 - `resolver`: the role that answers, when naming one helps; questions group by kind first.
 - `context`: self-contained facts — what happens now, what was before or in the mockup, what the owner already
@@ -307,7 +267,7 @@ again. A fact or evidence card carries an answer field on its surface: an entere
 (amber), never «verified» — it is the owner's input, not a checked result, and a zone mark without evidence is not
 a confirmation either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens
 with «Однозначной рекомендации нет» / «No clear recommendation» and names no `variant`: the page shows that text
-in the card's limit slot on the surface, not as a direction. The export (schema 4) carries the record and diff
+in the card's limit slot on the surface, not as a direction. The export (schema 5) carries the record and diff
 digests, the question number, the variant id and text, the comment and the status; `variant_draft` marks a saved
 variant that is not in effect (deferred or not applicable), `applyWithoutVariant` lists the questions accepted by
 comment alone, and `factAnswers` carries the entered fact answers apart from the comments. Decisions are never
@@ -338,7 +298,7 @@ never a new record field:
 - **Purpose.** Each touched file is classified by its path alone — `production`, `tests`, `styles`, `assets`,
   `docs`, `config` — and the purpose toggles hide groups (several at once) in the map AND the tree, with a
   «Hidden» chip; a reset or a deep link to a hidden block restores them. The rules, disclosed beside the filter:
-  `__tests__/`, `*.test.*`, `*.spec.*`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` are
+  `__tests__/`, `*.test.*`, `*.spec.*`, `*.browser.mjs`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` are
   styles; pictures, fonts and `assets/`, `icons/`, `keysets/` are assets; `.md/.mdx/.rst/.txt` and
   changelog/readme/license are docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like
   are config; the rest is production. A block whose own `kind` is `test` in a production file counts as tests.
@@ -367,11 +327,11 @@ never a new record field:
   built-in pattern highlighter draws the code; an unsupported language is escaped plain text. Rebuild the bundle
   as `scripts/vendor/README.md` says.
 - **Export.** «Export answers» in the header above the tabs opens a native dialog from any tab. ONE model feeds
-  the preview, the text and the JSON: all three are views of the SAME schema-4 payload «Download JSON» writes,
+  the preview, the text and the JSON: all three are views of the SAME schema-5 payload «Download JSON» writes,
   never a second builder reading the state apart. It carries the accepted Q/F/I (including «Do not fix»/«Do not
   take»), the deferred with or without a variant, drafts, not-applicable children, fact answers, marked zones
-  (a mark is never a confirmation) and every comment with its context — card, block, selected text, and the
-  legacy note stored in `questions[id].note` — each with a «Go» link that opens the tab and target. «Copy text»
+  (a mark is never a confirmation) and comments with their context — card, block and selected text. Located
+  comments have a «Go» link that opens the tab and target. «Copy text»
   says «Copied» only after the clipboard confirms, and on refusal selects the readonly text and says to press
   Ctrl/⌘+C. The popover's source copy is honest the same way. A partial export is acceptable; the counter of
   what remains travels with it.
@@ -379,14 +339,11 @@ never a new record field:
   code» bodies are built first, then every nested disclosure opens; the auditor prints everything, every
   fragment. After printing, the page returns to what it was, lazy files and filter views included.
 
-## Fallback
+## Optional fields
 
-One renderer draws old and new records alike. A question without a `kind` keeps its place and text, with no
-invented variants and no part in the decision counters; no context, no empty section; no `coverageStructured`, the
-`coverage` prose; no passport, the title, `change.sources` and `range`; no variants, acceptance asks for a
-substantive comment. The old findings, ideas and the apply/skip export stay. Missing optional fields are never a
-warning: an old record is complete, not deficient. The content and semantics of the old report are kept, not its
-exact layout.
+`kind`, `at` and `text` are required for each question; the remaining card fields are optional. Without
+`coverageStructured`, the page uses the `coverage` prose; without a passport, it uses the title, `change.sources`
+and `range`. Without variants, accepting a decision requires a substantive comment.
 
 ## Visual evidence
 

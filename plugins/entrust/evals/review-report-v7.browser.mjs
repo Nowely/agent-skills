@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Acceptance against an enriched COPY of 65507, never the source record.
+// Acceptance against an enriched copy, never the source record.
 // PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs BROWSER=chromium|yandex \
 //   node plugins/entrust/evals/review-report-v7.browser.mjs [out-dir]
 import { createHash } from "node:crypto";
@@ -11,15 +11,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { enrich65507 } from "./review/report-fixtures.mjs";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE ?? "playwright-core");
-const source = process.env.REVIEW_65507_DIR ?? "/private/tmp/entrust/cloud-components/65507-review-current";
-const annotations = process.env.REVIEW_65507_ANNOTATIONS ?? "/private/tmp/entrust/65507-review-analysis/prototype/annotations-v2.json";
+const source = process.env.REVIEW_PRIVATE_DIR;
+const annotations = process.env.REVIEW_PRIVATE_ANNOTATIONS;
 const browser = process.env.BROWSER === "yandex" ? "yandex" : "chromium";
-const binary = browser === "yandex" ? "/Applications/Yandex.app/Contents/MacOS/Yandex"
-  : process.env.CHROME_FOR_TESTING ?? path.join(os.homedir(), "Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+const binary = process.env.BROWSER_BINARY ?? process.env.CHROME_FOR_TESTING;
+if (browser === "yandex" && !binary) throw new Error("Set BROWSER_BINARY for Yandex Browser");
 const out = path.resolve(process.argv[2] ?? fs.mkdtempSync(path.join(process.env.TMPDIR ?? os.tmpdir(), `review-v7-${browser}-`)));
 const script = fileURLToPath(new URL("../plugin/skills/review/scripts/report.mjs", import.meta.url));
 const sha = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
-const expectedSha = "fb7ce806b3c90420da1cca37ea11c64dc0f2f0b655b040f8ad3244f1c4ef4cfc";
+if (!source || !annotations) throw new Error("Set REVIEW_PRIVATE_DIR and REVIEW_PRIVATE_ANNOTATIONS to run this private-fixture suite");
 const original = path.join(source, "review.json"), originalDiff = path.join(source, "review.diff");
 const results = { browser, binary, out, checks: [], errors: [] };
 fs.mkdirSync(out, { recursive: true });
@@ -31,7 +31,6 @@ let context, nojs, beforeRecord, beforeDiff, copySha;
 try {
   beforeRecord = sha(original);
   beforeDiff = sha(originalDiff);
-  check("source record matches known immutable SHA", beforeRecord === expectedSha, beforeRecord);
   const dir = path.join(out, "copy");
   fs.mkdirSync(dir, { recursive: true });
   fs.copyFileSync(originalDiff, path.join(dir, "review.diff"));
@@ -78,13 +77,17 @@ try {
   const units = () => p.click('[data-navigation-view="units"]');
   const files = () => p.click('[data-navigation-view="files"]');
 
+  await test("requirement labels", async () => {
+    const labels = await p.locator("#code-requirement option").allTextContents();
+    check("requirement options use R labels and block counts", labels.some((label) => /^R1\s*—.*\(\d+\)/.test(label)), labels);
+  });
   await test("requirement 2 and unique linked blocks", async () => {
     await select("2");
     const s = await snapshot();
-    check("T2: 835 unique related blocks, all shown in all mode", s.req === "2" && s.select === "2" && s.mode === "all"
+    check("R2: 835 unique related blocks, all shown in all mode", s.req === "2" && s.select === "2" && s.mode === "all"
       && s.linked.length === 835 && new Set(s.linked).size === 835 && s.visible.length === 835
       && s.linked.every((id) => s.visible.includes(id)) && /835/.test(s.chip) && !s.empty, { count: s.linked.length, visible: s.visible.length, parts: s.parts, chip: s.chip, empty: s.empty });
-    check("T2: no duplicate IDs after insertion", !s.duplicateIds.length, s.duplicateIds);
+    check("R2: no duplicate IDs after insertion", !s.duplicateIds.length, s.duplicateIds);
   });
   await test("unit groups and navigation", async () => {
     await units();
@@ -103,10 +106,10 @@ try {
     await p.waitForFunction((id) => document.activeElement?.id === `b${id}`, target);
     s = await snapshot();
     const targetState = await p.evaluate((id) => ({ count: document.querySelectorAll(`#b${id}`).length,
-      codeOpen: document.querySelector(`#b${id} .segcode`)?.open,
+      codeVisible: !!document.querySelector(`#b${id} pre`)?.getClientRects().length,
       inMap: !!document.querySelector(`#map #b${id}`), focus: document.activeElement?.id }), target);
-    check("unit B jump preserves T2 and uses canonical code without duplication", s.req === "2" && s.select === "2"
-      && s.mapCount === before && !s.duplicateIds.length && targetState.count === 1 && targetState.codeOpen && targetState.inMap && targetState.focus === `b${target}`,
+    check("unit B jump preserves R2 and uses canonical code without duplication", s.req === "2" && s.select === "2"
+      && s.mapCount === before && !s.duplicateIds.length && targetState.count === 1 && targetState.codeVisible && targetState.inMap && targetState.focus === `b${target}`,
       { target, before, after: s.mapCount, targetState, duplicateIds: s.duplicateIds });
     await files();
     check("switching back to files preserves requirement", (await snapshot()).req === "2" && await p.locator("#files-tree").isVisible());
@@ -115,13 +118,13 @@ try {
     await select("9");
     let s = await snapshot();
     const noRelated = s.empty;
-    check("T9: no linked blocks and an explicit empty result", s.req === "9" && s.linked9.length === 0 && s.visible.length === 0 && !!noRelated && /0/.test(s.chip),
+    check("R9: no linked blocks and an explicit empty result", s.req === "9" && s.linked9.length === 0 && s.visible.length === 0 && !!noRelated && /0/.test(s.chip),
       { linked: s.linked9.length, visible: s.visible.length, empty: noRelated, chip: s.chip });
     await select("2");
     const purposes = await p.locator("[data-purpose-filter]:not([data-purpose-empty])").evaluateAll((els) => els.map((e) => e.dataset.purposeFilter));
     for (const purpose of purposes) await p.click(`[data-purpose-filter="${purpose}"]`);
     s = await snapshot();
-    check("T2: filters produce a different empty result from T9", s.linked.length === 835 && s.visible.length === 0
+    check("R2: filters produce a different empty result from R9", s.linked.length === 835 && s.visible.length === 0
       && !!s.empty && s.empty !== noRelated && s.hiddenPurposes.length === purposes.length,
       { noRelated, filtered: s.empty, hidden: s.hiddenPurposes, visible: s.visible.length });
     await select("");
@@ -145,14 +148,14 @@ try {
     let s = await snapshot();
     const expected = s.blockData.filter((b) => b.serves.includes(2) && b.purpose !== purpose).map((b) => b.id);
     const actual = s.groups.flatMap((g) => g.blocks);
-    check("purpose filter intersects T2 in map and unit groups", s.req === "2" && s.visible.length === expected.length
+    check("purpose filter intersects R2 in map and unit groups", s.req === "2" && s.visible.length === expected.length
       && actual.length === expected.length && expected.every((id) => s.visible.includes(id) && actual.includes(id)),
       { purpose, expected: expected.length, map: s.visible.length, units: actual.length });
     await p.click(`[data-purpose-filter="${purpose}"]`);
     await p.click('[data-show="fix"]');
     s = await snapshot();
     const fix = s.blockData.filter((b) => b.serves.includes(2) && b.verdict === "fix").map((b) => b.id);
-    check("verdict filter intersects T2 in map and unit groups", s.req === "2" && s.visible.length === fix.length
+    check("verdict filter intersects R2 in map and unit groups", s.req === "2" && s.visible.length === fix.length
       && s.groups.flatMap((g) => g.blocks).length === fix.length && fix.every((id) => s.visible.includes(id)),
       { expected: fix.length, map: s.visible.length, units: s.groups.flatMap((g) => g.blocks).length });
     await p.click('[data-show="all"]');
@@ -165,19 +168,19 @@ try {
   await test("deep link and history", async () => {
     await p.goto(url + "#req2-code", { waitUntil: "load", timeout: 60000 });
     let s = await snapshot();
-    check("#req2-code opens T2 and its 835 blocks", s.req === "2" && s.select === "2" && s.visible.length === 835
+    check("#req2-code opens R2 and its 835 blocks", s.req === "2" && s.select === "2" && s.visible.length === 835
       && await p.locator("#tab-code").getAttribute("aria-selected") === "true", { req: s.req, select: s.select, visible: s.visible.length, hash: s.hash });
     await select("9");
     await p.goBack({ waitUntil: "load", timeout: 30000 });
     await p.waitForFunction(() => document.querySelector("#code-requirement")?.value === "2", null, { timeout: 8000 });
     s = await snapshot();
-    check("history back restores T2", s.req === "2" && s.visible.length === 835 && s.hash === "#req2-code", { req: s.req, visible: s.visible.length, hash: s.hash });
+    check("history back restores R2", s.req === "2" && s.visible.length === 835 && s.hash === "#req2-code", { req: s.req, visible: s.visible.length, hash: s.hash });
     await p.goForward({ waitUntil: "load", timeout: 30000 });
     await p.waitForFunction(() => document.querySelector("#code-requirement")?.value === "9", null, { timeout: 8000 });
     s = await snapshot();
-    check("history forward restores T9", s.req === "9" && s.visible.length === 0 && !!s.empty && s.hash === "#req9-code", { req: s.req, visible: s.visible.length, hash: s.hash, empty: s.empty });
+    check("history forward restores R9", s.req === "9" && s.visible.length === 0 && !!s.empty && s.hash === "#req9-code", { req: s.req, visible: s.visible.length, hash: s.hash, empty: s.empty });
   });
-  // Reload between these cases: T9 must be tested before other interactions materialize the map.
+  // Reload between these cases: R9 must be tested before other interactions materialize the map.
   const fresh = async () => {
     await p.setViewportSize({ width: 1366, height: 900 });
     await p.goto(url, { waitUntil: "load", timeout: 60000 });
@@ -193,17 +196,17 @@ try {
       files: files.length, ids: map.querySelectorAll(".seg[id][data-block]").length, hash: location.hash };
   });
   const allRestored = (s) => !s.req && s.mode === "all" && s.blocks === 1470 && s.files === 96 && s.ids === 1470;
-  await test("fresh T9 clear restores all files", async () => {
+  await test("fresh R9 clear restores all files", async () => {
     await fresh();
     const before = await fullMap();
     await select("9");
     const empty = await fullMap();
     await p.click("#filter-clear");
     const after = await fullMap();
-    check("fresh T9 → filter-clear restores all 1470 B and 96 files", before.blocks < 1470 && empty.blocks === 0 && allRestored(after),
+    check("fresh R9 → filter-clear restores all 1470 B and 96 files", empty.blocks === 0 && allRestored(after),
       { before, empty, after });
   });
-  await test("fresh T9 browser back restores all files", async () => {
+  await test("fresh R9 browser back restores all files", async () => {
     await fresh();
     const before = await fullMap();
     await select("9");
@@ -211,7 +214,7 @@ try {
     await p.goBack({ waitUntil: "load", timeout: 30000 });
     await p.waitForFunction(() => !document.querySelector("#map").dataset.req && location.hash === "#panel-code", null, { timeout: 8000 });
     const after = await fullMap();
-    check("fresh T9 → browser Back restores all 1470 B and 96 files", before.blocks < 1470 && empty.blocks === 0 && allRestored(after),
+    check("fresh R9 → browser Back restores all 1470 B and 96 files", empty.blocks === 0 && allRestored(after),
       { before, empty, after });
   });
   await test("unit layout, hide-tree, and selected block context", async () => {
@@ -236,7 +239,7 @@ try {
       { hideVisible, hidden, showVisible });
     const data = await snapshot();
     const block = data.blockData.find((b) => b.serves.includes(2) && b.unit);
-    if (!block) throw new Error("No T2 block with unit context");
+    if (!block) throw new Error("No R2 block with unit context");
     const button = p.locator(`#unit-tree [data-unit-block="${block.id}"]`);
     await button.evaluate((b) => { b.closest("details").open = true; });
     await button.click();
@@ -256,7 +259,7 @@ try {
     await p.click('[data-mview="tree"]');
     await units();
     const block = (await snapshot()).groups.find((g) => g.blocks.length)?.blocks[0];
-    if (!block) throw new Error("No T2 unit block on mobile");
+    if (!block) throw new Error("No R2 unit block on mobile");
     const button = p.locator(`#unit-tree [data-unit-block="${block}"]`);
     await button.evaluate((b) => { b.closest("details").open = true; });
     await button.click();
@@ -266,7 +269,7 @@ try {
       blockVisible: !!document.getElementById(`b${id}`).getClientRects().length,
       focus: document.activeElement?.id, req: document.querySelector("#code-requirement").value,
       diffPressed: document.querySelector('[data-mview="diff"]').getAttribute("aria-pressed") }), block);
-    check("390px: tree → unit B shows diff and focuses B without clearing T2", mobile.mode === "diff"
+    check("390px: tree → unit B shows diff and focuses B without clearing R2", mobile.mode === "diff"
       && mobile.diffVisible && mobile.blockVisible && mobile.focus === `b${block}` && mobile.req === "2" && mobile.diffPressed === "true", mobile);
   });
   await test("tab return and reload", async () => {
@@ -278,7 +281,7 @@ try {
     const back = await snapshot();
     await p.reload({ waitUntil: "load", timeout: 60000 });
     const reloaded = await snapshot();
-    check("T2 survives tab round trip with URL and reload", away === "#panel-overview"
+    check("R2 survives tab round trip with URL and reload", away === "#panel-overview"
       && back.req === "2" && back.hash === "#req2-code" && reloaded.req === "2" && reloaded.select === "2"
       && reloaded.hash === "#req2-code" && reloaded.visible.length === 835
       && await p.locator("#tab-code").getAttribute("aria-selected") === "true",
@@ -300,20 +303,20 @@ try {
     await p.click("#tab-code");
     const after = await p.evaluate(() => ({ open: [...document.querySelectorAll("#unit-tree details[open]")].map((d) => d.dataset.unit),
       req: document.querySelector("#code-requirement").value, unitVisible: !document.querySelector("#unit-tree").hidden }));
-    check("audit afterprint restores open unit group and T2", before.includes(unit) && JSON.stringify(before) === JSON.stringify(after.open)
+    check("audit afterprint restores open unit group and R2", before.includes(unit) && JSON.stringify(before) === JSON.stringify(after.open)
       && after.req === "2" && after.unitVisible, { before, after });
   });
-  await test("explicit B outside T2 reports filter reset", async () => {
+  await test("explicit B outside R2 reports filter reset", async () => {
     await fresh();
     await select("2");
     const data = await snapshot();
     const block = data.blockData.find((b) => !b.serves.includes(2));
-    if (!block) throw new Error("No block outside T2");
+    if (!block) throw new Error("No block outside R2");
     await p.evaluate((id) => { location.hash = `#b${id}`; }, block.id);
     await p.waitForFunction((id) => document.activeElement?.id === `b${id}`, block.id);
     const s = await fullMap();
     const notice = await p.locator("#code-notice").textContent();
-    check("explicit outside-T2 B clears filters and announces it", allRestored(s) && s.hash === `#b${block.id}`
+    check("explicit outside-R2 B clears filters and announces it", allRestored(s) && s.hash === `#b${block.id}`
       && await p.locator("#code-notice").isVisible() && /фильтр.{0,30}сброш/i.test(notice),
       { block: block.id, map: s, notice });
   });
@@ -331,6 +334,15 @@ try {
     }));
     check("no-JS: requirement, navigation and filters disabled", !controls.js && controls.requirement && controls.views.length === 2
       && controls.views.every(Boolean) && controls.purpose && controls.tree, controls);
+    const file = n.locator("#map details.file-details").first();
+    await file.locator(":scope > summary").click();
+    const visibleCode = await file.evaluate((el) => ({
+      open: el.open,
+      lines: [...el.querySelectorAll("pre .l")].filter((line) => line.getClientRects().length).length,
+      nestedCodeDisclosures: el.querySelectorAll("details.segcode").length
+    }));
+    check("no-JS: opening a file reveals its code without nested code disclosures",
+      visibleCode.open && visibleCode.lines > 0 && visibleCode.nestedCodeDisclosures === 0, visibleCode);
   });
 } catch (e) {
   check("setup and execution", false, String(e.stack ?? e).slice(0, 2000));

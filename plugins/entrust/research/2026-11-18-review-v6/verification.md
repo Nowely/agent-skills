@@ -1,6 +1,8 @@
-# Review report v6 — verification
+# Review report v6 — historical verification
 
-Version: **0.41.0**, branch `review-report-v3`. Canonical renderer:
+Historical results for the v6 renderer at the revision identified below. They do not describe or verify the current HEAD.
+
+Version at the time: **0.41.0**. Canonical renderer:
 `plugins/entrust/plugin/skills/review/scripts/page.mjs`.
 
 ## Implementation
@@ -26,7 +28,7 @@ are preserved (1100 context, 4043 added, 1597 removed).
 
 ## Subtraction
 
-The same enriched COPY of 65507, rendered by pre-v6 `062cf5e9` and the final renderer:
+The same enriched copy of a private review, rendered by pre-v6 `062cf5e9` and the final renderer:
 
 | Measurement | Before | After | Delta |
 | --- | ---: | ---: | ---: |
@@ -41,11 +43,6 @@ The same enriched COPY of 65507, rendered by pre-v6 `062cf5e9` and the final ren
 
 Final coverage: **1470 blocks / 1517 fragments / 96 files**. B40 has one header and two fragments.
 Pointer resizing was measured independently: **238 → 308px**, reload restores **308px**.
-
-Measurements and a generated final report:
-`/private/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/opencode/v6-size/`
-(`measurements.json` for DOM/drag, `q2-verification.json` for final source/HTML sizes and Q2,
-`HEAD/review.html`, `062cf5e9/review.html`).
 
 ## Choices and affordance
 
@@ -89,9 +86,6 @@ opencode, orchestrate-live (live opt-in skipped), orchestrate, package, prepare-
 review-eval, review-report, status, swarm, worktree, and terse/pages.
 The Claude live opt-in case is also skipped.
 
-Logs: `v6-final-check-node.log`, `v6-all-verified.log`, `v6-owner-recheck.log` under
-`/private/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/opencode/`.
-
 ## Browser acceptance
 
 The final renderer is fixed at `198c11c9`; browser checks run with `playwright-core`, separate
@@ -119,15 +113,10 @@ persistent profiles and real PDF extraction through `pdfjs-dist`.
 - Q2, defer-without-reason, reset/reload, facts versus verification, optional ideas, annotations,
   legacy catalogs, deep links, all-tab export parity and deterministic render pass.
 
-Artifacts root: `/private/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/opencode/`.
-Chromium: `v6-final-check-chromium/browser-validation-v5-chromium.json` and PDFs/screenshots alongside it.
-Yandex: `v6-final-check-yandex/browser-validation-v5-yandex.json` and PDFs/screenshots alongside it.
-The v5 filenames are retained as the existing acceptance entrypoint; these results test v6.
+The v5 filenames were retained as the existing acceptance entrypoint; these results tested v6.
 
 ## Integrity and limits
 
-Immutable original SHA-256:
-`fb7ce806b3c90420da1cca37ea11c64dc0f2f0b655b040f8ad3244f1c4ef4cfc`.
 The prototype and original record were only read. The measurements describe the enriched copy, not
 additional evidence about the underlying change.
 

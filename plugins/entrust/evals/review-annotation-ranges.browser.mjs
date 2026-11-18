@@ -1,5 +1,5 @@
 // PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs CHROME_FOR_TESTING=/path/to/chrome \
-//   node review-annotation-ranges.browser.mjs /path/to/rendered-65507.html
+//   node review-annotation-ranges.browser.mjs /path/to/rendered-review.html
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
@@ -57,9 +57,10 @@ try {
         if (!editor.open) throw Error(`editor did not open; quote=${JSON.stringify(quote)} node=${JSON.stringify(first.data)}`);
         editor.querySelector('textarea').value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = 'review-report:' + JSON.parse(document.querySelector('#data').textContent).key;
-        return { quote, markedText, key, proofPresent: !!JSON.parse(localStorage.getItem(key)).passages[0].proof };
+        const key = 'review-report:current:' + JSON.parse(document.querySelector('#data').textContent).key;
+        return { quote, markedText, key, proof: JSON.parse(localStorage.getItem(key)).passages[0].proof };
       }, scenario);
+      assert.equal(saved.proof?.kind, scenario === "multi-field" ? "range" : "related-code");
       await page.reload();
       if (scenario.startsWith("qwhere-")) {
         await page.evaluate(() => { document.querySelector('#q4 .qwhere').open = true; });
@@ -76,7 +77,7 @@ try {
       }, { scenario, saved });
       assert.equal(result.quote, saved.quote, 'saved quote');
       assert.equal(result.note, `note ${scenario}`, 'saved note');
-      assert.equal(result.located, true, `marker missing after reload (proof saved: ${saved.proofPresent})`);
+      assert.equal(result.located, true, `marker missing after reload (proof kind: ${saved.proof?.kind})`);
       assert.equal(result.correct, true, 'marker in wrong area');
       assert.equal(result.marked, saved.markedText, 'highlight differs from selected DOM text');
       assert.equal(result.source, true, 'go-to missing');

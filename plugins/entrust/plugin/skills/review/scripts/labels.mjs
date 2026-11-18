@@ -57,7 +57,7 @@ export const LABELS = {
   "weight.shared-count.other": "{n} shared",
   "kind": "Code review",
   "change": "Change", "task": "Task", "sources": "Sources", "requirements": "Requirements",
-  "verdict": "Verdict", "now": "How it works now", "target": "Target solution", "recommendation": "Recommendations",
+  "verdict": "Verdict", "now": "How it works now", "target": "Target solution", "recommendation": "Recommendation",
   "findings": "Findings", "ideas": "Ideas", "ideas-note": "Not needed for the change to be accepted.",
   "screens": "Screens", "structure": "Structure", "map": "Change map", "questions": "Questions and oddities",
   "coverage": "Coverage", "decisions": "Decisions", "summary": "Summary", "files": "Files",
@@ -172,7 +172,7 @@ Object.assign(LABELS, {
   "tree.filter": "File name:", "tree.filter-placeholder": "part of the path, case-insensitive", "tree.hide": "hide tree", "tree.show": "show tree",
   "mview.tree": "Tree", "code.top": "↑ top",
   "reset": "reset", "chip.prev": "Previous match", "chip.next": "Next match", "chip.back": "← back",
-  "chip.requirement": "Requirement {n}", "chip.finding": "Finding F{n}", "chip.purpose": "Purpose: {n}", "chip.with-parts": "with continuations",
+  "chip.requirement": "Requirement R{n}", "chip.finding": "Finding F{n}", "chip.purpose": "Purpose: {n}", "chip.with-parts": "with continuations",
   "map.open-filter": "Show in the map",
   "purpose.production": "Production code", "purpose.tests": "Tests", "purpose.styles": "Styles", "purpose.assets": "Assets", "purpose.docs": "Docs", "purpose.config": "Config",
   "purpose.lines-note": "Lines — the sum of block sizes.",
@@ -272,7 +272,7 @@ export const CATALOGS = { en: LABELS, ru: {
   "verdict": "Вывод",
   "now": "Как сейчас работает",
   "target": "Целевое решение",
-  "recommendation": "Рекомендации",
+  "recommendation": "Рекомендация",
   "findings": "Замечания",
   "ideas": "Идеи",
   "ideas-note": "Не обязательны для принятия изменения.",
@@ -476,7 +476,7 @@ Object.assign(CATALOGS.ru, {
   "tree.filter": "Имя файла:", "tree.filter-placeholder": "часть пути, без учёта регистра", "tree.hide": "скрыть дерево", "tree.show": "показать дерево",
   "mview.tree": "Дерево", "code.top": "↑ наверх",
   "reset": "сбросить", "chip.prev": "Предыдущее совпадение", "chip.next": "Следующее совпадение", "chip.back": "← вернуться",
-  "chip.requirement": "Требование {n}", "chip.finding": "Замечание F{n}", "chip.purpose": "Назначение: {n}", "chip.with-parts": "с продолжениями",
+  "chip.requirement": "Требование R{n}", "chip.finding": "Замечание F{n}", "chip.purpose": "Назначение: {n}", "chip.with-parts": "с продолжениями",
   "map.open-filter": "Показать в карте",
   "purpose.production": "Основной код", "purpose.tests": "Тесты", "purpose.styles": "Стили", "purpose.assets": "Ассеты", "purpose.docs": "Документация", "purpose.config": "Конфигурация",
   "purpose.lines-note": "Строки — сумма размеров блоков.",
@@ -562,7 +562,7 @@ Object.assign(LABELS, {
   "seg.comment-details": "Comment · details", "seg.comment-details-n": "Comment · {n} · details",
 });
 Object.assign(CATALOGS.ru, {
-  "tab.decisions": "Выборы",
+  "tab.decisions": "Решения",
   "code.requirement": "Требование", "code.all-requirements": "Все требования",
   "code.files": "Файлы", "code.units": "Юниты",
   "code.select-requirement": "Выберите требование, чтобы просмотреть его юниты.",
@@ -688,12 +688,7 @@ CATALOGS.ru["decision.export-method"] = "Карточки сгруппирова
 
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
-// The words of the page's chrome: the counters, the file tree's marks, the print profiles, the skip link,
-// and the v4 controls — tabs, theme, the map reader, the purpose and tree filters, the filter chip, the
-// honest export and the no-script notes. One renderer draws them on every record, old or new, but a catalog
-// written before these controls existed must keep working: an old record without the new fields is checked
-// against the old base set plus the v7 Code keys, and its older chrome falls back to the built-in words. A record that uses any
-// new field must carry the chrome words too — no silent English on a record authored for this version.
+// The chrome is always rendered; custom catalogs must provide it regardless of optional record fields.
 const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
   "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
   "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
@@ -762,14 +757,6 @@ const FEATURES = [
   [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
     ["banner.await", "banner.one", "banner.not-many", "banner.show"]],
 ];
-// The new record fields of the decision-first contract: a record carrying any of them was authored for this
-// version's page, so its catalog owes the chrome words and the keys of every capability it shows. The
-// predicates run before the check's array guards, so they read every list defensively.
-const usesNewFields = (review) =>
-  listOf(review.questions).some((q) => q && ["kind", "resolver", "context", "variants", "recommendation", "remainingEvidence", "parent", "zones"].some((key) => q[key] !== undefined))
-  || listOf(review.requirements).some((r) => r?.permission !== undefined)
-  || listOf(review.screens).some((s) => s?.historical !== undefined)
-  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined;
 const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
   "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];
 const V8_KEYS = ["tab.remaining", "tree.filter", "export.storage-explanation", "decision.export-local-method",
@@ -804,8 +791,8 @@ const v8FeatureKeys = (review) => {
   for (const field of ["tradeoffs", "screens", "coverageStructured"]) for (const item of listOf(review[field])) sources(item?.sources);
   return [...keys];
 };
-export const requiredKeys = (review) => [...new Set([...BASE_KEYS, ...CODE_KEYS, ...V8_KEYS, ...v8FeatureKeys(review), ...(usesNewFields(review)
-  ? [...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)] : [])])];
+export const requiredKeys = (review) => [...new Set([...BASE_KEYS, ...CODE_KEYS, ...V8_KEYS, ...v8FeatureKeys(review),
+  ...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)])];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {

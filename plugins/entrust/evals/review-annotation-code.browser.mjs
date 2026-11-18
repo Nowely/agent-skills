@@ -1,5 +1,5 @@
 // PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs CHROME_FOR_TESTING=/path/to/chrome \
-//   node review-annotation-code.browser.mjs /path/to/rendered-65507.html
+//   node review-annotation-code.browser.mjs /path/to/rendered-review.html
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
@@ -47,10 +47,10 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
         return { key, quote, expected, proof: JSON.parse(localStorage.getItem(key)).passages[0].proof };
       }, scenario);
-      assert.ok(saved.proof, "proof missing");
+      assert.equal(saved.proof?.kind, "code", "code proof missing");
       await page.reload();
       await page.waitForSelector("#b38 .l");
       const result = await page.evaluate(({ key, scenario }) => {

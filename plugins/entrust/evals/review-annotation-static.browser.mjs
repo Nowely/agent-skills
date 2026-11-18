@@ -1,5 +1,5 @@
 // PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs CHROME_FOR_TESTING=/path/to/chrome \
-//   node review-annotation-static.browser.mjs /path/to/rendered-65507.html
+//   node review-annotation-static.browser.mjs /path/to/rendered-review.html
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
@@ -35,7 +35,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${name}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
         return { key, quote };
       }, { selector, name });
       await page.reload();
@@ -110,7 +110,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "intermediate";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { intermediate, quote, key: "review-report:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { intermediate, quote, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
       });
       await page.reload();
       const result = await page.evaluate(key => ({
@@ -121,7 +121,7 @@ try {
       }), saved.key);
       assert.equal(result.passage.quote, saved.quote);
       assert.equal(result.intermediate, saved.intermediate, "intermediate non-owner text missing");
-      assert.equal(result.source, true, `missing intermediate source, proof version ${result.passage.proof?.version}`);
+      assert.equal(result.source, true, `missing intermediate source, proof kind ${result.passage.proof?.kind}`);
       await page.evaluate(() => {
         const mark = document.querySelector('#mechanisms > p.sub mark[data-annotation="0"]');
         [...mark.childNodes].find(node => node.nodeType === Node.TEXT_NODE).data += " changed";
@@ -156,7 +156,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "canonical code";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { quote, key: "review-report:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { quote, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
       });
       await page.reload();
       await page.waitForSelector("#b38 .l");
@@ -167,7 +167,7 @@ try {
           [...mark.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.data).join("")).join("")
       }), saved.key);
       assert.equal(result.marked, saved.quote);
-      assert.equal(result.proof.version, 6);
+      assert.equal(result.proof.kind, "field");
       assert.ok(new TextEncoder().encode(JSON.stringify(result.proof)).length < 8192);
       await page.evaluate(() => {
         const mark = document.querySelector('#b38 mark[data-annotation="0"]');

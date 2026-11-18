@@ -1,5 +1,5 @@
 // PLAYWRIGHT_CORE=/path/to/playwright-core/index.mjs CHROME_FOR_TESTING=/path/to/chrome \
-//   node review-annotation-visible.browser.mjs /path/to/rendered-65507.html
+//   node review-annotation-visible.browser.mjs /path/to/rendered-review.html
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
@@ -64,7 +64,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
         const passage = JSON.parse(localStorage.getItem(key)).passages[0];
         return { key, visibleQuote, domText, startText, endText, intermediate, hiddenSelected, proofPresent: !!passage.proof };
       }, { scenario, selectors });
@@ -87,7 +87,8 @@ try {
           hiddenMarks: [...document.querySelectorAll('mark[data-annotation="0"]')].filter(mark => mark.textContent.trim() && !mark.checkVisibility()).length };
       }, { key: saved.key, selectors });
       assert.equal(result.passage.quote, saved.visibleQuote, "visible quote");
-      assert.equal(result.passage.anchor.text, saved.visibleQuote, "legacy anchor exported hidden DOM text");
+      assert.equal(result.passage.proof.kind, "range");
+      assert.equal("anchor" in result.passage, false, "legacy anchor persisted");
       assert.equal(result.passage.note, `note ${scenario}`, "note");
       assert.equal(result.marker, true, `marker missing after reload (proof saved: ${saved.proofPresent})`);
       assert.equal(result.first, saved.startText, "wrong start highlight");
@@ -109,7 +110,7 @@ try {
       if (scenario === "between-owners-hidden-lazy") {
         assert.equal(result.passage.proof.where.length, 1, "hidden built clone was not bound");
         await page.evaluate(() => {
-          const node = document.querySelector('#q4 .qwhere .seg[data-block="35"] .segcode pre .l span').firstChild;
+          const node = document.querySelector('#q4 .qwhere .seg[data-block="35"] pre .l span').firstChild;
           node.data += " changed";
         });
         await page.waitForFunction(() => !document.querySelector("#passages [data-annotation-source]"));
@@ -190,11 +191,11 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "crosses lazy body";
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
         return { key, quote, passage: JSON.parse(localStorage.getItem(key)).passages[0] };
       }, selectors);
       assert.equal(saved.passage.proof, undefined, "unproven cross-boundary lazy body must not be marked");
-      assert.equal(saved.passage.anchor.text, saved.quote, "unlocated note exported hidden DOM text");
+      assert.equal("anchor" in saved.passage, false, "unlocated note persisted an anchor");
       await page.reload();
       const restored = await page.evaluate(key => ({
         passage: JSON.parse(localStorage.getItem(key)).passages[0],
@@ -203,6 +204,7 @@ try {
       assert.equal(restored.passage.quote, saved.quote);
       assert.equal(restored.passage.note, "crosses lazy body");
       assert.equal(restored.marker, false);
+      assert.equal(await page.locator("#passages [data-annotation-source]").count(), 0);
       console.log("PASS unproven-cross-lazy");
     } catch (error) {
       failures++; console.error(`FAIL unproven-cross-lazy: ${error.message}`);
@@ -231,14 +233,14 @@ try {
         const selection = getSelection(), range = selection.getRangeAt(0);
         if (!document.querySelector(selectors[0]).contains(range.startContainer)
           || !document.querySelector(selectors[1]).contains(range.endContainer)) throw Error("wrong selection endpoints");
-        if (document.querySelector('#q4 .qwhere .seg[data-block="35"] .segcode').open) throw Error("segment must be closed");
+        if (document.querySelector('#q4 .qwhere .seg[data-block="35"] .segmeta').open) throw Error("metadata must be closed");
         const quote = selection.toString(), start = range.startContainer.data.slice(range.startOffset), end = range.endContainer.data.slice(0, range.endOffset);
         document.dispatchEvent(new Event("selectionchange")); document.querySelector("#comment").click();
         const editor = document.querySelector("#annotation-editor");
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "hidden qwhere";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { quote, start, end, key: "review-report:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { quote, start, end, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
       }, selectors);
       await page.reload();
       await page.evaluate(() => { document.querySelector("#q4 .qwhere").open = true; });
@@ -247,17 +249,18 @@ try {
         const text = selector => [...document.querySelectorAll(`${selector} mark[data-annotation="0"]`)]
           .map(mark => [...mark.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.data).join("")).join("");
         return { start: text(selectors[0]), end: text(selectors[1]),
-          hidden: document.querySelectorAll('#q4 .qwhere .seg[data-block="35"] .segcode pre mark[data-annotation="0"]').length,
+          hidden: document.querySelectorAll('#q4 .qwhere .seg[data-block="35"] .segmeta-body mark[data-annotation="0"]').length,
+          code: document.querySelectorAll('#q4 .qwhere .seg[data-block="35"] pre mark[data-annotation="0"]').length,
           passage: JSON.parse(localStorage.getItem(key)).passages[0], source: !!document.querySelector("#passages [data-annotation-source]") };
       }, { selectors, key: saved.key });
       assert.equal(result.passage.quote, saved.quote);
       assert.equal(result.start, saved.start); assert.equal(result.end, saved.end);
-      assert.equal(result.hidden, 0, "closed code was marked"); assert.equal(result.source, true);
-      await page.evaluate(() => { document.querySelector('#q4 .qwhere .seg[data-block="35"] .segcode').open = true; });
-      assert.equal(await page.locator('#q4 .qwhere .seg[data-block="35"] .segcode pre mark[data-annotation="0"]').count(), 0,
-        "opening code expanded the original highlight");
+      assert.equal(result.hidden, 0, "closed metadata was marked"); assert.ok(result.code > 0, "visible code was not marked"); assert.equal(result.source, true);
+      await page.evaluate(() => { document.querySelector('#q4 .qwhere .seg[data-block="35"] .segmeta').open = true; });
+      assert.equal(await page.locator('#q4 .qwhere .seg[data-block="35"] .segmeta-body mark[data-annotation="0"]').count(), 0,
+        "opening metadata expanded the original highlight");
       await page.evaluate(() => {
-        const node = document.querySelector('#q4 .qwhere .seg[data-block="35"] .segcode pre .l span').firstChild;
+        const node = document.querySelector('#q4 .qwhere .seg[data-block="35"] .segmeta-body p').firstChild;
         node.data += " changed";
       });
       await page.waitForFunction(() => !document.querySelector("#passages [data-annotation-source]"));
@@ -292,7 +295,7 @@ try {
         editor.querySelector('[data-annotation-action="save"]').click();
       });
       const size = await page.evaluate(() => {
-        const key = "review-report:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
         const proof = JSON.parse(localStorage.getItem(key)).passages[0].proof;
         if (!proof) throw Error("proof missing");
         return new TextEncoder().encode(JSON.stringify(proof)).length;

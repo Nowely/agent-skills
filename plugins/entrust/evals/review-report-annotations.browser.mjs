@@ -44,26 +44,36 @@ try {
     }, { selector, index });
   }
   const saved = await page.evaluate(() => {
-    const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key;
+    const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:current:" + data.key;
     return { key, value: localStorage.getItem(key), document: data.annotationDocument };
   });
   const passages = JSON.parse(saved.value).passages;
   assert.equal(passages.length, selectors.length);
-  assert.equal(passages[0].anchor.id, "f1");
-  assert.match(passages[1].anchor.id, /^source-\d+$/);
-  assert.ok(passages.every((p) => p.anchor.end > p.anchor.start && p.anchor.text));
+  assert.equal(passages[0].proof.kind, "field");
+  assert.equal(passages[0].proof.object, "f1");
+  assert.equal(passages[1].proof.kind, "range");
+  assert.match(passages[1].proof.object, /^source-\d+$/);
+  assert.ok(passages.every((p) => p.quote && !("anchor" in p) && !("version" in p.proof)));
+  await page.locator("#export-open").click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.locator("#export-json-top").click()
+  ]);
+  const exported = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+  assert.deepEqual(exported.passages, passages);
+  await page.locator("#export-dialog form button").click();
   await context.addInitScript(({ key, value }) => localStorage.setItem(key, value), saved);
   await page.goto(pathToFileURL(path.resolve(after)).href);
   const sameDocument = saved.document === await page.evaluate(() => JSON.parse(document.getElementById("data").textContent).annotationDocument);
   const checkRestored = async () => {
     const restored = await page.evaluate(() => {
-      const key = "review-report:" + JSON.parse(document.getElementById("data").textContent).key;
+      const key = "review-report:current:" + JSON.parse(document.getElementById("data").textContent).key;
       const passages = JSON.parse(localStorage.getItem(key)).passages;
       return passages.map((p, index) => {
         const marks = [...document.querySelectorAll(`mark[data-annotation="${index}"]`)];
-        const anchor = document.getElementById(p.anchor.id);
+        const anchor = document.getElementById(p.proof.object);
         return {
-          anchor: p.anchor,
+          proof: p.proof,
           note: p.note,
           marked: marks.map((mark) => [...mark.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.data).join("")).join(""),
           insideAnchor: !!anchor && marks.length > 0 && marks.every((mark) => anchor.contains(mark)),
@@ -73,9 +83,9 @@ try {
     });
     assert.equal(restored.length, passages.length);
     for (const [index, item] of restored.entries()) {
-      assert.deepEqual(item.anchor, passages[index].anchor);
+      assert.deepEqual(item.proof, passages[index].proof);
       assert.equal(item.note, passages[index].note);
-      assert.equal(item.marked, sameDocument ? item.anchor.text : "");
+      assert.equal(item.marked, sameDocument ? passages[index].quote : "");
       assert.equal(item.insideAnchor, sameDocument);
       assert.equal(item.sourceAction, sameDocument);
     }
@@ -89,12 +99,12 @@ try {
       const marker = document.querySelector(`mark[data-annotation="${index}"] .annotation-marker`);
       const panel = anchor?.closest(".panel");
       return !!marker && anchor.contains(marker) && document.activeElement === marker && panel && !panel.hidden;
-    }, { id: passage.anchor.id, index });
+    }, { id: passage.proof.object, index });
   }
   await page.evaluate(() => { window.testFindingNode = document.getElementById("f1"); });
   await page.locator('#f1 button[value="apply"]').evaluate((button) => button.click());
   const settled = await page.evaluate(() => {
-    const key = "review-report:" + JSON.parse(document.getElementById("data").textContent).key;
+    const key = "review-report:current:" + JSON.parse(document.getElementById("data").textContent).key;
     const finding = document.getElementById("f1");
     return { sameNode: finding === window.testFindingNode, inSettled: !!finding.closest("#group-settled"), choice: JSON.parse(localStorage.getItem(key)).findings["1"] };
   });
@@ -124,10 +134,15 @@ try {
   await unitButton.evaluate((button) => { button.closest("details").open = true; button.click(); });
   await page.waitForFunction((id) => document.activeElement?.id === `b${id}`, linked.block);
   assert.equal(await page.locator(`#map #b${linked.block}`).count(), 1);
-  assert.equal(await page.locator(`#b${linked.block} .segcode`).evaluate((el) => el.open), true);
+  assert.equal(await page.locator(`#b${linked.block} pre .l`).first().isVisible(), true);
   assert.equal(await page.locator("#map").evaluate((el) => el.dataset.req), String(linked.req));
   await page.evaluate((id) => { location.hash = `#b${id}`; }, linked.block);
-  await page.waitForFunction((id) => document.activeElement?.id === `b${id}` && !document.getElementById("map").dataset.req, linked.block);
+  await page.waitForFunction((id) => {
+    const block = document.getElementById(`b${id}`), focus = document.activeElement;
+    const target = focus === block || focus === block?.querySelector(".segbar .bnum");
+    return target && focus.checkVisibility() && block.querySelector("pre .l")?.checkVisibility()
+      && !document.getElementById("map").dataset.req;
+  }, linked.block);
   await checkRestored();
   assert.deepEqual(errors, []);
   const differentHtml = !fs.readFileSync(before).equals(fs.readFileSync(after));

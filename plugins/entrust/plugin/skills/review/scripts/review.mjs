@@ -82,7 +82,7 @@ export const PURPOSES = ["production", "tests", "styles", "assets", "docs", "con
 export function purposeOfPath(p) {
   const base = p.split("/").pop().toLowerCase();
   const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1) : "";
-  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
+  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /\.browser\.mjs$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
   if (["scss", "css", "less", "sass", "styl"].includes(ext)) return "styles";
   if (["svg", "png", "jpg", "jpeg", "gif", "ico", "webp", "avif", "woff", "woff2", "ttf", "eot"].includes(ext) || /(^|\/)(assets|icons)(\/|$)/.test(p) || /(^|\/)keysets(\/|$)/.test(p)) return "assets";
   if (["md", "mdx", "rst", "txt"].includes(ext) || /^(changelog|readme|license)/.test(base)) return "docs";
@@ -214,13 +214,11 @@ export function check(review, files, directory) {
   });
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
-  // A question is named by its place in the list, from 1. A question without a kind keeps the old shape:
-  // its place and text, no invented variants, and no part in the owner's decision counters.
+  // A question is named by its place in the list, from 1.
   const qList = review.questions ?? [];
   const questions = new Set(qList.map((_, index) => index + 1));
   qList.forEach((q, index) => {
     const who = `question ${index + 1}`;
-    if (q.kind === undefined) return;
     if (!QUESTION_KINDS.includes(q.kind)) errors.push(`${who}: kind is one of ${QUESTION_KINDS.join(", ")}`);
     if (!text(q.at)) errors.push(`${who} has no "at"`);
     if (!text(q.text)) errors.push(`${who} has no "text"`);
