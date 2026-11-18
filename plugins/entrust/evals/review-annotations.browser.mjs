@@ -5,7 +5,7 @@
 // must land on the right tab by itself.
 async (page) => {
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  const key = await page.evaluate(() => 'review-report:' + JSON.parse(document.querySelector('#data').textContent).key);
+  const key = await page.evaluate(() => 'review-report:current:' + JSON.parse(document.querySelector('#data').textContent).key);
   const original = await page.evaluate(k => localStorage.getItem(k), key);
   const checks = [];
   const state = () => page.evaluate(k => JSON.parse(localStorage.getItem(k) || '{}'), key);
@@ -50,7 +50,7 @@ async (page) => {
     await page.locator('#annotation-dismiss').focus(); await page.keyboard.press('Enter');
     assert(await page.locator('.annotation-feedback').isHidden() && await page.locator('#annotation-status').textContent()==='', 'Keyboard dismissal kept feedback'); checks.push('keyboard dismiss feedback');
     for(const id of ['m1','m2']) {await select('#'+id+' .group.sub span');await page.locator('#comment').click();await page.locator('#annotation-editor textarea').fill(id);await action('save');}
-    const duplicates=(await state()).passages.slice(-2);assert(duplicates[0].quote===duplicates[1].quote && duplicates[0].anchor.id!==duplicates[1].anchor.id,'Duplicate quote anchors collide');
+    const duplicates=(await state()).passages.slice(-2);assert(duplicates[0].quote===duplicates[1].quote && duplicates[0].proof.object!==duplicates[1].proof.object,'Duplicate quote anchors collide');
     await card.evaluate(el => { el.open = false; });
     await showTab('materials');
     await page.locator('#passages .passage').nth(1).locator('button').nth(1).click();
@@ -83,11 +83,11 @@ async (page) => {
     await undo.focus();await page.mouse.move(0,0);await page.waitForTimeout(8500);assert(await undo.isVisible(),'Focus did not pause dismissal');
     await undo.evaluate(el=>el.blur());await feedback.waitFor({state:'hidden',timeout:9500});
     assert(await undo.isHidden() && await page.locator('#annotation-status').textContent()==='','Expired feedback kept message or undo');checks.push('notification idle expiry and hover/focus pause');
-    await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({findings:{},notes:{},passages:[{where:'Old section',quote:'old full quote',note:'legacy note'}]})),key);await page.reload();
+    await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({findings:{},notes:{},passages:[{where:'Unverified section',quote:'visible quote',note:'unverified note'}]})),key);await page.reload();
     await showTab('materials');
-    assert((await page.locator('#passages').innerText()).includes('legacy note') && await page.locator('mark[data-annotation]').count()===0,'Legacy note lost or guessed');
-    await page.locator('#passages button').first().click();await page.locator('#annotation-editor textarea').fill('updated legacy');await action('save');
-    assert((await state()).passages[0].note==='updated legacy','Legacy note cannot be edited');checks.push('legacy note preservation');
+    assert((await page.locator('#passages').innerText()).includes('unverified note') && await page.locator('mark[data-annotation]').count()===0,'Unverified note lost or guessed');
+    await page.locator('#passages button').first().click();await page.locator('#annotation-editor textarea').fill('updated note');await action('save');
+    assert((await state()).passages[0].note==='updated note','Unverified note cannot be edited');checks.push('unverified note preservation');
     return {passed:checks};
   } catch (error) { throw new Error(error.message + "; completed: " + checks.join(", "));
   } finally {

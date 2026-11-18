@@ -32,10 +32,9 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
   const srcs = (sources) => (sources ?? []).map((s) => sourceOf(s, review).text).filter(Boolean).join("; ");
-  // A question with a kind is printed as the whole card: the checking agents read these words, not the page.
+  // The checking agents read the whole card here, not the page.
   const questionText = (q, index) => {
     const n = index + 1;
-    if (q.kind === undefined) return `- Q${n} \`${q.at}\`: ${q.text}`;
     const lines = [`- Q${n} \`${q.at}\`: ${q.text} (${word("question.kind", q.kind)}${q.resolver ? `; ${q.resolver}` : ""})`];
     if (q.parent) lines.push(`  ${t("question.parent")}: Q${q.parent.question} (${q.parent.variants.join(", ")})`);
     if (q.context?.length) lines.push(`  ${t("question.context")}:`, ...q.context.map((c) => `  - ${c.text} (${srcs(c.sources)})`));

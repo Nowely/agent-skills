@@ -49,7 +49,7 @@ export function highlight(text, path) {
 // the caller falls back to the pattern highlighter above. Nothing here reaches the network.
 const SH_LANG = { ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx", mjs: "javascript", cjs: "javascript", scss: "scss", css: "css", json: "json", md: "markdown", markdown: "markdown", mdx: "markdown", svg: "xml", xml: "xml", html: "xml", yml: "yaml", yaml: "yaml" };
 // Exactly the page's code backgrounds: light --code/--ins-bg/--del-bg; dark --code with the rgba tints blended over it.
-const LIGHT_BGS = [[250, 251, 253], [230, 255, 236], [255, 235, 233]];
+const LIGHT_BGS = [[244, 243, 239], [230, 255, 236], [255, 235, 233]];
 const DARK_BGS = [[20, 26, 34], [20 + (46 - 20) * .15, 26 + (160 - 26) * .15, 34 + (67 - 34) * .15], [20 + (248 - 20) * .12, 26 + (81 - 26) * .12, 34 + (73 - 34) * .12]];
 const TOKEN_TARGET = 4.6; // a margin over the 4.5 requirement
 const hex2rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];

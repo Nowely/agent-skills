@@ -33,7 +33,7 @@ export function reportFixtures(diffSha) {
     challenges: [{ from: "critic", point: "The reader should not convert.", outcome: "rejected", at: "src/main.js:4", note: "The caller prints the code as read." },
       { from: "target", point: "The independent target converts where prices are shown.", outcome: "owner", note: "Which unit owns display is the owner's call." },
       { from: "verifier", point: "Line 2 is not the conversion.", outcome: "accepted", note: "The finding's place was corrected." }],
-    questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
+    questions: [{ at: "docs/billing.md", text: "A question.", kind: "fact" }], coverage: "What was read.",
   };
   // A second record on the same diff, of another theme and order: evidence first, a fact, then a decision whose
   // child applies under one variant; two evidence questions, variants with no "base", a permission, a tradeoff.
@@ -83,7 +83,7 @@ export function hostileFixture() {
     requirements: [{ id: 1, text: "A requirement.", source: "task", met: "read" }],
     findings: [],
     blocks: [{ path: HOSTILE_PATH, added: "1", removed: "1", does: "d'oes", serves: [1], questions: [1], verdict: "keep" }],
-    questions: [{ at: "docs/billing.md", text: "q'<img src=x onerror=alert(1)>" }],
+    questions: [{ at: "docs/billing.md", text: "q'<img src=x onerror=alert(1)>", kind: "fact" }],
     coverage: "What was read.",
     passport: { links: [{ kind: "pr", label: "PR' 1", url: HOSTILE_URL }], repository: "example/repo", base: "b'1", head: "h'1", reviewedAt: "2026-01-01" },
     language: "ru", labels: { "seg.added-line": "Добавлено' onmouseover='alert(1)", "seg.copy-source": "копировать' <img src=x onerror=alert(1)>", "note-block": "Заметка' onmouseover='alert(1)" },

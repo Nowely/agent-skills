@@ -3,6 +3,77 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.42.0 — 2026-11-18
+
+### Review report v8
+
+- Read a selected file without expanding each block. Attention code is visible by default, and without
+  JavaScript one file disclosure exposes its full diff. Findings show their title and proposed fix beside
+  the code and link directly to the corresponding block from Choices.
+- Keep a focused card in place while making choices so settling a previous card does not swallow the next click.
+  The export preview and copied text show non-applicable decisions separately from deferrals and drafts.
+- **Breaking:** each question requires an explicit `kind`; records without it fail `check` and `render`.
+  Current exports use schema 5, question comments come from `notes`, and old `questions[id].note` values are no
+  longer read. Decision runtime consumers use `choiceStats` and `validAccept`/`validDefer` instead of the removed
+  `counters` and `remainingCount` helpers. Files named `*.browser.mjs` count as tests.
+- **Breaking:** passage annotations use the current `quote`, `where`, `note` and optional identity `proof` shape;
+  the old `anchor` is no longer exported. Current reports do not read, migrate or delete old browser state.
+  Unproven current passages remain in export without a location link.
+- Within a single context or consequence list, identical nonempty ordered source sets are shown once with an
+  explicit attribution to each item; different source data and separate groups remain separate.
+- **Breaking:** custom-language catalogs need `source.each` when such a shared set is rendered. `check` names
+  the missing key; built-in English and Russian include it.
+- Keep file tree entries compact and on one line while retaining both ends of long names; full paths remain
+  available to assistive technology and in tooltips.
+- **Breaking:** custom-language catalogs must translate the v8 storage, counter and
+  tree labels and the export/source labels for the capabilities used by the record. `check` lists every missing
+  key; built-in English and Russian are complete. See `report-data.md` for the exact keys and conditions.
+- **Breaking:** `annotation.added` is a separate in-memory notification required of custom catalogs; invalid
+  language tags are rejected instead of being rendered as English. Current annotations use identity proof for
+  supported text and code ranges, including multiline and continuation code fragments; unsupported selections
+  remain unlocated with a warning.
+- **Breaking:** storage-sensitive wording uses `export.storage-explanation`, `decision.export-local-method`,
+  `decision.draft-local`, and `decision.gate-draft-local` instead of their older override keys. Custom catalogs
+  must supply the new keys when used, plus `choice.filter-editing`.
+- Schema 5 includes `waitingForParent` entries `{question, parent, kind}` for unanswered applicable questions waiting
+  for an ancestor. `factAnswerStatuses` separately maps known nonblank fact/evidence answers to `entered`,
+  `waiting-parent` (with the parent ID), or `not-applicable`; raw answers and zones stay untouched and none of
+  those statuses means verified. An accepted decision awaiting an ancestor also has `waiting_parent: N` on its
+  question entry without becoming unanswered. Unknown and blank IDs receive no invented status.
+
+### Review report v7
+
+- Select a requirement in Code and browse its linked blocks by file or by unit. Units are groups from
+  the recorded data, not inferred parent-child block relationships. The code remains in its original
+  diff order and is not duplicated in the navigation.
+- Refresh the light presentation with a warmer, document-like layout based on the hierarchy prototype.
+- **Breaking:** custom-language catalogs must provide the new
+  Code navigation labels. `check` lists missing keys; the built-in English and Russian catalogs are complete.
+
+### Review report v6
+
+- One canonical surface per fact (M1–M2): remove the numeric strip, duplicate progress/export controls
+  and bulk acceptance; keep the verdict in Overview, technical coverage in Materials, and local evidence
+  limits at the action. Annotation targets and the single card instance remain intact.
+- One `choiceStats` derivative feeds the tab, subtab badges, settled rows and export (M3). Accepted Q2
+  remains on the active sheet while applicable children need answers; only root decisions and findings
+  enter the mandatory remainder. Reasoned deferrals leave that remainder without becoming completed;
+  ideas are optional and a fact answer is not verification.
+- Equal choice affordance for questions, findings, ideas and facts; compact one-line file navigation
+  with folder/list modes and a persisted, keyboard/pointer-resizable tree (M4–M5).
+- Editorial Overview and a lighter code toolbar (M6–M7): neutral conclusion card, closed change context,
+  file units at purpose toggles, explicit selection marks, and counting methodology in one disclosure.
+  Export leads with answers, labels the findings-only remainder list, exposes a copy-text label and
+  reports copy success once (M8). Optionality, screen warnings, mechanism caveats and comment instructions
+  no longer repeat in each card; settled rows retain the original cards and their reversible actions (M9).
+- A 1600px outer canvas lets the code fill the available width while choice prose stays within 90ch
+  (M10). The first fragment owns the block's header, metadata disclosure, comment and B anchor;
+  later fragments stay in file-line order with a light continuation link and line range.
+  Hunk gaps, block filters, annotations, no-script access and print coverage remain intact (M11).
+- v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
+  grouping and wide viewports; the source stays net-negative against pre-v6 and the HTML budget forbids
+  growth against that baseline. See the v7 note above for custom catalogs.
+
 ## 0.41.0 — 2026-11-17
 
 ### Added
@@ -10,7 +81,7 @@ forensics remain in the repository references and release notes.
 - `entrust:review` reports lead with the owner's decision instead of the audit trail: question decision cards
   (kind decision/fact/evidence, self-sufficient context, variants with confirmed consequences, a recommendation
   with its basis, the checks the choice does not replace, declarative parent applicability, zones), a passport
-  with task/PR/Figma links, a status strip from structured coverage, scope counters with a definition of a
+  with task/PR/Figma links, structured coverage, scope counts with a definition of a
   review fragment, a now→target comparison, a target structure diagram from the recorded uses, a file tree with
   the full change map readable without JavaScript, a screen viewer, and owner/auditor print profiles.
 - A decision runtime with one valid status shared by the page, the copied text and the JSON export: accepting
@@ -25,7 +96,7 @@ forensics remain in the repository references and release notes.
   links (`#qN`, `#fN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code`) that open the right tab and
   reveal the target in any map mode. Without JavaScript the panels stack, the tabs are anchor links and the
   controls ship disabled. (The v5 composition below reorganizes the tabs into the one Choices list.)
-- A map reader: one line per fragment (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
+- A map reader: one line per block (verdict dot, B-permalink, what it does, verdict tag, F/Q links, source,
   details popover), the code in a disclosure, a sticky file header, and the fragment's sources in the popover —
   an added line at the head revision, a removed line at the base, each copyable as `path:line (revision)`.
   Every popover value — path, URL, revision, localized label — is escaped for the attribute that holds it,
@@ -45,7 +116,7 @@ forensics remain in the repository references and release notes.
   by change kind, never by verdict: added/removed backgrounds, a readable removed line, old/new gutters, muted
   context; the verdict stays a border and a badge.
 - A 32px theme icon (auto/light/dark, prefers-color-scheme default), a 14px base with ≥12px secondary text and
-  ≥32px tap targets, and the weight's limit on the mechanism surface with the methodology in the details.
+  ≥32px tap targets, and a section-wide weight limit with the methodology in the details.
 - Decision cards v4: the variant radio is the decision, a status chip
   (waiting/selected/deferred/not applicable/draft), the parent gate with its explanation, a comment textarea
   (the v5 compact comment interface below replaces the permanent textarea),
@@ -75,12 +146,11 @@ forensics remain in the repository references and release notes.
   second copy — with the focus captured before the move and landed on the row's summary (keyboard and touch,
   rAF for the touch-click). The read-only matter (passport, status, counters, now→target, closed structure,
   tradeoffs, mechanisms) lives in Overview; evidence requests and challenges in Checks. The first screen leads
-  with the verdict's lead line, the recommendation and the record's unchecked limits; the instructions sit in a
-  closed disclosure.
+  with a short working instruction and a link to the conclusion in Overview; the unchecked limits remain explicit.
 - Unified card shell and reversible choice: one neutral surface for Q/F/I/fact — head (16px type, id, status) →
   essence → limit on the surface → choice → comment → disclosures (basis and sources, related code built lazily
   from the canonical templates, checks). The limit slot shows the record's own words: the «no clear
-  recommendation» text, the finding's evidence kind, the idea's explicit absence of limit data — nothing
+  recommendation» text and the finding's evidence kind — nothing
   invented. A made choice reads neutral «Selected», never a green success. The variant radio is the decision on
   every screen size — accepted at once, changed by another pick, cleared by Reset; the mobile draft-and-confirm
   rule is gone. A fact or evidence card carries an answer field on its surface: «answer entered» (amber), never
@@ -93,8 +163,8 @@ forensics remain in the repository references and release notes.
   `questions[id].note` — with its context and a «Go» link that opens the tab and target and closes the dialog;
   the counter of what remains travels with it, a partial export is acceptable. The clipboard stays honest:
   «Copied» only on a confirmed success, a refusal selects the readonly text and says Ctrl/⌘+C. Comments become
-  one compact pattern on cards and blocks: closed by default, the saved text with «Edit» and «saved in this
-  browser, not sent», focusout collapses the editor; the related-code clones cut the comment wrapper.
+  one compact pattern on cards and blocks: closed by default, the saved text with «Edit»;
+  storage guidance lives in export, focusout collapses the editor; the related-code clones cut the comment wrapper.
 - Purpose becomes multi-toggles: several groups can hide at once in the map AND the tree, the state stored
   additively beside the decisions, a «Hidden: …» chip with the remaining share, reset and deep links to hidden
   blocks restore them. The tree opens statically (the no-script reader sees every file), one line per file —
@@ -107,7 +177,7 @@ forensics remain in the repository references and release notes.
   contrast tokens kept. Mobile touch targets ≥44px in a media block placed last (the theme icon stays 32px by
   plan), the diff gutters 2.2em on narrow screens. The no-JS Choices badge is the static Q+F count with an honest
   title («saved answers are not counted»). Owner print builds the lazy «related code» bodies first, then opens
-  every nested disclosure (588/588 on the enriched copy); the auditor prints all 1470/1517; afterprint restores
+  every nested disclosure (572/572 on the enriched copy); the auditor prints all 1470/1517; afterprint restores
   the page, the hidden purposes included.
 
 ### Changed

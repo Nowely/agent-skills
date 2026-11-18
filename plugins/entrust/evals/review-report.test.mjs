@@ -12,12 +12,12 @@ import path from "node:path";
 import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
-import { CATALOGS, LABELS, BASE_KEYS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
+import { CATALOGS, LABELS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
-import { normalize, settle, applicable, counters, remainingCount, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
+import { decisionRuntime, normalize, settle, applicable, choiceStats, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -40,6 +40,20 @@ const render = (change = () => {}) => {
   fs.writeFileSync(data, JSON.stringify(review));
   return report("render", data);
 };
+
+test("check and render refuse a question without kind",
+  "a question must declare whether it is a decision, fact, or evidence",
+  () => {
+    const invalid = structuredClone(REVIEW);
+    delete invalid.questions[0].kind;
+    fs.writeFileSync(data, JSON.stringify(invalid));
+    for (const command of ["check", "render"]) {
+      const result = report(command, data);
+      if (result.status === 0 || !result.stderr.includes("kind is one of decision, fact, evidence"))
+        return `${command} accepted a question without kind: ${result.stderr}`;
+    }
+    return true;
+  });
 
 test("interactive report embeds a complete annotation runtime and keeps navigation ahead of content",
   "new reports must include the shared annotation controller, without relying on a patched HTML artifact",
@@ -77,9 +91,11 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if ((page.match(/src="data:image\/png;base64,/g) ?? []).length !== 2) return "the two pictures given as files are not in the page";
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
     if (page.includes("HEAD~1..HEAD</span></header>")) return "the range is in the page's header";
-    return (page.match(/<svg xmlns/g) ?? []).length === 2 && page.includes('--shiki-dark:') && page.includes('id="b1"') && page.includes('id="i1"')
-      && [">Task<", ">Verdict<", ">How it works now<", ">Target solution<", ">Recommendations<", "<li>One test is missing.</li>", 'id="files"', '<ol class="steps">', 'id="comment"'].every((part) => page.includes(part))
-      || "the page lacks a diagram per structure, highlighted code, a block anchor, the idea, a part of the summary, the verdict's list, the steps, the file tree or the button that comments on a selection";
+    const diagrams = (page.match(/<svg xmlns/g) ?? []).length;
+    if (diagrams !== 2) return `expected two structure diagrams, got ${diagrams}`;
+    for (const part of ['--shiki-dark:', 'id="b1"', 'id="i1"', 'class="stack overview"', ">How it works now:", ">Target solution:", ">Recommendation:", "<li>One test is missing.</li>", 'id="files"', '<ol class="steps">', 'id="comment"'])
+      if (!page.includes(part)) return `the page lacks ${part}`;
+    return true;
   });
 
 test("a requirement is met only on the reviewer's word, a missing test is not a failure, and a screen nobody compared says so",
@@ -93,7 +109,7 @@ test("a requirement is met only on the reviewer's word, a missing test is not a 
     if (!has(rows[1], "not checked", "discussion") || !rows[1].includes("To reconsider") || has(rows[1], "met")) return "requirement 2, unchecked and doubted, is not shown so";
     if (!has(rows[2], "fails", "assumption") || has(rows[2], "met")) return "requirement 3, broken by a finding, is not shown as failing";
     const [, list, alone] = page.split('id="screens"')[1].split('<article class="finding"');
-    if (!alone.includes(">Not compared<") || alone.includes("Matches the mockup") || list.includes("Matches the mockup")) return "a screen with no match claimed is not shown as not compared";
+    if (!page.split('id="screens"')[1].includes("Not compared:") || alone.includes("Matches the mockup") || list.includes("Matches the mockup")) return "a screen with no match claimed is not shown as not compared";
     const matched = render((r) => { r.screens[0] = { name: "The list", mockup: "https://design.example/list", after: "after.png", match: true }; });
     return matched.status === 0 && fs.readFileSync(html, "utf8").includes("Matches the mockup") || "a screen said to match is not shown as matching";
   });
@@ -114,7 +130,7 @@ test("a review carries the report's words in its reader's language, and a word t
     const translated = render((r) => { r.labels = { "recommendation": "Что делать", "met": "выполнено", "findings": "Находки", "tab.remaining": "Осталось: {n}" }; });
     if (translated.status !== 0) return `refused: ${translated.stderr}`;
     const page = fs.readFileSync(html, "utf8");
-    if (![">Что делать<", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
+    if (![">Что делать:", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
     const { status, stdout } = report("labels");
     if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
     for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ decided: "Решено" }, 'label "decided" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
@@ -127,7 +143,7 @@ test("a review carries the report's words in its reader's language, and a word t
 test("the printout presents the verdict, current solution, target and recommendations in that order",
   "a conclusion without a distinguishable current and target solution hides what the recommendation changes",
   () => {
-    const out = render().stdout, labels = ["## Verdict", "How it works now:", "Target solution:", "Recommendations:"];
+    const out = render().stdout, labels = ["## Verdict", "How it works now:", "Target solution:", "Recommendation:"];
     const positions = labels.map((label) => out.indexOf(label));
     return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1])) || "summary order differs";
   });
@@ -157,7 +173,8 @@ test("the selected language covers controls and exported decisions without per-r
     const result = render((r) => { r.language = "ru-RU"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    if (!["Файлы", "Копировать", "Комментировать выделение", "Комментарии к фрагментам", "Рекомендации"].every((text) => page.includes(text))) return "Russian controls or export are missing";
+    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к фрагментам", "Рекомендация"])
+      if (!page.includes(text)) return `Russian control or export missing: ${text}`;
     if (!result.stdout.includes("## Вывод")) return "Markdown is not localized";
     if (report("labels", "ru").stdout !== JSON.stringify(CATALOGS.ru, null, 2) + "\n") return "the catalog command differs";
     const incomplete = render((r) => { r.language = "fr"; r.labels = { findings: "Constats" }; });
@@ -666,24 +683,24 @@ test("modelOf derives children, unique counters, file status and the shortest un
   });
 
 test("a custom catalog carries the base words plus the keys of the controls the record shows",
-  "the new controls must not break old translations, nor appear silently in English on a record authored for them",
+  "v7 Code wording is required even on old records, without silently substituting a different meaning",
   () => {
     const files = parseThemeDiff();
     const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
-    // The genuine old catalog: exactly the base set the released report asked for, in the reader's own words.
-    const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+    // Remove current mandatory wording from an otherwise complete catalog.
+    const oldCatalog = catalogFor(REVIEW); delete oldCatalog["code.no-related"]; delete oldCatalog["code.no-visible"];
     const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: oldCatalog }, files, run);
-    if (legacy.errors.length) return `a genuine old catalog was refused on an old record: ${legacy.errors.join("; ")}`;
+    if (!legacy.errors.some((e) => e.includes("code.no-related") && e.includes("code.no-visible"))) return "old catalog missing Code wording was not refused";
     const thin = { ...oldCatalog }; delete thin["findings"];
     const baseFault = check({ ...structuredClone(REVIEW), language: "custom", labels: thin }, files, run);
     if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the old base set stopped being required";
     // An enriched record asks for the chrome and the keys of its capabilities; the old catalog no longer serves it.
     const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: oldCatalog }, files, run);
-    if (!enriched.errors.some((e) => e.includes("complete labels catalog") && e.includes("tab.overview"))) return "an enriched record with an old catalog was accepted, or the chrome keys were not named";
+    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with an old catalog was accepted, or the chrome keys were not named";
     const full = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(THEMED) }, files, run);
     if (full.errors.length) return `a catalog of the enabled capabilities was refused: ${full.errors.join("; ")}`;
     // One capability alone asks only for its own keys plus the chrome: a passport without cards needs no question words.
-    const passportOnly = { ...structuredClone(REVIEW), passport: structuredClone(THEMED.passport) };
+    const passportOnly = { ...structuredClone(REVIEW), questions: [], passport: structuredClone(THEMED.passport) };
     if (requiredKeys(passportOnly).includes("question.kind.decision")) return "a record without cards was asked for the card words";
     const minimal = check({ ...passportOnly, language: "custom", labels: catalogFor(passportOnly) }, files, run);
     if (minimal.errors.length) return `a passport-only catalog was refused: ${minimal.errors.join("; ")}`;
@@ -731,20 +748,19 @@ test("a chosen radio alone never suppresses children; an accepted outside varian
   () => {
     const selected = dstate({ 1: { variant: "keep" }, 2: { choice: "accepted", variant: "a" } });
     if (!applicable(DQS[1], selected, DQS)) return "a radio selection without acceptance suppressed the child";
-    if (counters(DQS, selected).accepted !== 1) return "the child's acceptance was not counted while the parent is undecided";
+    if (exportOf(DQS, selected, {}).questions.find(q => q.question === 2).status !== "accepted") return "the child acceptance was lost";
     const kept = dstate({ 1: { choice: "accepted", variant: "keep" }, 2: { choice: "accepted", variant: "a" } });
-    if (!applicable(DQS[1], kept, DQS) || counters(DQS, kept).accepted !== 2) return "the child under the accepted applicable variant was not active";
+    if (!applicable(DQS[1], kept, DQS)) return "the child under the accepted applicable variant was not active";
     const reverted = dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } });
     if (applicable(DQS[1], reverted, DQS)) return "the child stayed applicable under the accepted outside variant";
     const settled = settle(DQS, reverted);
     if (settled.questions[2]?.choice) return "settle kept the answer of a not-applicable child";
     if (settled.questions[2]?.variant !== "a") return "settle lost the draft variant of a not-applicable child";
-    const c = counters(DQS, settled);
-    if (c.accepted !== 1 || c.notApplicable !== 1 || c.remaining !== 1) return `counters under the outside variant: ${JSON.stringify(c)}`;
+    if (exportOf(DQS, settled, {}).questions.find(q => q.question === 2).status !== "not-applicable") return "retired child exported as active";
     // The parent's decision is cancelled: the child applies again, but its old answer does not return silently.
     const cancelled = settle(DQS, dstate({ 2: settled.questions[2] }));
     if (!applicable(DQS[1], cancelled, DQS) || cancelled.questions[2]?.choice) return "the old answer reactivated silently after the parent was cancelled";
-    if (counters(DQS, cancelled).remaining !== 3) return "the re-applicable child was not counted as remaining";
+    if (exportOf(DQS, cancelled, {}).questions.find(q => q.question === 2).status !== "remaining") return "the child did not return as remaining";
     // A chain: the grandchild follows its parent's applicability.
     const chain = [...DQS, { id: 5, kind: "decision", parent: { question: 2, variants: ["a"] } }];
     const deep = dstate({ 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" }, 5: { choice: "accepted" } });
@@ -757,16 +773,15 @@ test("deferred needs a reason and never counts as accepted; evidence cannot be d
   "a counter of accepted decisions inflated by deferrals, evidence closed as decided, or empty acceptances misleads the owner",
   () => {
     const bare = dstate({ 4: { choice: "deferred" } });
-    if (validDefer(DQS[3], bare) || counters(DQS, bare).deferred !== 0) return "a deferral without a reason was counted";
+    if (validDefer(DQS[3], bare)) return "a deferral without a reason was counted";
     const reasoned = dstate({ 4: { choice: "deferred" } }, { q4: "Not now: the contract is unsettled." });
-    const c = counters(DQS, reasoned);
-    if (!validDefer(DQS[3], reasoned) || c.deferred !== 1 || c.accepted !== 0 || c.remaining !== 2) return `deferral counters: ${JSON.stringify(c)}`;
+    if (!validDefer(DQS[3], reasoned) || choiceStats(DQS, reasoned, []).deferred !== 1) return "reasoned deferral was not counted";
     const evidence = dstate({ 3: { choice: "accepted" } }, { q3: "done" });
-    if (counters(DQS, evidence).accepted !== 0) return "an evidence question was counted as an accepted decision";
+    if (exportOf(DQS, evidence, {}).questions.some(q => q.question === 3)) return "an evidence question was counted as an accepted decision";
     const emptyAccept = dstate({ 4: { choice: "accepted" } });
-    if (validAccept(DQS[3], emptyAccept) || counters(DQS, emptyAccept).accepted !== 0) return "a decision without variants was accepted with no comment";
+    if (validAccept(DQS[3], emptyAccept)) return "a decision without variants was accepted with no comment";
     const commented = dstate({ 4: { choice: "accepted" } }, { q4: "Keep as is." });
-    if (!validAccept(DQS[3], commented) || counters(DQS, commented).accepted !== 1) return "a substantive comment did not accept a variant-less decision";
+    if (!validAccept(DQS[3], commented)) return "a substantive comment did not accept a variant-less decision";
     const noVariant = dstate({ 1: { choice: "accepted" } });
     if (validAccept(DQS[0], noVariant)) return "a decision with variants was accepted without choosing one";
     return true;
@@ -779,8 +794,7 @@ test("an invalid acceptance or deferral is not a decision anywhere: applicabilit
     const bare = dstate({ 1: { choice: "accepted" }, 2: { choice: "accepted", variant: "a" } });
     if (applicable(DQS[1], bare, DQS) !== true) return "an acceptance without a variant retired the child";
     if (settle(DQS, bare).questions[2]?.choice !== "accepted") return "settle dropped the child's answer under an invalid acceptance";
-    const c = counters(DQS, bare);
-    if (c.accepted !== 1 || c.remaining !== 2) return `an invalid acceptance was counted: ${JSON.stringify(c)}`;
+    if (choiceStats(DQS, bare, []).remaining !== 2) return "invalid root acceptance changed remaining";
     const out = exportOf(DQS, settle(DQS, bare), {});
     if (out.questions.find((q) => q.question === 1).status !== "remaining") return "the export called a bare acceptance accepted";
     if (out.questions.find((q) => q.question === 2).status === "not-applicable") return "the export retired a child under an invalid acceptance";
@@ -800,7 +814,7 @@ test("the export carries the schema, both digests, the question number, the vari
   () => {
     const state = dstate({ 1: { choice: "accepted", variant: "keep" }, 2: { choice: "accepted", variant: "a" }, 4: { choice: "deferred" } }, { q4: "Later." });
     const out = exportOf(DQS, settle(DQS, state), { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "abc", title: "T", range: "base..head" });
-    if (out.schema_version !== 4 || out.record_sha256 !== "r".repeat(64) || out.diff_sha256 !== "d".repeat(64)) return "the export lacks its schema or digests";
+    if (out.schema_version !== 5 || out.record_sha256 !== "r".repeat(64) || out.diff_sha256 !== "d".repeat(64)) return "the export lacks its schema or digests";
     const q1 = out.questions.find((q) => q.question === 1);
     if (q1.status !== "accepted" || q1.variant?.id !== "keep" || q1.variant?.text !== "Keep") return "the export lacks the variant's id and text";
     const q4 = out.questions.find((q) => q.question === 4);
@@ -820,55 +834,47 @@ test("the page renders each B/F/Q anchor once, the counters equal the model, and
     const model = modelOfThemed();
     for (const id of ["b1", "b2", "b3", "f1", "f2", "q1", "q2", "q3", "q4", "q5"])
       if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `anchor ${id} does not appear exactly once`;
-    const c = model.counters;
-    for (const cell of [`<b>${c.files}</b>`, `<b>${c.addedFiles}</b>`, `<b>${c.removedFiles}</b>`, `<b>${c.blocks}</b>`,
-      `<b>${c.evidenceBlocks}</b><span>fragments awaiting evidence</span>`, `<b>${c.decisions}</b>`])
+    for (const cell of [`Files · ${model.files.length}`, `Blocks: ${model.blocks.length}`, 'id="count-decisions"'])
       if (!page.includes(cell)) return `the counters differ from the model: missing ${cell}`;
     if ((page.match(/class="qcard/g) ?? []).length !== 5) return "the five kinded questions did not become cards";
     if (!page.includes('data-parent="3"') || !page.includes('name="vq3"')) return "the child card or the variant radios are missing";
-    // The full map is real markup in closed per-file disclosures, not a template: readable without scripts.
+    // The full map is real markup in per-file disclosures, not a template.
     if (!page.includes('<details class="file-details"') || page.includes("<template")) return "the map is not a no-JS disclosure";
-    if (page.includes('class="file-details" open')) return "the full map starts open";
     // Deterministic render, and the digest in the page is the digest of these bytes.
     const again = report("render", data);
     if (again.status !== 0 || !before.equals(fs.readFileSync(data)) || page !== fs.readFileSync(html, "utf8")) return "the themed render is not byte-stable or touched the record";
     const digest = createHash("sha256").update(before).digest("hex");
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
     if (embedded.digest.record !== digest || embedded.digest.diff !== THEMED.diff.sha256) return "the page's digests are not the bytes' digests";
-    // A legacy record renders through the same path with no card machinery and no passport.
+    // The simpler record renders its fact through the same path.
     const legacy = render();
     if (legacy.status !== 0) return legacy.stderr;
     const old = fs.readFileSync(html, "utf8");
-    for (const absent of ['class="qcard', '<details class="passport-card"', '<div class="status-strip"', 'na-badge" hidden'])
-      if (old.includes(absent)) return `the legacy page grew "${absent}"`;
-    if (!old.includes('<li id="q1"><strong>Q1</strong>')) return "the legacy question lost its plain line";
+    if (!old.includes('id="q1"') || !old.includes("A question.")) return "the fact question is missing";
     return true;
   });
 
-test("the question tree renders every level once: grandchildren keep their cards, a legacy child is not duplicated",
-  "roots plus direct children lost the grandchildren, and a child without a kind stood twice with one id",
+test("the question tree renders every level once, including fact children and roots",
+  "roots plus direct children must not lose grandchildren or duplicate their ids",
   () => {
     const result = render((r) => {
       Object.assign(r, structuredClone(THEMED));
-      // Q3 -> Q4 -> Q6: three levels of cards; Q7 is a legacy child of Q6; Q8 stays a plain legacy root.
+      // Q3 -> Q4 -> Q6 -> Q7, plus an independent fact Q8.
       r.questions.push(
         { at: "src/invoices/upper.js:2", text: "Which widths exactly?", kind: "decision", resolver: "owner",
           parent: { question: 4, variants: ["narrow"] },
           variants: [{ id: "x", text: "The narrow set", consequences: [{ text: "Less to check.", sources: [{ ref: "/requirements/0" }] }] }] },
-        { at: "docs/billing.md", text: "A legacy child of the grandchild.", parent: { question: 6, variants: ["x"] } },
-        { at: "docs/billing.md", text: "A legacy root." });
+        { at: "docs/billing.md", text: "A child of the grandchild.", kind: "fact", parent: { question: 6, variants: ["x"] } },
+        { at: "docs/billing.md", text: "An independent fact.", kind: "fact" });
     });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     for (const id of ["q3", "q4", "q6", "q7", "q8"])
       if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `anchor ${id} does not appear exactly once`;
     if (!page.includes('data-parent="4"')) return "the grandchild lost its parent link";
-    if (page.includes('<li id="q7"')) return "the legacy child was duplicated into the legacy list";
-    if (!page.includes('class="qlegacy child" id="q7"')) return "the legacy child has no plain line of its own";
-    if (!page.includes('<li id="q8"')) return "the legacy root lost its plain line";
     const order = ["q3", "q4", "q6", "q7"].map((id) => page.indexOf(`id="${id}"`));
     if (order.some((at, i) => at < 0 || (i && at <= order[i - 1]))) return "the tree is not drawn root-first down the chain";
-    if ((page.match(/class="qcard/g) ?? []).length !== 6) return "the five themed cards plus the grandchild are not all cards";
+    if ((page.match(/class="qcard/g) ?? []).length !== 8) return "the eight questions are not all cards";
     return true;
   });
 
@@ -958,14 +964,14 @@ test("a copy of the real 65507 record, enriched with the new fields, checks and 
     if ((page.match(/class="qcard/g) ?? []).length !== 13) return "the thirteen questions did not become cards";
     if (!page.includes('data-parent="2"') || !page.includes('id="q9"')) return "the conditional children are not linked to Q2";
     if (!page.includes("CLOUDFRONT-65507") || !page.includes("Паспорт")) return "the passport is missing";
-    if (!page.includes("status-strip") || !page.includes("2049")) return "the authored status strip is missing";
+    if (!page.includes('id="coverage"') || !page.includes("2049")) return "the authored coverage is missing";
     if (!drawn.stdout.includes("## Принятые компромиссы") || !drawn.stdout.includes("Варианты:")) return "the Russian printout lacks the tradeoffs or the cards";
     // The counters on the page equal the model computed from the same bytes.
     const files = parseDiff(fs.readFileSync(path.join(dir, "review.diff"), "utf8"));
     const { errors, owner } = check(review, files, dir);
     if (errors.length) return errors.join("; ");
     const model = modelOf(review, files, owner, dir);
-    for (const cell of [`<b>${model.counters.files}</b>`, `<b>${model.counters.blocks}</b>`, `<b>${model.counters.evidenceBlocks}</b>`, `<b>${model.counters.decisions}</b>`])
+    for (const cell of [`Файлы · ${model.files.length}`, `Блоки: ${model.blocks.length}`, 'id="count-decisions"'])
       if (!page.includes(cell)) return `the page counters differ from the model: missing ${cell}`;
     if (model.counters.evidenceBlocks !== 224 + 4 - model.blocks.filter((b) => b.questions.includes(3) && b.questions.includes(5)).length) return "evidence fragments are not a unique set";
     // Deterministic at this scale, and the immutable original never changed.
@@ -1023,7 +1029,7 @@ test("purpose is the model's deterministic classification, and the filter bar sh
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     for (const p of PURPOSES)
-      if (!page.includes(`data-purpose-filter="${p}"`) || !page.includes(`<b>${model.purpose.counts[p].lines}</b>`)) return `the purpose bar lacks ${p} or its model counter`;
+      if (!page.includes(`data-purpose-filter="${p}"`) || !page.includes(`<b>${model.purpose.counts[p].files}</b>`)) return `the purpose bar lacks ${p} or its model counter`;
     if (!page.includes("Lines — the sum of block sizes.")) return "the lines caption is missing";
     // The classification is derived, never written into the record.
     return !fs.readFileSync(data, "utf8").includes('"purpose"') || "the render persisted a derived field into the record";
@@ -1044,19 +1050,33 @@ test("the map keeps every block once: 1470 anchors, 1517 fragments, zero duplica
     const drawn = report("render", copy);
     if (drawn.status !== 0) return drawn.stderr.slice(0, 400);
     const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
-    const segs = (page.match(/data-block="/g) ?? []).length;
+    const segs = (page.match(/data-fragment="/g) ?? []).length;
     const anchors = (page.match(/ id="b\d+"/g) ?? []).length;
     if (anchors !== 1470 || segs !== 1517) return `the map holds ${anchors} anchors and ${segs} fragments, not 1470/1517`;
     const ids = [...page.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
     const dups = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))];
     if (dups.length) return `duplicate ids: ${dups.slice(0, 5).join(", ")}`;
-    const banner = page.match(/<div class="evidence-banner v-question"><span class="tag v-question">Q3<\/span><p>([\s\S]*?)<\/p>/)?.[1];
-    if (!banner || !banner.includes("224") || !banner.includes("229") || !/one question|один вопрос/.test(banner) || !/not that many decisions|не столько решений/.test(banner)) return `the Q3 banner is missing or wrong: ${banner?.slice(0, 120)}`;
+    if ((page.match(/class="segbar"/g) ?? []).length !== 1470 || (page.match(/data-blockcomment="/g) ?? []).length !== 1470) return "headers or comments are duplicated per fragment";
+    const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
+    if (embedded.blocks.reduce((n, b) => n + b.parts, 0) !== 1517) return "runtime fragment accounting differs";
+    const fileBodies = page.split('class="file"').slice(1);
+    if (fileBodies.length !== 96) return `line-order coverage: ${fileBodies.length} files`;
+    if ((page.match(/class="l (?:add|del|ctx)"/g) ?? []).length !== 6740) return "diff line coverage differs from 6740";
+    for (const [idx, body] of fileBodies.entries()) for (const side of ["old", "new"]) {
+      let previous = 0;
+      for (const [, value] of body.matchAll(new RegExp(`<b class="${side}">(\\d+)</b>`, "g"))) {
+        const n = Number(value);
+        if (n < previous) return `file ${idx}, ${side}: backwards ${previous} → ${n}`;
+        previous = n;
+      }
+    }
+    const banner = page.match(/<div class="evidence-banner v-question"><p>([^]*?)<\/p>/)?.[1];
+    if (!banner || !banner.includes("224") || !banner.includes('href="#q3"')) return `the Q3 banner is missing or wrong: ${banner?.slice(0, 120)}`;
     const evidenceWithBlocks = review.questions.filter((q, i) => q.kind === "evidence" && review.blocks.filter((b) => (b.questions ?? []).includes(i + 1)).length >= 2).length;
     if ((page.match(/class="evidence-banner/g) ?? []).length !== evidenceWithBlocks) return "the banner is not one per evidence question with blocks";
-    if (!page.includes('<b>96</b>')) return "the file counter is not 96";
-    // The full audit is the default-closed per-file disclosure, never a template in the markup.
-    if ((page.match(/<details class="file-details">/g) ?? []).length !== 96 || page.includes("<template")) return "the no-JS map is not 96 closed file disclosures";
+    if (!page.includes('Файлы · 96')) return "the file counter is not 96";
+    // The full audit is one per-file disclosure, never a template in the markup.
+    if ((page.match(/<details class="file-details"(?: open)?>/g) ?? []).length !== 96 || page.includes("<template")) return "the no-JS map is not 96 file disclosures";
     return createHash("sha256").update(fs.readFileSync(recordPath)).digest("hex") === originalSha || "the immutable original was touched";
   });
 
@@ -1150,10 +1170,10 @@ test("the export marks drafts and comment-only acceptances, and a draft is never
   "a draft exported as accepted, or a comment acceptance read as a missing variant, misstates what the owner decided",
   () => {
     const draft = dstate({ 1: { choice: "draft", variant: "keep" } });
-    if (validAccept(DQS[0], draft) || counters(DQS, draft).accepted !== 0 || counters(DQS, draft).remaining !== 3) return "a draft counted as a decision";
+    if (validAccept(DQS[0], draft) || choiceStats(DQS, draft, []).remaining !== 2) return "a draft counted as a decision";
     const out = exportOf(DQS, draft, {});
     const q1 = out.questions.find((q) => q.question === 1);
-    if (out.schema_version !== 4 || q1.status !== "remaining" || q1.variant?.id !== "keep" || q1.variant_draft !== true) return "the draft is not exported as a draft";
+    if (out.schema_version !== 5 || q1.status !== "remaining" || q1.variant?.id !== "keep" || q1.variant_draft !== true) return "the draft is not exported as a draft";
     // A deferred pick and a retired child keep the variant as a draft; an accepted one does not.
     const deferred = exportOf(DQS, dstate({ 1: { choice: "deferred", variant: "keep" } }, { q1: "Later." }), {});
     if (deferred.questions.find((q) => q.question === 1).variant_draft !== true) return "a deferred variant is not a draft";
@@ -1180,7 +1200,7 @@ test("without scripts the v4 controls are disabled, the panels stack, and the ma
     if (!/<input type="radio" name="vq3"[^>]*disabled>/.test(page) || !/<input type="checkbox" data-zone="1-0" disabled>/.test(page)) return "the radios or zones are not disabled";
     if (!page.includes('fieldset class="qopts" disabled')) return "the variant fieldset is not disabled";
     if (page.includes("<template") || /class="panel"[^>]*hidden/.test(page) || page.includes('class="file-details" open')) return "the no-JS page hides content or starts open";
-    if ((page.match(/<details class="file-details">/g) ?? []).length !== 3) return "the map is not one closed disclosure per file";
+    if ((page.match(/<details class="file-details"(?: open)?>/g) ?? []).length !== 3) return "the map is not one disclosure per file";
     if (!page.includes(".js .nojs-note { display: none }") || !page.includes("control.disabled = false")) return "the runtime does not enable the controls or hide the hint";
     return page.includes('id="theme-toggle" class="theme-btn act"') || "the theme button is not script-only";
   });
@@ -1197,7 +1217,7 @@ test("the target structure stays closed, C1 is absent, and the print profiles an
     if (!page.includes('id="shot-1"') || !page.includes('href="#shot-1"') || !page.includes('class="shot-link"')) return "the shot permalinks (C3) are missing";
     if (!page.includes('id="filter-chip"') || !page.includes('id="filter-prev"') || !page.includes('id="filter-next"') || !page.includes('id="filter-back"') || !page.includes('id="filter-pos" role="status"')) return "the filter chip (C4) is missing";
     if (!page.includes('id="tree-filter-count" role="status"')) return "the tree filter count (C2) is missing";
-    return page.includes('id="export-json-top"') && page.includes('id="copy-top"') && page.includes('id="export-json"') && page.includes('id="copy"') || "the export controls are missing";
+    return page.includes('id="export-json-top"') && page.includes('id="copy-top"') && !page.includes('id="export-json"') && !page.includes('id="copy"') || "the export controls are missing or duplicated";
   });
 
 test("the v4 words are localized, and a custom catalog carries the v4 controls",
@@ -1206,18 +1226,18 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const word of ["Обзор", "Выборы", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
-      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Имя файла:", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
+    for (const word of ["Обзор", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
+      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
-    // The chrome words are owed by a record that uses the new fields; an old record keeps its old catalog.
+    // Common chrome is mandatory for every current catalog.
     const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
     for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"]) {
-      if (oldRequired.includes(key)) return `the v4 control ${key} was demanded of a genuine old catalog`;
+      if (!oldRequired.includes(key)) return `the common control ${key} is not required of a minimal record`;
       if (!newRequired.includes(key)) return `the v4 control ${key} is not required of a record with the new fields`;
     }
-    if (oldRequired.length !== BASE_KEYS.length) return "an old record was asked for words beyond the old base set";
+    if (!oldRequired.includes("code.no-related") || !oldRequired.includes("code.no-visible")) return "an old record was not asked for the v7 empty states";
     if (newRequired.includes("decision.confirm") === false) return "a record with cards was not asked for the card words";
     const files = parseThemeDiff();
     const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
@@ -1313,15 +1333,15 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
   });
 
-test("a genuine old custom catalog renders an old record end to end; a new record owes the v4 keys",
+test("an upgraded old custom catalog renders an old record end to end; a new record owes the v4 keys",
   "the check alone can pass while the render refuses, and a new record must not silently take English chrome",
   () => {
-    const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+    const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
     const ok = render((r) => { r.language = "custom"; r.labels = oldCatalog; });
     if (ok.status !== 0) return `an old record with a genuine old catalog was refused: ${ok.stderr}`;
     if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
     const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = oldCatalog; });
-    return refused.status === 1 && refused.stderr.includes("tab.overview") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
+    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
   });
 
 // ---- v5: one Choices list, the unified shell, the reversible choice, the export dialog ----
@@ -1341,39 +1361,39 @@ test("the v5 page is one Choices list grouped by action, with subtabs over it an
     // The subtabs filter the ONE list; they ship disabled and pressed at «All» for the no-script reader.
     const filters = [...decisions.matchAll(/data-choice-filter="(\w+)"/g)].map((m) => m[1]);
     if (filters.join() !== "all,q,f,i,fact,deferred,done") return `the subtabs are ${filters.join()}`;
-    if (!decisions.includes('data-choice-filter="all" aria-pressed="true" disabled')) return "the subtabs do not start at All, disabled";
+    if (!/data-choice-filter="all"[^>]*aria-pressed="true"[^>]*disabled/.test(decisions)) return "the subtabs do not start at All, disabled";
     // The overview carries the read-only matter; the checks tab carries the challenges; nothing is lost.
     const overview = page.split('id="panel-overview"')[1].split('id="panel-decisions"')[0];
     if (!overview.includes('id="tradeoffs"') || !overview.includes('id="mechanisms"') || !overview.includes('id="structure"')) return "the overview lacks the tradeoffs, mechanics or structure";
     const checks = page.split('id="panel-checks"')[1].split('id="panel-materials"')[0];
     if (!checks.includes('id="challenges"') || !checks.includes('id="requirements"')) return "the checks tab lacks the challenges or requirements";
     // One quantity: the main decisions open (Q3, the only root) plus the two findings; the child Q4 and the idea never enter.
-    if (!page.includes('id="count-decisions" title="') || !page.includes(">3 remaining</span>")) return "the static counter is not the one quantity (roots + findings)";
+    if (!/id="count-decisions"[^>]*aria-label="3 main decisions and findings remaining"[^>]*>3<\/span>/.test(page)) return "the static counter is not the one quantity (roots + findings)";
     return !page.includes('id="panel-findings"') || "the findings kept a duplicate panel";
   });
 
-test("remainingCount is the one quantity: roots and findings, never ideas, children or invalid decisions",
+test("choiceStats.remaining is the one quantity: roots and findings, never ideas, children or invalid decisions",
   "a counter that counts conditional children, ideas or bare clicks misstates what is left for the owner",
   () => {
     const findings = [{ id: 1 }, { id: 2 }];
     const fresh = normalize({});
-    if (remainingCount(DQS, fresh, findings) !== 4) return "the fresh count is not the two roots plus the two findings";
+    if (choiceStats(DQS, fresh, findings).remaining !== 4) return "the fresh count is not the two roots plus the two findings";
     // Ideas are excluded at the source: the page feeds the findings list, never the ideas (data.ideas stands apart).
     const themed = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (themed.status !== 0) return themed.stderr;
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(fs.readFileSync(html, "utf8"))[1]);
     if (embedded.findings.some((f) => String(f.id).startsWith("i")) || !embedded.ideas.length) return "the ideas are not kept apart from the counted findings";
     const accepted = normalize({ questions: { 1: { choice: "accepted", variant: "keep" } }, findings: { 1: "apply" } });
-    if (remainingCount(DQS, accepted, findings) !== 2) return "a valid acceptance or a processed finding did not decrement";
+    if (choiceStats(DQS, accepted, findings).remaining !== 2) return "a valid acceptance or a processed finding did not decrement";
     const bare = normalize({ questions: { 1: { choice: "accepted" } } });
-    if (remainingCount(DQS, bare, findings) !== 4) return "an acceptance without a variant counted as decided";
+    if (choiceStats(DQS, bare, findings).remaining !== 4) return "an acceptance without a variant counted as decided";
     const deferred = normalize({ questions: { 4: { choice: "deferred" } }, notes: { q4: "Later." } });
-    if (remainingCount(DQS, deferred, findings) !== 3) return "a reasoned deferral did not decrement";
+    if (choiceStats(DQS, deferred, findings).remaining !== 3) return "a reasoned deferral did not decrement";
     const reasonless = normalize({ questions: { 4: { choice: "deferred" } } });
-    if (remainingCount(DQS, reasonless, findings) !== 4) return "a reasonless deferral counted as decided";
+    if (choiceStats(DQS, reasonless, findings).remaining !== 4) return "a reasonless deferral counted as decided";
     // The child under an accepted outside variant is not applicable, and the root's own acceptance stands.
     const retired = settle(DQS, normalize({ questions: { 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } } }));
-    if (remainingCount(DQS, retired, findings) !== 3) return "the retired child or the accepted root miscounted";
+    if (choiceStats(DQS, retired, findings).remaining !== 3) return "the retired child or the accepted root miscounted";
     return true;
   });
 
@@ -1398,11 +1418,36 @@ test("the conditional children sit under their parent, and the settled group is 
     const units = [...owner.matchAll(/data-unit="(q\d+)"/g)].map((m) => m[1]);
     if (units.join() !== "q1,q2,q6,q8") return `the owner group's roots are ${units.join()}`;
     if (owner.includes('data-unit="q9"')) return "a child stands as a root unit";
-    // The settled group starts empty; the runtime moves the SAME card (unitHome) and lands focus on the summary.
+    // The settled group starts empty; the runtime moves the SAME card only after focus leaves the unit.
     if (!page.includes('id="group-settled"')) return "the settled group is missing";
     const script = scriptOf(page);
     if (!script.includes("unitHome") || !script.includes("settled-row")) return "the runtime does not move cards into compact rows";
-    if (!script.includes("sum.focus({ preventScroll: true })")) return "the focus does not land on the settled row's summary";
+    // Exercise the embedded runtime: an edited card stays put, then moves after focus leaves cards.
+    const start = script.indexOf("  function unitSettledState(unit)"), end = script.indexOf("  function paintChildren()", start);
+    if (start < 0 || end < 0) return "the settled-card runtime is missing";
+    const field = { closest: () => unit }, bodyFocus = { closest: () => null };
+    const card = { id: "q2", dataset: { qid: "2" }, classList: { contains: (name) => name === "qcard" },
+      querySelector: () => ({ textContent: "Question" }) };
+    let moves = 0, row;
+    const home = { children: [], insertBefore() { moves++; } };
+    const unit = { dataset: {}, parentElement: home,
+      querySelector: () => card, closest: () => row || null,
+      before(value) { row = value; } };
+    home.children = [unit];
+    const document = { activeElement: field, getElementById: () => ({}),
+      createElement: (tag) => tag === "details"
+        ? { dataset: {}, append() {}, querySelector: () => ({ append() {} }) }
+        : {} };
+    const settledBody = { append() { moves++; } };
+    const paint = vm.runInNewContext(script.slice(start, end) + "\npaintSettled",
+      { document, settledBody, unitHome: new Map(), settledMap: { q2: "done" },
+        state: { notes: {} }, t: { status: { open: "open" }, commentEdit: "edit", cardComment: "Comment" },
+        all: () => [unit], progOpen() {} });
+    paint();
+    if (moves || unit.dataset.settled) return "a focused card moved during editing";
+    document.activeElement = bodyFocus;
+    paint();
+    if (moves !== 1 || unit.dataset.settled !== "done") return "the card did not move after focus left";
     if (page.includes("data-confirm")) return "the mobile confirm step survived";
     if (/isMobile/.test(script)) return "a separate mobile choice rule survived";
     return script.includes('cur.choice = "accepted"') || "the radio does not accept at once on every size";
@@ -1414,17 +1459,17 @@ test("the unified card shell: one order for Q/F/I, the limit on the surface, no 
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    const order = (card) => ["card-head", "card-question", "card-comment", "card-more"].map((part) => card.indexOf(part));
+    const order = (card, isQuestion) => (isQuestion ? ["card-head", "card-title", "card-comment", "card-more"] : ["card-head", "card-question", "card-comment", "card-more"]).map((part) => card.indexOf(part));
     const q3 = page.split('id="q3"')[1].split("</div>\n  </div>")[0];
     const f1 = page.split('id="f1"')[1].split("</article>")[0];
     const i1 = page.split('id="i1"')[1].split("</article>")[0];
     for (const [name, card] of [["q3", q3], ["f1", f1], ["i1", i1]]) {
-      const at = order(card);
+      const at = order(card, name === "q3");
       if (at.some((x) => x < 0) || at.some((x, j) => j && x <= at[j - 1])) return `${name}: the shell order differs`;
     }
     if (!f1.includes("card-limit") || !f1.includes("card-consequence") || !f1.includes("card-choice")) return "the finding lacks the limit, consequence or choice slot";
     if (!f1.includes(">Fix</button>") || !f1.includes(">Do not fix</button>")) return "the finding's choice is not Fix / Do not fix";
-    if (!i1.includes("card-limit") || !i1.includes("not stated in the record")) return "the idea's limit is not the explicit absence";
+    if (i1.includes("card-limit") || i1.includes("not stated in the record")) return "the idea grew an invented absence warning";
     if (!i1.includes(">Take</button>") || !i1.includes(">Do not take</button>")) return "the idea's choice is not Take / Do not take";
     // The fact answer stands on the surface, not behind the comment; a zone mark is not a confirmation.
     const q2 = page.split('id="q2"')[1].split('id="q3"')[0];
@@ -1434,6 +1479,53 @@ test("the unified card shell: one order for Q/F/I, the limit on the surface, no 
     // The comment is a closed disclosure, never a permanent textarea.
     if (!q3.includes('<details class="card-comment act" data-comment="q3">')) return "the card comment is not the compact disclosure";
     if (page.includes("qnote-wrap")) return "the permanent comment textarea survived";
+    return true;
+  });
+
+test("source labels describe recorded fields without claiming a check",
+  "a mention is not a missing file and a quote is not a verified revision; only the current question is a self-reference",
+  () => {
+    const result = render((r) => {
+      Object.assign(r, structuredClone(THEMED));
+      r.questions[2].context = [
+        { text: "First claim.", sources: [{ ref: "/questions/2" }, { at: "coverage" }] },
+        { text: "Second claim.", sources: [{ at: "somewhere", revision: "r1", quote: "words" }] },
+        { text: "Third claim.", sources: [{ ref: "/questions/0" }, { at: "somewhere", revision: "r2", quote: "other words" }] },
+      ];
+    });
+    if (result.status !== 0) return result.stderr;
+    const q = fs.readFileSync(html, "utf8").split('id="q3"')[1].split('data-qchildren="3"')[0];
+    for (const text of ["Reference to this question in the report: <a href=\"#q3\">Q3</a>", "Mention without a quote: coverage",
+      "Quote provided: somewhere @ r1 “words”", "Report reference: <a href=\"#q1\">Q1</a>", "Quote provided: somewhere @ r2 “other words”"])
+      if (!q.includes(text)) return `missing field-based provenance: ${text}`;
+    return !q.includes('href="#coverage">coverage') || "a plain at value became an invented link";
+  });
+
+test("finding and idea controls keep their localized accessible names and independent ids",
+  "sharing the card shell must not conflate the two choices or expose a title as markup",
+  () => {
+    for (const [language, fix, skip, take, leave] of [
+      ["en", "Fix F1", "Do not fix F1", "Take the idea", "Do not take the idea"],
+      ["ru", "Исправить F1", "Не исправлять F1", "Взять идею", "Не брать идею"]
+    ]) {
+      const result = render((r) => {
+        Object.assign(r, structuredClone(THEMED));
+        r.language = language;
+        r.ideas[0].title = 'Idea "quoted" & safe';
+      });
+      if (result.status !== 0) return result.stderr;
+      const html = fs.readFileSync(path.join(run, "review.html"), "utf8");
+      const finding = html.split('id="f1"')[1].split("</article>")[0];
+      const idea = html.split('id="i1"')[1].split("</article>")[0];
+      for (const [card, id, apply, reject] of [
+        [finding, "1", fix, skip],
+        [idea, "i1", `${take} Idea &quot;quoted&quot; &amp; safe`, `${leave} Idea &quot;quoted&quot; &amp; safe`]
+      ]) {
+        if (!card.includes(`data-fstatus="${id}"`) || !card.includes(`data-finding="${id}"`)) return `${language}: missing status or choice id ${id}`;
+        if (!card.includes(`value="apply" aria-label="${apply}"`) || !card.includes(`value="skip" aria-label="${reject}"`)) return `${language}: wrong accessible choice names for ${id}`;
+      }
+      if (!idea.includes('data-comment="i1"') || !finding.includes('data-comment="f1"')) return `${language}: comments lost their own ids`;
+    }
     return true;
   });
 
@@ -1459,9 +1551,9 @@ test("the surface limit is the record's own uncertainty; a clear recommendation 
     // Q6's recommendation is a clear opinion: it stands as advice, not as an uncertainty.
     const q6 = page.split('id="q6"')[1].split('data-unit="q8"')[0];
     if (!q6.includes("qadvice") || q6.includes("card-limit")) return "Q6's clear recommendation was demoted to a limit";
-    // The first screen carries the record's unchecked limits; a record without them grows no empty slot.
-    const intro = page.split('<div class="decision-intro">')[1].split("choice-filters")[0];
-    if (!intro.includes("card-limit") || !intro.includes("current-merge pixel-diff")) return "the intro lacks the record's unchecked limits";
+    // The unchecked limits are visible in the data/check group rather than duplicated in the intro.
+    const group = page.split('id="group-data"')[1]?.split('class="dgroup-body"')[0] ?? "";
+    if (!group.includes("card-limit") || !group.includes("current-merge pixel-diff")) return "the data group lacks the record's unchecked limits";
     const legacy = render();
     if (legacy.status !== 0) return legacy.stderr;
     const old = fs.readFileSync(html, "utf8");
@@ -1474,20 +1566,46 @@ test("the fact answer is «answer entered», never «verified», and exports apa
   () => {
     const state = normalize({ answers: { q3: "https://example.test/proof" }, notes: { q3: "a discussion" } });
     const out = exportOf(DQS, state, {});
-    if (out.schema_version !== 4) return "the schema changed";
+    if (out.schema_version !== 5) return "the schema changed";
     if (out.factAnswers?.q3 !== "https://example.test/proof") return "the export lacks factAnswers";
     if (out.notes.q3 !== "a discussion") return "the answer displaced the comment";
     // An old store without the new keys normalizes clean; the answer never decides a question.
     const old = normalize({ findings: { 1: "apply" }, questions: { 1: { choice: "accepted", variant: "keep" } } });
     if (Object.keys(old.answers).length || old.hiddenPurposes.length || old.treeHidden) return "the old store grew non-empty v5 state";
-    if (counters(DQS, state).accepted !== 0) return "an answer counted as a decision";
+    if (exportOf(DQS, state, {}).questions.some(q => q.question === 3)) return "an answer counted as a decision";
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     if (!page.includes("does not confirm the check automatically")) return "the answer field does not say it confirms nothing";
-    const script = scriptOf(page);
-    if (!script.includes('stateName = "answered"')) return "the runtime has no answered state";
-    return !LABELS["decision.answered"].includes("verified") && !CATALOGS.ru["decision.answered"].includes("проверено") || "the answered word reads as verified";
+    const script = scriptOf(page), start = script.indexOf("  function paint() {"), end = script.indexOf("  function paintResolvedSegs(", start);
+    if (start < 0 || end < 0) return "the paint runtime is missing";
+    const D = decisionRuntime(), questions = [
+      { id: 1, kind: "decision", variants: [{ id: "yes" }, { id: "no" }] },
+      { id: 2, kind: "evidence", parent: { question: 1, variants: ["yes"] } },
+    ], labels = dataOf(page).labels;
+    const statusState = D.normalize({ answers: { q2: "owner evidence" }, questions: { 1: { choice: "accepted", variant: "yes" } } });
+    const chipEl = { dataset: {}, textContent: "" }, card = {
+      dataset: { qid: "2" }, classList: { toggle() {} }, querySelector: (s) => s === "[data-qstatus]" ? chipEl : null, querySelectorAll: () => [],
+    };
+    const sandbox = {
+      D, state: statusState, data: { questions, blocks: [], findings: [], ideas: [] }, qById: { 1: questions[0], 2: questions[1] },
+      qEntry: (id) => D.entryOf(statusState, id), isNA: (q) => !D.applicable(q, statusState, questions),
+      parentPending: (q) => D.waitingParent(q, statusState, questions), answerStatusText: (s) => labels.answerStatus[s.status].replace("{n}", s.parent),
+      all: (selector) => selector === ".qcard[data-qid]" ? [card] : [], document: { activeElement: null, getElementById: () => ({ setAttribute(name, value) { this[name] = value; }, removeAttribute(name) { delete this[name]; } }) },
+      stats: () => D.choiceStats(questions, statusState, []), t: labels, paintSettled() {}, paintChildren() {}, paintComments() {},
+      paintChoiceCounts() {}, applyChoiceFilter() {}, paintResolvedSegs() {}, exportDialog: { open: false }, choiceFilter: "all", map: {},
+    };
+    const paint = vm.runInNewContext(script.slice(start, end) + "\npaint", sandbox);
+    const chip = () => { paint(); return { stateName: chipEl.dataset.state, text: chipEl.textContent }; };
+    const entered = chip();
+    if (entered.stateName !== "answered" || entered.text !== labels.answerStatus.entered || !/not verified/i.test(entered.text)) return "an active answer is not answered and explicitly unverified";
+    delete statusState.questions[1];
+    const waiting = chip();
+    if (waiting.stateName !== "open" || waiting.text !== labels.answerStatus["waiting-parent"].replace("{n}", 1) || !/not verified/i.test(waiting.text)) return "a parent-blocked answer does not show waiting and unverified";
+    statusState.questions[1] = { choice: "accepted", variant: "no" };
+    const retired = chip();
+    return retired.stateName === "na" && retired.text === labels.answerStatus["not-applicable"] && /not verified/i.test(retired.text)
+      || "a retired answer does not show not applicable and unverified";
   });
 
 test("the export dialog is native and fed by one model; every control keeps its id",
@@ -1504,7 +1622,7 @@ test("the export dialog is native and fed by one model; every control keeps its 
       if (!dialog.includes(`id="${id}"`)) return `the dialog lacks ${id}`;
     if (!dialog.includes('readonly')) return "the text summary is editable";
     if (!dialog.includes('method="dialog"')) return "the dialog has no native close";
-    for (const id of ["export-json", "copy", "print-owner", "print-audit", "apply-all", "clear"])
+    for (const id of ["print-owner", "print-audit", "clear"])
       if (!page.includes(`id="${id}"`)) return `the materials control ${id} is missing`;
     const script = scriptOf(page);
     const text = script.slice(script.indexOf("function decisionsText"), script.indexOf("function buildPreview"));
@@ -1524,19 +1642,18 @@ test("the export dialog is native and fed by one model; every control keeps its 
     return true;
   });
 
-test("the export payload carries every user datum: the legacy entry note, zones, passages and fact answers",
-  "a datum that reaches only the JSON but not the preview/text (or the reverse) is a diverging export; the legacy questions[id].note must travel as the comment",
+test("the export payload carries current comments, zones, passages and fact answers",
+  "user input must travel in the current export without reviving legacy entry notes",
   () => {
     const state = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "legacy note in the entry" } },
-      notes: { b1: "block note" }, zones: { "1-0": true }, answers: { q3: "proof" },
-      passages: [{ where: "a.js:1", quote: "x", note: "n", anchor: { id: "b1" } }] });
+      notes: { q1: "current comment", b1: "block note" }, zones: { "1-0": true }, answers: { q3: "proof" },
+      passages: [{ where: "a.js:1", quote: "x", note: "n", proof: { kind: "field", object: "b1" } }] });
     const out = exportOf(DQS, state, {});
-    if (out.questions.find((q) => q.question === 1).comment !== "legacy note in the entry") return "the legacy questions[id].note did not reach the export comment";
+    if (out.questions.find((q) => q.question === 1).comment !== "current comment") return "the current comment did not reach the export";
     if (out.zones?.["1-0"] !== true || out.factAnswers?.q3 !== "proof" || out.passages?.length !== 1 || out.notes?.b1 !== "block note")
       return "the export drops the zones, factAnswers, passages or block notes";
-    // noteOf prefers the entry note over the shared notes: the export states the effective comment.
     const both = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "entry" } }, notes: { q1: "shared" } });
-    if (exportOf(DQS, both, {}).questions.find((q) => q.question === 1).comment !== "entry") return "noteOf did not prefer the entry note over the shared notes";
+    if (exportOf(DQS, both, {}).questions.find((q) => q.question === 1).comment !== "shared") return "the legacy entry note replaced the current comment";
     // The page's data carries the zone texts, so the preview can name a marked zone without the record's DOM.
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
@@ -1576,10 +1693,11 @@ test("the enriched HTML stays within 5% of the v4 baseline",
     const firstV5 = entries.map(([, subject]) => /\bv5\b/i.test(subject)).lastIndexOf(true);
     const v4ref = firstV5 >= 0 ? entries[firstV5 + 1]?.[0] : undefined;
     if (!v4ref) return skip("no pre-v5 page.mjs commit in this history");
-    const v4dir = path.join(run, "v4-baseline-budget");
+    for (const ref of [v4ref, "062cf5e9"]) {
+    const v4dir = path.join(run, "baseline-budget-" + ref);
     fs.mkdirSync(path.join(v4dir, "scripts", "vendor"), { recursive: true });
     for (const f of ["page.mjs", "review.mjs", "labels.mjs", "decisions.mjs", "report.mjs", "diff.mjs", "diagram.mjs", "highlight.mjs", "annotations.mjs", "text.mjs", "vendor/shiki.mjs"]) {
-      const content = spawnSync("git", ["-C", gitRoot, "show", `${v4ref}:plugins/entrust/plugin/skills/review/scripts/${f}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+      const content = spawnSync("git", ["-C", gitRoot, "show", `${ref}:plugins/entrust/plugin/skills/review/scripts/${f}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
       if (content.status !== 0) return `git show ${f}: ${content.stderr.slice(0, 200)}`;
       fs.writeFileSync(path.join(v4dir, "scripts", f), content.stdout);
     }
@@ -1589,7 +1707,10 @@ test("the enriched HTML stays within 5% of the v4 baseline",
     if (v4render.status !== 0) return `the v4 baseline does not render: ${v4render.stderr.slice(0, 200)}`;
     const v4html = fs.statSync(path.join(v4dir, "review.html")).size;
     const growth = 100 * (v5html / v4html - 1);
-    return growth < 5 || `the enriched HTML grew ${growth.toFixed(2)}% over the v4 baseline (${v4html} -> ${v5html} bytes)`;
+    if (growth >= (ref === v4ref ? 5 : 0)) return `the enriched HTML grew ${growth.toFixed(2)}% over ${ref} (${v4html} -> ${v5html} bytes)`;
+    console.log(`budget ${ref}: HTML ${v4html} -> ${v5html} bytes (${growth.toFixed(2)}%)`);
+    }
+    return true;
   });
 
 test("the purpose toggles hide groups in map and tree; reset and deep links restore them",
@@ -1660,9 +1781,10 @@ test("the no-JS counter is the static Q+F with an honest title, and the v5 contr
     if (report("render", copy).status !== 0) return "render failed";
     const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
     const badge = page.match(/<span class="tab-count" id="count-decisions"[^>]*>[^<]*<\/span>/)?.[0] ?? "";
-    if (!badge.includes("11 осталось")) return `the static counter is not 11: ${badge}`;
+    if (!badge.includes("Осталось основных решений и замечаний: 11")) return `the static counter is not 11: ${badge}`;
     if (!/статический/i.test(badge) || !/без JavaScript/i.test(badge) || !/сохранённые ответы не учитываются/i.test(badge)) return `the counter's title is not honest: ${badge}`;
-    for (const part of ['data-choice-filter="all" aria-pressed="true" disabled', 'id="export-open" class="act" disabled', 'data-answer="q4"'])
+    if (!/data-choice-filter="all"[^>]*aria-pressed="true"[^>]*disabled/.test(page)) return "the All control is not disabled";
+    for (const part of ['id="export-open" class="act" disabled', 'data-answer="q4"'])
       if (!page.includes(part)) return `the no-script control is missing: ${part}`;
     if (!/<input type="text" class="act" id="answer-q4"[^>]*disabled>/.test(page)) return "the answer field is not disabled without scripts";
     return true;
@@ -1697,19 +1819,19 @@ test("the v5 words are localized and owed by capability; the block comment is th
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const word of ["Выборы", "Все", "Факты · проверки", "Отложено", "Завершено", "Нужен выбор владельца", "Предложенные исправления",
+    for (const word of ["Решения", "Все", "Факты · проверки", "Отложено", "Завершено", "Нужен выбор владельца", "Предложенные исправления",
       "Нужны данные или проверка", "Завершённые · отложенные", "Выгрузить ответы", "Принятые решения", "Отложенные и черновики", "Ответы на факты",
-      "Перейти", "Комментарий", "Сохранено в этом браузере, не отправлено.", "ответ внесён", "Показаны все блоки файла вне режима", "Скрыто:",
-      "Ограничение и версия для идеи в записи не указаны", "Исправить", "Не исправлять", "Взять", "Не брать", "Подвопросы"])
+      "Перейти", "Комментарий", "Ответы никуда не отправляются.", "ответ внесён", "Показаны все блоки файла вне режима", "Скрыто:",
+      "Исправить", "Не исправлять", "Взять", "Не брать", "Подвопросы"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">All<", ">Owner choice needed<", ">Export answers<", ">answer entered<", ">Fix</button>", ">Take</button>"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
     const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
     for (const key of ["choice.filter.all", "group.owner", "export.open", "card.comment", "nojs.counter-title", "tree.reveal-note", "chip.hidden", "finding.limit.read"]) {
-      if (oldRequired.includes(key)) return `the v5 chrome ${key} was demanded of a genuine old catalog`;
+      if (!oldRequired.includes(key)) return `the common chrome ${key} is not required of a minimal record`;
       if (!newRequired.includes(key)) return `the v5 chrome ${key} is not required of a record with the new fields`;
     }
-    for (const key of ["decision.answered", "decision.answer-label", "decision.children", "ideas.optional", "card.limit-absent-idea"])
+    for (const key of ["decision.answered", "decision.answer-label", "decision.children", "ideas.optional"])
       if (!newRequired.includes(key)) return `the capability key ${key} is not required of the themed record`;
     const noIdeas = structuredClone(THEMED); delete noIdeas.ideas;
     if (requiredKeys(noIdeas).includes("ideas.optional")) return "a record without ideas was asked for the idea words";
@@ -1719,6 +1841,78 @@ test("the v5 words are localized and owed by capability; the block comment is th
     if (!script.includes("function paintComments") || !script.includes(".block-comment")) return "the runtime does not paint the block comments";
     if (!script.includes('event.target.closest(".card-comment, .block-comment")')) return "the focusout does not collapse both comment kinds";
     return script.includes('s.querySelectorAll(".block-comment").forEach((n) => n.remove())') || "the related-code clones keep the comment wrapper";
+  });
+
+test("v6 choiceStats keeps accepted parents active until children settle; ideas and answers stay independent",
+  "the badges and export must use the same valid decisions without promoting answers to verification",
+  () => {
+    const qs = [
+      { id: 2, kind: "decision", variants: [{ id: "keep" }, { id: "base" }] },
+      ...[9, 10, 11].map(id => ({ id, kind: "decision", parent: { question: 2, variants: ["keep"] }, variants: [{ id: "yes" }] })),
+      { id: 4, kind: "fact" }
+    ], fs = [{ id: 1 }], ideas = [{ id: "i1" }];
+    let s = normalize({});
+    const stats = () => choiceStats(qs, s, fs, ideas);
+    if (stats().remaining !== 2 || stats().fact !== 1 || stats().i !== 1) return "fresh badges differ";
+    s.questions[2] = { choice: "accepted", variant: "keep" };
+    if (stats().remaining !== 1 || stats().q !== 0 || stats().settled.q2) return "accepted parent hides pending children or counts twice";
+    for (const id of [9, 10, 11]) s.questions[id] = { choice: "accepted", variant: "yes" };
+    if (stats().settled.q2 !== "done") return "completed children do not settle their parent";
+    s.questions[2] = { choice: "accepted", variant: "base" }; s = settle(qs, s);
+    if (stats().settled.q2 !== "done") return "base does not retire children";
+    s.questions[2] = { choice: "deferred" };
+    if (stats().remaining !== 2) return "reasonless deferral counts";
+    s.notes.q2 = "later";
+    if (stats().remaining !== 1 || stats().deferred !== 1 || stats().done !== 0) return "deferral treated as completed";
+    s.findings.i1 = "apply"; s.answers.q4 = "proof";
+    if (stats().remaining !== 1 || stats().fact !== 0 || stats().i !== 0) return "optional idea or fact changes mandatory count";
+    if (exportOf(qs, s, {}).questions.some(q => q.question === 4)) return "fact promoted to decision";
+    s = normalize(JSON.parse(JSON.stringify(s)));
+    if (choiceStats(qs, s, fs).remaining !== stats().remaining) return "reload remaining differs";
+    delete s.questions[2]; delete s.notes.q2;
+    if (choiceStats(qs, s, fs).remaining !== 2 || stats().q !== 1) return "reset remaining differs";
+    return true;
+  });
+
+test("v6 subtraction preserves anchors, affordance and the wide compact code tree",
+  "removing duplicate UI must retain annotation targets, readable choices and the only file navigation",
+  () => {
+    if (render(r => Object.assign(r, structuredClone(THEMED))).status) return "render failed";
+    const p = fs.readFileSync(html, "utf8");
+    for (const id of ["progress-q", "apply-all", "export-json", "copy"])
+      if (p.includes(`id="${id}"`)) return `duplicate UI survived: ${id}`;
+    for (const id of ["summary", "coverage", "decisions", "passages", "passport", "q3", "f1", "b1"])
+      if ((p.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `lost or duplicate anchor ${id}`;
+    for (const text of ["D.choiceStats", 'data-cf-count="q"', 'data-tree-mode="flat"', 'id="tree-resize"', ".ftree.flat", "max-width: 1600px", "max-width: 90ch", ".qopts legend { font-size: 1rem; color: var(--fg); font-weight: 650", 'data-fragment="1"'])
+      if (!p.includes(text)) return `v6 contract missing: ${text}`;
+    return true;
+  });
+
+test("requirements are selectable in Code, with unit navigation and a complete no-script map",
+  "the requirement control must use the recorded relationships rather than infer parent blocks or copy the diff",
+  () => {
+    const record = structuredClone(THEMED);
+    record.language = "ru";
+    const files = parseThemeDiff(), model = modelOf(record, files, check(record, files, run).owner, run);
+    const output = page(record, files, model);
+    if (!output.includes('id="code-requirement" disabled')) return "the requirement selector is not disabled without JavaScript";
+    if (!output.includes("R1 — Upper case wherever a price is shown. (3)")) return "the selector does not show the model's unique block count";
+    if (!output.includes("R2 — A requirement nothing serves. (0)")) return "a requirement with no blocks is not selectable";
+    if (!output.includes('data-navigation-view="units"')) return "unit navigation is missing";
+    if (!output.includes("document.createElement(\"details\")") || !output.includes("b.unit || t.code.noUnit")) return "unit groups are not derived from block data";
+    if (!output.includes('id="b1"') || !output.includes("data-serves=")) return "the original map or requirement links are missing";
+    for (const key of ["code.requirement", "code.units", "code.no-related", "code.no-visible"]) {
+      if (!LABELS[key] || !CATALOGS.ru[key]) return `missing localization: ${key}`;
+      if (!requiredKeys(THEMED).includes(key) || !requiredKeys(REVIEW).includes(key)) return `the new wording is not required: ${key}`;
+    }
+    const custom = { ...structuredClone(THEMED), language: "custom", labels: Object.fromEntries(requiredKeys(THEMED).map((key) => [key, `«${LABELS[key]}»`])) };
+    if (check(custom, files, run).errors.length) return "an existing enriched custom catalog no longer passes check";
+    if (labelsOf(custom)("code.requirement") !== custom.labels["code.requirement"]) return "the custom selector label is not used";
+    for (const key of ["code.no-related", "code.no-visible"]) {
+      const missing = structuredClone(custom); delete missing.labels[key];
+      if (!check(missing, files, run).errors.some((e) => e.includes(key))) return `missing ${key} was not reported`;
+    }
+    return true;
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));

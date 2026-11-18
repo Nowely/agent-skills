@@ -1,4 +1,5 @@
 // Report UI catalogs; review.language selects one and review.labels may override its wording.
+import { commonClaimSources } from "./sources.mjs";
 export const LABELS = {
   "mechanism-change": "In the reviewed change",
   "consequence": "Why change it",
@@ -56,7 +57,7 @@ export const LABELS = {
   "weight.shared-count.other": "{n} shared",
   "kind": "Code review",
   "change": "Change", "task": "Task", "sources": "Sources", "requirements": "Requirements",
-  "verdict": "Verdict", "now": "How it works now", "target": "Target solution", "recommendation": "Recommendations",
+  "verdict": "Verdict", "now": "How it works now", "target": "Target solution", "recommendation": "Recommendation",
   "findings": "Findings", "ideas": "Ideas", "ideas-note": "Not needed for the change to be accepted.",
   "screens": "Screens", "structure": "Structure", "map": "Change map", "questions": "Questions and oddities",
   "coverage": "Coverage", "decisions": "Decisions", "summary": "Summary", "files": "Files",
@@ -104,6 +105,21 @@ export const BASE_KEYS = Object.keys(LABELS);
 // The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
 // the file tree, the picture viewer and the print profiles. Factual status texts are the record's own, not these.
 Object.assign(LABELS, {
+  "source.each": "Sources for each item",
+  "annotation.added": "Comment added in memory",
+  "annotation.unverified": "Passage identity cannot be verified. The comment remains without a highlight or source link. Some selections and legacy notes cannot be located automatically.",
+  "annotation.proof-note": "The selected text and location proof travel in the JSON export. Some selections cannot be located automatically.",
+  "choice.waiting-parent": "Of these, waiting for a parent decision: {n}",
+  "choice.filter-editing": "Kept here while editing; its current status may not match this group or filter.",
+  "export.storage-explanation": "Answers are not sent. If browser storage fails they remain only in memory. JSON ties answers to the record and diff; the record itself is never changed.",
+  "decision.export-local-method": "Cards group by the next action. Choosing a variant fixes the decision and is reversible; a draft is not a made choice. Answers stay in this browser when storage is available and are never sent. Export includes variants, fact answers and comments with the record's digest. A decision does not replace evidence or rewrite fragment verdicts.",
+  "decision.draft-local": "Draft: «{n}» — not in effect (the decision is deferred).",
+  "decision.gate-draft-local": " The variant «{n}» is a draft, not in effect.",
+  "decision.selection-waiting": "Selection recorded; waiting for Q{n}.",
+  "answer.status.entered": "Answer entered · not verified",
+  "answer.status.waiting-parent": "Answer entered · waiting for Q{n} · not verified",
+  "answer.status.not-applicable": "Answer entered · not applicable · not verified",
+  "choice.count.deferred": "{n} deferred decisions",
   "question.kind.decision": "decision", "question.kind.fact": "fact to settle", "question.kind.evidence": "evidence to obtain",
   "question.context": "Context", "question.variants": "Variants", "question.consequences": "Consequences",
   "question.remaining-evidence": "What this decision does not replace", "question.no-context": "No reviewer context was added.",
@@ -156,7 +172,7 @@ Object.assign(LABELS, {
   "tree.filter": "File name:", "tree.filter-placeholder": "part of the path, case-insensitive", "tree.hide": "hide tree", "tree.show": "show tree",
   "mview.tree": "Tree", "code.top": "↑ top",
   "reset": "reset", "chip.prev": "Previous match", "chip.next": "Next match", "chip.back": "← back",
-  "chip.requirement": "Requirement {n}", "chip.finding": "Finding F{n}", "chip.purpose": "Purpose: {n}", "chip.with-parts": "with continuations",
+  "chip.requirement": "Requirement R{n}", "chip.finding": "Finding F{n}", "chip.purpose": "Purpose: {n}", "chip.with-parts": "with continuations",
   "map.open-filter": "Show in the map",
   "purpose.production": "Production code", "purpose.tests": "Tests", "purpose.styles": "Styles", "purpose.assets": "Assets", "purpose.docs": "Docs", "purpose.config": "Config",
   "purpose.lines-note": "Lines — the sum of block sizes.",
@@ -256,7 +272,7 @@ export const CATALOGS = { en: LABELS, ru: {
   "verdict": "Вывод",
   "now": "Как сейчас работает",
   "target": "Целевое решение",
-  "recommendation": "Рекомендации",
+  "recommendation": "Рекомендация",
   "findings": "Замечания",
   "ideas": "Идеи",
   "ideas-note": "Не обязательны для принятия изменения.",
@@ -394,6 +410,21 @@ export const CATALOGS = { en: LABELS, ru: {
 } };
 
 Object.assign(CATALOGS.ru, {
+  "source.each": "Источники каждого пункта",
+  "annotation.added": "Комментарий добавлен в память",
+  "annotation.unverified": "Не удалось подтвердить место фрагмента. Комментарий останется без подсветки и ссылки к источнику. Некоторые выделения и старые заметки не привязываются автоматически.",
+  "annotation.proof-note": "Выделенный текст и данные привязки попадают в JSON-выгрузку. Некоторые выделения не привязываются автоматически.",
+  "choice.waiting-parent": "Из них ждут решения родителя: {n}",
+  "choice.filter-editing": "Карточка остаётся здесь при редактировании; её текущий статус может не соответствовать группе или фильтру.",
+  "export.storage-explanation": "Ответы никуда не отправляются. При ошибке сохранения в браузере они остаются только в памяти. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
+  "decision.export-local-method": "Карточки сгруппированы по следующему действию. Выбор варианта обратим; черновик не считается решением. Ответы сохраняются в этом браузере, когда хранилище доступно, и никуда не отправляются. Варианты, ответы на факты и комментарии выгружаются с digest записи. Решение не заменяет доказательство и не переписывает вердикты фрагментов.",
+  "decision.draft-local": "Черновик: «{n}» — не действует (решение отложено).",
+  "decision.gate-draft-local": " Вариант «{n}» — черновик, не действует.",
+  "decision.selection-waiting": "Выбор зафиксирован; ожидает решения Q{n}.",
+  "answer.status.entered": "Ответ внесён · не проверен",
+  "answer.status.waiting-parent": "Ответ внесён · ждёт решения Q{n} · не проверен",
+  "answer.status.not-applicable": "Ответ внесён · неприменимо · не проверен",
+  "choice.count.deferred": "Отложенных решений: {n}",
   "question.kind.decision": "решение", "question.kind.fact": "уточнить факт", "question.kind.evidence": "получить доказательство",
   "question.context": "Контекст", "question.variants": "Варианты", "question.consequences": "Последствия",
   "question.remaining-evidence": "Что решение не заменяет", "question.no-context": "Контекст ревьюера не добавлен.",
@@ -445,7 +476,7 @@ Object.assign(CATALOGS.ru, {
   "tree.filter": "Имя файла:", "tree.filter-placeholder": "часть пути, без учёта регистра", "tree.hide": "скрыть дерево", "tree.show": "показать дерево",
   "mview.tree": "Дерево", "code.top": "↑ наверх",
   "reset": "сбросить", "chip.prev": "Предыдущее совпадение", "chip.next": "Следующее совпадение", "chip.back": "← вернуться",
-  "chip.requirement": "Требование {n}", "chip.finding": "Замечание F{n}", "chip.purpose": "Назначение: {n}", "chip.with-parts": "с продолжениями",
+  "chip.requirement": "Требование R{n}", "chip.finding": "Замечание F{n}", "chip.purpose": "Назначение: {n}", "chip.with-parts": "с продолжениями",
   "map.open-filter": "Показать в карте",
   "purpose.production": "Основной код", "purpose.tests": "Тесты", "purpose.styles": "Стили", "purpose.assets": "Ассеты", "purpose.docs": "Документация", "purpose.config": "Конфигурация",
   "purpose.lines-note": "Строки — сумма размеров блоков.",
@@ -485,16 +516,20 @@ Object.assign(CATALOGS.ru, {
 // the tree's reveal and the honest no-script counter. Factual status texts remain the record's own.
 Object.assign(LABELS, {
   "tab.decisions": "Choices",
+  "code.requirement": "Requirement", "code.all-requirements": "All requirements",
+  "code.files": "Files", "code.units": "Units",
+  "code.select-requirement": "Select a requirement to browse its units.",
+  "code.no-related": "No blocks are linked to this requirement.",
+  "code.no-visible": "No blocks match the current filters.",
+  "code.no-unit": "Without a unit", "code.linked": "Linked blocks", "code.visible": "Visible",
+  "code.filters-cleared": "Filters were cleared to show the linked block.",
   "choice.filter.all": "All", "choice.filter.q": "Decisions", "choice.filter.f": "Findings", "choice.filter.i": "Ideas",
   "choice.filter.fact": "Facts · checks", "choice.filter.deferred": "Deferred", "choice.filter.done": "Done",
   "choice.filters": "Subtab filters of the one choice list",
   "group.owner": "Owner choice needed", "group.fix": "Proposed fixes", "group.data": "Data or a check needed", "group.settled": "Done · deferred",
   "card.comment": "Comment", "card.comment-n": "Comment · {n}",
-  "card.comment-saved": "Saved in this browser, not sent.",
   "card.more-basis": "Basis and sources", "card.more-code": "Related code", "card.more-checks": "Checks · version not verified",
   "card.no-blocks": "No related fragments.",
-  "card.idea-meta": "idea · optional",
-  "card.limit-absent-idea": "The idea's limit and version are not stated in the record; the idea is optional.",
   "decision.fix-apply": "Fix", "decision.fix-skip": "Do not fix",
   "decision.idea-apply": "Take", "decision.idea-skip": "Do not take",
   "decision.idea-apply-aria": "Take the idea {n}", "decision.idea-skip-aria": "Do not take the idea {n}",
@@ -502,7 +537,7 @@ Object.assign(LABELS, {
   "finding.limit.ran": "Shown by a run in the checked version; the check does not extend to other versions.",
   "finding.limit.read": "Confirmed by reading the code, without a run.",
   "finding.limit.judgment": "The reviewer's judgment, not a run or a read.",
-  "decision.answer-label": "Answer / link to evidence (an entered answer does not confirm the check automatically)",
+  "decision.answer-label": "Enter an answer or a link to evidence (an entered answer does not confirm the check automatically)",
   "decision.answer-placeholder": "answer or link to evidence",
   "decision.answered": "answer entered",
   "decision.answer-row": "Answer entered: {n}",
@@ -527,17 +562,21 @@ Object.assign(LABELS, {
   "seg.comment-details": "Comment · details", "seg.comment-details-n": "Comment · {n} · details",
 });
 Object.assign(CATALOGS.ru, {
-  "tab.decisions": "Выборы",
+  "tab.decisions": "Решения",
+  "code.requirement": "Требование", "code.all-requirements": "Все требования",
+  "code.files": "Файлы", "code.units": "Юниты",
+  "code.select-requirement": "Выберите требование, чтобы просмотреть его юниты.",
+  "code.no-related": "С этим требованием не связаны блоки.",
+  "code.no-visible": "Нет блоков, соответствующих текущим фильтрам.",
+  "code.no-unit": "Без юнита", "code.linked": "Связано блоков", "code.visible": "Видно",
+  "code.filters-cleared": "Фильтры сброшены, чтобы показать выбранный блок.",
   "choice.filter.all": "Все", "choice.filter.q": "Решения", "choice.filter.f": "Замечания", "choice.filter.i": "Идеи",
   "choice.filter.fact": "Факты · проверки", "choice.filter.deferred": "Отложено", "choice.filter.done": "Завершено",
   "choice.filters": "Сабтабы-фильтры одного списка выборов",
   "group.owner": "Нужен выбор владельца", "group.fix": "Предложенные исправления", "group.data": "Нужны данные или проверка", "group.settled": "Завершённые · отложенные",
   "card.comment": "Комментарий", "card.comment-n": "Комментарий · {n}",
-  "card.comment-saved": "Сохранено в этом браузере, не отправлено.",
   "card.more-basis": "Обоснование и источники", "card.more-code": "Связанный код", "card.more-checks": "Проверки · версия не проверена",
   "card.no-blocks": "Связанных фрагментов нет.",
-  "card.idea-meta": "идея · необязательно",
-  "card.limit-absent-idea": "Ограничение и версия для идеи в записи не указаны; идея необязательна.",
   "decision.fix-apply": "Исправить", "decision.fix-skip": "Не исправлять",
   "decision.idea-apply": "Взять", "decision.idea-skip": "Не брать",
   "decision.idea-apply-aria": "Взять идею {n}", "decision.idea-skip-aria": "Не брать идею {n}",
@@ -545,7 +584,7 @@ Object.assign(CATALOGS.ru, {
   "finding.limit.ran": "Показано запуском в проверенной версии; на другие версии проверка не распространяется.",
   "finding.limit.read": "Подтверждено чтением кода, без запуска.",
   "finding.limit.judgment": "Оценка ревьюера, не запуск и не чтение.",
-  "decision.answer-label": "Ответ / ссылка на доказательство (внесённый ответ не подтверждает проверку автоматически)",
+  "decision.answer-label": "Укажите ответ или ссылку на доказательство (внесённый ответ не подтверждает проверку автоматически)",
   "decision.answer-placeholder": "ответ или ссылка на доказательство",
   "decision.answered": "ответ внесён",
   "decision.answer-row": "Ответ внесён: {n}",
@@ -575,14 +614,81 @@ CATALOGS.ru["decision.status.decided"] = "Выбрано: {n}";
 LABELS["decision.sheet-note"] = "Choosing a variant fixes the decision and is reversible on any screen; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.";
 LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible on any screen; a draft is never shown as a made choice and exports with a draft mark. Comments are saved in this browser, not sent, and travel with the export from any tab. A decision may change a requirement but does not replace evidence and does not rewrite fragment verdicts. Variants, fact answers and comments export to JSON with the record's digest.";
 
+// The v6 words: the deduplicated first screen (one working phrase, the verdict only in Overview), the
+// human-readable owner-decision title, the choice-zone labels, the subtab counters, the editorial change
+// context, the lighter code toolbar, the folder/list tree modes and the honest export remainder.
+Object.assign(LABELS, {
+  "decision.intro-work": "Decide the cards below. The full verdict and recommendation:",
+  "question.owner-decision": "Owner decision",
+  "decision.your-decision": "Your decision", "decision.your-choice": "Your choice",
+  "context.change": "Change context",
+  "purpose.show": "Show",
+  "choice.count.answers": "{n} without an answer", "choice.count.entries": "{n} entries",
+  "export.open-findings": "unprocessed findings",
+  "tree.mode.folder": "By folder", "tree.mode.flat": "List", "tree.resize": "Tree width",
+});
+Object.assign(CATALOGS.ru, {
+  "decision.intro-work": "Решите карточки ниже. Полный вывод и рекомендации:",
+  "question.owner-decision": "Решение владельца",
+  "decision.your-decision": "Ваше решение", "decision.your-choice": "Ваш выбор",
+  "context.change": "Контекст изменения",
+  "purpose.show": "Показывать",
+  "choice.count.answers": "{n} без ответа", "choice.count.entries": "{n} записей",
+  "export.open-findings": "необработанные замечания",
+  "tree.mode.folder": "По папкам", "tree.mode.flat": "Списком", "tree.resize": "Ширина дерева",
+});
+// The export textarea is the text to copy; the technical binding (digests) sits below the answers, not above.
+LABELS["export.text"] = "Text to copy";
+CATALOGS.ru["export.text"] = "Текст для копирования";
+
+Object.assign(LABELS, {
+  "tab.remaining": "{n} main decisions and findings remaining",
+  "choice.count.decisions": "{n} main decisions remaining",
+  "choice.count.findings": "{n} findings remaining",
+  "choice.dependent": "Dependent decisions waiting: {n}",
+  "choice.unanswered": "Fact/evidence requests without an answer: {n}",
+  "export.open-decisions": "Decisions awaiting an answer",
+  "export.open-dependent": "Dependent decisions awaiting an answer",
+  "export.open-requests": "Fact/evidence requests without an answer",
+  "storage.failed": "Changes are only in memory: browser storage failed. Download JSON before leaving.",
+  "export.dialog-note": "Answers are not sent. If browser storage fails they remain only in memory. JSON ties answers to the record and diff; the record itself is never changed.",
+  "tree.filter": "Search paths in the file tree (not diff contents)",
+  "tree.visible-files": "Visible files",
+  "tree.files": "files",
+  "source.internal": "Report reference",
+  "source.mention": "Mention without a quote",
+  "source.quoted": "Quote provided",
+  "source.self": "Reference to this question in the report",
+});
+Object.assign(CATALOGS.ru, {
+  "tab.remaining": "Осталось основных решений и замечаний: {n}",
+  "choice.count.decisions": "Осталось основных решений: {n}",
+  "choice.count.findings": "Осталось замечаний: {n}",
+  "choice.dependent": "Ожидают зависимые решения: {n}",
+  "choice.unanswered": "Запросы фактов/доказательств без ответа: {n}",
+  "export.open-decisions": "Решения без ответа",
+  "export.open-dependent": "Зависимые решения без ответа",
+  "export.open-requests": "Запросы фактов/доказательств без ответа",
+  "storage.failed": "Изменения только в памяти: не удалось сохранить в браузере. Скачайте JSON перед выходом.",
+  "export.dialog-note": "Ответы никуда не отправляются. При ошибке сохранения в браузере они остаются только в памяти. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
+  "tree.filter": "Поиск путей в дереве файлов (не по содержимому diff)",
+  "tree.visible-files": "Видно файлов",
+  "tree.files": "файлов",
+  "source.internal": "Ссылка внутри отчёта",
+  "source.mention": "Упоминание без цитаты",
+  "source.quoted": "Приведена цитата",
+  "source.self": "Ссылка на этот вопрос внутри отчёта",
+});
+LABELS["decision.draft-deferred"] = "Draft: «{n}» — not in effect (the decision is deferred).";
+CATALOGS.ru["decision.draft-deferred"] = "Черновик: «{n}» — не действует (решение отложено).";
+LABELS["decision.gate-draft"] = " The variant «{n}» is a draft, not in effect.";
+CATALOGS.ru["decision.gate-draft"] = " Вариант «{n}» — черновик, не действует.";
+LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible; a draft is not a made choice. Answers stay in this browser when storage is available and are never sent. Export includes variants, fact answers and comments with the record's digest. A decision does not replace evidence or rewrite fragment verdicts.";
+CATALOGS.ru["decision.export-method"] = "Карточки сгруппированы по следующему действию. Выбор варианта обратим; черновик не считается решением. Ответы сохраняются в этом браузере, когда хранилище доступно, и никуда не отправляются. Варианты, ответы на факты и комментарии выгружаются с digest записи. Решение не заменяет доказательство и не переписывает вердикты фрагментов.";
+
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
-// The words of the page's chrome: the counters, the file tree's marks, the print profiles, the skip link,
-// and the v4 controls — tabs, theme, the map reader, the purpose and tree filters, the filter chip, the
-// honest export and the no-script notes. One renderer draws them on every record, old or new, but a catalog
-// written before these controls existed must keep working: an old record without the new fields is checked
-// against the old base set alone, and its chrome falls back to the built-in words. A record that uses any
-// new field must carry the chrome words too — no silent English on a record authored for this version.
+// The chrome is always rendered; custom catalogs must provide it regardless of optional record fields.
 const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition", "fragment.what",
   "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
   "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
@@ -605,14 +711,18 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "choice.filter.all", "choice.filter.q", "choice.filter.f", "choice.filter.i", "choice.filter.fact",
   "choice.filter.deferred", "choice.filter.done", "choice.filters",
   "group.owner", "group.fix", "group.data", "group.settled",
-  "card.comment", "card.comment-n", "card.comment-saved", "card.more-basis", "card.more-code", "card.no-blocks",
+  "card.comment", "card.comment-n", "card.more-basis", "card.more-code", "card.no-blocks",
   "decision.fix-apply", "decision.fix-skip", "decision.fix-apply-aria", "decision.fix-skip-aria",
   "finding.limit.ran", "finding.limit.read", "finding.limit.judgment",
   "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
-  "export.open", "export.dialog-note", "export.accepted", "export.deferred", "export.answers", "export.comments",
+  "export.open", "export.accepted", "export.deferred", "export.answers", "export.comments",
   "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
   "export.zones", "decision.zone-marked",
-  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n"];
+  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n",
+  // The v6 chrome: the deduplicated first screen, the choice-zone label, the subtab counters, the editorial
+  // change context, the lighter code toolbar, the tree modes and the honest export remainder.
+  "decision.intro-work", "decision.your-decision", "context.change", "purpose.show",
+  "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize", "choice.count.answers", "choice.count.entries"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
 // array guards, so they read every list defensively.
@@ -625,13 +735,13 @@ const FEATURES = [
       "decision.remaining", "decision.requires-content", "decision.defer-reason", "decision.parent-pending",
       "decision.note", "decision.na-badge", "decision.requires-js", "counters.evidence-blocks", "out.questions", "out.variant", "out.draft",
       "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.confirm", "decision.defer", "decision.reset",
-      "decision.draft-deferred", "decision.draft-mobile", "decision.gate-pending", "decision.gate-na", "decision.gate-draft",
-      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note", "decision.export-method",
+      "decision.draft-mobile", "decision.gate-pending", "decision.gate-na",
+      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note",
       "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
       "decision.zone-note", "decision.limit-unverified", "card.more-checks",
-      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na"]],
+      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na", "question.owner-decision"]],
   [(review) => listOf(review.ideas).length > 0,
-    ["ideas.optional", "ideas.not-counted", "card.idea-meta", "card.limit-absent-idea",
+    ["ideas.optional", "ideas.not-counted", "decision.your-choice",
       "decision.idea-apply", "decision.idea-skip", "decision.idea-apply-aria", "decision.idea-skip-aria"]],
   [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
   [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
@@ -647,16 +757,42 @@ const FEATURES = [
   [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
     ["banner.await", "banner.one", "banner.not-many", "banner.show"]],
 ];
-// The new record fields of the decision-first contract: a record carrying any of them was authored for this
-// version's page, so its catalog owes the chrome words and the keys of every capability it shows. The
-// predicates run before the check's array guards, so they read every list defensively.
-const usesNewFields = (review) =>
-  listOf(review.questions).some((q) => q && ["kind", "resolver", "context", "variants", "recommendation", "remainingEvidence", "parent", "zones"].some((key) => q[key] !== undefined))
-  || listOf(review.requirements).some((r) => r?.permission !== undefined)
-  || listOf(review.screens).some((s) => s?.historical !== undefined)
-  || review.passport !== undefined || review.coverageStructured !== undefined || review.tradeoffs !== undefined;
-export const requiredKeys = (review) => [...BASE_KEYS, ...(usesNewFields(review)
-  ? [...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)] : [])];
+const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
+  "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];
+const V8_KEYS = ["tab.remaining", "tree.filter", "export.storage-explanation", "decision.export-local-method",
+  "storage.failed", "annotation.added", "annotation.unverified", "annotation.proof-note", "choice.count.decisions", "choice.count.findings", "choice.count.deferred", "choice.dependent", "choice.unanswered", "choice.waiting-parent", "choice.filter-editing", "tree.visible-files", "tree.files"];
+const v8FeatureKeys = (review) => {
+  const keys = new Set(), questions = listOf(review.questions);
+  if (questions.some((q) => q?.kind === "decision" && listOf(q.variants).length)) keys.add("decision.draft-local");
+  if (questions.some((q) => q?.parent && listOf(q.variants).length)) keys.add("decision.gate-draft-local");
+  if (questions.some((q) => q?.kind === "decision" && !q.parent)) keys.add("export.open-decisions");
+  if (questions.some((q) => q?.kind === "decision" && q.parent)) keys.add("export.open-dependent");
+  if (questions.some((q) => q?.kind === "decision" && q.parent)) keys.add("decision.selection-waiting");
+  if (questions.some((q) => q?.kind === "fact" || q?.kind === "evidence")) {
+    keys.add("export.open-requests"); keys.add("answer.status.entered");
+    if (questions.some((q) => (q?.kind === "fact" || q?.kind === "evidence") && q.parent))
+      for (const key of ["answer.status.waiting-parent", "answer.status.not-applicable"]) keys.add(key);
+  }
+  const sources = (items, questionId) => {
+    for (const s of listOf(items)) {
+      if (!s || typeof s !== "object") continue;
+      if (s.ref !== undefined) keys.add(questionId && s.ref === `/questions/${questionId - 1}` ? "source.self" : "source.internal");
+      else if (s.at !== undefined) keys.add(s.quote ? "source.quoted" : "source.mention");
+    }
+  };
+  questions.forEach((q, i) => {
+    if (!q?.kind) return;
+    if (commonClaimSources(q.context) || listOf(q.variants).some((v) => commonClaimSources(v?.consequences))) keys.add("source.each");
+    for (const c of listOf(q.context)) sources(c?.sources, i + 1);
+    for (const v of listOf(q.variants)) for (const c of listOf(v?.consequences)) sources(c?.sources, i + 1);
+    sources(q.recommendation?.sources, i + 1);
+    for (const z of listOf(q.zones)) sources(z?.sources, i + 1);
+  });
+  for (const field of ["tradeoffs", "screens", "coverageStructured"]) for (const item of listOf(review[field])) sources(item?.sources);
+  return [...keys];
+};
+export const requiredKeys = (review) => [...new Set([...BASE_KEYS, ...CODE_KEYS, ...V8_KEYS, ...v8FeatureKeys(review),
+  ...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)])];
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
@@ -666,6 +802,9 @@ export function labelsOf(review) {
 
 export function labelFaults(review) {
   if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
+  if (review.language !== undefined) {
+    try { Intl.getCanonicalLocales(review.language); } catch { return [`"language" is not a valid language tag: ${JSON.stringify(review.language)}`]; }
+  }
   const required = requiredKeys(review);
   const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
     ? required.filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];

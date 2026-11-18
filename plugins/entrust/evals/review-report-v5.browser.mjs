@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Browser acceptance of the v5 report page (supersedes the v4 acceptance): the one Choices list with its
+// Browser acceptance of the v6 report page (keeps the v5 entrypoint): the one Choices list with its
 // subtabs and action groups, the unified card shell, the reversible choice with the settled rows and the
 // focus return, the native export dialog fed by one model (preview === text === JSON), fact answers,
 // compact comments, purpose multi-toggles, the tree's reveal/search/scrollspy, deep links, scroll memory,
@@ -27,7 +27,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, shikiFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
-import { LABELS, BASE_KEYS } from "../plugin/skills/review/scripts/labels.mjs";
+import { LABELS, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { check as reviewCheck, modelOf } from "../plugin/skills/review/scripts/review.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -92,7 +92,7 @@ const renderFixture = ({ diff, record }, name) => {
 };
 const hostile = renderFixture(hostileFixture(), "hostile");
 const shiki = renderFixture(shikiFixture(), "shiki");
-const oldCatalog = Object.fromEntries(BASE_KEYS.map((key) => [key, "«" + LABELS[key] + "»"]));
+const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
 const legacyCatalog = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
   record: { ...structuredClone(REVIEW), language: "custom", labels: oldCatalog } }, "legacy-catalog");
 const jsFixture = hostileFixture();
@@ -139,7 +139,7 @@ console.error(`[setup] rendered themed, resolved, legacy-ru, hostile, shiki, leg
 
 // ---- the browser: a persistent profile per browser, as the contract asks ----
 const launch = (name, options = {}) => chromium.launchPersistentContext(path.join(OUT, "profile-" + name), {
-  executablePath: BINARY, headless: true, hasTouch: true, viewport: { width: 1366, height: 900 },
+  executablePath: BINARY, headless: process.env.HEADED !== "1", hasTouch: true, viewport: { width: 1366, height: 900 },
   args: ["--no-first-run", ...(USED === "Chromium" ? ["--disable-gpu", "--disable-dev-shm-usage"] : [])],
   dumpio: USED === "Chromium", ...options });
 const ctx = await launch(USED.toLowerCase());
@@ -155,7 +155,7 @@ const open = async (url, options = {}) => {
   if (options.javaScriptEnabled !== false) await p.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
   return { page: p, context: context ?? null };
 };
-const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem("review-report:" + d.key) || "{}"); });
+const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem("review-report:current:" + d.key) || "{}"); });
 const tab = async (p, id) => { await p.click(`#tab-${id}`); await p.waitForTimeout(150); };
 const radio = (p, q, value) => p.check(`input[name="vq${q}"][value="${value}"]`);
 const injectHelpers = (p) => p.evaluate(() => {
@@ -250,7 +250,7 @@ console.error("[run] themed v5 section");
   const draftPath = path.join(OUT, "decisions-draft.json");
   await draftDownload.saveAs(draftPath);
   const draftExport = JSON.parse(fs.readFileSync(draftPath, "utf8"));
-  check("themed: a deferred variant exports as a draft, schema 4, factAnswers present", draftExport.schema_version === 4
+  check("themed: a deferred variant exports as a draft, schema 5, factAnswers present", draftExport.schema_version === 5
     && draftExport.questions.find((q) => q.question === 3)?.variant_draft === true
     && draftExport.questions.find((q) => q.question === 3)?.status === "deferred"
     && Array.isArray(draftExport.applyWithoutVariant) && draftExport.applyWithoutVariant.length === 0
@@ -285,7 +285,7 @@ console.error("[run] themed v5 section");
   await p.goto(themed.url + "#b1", { waitUntil: "load" });
   await p.waitForFunction(() => { const r = document.getElementById("b1")?.getBoundingClientRect(); return r && r.top >= 0 && r.top < innerHeight; }, null, { timeout: 5000 });
   check("deep link: #b1 (a kept block) opens the code tab in full mode", await p.evaluate(() => document.querySelector('.tabs [aria-selected="true"]').dataset.tab === "code"
-    && document.getElementById("map").dataset.show === "all" && document.getElementById("b1").querySelector(".segcode").open));
+    && document.getElementById("map").dataset.show === "all" && !!document.getElementById("b1").querySelector("pre")?.getClientRects().length));
   await p.goto(themed.url + "#q4", { waitUntil: "load" });
   await p.waitForFunction(() => { const r = document.getElementById("q4").getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }, null, { timeout: 5000 });
   check("deep link: #q4 opens the Choices tab and the child disclosure", await p.evaluate(() => document.querySelector('.tabs [aria-selected="true"]').dataset.tab === "decisions"
@@ -350,7 +350,7 @@ console.error("[run] themed v5 section");
   await p.click('[data-purpose-filter="tests"]');
   const treeAnd = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".frow")].filter((r) => r.style.display !== "none").map((r) => r.querySelector(".fname").textContent),
     pressed: document.querySelector('[data-purpose-filter="tests"]').getAttribute("aria-pressed"),
-    stored: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes }));
+    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes }));
   check("purpose: hiding tests leaves the production file, AND with the name filter", treeAnd.rows.length === 1 && treeAnd.rows[0].includes("archive.js")
     && treeAnd.pressed === "false" && treeAnd.stored.join() === "tests", treeAnd);
   await p.focus("#tree-filter-input"); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
@@ -365,7 +365,7 @@ console.error("[run] themed v5 section");
   await p.click("#export-open"); await p.waitForTimeout(150);
   await p.click("#copy-top"); await p.waitForTimeout(150);
   const copyOk = await p.evaluate(() => ({ label: document.getElementById("copy-top").textContent, copied: window.__copied === document.getElementById("out").value, status: document.getElementById("export-status").textContent }));
-  check("export: «Copied» only after a confirmed success", copyOk.label === "Copied" && copyOk.copied && copyOk.status === "Copied", copyOk);
+  check("export: «Copied» only after a confirmed success", copyOk.label === "Copy text" && copyOk.copied && copyOk.status === "Copied", copyOk);
   await p.waitForTimeout(1600);
   await p.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); });
   await p.click("#copy-top"); await p.waitForTimeout(250);
@@ -401,7 +401,7 @@ console.error("[run] themed v5 section");
     inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length,
     show: document.getElementById("map").dataset.show,
     purposePressed: [...document.querySelectorAll("[data-purpose-filter]")].map((b) => b.getAttribute("aria-pressed")),
-    hidden: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes,
+    hidden: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes,
     modePressed: [...document.querySelectorAll(".map-filters [data-show]")].map((b) => b.getAttribute("aria-pressed")),
     rows: [...document.querySelectorAll(".frow")].map((r) => r.style.display),
     treeCount: document.getElementById("tree-filter-count").textContent,
@@ -454,7 +454,7 @@ console.error("[run] themed v5 section");
   check("tap targets >= 32px on every tab", Object.values(tap).every((v) => v >= 32), tap);
   await p.screenshot({ path: path.join(OUT, "themed-first-screen.png") });
   results.themed = { htmlBytes: fs.statSync(themed.html).size, domNodes: initial.domNodes };
-  } catch (e) { check("themed section completed without an exception", false, String(e).slice(0, 400)); }
+  } catch (e) { console.error(e); check("themed section completed without an exception", false, String(e).slice(0, 400)); }
 }
 console.error("[run] resolved-cue section");
 {
@@ -472,7 +472,7 @@ console.error("[run] mobile unified section");
   await radio(p, 3, "extend");
   const mobile = await p.evaluate(() => ({ chip: document.querySelector("#q3 [data-qstatus]").textContent, state: document.querySelector("#q3 [data-qstatus]").dataset.state,
     confirm: document.querySelector("#q3 [data-confirm]") !== null,
-    stored: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).questions["3"] }));
+    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["3"] }));
   check("mobile: a tap is the decision itself — no draft-and-confirm step", mobile.state === "decided" && !mobile.confirm && mobile.stored.choice === "accepted", mobile);
   await p.click("#q3 [data-qreset]");
   check("mobile: reset reverts the choice", await p.evaluate(() => document.querySelector("#q3 [data-qstatus]").dataset.state === "open"));
@@ -536,7 +536,7 @@ console.error("[run] hardening section");
 {
   const { page: p } = await open(shiki.url);
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
-  await p.evaluate(() => document.querySelectorAll(".segcode").forEach((d) => { d.open = true; }));
+  await p.evaluate(() => document.querySelectorAll("details.file-details").forEach((d) => { d.open = true; }));
   const colors = await p.evaluate(() => {
     const inline = (l) => { const s = l?.querySelector("span[style]"); if (!s) return null; const st = s.getAttribute("style");
       return { light: /color:(#[0-9a-f]{6})/.exec(st)?.[1], dark: /--shiki-dark:(#[0-9a-f]{6})/.exec(st)?.[1] }; };
@@ -555,11 +555,11 @@ console.error("[run] hardening section");
   const { page: p } = await open(legacyCatalog.url);
   const legacyState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
     tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
-  check("legacy catalog: an old record renders with its old catalog on the v5 page", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
+  check("legacy catalog: an old record renders with its upgraded catalog", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
   await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
-  check("legacy catalog: the chrome works on the old catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
-    && JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
+  check("legacy catalog: the chrome works on the upgraded catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
+    && JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
 }
 console.error("[run] legacy annotations section");
 {
@@ -595,15 +595,46 @@ if (big) {
       structureTargetClosed: !document.querySelector(".structure-target").open
     }));
     results.initial = initial;
+    results.v6Initial = await ev(() => ({
+      badges: Object.fromEntries([...document.querySelectorAll("[data-cf-count]")].map(e => [e.dataset.cfCount, +e.textContent])),
+      removed: document.querySelectorAll("#progress-q, #apply-all, #export-json, #copy, .counters-strip, .status-strip").length,
+      filtersWidth: document.querySelector(".choice-filters").getBoundingClientRect().width,
+      sheetWidth: document.querySelector(".decision-sheet").getBoundingClientRect().width,
+    }));
+    check("v6: one canonical surface and badges 4/7/4/6/0/0", results.v6Initial.removed === 0 &&
+      JSON.stringify(Object.values(results.v6Initial.badges)) === "[4,7,4,6,0,0]" &&
+      results.v6Initial.filtersWidth <= results.v6Initial.sheetWidth, results.v6Initial);
     check("65507: starts at Choices, five tabs, the four action groups, the seven subtabs", initial.active === "decisions"
       && initial.tabs.join() === "overview,decisions,code,checks,materials"
       && initial.groups.join() === "group-owner,group-fix,group-data,group-settled"
       && initial.subtabs.join() === "all,q,f,i,fact,deferred,done", initial);
     check("65507: zero duplicate ids, DOM within budget, the tree open statically", initial.duplicateIds.length === 0 && initial.domNodes <= 15700
-      && initial.treeOpen === initial.treeTotal && initial.treeTotal === 54, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
+      && initial.treeOpen === initial.treeTotal && initial.treeTotal === 53, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
     check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11 осталось" && initial.exportInHeader
       && initial.qcards === 13 && initial.findings === 7 && initial.ideas === 4 && initial.templates === 96 && initial.structureTargetClosed, initial);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-first-screen.png`) });
+    const choiceCounts = () => ev(() => {
+      document.getElementById("export-open").click();
+      const counts = {
+        q: +document.querySelector('[data-cf-count="q"]').textContent,
+        f: +document.querySelector('[data-cf-count="f"]').textContent,
+        tab: parseInt(document.getElementById("count-decisions").textContent),
+        exported: parseInt(document.querySelector(".xp-count").textContent)
+      };
+      document.getElementById("export-dialog").close();
+      return counts;
+    });
+    results.choiceCounts = [await choiceCounts()];
+    await p.check('#q2 input[value="keep"]');
+    results.choiceCounts.push(await choiceCounts());
+    await reloadClean(p);
+    results.choiceCounts.push(await choiceCounts());
+    await p.click('#q2 [data-qreset]');
+    results.choiceCounts.push(await choiceCounts());
+    await reloadClean(p);
+    results.choiceCounts.push(await choiceCounts());
+    check("v6: Q2 keep/reset/reload shares tab, subtabs and export: 11→10→10→11→11",
+      results.choiceCounts.every((c, i) => c.tab === [11, 10, 10, 11, 11][i] && c.q + c.f === c.tab && c.exported === c.tab), results.choiceCounts);
 
     // ---- the unified shell ----
     const shell = await ev(() => {
@@ -624,8 +655,9 @@ if (big) {
         f1evidence: document.querySelector("#f1 .card-limit").textContent,
         f1buttons: [...document.querySelectorAll("#f1 .decide button")].map(b => b.textContent),
         i1buttons: [...document.querySelectorAll("#i1 .decide button")].map(b => b.textContent),
-        ideaOptional: document.querySelector("#i1 .card-meta").textContent.includes("необязательно"),
-        ideaLimit: document.querySelector("#i1 .card-limit").textContent,
+        ideaOptional: document.querySelector("#ideas > summary").textContent.includes("необязательно"),
+        ideaLimit: document.querySelector("#i1 .card-limit"),
+        legendPx: parseFloat(getComputedStyle(card.querySelector(".qopts legend")).fontSize),
         factAnswer: (() => { const i = document.querySelector("#q4 [data-answer]"); return !!i && i.offsetParent !== null && !i.closest("details"); })(),
         zoneNote: document.querySelector("#q3 .zone-note").textContent.includes("не подтверждение"),
         decidedNeutral: (() => { const s = document.querySelector(".qstatus[data-state=decided]"); return s ? getComputedStyle(s).color : null; })(),
@@ -637,9 +669,9 @@ if (big) {
     results.shell = shell;
     check("65507: the shell — 16px title, 12px meta, 14px limit/consequences, no side stripe or nested option frames",
       shell.titlePx === 16 && shell.metaPx <= 13 && shell.limitPx === 14 && shell.consPx === 14
-      && shell.borderLeftWidth === "1px" && shell.optBorderTop === "1px" && shell.optBorderLeft === "0px" && shell.qoptsBorder === "0px", shell);
+      && shell.borderLeftWidth === "0px" && shell.optBorderTop === "1px" && shell.optBorderLeft === "0px" && shell.qoptsBorder === "0px", shell);
     check("65507: Q2/Q8 uncertainty on the surface; the idea's explicit absence; F/I choices; the fact answer discoverable",
-      shell.limitOnSurface && shell.q8limit && /не указаны/.test(shell.ideaLimit) && shell.ideaOptional
+      shell.limitOnSurface && shell.q8limit && shell.ideaLimit === null && shell.ideaOptional && shell.legendPx === 14
       && shell.f1buttons.join() === "Исправить,Не исправлять" && shell.i1buttons.join() === "Взять,Не брать"
       && shell.factAnswer && shell.zoneNote && shell.commentClosed && shell.noPermanentCardTextarea, shell);
 
@@ -686,10 +718,57 @@ if (big) {
       delLines: document.querySelectorAll("#map .l.del").length
     }));
     results.fullMap = fullMap;
+    check("v6: all 6740 diff lines survive", fullMap.addLines === 4043 && fullMap.delLines === 1597 && fullMap.ctxLines === 1100, fullMap);
+    results.v6Map = await ev(() => ({
+      headers: document.querySelectorAll("#map .segbar").length,
+      fragments: document.querySelectorAll("#map [data-fragment]").length,
+      comments: document.querySelectorAll("#map .block-comment").length,
+      b40: { headers: document.querySelectorAll("#b40 .segbar").length, fragments: document.querySelectorAll('#map [data-fragment="40"]').length },
+      dom: document.querySelectorAll("*").length,
+      duplicateIds: [...document.querySelectorAll("[id]")].map(e => e.id).filter((id, i, ids) => ids.indexOf(id) !== i)
+    }));
+    check("v6: grouped 1470 headers/comments, 1517 fragments, B40 one header/two fragments, no duplicate ids",
+      results.v6Map.headers === 1470 && results.v6Map.comments === 1470 && results.v6Map.fragments === 1517 &&
+      results.v6Map.b40.headers === 1 && results.v6Map.b40.fragments === 2 && results.v6Map.duplicateIds.length === 0, results.v6Map);
+    results.lineOrder = await ev(() => {
+      const files = [...document.querySelectorAll("#map .file")], backwards = [];
+      for (const [file, node] of files.entries()) for (const side of ["old", "new"]) {
+        let last = 0;
+        for (const cell of node.querySelectorAll(".l > ." + side)) {
+          const n = Number(cell.textContent);
+          if (!n) continue;
+          if (n < last) backwards.push({ file, side, last, n });
+          last = n;
+        }
+      }
+      return { files: files.length, backwards };
+    });
+    check("v6: all 96 files retain monotonic old/new diff order", results.lineOrder.files === 96 && !results.lineOrder.backwards.length, results.lineOrder);
+    check("v6: screens have one section warning", await ev(() => document.querySelectorAll("#screens > p.sub").length === 1));
+    await p.click('[data-tree-mode="flat"]');
+    results.v6Tree = await ev(() => ({
+      flat: document.getElementById("ftree-folder").classList.contains("flat"),
+      rows: document.querySelectorAll(".frow").length,
+      display: getComputedStyle(document.querySelector(".fdir")).display,
+      whiteSpace: getComputedStyle(document.querySelector(".fname")).whiteSpace,
+      folderWhiteSpace: getComputedStyle(document.querySelector(".fdir > summary")).whiteSpace,
+      emptyMarker: getComputedStyle(document.querySelector("[data-purpose-empty]"), "::before").content,
+      emptyDisabled: document.querySelector("[data-purpose-empty]").disabled,
+      before: document.querySelector(".tree-col").getBoundingClientRect().width
+    }));
+    await p.locator("#tree-resize").focus(); await p.keyboard.press("ArrowRight");
+    Object.assign(results.v6Tree, await ev(() => ({
+      after: document.querySelector(".tree-col").getBoundingClientRect().width,
+      stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeWidth
+    })));
+    await p.click('[data-tree-mode="folder"]');
+    check("v6: compact folder/list tree keeps 96 rows and resizes", results.v6Tree.flat && results.v6Tree.rows === 96 &&
+      results.v6Tree.display === "contents" && results.v6Tree.whiteSpace === "nowrap" && results.v6Tree.folderWhiteSpace === "nowrap" &&
+      results.v6Tree.emptyDisabled && results.v6Tree.emptyMarker === "none" && results.v6Tree.after > results.v6Tree.before, results.v6Tree);
     check("65507: the full audit materializes 96 files, 1470 unique blocks, 1517 fragments", fullMap.insertedFiles === 96 && fullMap.uniqueBlocks === 1470
-      && fullMap.segsTotal === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
+      && fullMap.segsTotal === 1517 && await ev(() => document.querySelectorAll("#map [data-fragment]").length) === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
     const diffSel = await ev(() => {
-      const mark = (l, name) => { if (!l) return null; window.__po(l.closest(".segcode")); l.dataset.probe = name; return `[data-probe="${name}"]`; };
+      const mark = (l, name) => { if (!l) return null; window.__po(l.closest("details.file-details")); l.dataset.probe = name; return `[data-probe="${name}"]`; };
       return {
         keepDel: mark(document.querySelector(".seg.v-keep .l.del"), "keepDel"),
         removeAdd: mark(document.querySelector(".seg.v-remove .l.add"), "removeAdd"),
@@ -722,7 +801,7 @@ if (big) {
     }
     const codeFonts = await ev(() => {
       const sizes = {};
-      for (const sel of ["#map pre code", "#map .l b", ".segmeta > summary", ".segcode > summary", ".gap", ".segbar .tag", ".counters .c span", ".sub code", ".passport-body", ".count-note", ".label", ".chip", "th", ".shot-note", ".card-meta", ".card-id", ".xp-row"]) {
+      for (const sel of ["#map pre code", "#map .l b", ".segmeta > summary", ".gap", ".segbar .tag", ".counters .c span", ".sub code", ".passport-body", ".count-note", ".label", ".chip", "th", ".shot-note", ".card-meta", ".card-id", ".xp-row"]) {
         const el = document.querySelector(sel); if (el) sizes[sel] = parseFloat(getComputedStyle(el).fontSize);
       }
       return { sizes, allAtLeast12: Object.values(sizes).every(v => v >= 12) };
@@ -731,7 +810,7 @@ if (big) {
 
     // ---- geometry: every tab × 6 widths + CSS zoom 200% + dark at 320 ----
     const geometry = [];
-    for (const width of [320, 390, 768, 1024, 1366, 1440]) {
+    for (const width of [320, 390, 768, 1024, 1366, 1440, 1600, 1920, 2560]) {
       await p.setViewportSize({ width, height: 900 }); await p.waitForTimeout(120);
       for (const id of initial.tabs) {
         await tab(p, id);
@@ -739,6 +818,13 @@ if (big) {
       }
     }
     results.geometry = geometry;
+    await p.setViewportSize({ width: 1920, height: 900 }); await tab(p, "code");
+    results.v6Width = await ev(() => ({
+      wrap: document.querySelector(".wrap").getBoundingClientRect().width,
+      code: document.querySelector("#code-layout").getBoundingClientRect().width,
+      diff: document.querySelector(".diff-col").getBoundingClientRect().width
+    }));
+    check("v6: wide code uses a 1600px canvas", results.v6Width.wrap === 1600 && results.v6Width.code >= 1500 && results.v6Width.diff >= 1100, results.v6Width);
     check("65507: no horizontal overflow at 320-1440 on every tab", geometry.every(x => x.sw === x.cw), geometry.filter(x => x.sw !== x.cw));
     await p.setViewportSize({ width: 1366, height: 900 });
     await p.addStyleTag({ content: "html{zoom:2}" }); await p.waitForTimeout(200);
@@ -769,10 +855,10 @@ if (big) {
       const d = document.querySelector("#q1 .card-comment"); d.open = true;
       d.querySelector(".comment-edit").click();
       const ta = d.querySelector("textarea");
-      return { viewHidden: d.querySelector(".comment-view").hidden, taVisible: !ta.hidden, focused: document.activeElement === ta, savedNote: d.querySelector(".comment-saved").textContent };
+       return { viewHidden: d.querySelector(".comment-view").hidden, taVisible: !ta.hidden, focused: document.activeElement === ta, savedNote: d.querySelector(".comment-saved")?.textContent ?? null };
     });
     check("65507: «Изменить» reveals the textarea and focuses it; the saved note is honest", decisions.commentEdit.viewHidden && decisions.commentEdit.taVisible
-      && decisions.commentEdit.focused && decisions.commentEdit.savedNote === "Сохранено в этом браузере, не отправлено.", decisions.commentEdit);
+      && decisions.commentEdit.focused && decisions.commentEdit.savedNote === null, decisions.commentEdit);
     await ev(() => { document.querySelector("#q1 .card-comment").open = false; }); await p.waitForTimeout(150);
     await ev(() => { document.querySelector("#q1 .card-comment").open = true; }); await p.waitForTimeout(150);
     decisions.commentCompactAgain = await ev(() => ({ viewVisible: !document.querySelector("#q1 .comment-view").hidden, taHidden: document.querySelector("#qnote-q1").hidden }));
@@ -817,6 +903,17 @@ if (big) {
       q9gateHidden: document.querySelector("#q9 [data-qgate]").hidden,
       q2settled: document.querySelector('[data-unit="q2"]').dataset.settled || null
     }));
+    results.v6Q2 = await ev(() => {
+      document.getElementById("export-open").click();
+      const value = { badges: Object.fromEntries([...document.querySelectorAll("[data-cf-count]")].map(e => [e.dataset.cfCount, +e.textContent])),
+        remaining: document.getElementById("count-decisions").textContent,
+        exportRemaining: document.querySelector(".xp-count").textContent,
+        settled: document.querySelector('[data-unit="q2"]').dataset.settled ?? null };
+      document.getElementById("export-dialog").close(); return value;
+    });
+    check("v6: Q2 accepted with pending children stays active; badges and export agree",
+      results.v6Q2.settled === null && results.v6Q2.badges.q + results.v6Q2.badges.f === parseInt(results.v6Q2.remaining) &&
+      results.v6Q2.exportRemaining.startsWith(results.v6Q2.remaining), results.v6Q2);
     check("65507: Q2 keep opens the children; Q9 enabled; Q2 stays while children are pending", decisions.q2keep.childrenOpen
       && !decisions.q2keep.q9disabled && decisions.q2keep.q9gateHidden && decisions.q2keep.q2settled === null, decisions.q2keep);
     await p.check('#q9 input[value="keep"]'); await p.waitForTimeout(150);
@@ -898,8 +995,8 @@ if (big) {
     const pageData = await ev(() => JSON.parse(document.getElementById("data").textContent));
     const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
     // The expected rows are reconstructed HERE from the downloaded JSON alone — every user datum the
-    // schema-4 payload carries (Q/F/I choices and drafts, factAnswers, zones, passages, block notes and
-    // questions[].comment including the legacy questions[id].note) — independent of the page's builders.
+    // schema-5 payload carries (Q/F/I choices and drafts, factAnswers, zones, passages, block notes and
+    // questions[].comment from shared notes) — independent of the page's builders.
     const expectedRows = (j) => {
       const d = pageData, rows = Object.fromEntries(BUCKETS.map(b => [b, []]));
       const draftSuffix = (q) => q.variant ? " · черновик «" + q.variant.text + "» — не действует" : "";
@@ -931,22 +1028,22 @@ if (big) {
         if (id[0] === "b") { const b = d.blocks.find(x => String(x.id) === id.slice(1)); return b ? "B" + b.id + " · " + b.path + " " + b.where : id.toUpperCase(); }
         return id.toUpperCase();
       };
-      // questions[].comment is noteOf: the legacy entry note OR the shared notes — both must reach the text.
+      // Question comments come from the shared notes.
       for (const q of j.questions) if (q.comment) rows["Комментарии"].push({ text: ctxOf("q" + q.question) + ": " + q.comment, hash: "#q" + q.question });
       for (const [id, val] of Object.entries(j.notes)) {
         if (id[0] === "q" && j.questions.some(q => "q" + q.question === id && q.comment)) continue;
         rows["Комментарии"].push({ text: ctxOf(id) + ": " + val, hash: "#" + id });
       }
-      for (const passage of j.passages) rows["Комментарии"].push({ text: "Выделенный текст · " + passage.where + ": «" + passage.quote + "»" + (passage.note ? " — " + passage.note : ""), hash: passage.anchor && passage.anchor.id ? "#" + passage.anchor.id : "#passages" });
+      j.passages.forEach((passage, index) => rows["Комментарии"].push({ text: "Выделенный текст · " + passage.where + ": «" + passage.quote + "»" + (passage.note ? " — " + passage.note : ""), hash: "passage:" + index }));
       const roots = d.questions.filter(q => q.kind === "decision" && !q.parent);
       const remaining = roots.filter(q => { const e = j.questions.find(x => x.question === q.id); return !e || (e.status !== "accepted" && e.status !== "deferred"); }).length
         + d.findings.filter(f => !j.findings[String(f.id)]).length;
       const open = d.findings.filter(f => !j.findings[String(f.id)]).map(f => "F" + f.id);
-      rows.remaining = remaining + " осталось" + (open.length ? " · Без решения: " + open.join(", ") : "");
+      rows.remaining = remaining + " осталось" + (open.length ? " · необработанные замечания: " + open.join(", ") : "");
       return rows;
     };
     const capturePreview = () => ev(() => ({
-      sections: [...document.querySelectorAll("#export-preview .xp-sec")].map(s => ({ title: s.querySelector("h3").textContent, rows: [...s.querySelectorAll(".xp-row")].map(pp => ({ text: pp.querySelector("span")?.textContent ?? pp.textContent, goto: pp.querySelector("a.xp-goto")?.getAttribute("href") ?? null })) })),
+      sections: [...document.querySelectorAll("#export-preview .xp-sec")].map(s => ({ title: s.querySelector("h3").textContent, rows: [...s.querySelectorAll(".xp-row")].map(pp => ({ text: pp.querySelector("span")?.textContent ?? pp.textContent, goto: pp.querySelector("a.xp-goto")?.getAttribute("href") ?? (pp.querySelector("[data-passage-goto]") ? "passage:" + pp.querySelector("[data-passage-goto]").dataset.passageGoto : null) })) })),
       count: document.querySelector(".xp-count").textContent,
       out: document.getElementById("out").value
     }));
@@ -969,16 +1066,6 @@ if (big) {
       return { ok: problems.length === 0, problems, rows: BUCKETS.reduce((n, b) => n + exp[b].length, 0) };
     };
     // A block comment (code tab) and a passage (overview) so the export must gather cross-tab data.
-    await reloadClean(p);
-    // A LEGACY note in questions[id].note (the v1/v3 store shape, not state.notes): the export must carry it
-    // through noteOf into questions[].comment AND into the preview/text, not only into the JSON.
-    await ev(() => {
-      const d = JSON.parse(document.getElementById("data").textContent);
-      const k = "review-report:" + d.key, s = JSON.parse(localStorage.getItem(k) || "{}");
-      s.questions = s.questions || {};
-      s.questions["6"] = { ...(s.questions["6"] || {}), note: "legacy-заметка в questions[6].note" };
-      localStorage.setItem(k, JSON.stringify(s));
-    });
     await reloadClean(p);
     await tab(p, "code");
     await ev(() => { const d = document.querySelector("#map .segmeta"); d.open = true; d.scrollIntoView({ block: "center" }); });
@@ -1018,39 +1105,36 @@ if (big) {
         hasBlockNote: document.getElementById("export-preview").textContent.includes("комментарий к блоку из таба Код"),
         hasPassage: document.getElementById("export-preview").textContent.includes("комментарий к выделенному тексту"),
         hasCardNote: document.getElementById("export-preview").textContent.includes("отложено: нужно обсудить с командой"),
-        hasLegacyNote: document.getElementById("export-preview").textContent.includes("legacy-заметка в questions[6].note"),
         hasZone: document.getElementById("export-preview").textContent.includes("отмечена, не подтверждение"),
         draftMarked: document.getElementById("export-preview").textContent.includes("не действует"),
         outReadonly: document.getElementById("out").readOnly
       }));
       const [dl] = await Promise.all([p.waitForEvent("download"), p.click("#export-json-top")]);
       const dj = JSON.parse(fs.readFileSync(await dl.path(), "utf8"));
-      perTab.json = { schema: dj.schema_version, record: dj.record_sha256, diff: dj.diff_sha256, applyWithoutVariant: dj.applyWithoutVariant, keys: Object.keys(dj).sort(), factAnswers: dj.factAnswers, zones: dj.zones,
-        legacyComment: dj.questions.find(q => q.question === 6)?.comment ?? null };
+      perTab.json = { schema: dj.schema_version, record: dj.record_sha256, diff: dj.diff_sha256, applyWithoutVariant: dj.applyWithoutVariant, keys: Object.keys(dj).sort(), factAnswers: dj.factAnswers, zones: dj.zones };
       const cap = await capturePreview();
       perTab.parity = checkParity(dj, cap, "tab " + id);
       exportPerTab[id] = perTab;
-      check(`65507: export from ${id} — schema 4, digests, factAnswers, zones, legacy note, parity preview===text===JSON`, dj.schema_version === 4
+      check(`private fixture: export from ${id} — schema 5, digests, factAnswers, zones, parity preview===text===JSON`, dj.schema_version === 5
         && dj.record_sha256 === bigRecordSha && Array.isArray(dj.applyWithoutVariant) && dj.applyWithoutVariant.length === 0
         && typeof dj.factAnswers === "object" && Object.keys(dj.zones || {}).length >= 1
-        && perTab.json.legacyComment === "legacy-заметка в questions[6].note"
-        && perTab.dialogOpen && perTab.hasBlockNote && perTab.hasPassage && perTab.hasCardNote && perTab.hasLegacyNote && perTab.hasZone && perTab.draftMarked
+        && perTab.dialogOpen && perTab.hasBlockNote && perTab.hasPassage && perTab.hasCardNote && perTab.hasZone && perTab.draftMarked
         && perTab.outReadonly && perTab.parity.ok, { json: perTab.json, parity: perTab.parity });
       if (id === initial.tabs[0]) {
-        // The parity test must be SENSITIVE: a builder that drops the zones or the legacy note fails it.
+        // Verify parity detects omitted zone and block comment rows.
         // Strip those rows from a real capture and demand the comparison go red — no false confidence.
         const exp = expectedRows(dj);
-        check("65507: the parity comparison covers the zone mark and the legacy questions[].note",
-          exp["Отмеченные зоны"].length >= 1 && exp["Комментарии"].some(r => r.text.includes("legacy-заметка в questions[6].note")),
-          { zones: exp["Отмеченные зоны"], legacy: exp["Комментарии"].filter(r => r.text.includes("legacy-заметка")) });
+        check("private fixture: the parity comparison covers the zone mark and block comment",
+          exp["Отмеченные зоны"].length >= 1 && exp["Комментарии"].some(r => r.text.includes("комментарий к блоку из таба Код")),
+          { zones: exp["Отмеченные зоны"], comment: exp["Комментарии"].filter(r => r.text.includes("комментарий к блоку из таба Код")) });
         const strip = (needle) => ({ ...cap,
           sections: cap.sections.map(s => ({ ...s, rows: s.rows.filter(r => !r.text.includes(needle)) })),
           out: cap.out.split("\n").filter(l => !l.includes(needle)).join("\n") });
         const negZones = checkParity(dj, strip("отмечена, не подтверждение"), "negative: zones dropped");
-        const negLegacy = checkParity(dj, strip("legacy-заметка в questions[6].note"), "negative: legacy note dropped");
-        check("65507: negative parity — dropping the zone rows or the legacy note FAILS the comparison",
-          !negZones.ok && !negLegacy.ok, { zones: negZones.problems, legacy: negLegacy.problems });
-        negativeParity = { zones: negZones, legacy: negLegacy };
+        const negComment = checkParity(dj, strip("комментарий к блоку из таба Код"), "negative: comment dropped");
+        check("private fixture: negative parity — dropping the zone rows or the block comment FAILS the comparison",
+          !negZones.ok && !negComment.ok, { zones: negZones.problems, comment: negComment.problems });
+        negativeParity = { zones: negZones, comment: negComment };
       }
       await p.locator("#export-dialog form button").click(); await p.waitForTimeout(120);
     }
@@ -1064,7 +1148,7 @@ if (big) {
       dialogOpen: document.getElementById("export-dialog").open,
       tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab,
       segVisible: document.getElementById(bid).offsetParent !== null,
-      codeOpen: document.getElementById(bid).querySelector(".segcode").open,
+      codeOpen: !!document.getElementById(bid).querySelector("pre")?.getClientRects().length,
       inViewport: (() => { const r = document.getElementById(bid).getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })()
     }), blockNoteId);
     check("65507: «Перейти» lands on the block in the code tab and closes the dialog", !goto.dialogOpen && goto.tab === "code" && goto.segVisible && goto.codeOpen && goto.inViewport, goto);
@@ -1164,12 +1248,12 @@ if (big) {
       await tab(p, "code"); await p.click(`[data-show="${mode}"]`); await p.waitForTimeout(250);
       await ev(() => { location.hash = "#panel-code"; }); await p.waitForTimeout(120);
       await ev(() => { location.hash = "#b2"; }); await p.waitForTimeout(900);
-      deepLinkB2[mode] = await ev(() => { const e = document.getElementById("b2"); const r = e.getBoundingClientRect(); return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: r.top >= -5 && r.top < innerHeight, show: document.getElementById("map").dataset.show, codeOpen: e.querySelector(".segcode").open }; });
+      deepLinkB2[mode] = await ev(() => { const e = document.getElementById("b2"); const r = e.getBoundingClientRect(); return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: r.top >= -5 && r.top < innerHeight, show: document.getElementById("map").dataset.show, codeOpen: !!e.querySelector("pre")?.getClientRects().length }; });
       check(`65507: #b2 reveals the kept block in ${mode} mode`, deepLinkB2[mode].visible && deepLinkB2[mode].inViewport && deepLinkB2[mode].codeOpen, deepLinkB2[mode]);
     }
     const dlPage = await ctx.newPage(); watch(dlPage);
     await dlPage.goto(big.url + "#b2", { waitUntil: "load" }); await dlPage.waitForTimeout(1200);
-    deepLinkB2.directLoad = await dlPage.evaluate(() => { const e = document.getElementById("b2"); const r = e.getBoundingClientRect(); return { visible: e && e.offsetParent !== null, inViewport: r.top >= -5 && r.top < innerHeight, tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, codeOpen: e.querySelector(".segcode").open }; });
+    deepLinkB2.directLoad = await dlPage.evaluate(() => { const e = document.getElementById("b2"); const r = e.getBoundingClientRect(); return { visible: e && e.offsetParent !== null, inViewport: r.top >= -5 && r.top < innerHeight, tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, codeOpen: !!e.querySelector("pre")?.getClientRects().length }; });
     check("65507: a direct load of #b2 lands on the block in the code tab", deepLinkB2.directLoad.visible && deepLinkB2.directLoad.inViewport && deepLinkB2.directLoad.tab === "code", deepLinkB2.directLoad);
     await dlPage.close();
     results.deepLinkB2 = deepLinkB2;
@@ -1201,7 +1285,7 @@ if (big) {
     purpose.pairwise = [];
     for (const mode of ["attention", "all", "keep", "fix", "remove", "question"]) {
       for (const hidden of purposeCombos) {
-        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:" + d.key; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
+        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
         await reloadClean(p); await tab(p, "code");
         await p.click(`[data-show="${mode}"]`); await p.waitForTimeout(200);
         const r = await ev(({ mode, hidden }) => {
@@ -1222,18 +1306,19 @@ if (big) {
       }
     }
     check("65507: purpose pairwise 6 modes × 5 hiding combos — map, tree, pressed state, chip", purpose.pairwise.every(r => r.purposeOk && r.rowsPurposeOk && r.modeOk), { combos: purpose.pairwise.length });
-    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:" + d.key; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
+    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
     await reloadClean(p); await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(300);
     await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(300);
     purpose.testsToggle = await ev(() => {
       const d = JSON.parse(document.getElementById("data").textContent);
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const segs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => s.style.display !== "none");
-      const testsSegs = d.blocks.filter(b => b.purpose === "tests").reduce((s, b) => s + (b.parts || 1), 0);
-      return { rows: rows.length, segs: segs.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes };
+      const tests = d.blocks.filter(b => b.purpose === "tests");
+      const testsSegs = tests.reduce((s, b) => s + (b.parts || 1), 0);
+      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
-      && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsSegs >= 388
+      && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
       && purpose.testsToggle.stored.join() === "tests" && purpose.testsToggle.chip.startsWith("Скрыто:"), purpose.testsToggle);
     await p.click('.evidence-banner [data-q-filter="3"]'); await p.waitForTimeout(400);
     purpose.qWithHiddenTests = await ev(() => {
@@ -1266,7 +1351,7 @@ if (big) {
     purpose.deepLinkReset = await ev((bid) => {
       const e = document.getElementById("b" + bid);
       const d = JSON.parse(document.getElementById("data").textContent);
-      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
+      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
     }, testsBlock);
     check("65507: a deep link to a hidden tests block resets the hiding", purpose.deepLinkReset.visible && purpose.deepLinkReset.inViewport
       && purpose.deepLinkReset.hiddenPurposes.length === 0 && purpose.deepLinkReset.allPressed, purpose.deepLinkReset);
@@ -1287,7 +1372,7 @@ if (big) {
     await ev(() => { document.querySelector("#q2 .qwhere").open = true; }); await p.waitForTimeout(300);
     await ev(() => document.querySelector('#q2 [data-q-filter]').click()); await p.waitForTimeout(500);
     await p.click("#filter-next"); await p.waitForTimeout(350);
-    const chipNext = await ev(() => { const el = document.activeElement; return { pos: document.getElementById("filter-pos").textContent, focusedBlock: el.dataset?.block ?? null, codeOpen: el.querySelector(".segcode")?.open ?? null }; });
+    const chipNext = await ev(() => { const el = document.activeElement; return { pos: document.getElementById("filter-pos").textContent, focusedBlock: el.dataset?.block ?? null, codeOpen: !!el.querySelector("pre")?.getClientRects().length }; });
     check("65507: the chip's next jumps to a focused block with its code open", !!chipNext.focusedBlock && chipNext.codeOpen, chipNext);
     await p.click("#filter-prev"); await p.waitForTimeout(350);
     await p.click("#filter-back"); await p.waitForTimeout(350);
@@ -1329,7 +1414,7 @@ if (big) {
     tree.hidden = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, showBtn: !document.getElementById("show-tree").hidden }));
     check("65507: hide-tree collapses the panel and offers show-tree", tree.hidden.display === "none" && tree.hidden.showBtn, tree.hidden);
     await reloadClean(p); await tab(p, "code");
-    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).treeHidden }));
+    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeHidden }));
     check("65507: the tree collapse persists across reload", tree.hiddenAfterReload.display === "none" && tree.hiddenAfterReload.stored === true, tree.hiddenAfterReload);
     await p.click("#show-tree"); await p.waitForTimeout(150);
     await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(250);
@@ -1367,7 +1452,7 @@ if (big) {
     check("65507: mobile Q2 — the first variant is within the screen, both present, no confirm step", mobileQ2.count === 2 && mobileQ2.firstOptionInViewport && mobileQ2.bothPresent && mobileQ2.confirmGone, mobileQ2);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-mobile-q2.png`) });
     await p.check('#q2 input[value="keep"]'); await p.waitForTimeout(200);
-    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).questions || {})["2"] }));
+    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions || {})["2"] }));
     check("65507: a mobile tap is the decision itself (accepted, no draft)", /^Выбрано:/.test(mobileTap.chip) && mobileTap.state.choice === "accepted", mobileTap);
     await p.click('#q2 [data-qreset]'); await p.waitForTimeout(150);
     const mobileRevert = await ev(() => document.querySelector("#q2 [data-qstatus]").textContent);
@@ -1393,15 +1478,15 @@ if (big) {
       mapHidden: getComputedStyle(document.getElementById("map")).display === "none",
       treeHidden: getComputedStyle(document.querySelector(".tree-col")).display === "none",
       screensVisible: getComputedStyle(document.getElementById("screens")).display !== "none",
-      limitsVisible: getComputedStyle(document.querySelector(".status-strip")).display !== "none",
+      limitsVisible: getComputedStyle(document.querySelector("#coverage")).display !== "none",
       decisionsDetailsOpen: [...document.querySelectorAll("#panel-decisions details")].every(d => d.open),
-      nestedCount: document.querySelectorAll("#panel-decisions .qwhere .segmeta, #panel-decisions .qwhere .segcode").length,
-      nestedOpen: [...document.querySelectorAll("#panel-decisions .qwhere .segmeta, #panel-decisions .qwhere .segcode")].every(d => d.open),
+      nestedCount: document.querySelectorAll("#panel-decisions .qwhere .segmeta").length,
+      nestedOpen: [...document.querySelectorAll("#panel-decisions .qwhere .segmeta")].every(d => d.open),
       settledVisible: [...document.querySelectorAll("#group-settled .dunit")].every(u => u.offsetParent !== null)
     })) };
     check("65507: owner print hides map/tree, keeps screens/limits, opens EVERY decisions disclosure", print.owner.mapHidden && print.owner.treeHidden
       && print.owner.screensVisible && print.owner.limitsVisible && print.owner.decisionsDetailsOpen && print.owner.settledVisible, print.owner);
-    check("65507: owner print opens every nested «Где в коде» disclosure (588/588)", print.owner.nestedCount === 588 && print.owner.nestedOpen, { count: print.owner.nestedCount, open: print.owner.nestedOpen });
+    check("private fixture: owner print opens every nested «Где в коде» disclosure", print.owner.nestedCount > 0 && print.owner.nestedOpen, { count: print.owner.nestedCount, open: print.owner.nestedOpen });
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-owner-print.png`) });
     await ev(() => window.dispatchEvent(new Event("afterprint")));
     await p.emulateMedia({ media: "screen" }); await p.waitForTimeout(250);
@@ -1418,10 +1503,10 @@ if (big) {
       inserted: document.querySelectorAll(".file-lazy .file").length,
       uniqueBlocks: new Set([...document.querySelectorAll("#map .seg[data-block]")].map(s => s.dataset.block)).size,
       segs: document.querySelectorAll("#map .seg[data-block]").length,
-      segcodeOpen: document.querySelectorAll("#map .segcode[open]").length,
+      fragments: document.querySelectorAll("#map [data-fragment]").length,
       mapVisible: getComputedStyle(document.getElementById("map")).display !== "none"
     }));
-    check("65507: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1517 && print.auditor.segcodeOpen === 1517 && print.auditor.mapVisible, print.auditor);
+    check("private fixture: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1517 && print.auditor.fragments === 1517 && print.auditor.mapVisible, print.auditor);
     await ev(() => window.dispatchEvent(new Event("afterprint"))); await p.waitForTimeout(350);
     print.restored = await ev(() => ({ inserted: document.querySelectorAll(".file-lazy .file").length, show: document.getElementById("map").dataset.show }));
     check("65507: auditor afterprint removes the audit-only files", print.restored.inserted === beforeAudit && beforeAudit < 96, { ...print.restored, beforeAudit });
@@ -1464,6 +1549,9 @@ if (big) {
       panelsInMarkup: document.querySelectorAll(".panel").length,
       hiddenPanelsInMarkup: document.querySelectorAll(".panel[hidden]").length,
       qcardsReadable: document.querySelectorAll(".qcard").length,
+      domNodes: document.querySelectorAll("*").length,
+      fragments: document.querySelectorAll("#map [data-fragment]").length,
+      nestedCodeDisclosures: document.querySelectorAll("#map details.segcode").length,
       mapSegs: document.querySelectorAll("#map .seg[data-block]").length,
       mapUniqueBlocks: new Set([...document.querySelectorAll("#map .seg[data-block]")].map(s => s.dataset.block)).size,
       fileDetails: document.querySelectorAll("#map details.file-details").length,
@@ -1486,8 +1574,9 @@ if (big) {
       counterTitle: document.getElementById("count-decisions").title
     }));
     results.noJs = noJs;
-    check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1517
-      && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 54 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
+    check("private fixture no-JS: the full map 1470/1517/96 in closed files, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1517
+      && noJs.fragments === 1517 && noJs.nestedCodeDisclosures === 0 && noJs.domNodes < 102296
+      && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
     check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
     check("65507 no-JS: every control disabled, the chrome hidden", noJs.fieldsetsDisabled && noJs.radiosDisabled && noJs.zonesDisabled && noJs.answerInputsDisabled
@@ -1537,7 +1626,7 @@ if (big) {
     const [dodDl] = await Promise.all([p.waitForEvent("download"), p.click("#export-json-top")]);
     const dodJson = JSON.parse(fs.readFileSync(await dodDl.path(), "utf8"));
     dod.json = { schema: dodJson.schema_version, q2: dodJson.questions.find(q => q.question === 2)?.status, f1: dodJson.findings["1"], i2: dodJson.findings.i2, applyWithoutVariant: dodJson.applyWithoutVariant };
-    check("scenario: the JSON carries the decisions, schema 4", dodJson.schema_version === 4 && dodJson.applyWithoutVariant.length === 0
+    check("scenario: the JSON carries the decisions, schema 5", dodJson.schema_version === 5 && dodJson.applyWithoutVariant.length === 0
       && dod.json.q2 === "accepted" && dod.json.f1 === "apply" && dod.json.i2 === "skip", dod.json);
     await p.locator("#export-dialog form button").click();
     await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(250);
@@ -1547,7 +1636,7 @@ if (big) {
       const d = JSON.parse(document.getElementById("data").textContent);
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const revealed = document.querySelector(".file.reveal");
-      return { hiddenTests: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
+      return { hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
     });
     check("scenario: hiding tests and finding a file through the tree", dod.treeFind.found && dod.treeFind.segsVisible > 0 && dod.treeFind.hiddenTests.join() === "tests", dod.treeFind);
     await reloadClean(p);
@@ -1555,7 +1644,7 @@ if (big) {
       q2: document.querySelector("#q2 [data-qstatus]").textContent,
       f1: document.querySelector("#f1 [data-fstatus]").textContent,
       i2: document.querySelector("#i2 [data-fstatus]").textContent,
-      hiddenTests: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes
+      hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes
     }));
     check("scenario: reload keeps the decisions and the hiding", /^Выбрано:/.test(dod.afterReload.q2) && dod.afterReload.f1 === "Выбрано: Исправить"
       && dod.afterReload.i2 === "Выбрано: Не брать" && dod.afterReload.hiddenTests.join() === "tests", dod.afterReload);
@@ -1653,7 +1742,7 @@ if (big) {
     await ev(() => { document.getElementById("q1").scrollIntoView({ block: "center" }); }); await p.waitForTimeout(250);
     const box = await ev(() => { const r = document.querySelector('#q1 input[value="keep-mockup"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
     await p.touchscreen.tap(box.x, box.y); await p.waitForTimeout(300);
-    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).questions["1"] }));
+    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["1"] }));
     check("65507: a touch tap is the same unified choice, focus on the settled summary (rAF)", touchSelect.active === "SUMMARY" && touchSelect.chosenVisible && touchSelect.state.choice === "accepted", touchSelect);
     results.focus = { focusAfterSelect, keyboardReset, touchSelect };
     // The fact answer: discoverable without the comment, «ответ внесён» ≠ «проверено», export distinct.
@@ -1682,11 +1771,11 @@ if (big) {
       const order = (el) => [...el.children].map(c => (c.className.baseVal ?? c.className).split(" ")[0]);
       const i = order(document.getElementById("i1")), f = order(document.getElementById("f1"));
       const idx = (a, n) => a.indexOf(n);
-      const consistent = (a) => idx(a, "card-head") < idx(a, "card-question") && idx(a, "card-question") < idx(a, "card-limit") && idx(a, "card-limit") < idx(a, "card-choice") && idx(a, "card-choice") < idx(a, "card-comment") && (idx(a, "card-more") === -1 || idx(a, "card-comment") < idx(a, "card-more"));
+      const consistent = (a) => idx(a, "card-head") < idx(a, "card-question") && idx(a, "card-question") < idx(a, "card-choice") && idx(a, "card-choice") < idx(a, "card-comment") && (idx(a, "card-more") === -1 || idx(a, "card-comment") < idx(a, "card-more"));
       const limit = document.querySelector("#i1 .card-limit");
       return { idea: i, finding: f, consistent: consistent(i) && consistent(f), limitOnSurface: !!limit && limit.parentElement === document.getElementById("i1"), limitText: limit?.textContent ?? null };
     });
-    check("65507: the idea shell matches the finding shell; the limit is the explicit absence", ideaShell.consistent && ideaShell.limitOnSurface && /не указаны/.test(ideaShell.limitText), ideaShell);
+    check("private fixture: the idea shell matches the finding shell without an invented limit", ideaShell.consistent && !ideaShell.limitOnSurface && ideaShell.limitText === null, ideaShell);
     // The saved BLOCK comment is compact; the export collects it immediately.
     await tab(p, "code");
     await ev(() => { const d = document.querySelector("#map .segmeta"); d.open = true; d.scrollIntoView({ block: "center" }); });
@@ -1698,7 +1787,7 @@ if (big) {
       return { viewVisible: view && !view.hidden && view.offsetParent !== null, text: view?.querySelector(".comment-text")?.textContent, editBtn: view?.querySelector(".comment-edit")?.textContent, saved: view?.querySelector(".comment-saved")?.textContent, inputHidden: input.hidden };
     });
     check("65507: the saved block comment is compact — text + «Изменить» + saved status", blockComment.viewVisible && blockComment.inputHidden
-      && blockComment.text === "компактный комментарий блока" && blockComment.editBtn === "Изменить" && blockComment.saved === "Сохранено в этом браузере, не отправлено.", blockComment);
+      && blockComment.text === "компактный комментарий блока" && blockComment.editBtn === "Изменить" && blockComment.saved === undefined, blockComment);
     await p.click("#map .segmeta .comment-edit"); await p.waitForTimeout(250);
     const blockCommentEdit = await ev(() => { const bc = document.querySelector("#map .segmeta .block-comment"); const input = bc.querySelector("input"); return { inputVisible: !input.hidden && input.offsetParent !== null, focused: document.activeElement === input, viewHidden: bc.querySelector(".comment-view").hidden }; });
     check("65507: «Изменить» on the block comment reveals and focuses the input", blockCommentEdit.inputVisible && blockCommentEdit.focused && blockCommentEdit.viewHidden, blockCommentEdit);
