@@ -19,6 +19,7 @@ try {
   await page.goto(pathToFileURL(path.resolve(before)).href);
   const selectors = ["#f1 .card-title", '[id^="source-"]'];
   for (const [index, selector] of selectors.entries()) {
+    if (index === 1) await page.locator("#tab-checks").click();
     await page.evaluate(({ selector, index }) => {
       const element = document.querySelector(selector);
       if (!element) throw new Error(`Missing annotation target ${selector}`);
@@ -43,8 +44,8 @@ try {
     }, { selector, index });
   }
   const saved = await page.evaluate(() => {
-    const key = "review-report:" + JSON.parse(document.getElementById("data").textContent).key;
-    return { key, value: localStorage.getItem(key) };
+    const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key;
+    return { key, value: localStorage.getItem(key), document: data.annotationDocument };
   });
   const passages = JSON.parse(saved.value).passages;
   assert.equal(passages.length, selectors.length);
@@ -53,6 +54,7 @@ try {
   assert.ok(passages.every((p) => p.anchor.end > p.anchor.start && p.anchor.text));
   await context.addInitScript(({ key, value }) => localStorage.setItem(key, value), saved);
   await page.goto(pathToFileURL(path.resolve(after)).href);
+  const sameDocument = saved.document === await page.evaluate(() => JSON.parse(document.getElementById("data").textContent).annotationDocument);
   const checkRestored = async () => {
     const restored = await page.evaluate(() => {
       const key = "review-report:" + JSON.parse(document.getElementById("data").textContent).key;
@@ -73,13 +75,13 @@ try {
     for (const [index, item] of restored.entries()) {
       assert.deepEqual(item.anchor, passages[index].anchor);
       assert.equal(item.note, passages[index].note);
-      assert.equal(item.marked, item.anchor.text);
-      assert.equal(item.insideAnchor, true);
-      assert.equal(item.sourceAction, true);
+      assert.equal(item.marked, sameDocument ? item.anchor.text : "");
+      assert.equal(item.insideAnchor, sameDocument);
+      assert.equal(item.sourceAction, sameDocument);
     }
   };
   await checkRestored();
-  for (const [index, passage] of passages.entries()) {
+  for (const [index, passage] of (sameDocument ? passages : []).entries()) {
     await page.locator("#tab-materials").click();
     await page.locator("#passages .passage").nth(index).locator("button").nth(1).click();
     await page.waitForFunction(({ id, index }) => {
@@ -129,7 +131,7 @@ try {
   await checkRestored();
   assert.deepEqual(errors, []);
   const differentHtml = !fs.readFileSync(before).equals(fs.readFileSync(after));
-  console.log(`${differentHtml ? "Different HTML files" : "Same HTML content"}: restored saved anchors and text inside them; source buttons focus the corresponding marker. Decision and Q/F/T, unit and block navigation preserve annotations.`);
+  console.log(`${differentHtml ? "Different HTML files" : "Same HTML content"}: ${sameDocument ? "restored verified markers and source actions" : "preserved notes without markers or source actions"}. Decision and Q/F/T, unit and block navigation preserve annotations.`);
   await context.close();
 } finally {
   await browser.close();

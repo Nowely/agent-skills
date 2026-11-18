@@ -441,23 +441,7 @@ export function check(review, files, directory) {
   return { errors, warnings, owner };
 }
 
-// A source as the words both renderings share: an internal ref resolves to the item it names, an external
-// source to its place, revision and quote. The anchor is where the page links it; nothing here is invented.
-export function sourceOf(source, review) {
-  if (source?.ref !== undefined) {
-    const m = /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(source.ref));
-    if (!m) return { text: String(source.ref) };
-    const [, field, at] = m, index = +at, item = Array.isArray(review[field]) ? review[field][index] : undefined;
-    const anchors = { requirements: "#requirements", findings: `#f${item?.id}`, questions: `#q${index + 1}`, blocks: `#b${index + 1}`,
-      mechanisms: `#m${index + 1}`, ideas: `#i${index + 1}`, checks: "#checks", scenarios: "#scenarios", screens: "#screens",
-      challenges: "#challenges", units: "#structure", target_units: "#structure", tradeoffs: "#tradeoffs", coverageStructured: "#coverage" };
-    const names = { requirements: `R${item?.id}`, findings: `F${item?.id}`, questions: `Q${index + 1}`, blocks: `B${index + 1}`, mechanisms: `M${index + 1}` };
-    const anchor = anchors[field] && (item !== undefined || !["requirements", "findings"].includes(field)) ? anchors[field] : undefined;
-    return { text: names[field] ?? `${field} ${index + 1}`, anchor };
-  }
-  if (source?.at !== undefined) return { text: [source.at, source.revision && `@ ${source.revision}`, source.quote && `“${source.quote}”`].filter(Boolean).join(" ") };
-  return { text: "" };
-}
+export { sourceOf } from "./sources.mjs";
 
 // What the renderings read: blocks with their number, lines and size; requirements with the blocks that serve
 // them, the findings that break them and the ones that leave them untested; units with their blocks; screens with

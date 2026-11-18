@@ -5,6 +5,33 @@ forensics remain in the repository references and release notes.
 
 ## 0.42.0 — Unreleased
 
+### Review report v8
+
+- Within a single context or consequence list, identical nonempty ordered source sets are shown once with an
+  explicit attribution to each item; different source data and separate groups remain separate.
+- **Breaking:** custom-language catalogs need `source.each` when such a shared set is rendered. `check` names
+  the missing key; built-in English and Russian include it.
+- Keep file tree entries compact and on one line while retaining both ends of long names; full paths remain
+  available to assistive technology and in tooltips.
+- **Breaking:** custom-language catalogs, including older records, must translate the v8 storage, counter and
+  tree labels and the export/source labels for the capabilities used by the record. `check` lists every missing
+  key; built-in English and Russian are complete. See `report-data.md` for the exact keys and conditions.
+- **Breaking:** `annotation.added` is a separate in-memory notification required of custom catalogs; invalid
+  language tags are rejected instead of being rendered as English. Legacy annotations without identity proof
+  remain in state/export but are unlocated. New annotations use an additive identity proof for supported text
+  and code ranges, including multiline and continuation code fragments; unsupported selections remain unlocated
+  with a warning. New proofs use structure digests, and new legacy anchor text contains only the visible quote.
+  Schema 4 remains; compatibility with strict clients is unknown.
+- **Breaking:** storage-sensitive wording uses `export.storage-explanation`, `decision.export-local-method`,
+  `decision.draft-local`, and `decision.gate-draft-local` instead of their older override keys. Custom catalogs
+  must supply the new keys when used, plus `choice.filter-editing`.
+- Schema 4 adds `waitingForParent` entries `{question, parent, kind}` for unanswered applicable questions waiting
+  for an ancestor. `factAnswerStatuses` separately maps known nonblank fact/evidence answers to `entered`,
+  `waiting-parent` (with the parent ID), or `not-applicable`; raw answers and zones stay untouched and none of
+  those statuses means verified. An accepted decision awaiting an ancestor also has `waiting_parent: N` on its
+  question entry without becoming unanswered. Unknown and blank IDs receive no invented status. These are additive
+  schema-4 fields; compatibility with strict external schema-4 parsers is unknown.
+
 ### Review report v7
 
 - Select a requirement in Code and browse its linked blocks by file or by unit. Units are groups from

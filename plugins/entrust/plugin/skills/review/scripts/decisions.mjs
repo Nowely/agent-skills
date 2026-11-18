@@ -54,6 +54,34 @@ export function decisionRuntime() {
     return q.variants?.length ? !!entry.variant : noteOf(state, q.id).trim() !== "";
   };
   const validDefer = (q, state) => entryOf(state, q.id).choice === "deferred" && noteOf(state, q.id).trim() !== "";
+  const waitingParentIn = (q, state, byId) => {
+    const seen = new Set();
+    while (q?.parent && !seen.has(q.id)) {
+      seen.add(q.id);
+      const p = byId[q.parent.question];
+      if (!p) return null;
+      if (!validAccept(p, state) && !validDefer(p, state)) return p.id;
+      q = p;
+    }
+    return null;
+  };
+  const matchesQuestion = (q, filter, state, questions) => {
+    if (filter === "q") return q.kind === "decision";
+    if (filter === "fact") return q.kind === "fact" || q.kind === "evidence";
+    if (filter === "deferred") return q.kind === "decision" && applicableIn(q, state, byIdOf(questions)) && validDefer(q, state);
+    return false;
+  };
+  const factAnswerStatuses = (questions, state) => {
+    const byId = byIdOf(questions), statuses = {};
+    for (const q of questions) {
+      const id = "q" + q.id;
+      if ((q.kind !== "fact" && q.kind !== "evidence") || !Object.hasOwn(state.answers, id) || !String(state.answers[id] || "").trim()) continue;
+      const parent = waitingParentIn(q, state, byId);
+      statuses[id] = !applicableIn(q, state, byId) ? { status: "not-applicable" }
+        : parent ? { status: "waiting-parent", parent } : { status: "entered" };
+    }
+    return statuses;
+  };
   const counters = (questions, state) => {
     const byId = byIdOf(questions);
     let accepted = 0, deferred = 0, notApplicable = 0, total = 0;
@@ -82,22 +110,30 @@ export function decisionRuntime() {
     const byId = byIdOf(questions);
     const kidsOf = {};
     for (const q of questions) if (q.parent) (kidsOf[q.parent.question] ||= []).push(q.id);
-    const kidsDone = (qid) => (kidsOf[qid] || []).every((k) => { const c = byId[k]; return !c || !applicableIn(c, state, byId) || validAccept(c, state); });
+    const kidsDone = (qid) => (kidsOf[qid] || []).every((k) => {
+      const c = byId[k];
+      return !c || !applicableIn(c, state, byId) || ((c.kind !== "decision" || validAccept(c, state)) && kidsDone(k));
+    });
     const settled = {};
-    let q = 0, f = 0, i = 0, fact = 0, deferred = 0, done = 0;
+    let q = 0, dependent = 0, waiting = 0, f = 0, i = 0, fact = 0, deferred = 0, done = 0;
     for (const question of questions) {
       if (question.kind === "decision") {
-        if (question.parent || !applicableIn(question, state, byId)) continue;
+        if (!applicableIn(question, state, byId)) continue;
+        if (validDefer(question, state)) deferred++;
+        if (question.parent) {
+          if (!validAccept(question, state) && !validDefer(question, state)) { dependent++; if (waitingParentIn(question, state, byId)) waiting++; }
+          continue;
+        }
         if (validAccept(question, state)) { if (kidsDone(question.id)) { done++; settled["q" + question.id] = "done"; } }
-        else if (validDefer(question, state)) { deferred++; settled["q" + question.id] = "deferred"; }
+        else if (validDefer(question, state)) { settled["q" + question.id] = "deferred"; }
         else q++;
       } else if (question.kind === "fact" || question.kind === "evidence") {
-        if (applicableIn(question, state, byId) && !String(state.answers["q" + question.id] || "").trim()) fact++;
+        if (applicableIn(question, state, byId) && !String(state.answers["q" + question.id] || "").trim()) { fact++; if (waitingParentIn(question, state, byId)) waiting++; }
       }
     }
     for (const finding of findings) { if (state.findings[finding.id]) { done++; settled[String(finding.id)] = "done"; } else f++; }
     for (const idea of ideas) { if (state.findings[idea.id]) { done++; settled[idea.id] = "done"; } else i++; }
-    return { q, f, i, fact, deferred, done, remaining: q + f, settled };
+    return { q, dependent, waiting, f, i, fact, deferred, done, remaining: q + f, settled };
   };
   const exportOf = (questions, state, meta) => {
     const byId = byIdOf(questions);
@@ -108,9 +144,11 @@ export function decisionRuntime() {
       // variant or an unconfirmed pick travels as a DRAFT, never as an accepted decision.
       const status = !applicableIn(q, state, byId) ? "not-applicable"
         : validAccept(q, state) ? "accepted" : validDefer(q, state) ? "deferred" : "remaining";
+      const parent = status === "accepted" ? waitingParentIn(q, state, byId) : null;
       return { question: q.id, status,
         variant: variant ? { id: variant.id, text: variant.text } : null,
         ...(entry.variant && status !== "accepted" ? { variant_draft: true } : {}),
+        ...(parent ? { waiting_parent: parent } : {}),
         comment: noteOf(state, q.id) || null };
     });
     return {
@@ -124,11 +162,16 @@ export function decisionRuntime() {
       // An answer entered on a fact card travels apart from the comments: it is the owner's input, not a
       // verified check, and the export never promotes it to one.
       factAnswers: state.answers,
+      factAnswerStatuses: factAnswerStatuses(questions, state),
+      waitingForParent: questions.filter((q) => applicableIn(q, state, byId) && waitingParentIn(q, state, byId)
+        && (q.kind === "decision" ? !validAccept(q, state) && !validDefer(q, state) : (q.kind === "fact" || q.kind === "evidence") && !String(state.answers["q" + q.id] || "").trim()))
+        .map((q) => ({ question: q.id, parent: waitingParentIn(q, state, byId), kind: q.kind })),
     };
   };
-  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf,
-    applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)) };
+  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
+    applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)),
+    waitingParent: (q, state, questions) => waitingParentIn(q, state, byIdOf(questions)) };
 }
 
 const runtime = decisionRuntime();
-export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, applicable } = runtime;
+export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;

@@ -178,8 +178,83 @@ new evidence that changes a conclusion makes a revised record, named as such.
   still falls back to built-in words for the older chrome. **Breaking change:** every custom catalog, including
   one on an old record, must also translate the exact `code.requirement`, `code.all-requirements`, `code.files`,
   `code.units`, `code.select-requirement`, `code.no-related`, `code.no-visible`, `code.no-unit`, `code.linked`,
-  `code.visible`, and `code.filters-cleared` keys. `check` names missing keys; the two empty states require
-  distinct, accurate translations. Built-in `en` and `ru` need no catalog updates.
+  `code.visible`, and `code.filters-cleared` keys. The v8 report also requires `tab.remaining`, `tree.filter`,
+  `export.storage-explanation`, `decision.export-local-method`, `storage.failed`, `choice.count.decisions`,
+  `choice.count.findings`, `choice.count.deferred`, `choice.dependent`, `choice.unanswered`,
+  `choice.waiting-parent`, `choice.filter-editing`, `annotation.added`, `annotation.unverified`,
+  `annotation.proof-note`, `tree.visible-files`, and `tree.files`
+  for every custom catalog. Decision, dependent decision and fact/evidence capabilities respectively add
+  `export.open-decisions`, `export.open-dependent`, and `export.open-requests`. Fact/evidence requests also
+  require `answer.status.entered`; dependent requests require `answer.status.waiting-parent` and
+  `answer.status.not-applicable`.
+  Dependent decisions also require `decision.selection-waiting`. Decision variants and dependent
+  variants respectively add `decision.draft-local` and `decision.gate-draft-local`. The old keys
+  `export.dialog-note`, `decision.export-method`, `decision.draft-deferred`, and `decision.gate-draft` no longer
+  control these messages; existing overrides must be translated under the new keys. Sources add the keys their
+  fields use: `source.internal`, `source.self`, `source.quoted`, and/or `source.mention`. Self means a question's
+  own `/questions/N` reference; a quote is supplied text, not a verified source. `check` lists all missing keys.
+  `source.each` is required only if a context or one variant's consequences contain at least two claims with
+  identical, nonempty, ordered source arrays. The page names that set once as the sources for each item; it does
+  not combine different groups or sources with different fields, order, revisions, or quotations.
+  Translate each distinction accurately; `annotation.added` describes an in-memory change, not a successful
+  storage write. Built-in `en` and `ru` need no catalog updates. Invalid language tags are rejected by `check`
+  using `Intl.getCanonicalLocales`; previously accepted invalid tags must be corrected.
+
+  Schema 4 adds `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
+  unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions
+  and requests with an answer are excluded; their existing data remains in the export. The list does not change
+  applicability or mean an answer is verified. A deferred parent retains its existing behavior. Compatibility
+  with external strict schema-4 parsers is unknown. An accepted decision whose ancestor is still unresolved
+  has an additive `waiting_parent: N` on its question entry: the choice remains recorded, not an unanswered
+  item, but is conditional on QN. The additive `factAnswerStatuses` object maps each known
+  fact/evidence answer ID with nonblank content to `{status: "entered"}`, `{status: "waiting-parent", parent: N}`,
+  or `{status: "not-applicable"}`. It uses the same applicability and parent gate as the page. IDs that do not
+  identify a known fact/evidence question (including legacy questions), and blank answers, remain untouched in
+  `factAnswers` without an invented status. The statuses never mean
+  verified; raw answers and zones remain unchanged. Strict external schema-4 parser compatibility is unknown.
+  **Breaking annotation binding:** every legacy passage without a supported proof remains in browser state and
+  JSON with its original quote, comment, location and offsets, but is unlocated. To create a new binding, reselect
+  the passage and copy the comment into a new annotation; the old entry remains until explicitly removed.
+  Coincident old offsets and text do not establish field identity. A passage may add a proof alongside the unchanged
+  legacy `anchor`. `document` is SHA-256 of the complete generated static HTML with a fixed digest placeholder;
+  `record` is SHA-256 of `JSON.stringify([review, parsedDiffFiles])`. In version-1 and version-6 field proofs,
+  `object` identifies a unique canonical
+  Q/F/B, and `field` identifies its marked text/source/claim or canonical B line (`line.kind.old.new`; only the
+  first B fragment). `structure` binds the owner, field, offsets and text to the owner's static rendered text
+  and structure, excluding mutable controls, annotation marks and related-code copies. The runtime compares the
+  owner to its initial static DOM/template baseline when
+  capturing and restoring, and invalidates installed markers if that structure changes. UTF-16 offsets and exact
+  text are checked inside that field. A changed record, renderer, object structure or
+  ambiguous identity fails closed; SHA-256 here is an identity guard, not an authenticity signature.
+  A version-2 proof can also bind an exact text range in a question's lazily built related-code copy: it identifies
+  the unique Q and its unique related-code disclosure, and stores its selected-text offsets and the observed
+  related-code structure. The baseline is recorded when the disclosure is built from templates; restoration
+  waits for that build. Mutable controls and fragment metadata are excluded from the version-2 signature. Versions 1–4
+  remain readable; versions 1 and 2 store the full structure and may consume substantial storage. An intermediate
+  version-5 proof can become unlocated if its normalization differs.
+  New version-6 field proofs and version-7 related-code proofs store SHA-256 digests instead of that full
+  structure. Version 7 also records the visible subranges selected at capture. Version 8 binds general static
+  ranges, including ranges between owners, to the initial identity, structural path and normalized signature of
+  each selected static region, their offsets and their order. Intermediate static text is included; controls
+  and dynamic related-code bodies are not treated as static regions. A hidden, already-built related-code body
+  crossed by the range has its own baseline and digest checked, and is rebuilt if needed on reload. A range
+  crossing visible related-code content from outside its disclosure remains unlocated. A version-8 proof can grow with the number
+  of selected regions and visibility transitions. `source-N` alone is not proof: a shifted structural path
+  fails closed, so unrelated insertions can make an otherwise unchanged generic passage unlocated.
+  The selected DOM text can include hidden content or differ in line breaks from the visible quote. For new
+  range proofs, hidden parts remain in the structural check but receive no highlight; opening them later does not
+  expand the original highlight. New `anchor.text` values contain the visible quote; `anchor.start` and `end`
+  remain DOM-text offsets and need not describe its rendered line breaks. Version 9 additionally binds a range
+  within one canonical code fragment, including continuation fragments, to its file's template structure and
+  the fragment's original position. It restores after that file is materialized; an unproven fragment remains
+  unlocated. Marked parts are rechecked after mutations and may survive a settled move only
+  when their proven range still agrees. Once a live marker is invalidated it stays unlocated for that page session;
+  a reload rechecks the stored proof. SHA-256 here is an identity guard, not an authenticity signature.
+  The report marks unsupported selections—including unproven dynamic clones—
+  unlocated without deleting their comments. No guessed relocation
+  occurs. Exact offsets on their own, including old `source-N` anchors, do not prove identity. Schema version 4
+  remains; the additive proof and changed binding policy are breaking for annotations, and compatibility with
+  unknown strict schema-4 consumers is not established.
 
 ## Sources
 

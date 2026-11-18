@@ -17,7 +17,7 @@ import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVID
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
-import { normalize, settle, applicable, counters, remainingCount, choiceStats, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
+import { decisionRuntime, normalize, settle, applicable, counters, remainingCount, choiceStats, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -1220,7 +1220,7 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     for (const word of ["Обзор", "Выборы", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
-      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Имя файла:", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
+      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
@@ -1361,7 +1361,7 @@ test("the v5 page is one Choices list grouped by action, with subtabs over it an
     const checks = page.split('id="panel-checks"')[1].split('id="panel-materials"')[0];
     if (!checks.includes('id="challenges"') || !checks.includes('id="requirements"')) return "the checks tab lacks the challenges or requirements";
     // One quantity: the main decisions open (Q3, the only root) plus the two findings; the child Q4 and the idea never enter.
-    if (!page.includes('id="count-decisions" title="') || !page.includes(">3 remaining</span>")) return "the static counter is not the one quantity (roots + findings)";
+    if (!page.includes('id="count-decisions" title="') || !page.includes(">3 main decisions and findings remaining</span>")) return "the static counter is not the one quantity (roots + findings)";
     return !page.includes('id="panel-findings"') || "the findings kept a duplicate panel";
   });
 
@@ -1411,11 +1411,11 @@ test("the conditional children sit under their parent, and the settled group is 
     const units = [...owner.matchAll(/data-unit="(q\d+)"/g)].map((m) => m[1]);
     if (units.join() !== "q1,q2,q6,q8") return `the owner group's roots are ${units.join()}`;
     if (owner.includes('data-unit="q9"')) return "a child stands as a root unit";
-    // The settled group starts empty; the runtime moves the SAME card (unitHome) and lands focus on the summary.
+    // The settled group starts empty; the runtime moves the SAME card only after focus leaves the unit.
     if (!page.includes('id="group-settled"')) return "the settled group is missing";
     const script = scriptOf(page);
     if (!script.includes("unitHome") || !script.includes("settled-row")) return "the runtime does not move cards into compact rows";
-    if (!script.includes("sum.focus({ preventScroll: true })")) return "the focus does not land on the settled row's summary";
+    if (!script.includes('unit.contains(document.activeElement)') || !script.includes('details.settled-row")?.contains(document.activeElement)') || !script.includes('queueMicrotask(() => { if (!unit.contains(document.activeElement)')) return "a focused card can move during editing";
     if (page.includes("data-confirm")) return "the mobile confirm step survived";
     if (/isMobile/.test(script)) return "a separate mobile choice rule survived";
     return script.includes('cur.choice = "accepted"') || "the radio does not accept at once on every size";
@@ -1427,12 +1427,12 @@ test("the unified card shell: one order for Q/F/I, the limit on the surface, no 
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    const order = (card) => ["card-head", "card-question", "card-comment", "card-more"].map((part) => card.indexOf(part));
+    const order = (card, isQuestion) => (isQuestion ? ["card-head", "card-title", "card-comment", "card-more"] : ["card-head", "card-question", "card-comment", "card-more"]).map((part) => card.indexOf(part));
     const q3 = page.split('id="q3"')[1].split("</div>\n  </div>")[0];
     const f1 = page.split('id="f1"')[1].split("</article>")[0];
     const i1 = page.split('id="i1"')[1].split("</article>")[0];
     for (const [name, card] of [["q3", q3], ["f1", f1], ["i1", i1]]) {
-      const at = order(card);
+      const at = order(card, name === "q3");
       if (at.some((x) => x < 0) || at.some((x, j) => j && x <= at[j - 1])) return `${name}: the shell order differs`;
     }
     if (!f1.includes("card-limit") || !f1.includes("card-consequence") || !f1.includes("card-choice")) return "the finding lacks the limit, consequence or choice slot";
@@ -1448,6 +1448,25 @@ test("the unified card shell: one order for Q/F/I, the limit on the surface, no 
     if (!q3.includes('<details class="card-comment act" data-comment="q3">')) return "the card comment is not the compact disclosure";
     if (page.includes("qnote-wrap")) return "the permanent comment textarea survived";
     return true;
+  });
+
+test("source labels describe recorded fields without claiming a check",
+  "a mention is not a missing file and a quote is not a verified revision; only the current question is a self-reference",
+  () => {
+    const result = render((r) => {
+      Object.assign(r, structuredClone(THEMED));
+      r.questions[2].context = [
+        { text: "First claim.", sources: [{ ref: "/questions/2" }, { at: "coverage" }] },
+        { text: "Second claim.", sources: [{ at: "somewhere", revision: "r1", quote: "words" }] },
+        { text: "Third claim.", sources: [{ ref: "/questions/0" }, { at: "somewhere", revision: "r2", quote: "other words" }] },
+      ];
+    });
+    if (result.status !== 0) return result.stderr;
+    const q = fs.readFileSync(html, "utf8").split('id="q3"')[1].split('data-qchildren="3"')[0];
+    for (const text of ["Reference to this question in the report: <a href=\"#q3\">Q3</a>", "Mention without a quote: coverage",
+      "Quote provided: somewhere @ r1 “words”", "Report reference: <a href=\"#q1\">Q1</a>", "Quote provided: somewhere @ r2 “other words”"])
+      if (!q.includes(text)) return `missing field-based provenance: ${text}`;
+    return !q.includes('href="#coverage">coverage') || "a plain at value became an invented link";
   });
 
 test("finding and idea controls keep their localized accessible names and independent ids",
@@ -1526,9 +1545,35 @@ test("the fact answer is «answer entered», never «verified», and exports apa
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     if (!page.includes("does not confirm the check automatically")) return "the answer field does not say it confirms nothing";
-    const script = scriptOf(page);
-    if (!script.includes('stateName = "answered"')) return "the runtime has no answered state";
-    return !LABELS["decision.answered"].includes("verified") && !CATALOGS.ru["decision.answered"].includes("проверено") || "the answered word reads as verified";
+    const script = scriptOf(page), start = script.indexOf("  function paint() {"), end = script.indexOf("  function paintResolvedSegs(", start);
+    if (start < 0 || end < 0) return "the paint runtime is missing";
+    const D = decisionRuntime(), questions = [
+      { id: 1, kind: "decision", variants: [{ id: "yes" }, { id: "no" }] },
+      { id: 2, kind: "evidence", parent: { question: 1, variants: ["yes"] } },
+    ], labels = dataOf(page).labels;
+    const statusState = D.normalize({ answers: { q2: "owner evidence" }, questions: { 1: { choice: "accepted", variant: "yes" } } });
+    const chipEl = { dataset: {}, textContent: "" }, card = {
+      dataset: { qid: "2" }, classList: { toggle() {} }, querySelector: (s) => s === "[data-qstatus]" ? chipEl : null, querySelectorAll: () => [],
+    };
+    const sandbox = {
+      D, state: statusState, data: { questions, blocks: [], findings: [], ideas: [] }, qById: { 1: questions[0], 2: questions[1] },
+      qEntry: (id) => D.entryOf(statusState, id), isNA: (q) => !D.applicable(q, statusState, questions),
+      parentPending: (q) => D.waitingParent(q, statusState, questions), answerStatusText: (s) => labels.answerStatus[s.status].replace("{n}", s.parent),
+      all: (selector) => selector === ".qcard[data-qid]" ? [card] : [], document: { activeElement: null, getElementById: () => ({ removeAttribute() {} }) },
+      stats: () => D.choiceStats(questions, statusState, []), t: labels, paintSettled() {}, paintChildren() {}, paintComments() {},
+      paintChoiceCounts() {}, applyChoiceFilter() {}, paintResolvedSegs() {}, exportDialog: { open: false }, choiceFilter: "all", map: {},
+    };
+    const paint = vm.runInNewContext(script.slice(start, end) + "\npaint", sandbox);
+    const chip = () => { paint(); return { stateName: chipEl.dataset.state, text: chipEl.textContent }; };
+    const entered = chip();
+    if (entered.stateName !== "answered" || entered.text !== labels.answerStatus.entered || !/not verified/i.test(entered.text)) return "an active answer is not answered and explicitly unverified";
+    delete statusState.questions[1];
+    const waiting = chip();
+    if (waiting.stateName !== "open" || waiting.text !== labels.answerStatus["waiting-parent"].replace("{n}", 1) || !/not verified/i.test(waiting.text)) return "a parent-blocked answer does not show waiting and unverified";
+    statusState.questions[1] = { choice: "accepted", variant: "no" };
+    const retired = chip();
+    return retired.stateName === "na" && retired.text === labels.answerStatus["not-applicable"] && /not verified/i.test(retired.text)
+      || "a retired answer does not show not applicable and unverified";
   });
 
 test("the export dialog is native and fed by one model; every control keeps its id",
@@ -1705,7 +1750,7 @@ test("the no-JS counter is the static Q+F with an honest title, and the v5 contr
     if (report("render", copy).status !== 0) return "render failed";
     const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
     const badge = page.match(/<span class="tab-count" id="count-decisions"[^>]*>[^<]*<\/span>/)?.[0] ?? "";
-    if (!badge.includes("11 осталось")) return `the static counter is not 11: ${badge}`;
+    if (!badge.includes("Осталось основных решений и замечаний: 11")) return `the static counter is not 11: ${badge}`;
     if (!/статический/i.test(badge) || !/без JavaScript/i.test(badge) || !/сохранённые ответы не учитываются/i.test(badge)) return `the counter's title is not honest: ${badge}`;
     if (!/data-choice-filter="all"[^>]*aria-pressed="true"[^>]*disabled/.test(page)) return "the All control is not disabled";
     for (const part of ['id="export-open" class="act" disabled', 'data-answer="q4"'])
@@ -1745,7 +1790,7 @@ test("the v5 words are localized and owed by capability; the block comment is th
     const page = fs.readFileSync(html, "utf8");
     for (const word of ["Выборы", "Все", "Факты · проверки", "Отложено", "Завершено", "Нужен выбор владельца", "Предложенные исправления",
       "Нужны данные или проверка", "Завершённые · отложенные", "Выгрузить ответы", "Принятые решения", "Отложенные и черновики", "Ответы на факты",
-      "Перейти", "Комментарий", "Сохранено в этом браузере, не отправлено.", "ответ внесён", "Показаны все блоки файла вне режима", "Скрыто:",
+      "Перейти", "Комментарий", "Ответы никуда не отправляются.", "ответ внесён", "Показаны все блоки файла вне режима", "Скрыто:",
       "Исправить", "Не исправлять", "Взять", "Не брать", "Подвопросы"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">All<", ">Owner choice needed<", ">Export answers<", ">answer entered<", ">Fix</button>", ">Take</button>"])

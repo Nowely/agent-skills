@@ -3,9 +3,10 @@ import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
-import { VERDICTS, PURPOSES, mechanismCounts, sourceOf, weightCountsText, weightOverview } from "./review.mjs";
-import { esc } from "./text.mjs";
-import { annotations } from "./annotations.mjs";
+import { VERDICTS, PURPOSES, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { esc, prose } from "./text.mjs";
+import { srcHtml, claimsHtml } from "./sources.mjs";
+import { annotations, annotationRecordDigest, sealAnnotationDocument, annotationSha256 } from "./annotations.mjs";
 import { decisionRuntime } from "./decisions.mjs";
 
 const STYLE = `
@@ -267,12 +268,14 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .unit-tree summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere }
 .unit-tree button { display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: .4rem .6rem; overflow-wrap: anywhere }
 .unit-tree button:hover { background: var(--code) }
-.ftree ul { margin-left: .25rem; padding-left: .45rem; border-left: 1px solid var(--line) }
-.fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.ftree ul { margin-left: .15rem; padding-left: .3rem; border-left: 1px solid var(--line) }
+.fdir > summary { cursor: pointer; padding: .05rem 0; background: none; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .frow { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; gap: .25rem .4rem; padding: .02rem 0 }
-.frow .fname { overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.frow .fname { display: flex; min-width: 0; overflow: hidden; white-space: nowrap }
+.fname-start { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.fname-end { min-width: 0; max-width: 50%; flex: 0 1 auto; overflow: hidden; white-space: nowrap; direction: rtl; text-align: left }
 .frow.current { background: var(--line) }
-.fname { background: none; border: 0; padding: .05rem 0; min-height: 32px; cursor: pointer; color: var(--accent); font-size: 12px; text-align: left }
+.fname { background: none; border: 0; padding: .05rem 0; min-height: 32px; cursor: pointer; color: var(--accent); font-size: 11px; text-align: left }
 .fname:hover { text-decoration: underline }
 .fs { display: inline-block; width: 1.1em; text-align: center; font-weight: 700; font-family: var(--mono); font-size: 12px }
 .fs-A { color: var(--keep) } .fs-D { color: var(--remove) } .fs-M { color: var(--accent) }
@@ -472,7 +475,23 @@ const SCRIPT = `
   let theme = raw.theme || "auto";
   let state = D.normalize(raw);
   state = D.settle(data.questions, state);
-  const save = () => { try { localStorage.setItem(key, JSON.stringify({ ...state, theme })); } catch {} };
+  let annotationUI = null;
+  const answersSnapshot = () => JSON.stringify({ findings: state.findings, questions: state.questions, notes: state.notes, passages: state.passages, zones: state.zones, answers: state.answers });
+  let persistedAnswers = answersSnapshot(), unsavedAnswers = false;
+  const storageStatus = document.getElementById("storage-status");
+  const save = () => {
+    try {
+      localStorage.setItem(key, JSON.stringify({ ...state, theme }));
+      persistedAnswers = answersSnapshot();
+      unsavedAnswers = false;
+    } catch {
+      unsavedAnswers = answersSnapshot() !== persistedAnswers;
+    }
+    storageStatus.hidden = !unsavedAnswers;
+  };
+  window.addEventListener("beforeunload", (event) => {
+    if (unsavedAnswers || annotationUI?.hasDraftChanges()) { event.preventDefault(); event.returnValue = ""; }
+  });
   document.documentElement.classList.add("js");
   // Radios, zones, answers and filters ship disabled for the no-script reader; the runtime enables them.
   for (const control of all("[data-question-variant], [data-zone], [data-answer], button[disabled]:not([data-purpose-empty]), input[disabled], select[disabled]")) control.disabled = false;
@@ -483,13 +502,13 @@ const SCRIPT = `
   const progOpen = (d) => { if (d && !d.open) d.open = true; };
   const variantLabel = (qid, v) => ((qById[String(qid)] || {}).variants || []).find((x) => x.id === v)?.text || v || "";
   const isNA = (q) => !!q.parent && !D.applicable(q, state, data.questions);
-  const parentPending = (q) => { if (!q.parent) return false; const p = qById[String(q.parent.question)]; return !!p && !D.validAccept(p, state) && !D.validDefer(p, state); };
+  const parentPending = (q) => D.waitingParent(q, state, data.questions);
   const hiddenPurposes = () => state.hiddenPurposes || [];
   const stats = () => D.choiceStats(data.questions, state, data.findings, data.ideas);
+  const answerStatusText = (s) => t.answerStatus[s.status].replace("{n}", s.parent);
   let settledMap = {};
   const midPath = (p) => { if (p.length <= 46) return p; const m = /^(.*?)(:\\d+.*)?$/.exec(p), path = m[1], suffix = m[2] || ""; const parts = path.split("/"); let tail = parts.slice(-2).join("/"); if (tail.length > 40) tail = parts[parts.length - 1]; return "…/" + tail + suffix; };
   let choiceFilter = "all";
-  let settleFocus = false; // a user-initiated decision lands focus on the settled row even for touch (no prior focus)
 
   // ---- theme: a 32px icon at the header's right edge; auto follows prefers-color-scheme ----
   const themeBtn = document.getElementById("theme-toggle");
@@ -543,7 +562,15 @@ const SCRIPT = `
   });
 
   // ---- the lazy map: closed disclosures become templates; materialize what the mode/filter needs; one B anchor ----
-  const inserted = new Set(), segIndex = new Map();
+  const inserted = new Set(), segIndex = new Map(), annotationScopes = new Set();
+  let annotationRefreshQueued = false;
+  function refreshAnnotations(scope) {
+    if (!annotationUI || !state.passages.length) return;
+    annotationScopes.add(scope);
+    if (annotationRefreshQueued) return;
+    annotationRefreshQueued = true;
+    queueMicrotask(() => { annotationRefreshQueued = false; const scopes = [...annotationScopes]; annotationScopes.clear(); annotationUI.refresh(scopes); });
+  }
   for (const host of all(".file-lazy")) {
     const det = host.querySelector(":scope > details.file-details");
     if (!det) continue;
@@ -558,7 +585,7 @@ const SCRIPT = `
     idx = String(idx);
     if (inserted.has(idx)) return;
     const tpl = document.getElementById("segs-" + idx), host = document.getElementById("file-" + idx);
-    if (tpl && host) { host.append(tpl.content.cloneNode(true)); inserted.add(idx); indexSegs(host); applySegFilter(); paintResolvedSegs(host); paintComments(); }
+    if (tpl && host) { host.append(tpl.content.cloneNode(true)); annotationUI?.rememberFile(host); inserted.add(idx); indexSegs(host); applySegFilter(); paintResolvedSegs(host); paintComments(); refreshAnnotations(host); }
   }
   function insertAll() { all(".file-lazy").forEach((h) => insertFile(h.dataset.file)); }
   function filesMatching(pred) { const s = new Set(); for (const b of data.blocks) if (pred(b)) s.add(String(data.blockFile[b.id])); return s; }
@@ -599,8 +626,6 @@ const SCRIPT = `
     for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other.dataset.show === v));
     applySegFilter();
   }
-  // Purpose toggles hide groups (several at once) in map AND tree; additive state beside the decisions;
-  // a reset or a deep link to a hidden block brings the group back.
   function togglePurpose(cat) {
     document.getElementById("code-notice").textContent = "";
     const hidden = hiddenPurposes();
@@ -613,6 +638,19 @@ const SCRIPT = `
 
   // ---- C2: tree name filter, highlighted match, AND hidden purposes; Enter opens the first ----
   const treeInput = document.getElementById("tree-filter-input"), treeClear = document.getElementById("tree-filter-clear"), treeCount = document.getElementById("tree-filter-count");
+  function paintTreeName(button, name, query) {
+    const chars = [...name], cut = chars.slice(0, Math.ceil(chars.length / 2)).join("").length;
+    const at = query ? name.toLowerCase().indexOf(query) : -1;
+    for (const [selector, start, end] of [[".fname-start", 0, cut], [".fname-end bdi", cut, name.length]]) {
+      const span = button.querySelector(selector), from = Math.max(start, at), to = Math.min(end, at + query.length);
+      span.textContent = "";
+      if (at >= 0 && from < to) {
+        span.append(document.createTextNode(name.slice(start, from)));
+        const mark = document.createElement("mark"); mark.textContent = name.slice(from, to);
+        span.append(mark, document.createTextNode(name.slice(to, end)));
+      } else span.textContent = name.slice(start, end);
+    }
+  }
   function applyTreeFilter() {
     const hidden = hiddenPurposes(), query = treeInput.value.trim().toLowerCase(), req = map.dataset.req;
     const matchingFiles = req || hidden.length ? filesMatching((b) => (!req || (b.serves || []).includes(+req)) && !hidden.includes(b.purpose)) : null;
@@ -625,16 +663,10 @@ const SCRIPT = `
       const show = purposeVisible && (!query || path.includes(query));
       row.style.display = show ? "" : "none"; if (show) visible++;
       const button = row.querySelector(".fname");
-      const name = button.title.split("/").pop(), at = name.toLowerCase().indexOf(query);
-      button.textContent = "";
-      if (query && at >= 0) {
-        button.append(document.createTextNode(name.slice(0, at)));
-        const mark = document.createElement("mark"); mark.textContent = name.slice(at, at + query.length);
-        button.append(mark, document.createTextNode(name.slice(at + query.length)));
-      } else button.textContent = name;
+      paintTreeName(button, button.title.split("/").pop(), query);
     }
-    for (const dir of all(".fdir")) { const any = [...dir.querySelectorAll(".frow")].some((r) => r.style.display !== "none"); dir.style.display = any ? "" : "none"; if (query && any) dir.open = true; }
-    treeCount.textContent = query || hidden.length ? t.files + ": " + visible + " / " + data.files.length : "";
+    for (const dir of all(".fdir")) { const count = [...dir.querySelectorAll(".frow")].filter((r) => r.style.display !== "none").length; dir.style.display = count ? "" : "none"; const label = dir.querySelector(":scope > summary [data-dir-count]"); if (label) label.textContent = count + " " + t.treeFiles; if (query && count) dir.open = true; }
+    treeCount.textContent = query || hidden.length || req ? (t.treeVisibleFiles || t.files) + ": " + visible + " / " + data.files.length : "";
     treeClear.disabled = !query;
   }
   treeInput.addEventListener("input", () => { document.getElementById("code-notice").textContent = ""; applyTreeFilter(); });
@@ -823,7 +855,6 @@ const SCRIPT = `
     applyTreeFilter(); applySegFilter();
   });
 
-  // ---- deep links: a tab, a filtered map view, a block in any mode, or any anchor in its panel ----
   function openTarget(hash) {
     if (!hash || hash[0] !== "#") return;
     const shot = /^#shot(\\d+)$/.exec(hash); if (shot) hash = "#shot-" + shot[1]; // the canonical anchor is #shot-N; #shotN lands too
@@ -852,10 +883,10 @@ const SCRIPT = `
       if (el) progOpen(el.querySelector(".segcode"));
     } else { try { el = document.querySelector(hash); } catch { return; } }
     if (!el) return;
-    // A card hidden by a subtab or settled into a row comes back into view: one list, no duplicates.
     if (el.closest("#panel-decisions")) {
       for (const u of all("#panel-decisions .dunit")) u.hidden = false;
       for (const g of all("#panel-decisions .dgroup")) g.hidden = false;
+      for (const c of all("#panel-decisions .qcard, #panel-decisions .qchildren")) c.hidden = false;
       choiceFilter = "all";
       for (const b of all("[data-choice-filter]")) b.setAttribute("aria-pressed", String(b.dataset.choiceFilter === "all"));
     }
@@ -899,6 +930,8 @@ const SCRIPT = `
       body.append(wrap);
     }
     if (!body.children.length) { const p = document.createElement("p"); p.className = "sub"; p.textContent = t.whereEmpty; body.append(p); }
+    annotationUI?.rememberWhere(details);
+    refreshAnnotations(body);
   }
   document.addEventListener("toggle", (e) => {
     const el = e.target;
@@ -973,33 +1006,38 @@ const SCRIPT = `
   const exportDialog = document.getElementById("export-dialog");
   let outDirty = true;
   function syncOut() { out.value = decisionsText(); buildPreview(); outDirty = false; }
-  // The ONE source: the schema-4 payload the JSON downloads. The preview and the text are views of this
-  // same object, never a second builder reading the state apart — they cannot disagree with the JSON.
   function exportPayload() {
     return D.exportOf(data.questions, state, { recordSha: data.digest.record, diffSha: data.digest.diff, key: data.key, title: data.title, range: data.range });
   }
-  // Accepted Q/F/I (incl. «Do not fix»/«Do not take»), deferred with or without a variant, drafts, NA children,
-  // fact answers, marked zones and every comment — card, block, selected text, and the legacy note stored in
-  // questions[id].note (the payload's comment is noteOf: the entry's note or the shared notes) — each row
-  // with a place to go to.
   function exportModel() {
     const j = exportPayload();
-    const accepted = [], deferred = [], answers = [], zones = [], comments = [];
+    const accepted = [], deferred = [], answers = [], zones = [], comments = [], openDecisions = [], openDependent = [], openRequests = [];
+    const waiting = Object.fromEntries(j.waitingForParent.map((w) => [w.question, w.parent]));
+    const waitingText = (q) => waiting[q.id] ? " · " + t.gatePending.replace("{n}", waiting[q.id]) : "";
     const draftSuffix = (e) => e.variant ? " · " + t.draftSuffix.replace("{n}", e.variant.text) : "";
     for (const e of j.questions) {
       const hash = "#q" + e.question;
       if (e.status === "not-applicable") deferred.push({ text: "Q" + e.question + " · " + t.notApplicable + " (Q" + qById[e.question].parent.question + ")" + draftSuffix(e), hash, draft: true });
-      else if (e.status === "accepted") accepted.push({ text: "Q" + e.question + " · " + (e.variant ? t.status.decided.replace("{n}", e.variant.text) : t.selectedNoVariant), hash });
-      else if (e.status === "deferred") deferred.push({ text: "Q" + e.question + " · " + t.deferred + draftSuffix(e), hash, draft: !!e.variant });
+      else if (e.status === "accepted") accepted.push({ text: "Q" + e.question + " · " + (e.variant ? t.status.decided.replace("{n}", e.variant.text) : t.selectedNoVariant) + (e.waiting_parent ? " · " + t.selectionWaiting.replace("{n}", e.waiting_parent) : ""), hash });
+      else if (e.status === "deferred") deferred.push({ text: "Q" + e.question + " · " + t.deferred + draftSuffix(e) + waitingText(qById[e.question]), hash, draft: !!e.variant });
       else if (e.variant) deferred.push({ text: "Q" + e.question + " · " + t.draftRow.replace("{n}", e.variant.text), hash, draft: true });
+      if (e.status === "remaining") {
+        const q = qById[e.question];
+        (q.parent ? openDependent : openDecisions).push({ text: "Q" + q.id + " · " + q.text + (q.parent ? " · " + t.dependsOn + " Q" + q.parent.question : "") + waitingText(q), hash });
+      }
     }
+    for (const q of data.questions) if ((q.kind === "fact" || q.kind === "evidence") && D.applicable(q, state, data.questions) && !String(j.factAnswers["q" + q.id] || "").trim())
+      openRequests.push({ text: "Q" + q.id + " · " + q.text + (q.parent ? " · " + t.dependsOn + " Q" + q.parent.question : "") + waitingText(q), hash: "#q" + q.id });
     for (const f of data.findings) { const v = j.findings[f.id];
       if (v === "apply") accepted.push({ text: "F" + f.id + " · " + t.fixApply + " — " + f.title, hash: "#f" + f.id });
       else if (v === "skip") accepted.push({ text: "F" + f.id + " · " + t.fixSkip + " — " + f.title, hash: "#f" + f.id }); }
     for (const i of data.ideas) { const v = j.findings[i.id];
       if (v === "apply") accepted.push({ text: i.id.toUpperCase() + " · " + t.ideaApply + " — " + i.title, hash: "#" + i.id });
       else if (v === "skip") accepted.push({ text: i.id.toUpperCase() + " · " + t.ideaSkip + " — " + i.title, hash: "#" + i.id }); }
-    for (const [aid, val] of Object.entries(j.factAnswers)) answers.push({ text: aid.toUpperCase() + " · " + t.answerRow.replace("{n}", val), hash: "#" + aid });
+    for (const [aid, val] of Object.entries(j.factAnswers)) {
+      const status = Object.hasOwn(j.factAnswerStatuses, aid) ? j.factAnswerStatuses[aid] : null;
+      answers.push({ text: aid.toUpperCase() + " · " + (status ? answerStatusText(status) + ": " : "") + val, ...(status ? { hash: "#" + aid } : {}) });
+    }
     for (const [zid, marked] of Object.entries(j.zones)) {
       if (!marked) continue;
       const cut = zid.lastIndexOf("-"), qid = zid.slice(0, cut), zi = Number(zid.slice(cut + 1));
@@ -1013,30 +1051,31 @@ const SCRIPT = `
       if (id[0] === "b") { const b = blockById[id.slice(1)]; return b ? "B" + b.id + " · " + b.path + " " + b.where : id.toUpperCase(); }
       return id.toUpperCase();
     };
-    // A question's comment travels as the payload's comment (noteOf covers the legacy entry note); the
-    // shared notes add the block/idea/finding comments and any question note the payload does not carry.
     for (const e of j.questions) if (e.comment) comments.push({ text: ctxOf("q" + e.question) + ": " + e.comment, hash: "#q" + e.question });
     for (const [id, value] of Object.entries(j.notes)) {
       if (id[0] === "q" && j.questions.some((e) => "q" + e.question === id && e.comment)) continue;
       comments.push({ text: ctxOf(id) + ": " + value, hash: "#" + id });
     }
-    for (const p of j.passages) comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : ""), hash: p.anchor && p.anchor.id ? "#" + p.anchor.id : "#passages" });
+    j.passages.forEach((p, index) => {
+      const found = annotationUI.located(index);
+      comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : "") + (found ? "" : " · " + data.annotationLabels.unlocated), ...(found ? { passage: index } : {}) });
+    });
     const open = data.findings.filter((f) => !j.findings[f.id]).map((f) => "F" + f.id);
-    // The remainder is the ONE choiceStats quantity (Q+F); the listed subset is explicitly the findings, so the
-    // number and the list never read as the same scope by accident.
     const remaining = t.tabRemaining.replace("{n}", stats().remaining) + (open.length ? " · " + t.export.openFindings + ": " + open.join(", ") : "");
-    return { accepted, deferred, answers, zones, comments, remaining, payload: j };
+    return { accepted, deferred, answers, zones, comments, openDecisions, openDependent, openRequests, remaining, payload: j };
   }
   function decisionsText() {
     const m = exportModel();
     const part = (title, rows) => rows.length ? ["", title, ...rows.map((r) => "- " + r.text)] : [];
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")",
       ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred),
-      ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments), "", m.remaining,
+      ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments),
+      ...part(t.export.openDecisions, m.openDecisions), ...part(t.export.openDependent, m.openDependent), ...part(t.export.openRequests, m.openRequests), "", m.remaining,
       t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12)].join("\\n");
   }
   function buildPreview() {
     const host = document.getElementById("export-preview");
+    const restoreFocus = !!document.activeElement && host.contains(document.activeElement);
     host.textContent = "";
     const m = exportModel();
     const sec = (title, rows, emptyText) => {
@@ -1046,7 +1085,8 @@ const SCRIPT = `
       for (const r of rows) {
         const p = document.createElement("p"); p.className = "xp-row" + (r.draft ? " xp-draft" : "");
         const s = document.createElement("span"); s.textContent = r.text; p.append(s);
-        const a = document.createElement("a"); a.href = r.hash; a.textContent = t.export.goto; a.className = "xp-goto"; p.append(a);
+        if (r.passage !== undefined) { const b = document.createElement("button"); b.type = "button"; b.dataset.passageGoto = r.passage; b.textContent = t.export.goto; p.append(b); }
+        else if (r.hash) { const a = document.createElement("a"); a.href = r.hash; a.textContent = t.export.goto; a.className = "xp-goto"; p.append(a); }
         d.append(p);
       }
       host.append(d);
@@ -1056,12 +1096,18 @@ const SCRIPT = `
     if (m.answers.length) sec(t.export.answers, m.answers, "");
     if (m.zones.length) sec(t.export.zones, m.zones, "");
     sec(t.export.comments, m.comments, t.export.emptyComments);
+    if (m.openDecisions.length) sec(t.export.openDecisions, m.openDecisions, "");
+    if (m.openDependent.length) sec(t.export.openDependent, m.openDependent, "");
+    if (m.openRequests.length) sec(t.export.openRequests, m.openRequests, "");
     const cnt = document.createElement("p"); cnt.className = "xp-count";
     cnt.textContent = m.remaining + ". " + t.export.partial;
     host.append(cnt);
+    if (restoreFocus) host.focus({ preventScroll: true });
   }
   function openExportDialog() { syncOut(); document.getElementById("export-status").textContent = ""; if (!exportDialog.open) exportDialog.showModal(); }
   exportDialog.addEventListener("click", (e) => {
+    const passage = e.target.closest("[data-passage-goto]");
+    if (passage) { exportDialog.close(); annotationUI.goTo(Number(passage.dataset.passageGoto)); return; }
     const a = e.target.closest("a.xp-goto");
     if (!a) return;
     e.preventDefault();
@@ -1099,26 +1145,20 @@ const SCRIPT = `
     for (const unit of all("#panel-decisions .dunit")) {
       const st = unitSettledState(unit);
       const card = unit.querySelector(".qcard, .finding");
-      if (st && unit.dataset.settled !== st) {
-        // Moving a focused node blurs it to BODY — capture focus BEFORE the move, then land it on the settled
-        // row's summary (keyboard AND touch; never on the initial load).
-        const hadFocus = unit.contains(document.activeElement) || settleFocus;
+      const focused = unit.contains(document.activeElement) || !!unit.closest("details.settled-row")?.contains(document.activeElement);
+      if (st && unit.dataset.settled !== st && !focused) {
         if (!unitHome.has(unit)) { const parent = unit.parentElement; unitHome.set(unit, { parent, siblings: [...parent.children] }); }
         let row = unit.closest("details.settled-row");
         if (!row) { row = document.createElement("details"); row.className = "settled-row"; row.append(document.createElement("summary")); unit.before(row); row.append(unit); }
         settledBody.append(row);
         unit.dataset.settled = st;
         progOpen(document.getElementById("group-settled"));
-        // rAF: Chromium ignores focus() inside a touch-click dispatch; land it after the gesture.
-        if (hadFocus) { const sum = row.querySelector("summary"); requestAnimationFrame(() => { if (unit.dataset.settled && sum.isConnected) sum.focus({ preventScroll: true }); }); }
-      } else if (!st && unit.dataset.settled) {
+      } else if (!st && unit.dataset.settled && !focused) {
         const row = unit.closest("details.settled-row");
-        const hadFocus = unit.contains(document.activeElement) || (row && row.contains(document.activeElement)) || settleFocus;
         const home = unitHome.get(unit);
         if (home) { const next = home.siblings.slice(home.siblings.indexOf(unit) + 1).find((s) => s.isConnected && s.parentElement === home.parent); home.parent.insertBefore(unit, next || null); }
         if (row) row.remove();
         delete unit.dataset.settled;
-        if (hadFocus) { const f = unit.querySelector("input:not([disabled]), button:not([disabled])") || card; if (f === card) card.tabIndex = -1; requestAnimationFrame(() => { if (!unit.dataset.settled && f.isConnected) f.focus({ preventScroll: true }); }); }
       }
       if (unit.dataset.settled) {
         const row = unit.closest("details.settled-row"), sum = row.querySelector("summary");
@@ -1127,14 +1167,13 @@ const SCRIPT = `
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
         const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = (chipEl ? chipEl.textContent : "") + (st === "deferred" ? " · " + t.status.open : "");
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
-        // The row reads name → the answer given → id; expanding it is the way back to the card («Изменить»).
         const edit = document.createElement("span"); edit.className = "sr-edit"; edit.textContent = t.commentEdit;
         sum.append(titleEl, chipClone, idEl, edit);
         if (state.notes[card.id]) { const n = document.createElement("span"); n.className = "sr-note"; n.textContent = "· " + t.cardComment.toLowerCase(); sum.append(n); }
-        row.dataset.state = unit.dataset.settled;
+        row.dataset.state = st || "open";
       }
     }
-    document.getElementById("settled-count").textContent = "· " + settledBody.children.length;
+    document.getElementById("settled-count").textContent = "· " + Object.keys(settledMap).length;
   }
   function paintChildren() {
     for (const det of all("[data-qchildren]")) {
@@ -1159,7 +1198,7 @@ const SCRIPT = `
   };
   function paintComments() {
     for (const d of all(".card-comment")) {
-      const id = d.dataset.comment, note = state.notes[id] || "";
+      const id = d.dataset.comment, note = id[0] === "q" ? D.noteOf(state, id.slice(1)) : state.notes[id] || "";
       const sum = d.querySelector("summary"), ta = d.querySelector("textarea");
       sum.textContent = note ? t.cardCommentN.replace("{n}", 1) : t.cardComment;
       let view = d.querySelector(".comment-view");
@@ -1186,34 +1225,52 @@ const SCRIPT = `
       if (sm) sm.textContent = (state.notes["b" + bid] ? t.segCommentDetailsN : t.segCommentDetails).replace("{n}", 1);
     }
   }
-  // The subtab badges read the SAME choiceStats as the tab counter and the export: a type's badge is the items
-  // still requiring action in it (ideas neutral/optional, facts «without an answer»), the status badges are the
-  // settled/deferred records. Zero is a neutral «0», never a green check; no percentage anywhere.
   function paintChoiceCounts(st) {
     const counts = { q: st.q, f: st.f, i: st.i, fact: st.fact, deferred: st.deferred, done: st.done };
     for (const b of all("[data-choice-filter]")) {
       const v = b.dataset.choiceFilter; if (v === "all") continue;
       const n = counts[v], badge = b.querySelector(".cf-count");
       if (badge) { badge.textContent = n; badge.dataset.zero = n ? "0" : "1"; }
-      const wording = v === "fact" ? t.countAnswers : ["i", "done", "deferred"].includes(v) ? t.countEntries : t.tabRemaining;
+      const wording = v === "fact" ? t.countAnswers : v === "deferred" ? t.countDeferred : ["i", "done"].includes(v) ? t.countEntries : v === "q" ? t.countDecisions : t.countFindings;
       b.title = wording.replace("{n}", n);
       b.setAttribute("aria-label", b.dataset.cfLabel + ": " + b.title);
     }
   }
-  // The subtabs filter ONE list: type filters and status filters; a group with no visible card hides.
-  function applyChoiceFilter(val) {
+  function applyChoiceFilter(val, preserveFocus = true) {
     choiceFilter = val;
     for (const b of all("[data-choice-filter]")) b.setAttribute("aria-pressed", String(b.dataset.choiceFilter === val));
     for (const unit of all("#panel-decisions .dunit")) {
       const card = unit.querySelector(".qcard, .finding");
-      const typ = card.classList.contains("qcard") ? (qById[card.dataset.qid].kind === "decision" ? "q" : "fact") : card.classList.contains("idea") ? "i" : "f";
-      const st = unit.dataset.settled || "";
-      unit.hidden = !(val === "all" || typ === val || (val === "deferred" && st === "deferred") || (val === "done" && st === "done"));
+      const st = unitSettledState(unit), row = unit.closest("details.settled-row");
+      const focused = preserveFocus && (unit.contains(document.activeElement) || !!row?.contains(document.activeElement));
+      let pinned = focused && !!row && unit.dataset.settled !== (st || "");
+      const cards = [...unit.querySelectorAll(".qcard[data-qid]")];
+      if (cards.length && ["q", "fact", "deferred"].includes(val)) {
+        const matching = cards.filter((c) => D.matchesQuestion(qById[c.dataset.qid], val, state, data.questions));
+        const visible = new Set(matching.map((c) => c.dataset.qid));
+        const addParents = (c) => { let q = qById[c.dataset.qid]; while (q?.parent) { visible.add(String(q.parent.question)); q = qById[String(q.parent.question)]; } };
+        matching.forEach(addParents);
+        const active = document.activeElement?.closest?.(".qcard[data-qid]");
+        if (focused && active && cards.includes(active) && !visible.has(active.dataset.qid)) { matching.push(active); visible.add(active.dataset.qid); addParents(active); pinned = true; }
+        for (const c of cards) c.hidden = !visible.has(c.dataset.qid);
+        for (const d of unit.querySelectorAll(".qchildren")) { const has = [...d.querySelectorAll(".qcard[data-qid]")].some((c) => visible.has(c.dataset.qid)); d.hidden = !has; if (has) progOpen(d); }
+        unit.hidden = !matching.length;
+      } else {
+        for (const c of cards) c.hidden = false;
+        for (const d of unit.querySelectorAll(".qchildren")) d.hidden = false;
+        const typ = card.classList.contains("qcard") ? "q" : card.classList.contains("idea") ? "i" : "f";
+        unit.hidden = !(val === "all" || (!cards.length && typ === val) || (val === "done" && st === "done"));
+      }
+      if (focused && unit.hidden) { unit.hidden = false; pinned = true; }
+      let note = unit.querySelector(":scope > .filter-editing");
+      if (pinned && !note) { note = document.createElement("p"); note.className = "filter-editing sub"; note.setAttribute("role", "status"); unit.prepend(note); }
+      if (note) { note.textContent = t.filterEditing; note.hidden = !pinned; }
     }
     for (const g of all("#panel-decisions .dgroup")) g.hidden = ![...g.querySelectorAll(".dunit")].some((u) => !u.hidden);
     if (val !== "all") for (const d of all("#panel-decisions details.settled-row, #group-settled, #ideas")) { if (!d.hidden && d.querySelector(".dunit:not([hidden])")) progOpen(d); }
   }
   function paint() {
+    const answerStatuses = D.factAnswerStatuses(data.questions, state);
     for (const group of all(".decide")) {
       const id = group.dataset.finding;
       const current = id[0] === "q" ? qEntry(id.slice(1)).choice : state.findings[id];
@@ -1225,7 +1282,7 @@ const SCRIPT = `
       const kept = block.findings.every((f) => state.findings[f] === "skip");
       for (const part of parts) part.classList.toggle("overruled", kept);
     }
-    for (const input of all("[data-note]")) if (document.activeElement !== input) input.value = state.notes[input.dataset.note] || "";
+    for (const input of all("[data-note]")) if (document.activeElement !== input) input.value = input.dataset.note[0] === "q" ? D.noteOf(state, input.dataset.note.slice(1)) : state.notes[input.dataset.note] || "";
     for (const card of all(".qcard[data-qid]")) {
       const q = qById[card.dataset.qid]; if (!q) continue;
       const e = qEntry(q.id), na = isNA(q), pending = parentPending(q);
@@ -1233,22 +1290,22 @@ const SCRIPT = `
       const chipEl = card.querySelector("[data-qstatus]");
       if (chipEl) {
         let stateName = "open", text = t.status.open;
-        if (na) { stateName = "na"; text = t.notApplicable; }
-        else if (q.kind !== "decision" && state.answers["q" + q.id]) { stateName = "answered"; text = t.answered; }
-        else if (e.choice === "accepted" && e.variant) { stateName = "decided"; text = t.status.decided.replace("{n}", variantLabel(q.id, e.variant)); }
+        const answer = answerStatuses["q" + q.id];
+        if (answer) { stateName = answer.status === "not-applicable" ? "na" : answer.status === "waiting-parent" ? "open" : "answered"; text = answerStatusText(answer); }
+        else if (na) { stateName = "na"; text = t.notApplicable; }
+        else if (D.validAccept(q, state) && e.variant) { stateName = "decided"; text = t.status.decided.replace("{n}", variantLabel(q.id, e.variant)); }
         else if (e.choice === "accepted" && D.validAccept(q, state)) { stateName = "decided"; text = t.selectedNoVariant; }
-        else if (e.choice === "deferred") { stateName = "deferred"; text = t.deferred; }
+        else if (D.validDefer(q, state)) { stateName = "deferred"; text = t.deferred; }
+        else if (e.choice === "deferred") { stateName = "open"; text = t.deferReason; }
         else if (e.variant) { stateName = "draft"; text = t.status.draft.replace("{n}", variantLabel(q.id, e.variant)); }
         chipEl.dataset.state = stateName; chipEl.textContent = text;
       }
       const gate = card.querySelector("[data-qgate]");
       if (gate) {
         if (na) { gate.hidden = false; gate.textContent = t.gateNa.replace("{n}", q.parent.question) + (e.variant ? t.gateDraft.replace("{n}", variantLabel(q.id, e.variant)) : ""); }
-        else if (pending) { gate.hidden = false; gate.textContent = t.gatePending.replace("{n}", q.parent.question); }
+        else if (pending) { gate.hidden = false; gate.textContent = t.gatePending.replace("{n}", pending); }
         else gate.hidden = true;
       }
-      // A variant survives a deferral or an outside parent variant as a DRAFT; the radio reads active only
-      // for a confirmed decision on an applicable card.
       const draftEl = card.querySelector("[data-qdraft]");
       if (draftEl) {
         const showDraft = !na && !pending && e.variant && e.choice !== "accepted";
@@ -1265,9 +1322,12 @@ const SCRIPT = `
         const missing = (e.choice === "accepted" && !D.validAccept(q, state)) || (e.choice === "deferred" && !D.validDefer(q, state));
         hint.hidden = !missing; hint.textContent = e.choice === "deferred" ? t.deferReason : t.requiresContent;
       }
-      // «Reset» only when there is a choice or draft to clear; an untouched card offers nothing to reset.
       const resetBtn = card.querySelector("[data-qreset]");
-      if (resetBtn) resetBtn.hidden = !(e.choice || e.variant);
+      if (resetBtn) {
+        const hide = !(e.choice || e.variant);
+        if (hide && document.activeElement === resetBtn) card.querySelector("[data-question-variant]:not(:disabled), [data-defer]:not(:disabled)")?.focus({ preventScroll: true });
+        resetBtn.hidden = hide;
+      }
       const ansInput = card.querySelector("[data-answer]");
       if (ansInput && document.activeElement !== ansInput) ansInput.value = state.answers["q" + q.id] || "";
     }
@@ -1283,12 +1343,12 @@ const SCRIPT = `
     paintSettled();
     paintChildren();
     paintComments();
-    const cnt = document.getElementById("count-decisions"); if (cnt) cnt.textContent = t.tabRemaining.replace("{n}", st.remaining);
+    const cnt = document.getElementById("count-decisions"); if (cnt) { cnt.textContent = t.tabRemaining.replace("{n}", st.remaining); cnt.removeAttribute("title"); }
+    document.getElementById("choice-outstanding").textContent = t.dependent.replace("{n}", st.dependent) + " · " + t.unanswered.replace("{n}", st.fact) + " · " + t.waitingParent.replace("{n}", st.waiting);
     paintChoiceCounts(st);
     applyChoiceFilter(choiceFilter);
     if (exportDialog.open) syncOut(); else outDirty = true;
     paintResolvedSegs(map);
-    settleFocus = false;
   }
   // C4b: a question block whose every question is decided (or not applicable) gets a cue in attention mode.
   function paintResolvedSegs(scope) {
@@ -1300,7 +1360,6 @@ const SCRIPT = `
     }
   }
 
-  // ---- the picture viewer: fit or actual size, previous and next, focus returned to the thumbnail ----
   const zd = document.getElementById("zoom-dialog"), shots = all("img.shot-zoom");
   let zi = 0, zfocus = null;
   function showZoom(i) {
@@ -1329,7 +1388,7 @@ const SCRIPT = `
     const exp = event.target.closest("#export-open"); if (exp) { openExportDialog(); return; }
     const ce = event.target.closest(".comment-edit");
     if (ce) { const d = ce.closest(".card-comment, .block-comment"); d.dataset.editing = "1"; const view = d.querySelector(".comment-view"); if (view) view.hidden = true; const field = d.querySelector("textarea, input"); field.hidden = false; const lbl = d.querySelector("label"); if (lbl) lbl.hidden = false; field.focus(); return; }
-    const cf = event.target.closest("[data-choice-filter]"); if (cf) { applyChoiceFilter(cf.dataset.choiceFilter); return; }
+    const cf = event.target.closest("[data-choice-filter]"); if (cf) { applyChoiceFilter(cf.dataset.choiceFilter, false); return; }
     const zbtn = event.target.closest("button.shot-open"); if (zbtn) { showZoom(+zbtn.dataset.zoom); return; }
     const img = event.target.closest("img.shot-zoom"); if (img) { showZoom(shots.indexOf(img)); return; }
     const segpop = event.target.closest("[data-segpop]"); if (segpop) { openPop(segpop.dataset.segpop, segpop); return; }
@@ -1403,32 +1462,35 @@ const SCRIPT = `
     else if (button.id === "copy-top") { copyDecisionsText(); return; }
     else if (button.id === "clear") { if (!confirm(t.clearConfirm)) return; state = D.empty(); annotationUI.reset(); clearFilters(); }
     else return;
-    settleFocus = true; state = D.settle(data.questions, state); save(); paint();
+    if (event.isTrusted && button.closest(".dunit") && !button.closest(".dunit").contains(document.activeElement)) button.focus({ preventScroll: true });
+    state = D.settle(data.questions, state); save(); paint();
   });
   document.addEventListener("input", (event) => {
     if (event.target.dataset.blend !== undefined) event.target.closest("article").querySelector(".shots").style.setProperty("--blend", event.target.value / 100);
     const aid = event.target.dataset.answer;
-    if (aid) { if (event.target.value.trim()) state.answers[aid] = event.target.value.trim(); else delete state.answers[aid]; save(); paint(); return; }
+    if (aid) { if (event.target.value.trim()) state.answers[aid] = event.target.value; else delete state.answers[aid]; save(); paint(); return; }
     const id = event.target.dataset.note;
     if (!id) return;
-    if (event.target.value.trim()) state.notes[id] = event.target.value.trim(); else delete state.notes[id];
-    save(); paint();
+    if (id[0] === "q" && state.questions[id.slice(1)]?.note !== undefined) delete state.questions[id.slice(1)].note;
+    if (event.target.value.trim()) state.notes[id] = event.target.value; else delete state.notes[id];
+    state = D.settle(data.questions, state); save(); paint();
   });
-  // Leaving a comment box collapses it to the compact saved view.
   document.addEventListener("focusout", (event) => {
     const d = event.target.closest && event.target.closest(".card-comment, .block-comment");
     if (d && !d.contains(event.relatedTarget)) { d.dataset.editing = ""; paintComments(); }
+    const unit = event.target.closest && (event.target.closest(".dunit") || event.target.closest(".settled-row")?.querySelector(".dunit"));
+    if (unit && !unit.closest(".settled-row")?.contains(event.relatedTarget) && !unit.contains(event.relatedTarget))
+      queueMicrotask(() => { if (!unit.contains(document.activeElement) && !unit.closest(".settled-row")?.contains(document.activeElement)) paint(); });
   });
   document.addEventListener("change", (event) => {
     const qid = event.target.dataset.questionVariant;
     if (qid) {
-      // The radio is the decision, reversible on every size: accepted at once, changed by another pick,
-      // cleared by Reset. No separate mobile draft-and-confirm rule.
       const cur = { ...qEntry(qid) };
       if (event.target.value) { cur.variant = event.target.value; cur.choice = "accepted"; }
       else { delete cur.variant; if (cur.choice === "accepted" || cur.choice === "draft") delete cur.choice; }
       if (cur.choice || cur.variant) state.questions[qid] = cur; else delete state.questions[qid];
-      settleFocus = true; state = D.settle(data.questions, state); save(); paint(); return;
+      if (event.isTrusted && !event.target.closest(".dunit")?.contains(document.activeElement)) event.target.focus({ preventScroll: true });
+      state = D.settle(data.questions, state); save(); paint(); return;
     }
     const z = event.target.dataset.zone;
     if (z) { if (event.target.checked) state.zones[z] = true; else delete state.zones[z]; save(); }
@@ -1484,10 +1546,9 @@ const SCRIPT = `
     printSnapshot = null; auditorPrint = false;
   });
 
-  const annotationUI = (${annotations.toString()})({ state: () => state, changed: () => { save(); paint(); }, t: data.annotationLabels, reveal: (el) => {
-    // «Go to passage» lands on the source tab with the marker visible: activate its panel, undo any map
-    // filter hiding the segment, and open the ancestor disclosures.
+  annotationUI = (${annotations.toString()})({ sha256: (${annotationSha256.toString()}), ensureWhere: buildWhere, state: () => state, changed: () => { save(); paint(); }, identity: { document: data.annotationDocument, record: data.annotationRecord }, locationsChanged: () => { if (exportDialog.open) syncOut(); else outDirty = true; }, t: data.annotationLabels, reveal: (el) => {
     const panel = el.closest(".panel");
+    if (panel?.dataset.panel === "decisions") applyChoiceFilter("all");
     if (panel && panel.dataset.panel !== activeTab) { activate(panel.dataset.panel); history.replaceState(null, "", "#panel-" + panel.dataset.panel); }
     const seg = el.closest(".seg[data-block]");
     if (seg && seg.style.display === "none") { clearFilters(); setMode("all"); }
@@ -1501,7 +1562,6 @@ const SCRIPT = `
   setTreeMode(state.treeMode === "flat" ? "flat" : "folder");
   applyTreeWidth(state.treeWidth);
   paint();
-  // The scrollspy marks the tree row of the file at the viewport top line while the code tab scrolls.
   let spyScheduled = false;
   window.addEventListener("scroll", () => {
     if (spyScheduled || activeTab !== "code") return;
@@ -1522,8 +1582,6 @@ const SCRIPT = `
 })();
 `;
 
-// A reviewer's sentence: escaped, with its `code` spans set as code.
-const prose = (value) => esc(value).replace(/`([^`]+)`/g, "<code>$1</code>");
 // A text of a few lines: a line that starts with "- " is an item of a list, any other a paragraph.
 function lines(value, lead = "") {
   const out = [], items = [];
@@ -1541,12 +1599,6 @@ const cite = (ids) => ids.map((id) => `<a href="#f${esc(id)}">${esc(id)}</a>`).j
 const grounds = (item) => item.verdict === "question" ? item.questions.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ") : cite(item.findings);
 const table = (head, rows) => `<div class="table"><table><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table></div>`;
 const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", remove: "v-remove", question: "v-question" };
-// A claim's sources: an internal ref links to the item it names, an external place stands as text.
-const srcHtml = (sources, review) => (sources ?? []).map((s) => {
-  const { text, anchor } = sourceOf(s, review);
-  return anchor ? `<a href="${esc(anchor)}">${esc(text)}</a>` : esc(text);
-}).filter(Boolean).join(", ");
-const claimsHtml = (list, review) => `<ul class="plain">${list.map((c) => `<li>${prose(c.text)}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review)})</span>` : ""}</li>`).join("")}</ul>`;
 const coverageLabel = (kind, t) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
 // The place of a question or finding, shortened to the file's unique suffix; the full place stays in the title.
 const placeHtml = (at, model) => {
@@ -1591,19 +1643,18 @@ const noClearRec = (text) => /^(однозначной рекомендации 
 const commentBox = (id, t, hint) => `<details class="card-comment act" data-comment="${esc(id)}"><summary>${esc(t("card.comment"))}</summary><textarea class="qnote" id="qnote-${esc(id)}" data-note="${esc(id)}" rows="2" aria-label="${esc(hint || t("card.comment"))}: ${esc(id)}"></textarea></details>`;
 const names = (t, label, ids) => ids?.length ? ` <strong>${esc(t(label))} ${ids.map(esc).join(", ")}.</strong>` : "";
 
-const findingHead = (title, displayId, statusId, meta, t) => `<div class="card-head"><h3 class="card-title">${esc(title)}</h3><span class="card-id mono">${esc(displayId)}</span><span class="tag v-open qstatus" data-fstatus="${esc(statusId)}" data-state="open">${esc(t("decision.status.open"))}</span>${meta ? `<span class="card-meta">${meta}</span>` : ""}</div>`;
+const findingHead = (title, displayId, statusId, meta, t) => `<div class="card-head"><h3 class="card-title" data-ann-field="title">${esc(title)}</h3><span class="card-id mono">${esc(displayId)}</span><span class="tag v-open qstatus" data-fstatus="${esc(statusId)}" data-state="open">${esc(t("decision.status.open"))}</span>${meta ? `<span class="card-meta">${meta}</span>` : ""}</div>`;
 const applySkip = (id, kind, ariaArg, t) => `<div class="card-choice"><span class="choice-label act">${esc(t(kind === "fix" ? "decision.your-decision" : "decision.your-choice"))}</span><span class="decide group act" data-finding="${esc(id)}"><button type="button" value="apply" aria-label="${esc(t(`decision.${kind}-apply-aria`, ariaArg))}">${esc(t(`decision.${kind}-apply`))}</button><button type="button" value="skip" aria-label="${esc(t(`decision.${kind}-skip-aria`, ariaArg))}">${esc(t(`decision.${kind}-skip`))}</button></span></div>`;
 
 // One question card in the unified shell: head → essence → limit → choice → answer → comment → disclosures.
 // The state machine is the record's: variants, gate, draft, zones; only the shell is shared.
 function questionCard(q, review, model, t, child, partCount) {
   const variants = q.variants ?? [];
-  const lead = q.kind === "fact" ? `<b>${esc(t("decision.fact-needed"))}</b> ` : q.kind === "evidence" ? `<b>${esc(t("decision.evidence-needed"))}</b> ` : "";
   const rec = q.recommendation;
   const asLimit = q.kind === "decision" && variants.length && rec && !rec.variant && noClearRec(rec.text);
   const limit = asLimit ? prose(rec.text)
     : q.kind !== "decision" && q.remainingEvidence?.length ? `${esc(t("decision.limit-unverified"))} ${q.remainingEvidence.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ")}` : "";
-  const advice = rec && !asLimit ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(rec.text)}${rec.variant ? ` <span class="sub">[${esc(rec.variant)}]</span>` : ""}${rec.sources?.length ? ` <span class="sub">(${srcHtml(rec.sources, review)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : "";
+  const advice = rec && !asLimit ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(rec.text)}${rec.variant ? ` <span class="sub">[${esc(rec.variant)}]</span>` : ""}${rec.sources?.length ? ` <span class="sub">(${srcHtml(rec.sources, review, t, q.id)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : "";
   const actions = q.kind === "decision" && variants.length ? `
     <div class="qactions act"><button type="button" data-defer="${q.id}" aria-label="${esc(t("decision.defer"))}: Q${q.id}">${esc(t("decision.defer"))}</button><button type="button" data-qreset="${q.id}" aria-label="${esc(t("decision.reset"))}: Q${q.id}" hidden>${esc(t("decision.reset"))}</button></div>
     <p class="qdraft sub" data-qdraft="${q.id}" hidden></p>` : "";
@@ -1617,22 +1668,21 @@ function questionCard(q, review, model, t, child, partCount) {
   const checks = q.kind === "decision" && q.remainingEvidence?.length ? `<details class="qchecks"><summary>${esc(t("card.more-checks"))}</summary><div class="stack">${remaining}</div></details>` : "";
   return `
   <div class="qcard ${esc(q.kind)}${child ? " child" : ""}" id="q${q.id}" data-qid="${q.id}"${q.parent ? ` data-parent="${q.parent.question}"` : ""} data-where="Q${q.id}">
-    <div class="card-head"><h3 class="card-title">${q.kind === "decision" && q.resolver === "owner" ? esc(t("question.owner-decision")) : esc(t(`question.kind.${q.kind}`)) + (q.resolver ? ` · ${esc(q.resolver)}` : "")}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${placeHtml(q.at, model)}</span></div>
-    <p class="card-question">${lead}${prose(q.text)}</p>
+    <div class="card-head"><h3 class="card-title" data-ann-field="text">${prose(q.text)}</h3><span class="card-id mono">Q${q.id}</span><span class="tag v-open qstatus" data-qstatus="${q.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="tag v-open na-badge" hidden>${esc(t("decision.na-badge"))}</span><span class="card-meta">${q.kind === "decision" && q.resolver === "owner" ? esc(t("question.owner-decision")) : esc(t(`question.kind.${q.kind}`)) + (q.resolver ? ` · ${esc(q.resolver)}` : "")} · ${placeHtml(q.at, model)}</span></div>
     ${q.parent ? `<p class="qgate sub" data-qgate="${q.id}" hidden></p><p class="sub">${esc(t("question.parent"))}: <a href="#q${q.parent.question}">Q${q.parent.question}</a></p>` : ""}
     ${limit ? `<p class="card-limit">${limit}</p>` : ""}
     ${advice}
-    ${variants.length ? `<fieldset class="qopts" disabled><legend>${esc(t("decision.choose"))}</legend>${variants.map((v) => `
-      <label class="qopt"><input type="radio" name="vq${q.id}" value="${esc(v.id)}" data-question-variant="${q.id}" disabled><span><strong>${esc(v.text)}</strong>${v.consequences?.length ? `<span class="qcons">${esc(t("question.consequences"))}:</span>${claimsHtml(v.consequences, review)}` : ""}</span></label>`).join("")}<span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></fieldset>` : ""}
+    ${variants.length ? `<fieldset class="qopts" disabled><legend>${esc(t("decision.choose"))}</legend>${variants.map((v, vi) => `
+      <label class="qopt"><input type="radio" name="vq${q.id}" value="${esc(v.id)}" data-question-variant="${q.id}" disabled><span><strong data-ann-field="variant.${vi}.text">${esc(v.text)}</strong>${v.consequences?.length ? `<span class="qcons">${esc(t("question.consequences"))}:</span>${claimsHtml(v.consequences, review, t, q.id, `variant.${vi}.consequences`)}` : ""}</span></label>`).join("")}<span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></fieldset>` : ""}
     ${actions}${decide}
     ${q.kind === "decision" ? `<span class="sub requires-content" hidden></span>` : ""}
     ${answer}
-    ${q.zones?.length ? `<div class="qzones"><span class="label">${esc(t("question.zones"))}</span><ul class="plain">${q.zones.map((z, zi) => `<li><label><input type="checkbox" data-zone="${q.id}-${zi}" disabled> <span>${prose(z.text)}${z.sources?.length ? ` <span class="sub">(${srcHtml(z.sources, review)})</span>` : ""}</span></label></li>`).join("")}</ul><p class="zone-note sub">${esc(t("decision.zone-note"))}</p><span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></div>` : ""}
+    ${q.zones?.length ? `<div class="qzones"><span class="label">${esc(t("question.zones"))}</span><ul class="plain">${q.zones.map((z, zi) => `<li><label><input type="checkbox" data-zone="${q.id}-${zi}" disabled> <span>${prose(z.text)}${z.sources?.length ? ` <span class="sub">(${srcHtml(z.sources, review, t, q.id)})</span>` : ""}</span></label></li>`).join("")}</ul><p class="zone-note sub">${esc(t("decision.zone-note"))}</p><span class="sub nojs-note">${esc(t("decision.requires-js"))}</span></div>` : ""}
     ${commentBox("q" + q.id, t, t("decision.note"))}
     <div class="card-more">
       <details class="qdetail"><summary>${esc(t("card.more-basis"))}</summary><div class="stack">
-        ${q.context?.length ? `<div class="qctx"><span class="label">${esc(t("question.context"))}</span>${claimsHtml(q.context, review)}</div>` : ""}
-        ${asLimit && rec.sources?.length ? `<p class="sub">${esc(t("sources"))}: ${srcHtml(rec.sources, review)}</p>` : ""}
+        ${q.context?.length ? `<div class="qctx"><span class="label">${esc(t("question.context"))}</span>${claimsHtml(q.context, review, t, q.id, "context")}</div>` : ""}
+        ${asLimit && rec.sources?.length ? `<p class="sub">${esc(t("sources"))}: ${srcHtml(rec.sources, review, t, q.id)}</p>` : ""}
         ${q.kind !== "decision" ? remaining : ""}
       </div></details>
       ${where}
@@ -1646,13 +1696,13 @@ function findingCard(f, review, model, t) {
   return `
   <article class="finding" id="f${esc(f.id)}" data-where="${esc(`${t("finding")} ${f.id}`)}">
     ${findingHead(f.title, "F" + f.id, f.id, `${esc(t(`direction.${f.direction}`))} · ${blocks.length} ${esc(t("blocks").toLowerCase())}`, t)}
-    <p class="card-question">${prose(f.what)}${names(t, "breaks", f.breaks)}${names(t, "untested", f.untested)}</p>
+    <p class="card-question"><span data-ann-field="what">${prose(f.what)}</span>${names(t, "breaks", f.breaks)}${names(t, "untested", f.untested)}</p>
     <p class="card-limit">${esc(t(`finding.limit.${f.evidence}`))}</p>
-    <p class="card-consequence"><strong>${esc(t("fix"))}:</strong> ${prose(f.fix)}</p>
+    <p class="card-consequence"><strong>${esc(t("fix"))}:</strong> <span data-ann-field="fix">${prose(f.fix)}</span></p>
     ${applySkip(f.id, "fix", f.id, t)}
     ${commentBox("f" + esc(f.id), t, t("note-finding"))}
     <div class="card-more">
-      <details class="qdetail"><summary>${esc(t("card.more-basis"))}</summary><div class="stack"><p><strong>${esc(t("shown-by"))}:</strong> ${prose(f.shown_by)}</p><p class="sub mono">${esc(f.at)}</p></div></details>
+      <details class="qdetail"><summary>${esc(t("card.more-basis"))}</summary><div class="stack"><p><strong>${esc(t("shown-by"))}:</strong> <span data-ann-field="shown_by">${prose(f.shown_by)}</span></p><p class="sub mono">${esc(f.at)}</p></div></details>
       ${blocks.length ? `<details class="qwhere"><summary>${esc(t("card.more-code"))} · ${placeHtml(f.at, model)} · ${blocks.length} ${esc(t("blocks").toLowerCase())}</summary><div class="qwhere-body"><div class="group">${blocks.map(chip).join("")}<button type="button" class="req-link" data-f-filter="${esc(f.id)}" disabled title="${esc(t("map.open-filter"))}: F${esc(f.id)}">${esc(t("map.open-filter"))} →</button></div></div></details>` : ""}
     </div>
   </article>`;
@@ -1693,7 +1743,8 @@ function decisionSheet(review, model, t, ideas, partCount) {
   const ideaUnits = ideas.map((idea) => `<div class="dunit" data-unit="${idea.id}">${ideaCard(idea, model, t)}</div>`).join("");
   return `
 <section id="questions" class="stack decision-sheet" data-where="${esc(t("questions"))}">
-  <details class="count-note"><summary>${esc(t("decision.export-note"))}</summary><p class="sub">${esc(t("decision.export-method"))}</p></details>
+  <details class="count-note"><summary>${esc(t("decision.export-note"))}</summary><p class="sub">${esc(t("decision.export-local-method"))}</p></details>
+  <p class="sub" id="choice-outstanding" role="status"></p>
   ${ownerRoots.length ? `<div class="dgroup" id="group-owner" role="group" aria-label="${esc(t("decisions"))}"><h3 class="dgroup-title">${esc(t("group.owner"))}</h3><div class="dgroup-body">${ownerRoots.map(unit).join("")}</div></div>` : ""}
   <div class="dgroup" id="group-fix" role="group" aria-label="${esc(t("findings"))}"><h3 class="dgroup-title">${esc(t("group.fix"))}</h3><div class="dgroup-body">${findings || `<p>${esc(t("none"))}</p>`}</div>
     ${ideas.length ? `<details class="ideas-opt" id="ideas"><summary>${esc(t("ideas.optional", ideas.length))} <span class="sub">— ${esc(t("ideas.not-counted"))}</span></summary><div class="dgroup-body">${ideaUnits}</div></details>` : ""}
@@ -1729,7 +1780,7 @@ function tradeoffs(review, t) {
   if (!review.tradeoffs?.length) return "";
   return `
 <section id="tradeoffs" class="stack"><h2>${esc(t("tradeoffs"))}</h2>${review.tradeoffs.map((x) => `
-  <div class="tradeoff" data-where="${esc(t("tradeoffs"))}"><p>${prose(x.text)}</p><p class="sub"><strong>${esc(t("tradeoff.consequence"))}:</strong> ${prose(x.consequence)}${x.sources?.length ? ` (${srcHtml(x.sources, review)})` : ""}</p></div>`).join("")}
+  <div class="tradeoff" data-where="${esc(t("tradeoffs"))}"><p>${prose(x.text)}</p><p class="sub"><strong>${esc(t("tradeoff.consequence"))}:</strong> ${prose(x.consequence)}${x.sources?.length ? ` (${srcHtml(x.sources, review, t)})` : ""}</p></div>`).join("")}
 </section>`;
 }
 
@@ -1760,7 +1811,7 @@ function screens(review, { screens: shown }, t) {
   <article class="finding" id="shot-${index + 1}" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}<a class="shot-link" href="#shot-${index + 1}" aria-label="${esc(t("shot.permalink"))} ${index + 1}: ${esc(s.name)}" title="${esc(t("shot.permalink"))}">#</a></h3>
     <div class="pair shots">${shot("mockup", s.mockup, s)}${shot("before", s.before, s)}${shot("after", s.after, s)}</div>
-    ${s.revision || s.sources?.length ? `<p class="sub"><span class="mono">${esc(s.revision ?? "")}</span>${s.sources?.length ? ` (${srcHtml(s.sources, review)})` : ""}</p>` : ""}
+    ${s.revision || s.sources?.length ? `<p class="sub"><span class="mono">${esc(s.revision ?? "")}</span>${s.sources?.length ? ` (${srcHtml(s.sources, review, t)})` : ""}</p>` : ""}
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
       + `<label class="group sub" for="blend-${index + 1}">${esc(t("result"))} <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
     ${s.differences.length ? `<ul class="plain">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="sub">${esc(t("reason"))}: ${prose(d.why)}</span>` : ""}`
@@ -1826,7 +1877,7 @@ function map(review, files, model, t, hl, partCount) {
     const srcTitle = (srcBits.join(" ; ") || `${b.path} · ${t("seg.no-line")}`) + (pr ? ` · ${t("seg.source-open")}` : "");
     const src = pr ? `<a class="src" href="${esc(pr.url)}" target="_blank" rel="noopener" title="${esc(srcTitle)}" aria-label="${esc(t("seg.source"))} B${b.id}: ${esc(srcTitle)}">↗</a>` : "";
     return `<div class="segbar" title="${esc(metaTitle(b))}"><span class="dot" aria-hidden="true"></span><a class="bnum mono" href="#b${b.id}" title="${esc(t("seg.permalink", b.id))}">B${b.id}</a>`
-      + `<span class="does">${b.does ? prose(b.does) : esc(t(`verdict.${b.verdict}`))}</span>`
+      + `<span class="does" data-ann-field="summary">${b.does ? prose(b.does) : esc(t(`verdict.${b.verdict}`))}</span>`
       + `<span class="tag v-${b.verdict}">${esc(t(`verdict.${b.verdict}`))}</span><span class="links">${fq}</span>${src}`
       + `<button type="button" class="act" data-segpop="${b.id}" aria-label="${esc(t("seg.popover-open", b.id))}" aria-haspopup="dialog">ⓘ</button></div>`;
   };
@@ -1898,11 +1949,12 @@ function treeNav(files, model, t) {
     const adds = own.reduce((sum, b) => sum + b.weightLines.added, 0), rems = own.reduce((sum, b) => sum + b.weightLines.removed, 0);
     const nonkeep = own.filter((b) => b.verdict !== "keep").length;
     const mark = { A: ["+", "added"], D: ["−", "deleted"], M: ["±", "modified"] }[model.files[idx].status] ?? ["±", "modified"];
+    const chars = [...name], cut = Math.ceil(chars.length / 2);
     return `<li class="frow" data-frow="${idx}" data-purpose="${esc(model.purpose.file[path])}"><span class="fs fs-${model.files[idx].status}" role="img" aria-label="${esc(t(`file.status.${mark[1]}`))}" title="${esc(t(`file.status.${mark[1]}`))}">${mark[0]}</span>`
-      + `<button type="button" class="fname mono" data-fexpand="${idx}" disabled title="${esc(path)}">${esc(name)}</button><span class="sub req-count">+${adds}/−${rems}</span>${nonkeep ? `<span class="sub req-count" title="${esc(t("map.attention", nonkeep))}">•${nonkeep}</span>` : ""}</li>`;
+      + `<button type="button" class="fname mono" data-fexpand="${idx}" disabled title="${esc(path)}" aria-label="${esc(path)}"><span class="fname-start">${esc(chars.slice(0, cut).join(""))}</span><span class="fname-end"><bdi dir="ltr">${esc(chars.slice(cut).join(""))}</bdi></span></button><span class="sub req-count">+${adds}/−${rems}</span>${nonkeep ? `<span class="sub req-count" title="${esc(t("map.attention", nonkeep))}">•${nonkeep}</span>` : ""}</li>`;
   };
   const dir = (name, node) => node.dirs.size === 1 && !node.files.length ? dir(`${name}/${[...node.dirs.keys()][0]}`, [...node.dirs.values()][0])
-    : `<li><details class="fdir" open><summary class="mono sub" title="${esc(name)}/">${esc(name)}/ <span class="sub">${countFiles(node)}</span></summary>${list(node)}</details></li>`;
+    : `<li><details class="fdir" open><summary class="mono sub" title="${esc(name)}/">${esc(name)}/ <span class="sub" data-dir-count>${countFiles(node)} ${esc(t("tree.files"))}</span></summary>${list(node)}</details></li>`;
   const list = (node) => `<ul>${[...node.dirs].map(([name, child]) => dir(name, child)).join("")}${node.files.map(fileRow).join("")}</ul>`;
   return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
   <div class="tree-filter act"><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" aria-label="${esc(t("tree.filter"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
@@ -2010,7 +2062,7 @@ function coverage(review, t) {
   const cs = review.coverageStructured;
   const grid = cs?.length ? `<div class="cov-grid">${["ran", "read", "not_checked"].map((kind) => {
     const items = cs.filter((c) => c.kind === kind);
-    return items.length ? `<span class="label">${esc(coverageLabel(kind, t))}</span><div class="stack">${items.map((c) => `<p>${prose(c.text)}${c.revision ? ` <span class="sub mono">@ ${esc(c.revision)}</span>` : ""}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review)})</span>` : ""}</p>`).join("")}</div>` : "";
+    return items.length ? `<span class="label">${esc(coverageLabel(kind, t))}</span><div class="stack">${items.map((c) => `<p>${prose(c.text)}${c.revision ? ` <span class="sub mono">@ ${esc(c.revision)}</span>` : ""}${c.sources?.length ? ` <span class="sub">(${srcHtml(c.sources, review, t)})</span>` : ""}</p>`).join("")}</div>` : "";
   }).join("")}</div>` : "";
   const prosePart = `<p>${prose(review.coverage || t("none"))}</p>`;
   return `
@@ -2039,9 +2091,7 @@ export function page(review, files, model, { syntax } = {}) {
   const mapHtml = map(review, files, model, t, hl, partCount);
   const sheet = decisionSheet(review, model, t, ideas, partCount);
   const pr = review.passport?.links?.find((l) => l.kind === "pr");
-  // The page's script reads what it needs from here: the review's own name for its stored decisions, the digests
-  // of the bytes it was drawn from, the questions with their variants, the blocks with their sources, and the words it writes.
-  const data = { title: review.title, range: review.range, key: model.key,
+  const data = { annotationDocument: "0".repeat(64), annotationRecord: annotationRecordDigest(review, files), title: review.title, range: review.range, key: model.key,
     digest: { record: model.recordSha ?? model.key, diff: review.diff?.sha256 ?? "" },
     findings: review.findings.map(({ id, title }) => ({ id, title })),
     questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks, zones }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })), zones: (zones ?? []).map((z) => z.text) })),
@@ -2055,19 +2105,21 @@ export function page(review, files, model, { syntax } = {}) {
       accepted: t("decision.accepted"), deferred: t("decision.deferred"), notApplicable: t("decision.not-applicable"),
       requiresContent: t("decision.requires-content"), deferReason: t("decision.defer-reason"),
       tabRemaining: t("tab.remaining", "{n}"), countAnswers: t("choice.count.answers", "{n}"), countEntries: t("choice.count.entries", "{n}"), copyText: t("export.copy-text"), copyFailed: t("copy.failed"),
+      countDecisions: t("choice.count.decisions", "{n}"), countFindings: t("choice.count.findings", "{n}"), countDeferred: t("choice.count.deferred", "{n}"), dependent: t("choice.dependent", "{n}"), unanswered: t("choice.unanswered", "{n}"), waitingParent: t("choice.waiting-parent", "{n}"), filterEditing: t("choice.filter-editing"), dependsOn: t("question.parent"), selectionWaiting: t("decision.selection-waiting", "{n}"),
       theme: { current: t("theme.current"), next: t("theme.next"), auto: t("theme.auto"), light: t("theme.light"), dark: t("theme.dark") },
       status: { open: t("decision.status.open"), decided: t("decision.status.decided", "{n}"), draft: t("decision.status.draft", "{n}") },
+      answerStatus: Object.fromEntries(["entered", "waiting-parent", "not-applicable"].map((s) => [s, t("answer.status." + s, "{n}")])),
       answered: t("decision.answered"), fixApply: t("decision.fix-apply"), fixSkip: t("decision.fix-skip"), ideaApply: t("decision.idea-apply"), ideaSkip: t("decision.idea-skip"),
       selectedNoVariant: t("decision.selected-no-variant"), draftSuffix: t("decision.draft-suffix", "{n}"), draftRow: t("decision.draft-row", "{n}"), answerRow: t("decision.answer-row", "{n}"),
       zoneMarked: t("decision.zone-marked"),
-      draftDeferred: t("decision.draft-deferred", "{n}"),
-      gatePending: t("decision.gate-pending", "{n}"), gateNa: t("decision.gate-na", "{n}"), gateDraft: t("decision.gate-draft", "{n}"),
+      draftDeferred: t("decision.draft-local", "{n}"),
+      gatePending: t("decision.gate-pending", "{n}"), gateNa: t("decision.gate-na", "{n}"), gateDraft: t("decision.gate-draft-local", "{n}"),
       children: t("decision.children"), childrenWait: t("decision.children.wait"), childrenOpen: t("decision.children.open", "{n}"), childrenNa: t("decision.children.na"),
       cardComment: t("card.comment"), cardCommentN: t("card.comment-n", "{n}"), commentEdit: t("annotation.edit"),
       segCommentDetails: t("seg.comment-details"), segCommentDetailsN: t("seg.comment-details-n", "{n}"), whereEmpty: t("card.no-blocks"),
       export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), zones: t("export.zones"), comments: t("export.comments"),
         emptyAccepted: t("export.empty-accepted"), emptyDeferred: t("export.empty-deferred"), emptyComments: t("export.empty-comments"),
-        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"), openFindings: t("export.open-findings"),
+        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"), openFindings: t("export.open-findings"), openDecisions: t("export.open-decisions"), openDependent: t("export.open-dependent"), openRequests: t("export.open-requests"),
         versionRecord: t("passport.record"), versionDiff: t("passport.diffSha") },
       verdict: Object.fromEntries(VERDICTS.map((v) => [v, t(`verdict.${v}`)])),
       findings: t("findings"), questions: t("questions"), serves: t("serves"), servesNothing: t("serves-nothing"), inUnit: t("in-unit"),
@@ -2076,8 +2128,8 @@ export function page(review, files, model, { syntax } = {}) {
       noteBlock: t("note-block"), close: t("viewer.close"),
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
       code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
-      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files") },
-    annotationLabels: Object.fromEntries(["annotation", "edit", "source", "unlocated", "saved", "deleted", "restored", "report"].map(k => [k, t(`annotation.${k}`)])) };
+      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files"), treeFiles: t("tree.files"), treeVisibleFiles: t("tree.visible-files") },
+    annotationLabels: { ...Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])), unlocated: t("annotation.unverified") } };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
   const D = decisionRuntime(), cfStatic = D.choiceStats(model.questions, D.empty(), review.findings, ideas);
@@ -2093,11 +2145,13 @@ export function page(review, files, model, { syntax } = {}) {
   const subtabs = `<nav class="choice-filters act" role="group" aria-label="${esc(t("choice.filters"))}">${[["all", t("choice.filter.all")], ["q", t("choice.filter.q")], ["f", t("choice.filter.f")], ["i", t("choice.filter.i")], ["fact", t("choice.filter.fact")], ["deferred", t("choice.filter.deferred")], ["done", t("choice.filter.done")]]
     .map(([value, label]) => {
       const badge = value === "all" ? "" : `<span class="cf-count" data-cf-count="${value}" data-zero="${cfStatic[value] ? 0 : 1}">${cfStatic[value]}</span>`;
-      const wording = value === "fact" ? "choice.count.answers" : ["i", "done", "deferred"].includes(value) ? "choice.count.entries" : "tab.remaining";
+      const wording = value === "fact" ? "choice.count.answers" : value === "deferred" ? "choice.count.deferred" : ["i", "done"].includes(value) ? "choice.count.entries" : value === "q" ? "choice.count.decisions" : "choice.count.findings";
       const aria = value === "all" ? "" : ` aria-label="${esc(label)}: ${esc(t(wording, cfStatic[value]))}"`;
       return `<button type="button" data-choice-filter="${value}" data-cf-label="${esc(label)}" aria-pressed="${value === "all"}"${aria} disabled>${esc(label)}${badge}</button>`;
     }).join("")}</nav>`;
-  return `<!doctype html>
+  const htmlLanguage = Intl.getCanonicalLocales(review.language ?? "en")[0];
+  const html = `<!doctype html>
+<html lang="${esc(htmlLanguage)}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(t("kind"))}: ${esc(review.title)}</title>
@@ -2105,6 +2159,7 @@ export function page(review, files, model, { syntax } = {}) {
 <a class="skip-link" href="#questions">${esc(t("skip-to-decisions"))}</a>
 <div class="wrap" id="review-content" tabindex="-1">
 <header class="page-head"><div class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></div><button type="button" id="export-open" class="act" disabled>${esc(t("export.open"))}</button><button type="button" id="theme-toggle" class="theme-btn act" aria-label="${esc(t("theme.toggle"))}" title="${esc(t("theme.toggle"))}"></button></header>
+<p id="storage-status" role="status" aria-live="polite" hidden>${esc(t("storage.failed"))}</p>
 <div class="bar global-nav"><nav class="tabs" role="tablist" aria-label="${esc(t("tablist"))}">${tablist}</nav></div>
 <noscript><p class="sub">${esc(t("nojs.note"))}</p></noscript>
 ${panel("overview", `
@@ -2142,8 +2197,8 @@ ${coverage(review, t)}
 <div id="seg-popover" role="dialog" aria-label="${esc(t("seg.popover"))}" hidden></div>
 <dialog id="export-dialog" aria-label="${esc(t("export.open"))}">
   <h2>${esc(t("export.open"))}</h2>
-  <p class="sub">${esc(t("export.dialog-note"))}</p>
-  <div id="export-preview" aria-label="${esc(t("export.open"))}"></div>
+  <p class="sub">${esc(t("export.storage-explanation"))}</p>
+  <div id="export-preview" tabindex="-1" aria-label="${esc(t("export.open"))}"></div>
   <div class="group"><button type="button" id="export-json-top" title="${esc(t("export.download"))}: decisions-${esc(model.key)}.json">${esc(t("export.download"))}</button><button type="button" id="copy-top">${esc(t("export.copy-text"))}</button><form method="dialog"><button type="submit">${esc(t("viewer.close"))}</button></form></div>
   <p id="export-status" role="status"></p>
   <label for="out">${esc(t("export.text"))}</label><textarea id="out" readonly rows="12"></textarea>
@@ -2163,6 +2218,8 @@ ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
 </dialog>` : ""}
 <dialog id="annotation-editor" aria-labelledby="annotation-heading">
   <h2 id="annotation-heading">${esc(t("note-passage"))}</h2><blockquote></blockquote>
+  <p class="sub">${esc(t("annotation.proof-note"))}</p>
+  <p data-annotation-warning role="status" hidden>${esc(t("annotation.unverified"))}</p>
   <textarea aria-label="${esc(t("note-passage"))}" rows="4"></textarea>
   <div class="group"><button type="button" data-annotation-action="save">${esc(t("annotation.save"))}</button><button type="button" data-annotation-action="cancel">${esc(t("annotation.cancel"))}</button><button type="button" data-annotation-action="delete">${esc(t("remove"))}</button></div>
 </dialog>
@@ -2170,4 +2227,5 @@ ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
 <script id="data" type="application/json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>
 <script>${SCRIPT}</script>
 `;
+  return sealAnnotationDocument(html);
 }
