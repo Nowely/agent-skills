@@ -190,6 +190,12 @@ textarea.qnote { width: 100%; min-height: 3.4rem; font: .92rem/1.45 var(--text);
 .choice-filters button { border: 0; border-radius: 0; background: none; min-height: 32px; padding: .35rem .8rem; font-size: .92rem; color: var(--muted); box-shadow: inset 0 -2px transparent }
 .choice-filters button + button { border-left: 1px solid var(--line) }
 .choice-filters button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--fg); font-weight: 650; box-shadow: inset 0 -2px var(--accent) }
+/* Subtab badges: a restrained accent when work remains, a neutral «0» when none (never a green check); ideas
+   stay neutral (optional). A divider separates the type filters from the status filters. */
+.choice-filters .cf-count { font-size: 12px; font-variant-numeric: tabular-nums; margin-left: .4rem; padding: 0 .4rem; border-radius: 1rem; background: var(--line); color: var(--muted); font-weight: 600 }
+.choice-filters .cf-count:not([data-zero="1"]) { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent) }
+.choice-filters [data-choice-filter="i"] .cf-count { background: var(--line); color: var(--muted) }
+.choice-filters [data-choice-filter="deferred"] { margin-left: .5rem; border-left: 2px solid var(--line) }
 .settled-row { border-top: 1px solid var(--line) }
 .settled-row:first-child { border-top: 0 }
 .settled-row > summary { cursor: pointer; padding: .4rem .2rem; font-size: .95rem; display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: baseline }
@@ -470,8 +476,10 @@ const SCRIPT = `
   const isNA = (q) => !!q.parent && !D.applicable(q, state, data.questions);
   const parentPending = (q) => { if (!q.parent) return false; const p = qById[String(q.parent.question)]; return !!p && !D.validAccept(p, state) && !D.validDefer(p, state); };
   const hiddenPurposes = () => state.hiddenPurposes || [];
-  // The one quantity: the main decisions still open plus the findings not processed; ideas never enter it.
-  const remainingCount = () => D.remainingCount(data.questions, state, data.findings);
+  // The one quantity and every subtab badge come from ONE derivative (choiceStats) over validAccept/validDefer/
+  // applicability — never a DOM tally, so the tab, the subtabs and the export cannot disagree after Q2=keep.
+  const stats = () => D.choiceStats(data.questions, state, data.findings, data.ideas);
+  let settledMap = {};
   const midPath = (p) => { if (p.length <= 46) return p; const m = /^(.*?)(:\\d+.*)?$/.exec(p), path = m[1], suffix = m[2] || ""; const parts = path.split("/"); let tail = parts.slice(-2).join("/"); if (tail.length > 40) tail = parts[parts.length - 1]; return "…/" + tail + suffix; };
   let choiceFilter = "all";
   let settleFocus = false; // a user-initiated decision lands focus on the settled row even for touch (no prior focus)
@@ -874,8 +882,9 @@ const SCRIPT = `
     }
     for (const p of j.passages) comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : ""), hash: p.anchor && p.anchor.id ? "#" + p.anchor.id : "#passages" });
     const open = data.findings.filter((f) => !j.findings[f.id]).map((f) => "F" + f.id);
-    const remainingN = j.questions.filter((e) => e.status === "remaining" && !qById[e.question].parent).length + open.length;
-    const remaining = t.tabRemaining.replace("{n}", remainingN) + (open.length ? " · " + t.open + " " + open.join(", ") : "");
+    // The remainder is the ONE choiceStats quantity (Q+F); the listed subset is explicitly the findings, so the
+    // number and the list never read as the same scope by accident.
+    const remaining = t.tabRemaining.replace("{n}", stats().remaining) + (open.length ? " · " + t.export.openFindings + ": " + open.join(", ") : "");
     return { accepted, deferred, answers, zones, comments, remaining, payload: j };
   }
   function decisionsText() {
@@ -946,17 +955,8 @@ const SCRIPT = `
   function unitSettledState(unit) {
     const card = unit.querySelector(".qcard, .finding");
     if (!card) return null;
-    if (card.classList.contains("qcard")) {
-      const q = qById[card.dataset.qid]; if (!q || q.parent) return null;
-      if (D.validAccept(q, state)) {
-        const kidsDone = (q.children || []).every((k) => { const c = qById[String(k)]; return !c || isNA(c) || D.validAccept(c, state); });
-        return kidsDone ? "done" : null;
-      }
-      return D.validDefer(q, state) ? "deferred" : null;
-    }
-    const id = card.classList.contains("idea") ? card.id : card.id.slice(1);
-    const v = state.findings[id];
-    return v === "apply" || v === "skip" ? "done" : null;
+    const id = card.classList.contains("qcard") ? "q" + card.dataset.qid : card.classList.contains("idea") ? card.id : card.id.slice(1);
+    return settledMap[id] || null;
   }
   // Settled cards move to compact rows; reverting moves the SAME card home (no second copy, ids preserved).
   function paintSettled() {
@@ -1053,6 +1053,18 @@ const SCRIPT = `
       if (sm) sm.textContent = (state.notes["b" + bid] ? t.segCommentDetailsN : t.segCommentDetails).replace("{n}", 1);
     }
   }
+  // The subtab badges read the SAME choiceStats as the tab counter and the export: a type's badge is the items
+  // still requiring action in it (ideas neutral/optional, facts «without an answer»), the status badges are the
+  // settled/deferred records. Zero is a neutral «0», never a green check; no percentage anywhere.
+  function paintChoiceCounts(st) {
+    const counts = { q: st.q, f: st.f, i: st.i, fact: st.fact, deferred: st.deferred, done: st.done };
+    for (const b of all("[data-choice-filter]")) {
+      const v = b.dataset.choiceFilter; if (v === "all") continue;
+      const n = counts[v], badge = b.querySelector(".cf-count");
+      if (badge) { badge.textContent = n; badge.dataset.zero = n ? "0" : "1"; }
+      b.setAttribute("aria-label", b.dataset.cfLabel + ": " + t.tabRemaining.replace("{n}", n));
+    }
+  }
   // The subtabs filter ONE list: type filters and status filters; a group with no visible card hides.
   function applyChoiceFilter(val) {
     choiceFilter = val;
@@ -1128,11 +1140,13 @@ const SCRIPT = `
       else { chipEl.dataset.state = "open"; chipEl.textContent = t.status.open; }
     }
     for (const z of all("[data-zone]")) { const card = z.closest(".qcard"); const na = card && card.classList.contains("na"); if (!na) z.checked = !!state.zones[z.dataset.zone]; }
+    const st = stats();
+    settledMap = st.settled;
     paintSettled();
     paintChildren();
     paintComments();
-    const remaining = t.tabRemaining.replace("{n}", remainingCount());
-    const cnt = document.getElementById("count-decisions"); if (cnt) cnt.textContent = remaining;
+    const cnt = document.getElementById("count-decisions"); if (cnt) cnt.textContent = t.tabRemaining.replace("{n}", st.remaining);
+    paintChoiceCounts(st);
     applyChoiceFilter(choiceFilter);
     if (exportDialog.open) syncOut(); else outDirty = true;
     paintResolvedSegs(map);
@@ -1884,7 +1898,7 @@ export function page(review, files, model, { syntax } = {}) {
       segCommentDetails: t("seg.comment-details"), segCommentDetailsN: t("seg.comment-details-n", "{n}"), whereEmpty: t("card.no-blocks"),
       export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), zones: t("export.zones"), comments: t("export.comments"),
         emptyAccepted: t("export.empty-accepted"), emptyDeferred: t("export.empty-deferred"), emptyComments: t("export.empty-comments"),
-        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"),
+        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"), openFindings: t("export.open-findings"),
         versionRecord: t("passport.record"), versionDiff: t("passport.diffSha") },
       verdict: Object.fromEntries(VERDICTS.map((v) => [v, t(`verdict.${v}`)])),
       findings: t("findings"), questions: t("questions"), serves: t("serves"), servesNothing: t("serves-nothing"), inUnit: t("in-unit"),
@@ -1908,8 +1922,16 @@ export function page(review, files, model, { syntax } = {}) {
   ];
   const tablist = tabs.map(([id, label, count]) => `<a role="tab" id="tab-${id}" data-tab="${id}" href="#panel-${id}" aria-controls="panel-${id}" aria-selected="${id === "decisions"}"${id !== "decisions" ? ' tabindex="-1"' : ""}>${esc(label)}${count}</a>`).join("");
   const panel = (id, content) => `<section class="panel" id="panel-${id}" data-panel="${id}" role="tabpanel" aria-labelledby="tab-${id}" tabindex="-1">${content}</section>`;
+  // The no-script badges are the static counts of the same items choiceStats counts with scripts: main decision
+  // roots, findings, ideas, fact/evidence requests; nothing is deferred or done before a choice is saved.
+  const cfStatic = { q: model.questions.filter((q) => q.kind === "decision" && !q.parent).length, f: review.findings.length,
+    i: ideas.length, fact: model.questions.filter((q) => q.kind === "fact" || q.kind === "evidence").length, deferred: 0, done: 0 };
   const subtabs = `<nav class="choice-filters act" role="group" aria-label="${esc(t("choice.filters"))}">${[["all", t("choice.filter.all")], ["q", t("choice.filter.q")], ["f", t("choice.filter.f")], ["i", t("choice.filter.i")], ["fact", t("choice.filter.fact")], ["deferred", t("choice.filter.deferred")], ["done", t("choice.filter.done")]]
-    .map(([value, label]) => `<button type="button" data-choice-filter="${value}" aria-pressed="${value === "all"}" disabled>${esc(label)}</button>`).join("")}</nav>`;
+    .map(([value, label]) => {
+      const badge = value === "all" ? "" : `<span class="cf-count" data-cf-count="${value}" data-zero="${cfStatic[value] ? 0 : 1}">${cfStatic[value]}</span>`;
+      const aria = value === "all" ? "" : ` aria-label="${esc(label)}: ${esc(t("tab.remaining", cfStatic[value]))}"`;
+      return `<button type="button" data-choice-filter="${value}" data-cf-label="${esc(label)}" aria-pressed="${value === "all"}"${aria} disabled>${esc(label)}${badge}</button>`;
+    }).join("")}</nav>`;
   return `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

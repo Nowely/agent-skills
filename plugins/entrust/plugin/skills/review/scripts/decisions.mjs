@@ -6,8 +6,8 @@
 // not a checked result. Decisions are never carried between revisions by question number.
 export function decisionRuntime() {
   // answers: fact answers entered on the surface (additive, schema 4 exports them as factAnswers);
-  // hiddenPurposes/treeHidden: the code view's UI state, stored beside the decisions, never exported.
-  const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {}, answers: {}, hiddenPurposes: [], treeHidden: false });
+  // hiddenPurposes/treeHidden/treeWidth/treeMode: the code view's UI state, stored beside the decisions, never exported.
+  const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {}, answers: {}, hiddenPurposes: [], treeHidden: false, treeWidth: 0, treeMode: "folder" });
   const normalize = (raw) => {
     const state = empty();
     if (raw && typeof raw === "object" && !Array.isArray(raw))
@@ -79,6 +79,35 @@ export function decisionRuntime() {
     for (const f of findings) if (!state.findings[f.id]) n++;
     return n;
   };
+  // The ONE derivative behind every counter: the subtab badges, the global remainder, the settled rows and the
+  // export's remainder all read this — never a DOM tally, so they cannot disagree after Q2=keep. A main decision
+  // is open until it has a valid decision; its conditional children are actionable under it but never enter the
+  // mandatory count (the parent's accepted variant may retire them), and the parent's unit stays unsettled until
+  // every applicable child is accepted. A reasoned deferral is excluded from the remainder — not done, but not
+  // open work either (the port's remainingCount semantics, unified). Ideas are optional and never enter the
+  // remainder. A fact/evidence request is open until an answer is entered; an entered answer is not a verified
+  // check. `settled` maps the unit ids that move to compact rows (main Q roots, findings, ideas) to done/deferred.
+  const choiceStats = (questions, state, findings, ideas = []) => {
+    const byId = byIdOf(questions);
+    const kidsOf = {};
+    for (const q of questions) if (q.parent) (kidsOf[q.parent.question] ||= []).push(q.id);
+    const kidsDone = (qid) => (kidsOf[qid] || []).every((k) => { const c = byId[k]; return !c || !applicableIn(c, state, byId) || validAccept(c, state); });
+    const settled = {};
+    let q = 0, f = 0, i = 0, fact = 0, deferred = 0, done = 0;
+    for (const question of questions) {
+      if (question.kind === "decision") {
+        if (question.parent || !applicableIn(question, state, byId)) continue;
+        if (validAccept(question, state)) { if (kidsDone(question.id)) { done++; settled["q" + question.id] = "done"; } }
+        else if (validDefer(question, state)) { deferred++; settled["q" + question.id] = "deferred"; }
+        else q++;
+      } else if (question.kind === "fact" || question.kind === "evidence") {
+        if (applicableIn(question, state, byId) && !String(state.answers["q" + question.id] || "").trim()) fact++;
+      }
+    }
+    for (const finding of findings) { if (state.findings[finding.id]) { done++; settled[String(finding.id)] = "done"; } else f++; }
+    for (const idea of ideas) { if (state.findings[idea.id]) { done++; settled[idea.id] = "done"; } else i++; }
+    return { q, f, i, fact, deferred, done, remaining: q + f, settled };
+  };
   const exportOf = (questions, state, meta) => {
     const byId = byIdOf(questions);
     const entries = questions.filter((q) => q.kind === "decision").map((q) => {
@@ -106,9 +135,9 @@ export function decisionRuntime() {
       factAnswers: state.answers,
     };
   };
-  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, exportOf,
+  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf,
     applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)) };
 }
 
 const runtime = decisionRuntime();
-export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, exportOf, applicable } = runtime;
+export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, counters, remainingCount, choiceStats, exportOf, applicable } = runtime;

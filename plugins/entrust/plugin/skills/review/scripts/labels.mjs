@@ -580,7 +580,6 @@ Object.assign(LABELS, {
   "purpose.show": "Show",
   "export.open-findings": "unprocessed findings",
   "tree.mode.folder": "By folder", "tree.mode.flat": "List", "tree.resize": "Tree width",
-  "choice.counter-aria": "{label}: {n} left",
 });
 Object.assign(CATALOGS.ru, {
   "decision.intro-work": "Решите карточки ниже. Полный вывод и рекомендации:",
@@ -590,7 +589,6 @@ Object.assign(CATALOGS.ru, {
   "purpose.show": "Показывать",
   "export.open-findings": "необработанные замечания",
   "tree.mode.folder": "По папкам", "tree.mode.flat": "Списком", "tree.resize": "Ширина дерева",
-  "choice.counter-aria": "{label}: осталось {n}",
 });
 // The export textarea is the text to copy; the technical binding (digests) sits below the answers, not above.
 LABELS["export.text"] = "Text to copy";
@@ -636,7 +634,7 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n",
   // The v6 chrome: the deduplicated first screen, the choice-zone label, the subtab counters, the editorial
   // change context, the lighter code toolbar, the tree modes and the honest export remainder.
-  "decision.intro-work", "decision.your-decision", "choice.counter-aria", "context.change", "purpose.show",
+  "decision.intro-work", "decision.your-decision", "context.change", "purpose.show",
   "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
