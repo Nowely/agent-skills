@@ -1450,6 +1450,34 @@ test("the unified card shell: one order for Q/F/I, the limit on the surface, no 
     return true;
   });
 
+test("finding and idea controls keep their localized accessible names and independent ids",
+  "sharing the card shell must not conflate the two choices or expose a title as markup",
+  () => {
+    for (const [language, fix, skip, take, leave] of [
+      ["en", "Fix F1", "Do not fix F1", "Take the idea", "Do not take the idea"],
+      ["ru", "Исправить F1", "Не исправлять F1", "Взять идею", "Не брать идею"]
+    ]) {
+      const result = render((r) => {
+        Object.assign(r, structuredClone(THEMED));
+        r.language = language;
+        r.ideas[0].title = 'Idea "quoted" & safe';
+      });
+      if (result.status !== 0) return result.stderr;
+      const html = fs.readFileSync(path.join(run, "review.html"), "utf8");
+      const finding = html.split('id="f1"')[1].split("</article>")[0];
+      const idea = html.split('id="i1"')[1].split("</article>")[0];
+      for (const [card, id, apply, reject] of [
+        [finding, "1", fix, skip],
+        [idea, "i1", `${take} Idea &quot;quoted&quot; &amp; safe`, `${leave} Idea &quot;quoted&quot; &amp; safe`]
+      ]) {
+        if (!card.includes(`data-fstatus="${id}"`) || !card.includes(`data-finding="${id}"`)) return `${language}: missing status or choice id ${id}`;
+        if (!card.includes(`value="apply" aria-label="${apply}"`) || !card.includes(`value="skip" aria-label="${reject}"`)) return `${language}: wrong accessible choice names for ${id}`;
+      }
+      if (!idea.includes('data-comment="i1"') || !finding.includes('data-comment="f1"')) return `${language}: comments lost their own ids`;
+    }
+    return true;
+  });
+
 test("the surface limit is the record's own uncertainty; a clear recommendation stays advice",
   "an invented limit or a buried uncertainty misleads the owner at the first screen",
   () => {

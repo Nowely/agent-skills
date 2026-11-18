@@ -1591,6 +1591,9 @@ const noClearRec = (text) => /^(однозначной рекомендации 
 const commentBox = (id, t, hint) => `<details class="card-comment act" data-comment="${esc(id)}"><summary>${esc(t("card.comment"))}</summary><textarea class="qnote" id="qnote-${esc(id)}" data-note="${esc(id)}" rows="2" aria-label="${esc(hint || t("card.comment"))}: ${esc(id)}"></textarea></details>`;
 const names = (t, label, ids) => ids?.length ? ` <strong>${esc(t(label))} ${ids.map(esc).join(", ")}.</strong>` : "";
 
+const findingHead = (title, displayId, statusId, meta, t) => `<div class="card-head"><h3 class="card-title">${esc(title)}</h3><span class="card-id mono">${esc(displayId)}</span><span class="tag v-open qstatus" data-fstatus="${esc(statusId)}" data-state="open">${esc(t("decision.status.open"))}</span>${meta ? `<span class="card-meta">${meta}</span>` : ""}</div>`;
+const applySkip = (id, kind, ariaArg, t) => `<div class="card-choice"><span class="choice-label act">${esc(t(kind === "fix" ? "decision.your-decision" : "decision.your-choice"))}</span><span class="decide group act" data-finding="${esc(id)}"><button type="button" value="apply" aria-label="${esc(t(`decision.${kind}-apply-aria`, ariaArg))}">${esc(t(`decision.${kind}-apply`))}</button><button type="button" value="skip" aria-label="${esc(t(`decision.${kind}-skip-aria`, ariaArg))}">${esc(t(`decision.${kind}-skip`))}</button></span></div>`;
+
 // One question card in the unified shell: head → essence → limit → choice → answer → comment → disclosures.
 // The state machine is the record's: variants, gate, draft, zones; only the shell is shared.
 function questionCard(q, review, model, t, child, partCount) {
@@ -1642,11 +1645,11 @@ function findingCard(f, review, model, t) {
   const blocks = model.blocks.filter((b) => b.findings.includes(f.id));
   return `
   <article class="finding" id="f${esc(f.id)}" data-where="${esc(`${t("finding")} ${f.id}`)}">
-    <div class="card-head"><h3 class="card-title">${esc(f.title)}</h3><span class="card-id mono">F${esc(f.id)}</span><span class="tag v-open qstatus" data-fstatus="${esc(f.id)}" data-state="open">${esc(t("decision.status.open"))}</span><span class="card-meta">${esc(t(`direction.${f.direction}`))} · ${blocks.length} ${esc(t("blocks").toLowerCase())}</span></div>
+    ${findingHead(f.title, "F" + f.id, f.id, `${esc(t(`direction.${f.direction}`))} · ${blocks.length} ${esc(t("blocks").toLowerCase())}`, t)}
     <p class="card-question">${prose(f.what)}${names(t, "breaks", f.breaks)}${names(t, "untested", f.untested)}</p>
     <p class="card-limit">${esc(t(`finding.limit.${f.evidence}`))}</p>
     <p class="card-consequence"><strong>${esc(t("fix"))}:</strong> ${prose(f.fix)}</p>
-    <div class="card-choice"><span class="choice-label act">${esc(t("decision.your-decision"))}</span><span class="decide group act" data-finding="${esc(f.id)}"><button type="button" value="apply" aria-label="${esc(t("decision.fix-apply-aria", f.id))}">${esc(t("decision.fix-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.fix-skip-aria", f.id))}">${esc(t("decision.fix-skip"))}</button></span></div>
+    ${applySkip(f.id, "fix", f.id, t)}
     ${commentBox("f" + esc(f.id), t, t("note-finding"))}
     <div class="card-more">
       <details class="qdetail"><summary>${esc(t("card.more-basis"))}</summary><div class="stack"><p><strong>${esc(t("shown-by"))}:</strong> ${prose(f.shown_by)}</p><p class="sub mono">${esc(f.at)}</p></div></details>
@@ -1658,9 +1661,9 @@ function findingCard(f, review, model, t) {
 function ideaCard(idea, model, t) {
   return `
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
-    <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span></div>
+    ${findingHead(idea.title, idea.id.toUpperCase(), idea.id, "", t)}
     <p class="card-question">${prose(idea.text)}</p>
-    <div class="card-choice"><span class="choice-label act">${esc(t("decision.your-choice"))}</span><span class="decide group act" data-finding="${idea.id}"><button type="button" value="apply" aria-label="${esc(t("decision.idea-apply-aria", idea.title))}">${esc(t("decision.idea-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.idea-skip-aria", idea.title))}">${esc(t("decision.idea-skip"))}</button></span></div>
+    ${applySkip(idea.id, "idea", idea.title, t)}
     ${commentBox(idea.id, t, t("note-idea"))}
     ${idea.at ? `<div class="card-more"><details class="qwhere"><summary>${esc(t("card.more-code"))} · ${placeHtml(idea.at, model)}</summary><div class="qwhere-body"><p class="sub mono">${esc(idea.at)}</p></div></details></div>` : ""}
   </article>`;
