@@ -59,8 +59,6 @@ section, [data-anchor], .seg, .qcard, .finding, .mechanism { scroll-margin-top: 
 .v-open, .v-question { --v: var(--open-fg); --v-bg: var(--line) }
 .tag { display: inline-block; padding: 0 .45rem; border-radius: 3px; background: var(--v-bg); color: var(--v); font-size: 12px; font-weight: 650; white-space: nowrap }
 .chip { display: inline-block; margin: 0 .25rem .2rem 0; padding: 0 .4rem; border: 1px solid var(--v); border-radius: 3px; color: var(--v); font-size: 12px; text-decoration: none; font-weight: 600 }
-.share { display: flex; height: .9rem; border-radius: 3px; overflow: hidden; background: var(--line) }
-.share span { background: var(--v) }
 .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-variant-numeric: tabular-nums }
 /* The page header: the title left, the theme icon at the right edge. */
 .page-head { display: flex; align-items: flex-start; gap: .8rem }
@@ -80,23 +78,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .panel { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0 }
 .skip-link { position: absolute; left: -9999px; top: 0; background: var(--accent); color: #fff; padding: .4rem .8rem; z-index: 50 }
 .skip-link:focus { left: 0 }
-/* The summary's roles: a label says which is which, the weight of the text says which to read first. */
-.roles { background: var(--surface); border: 1px solid var(--line) }
-.role { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: .25rem 1.25rem; padding: .9rem 1.1rem; border-left: 4px solid transparent }
-.role + .role { border-top: 1px solid var(--line) }
-.role > .label { padding-top: .15rem }
-.conclusion { border-left-color: var(--fg) } .conclusion > .label { color: var(--fg) }
-.conclusion .lead { font-size: 1.15rem; font-weight: 600; line-height: 1.4 }
-.actions { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)) } .actions > .label { color: var(--accent) }
+/* Editorial overview: one neutral card, the verdict leads; the change context is a closed disclosure. */
+.overview { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .8rem 1.1rem }
+.lead { font-size: 1.15rem; font-weight: 600; line-height: 1.4 }
+.context-change > summary { cursor: pointer; font-weight: 650; padding: .2rem 0; background: none; color: var(--fg) }
+.context-change .stack { padding-top: .5rem }
 .steps { margin: 0; padding-left: 1.4rem; max-width: 78ch; display: flex; flex-direction: column; gap: .2rem }
 .doubt { margin-top: .3rem; padding-left: .6rem; border-left: 3px solid var(--fix); color: var(--fix) }
-.compare { display: flex; flex-direction: column; gap: .4rem }
-.cmp-head, .cmp-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem }
-.cmp-head { font-weight: 650; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: .3rem }
-.cmp-row > div { padding: .3rem .6rem; border-left: 3px solid var(--line); min-width: 0; display: flex; flex-direction: column; gap: .4rem }
-.cmp-now { border-left-color: var(--muted) !important }
-.cmp-target { border-left-color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 5%, var(--surface)) }
-@media (max-width: 700px) { .cmp-head, .cmp-row { grid-template-columns: minmax(0, 1fr) } .cmp-head span:last-child { display: none } }
 .table { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); max-width: 100% }
 table { border-collapse: collapse; width: 100% }
 th, td { text-align: left; vertical-align: top; padding: .4rem .7rem; border-bottom: 1px solid var(--line) }
@@ -244,6 +232,13 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .purpose-bar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center }
 .purpose-bar button { font-size: .88rem; padding: .25rem .6rem }
 .purpose-bar button b { font-variant-numeric: tabular-nums }
+.purpose-bar button[data-purpose-empty] { border-color: transparent; background: none; color: var(--muted) }
+.purpose-bar button[data-purpose-empty]::before { content: none }
+.ftree.flat ul, .ftree.flat li:not(.frow), .ftree.flat details { display: contents }
+.ftree.flat .fdir > summary { display: none }
+/* A purpose toggle reads as a weak selected surface with an explicit on-mark, not an inverted fill. */
+.purpose-bar button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--fg); border-color: var(--accent) }
+.purpose-bar button[aria-pressed="true"]::before { content: "✓ "; color: var(--accent) }
 .map-filters { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center }
 .code-layout { display: grid; grid-template-columns: var(--tree-w, 17rem) minmax(0, 1fr); gap: 1rem; align-items: start; position: relative }
 .code-layout.hide-tree { grid-template-columns: minmax(0, 1fr) }
@@ -435,7 +430,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 #export-status { font-size: .92rem; min-height: 1.2em }
 @media (max-width: 700px) { #export-dialog { width: 96vw; max-height: 94dvh; padding: .8rem .9rem } }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth } }
-@media (max-width: 40rem) { .bar { position: static } .role { grid-template-columns: minmax(0, 1fr) } .tabs { flex-basis: 100% }
+@media (max-width: 40rem) { .bar { position: static } .tabs { flex-basis: 100% }
   section, [data-anchor], .seg, .qcard, .finding, .mechanism { scroll-margin-top: 1rem } }
 @media (max-width: 760px) { .mechanism-tradeoff { grid-template-columns: 1fr } }
 /* Mobile targets >= 44px, LAST so component min-heights cannot override; theme icon 32px by plan; gutters 2.2em. */
@@ -477,7 +472,7 @@ const SCRIPT = `
   const save = () => { try { localStorage.setItem(key, JSON.stringify({ ...state, theme })); } catch {} };
   document.documentElement.classList.add("js");
   // Radios, zones, answers and filters ship disabled for the no-script reader; the runtime enables them.
-  for (const control of all("[data-question-variant], [data-zone], [data-answer], button[disabled], input[disabled]")) control.disabled = false;
+  for (const control of all("[data-question-variant], [data-zone], [data-answer], button[disabled]:not([data-purpose-empty]), input[disabled]")) control.disabled = false;
   for (const fieldset of all("fieldset.qopts")) fieldset.disabled = false;
   const qEntry = (id) => D.entryOf(state, id);
   const qById = Object.fromEntries(data.questions.map((q) => [String(q.id), q]));
@@ -637,21 +632,14 @@ const SCRIPT = `
   function resetTreeFilter() { treeInput.value = ""; applyTreeFilter(); }
 
   // ---- M5: the tree's folder/list mode and resizable width — the code view's own UI state, stored additively.
-  // The flat list MOVES the same rows (no second copy, ids/data-frow preserved); search, reveal and scrollspy
-  // keep working because there is still exactly one set of rows. ----
-  const treeHome = new Map();
+  // The list mode flattens the SAME rows in place (display:contents, no second copy); search, reveal and
+  // scrollspy keep working because there is still exactly one set of rows. ----
   function setTreeMode(mode) {
     state.treeMode = mode; save();
-    const folder = document.getElementById("ftree-folder"), flat = document.getElementById("ftree-flat");
+    const folder = document.getElementById("ftree-folder");
     for (const b of all("[data-tree-mode]")) b.setAttribute("aria-pressed", String(b.dataset.treeMode === mode));
-    if (mode === "flat") {
-      const rows = all("#ftree-folder .frow").sort((a, b) => (data.files[+a.dataset.frow] < data.files[+b.dataset.frow] ? -1 : 1));
-      for (const r of rows) { if (!treeHome.has(r)) { const parent = r.parentElement; treeHome.set(r, { parent, siblings: [...parent.children] }); } flat.append(r); }
-      folder.hidden = true; flat.hidden = false;
-    } else {
-      for (const [r, home] of treeHome) { if (!home.parent.isConnected) continue; const next = home.siblings.slice(home.siblings.indexOf(r) + 1).find((s) => s.isConnected && s.parentElement === home.parent); home.parent.insertBefore(r, next || null); }
-      folder.hidden = false; flat.hidden = true;
-    }
+    folder.classList.toggle("flat", mode === "flat");
+    if (mode === "flat") all("#ftree-folder .fdir").forEach((d) => { d.open = true; });
     applyTreeFilter();
   }
   const codeLayout = document.getElementById("code-layout"), treeResize = document.getElementById("tree-resize");
@@ -930,10 +918,11 @@ const SCRIPT = `
   function decisionsText() {
     const m = exportModel();
     const part = (title, rows) => rows.length ? ["", title, ...rows.map((r) => "- " + r.text)] : [];
+    // The name and the answers lead; the technical binding (record/diff digests) sits below them, not above.
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")",
-      t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12),
       ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred),
-      ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments), "", m.remaining].join("\\n");
+      ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments), "", m.remaining,
+      t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12)].join("\\n");
   }
   // The preview reads the SAME exportModel as the text; DOM API only; every row a «Go» link.
   function buildPreview() {
@@ -1029,10 +1018,11 @@ const SCRIPT = `
         const chipEl = card.querySelector("[data-qstatus], [data-fstatus]");
         sum.textContent = "";
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
-        const chipClone = document.createElement("span"); chipClone.className = "tag v-open qstatus"; chipClone.dataset.state = chipEl ? chipEl.dataset.state : "decided"; chipClone.textContent = chipEl ? chipEl.textContent : "";
+        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = chipEl ? chipEl.textContent : "";
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
         // The row reads name → the answer given → id; expanding it is the way back to the card («Изменить»).
-        sum.append(titleEl, chipClone, idEl);
+        const edit = document.createElement("span"); edit.className = "sr-edit"; edit.textContent = t.commentEdit;
+        sum.append(titleEl, chipClone, idEl, edit);
         if (state.notes[card.id]) { const n = document.createElement("span"); n.className = "sr-note"; n.textContent = "· " + t.cardComment.toLowerCase(); sum.append(n); }
         row.dataset.state = unit.dataset.settled;
       }
@@ -1443,24 +1433,25 @@ function passport(review, model, t) {
 </details>`;
 }
 
-// The verdict, the recommendation, now beside the target, and the task: each under its own label, in the order a reader decides by.
+// The editorial conclusion: one verdict, the recommendation with its steps, the short task — and the
+// now→target comparison, the line composition and the task's parts/sources folded into a closed «Change
+// context». No label column, no side rails, no amber absence blocks; the full coverage lives in Materials.
 function summary(review, { blocks }, t) {
-  const total = sizeOf(blocks) || 1, { change } = review;
-  const role = (label, content, tone = "") => `<div class="role ${tone}" data-where="${esc(t(label))}"><span class="label">${esc(t(label))}</span><div class="stack">${content}</div>`;
-  const share = `<div class="share" role="img" aria-label="${esc(t("share"))}">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
-    <div class="legend sub"><span>${esc(t("share"))}:</span>${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</div>`;
+  const { change } = review;
+  const legend = `<p class="legend sub">${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</p>`;
   return `
-<section id="summary" class="roles">
-  ${role("verdict", lines(review.verdict, ' class="lead"'), "conclusion")}
-  ${role("recommendation", `<p><strong>${prose(review.recommendation)}</strong></p>${review.steps?.length ? `<ol class="steps">${review.steps.map((step) =>
-    `<li>${prose(step.text)}${step.findings?.length ? ` <span class="sub">(${cite(step.findings)})</span>` : ""}</li>`).join("")}</ol>` : ""}<p class="sub"><a href="#questions">${esc(t("questions"))} →</a></p>`, "actions")}
-  <div class="role" data-where="${esc(`${t("now")} → ${t("target")}`)}"><span class="label">${esc(t("now"))} → ${esc(t("target"))}</span><div class="stack">
-    <div class="compare"><div class="cmp-head"><span>${esc(t("now"))}</span><span>${esc(t("target"))}</span></div>
-    <div class="cmp-row"><div class="cmp-now">${lines(review.now)}</div><div class="cmp-target">${lines(review.target)}</div></div></div>
-    ${share}</div></div>
-  ${role("task", `<p>${prose(change.goal)}${change.why ? ` ${prose(change.why)}` : ""}</p>
+<section id="summary" class="stack overview" data-where="${esc(t("summary"))}">
+  ${lines(review.verdict, ' class="lead"')}
+  <p><strong>${esc(t("recommendation"))}:</strong> ${prose(review.recommendation)}</p>
+  ${review.steps?.length ? `<ol class="steps">${review.steps.map((step) => `<li>${prose(step.text)}${step.findings?.length ? ` <span class="sub">(${cite(step.findings)})</span>` : ""}</li>`).join("")}</ol>` : ""}
+  <p>${prose(change.goal)}${change.why ? ` ${prose(change.why)}` : ""} <a href="#questions">${esc(t("questions"))} →</a></p>
+  <details class="context-change"><summary>${esc(t("context.change"))}</summary>
+    <div class="stack"><p class="sub"><strong>${esc(t("now"))}:</strong></p>${lines(review.now)}
+    <p class="sub"><strong>${esc(t("target"))}:</strong></p>${lines(review.target)}
+    ${legend}
     <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
-    <details class="sources"><summary>${esc(t("sources"))}</summary><p class="sub">${change.sources.map(prose).join("; ")}</p></details>`)}
+    <details class="sources"><summary>${esc(t("sources"))}</summary><p class="sub">${change.sources.map(prose).join("; ")}</p></details></div>
+  </details>
 </section>`;
 }
 
@@ -1543,7 +1534,7 @@ function findingCard(f, review, model, t) {
 function ideaCard(idea, model, t) {
   return `
   <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
-    <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span><span class="card-meta">${esc(t("idea"))}</span></div>
+    <div class="card-head"><h3 class="card-title">${esc(idea.title)}</h3><span class="card-id mono">${esc(idea.id.toUpperCase())}</span><span class="tag v-open qstatus" data-fstatus="${idea.id}" data-state="open">${esc(t("decision.status.open"))}</span></div>
     <p class="card-question">${prose(idea.text)}</p>
     <div class="card-choice"><span class="choice-label act">${esc(t("decision.your-choice"))}</span><span class="decide group act" data-finding="${idea.id}"><button type="button" value="apply" aria-label="${esc(t("decision.idea-apply-aria", idea.title))}">${esc(t("decision.idea-apply"))}</button><button type="button" value="skip" aria-label="${esc(t("decision.idea-skip-aria", idea.title))}">${esc(t("decision.idea-skip"))}</button></span></div>
     ${commentBox(idea.id, t, t("note-idea"))}
@@ -1640,17 +1631,19 @@ function screens(review, { screens: shown }, t) {
     return `<figure class="${name}"><figcaption class="label">${esc(t(name))}</figcaption>${body}</figure>`;
   };
   return `
-<section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>${shown.map((s, index) => `
+<section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>
+  ${shown.some((s) => s.historical) ? `<p class="sub">${esc(t("screen.historical"))}</p>` : ""}
+  ${[...new Set(shown.map((s) => s.missing).filter(Boolean))].map((missing) => `<p class="sub">${esc(t("not-compared"))}: ${prose(missing)}</p>`).join("")}
+  ${shown.map((s, index) => `
   <article class="finding" id="shot-${index + 1}" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}<a class="shot-link" href="#shot-${index + 1}" aria-label="${esc(t("shot.permalink"))} ${index + 1}: ${esc(s.name)}" title="${esc(t("shot.permalink"))}">#</a></h3>
     <div class="pair shots">${shot("mockup", s.mockup, s)}${shot("before", s.before, s)}${shot("after", s.after, s)}</div>
-    ${s.historical ? `<p class="sub"><span class="tag v-fix">${esc(t("screen.historical"))}</span>${s.revision ? ` <span class="mono">${esc(s.revision)}</span>` : ""}${s.sources?.length ? ` (${srcHtml(s.sources, review)})` : ""}</p>` : ""}
+    ${s.revision || s.sources?.length ? `<p class="sub"><span class="mono">${esc(s.revision ?? "")}</span>${s.sources?.length ? ` (${srcHtml(s.sources, review)})` : ""}</p>` : ""}
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
       + `<label class="group sub" for="blend-${index + 1}">${esc(t("result"))} <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
     ${s.differences.length ? `<ul class="plain">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="sub">${esc(t("reason"))}: ${prose(d.why)}</span>` : ""}`
       + `${d.finding === undefined ? "" : ` <span class="tag v-remove">${esc(t("finding"))}</span> ${cite([d.finding])}`}</li>`).join("")}</ul>` : ""}
     ${s.match ? `<p><span class="tag v-keep">${esc(t("matches"))}</span></p>` : ""}
-    ${s.missing ? `<p><span class="tag v-open">${esc(t("not-compared"))}</span> ${prose(s.missing)}</p>` : ""}
   </article>`).join("")}
 </section>`;
 }
@@ -1796,7 +1789,7 @@ function treeNav(files, model, t) {
   return `<div class="tree-nav" id="files-tree"><div class="group tree-head"><span class="label">${esc(t("tree.title"))}</span><span class="group act tree-modes" role="group" aria-label="${esc(t("tree.title"))}"><button type="button" data-tree-mode="folder" aria-pressed="true" disabled>${esc(t("tree.mode.folder"))}</button><button type="button" data-tree-mode="flat" aria-pressed="false" disabled>${esc(t("tree.mode.flat"))}</button></span><button type="button" id="hide-tree" disabled>${esc(t("tree.hide"))}</button><button type="button" id="tree-expand-all" disabled>${esc(t("tree.expand"))}</button><button type="button" id="tree-collapse-all" disabled>${esc(t("tree.collapse"))}</button></div>
   <div class="tree-filter act"><input type="text" id="tree-filter-input" placeholder="${esc(t("tree.filter-placeholder"))}" aria-label="${esc(t("tree.filter"))}" disabled><button type="button" id="tree-filter-clear" disabled>${esc(t("reset"))}</button><span class="sub" id="tree-filter-count" role="status"></span></div>
   ${rootLabel ? `<div class="tree-root sub mono" title="${esc(rootLabel)}">${esc(rootLabel)}/</div>` : ""}
-  <div class="ftree" id="ftree-folder">${list(root)}</div><ul class="ftree ftree-flat" id="ftree-flat" hidden></ul></div>`;
+  <div class="ftree" id="ftree-folder">${list(root)}</div></div>`;
 }
 
 // The code tab: the purpose filter, the map modes, the tree and the map reader, the filter chip, and one
@@ -1804,18 +1797,16 @@ function treeNav(files, model, t) {
 function codePanel(review, files, model, t, mapHtml, partCount) {
   const nonkeep = model.blocks.filter((b) => b.verdict !== "keep").length;
   const totalParts = Object.values(partCount).reduce((sum, n) => sum + n, 0);
-  const purposeBar = `<div class="purpose-bar" role="group" aria-label="${esc(t("purpose"))}"><span class="sub">${esc(t("purpose"))}:</span>${PURPOSES.map((cat) => {
+  const purposeBar = `<div class="purpose-bar" role="group" aria-label="${esc(t("purpose.show"))}"><span class="sub">${esc(t("purpose.show"))}:</span>${PURPOSES.map((cat) => {
     const c = model.purpose.counts[cat];
-    return `<button type="button" data-purpose-filter="${cat}" aria-pressed="true" disabled title="${esc(t(`purpose.rules.${cat}`))}">${esc(t(`purpose.${cat}`))} <b>${c.lines}</b> ${esc(t("lines").toLowerCase())} · ${c.files} ${esc(t("scope.files"))}</button>`;
-  }).join("")}<span class="sub">${esc(t("purpose.lines-note"))}</span></div>`;
+    return `<button type="button" data-purpose-filter="${cat}" aria-pressed="true" disabled${c.files ? "" : " data-purpose-empty"} title="${esc(t(`purpose.rules.${cat}`))}">${esc(t(`purpose.${cat}`))} <b>${c.files}</b> ${esc(t("scope.files"))}</button>`;
+  }).join("")}</div>`;
   const banners = model.questions.filter((q) => q.kind === "evidence" && q.blocks >= 2).map((q) => {
     const bs = model.blocks.filter((b) => b.questions.includes(q.id));
-    const parts = bs.reduce((sum, b) => sum + (partCount[b.id] ?? 1), 0);
-    return `<div class="evidence-banner v-question"><span class="tag v-question">Q${q.id}</span><p><strong>${bs.length} ${esc(t("blocks").toLowerCase())}${parts > bs.length ? ` · ${parts} ${esc(t("fragments"))}` : ""}</strong> ${esc(t("banner.await"))} — ${esc(t("banner.one"))} Q${q.id}, ${esc(t("banner.not-many"))}. <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
+    return `<div class="evidence-banner v-question"><p>${bs.length} ${esc(t("blocks").toLowerCase())} ${esc(t("banner.await"))} — <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
   }).join("");
   return `
 <section id="files" class="stack"><h2>${esc(t("files"))} · ${model.files.length}</h2>
-  <p class="sub">${esc(t("files.changed-only"))}</p>
   <div class="code-controls">
     ${purposeBar}
     <div class="map-filters">
@@ -1833,8 +1824,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
       ${banners}
       <noscript><p class="sub">${esc(t("nojs.map"))}</p></noscript>
       <div id="map" class="map" data-show="attention" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
-        <p class="sub">${esc(t("map.audit-note"))} ${esc(t("blocks"))}: ${model.blocks.length} · ${esc(t("fragments"))}: ${totalParts}.</p>
-        <details class="count-note"><summary>${esc(t("fragment.what"))}</summary><p class="sub">${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
+        <details class="count-note"><summary>${esc(t("fragment.what"))}</summary><p class="sub">${esc(t("map.audit-note"))} ${esc(t("blocks"))}: ${model.blocks.length} · ${esc(t("fragments"))}: ${totalParts}. ${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
         ${mapHtml}
       </div>
     </div>
@@ -2024,7 +2014,7 @@ ${coverage(review, t)}
   <h3 class="label">${esc(t("passages"))}</h3>
   <div id="passages" class="stack"></div></section>
 `)}
-<footer class="sub"><details><summary>${esc(t("report-details"))}</summary><code>${esc(review.range)} · ${model.key} · ${esc(t("passport.diffSha"))} ${esc(review.diff?.sha256 ?? "")} · ${esc(t("passport.record"))} ${esc(model.recordSha ?? model.key)}</code></details></footer>
+<footer class="sub"><a href="#passport">${esc(t("report-details"))} →</a> · <code>${esc(model.recordSha ?? model.key)}</code></footer>
 </div>
 <div class="group annotation-feedback"><span id="annotation-status" role="status" aria-live="polite"></span><button id="annotation-undo" type="button" hidden>${esc(t("annotation.undo"))}</button><button id="annotation-dismiss" type="button" aria-label="${esc(t("annotation.dismiss"))}">×</button></div>
 <div id="seg-popover" role="dialog" aria-label="${esc(t("seg.popover"))}" hidden></div>
@@ -2034,7 +2024,7 @@ ${coverage(review, t)}
   <div id="export-preview" aria-label="${esc(t("export.open"))}"></div>
   <div class="group"><button type="button" id="export-json-top" title="${esc(t("export.download"))}: decisions-${esc(model.key)}.json">${esc(t("export.download"))}</button><button type="button" id="copy-top">${esc(t("export.copy-text"))}</button><form method="dialog"><button type="submit">${esc(t("viewer.close"))}</button></form></div>
   <p id="export-status" role="status"></p>
-  <textarea id="out" readonly aria-label="${esc(t("export.text"))}" rows="12"></textarea>
+  <label for="out">${esc(t("export.text"))}</label><textarea id="out" readonly rows="12"></textarea>
 </dialog>
 ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
   <div class="zoom-bar">
@@ -2059,4 +2049,3 @@ ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
 <script>${SCRIPT}</script>
 `;
 }
-
