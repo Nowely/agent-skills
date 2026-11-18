@@ -22,7 +22,7 @@ forensics remain in the repository references and release notes.
   reports copy success once (M8). Optionality, screen warnings, mechanism caveats and comment instructions
   no longer repeat in each card; settled rows retain the original cards and their reversible actions (M9).
 - A 1600px outer canvas lets the code fill the available width while choice prose stays within 90ch
-  (M10). Consecutive fragments share one block header, metadata disclosure and comment; code fragments
+  (M10). Fragments of the same block share one header, metadata disclosure and comment; code fragments
   retain hunk gaps, one B anchor, filters, annotations, no-script access and print coverage (M11).
   The enriched 65507 fixture retains 1470 blocks, 1517 fragments and 96 files.
 - v6 acceptance extends the existing report suite and browser entrypoint with subtraction, counters,
