@@ -578,6 +578,7 @@ Object.assign(LABELS, {
   "decision.your-decision": "Your decision", "decision.your-choice": "Your choice",
   "context.change": "Change context",
   "purpose.show": "Show",
+  "choice.count.answers": "{n} without an answer", "choice.count.entries": "{n} entries",
   "export.open-findings": "unprocessed findings",
   "tree.mode.folder": "By folder", "tree.mode.flat": "List", "tree.resize": "Tree width",
 });
@@ -587,6 +588,7 @@ Object.assign(CATALOGS.ru, {
   "decision.your-decision": "Ваше решение", "decision.your-choice": "Ваш выбор",
   "context.change": "Контекст изменения",
   "purpose.show": "Показывать",
+  "choice.count.answers": "{n} без ответа", "choice.count.entries": "{n} записей",
   "export.open-findings": "необработанные замечания",
   "tree.mode.folder": "По папкам", "tree.mode.flat": "Списком", "tree.resize": "Ширина дерева",
 });
@@ -635,7 +637,7 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   // The v6 chrome: the deduplicated first screen, the choice-zone label, the subtab counters, the editorial
   // change context, the lighter code toolbar, the tree modes and the honest export remainder.
   "decision.intro-work", "decision.your-decision", "context.change", "purpose.show",
-  "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize"];
+  "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize", "choice.count.answers", "choice.count.entries"];
 // The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
 // enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
 // array guards, so they read every list defensively.

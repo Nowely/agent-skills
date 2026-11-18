@@ -1074,7 +1074,9 @@ const SCRIPT = `
       const v = b.dataset.choiceFilter; if (v === "all") continue;
       const n = counts[v], badge = b.querySelector(".cf-count");
       if (badge) { badge.textContent = n; badge.dataset.zero = n ? "0" : "1"; }
-      b.setAttribute("aria-label", b.dataset.cfLabel + ": " + t.tabRemaining.replace("{n}", n));
+      const wording = v === "fact" ? t.countAnswers : ["i", "done", "deferred"].includes(v) ? t.countEntries : t.tabRemaining;
+      b.title = wording.replace("{n}", n);
+      b.setAttribute("aria-label", b.dataset.cfLabel + ": " + b.title);
     }
   }
   // The subtabs filter ONE list: type filters and status filters; a group with no visible card hides.
@@ -1896,7 +1898,7 @@ export function page(review, files, model, { syntax } = {}) {
     labels: { title: t("out.title"), open: t("out.open"), copied: t("copied"), clearConfirm: t("clear-confirm"),
       accepted: t("decision.accepted"), deferred: t("decision.deferred"), notApplicable: t("decision.not-applicable"),
       requiresContent: t("decision.requires-content"), deferReason: t("decision.defer-reason"),
-      tabRemaining: t("tab.remaining", "{n}"), copyText: t("export.copy-text"), copyFailed: t("copy.failed"),
+      tabRemaining: t("tab.remaining", "{n}"), countAnswers: t("choice.count.answers", "{n}"), countEntries: t("choice.count.entries", "{n}"), copyText: t("export.copy-text"), copyFailed: t("copy.failed"),
       theme: { current: t("theme.current"), next: t("theme.next"), auto: t("theme.auto"), light: t("theme.light"), dark: t("theme.dark") },
       status: { open: t("decision.status.open"), decided: t("decision.status.decided", "{n}"), draft: t("decision.status.draft", "{n}") },
       answered: t("decision.answered"), fixApply: t("decision.fix-apply"), fixSkip: t("decision.fix-skip"), ideaApply: t("decision.idea-apply"), ideaSkip: t("decision.idea-skip"),
@@ -1936,7 +1938,8 @@ export function page(review, files, model, { syntax } = {}) {
   const subtabs = `<nav class="choice-filters act" role="group" aria-label="${esc(t("choice.filters"))}">${[["all", t("choice.filter.all")], ["q", t("choice.filter.q")], ["f", t("choice.filter.f")], ["i", t("choice.filter.i")], ["fact", t("choice.filter.fact")], ["deferred", t("choice.filter.deferred")], ["done", t("choice.filter.done")]]
     .map(([value, label]) => {
       const badge = value === "all" ? "" : `<span class="cf-count" data-cf-count="${value}" data-zero="${cfStatic[value] ? 0 : 1}">${cfStatic[value]}</span>`;
-      const aria = value === "all" ? "" : ` aria-label="${esc(label)}: ${esc(t("tab.remaining", cfStatic[value]))}"`;
+      const wording = value === "fact" ? "choice.count.answers" : ["i", "done", "deferred"].includes(value) ? "choice.count.entries" : "tab.remaining";
+      const aria = value === "all" ? "" : ` aria-label="${esc(label)}: ${esc(t(wording, cfStatic[value]))}"`;
       return `<button type="button" data-choice-filter="${value}" data-cf-label="${esc(label)}" aria-pressed="${value === "all"}"${aria} disabled>${esc(label)}${badge}</button>`;
     }).join("")}</nav>`;
   return `<!doctype html>
