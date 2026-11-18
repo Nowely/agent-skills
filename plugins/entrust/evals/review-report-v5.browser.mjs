@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Browser acceptance of the v5 report page (supersedes the v4 acceptance): the one Choices list with its
+// Browser acceptance of the v6 report page (keeps the v5 entrypoint): the one Choices list with its
 // subtabs and action groups, the unified card shell, the reversible choice with the settled rows and the
 // focus return, the native export dialog fed by one model (preview === text === JSON), fact answers,
 // compact comments, purpose multi-toggles, the tree's reveal/search/scrollspy, deep links, scroll memory,
@@ -365,7 +365,7 @@ console.error("[run] themed v5 section");
   await p.click("#export-open"); await p.waitForTimeout(150);
   await p.click("#copy-top"); await p.waitForTimeout(150);
   const copyOk = await p.evaluate(() => ({ label: document.getElementById("copy-top").textContent, copied: window.__copied === document.getElementById("out").value, status: document.getElementById("export-status").textContent }));
-  check("export: «Copied» only after a confirmed success", copyOk.label === "Copied" && copyOk.copied && copyOk.status === "Copied", copyOk);
+  check("export: «Copied» only after a confirmed success", copyOk.label === "Copy text" && copyOk.copied && copyOk.status === "Copied", copyOk);
   await p.waitForTimeout(1600);
   await p.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); });
   await p.click("#copy-top"); await p.waitForTimeout(250);
@@ -595,12 +595,18 @@ if (big) {
       structureTargetClosed: !document.querySelector(".structure-target").open
     }));
     results.initial = initial;
+    results.v6Initial = await ev(() => ({
+      badges: Object.fromEntries([...document.querySelectorAll("[data-cf-count]")].map(e => [e.dataset.cfCount, +e.textContent])),
+      removed: document.querySelectorAll("#progress-q, #apply-all, #export-json, #copy, .counters-strip, .status-strip").length,
+    }));
+    check("v6: one canonical surface and badges 4/7/4/6/0/0", results.v6Initial.removed === 0 &&
+      JSON.stringify(Object.values(results.v6Initial.badges)) === "[4,7,4,6,0,0]", results.v6Initial);
     check("65507: starts at Choices, five tabs, the four action groups, the seven subtabs", initial.active === "decisions"
       && initial.tabs.join() === "overview,decisions,code,checks,materials"
       && initial.groups.join() === "group-owner,group-fix,group-data,group-settled"
       && initial.subtabs.join() === "all,q,f,i,fact,deferred,done", initial);
     check("65507: zero duplicate ids, DOM within budget, the tree open statically", initial.duplicateIds.length === 0 && initial.domNodes <= 15700
-      && initial.treeOpen === initial.treeTotal && initial.treeTotal === 54, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
+      && initial.treeOpen === initial.treeTotal && initial.treeTotal === 53, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
     check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11 осталось" && initial.exportInHeader
       && initial.qcards === 13 && initial.findings === 7 && initial.ideas === 4 && initial.templates === 96 && initial.structureTargetClosed, initial);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-first-screen.png`) });
@@ -624,8 +630,9 @@ if (big) {
         f1evidence: document.querySelector("#f1 .card-limit").textContent,
         f1buttons: [...document.querySelectorAll("#f1 .decide button")].map(b => b.textContent),
         i1buttons: [...document.querySelectorAll("#i1 .decide button")].map(b => b.textContent),
-        ideaOptional: document.querySelector("#i1 .card-meta").textContent.includes("необязательно"),
-        ideaLimit: document.querySelector("#i1 .card-limit").textContent,
+        ideaOptional: document.querySelector("#ideas > summary").textContent.includes("необязательно"),
+        ideaLimit: document.querySelector("#i1 .card-limit"),
+        legendPx: parseFloat(getComputedStyle(card.querySelector(".qopts legend")).fontSize),
         factAnswer: (() => { const i = document.querySelector("#q4 [data-answer]"); return !!i && i.offsetParent !== null && !i.closest("details"); })(),
         zoneNote: document.querySelector("#q3 .zone-note").textContent.includes("не подтверждение"),
         decidedNeutral: (() => { const s = document.querySelector(".qstatus[data-state=decided]"); return s ? getComputedStyle(s).color : null; })(),
@@ -639,7 +646,7 @@ if (big) {
       shell.titlePx === 16 && shell.metaPx <= 13 && shell.limitPx === 14 && shell.consPx === 14
       && shell.borderLeftWidth === "1px" && shell.optBorderTop === "1px" && shell.optBorderLeft === "0px" && shell.qoptsBorder === "0px", shell);
     check("65507: Q2/Q8 uncertainty on the surface; the idea's explicit absence; F/I choices; the fact answer discoverable",
-      shell.limitOnSurface && shell.q8limit && /не указаны/.test(shell.ideaLimit) && shell.ideaOptional
+      shell.limitOnSurface && shell.q8limit && shell.ideaLimit === null && shell.ideaOptional && shell.legendPx === 14
       && shell.f1buttons.join() === "Исправить,Не исправлять" && shell.i1buttons.join() === "Взять,Не брать"
       && shell.factAnswer && shell.zoneNote && shell.commentClosed && shell.noPermanentCardTextarea, shell);
 
@@ -686,8 +693,35 @@ if (big) {
       delLines: document.querySelectorAll("#map .l.del").length
     }));
     results.fullMap = fullMap;
+    results.v6Map = await ev(() => ({
+      headers: document.querySelectorAll("#map .segbar").length,
+      fragments: document.querySelectorAll("#map [data-fragment]").length,
+      comments: document.querySelectorAll("#map .block-comment").length,
+      b40: { headers: document.querySelectorAll("#b40 .segbar").length, fragments: document.querySelectorAll("#b40 [data-fragment]").length },
+      dom: document.querySelectorAll("*").length,
+      duplicateIds: [...document.querySelectorAll("[id]")].map(e => e.id).filter((id, i, ids) => ids.indexOf(id) !== i)
+    }));
+    check("v6: grouped 1470 headers/comments, 1517 fragments, B40 one header/two fragments, no duplicate ids",
+      results.v6Map.headers === 1470 && results.v6Map.comments === 1470 && results.v6Map.fragments === 1517 &&
+      results.v6Map.b40.headers === 1 && results.v6Map.b40.fragments === 2 && results.v6Map.duplicateIds.length === 0, results.v6Map);
+    await p.click('[data-tree-mode="flat"]');
+    results.v6Tree = await ev(() => ({
+      flat: document.getElementById("ftree-folder").classList.contains("flat"),
+      rows: document.querySelectorAll(".frow").length,
+      display: getComputedStyle(document.querySelector(".fdir")).display,
+      whiteSpace: getComputedStyle(document.querySelector(".fname")).whiteSpace,
+      before: document.querySelector(".tree-col").getBoundingClientRect().width
+    }));
+    await p.locator("#tree-resize").focus(); await p.keyboard.press("ArrowRight");
+    Object.assign(results.v6Tree, await ev(() => ({
+      after: document.querySelector(".tree-col").getBoundingClientRect().width,
+      stored: JSON.parse(localStorage.getItem("review-report:" + JSON.parse(document.getElementById("data").textContent).key)).treeWidth
+    })));
+    await p.click('[data-tree-mode="folder"]');
+    check("v6: compact folder/list tree keeps 96 rows and resizes", results.v6Tree.flat && results.v6Tree.rows === 96 &&
+      results.v6Tree.display === "contents" && results.v6Tree.whiteSpace === "nowrap" && results.v6Tree.after > results.v6Tree.before, results.v6Tree);
     check("65507: the full audit materializes 96 files, 1470 unique blocks, 1517 fragments", fullMap.insertedFiles === 96 && fullMap.uniqueBlocks === 1470
-      && fullMap.segsTotal === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
+      && fullMap.segsTotal === 1470 && await ev(() => document.querySelectorAll("#map [data-fragment]").length) === 1517 && fullMap.ctxLines > 0 && fullMap.addLines > 0 && fullMap.delLines > 0, fullMap);
     const diffSel = await ev(() => {
       const mark = (l, name) => { if (!l) return null; window.__po(l.closest(".segcode")); l.dataset.probe = name; return `[data-probe="${name}"]`; };
       return {
@@ -731,7 +765,7 @@ if (big) {
 
     // ---- geometry: every tab × 6 widths + CSS zoom 200% + dark at 320 ----
     const geometry = [];
-    for (const width of [320, 390, 768, 1024, 1366, 1440]) {
+    for (const width of [320, 390, 768, 1024, 1366, 1440, 1600, 1920, 2560]) {
       await p.setViewportSize({ width, height: 900 }); await p.waitForTimeout(120);
       for (const id of initial.tabs) {
         await tab(p, id);
@@ -739,6 +773,13 @@ if (big) {
       }
     }
     results.geometry = geometry;
+    await p.setViewportSize({ width: 1920, height: 900 }); await tab(p, "code");
+    results.v6Width = await ev(() => ({
+      wrap: document.querySelector(".wrap").getBoundingClientRect().width,
+      code: document.querySelector("#code-layout").getBoundingClientRect().width,
+      diff: document.querySelector(".diff-col").getBoundingClientRect().width
+    }));
+    check("v6: wide code uses a 1600px canvas", results.v6Width.wrap === 1600 && results.v6Width.code >= 1500 && results.v6Width.diff >= 1100, results.v6Width);
     check("65507: no horizontal overflow at 320-1440 on every tab", geometry.every(x => x.sw === x.cw), geometry.filter(x => x.sw !== x.cw));
     await p.setViewportSize({ width: 1366, height: 900 });
     await p.addStyleTag({ content: "html{zoom:2}" }); await p.waitForTimeout(200);
@@ -769,10 +810,10 @@ if (big) {
       const d = document.querySelector("#q1 .card-comment"); d.open = true;
       d.querySelector(".comment-edit").click();
       const ta = d.querySelector("textarea");
-      return { viewHidden: d.querySelector(".comment-view").hidden, taVisible: !ta.hidden, focused: document.activeElement === ta, savedNote: d.querySelector(".comment-saved").textContent };
+       return { viewHidden: d.querySelector(".comment-view").hidden, taVisible: !ta.hidden, focused: document.activeElement === ta, savedNote: d.querySelector(".comment-saved")?.textContent ?? null };
     });
     check("65507: «Изменить» reveals the textarea and focuses it; the saved note is honest", decisions.commentEdit.viewHidden && decisions.commentEdit.taVisible
-      && decisions.commentEdit.focused && decisions.commentEdit.savedNote === "Сохранено в этом браузере, не отправлено.", decisions.commentEdit);
+      && decisions.commentEdit.focused && decisions.commentEdit.savedNote === null, decisions.commentEdit);
     await ev(() => { document.querySelector("#q1 .card-comment").open = false; }); await p.waitForTimeout(150);
     await ev(() => { document.querySelector("#q1 .card-comment").open = true; }); await p.waitForTimeout(150);
     decisions.commentCompactAgain = await ev(() => ({ viewVisible: !document.querySelector("#q1 .comment-view").hidden, taHidden: document.querySelector("#qnote-q1").hidden }));
@@ -817,6 +858,17 @@ if (big) {
       q9gateHidden: document.querySelector("#q9 [data-qgate]").hidden,
       q2settled: document.querySelector('[data-unit="q2"]').dataset.settled || null
     }));
+    results.v6Q2 = await ev(() => {
+      document.getElementById("export-open").click();
+      const value = { badges: Object.fromEntries([...document.querySelectorAll("[data-cf-count]")].map(e => [e.dataset.cfCount, +e.textContent])),
+        remaining: document.getElementById("count-decisions").textContent,
+        exportRemaining: document.querySelector(".xp-count").textContent,
+        settled: document.querySelector('[data-unit="q2"]').dataset.settled ?? null };
+      document.getElementById("export-dialog").close(); return value;
+    });
+    check("v6: Q2 accepted with pending children stays active; badges and export agree",
+      results.v6Q2.settled === null && results.v6Q2.badges.q + results.v6Q2.badges.f === parseInt(results.v6Q2.remaining) &&
+      results.v6Q2.exportRemaining.startsWith(results.v6Q2.remaining), results.v6Q2);
     check("65507: Q2 keep opens the children; Q9 enabled; Q2 stays while children are pending", decisions.q2keep.childrenOpen
       && !decisions.q2keep.q9disabled && decisions.q2keep.q9gateHidden && decisions.q2keep.q2settled === null, decisions.q2keep);
     await p.check('#q9 input[value="keep"]'); await p.waitForTimeout(150);
@@ -942,7 +994,7 @@ if (big) {
       const remaining = roots.filter(q => { const e = j.questions.find(x => x.question === q.id); return !e || (e.status !== "accepted" && e.status !== "deferred"); }).length
         + d.findings.filter(f => !j.findings[String(f.id)]).length;
       const open = d.findings.filter(f => !j.findings[String(f.id)]).map(f => "F" + f.id);
-      rows.remaining = remaining + " осталось" + (open.length ? " · Без решения: " + open.join(", ") : "");
+      rows.remaining = remaining + " осталось" + (open.length ? " · необработанные замечания: " + open.join(", ") : "");
       return rows;
     };
     const capturePreview = () => ev(() => ({
@@ -1233,7 +1285,7 @@ if (big) {
       return { rows: rows.length, segs: segs.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:" + d.key)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
-      && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsSegs >= 388
+      && purpose.testsToggle.segs === 1470 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsSegs >= 388
       && purpose.testsToggle.stored.join() === "tests" && purpose.testsToggle.chip.startsWith("Скрыто:"), purpose.testsToggle);
     await p.click('.evidence-banner [data-q-filter="3"]'); await p.waitForTimeout(400);
     purpose.qWithHiddenTests = await ev(() => {
@@ -1280,8 +1332,8 @@ if (big) {
       rows: [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none").length,
       chipHidden: document.getElementById("filter-chip").hidden
     }));
-    check("65507: the reset restores the FULL coverage 1470/1517/96", purpose.clearCoverage.uniqueBlocks === 1470 && purpose.clearCoverage.segs === 1517
-      && purpose.clearCoverage.visibleSegs === 1517 && purpose.clearCoverage.rows === 96 && purpose.clearCoverage.chipHidden, purpose.clearCoverage);
+    check("65507: the reset restores the FULL coverage 1470/1517/96", purpose.clearCoverage.uniqueBlocks === 1470 && purpose.clearCoverage.segs === 1470
+      && purpose.clearCoverage.visibleSegs === 1470 && purpose.clearCoverage.rows === 96 && purpose.clearCoverage.chipHidden, purpose.clearCoverage);
     await tab(p, "decisions"); await ev(() => window.scrollTo(0, 400)); await p.waitForTimeout(150);
     const preScroll = await ev(() => window.scrollY);
     await ev(() => { document.querySelector("#q2 .qwhere").open = true; }); await p.waitForTimeout(300);
@@ -1393,7 +1445,7 @@ if (big) {
       mapHidden: getComputedStyle(document.getElementById("map")).display === "none",
       treeHidden: getComputedStyle(document.querySelector(".tree-col")).display === "none",
       screensVisible: getComputedStyle(document.getElementById("screens")).display !== "none",
-      limitsVisible: getComputedStyle(document.querySelector(".status-strip")).display !== "none",
+      limitsVisible: getComputedStyle(document.querySelector("#coverage")).display !== "none",
       decisionsDetailsOpen: [...document.querySelectorAll("#panel-decisions details")].every(d => d.open),
       nestedCount: document.querySelectorAll("#panel-decisions .qwhere .segmeta, #panel-decisions .qwhere .segcode").length,
       nestedOpen: [...document.querySelectorAll("#panel-decisions .qwhere .segmeta, #panel-decisions .qwhere .segcode")].every(d => d.open),
@@ -1421,7 +1473,7 @@ if (big) {
       segcodeOpen: document.querySelectorAll("#map .segcode[open]").length,
       mapVisible: getComputedStyle(document.getElementById("map")).display !== "none"
     }));
-    check("65507: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1517 && print.auditor.segcodeOpen === 1517 && print.auditor.mapVisible, print.auditor);
+    check("65507: auditor print opens all 1470 blocks / 1517 fragments", print.auditor.uniqueBlocks === 1470 && print.auditor.segs === 1470 && print.auditor.segcodeOpen === 1470 && print.auditor.mapVisible, print.auditor);
     await ev(() => window.dispatchEvent(new Event("afterprint"))); await p.waitForTimeout(350);
     print.restored = await ev(() => ({ inserted: document.querySelectorAll(".file-lazy .file").length, show: document.getElementById("map").dataset.show }));
     check("65507: auditor afterprint removes the audit-only files", print.restored.inserted === beforeAudit && beforeAudit < 96, { ...print.restored, beforeAudit });
@@ -1486,8 +1538,8 @@ if (big) {
       counterTitle: document.getElementById("count-decisions").title
     }));
     results.noJs = noJs;
-    check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1517
-      && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 54 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
+    check("65507 no-JS: the full map 1470/1517/96 in closed disclosures, the tree open, panels stacked", noJs.mapUniqueBlocks === 1470 && noJs.mapSegs === 1470
+      && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
     check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
     check("65507 no-JS: every control disabled, the chrome hidden", noJs.fieldsetsDisabled && noJs.radiosDisabled && noJs.zonesDisabled && noJs.answerInputsDisabled
@@ -1682,11 +1734,11 @@ if (big) {
       const order = (el) => [...el.children].map(c => (c.className.baseVal ?? c.className).split(" ")[0]);
       const i = order(document.getElementById("i1")), f = order(document.getElementById("f1"));
       const idx = (a, n) => a.indexOf(n);
-      const consistent = (a) => idx(a, "card-head") < idx(a, "card-question") && idx(a, "card-question") < idx(a, "card-limit") && idx(a, "card-limit") < idx(a, "card-choice") && idx(a, "card-choice") < idx(a, "card-comment") && (idx(a, "card-more") === -1 || idx(a, "card-comment") < idx(a, "card-more"));
+      const consistent = (a) => idx(a, "card-head") < idx(a, "card-question") && idx(a, "card-question") < idx(a, "card-choice") && idx(a, "card-choice") < idx(a, "card-comment") && (idx(a, "card-more") === -1 || idx(a, "card-comment") < idx(a, "card-more"));
       const limit = document.querySelector("#i1 .card-limit");
       return { idea: i, finding: f, consistent: consistent(i) && consistent(f), limitOnSurface: !!limit && limit.parentElement === document.getElementById("i1"), limitText: limit?.textContent ?? null };
     });
-    check("65507: the idea shell matches the finding shell; the limit is the explicit absence", ideaShell.consistent && ideaShell.limitOnSurface && /не указаны/.test(ideaShell.limitText), ideaShell);
+    check("65507: the idea shell matches the finding shell without an invented limit", ideaShell.consistent && !ideaShell.limitOnSurface && ideaShell.limitText === null, ideaShell);
     // The saved BLOCK comment is compact; the export collects it immediately.
     await tab(p, "code");
     await ev(() => { const d = document.querySelector("#map .segmeta"); d.open = true; d.scrollIntoView({ block: "center" }); });
@@ -1698,7 +1750,7 @@ if (big) {
       return { viewVisible: view && !view.hidden && view.offsetParent !== null, text: view?.querySelector(".comment-text")?.textContent, editBtn: view?.querySelector(".comment-edit")?.textContent, saved: view?.querySelector(".comment-saved")?.textContent, inputHidden: input.hidden };
     });
     check("65507: the saved block comment is compact — text + «Изменить» + saved status", blockComment.viewVisible && blockComment.inputHidden
-      && blockComment.text === "компактный комментарий блока" && blockComment.editBtn === "Изменить" && blockComment.saved === "Сохранено в этом браузере, не отправлено.", blockComment);
+      && blockComment.text === "компактный комментарий блока" && blockComment.editBtn === "Изменить" && blockComment.saved === undefined, blockComment);
     await p.click("#map .segmeta .comment-edit"); await p.waitForTimeout(250);
     const blockCommentEdit = await ev(() => { const bc = document.querySelector("#map .segmeta .block-comment"); const input = bc.querySelector("input"); return { inputVisible: !input.hidden && input.offsetParent !== null, focused: document.activeElement === input, viewHidden: bc.querySelector(".comment-view").hidden }; });
     check("65507: «Изменить» on the block comment reveals and focuses the input", blockCommentEdit.inputVisible && blockCommentEdit.focused && blockCommentEdit.viewHidden, blockCommentEdit);
