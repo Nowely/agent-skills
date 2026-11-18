@@ -17,7 +17,7 @@ import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVID
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
-import { normalize, settle, applicable, counters, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
+import { normalize, settle, applicable, counters, remainingCount, exportOf, validAccept, validDefer } from "../plugin/skills/review/scripts/decisions.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -111,10 +111,10 @@ test("two reviews of one change keep their decisions apart, and one review rende
 test("a review carries the report's words in its reader's language, and a word the report does not have is refused",
   "the reader of a report is the user, in the user's language; a mistyped label must not pass as a translation",
   () => {
-    const translated = render((r) => { r.labels = { "recommendation": "Что делать", "met": "выполнено", "findings": "Находки", "decided": "Решено: {n}" }; });
+    const translated = render((r) => { r.labels = { "recommendation": "Что делать", "met": "выполнено", "findings": "Находки", "tab.remaining": "Осталось: {n}" }; });
     if (translated.status !== 0) return `refused: ${translated.stderr}`;
     const page = fs.readFileSync(html, "utf8");
-    if (![">Что делать<", ">выполнено<", "Решено: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
+    if (![">Что делать<", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
     const { status, stdout } = report("labels");
     if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
     for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ decided: "Решено" }, 'label "decided" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
@@ -982,9 +982,11 @@ test("the v4 page is tabs over panels the no-script reader can use, with deep-li
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    if (!page.includes('role="tablist"') || (page.match(/<a role="tab"/g) ?? []).length !== 6 || (page.match(/role="tabpanel"/g) ?? []).length !== 6) return "the six tabs and panels are not ARIA markup";
-    for (const id of ["overview", "decisions", "findings", "code", "checks", "materials"])
+    // v5: one Choices tab carries the decisions, the findings and the ideas — five tabs, no duplicate list.
+    if (!page.includes('role="tablist"') || (page.match(/<a role="tab"/g) ?? []).length !== 5 || (page.match(/role="tabpanel"/g) ?? []).length !== 5) return "the five tabs and panels are not ARIA markup";
+    for (const id of ["overview", "decisions", "code", "checks", "materials"])
       if (!page.includes(`id="tab-${id}" data-tab="${id}" href="#panel-${id}" aria-controls="panel-${id}"`) || !page.includes(`id="panel-${id}" data-panel="${id}"`)) return `tab ${id} is not an anchor to its panel`;
+    if (page.includes('id="panel-findings"')) return "the findings kept a panel of their own beside the Choices list";
     if (/class="panel"[^>]*hidden/.test(page)) return "a panel ships hidden from the no-script reader";
     if (!page.includes("<noscript>") || !page.includes("Without JavaScript all sections show one after another")) return "the no-script note is missing";
     // Every deep-link family has its target exactly once: questions, findings, blocks, pictures, panels.
@@ -1172,7 +1174,7 @@ test("without scripts the v4 controls are disabled, the panels stack, and the ma
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const part of ['data-purpose-filter="tests" aria-pressed="false" disabled', 'id="tree-filter-input"', 'id="tree-filter-clear" disabled',
+    for (const part of ['data-purpose-filter="tests" aria-pressed="true" disabled', 'id="tree-filter-input"', 'id="tree-filter-clear" disabled',
       'class="fname mono" data-fexpand="0" disabled', 'data-f-filter="1" disabled', 'data-req-filter="1" disabled', 'data-q-filter="1" disabled'])
       if (!page.includes(part)) return `the no-script control is missing or not disabled: ${part}`;
     if (!/<input type="radio" name="vq3"[^>]*disabled>/.test(page) || !/<input type="checkbox" data-zone="1-0" disabled>/.test(page)) return "the radios or zones are not disabled";
@@ -1204,8 +1206,8 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const word of ["Обзор", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
-      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Имя файла:", "Подтвердить выбор", "Отложить", "Сбросить", "ожидает"])
+    for (const word of ["Обзор", "Выборы", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
+      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Имя файла:", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
@@ -1301,9 +1303,10 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     const before = script.slice(script.indexOf('window.addEventListener("beforeprint"'), script.indexOf('window.addEventListener("afterprint"'));
     const after = script.slice(script.indexOf('window.addEventListener("afterprint"'), script.indexOf("const annotationUI"));
     if (!before.includes("chipIdx")) return "the snapshot does not keep the chip position";
-    for (const part of ['[data-purpose-filter]', '[data-show]', "applyTreeFilter()", "applySegFilter()", "printSnapshot.chipIdx"])
+    for (const part of ['[data-purpose-filter]', '[data-show]', "applyTreeFilter()", "applySegFilter()", "printSnapshot.chipIdx", "printSnapshot.hiddenPurposes"])
       if (!after.includes(part)) return `afterprint does not restore "${part}"`;
-    if (!/aria-pressed.*purposeFilter === map\.dataset\.purpose/s.test(after)) return "the purpose buttons' pressed state is not restored from the map";
+    // v5: the purpose toggles are many — their pressed state returns from the stored hidden list.
+    if (!/aria-pressed.*!state\.hiddenPurposes\.includes\(b\.dataset\.purposeFilter\)/s.test(after)) return "the purpose toggles' pressed state is not restored from the hidden list";
     // The shot deep link accepts the canonical #shot-N and the bare #shotN alike.
     const open = script.slice(script.indexOf("function openTarget"), script.indexOf('window.addEventListener("hashchange"'));
     const norm = open.match(/const shot = (\/.*?\/)\.exec\(hash\); if \(shot\) hash = "#shot-"/);
@@ -1319,6 +1322,326 @@ test("a genuine old custom catalog renders an old record end to end; a new recor
     if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
     const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = oldCatalog; });
     return refused.status === 1 && refused.stderr.includes("tab.overview") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
+  });
+
+// ---- v5: one Choices list, the unified shell, the reversible choice, the export dialog ----
+
+test("the v5 page is one Choices list grouped by action, with subtabs over it and no duplicate panel",
+  "Q/F/I duplicated across tabs break deep links and double the ids; a counter per tab reads as several quantities",
+  () => {
+    const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.mechanisms = [MECHANISM]; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const decisions = page.split('id="panel-decisions"')[1].split('id="panel-code"')[0];
+    for (const id of ["q3", "q4", "f1", "f2", "i1"])
+      if (!decisions.includes(`id="${id}"`)) return `${id} is not in the Choices list`;
+    if ((page.match(/id="f1"/g) ?? []).length !== 1 || (page.match(/id="i1"/g) ?? []).length !== 1) return "a finding or idea stands twice";
+    for (const group of ["group-owner", "group-fix", "group-data", "group-settled"])
+      if (!decisions.includes(`id="${group}"`)) return `the action group ${group} is missing`;
+    // The subtabs filter the ONE list; they ship disabled and pressed at «All» for the no-script reader.
+    const filters = [...decisions.matchAll(/data-choice-filter="(\w+)"/g)].map((m) => m[1]);
+    if (filters.join() !== "all,q,f,i,fact,deferred,done") return `the subtabs are ${filters.join()}`;
+    if (!decisions.includes('data-choice-filter="all" aria-pressed="true" disabled')) return "the subtabs do not start at All, disabled";
+    // The overview carries the read-only matter; the checks tab carries the challenges; nothing is lost.
+    const overview = page.split('id="panel-overview"')[1].split('id="panel-decisions"')[0];
+    if (!overview.includes('id="tradeoffs"') || !overview.includes('id="mechanisms"') || !overview.includes('id="structure"')) return "the overview lacks the tradeoffs, mechanics or structure";
+    const checks = page.split('id="panel-checks"')[1].split('id="panel-materials"')[0];
+    if (!checks.includes('id="challenges"') || !checks.includes('id="requirements"')) return "the checks tab lacks the challenges or requirements";
+    // One quantity: the main decisions open (Q3, the only root) plus the two findings; the child Q4 and the idea never enter.
+    if (!page.includes('id="count-decisions" title="') || !page.includes(">3 remaining</span>")) return "the static counter is not the one quantity (roots + findings)";
+    return !page.includes('id="panel-findings"') || "the findings kept a duplicate panel";
+  });
+
+test("remainingCount is the one quantity: roots and findings, never ideas, children or invalid decisions",
+  "a counter that counts conditional children, ideas or bare clicks misstates what is left for the owner",
+  () => {
+    const findings = [{ id: 1 }, { id: 2 }];
+    const fresh = normalize({});
+    if (remainingCount(DQS, fresh, findings) !== 4) return "the fresh count is not the two roots plus the two findings";
+    // Ideas are excluded at the source: the page feeds the findings list, never the ideas (data.ideas stands apart).
+    const themed = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (themed.status !== 0) return themed.stderr;
+    const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(fs.readFileSync(html, "utf8"))[1]);
+    if (embedded.findings.some((f) => String(f.id).startsWith("i")) || !embedded.ideas.length) return "the ideas are not kept apart from the counted findings";
+    const accepted = normalize({ questions: { 1: { choice: "accepted", variant: "keep" } }, findings: { 1: "apply" } });
+    if (remainingCount(DQS, accepted, findings) !== 2) return "a valid acceptance or a processed finding did not decrement";
+    const bare = normalize({ questions: { 1: { choice: "accepted" } } });
+    if (remainingCount(DQS, bare, findings) !== 4) return "an acceptance without a variant counted as decided";
+    const deferred = normalize({ questions: { 4: { choice: "deferred" } }, notes: { q4: "Later." } });
+    if (remainingCount(DQS, deferred, findings) !== 3) return "a reasoned deferral did not decrement";
+    const reasonless = normalize({ questions: { 4: { choice: "deferred" } } });
+    if (remainingCount(DQS, reasonless, findings) !== 4) return "a reasonless deferral counted as decided";
+    // The child under an accepted outside variant is not applicable, and the root's own acceptance stands.
+    const retired = settle(DQS, normalize({ questions: { 1: { choice: "accepted", variant: "revert" }, 2: { choice: "accepted", variant: "a" } } }));
+    if (remainingCount(DQS, retired, findings) !== 3) return "the retired child or the accepted root miscounted";
+    return true;
+  });
+
+test("the conditional children sit under their parent, and the settled group is the runtime's compact rows",
+  "Q9–Q11 as siblings of Q2 read as independent decisions; a settled card copied instead of moved doubles its id",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const dir = path.join(run, "v5-children-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review));
+    const drawn = report("render", copy);
+    if (drawn.status !== 0) return drawn.stderr.slice(0, 400);
+    const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
+    const unit2 = page.split('data-unit="q2"')[1].split('data-unit="q6"')[0];
+    if (!unit2.includes('data-qchildren="2"')) return "Q2 has no children disclosure";
+    for (const n of [9, 10, 11]) if (!unit2.includes(`id="q${n}"`)) return `Q${n} is not under Q2`;
+    const owner = page.split('id="group-owner"')[1].split('id="group-fix"')[0];
+    const units = [...owner.matchAll(/data-unit="(q\d+)"/g)].map((m) => m[1]);
+    if (units.join() !== "q1,q2,q6,q8") return `the owner group's roots are ${units.join()}`;
+    if (owner.includes('data-unit="q9"')) return "a child stands as a root unit";
+    // The settled group starts empty; the runtime moves the SAME card (unitHome) and lands focus on the summary.
+    if (!page.includes('id="group-settled"')) return "the settled group is missing";
+    const script = scriptOf(page);
+    if (!script.includes("unitHome") || !script.includes("settled-row")) return "the runtime does not move cards into compact rows";
+    if (!script.includes("sum.focus({ preventScroll: true })")) return "the focus does not land on the settled row's summary";
+    if (page.includes("data-confirm")) return "the mobile confirm step survived";
+    if (/isMobile/.test(script)) return "a separate mobile choice rule survived";
+    return script.includes('cur.choice = "accepted"') || "the radio does not accept at once on every size";
+  });
+
+test("the unified card shell: one order for Q/F/I, the limit on the surface, no invented data",
+  "a different shell per type hides the limit and the choice; an idea with an invented limit states what the record does not",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const order = (card) => ["card-head", "card-question", "card-comment", "card-more"].map((part) => card.indexOf(part));
+    const q3 = page.split('id="q3"')[1].split("</div>\n  </div>")[0];
+    const f1 = page.split('id="f1"')[1].split("</article>")[0];
+    const i1 = page.split('id="i1"')[1].split("</article>")[0];
+    for (const [name, card] of [["q3", q3], ["f1", f1], ["i1", i1]]) {
+      const at = order(card);
+      if (at.some((x) => x < 0) || at.some((x, j) => j && x <= at[j - 1])) return `${name}: the shell order differs`;
+    }
+    if (!f1.includes("card-limit") || !f1.includes("card-consequence") || !f1.includes("card-choice")) return "the finding lacks the limit, consequence or choice slot";
+    if (!f1.includes(">Fix</button>") || !f1.includes(">Do not fix</button>")) return "the finding's choice is not Fix / Do not fix";
+    if (!i1.includes("card-limit") || !i1.includes("not stated in the record")) return "the idea's limit is not the explicit absence";
+    if (!i1.includes(">Take</button>") || !i1.includes(">Do not take</button>")) return "the idea's choice is not Take / Do not take";
+    // The fact answer stands on the surface, not behind the comment; a zone mark is not a confirmation.
+    const q2 = page.split('id="q2"')[1].split('id="q3"')[0];
+    if (!q2.includes('data-answer="q2"') || q2.indexOf('data-answer="q2"') > q2.indexOf("card-comment")) return "the fact answer is not on the surface before the comment";
+    const q1 = page.split('id="q1"')[1].split('id="q2"')[0];
+    if (!q1.includes("zone-note") || !q1.includes("not a confirmation")) return "the zone mark reads as a confirmation";
+    // The comment is a closed disclosure, never a permanent textarea.
+    if (!q3.includes('<details class="card-comment act" data-comment="q3">')) return "the card comment is not the compact disclosure";
+    if (page.includes("qnote-wrap")) return "the permanent comment textarea survived";
+    return true;
+  });
+
+test("the surface limit is the record's own uncertainty; a clear recommendation stays advice",
+  "an invented limit or a buried uncertainty misleads the owner at the first screen",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const dir = path.join(run, "v5-limit-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review));
+    if (report("render", copy).status !== 0) return "render failed";
+    const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
+    for (const n of [2, 8]) {
+      const card = page.split(`id="q${n}"`)[1].split('id="q' + (n + 1) + '"')[0];
+      const limit = card.split("card-limit")[1]?.split("</p>")[0] ?? "";
+      if (!limit.includes("Однозначной рекомендации нет")) return `Q${n}'s uncertainty is not on the surface`;
+      if (card.indexOf("card-limit") > card.indexOf("card-more")) return `Q${n}'s limit is buried in a disclosure`;
+    }
+    // Q6's recommendation is a clear opinion: it stands as advice, not as an uncertainty.
+    const q6 = page.split('id="q6"')[1].split('data-unit="q8"')[0];
+    if (!q6.includes("qadvice") || q6.includes("card-limit")) return "Q6's clear recommendation was demoted to a limit";
+    // The first screen carries the record's unchecked limits; a record without them grows no empty slot.
+    const intro = page.split('<div class="decision-intro">')[1].split("choice-filters")[0];
+    if (!intro.includes("card-limit") || !intro.includes("current-merge pixel-diff")) return "the intro lacks the record's unchecked limits";
+    const legacy = render();
+    if (legacy.status !== 0) return legacy.stderr;
+    const old = fs.readFileSync(html, "utf8");
+    const oldIntro = old.split('<div class="decision-intro">')[1].split("choice-filters")[0];
+    return !oldIntro.includes("card-limit") || "a record without coverageStructured grew an empty limit";
+  });
+
+test("the fact answer is «answer entered», never «verified», and exports apart from the comments",
+  "an entered answer promoted to a checked result, or mixed into the comments, loses the three layers",
+  () => {
+    const state = normalize({ answers: { q3: "https://example.test/proof" }, notes: { q3: "a discussion" } });
+    const out = exportOf(DQS, state, {});
+    if (out.schema_version !== 4) return "the schema changed";
+    if (out.factAnswers?.q3 !== "https://example.test/proof") return "the export lacks factAnswers";
+    if (out.notes.q3 !== "a discussion") return "the answer displaced the comment";
+    // An old store without the new keys normalizes clean; the answer never decides a question.
+    const old = normalize({ findings: { 1: "apply" }, questions: { 1: { choice: "accepted", variant: "keep" } } });
+    if (Object.keys(old.answers).length || old.hiddenPurposes.length || old.treeHidden) return "the old store grew non-empty v5 state";
+    if (counters(DQS, state).accepted !== 0) return "an answer counted as a decision";
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes("does not confirm the check automatically")) return "the answer field does not say it confirms nothing";
+    const script = scriptOf(page);
+    if (!script.includes('stateName = "answered"')) return "the runtime has no answered state";
+    return !LABELS["decision.answered"].includes("verified") && !CATALOGS.ru["decision.answered"].includes("проверено") || "the answered word reads as verified";
+  });
+
+test("the export dialog is native and fed by one model; every control keeps its id",
+  "two diverging builders let the preview, the text and the JSON disagree; a lost control breaks the export",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    if (!page.includes('<dialog id="export-dialog"')) return "the export is not a native dialog";
+    const header = page.split("<header")[1].split("</header>")[0];
+    if (!header.includes('id="export-open"') || page.indexOf('id="export-open"') > page.indexOf('class="bar')) return "the export button is not in the header above the tabs";
+    const dialog = page.split('<dialog id="export-dialog"')[1].split("</dialog>")[0];
+    for (const id of ["export-preview", "export-json-top", "copy-top", "export-status", "out"])
+      if (!dialog.includes(`id="${id}"`)) return `the dialog lacks ${id}`;
+    if (!dialog.includes('readonly')) return "the text summary is editable";
+    if (!dialog.includes('method="dialog"')) return "the dialog has no native close";
+    for (const id of ["export-json", "copy", "print-owner", "print-audit", "apply-all", "clear"])
+      if (!page.includes(`id="${id}"`)) return `the materials control ${id} is missing`;
+    const script = scriptOf(page);
+    const text = script.slice(script.indexOf("function decisionsText"), script.indexOf("function buildPreview"));
+    const preview = script.slice(script.indexOf("function buildPreview"), script.indexOf("function openExportDialog"));
+    if (!text.includes("exportModel()") || !preview.includes("exportModel()")) return "the text and the preview do not share the one model";
+    if (!script.includes("xp-goto") || !script.includes("openTarget(hash)")) return "the preview rows have no working Go link";
+    if (!script.includes("factAnswers") && !script.includes("D.exportOf")) return "the JSON export is missing";
+    return true;
+  });
+
+test("the purpose toggles hide groups in map and tree; reset and deep links restore them",
+  "an inclusive single filter cannot hide several groups; a hidden group a deep link cannot reach loses the block",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const p of PURPOSES)
+      if (!page.includes(`data-purpose-filter="${p}" aria-pressed="true" disabled`)) return `${p} does not start visible and disabled`;
+    const script = scriptOf(page);
+    if (!script.includes("function togglePurpose") || !script.includes("state.hiddenPurposes")) return "the runtime has no multi-toggles";
+    if (!script.includes("hidden.includes(seg.dataset.purpose)") || !script.includes("hidden.includes(row.dataset.purpose)")) return "the hiding does not reach both map and tree";
+    const clear = script.slice(script.indexOf("function clearFilters"), script.indexOf("chipBack.addEventListener"));
+    if (!clear.includes("state.hiddenPurposes = []")) return "the reset does not restore the hidden groups";
+    const open = script.slice(script.indexOf("function openTarget"), script.indexOf('window.addEventListener("hashchange"'));
+    if (!open.includes("clearFilters()")) return "a block deep link does not reset the hiding";
+    if (!script.includes("t.chip.hidden")) return "the hidden groups have no chip";
+    // The model's counters are what the toggles hide: on the real record, tests are 15 files / 388 blocks.
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record is not on this machine (${SOURCE_65507})`);
+    const dir = path.join(run, "v5-purpose-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const files = parseDiff(fs.readFileSync(path.join(dir, "review.diff"), "utf8"));
+    const { errors, owner } = check(review, files, dir);
+    if (errors.length) return errors.join("; ");
+    const model = modelOf(review, files, owner, dir);
+    return model.purpose.counts.tests.files === 15 && model.purpose.counts.tests.blocks === 388 || `the tests group is ${model.purpose.counts.tests.files} files / ${model.purpose.counts.tests.blocks} blocks, not 15/388`;
+  });
+
+test("the tree opens statically, reveals every block through its ancestors, and spies the current file",
+  "a closed tree hides the files from the no-script reader; a reveal that leaves an empty shell loses the audit",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const dirs = (page.match(/<details class="fdir"/g) ?? []).length, open = (page.match(/<details class="fdir" open>/g) ?? []).length;
+    if (!dirs || dirs !== open) return "the tree does not open statically";
+    if (page.includes("fresult")) return "the tree rows still carry the does-text";
+    const row = page.split('class="frow"')[1].split("</li>")[0];
+    if (row.includes('class="tag')) return "the tree rows still carry verdict tags";
+    if (!page.includes("reveal-note")) return "the file header has no reveal note";
+    for (const part of [".file.reveal .reveal-note { display: inline }", ".js .map[data-show] .file.reveal .seg { display: revert }",
+      '.js .map[data-show] .file.reveal .seg[style*="display: none"] { display: none }'])
+      if (!page.includes(part)) return `the reveal CSS lacks "${part}"`;
+    const script = scriptOf(page);
+    if (!script.includes('file.classList.add("reveal")')) return "a tree click does not reveal the file";
+    if (!script.includes('seg.closest(".file.reveal")')) return "the filter does not spare the revealed file's blocks";
+    if (!script.includes("aria-current") || !script.includes('classList.toggle("current"')) return "the scrollspy is missing";
+    if (!script.includes('document.createElement("mark")') || !script.includes('event.key === "Enter"')) return "the search does not highlight or open on Enter";
+    if (!script.includes("state.treeHidden")) return "the tree collapse does not persist";
+    return true;
+  });
+
+test("the no-JS counter is the static Q+F with an honest title, and the v5 controls ship disabled",
+  "a counter that reads saved state without scripts, or a live-looking control, misleads the no-script reader",
+  () => {
+    const recordPath = path.join(SOURCE_65507, "review.json");
+    if (!fs.existsSync(recordPath) || !fs.existsSync(ANN_65507)) return skip(`the 65507 record or its annotations are not on this machine (${SOURCE_65507})`);
+    const dir = path.join(run, "v5-nojs-65507");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(path.join(SOURCE_65507, "review.diff"), path.join(dir, "review.diff"));
+    const review = enrich65507(JSON.parse(fs.readFileSync(recordPath, "utf8")), JSON.parse(fs.readFileSync(ANN_65507, "utf8")));
+    const copy = path.join(dir, "review.json");
+    fs.writeFileSync(copy, JSON.stringify(review));
+    if (report("render", copy).status !== 0) return "render failed";
+    const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
+    const badge = page.match(/<span class="tab-count" id="count-decisions"[^>]*>[^<]*<\/span>/)?.[0] ?? "";
+    if (!badge.includes("11 осталось")) return `the static counter is not 11: ${badge}`;
+    if (!/статический/i.test(badge) || !/без JavaScript/i.test(badge) || !/сохранённые ответы не учитываются/i.test(badge)) return `the counter's title is not honest: ${badge}`;
+    for (const part of ['data-choice-filter="all" aria-pressed="true" disabled', 'id="export-open" class="act" disabled', 'data-answer="q4"'])
+      if (!page.includes(part)) return `the no-script control is missing: ${part}`;
+    if (!/<input type="text" class="act" id="answer-q4"[^>]*disabled>/.test(page)) return "the answer field is not disabled without scripts";
+    return true;
+  });
+
+test("mobile targets reach 44px last in the CSS, and the owner print opens every nested disclosure",
+  "a component min-height overriding the mobile block leaves a small target; a closed nested disclosure loses the code in print",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED)));
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    const style = page.split("<style>")[1].split("</style>")[0];
+    const mobile = style.lastIndexOf("@media (max-width: 700px)");
+    const print = style.indexOf("@media print");
+    if (mobile < 0 || mobile > print) return "the mobile 44 block is not last before print";
+    const block = style.slice(mobile, print);
+    if (!block.includes("min-height: 44px") || !block.includes(".choice-filters button") || !block.includes(".theme-btn { min-height: 32px; height: 32px }")) return "the mobile block lacks the targets or the theme exception";
+    if (!block.includes(".l b, .l i { width: 2.2em }")) return "the mobile gutters are not 2.2em";
+    if (!style.includes(".choice-filters, .comment-edit, #export-open, #export-dialog { display: none !important }")) return "the print does not hide the v5 controls";
+    if (!style.includes(".dunit[hidden], .dgroup[hidden] { display: block !important }")) return "the print hides the filtered cards";
+    const script = scriptOf(page);
+    const before = script.slice(script.indexOf('window.addEventListener("beforeprint"'), script.indexOf('window.addEventListener("afterprint"'));
+    const buildAt = before.indexOf("buildWhere(d)"), openAt = before.indexOf('details:not([open])');
+    if (buildAt < 0 || openAt < 0 || buildAt > openAt) return "the owner print does not build the lazy bodies before opening the nested disclosures";
+    if (!before.includes("for (let i = 0; i < 2; i++)")) return "the owner print does not open the nested disclosures to the bottom";
+    return true;
+  });
+
+test("the v5 words are localized and owed by capability; the block comment is the compact pattern",
+  "a new control silently in English, or a permanent block input, fails the reader",
+  () => {
+    const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
+    if (result.status !== 0) return result.stderr;
+    const page = fs.readFileSync(html, "utf8");
+    for (const word of ["Выборы", "Все", "Факты · проверки", "Отложено", "Завершено", "Нужен выбор владельца", "Предложенные исправления",
+      "Нужны данные или проверка", "Завершённые · отложенные", "Выгрузить ответы", "Принятые решения", "Отложенные и черновики", "Ответы на факты",
+      "Перейти", "Комментарий", "Сохранено в этом браузере, не отправлено.", "ответ внесён", "Показаны все блоки файла вне режима", "Скрыто:",
+      "Ограничение и версия для идеи в записи не указаны", "Исправить", "Не исправлять", "Взять", "Не брать", "Подвопросы"])
+      if (!page.includes(word)) return `the Russian page lacks "${word}"`;
+    for (const english of [">All<", ">Owner choice needed<", ">Export answers<", ">answer entered<", ">Fix</button>", ">Take</button>"])
+      if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
+    const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
+    for (const key of ["choice.filter.all", "group.owner", "export.open", "card.comment", "nojs.counter-title", "tree.reveal-note", "chip.hidden", "finding.limit.read"]) {
+      if (oldRequired.includes(key)) return `the v5 chrome ${key} was demanded of a genuine old catalog`;
+      if (!newRequired.includes(key)) return `the v5 chrome ${key} is not required of a record with the new fields`;
+    }
+    for (const key of ["decision.answered", "decision.answer-label", "decision.children", "ideas.optional", "card.limit-absent-idea"])
+      if (!newRequired.includes(key)) return `the capability key ${key} is not required of the themed record`;
+    const noIdeas = structuredClone(THEMED); delete noIdeas.ideas;
+    if (requiredKeys(noIdeas).includes("ideas.optional")) return "a record without ideas was asked for the idea words";
+    // The block comment is the same compact pattern, wrapped for the clones to cut.
+    if (!page.includes('<div class="block-comment act" data-blockcomment="b1">')) return "the block comment is not the compact wrapper";
+    const script = scriptOf(page);
+    if (!script.includes("function paintComments") || !script.includes(".block-comment")) return "the runtime does not paint the block comments";
+    if (!script.includes('event.target.closest(".card-comment, .block-comment")')) return "the focusout does not collapse both comment kinds";
+    return script.includes('s.querySelectorAll(".block-comment").forEach((n) => n.remove())') || "the related-code clones keep the comment wrapper";
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));
