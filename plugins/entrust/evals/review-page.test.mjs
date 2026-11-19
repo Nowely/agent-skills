@@ -149,33 +149,52 @@ test("without JavaScript the page is the whole report: the summary, every decisi
   assert.ok(island.screens[0].pictures.every((p) => !("data" in p)));
 });
 
-// The budget protects what every page carries besides its diff, and what a large diff costs. Every page carries the
-// runtime (about 170 KB), its styles (about 50 KB), the decision runtime, the catalog and the record's data and
-// document: 285 KB for the themed record when this budget was set, so 320 KB leaves room to grow and fails on a second
-// copy of any of them. A large diff costs its rows: each row's markup besides its highlighted code, its block's line
-// and its file's frame included, is about 112 bytes, so 120 fails on a second copy of the code or on heavier rows. The 274-block record's page was 6.6 MB before the
-// redesign, 2.6 MB in the prototype and 2.9 MB here; the generated record below is 1.9 MB.
-test("the page stays within its budget: 320 KB besides the diff's code, and at most 120 bytes of markup per row besides its code", () => {
-  const overhead = (html) => html.length - [...html.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)].reduce((sum, m) => sum + m[0].length, 0);
-  const { html } = draw(THEMED, diffText);
-  assert.ok(overhead(html) <= 320 * 1024, `the themed page carries ${overhead(html)} bytes besides its code`);
-  // 40 files of 180 added lines in 240 blocks.
-  const FILES = 40, LINES = 180;
-  const diff = Array.from({ length: FILES }, (_, f) => [`diff --git a/src/m${f}/part${f}.js b/src/m${f}/part${f}.js`, "new file mode 100644", "--- /dev/null", `+++ b/src/m${f}/part${f}.js`,
-    `@@ -0,0 +1,${LINES} @@`, ...Array.from({ length: LINES }, (_, i) => `+export const value${f}_${i} = ${f * 1000 + i};`)].join("\n")).join("\n") + "\n";
-  const blocks = Array.from({ length: FILES * 6 }, (_, k) => ({ path: `src/m${Math.floor(k / 6)}/part${Math.floor(k / 6)}.js`, added: `${(k % 6) * 30 + 1}-${(k % 6) * 30 + 30}`,
-    does: `Part ${k % 6}.`, serves: [1], verdict: k % 23 === 5 ? "fix" : "keep", ...(k % 23 === 5 ? { findings: [1] } : {}) }));
-  const large = { title: "Large", range: "generated", language: "en", diff: { file: "large.diff", sha256: createHash("sha256").update(diff).digest("hex") },
-    change: { goal: "Modules.", parts: ["Forty."], sources: ["generated"] }, verdict: "Generated.", now: "Now.", target: "Target.", recommendation: "Read it.",
-    requirements: [{ id: 1, text: "Every module exports.", source: "task", met: "read" }], blocks, challenges: [], coverage: "Generated.",
-    findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/m1/part1.js:1", what: "What.", shown_by: "The line.", fix: "Fix." }] };
-  const big = draw(large, diff).html;
+// A guard against a second copy, not a size target. Every page carries one runtime (174 KB), the decision runtime
+// (13 KB), one stylesheet (53 KB), one catalog with the record's data (39 KB for the themed record) and the document
+// without JavaScript (9 KB): 287 KB besides the code for the themed record when this guard was set. Each is checked to
+// be there once, and 320 KB is what a second copy of the styles, the runtime or the data crosses. The code is there
+// once too, in its file's <noscript>: a row's markup besides its code — its numbers and classes, with its block's
+// verdict line and its file's frame shared out — came to 118 bytes on the mixed diff below and 117 on the 274-block
+// record's real one (7,213 rows, a 2.9 MB page) when this guard was set; 130 is what a second copy of a row's code or
+// a heavier row crosses.
+test("the page carries its runtime, its styles, its catalog and each row's code once, on the themed record and on a mixed diff", () => {
+  const codeOf = (html) => [...html.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)].map((m) => m[0]);
+  const once = (html, text, what) => assert.equal(html.split(text).length, 2, `${what} is in the page other than once`);
+  const { html } = draw(THEMED, diffText), island = islandOf(html);
+  once(html, fs.readFileSync(RUNTIME, "utf8").trim(), "the runtime");
+  once(html, CSS, "the stylesheet");
+  once(html, JSON.stringify(island.labels), "the catalog");
+  const besides = html.length - codeOf(html).join("").length;
+  assert.ok(besides <= 320 * 1024, `the themed page carries ${besides} bytes besides its code`);
+  // 30 files, each changed in five hunks of three context lines, four removed and six added, and three more context.
+  const FILES = 30, HUNKS = 5, lines = [], blocks = [];
+  const source = (f, i, side) => `  const ${side}${f}_${i} = compute(${i}, "text ${f}", { mode: ${i % 3} });`;
+  for (let f = 0; f < FILES; f++) {
+    const path = `src/mod${f}/file${f}.js`;
+    lines.push(`diff --git a/${path} b/${path}`, "index 1111111..2222222 100644", `--- a/${path}`, `+++ b/${path}`);
+    for (let h = 0, at = 20, shift = 0; h < HUNKS; h++, at += 40, shift += 2) {
+      lines.push(`@@ -${at - 3},10 +${at - 3 + shift},12 @@`, ...[at - 3, at - 2, at - 1].map((i) => " " + source(f, i, "old")),
+        ...[0, 1, 2, 3].map((i) => "-" + source(f, at + i, "old")), ...[0, 1, 2, 3, 4, 5].map((i) => "+" + source(f, at + i, "new")),
+        ...[4, 5, 6].map((i) => " " + source(f, at + i, "old")));
+      const k = f * HUNKS + h, verdict = k % 7 === 3 ? "fix" : k % 11 === 5 ? "question" : "keep";
+      blocks.push({ path, added: `${at + shift}-${at + shift + 5}`, removed: `${at}-${at + 3}`, does: `Hunk ${h}.`, serves: [1], verdict,
+        ...(verdict === "fix" ? { findings: [1] } : verdict === "question" ? { questions: [1] } : {}) });
+    }
+  }
+  const diff = lines.join("\n") + "\n";
+  const mixed = { title: "Mixed", range: "generated", language: "en", diff: { file: "mixed.diff", sha256: createHash("sha256").update(diff).digest("hex") },
+    change: { goal: "Modules.", parts: ["Thirty."], sources: ["generated"] }, verdict: "Generated.", now: "Now.", target: "Target.", recommendation: "Read it.",
+    requirements: [{ id: 1, text: "Every module computes.", source: "task", met: "read" }], blocks, challenges: [], coverage: "Generated.",
+    findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/mod1/file1.js:20", what: "What.", shown_by: "The line.", fix: "Fix." }],
+    questions: [{ at: "src/mod0/file0.js:1", text: "Keep it?", kind: "fact" }] };
+  const page = draw(mixed, diff).html;
+  // a context, a removed and an added line's name, each in the page once
+  for (const name of ["old7_17", "old7_20", "new7_100"]) assert.equal(page.match(new RegExp(`\\b${name}\\b`, "g"))?.length, 1, `${name} is in the page other than once`);
   let rows = 0, code = 0, markup = 0;
-  for (const [file] of big.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)) {
+  for (const file of codeOf(page)) {
     markup += file.length;
     for (const m of file.matchAll(/<td class="cd">(.*)<\/td><\/tr>$/gm)) { rows++; code += m[1].length; }
   }
-  assert.equal(rows, FILES * LINES);
-  assert.ok((markup - code) / rows <= 120, `${((markup - code) / rows).toFixed(1)} bytes of markup per row besides its code`);
-  assert.ok(big.length <= 2 * 1024 * 1024, `the large page is ${big.length} bytes`);
+  assert.equal(rows, FILES * HUNKS * 16);
+  assert.ok((markup - code) / rows <= 130, `${((markup - code) / rows).toFixed(1)} bytes of markup per row besides its code`);
 });
