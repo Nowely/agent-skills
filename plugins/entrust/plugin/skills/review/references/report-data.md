@@ -30,9 +30,10 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link the page. On it the user marks findings «Fix» or «Do not fix» and ideas «Take» or
-   «Do not take», decides the question cards, comments on any passage and copies those decisions back
-   as text or downloads them as JSON: proposals for the next step, not edits to the source.
+   not changed. Link the page. On it the owner answers each decision with a variant or in their own words, each
+   finding «Fix it», «Leave it» or in their own words, each idea «Take it», «Skip it» or in their own words, and
+   each fact or evidence request; comments on lines and paragraphs; and exports the answers as text or JSON:
+   proposals for the next step, not edits to the source.
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
@@ -218,113 +219,73 @@ obtain). The required `kind` comes from what the question asks, never from its n
   Where the data is thin, say so and give the conditional rule instead of filling the field formally.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
-- `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent is undecided, and
-  while the parent's accepted variant is one of those listed. Children are derived from `parent`; the parent
-  stores none. An accepted variant outside the list makes the child not applicable; its answer leaves the active
-  decisions and does not return silently when the parent changes again.
+- `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
+  effect (it is open, answered in the owner's words or deferred), and while the parent's variant is one of those
+  listed. Children are derived from `parent`; the parent stores none. A variant outside the list makes the child not
+  applicable; its answer becomes a draft and does not return silently when the parent changes again.
 - `zones`: for evidence that may be closed in part, the zones to check, each with `sources`. A user's check mark
   on a zone is not evidence; closing it takes a revised record.
 
 Numbering stays positional from 1 (`blocks.questions`, `units.questions`, the check). Decisions have three layers:
-the review's verdicts in the record, the user's decisions on the page (stored and exported), and evidence obtained
-in a later revision of the record. Accepting a decision needs a chosen variant; deferring needs a reason in a
-comment; an evidence question cannot be closed as "decided". On the page a variant radio is the decision on every screen size: picking it accepts at once, another pick changes
-it, Reset clears it — one reversible choice, no separate mobile draft-and-confirm step. A made choice reads as a
-neutral «Selected», never a success badge. Deferring keeps a picked variant as a draft, and a child retired by its
-parent keeps its pick as a draft too — neither is in effect, and neither returns silently when the parent changes
-again. A fact or evidence card carries an answer field on its surface: an entered answer reads «answer entered»
-in a neutral tone, never «verified» — it is the owner's input, not a checked result, and a zone mark without evidence is not
-a confirmation either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens
-with «Однозначной рекомендации нет» / «No clear recommendation» and names no `variant`: the page shows that text
-in the card's limit slot on the surface, not as a direction. The export (schema 5) carries the record and diff
-digests, the question number, the variant id and text, the comment and the status; `variant_draft` marks a saved
-variant that is not in effect (deferred or not applicable), `applyWithoutVariant` lists the questions accepted by
-comment alone, and `factAnswers` carries the entered fact answers apart from the comments. Decisions are never
-carried between revisions by question number.
+the review's verdicts in the record, the owner's answers on the page (kept in the browser and exported), and
+evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant or the owner's
+own words, a finding «Fix it», «Leave it» or own words, an idea «Take it», «Skip it» or own words, a fact or evidence
+request the owner's answer; choosing one clears the other. Deferring needs a reason and keeps the answer it replaces
+as a draft, and a child retired by its parent keeps its answer as a draft too: neither is in effect, and neither
+returns silently when the parent changes again. An answered fact or evidence request reads «Answered», never
+«decided» or «verified»: it is the owner's input, not a checked result, and a zone mark is not a confirmation
+either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens with «Однозначной
+рекомендации нет» / «No clear recommendation» and names no `variant`. Decisions are never carried between revisions
+by question number.
 
-Schema 5 includes `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
-unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions
-and requests with an answer are excluded; their existing data remains in the export. The list does not change
-applicability or mean an answer is verified. A deferred parent retains its existing behavior. An accepted decision whose ancestor is still unresolved
-has an additive `waiting_parent: N` on its question entry: the choice remains recorded, not an unanswered
-item, but is conditional on QN. The `factAnswerStatuses` object maps each known
-fact/evidence answer ID with nonblank content to `{status: "entered"}`, `{status: "waiting-parent", parent: N}`,
-or `{status: "not-applicable"}`. It uses the same applicability and parent gate as the page. IDs that do not
-identify a known fact/evidence question, and blank answers, remain untouched in
-`factAnswers` without an invented status. The statuses never mean
-verified; raw answers and zones remain unchanged.
-
-A passage contains `quote`, `where`, and `note`, and optionally a `proof` of kind `field`,
-`related-code`, `range`, or `code`. The report checks the document and relevant structure before locating a
-passage; unsupported or unconfirmed passages remain saved and exported without a location link. It does not
-guess a relocation.
+The export (schema 6) is one payload behind the page's preview, its text and its JSON: the record's and the diff's
+digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
+`deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), `option` (`fix`, `leave`,
+`take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
+`zones`, and `waiting_for_parent` while an ancestor whose answer decides whether the item applies is still open.
+`lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,
+`line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment never
+answers an item.
 
 ## The page
 
-One renderer draws the page; the v5 layout is presentation over the same record, and every part of it is derived,
-never a new record field:
+`report.mjs render` writes one standalone, offline file; every part of it is derived from the record and the saved
+diff, never a new record field.
 
-- **Tabs.** Overview, Choices, Code, Checks, Materials — the page starts at Choices. The Q decisions, F findings
-  and I ideas stand in ONE list there (each card exactly once), grouped by the next action: the owner's choice
-  (conditional children under their parent), the proposed fixes with the optional ideas, the facts and checks,
-  and the settled group. Subtab filters (All / Decisions / Findings / Ideas / Facts·checks / Deferred / Done)
-  filter that one list; settled cards move into compact expandable rows and return home when the choice reverts,
-  with the focus on the row's summary. The read-only matter — passport, status, counters, verdict, now→target,
-  structure, tradeoffs, mechanisms — lives in Overview; the requirements, manual checks and challenges in Checks;
-  screens, coverage and the print controls in Materials. Per-tab scroll memory and deep links (`#qN`, `#fN`,
-  `#iN`, `#bN`, `#mN`, `#shot-N`, `#panel-<id>`, `#qN-code`/`#fN-code`; the v4 `#panel-findings` aliases to
-  Choices; a bare `#shotN` lands on the same shot). Without JavaScript the panels stack, the tabs are anchor
-  links, the controls ship disabled, and the Choices badge is the static count of the open main decisions plus
-  findings with a title that says saved answers are not counted.
-- **Cards.** One shell for Q/F/I/fact: head (type, id, status) → essence → limit on the surface → choice →
-  comment → disclosures (basis and sources, related code, checks). The limit slot shows the record's own words —
-  the «no clear recommendation» text, the finding's evidence kind, the idea's explicit absence of limit data —
-  never invented ones. Comments are one compact pattern on cards and blocks: closed by default, the saved text
-  with «Edit» and «saved in this browser, not sent»; the export collects them from every tab.
-- **Purpose.** Each touched file is classified by its path alone — `production`, `tests`, `styles`, `assets`,
-  `docs`, `config` — and the purpose toggles hide groups (several at once) in the map AND the tree, with a
-  «Hidden» chip; a reset or a deep link to a hidden block restores them. The rules, disclosed beside the filter:
-  `__tests__/`, `*.test.*`, `*.spec.*`, `*.browser.mjs`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` are
-  styles; pictures, fonts and `assets/`, `icons/`, `keysets/` are assets; `.md/.mdx/.rst/.txt` and
-  changelog/readme/license are docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like
-  are config; the rest is production. A block whose own `kind` is `test` in a production file counts as tests.
-  The counters are the model's; the lines are the sum of block sizes.
-- **The tree and the map reader.** The tree opens statically, one line per file (the diff mark, the basename,
-  +N/−M, the count not kept); the name filter highlights the match and Enter opens the first; a click reveals
-  the file's blocks in any verdict mode through every ancestor, subject to the active requirement and purpose
-  filters; the scrollspy marks the
-  current file; the collapse persists. One line per block (verdict dot, B-permalink, what it does, verdict
-  tag, F/Q links, source, details), a «continued» line where a block resumes after other code, the code in a
-  disclosure, a popover with the block's sources: an added
-  line at the head revision, a removed line at the base, each copyable as `path:line (revision)`; without a
-  passport the copy is `path:line` alone. Kept blocks start collapsed; the default view shows what needs
-  attention, the full audit is one click away.
-- **Code by requirement.** The Code tab's requirement selector uses each block's recorded `serves` links;
-  counts are unique blocks, not lines or fragments, and a block can serve more than one requirement. A
-  requirement with no linked blocks is distinct from an empty intersection with the current filters.
-  Selecting a requirement replaces the active question or finding context while keeping hidden purposes.
-  Files and Units are navigation views of the same slice, not separate copies of the diff. Units group blocks
-  by their recorded `unit`; they do not assert a parent-child relationship between blocks. Following a block
-  opens it in the map. Without JavaScript the selector and unit navigation are disabled
-  and the full static map remains available.
+- **Summary** opens the page: the verdict, the recommendation and its steps, the requirements with one status each,
+  the coverage limits and «Start review», which goes to the first open item.
+- **Decisions** shows every question, finding and idea as one card, with sub-tabs by kind, by state (deferred,
+  done) and for the comments; a side panel adds the card's place, sources and related items.
+- **Code** is the diff with the open decisions in its margin and kept code folded: j and k walk the open decisions,
+  a decided block shrinks to one line, a file can be marked «Viewed», and the code can be filtered by requirement,
+  unit and purpose and searched in every file. Purpose comes from the path alone: `__tests__/`, `*.test.*`,
+  `*.spec.*`, `*.browser.mjs`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` styles;
+  pictures, fonts and `assets/`, `icons/`, `keysets/` assets; `.md/.mdx/.rst/.txt` and changelog/readme/license
+  docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like config; the rest production. A
+  block whose own `kind` is `test` in a production file counts as tests.
+- **Details** holds the structure, mechanisms, scenarios, checks by hand, challenges, screens with their
+  provenance, coverage — with the check's warnings about kept blocks that serve no requirement or only assumed
+  ones — and the report's details, with the two print profiles.
+- **Answering.** By click or key, in Decisions or in the code's margin; «Decided N of M» counts every applicable
+  item, an answered request apart. A key answers only the item in view, and Undo takes back that one answer. The
+  answers, comments, «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; a browser that
+  refuses to save is told on the page.
+- **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
+  fields, a scenario and a challenge; listed in Decisions › Comments and exported.
+- **Export.** «Export answers» opens the preview with «Copy text», which says «Copied» only once the clipboard
+  confirms and otherwise selects the text, and «Download JSON».
+- **Without JavaScript, and in print.** The page holds the report as a document: the summary, every card as text,
+  each file's whole diff with every block's verdict, and the details; the diff's code is in the page once. It prints
+  for the owner (the summary and every decision with its answer) or for audit (also every file whole and the
+  details).
+- **Links** reach a tab and an item: `#summary/r1`, `#decisions/f3`, `#decisions/comments`, `#code/b12`,
+  `#code/line/<file index>:<+new or -old line>`, `#details/<tab>/<row>`.
 - **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned
-  `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): both GitHub themes in every span, token
-  colors pre-adjusted to ≥4.5:1 on the context, added and removed backgrounds of both themes. The old and the new
-  line sequences are tokenized whole, so multi-line constructs keep their coloring. Without the bundle the
+  `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): each token's pair of GitHub theme colours is
+  a class, pre-adjusted to ≥4.5:1 on the page's code, added and removed backgrounds of both themes. The old and the
+  new line sequences are tokenized whole, so multi-line constructs keep their colouring. Without the bundle the
   built-in pattern highlighter draws the code; an unsupported language is escaped plain text. Rebuild the bundle
   as `scripts/vendor/README.md` says.
-- **Export.** «Export answers» in the header above the tabs opens a native dialog from any tab. ONE model feeds
-  the preview, the text and the JSON: all three are views of the SAME schema-5 payload «Download JSON» writes,
-  never a second builder reading the state apart. It carries the accepted Q/F/I (including «Do not fix»/«Do not
-  take»), the deferred with or without a variant, drafts, not-applicable children, fact answers, marked zones
-  (a mark is never a confirmation) and comments with their context — card, block and selected text. Located
-  comments have a «Go» link that opens the tab and target. «Copy text»
-  says «Copied» only after the clipboard confirms, and on refusal selects the readonly text and says to press
-  Ctrl/⌘+C. The popover's source copy is honest the same way. A partial export is acceptable; the counter of
-  what remains travels with it.
-- **Print.** The owner profile hides the map and the tree and prints the decisions complete — the lazy «related
-  code» bodies are built first, then every nested disclosure opens; the auditor prints everything, every
-  block. After printing, the page returns to what it was, lazy files and filter views included.
 
 ## Optional fields
 

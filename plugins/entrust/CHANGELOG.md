@@ -7,42 +7,44 @@ forensics remain in the repository references and release notes.
 
 ### Review report
 
+- **Breaking:** a decision question needs at least two variants, each with its consequences: `check` refuses one
+  with fewer, or a variant of a decision without `consequences`. The owner answers with a variant or in their own
+  words.
+- **Breaking:** the page is redesigned. Summary opens it with «Start review»; Decisions holds every question,
+  finding and idea as one card with a side panel of its context; Code is the diff with the open decisions in its
+  margin, kept code folded, j / k through the open decisions, «Viewed» per file and find in every file, drawn or
+  not; Details holds the structure, mechanisms, scenarios, checks, challenges, screens with a picture viewer,
+  coverage with the check's warnings about kept code, and the report's details. Each item takes one answer — a
+  variant or the owner's own words, «Fix it» / «Leave it», «Take it» / «Skip it» — and a deferral needs a reason;
+  «Decided N of M» counts every item, and an answered fact or evidence request reads «Answered», never verified.
+  A key answers only the item in view and can be undone. Every word is in the English and the Russian catalog. The
+  client is `scripts/page/runtime.js` and `scripts/page/page.css`, inlined at render; `decisions.mjs` keeps the
+  owner's answers and builds the export.
+- **Breaking:** the export is schema 6, and the page keeps its answers under `review-report:6:<key>`: each item's
+  status and answer in effect, drafts apart, `waiting_for_parent`, line comments anchored to a path, side and line
+  of the saved diff, and paragraph comments anchored to an item and a field. Answers saved by an earlier page are
+  not read.
+- **Breaking:** comments on any selected text are gone (`annotations.mjs`); comments go on a line of the diff or on
+  a paragraph of the report, listed in Decisions › Comments.
+- Without JavaScript the page is the whole report as a document — the summary, every card as text, each file's
+  whole diff with every block's verdict, and the details — with the diff's code in the page once. It prints for the
+  owner (the summary and every decision with its answer) or for audit (also every file whole and the details).
+- The 274-block record's page is 2.9 MB instead of 6.6 MB, opens in about 0.2 s, and keeps its DOM bounded while
+  scrolling: files far from the view give their rows back.
+- Token colours are classes, one rule per colour pair and theme, instead of inline styles on every token.
+- `evals/review-page-browser.test.mjs` drives the page in Chromium from `run-all` on public records only, and
+  replaces the private and macOS-bound browser suites; `review-decisions` and `review-page` replace the fast
+  suites named after page versions.
 - Full `entrust:review` records now support a staged comparison of source contracts, peer implementations and test claims. Single and multi reviews preserve the draft, check the reasons for dismissing differences, and reconcile the reader's evidence with the final report.
 - **Breaking:** the report speaks English or Russian, and custom-language catalogs are gone: `language` picks
   Russian for `ru` and `ru-*` and English for any other tag; `check` refuses a record that carries `labels`, and
   `report.mjs labels` is removed. The content is still written in the session's language, which `<html lang>`
   carries.
-- **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
-  export's format number, so a new format never reads answers saved under another. Answers saved in a page
-  rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
-- One vocabulary in English and Russian. Blocks are the unit on the page: the cards, the Code tab, the file cards,
-  the filter chip, the evidence banner and the block popover count and name blocks, and the fragment stays only in
-  the audit note under «Blocks: N». The decisions note names the finding buttons «Fix» / «Do not fix».
-  Statuses and counters say open, deferred or not applicable («Open findings: N»), and only a wait for a parent
-  says waiting; a deferred decision's settled row shows its own status alone. Controls and the status words the page
-  writes start with a capital letter. Counts read «Label: N» wherever «N nouns» was wrong for one in English or
-  for 2–4 and 5+ in Russian. Russian says «Единицы кода», «Ресурсы», «Связи» and «← Назад».
-- Amber marks only a needed change: the fix, split and merge verdicts, the «no test» tag and a requirement's
-  doubt. A draft, an entered answer, the wait for a parent, the evidence and «Not verified:» limits and the
-  historical-revision tag are neutral.
-- Tags on the page (a requirement's status and source, verdicts, purposes, file marks and the like) start with a
-  capital letter through one `.tag` style rule; the catalogs and the text printout keep their words as the
-  printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
-  «фрагмент», which is the code's word.
-- The model's `counters.evidenceBlocks`, which only tests read, is gone.
+- The model's `counters.evidenceBlocks`, which only tests read, is gone, and so are the file's shortest unique
+  path and a question's block count, which only the old page read.
 - A record without `questions`, which `check` accepts, renders as a record with no questions instead of crashing
-  the page. The audit note counts «Fragments: N» like every other count.
+  the page.
 - A challenge sent to the owner names the fact, evidence or decision that would settle it and what depends on it.
-- The evidence banner reads «Blocks linked to evidence request: N» («Блоки, связанные с запросом доказательств: N»)
-  and names no status: it is static HTML and cannot follow an answer.
-- The audit note under «Blocks: N» gives «fragment» one meaning: the block is the reviewer's self-contained unit,
-  each nonblank changed line in exactly one block, and a block interrupted by another block's lines or by unchanged
-  code the diff leaves out is drawn in several fragments linked by a «continued» line. It used to call the fragment
-  the reviewer's unit of work.
-- Test cases the usual runs skip expect the vocabulary change's words, read from the catalogs: the report suite's
-  no-JavaScript counter («Открыто основных решений и замечаний: N») and the browser acceptance's status chips and
-  deferred export rows («Deferred», «Отложено», «Неприменимо») still expected the old ones (E143 of the
-  comparison-pass change).
 
 ## 0.42.0 — 2026-11-18
 
