@@ -30,6 +30,8 @@ forensics remain in the repository references and release notes.
   printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
   «фрагмент», which is the code's word.
 - The model's `counters.evidenceBlocks`, which only tests read, is gone.
+- A record without `questions`, which the contract leaves optional and `check` accepts, renders as a record with
+  no questions instead of crashing the page. The audit note counts «Fragments: N» like every other count.
 - Challenges again have an outcome for every point: what is neither accepted on reading nor rejected on a place
   that refutes it goes to the owner, with the fact, evidence or decision that would settle it and what depends on
   it. The comparison-pass rule had sent the owner only points that needed something from the owner, which left

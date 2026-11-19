@@ -57,6 +57,19 @@ test("check and render refuse a question without kind",
     return true;
   });
 
+test("a record without questions checks and renders, and both renderings read it as no questions",
+  "the contract leaves questions optional and check accepts the record, so a render that requires the list crashes on a valid review",
+  () => {
+    const limit = "The list was not seen on screen.";
+    const result = render((r) => { delete r.questions; r.coverageStructured = [{ kind: "not_checked", text: limit, sources: [{ ref: "/requirements/0" }] }]; });
+    if (result.status !== 0) return `a record without questions was not rendered: ${result.stderr}`;
+    const page = fs.readFileSync(html, "utf8"), t = labelsOf(REVIEW);
+    if (/ id="q\d+"/.test(page)) return "a question card was drawn without questions";
+    // With no fact or evidence request open, the decisions intro states the coverage limits, as for an empty list.
+    if (!page.includes(`<p class="card-limit"><b>${t("decision.limit-unverified")}</b> ${limit}</p>`)) return "the decisions intro lost the coverage limit";
+    return result.stdout.includes(`## ${t("questions")}\n${t("none")}\n`) || "the printout does not say there are no questions";
+  });
+
 test("interactive report embeds a complete annotation runtime and keeps navigation ahead of content",
   "new reports must include the shared annotation controller, without relying on a patched HTML artifact",
   () => {
@@ -1332,6 +1345,9 @@ test("one vocabulary in English and Russian: blocks are the unit, controls and t
       if ((markup.match(/ id="b3"/g) ?? []).length !== 1 || !markup.includes(`<a href="#b3">B3 · ${words.continued}</a>`)) return `${language}: B3 is not one anchor with a continuation line`;
       // Blocks are the unit: the Code tab, the cards' related code and the file disclosures count blocks as «Label: N».
       if (!markup.includes(`<details class="count-note"><summary>${labels.blocksWord}: ${record.blocks.length}</summary>`)) return `${language}: the Code tab does not count its blocks`;
+      // Its audit note counts the drawn fragments the same way, the label capitalized.
+      const fragmentCount = (markup.match(/ data-fragment="/g) ?? []).length;
+      if (lowerFirst.test(words.fragments) || !markup.includes(` ${words.fragments}: ${fragmentCount}. `)) return `${language}: the audit note does not count fragments as «Label: N»`;
       const cards = [...markup.matchAll(/<details class="qwhere" data-qwhere="(\d+)"><summary>([\s\S]*?)<\/summary>/g)];
       if (!cards.some(([, id]) => id === "1")) return `${language}: Q1 has no related code`;
       for (const [, id, summary] of cards)

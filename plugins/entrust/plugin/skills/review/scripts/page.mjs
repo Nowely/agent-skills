@@ -664,7 +664,7 @@ const SCRIPT = `
       paintTreeName(button, button.title.split("/").pop(), query);
     }
     for (const dir of all(".fdir")) { const count = [...dir.querySelectorAll(".frow")].filter((r) => r.style.display !== "none").length; dir.style.display = count ? "" : "none"; const label = dir.querySelector(":scope > summary [data-dir-count]"); if (label) label.textContent = t.files + ": " + count; if (query && count) dir.open = true; }
-    treeCount.textContent = query || hidden.length || req ? (t.treeVisibleFiles || t.files) + ": " + visible + " / " + data.files.length : "";
+    treeCount.textContent = query || hidden.length || req ? t.treeVisibleFiles + ": " + visible + " / " + data.files.length : "";
     treeClear.disabled = !query;
   }
   treeInput.addEventListener("input", () => { document.getElementById("code-notice").textContent = ""; applyTreeFilter(); });
@@ -1657,7 +1657,7 @@ function questionCard(q, review, model, t, child) {
     <label class="fact-answer-label act" for="answer-q${q.id}">${esc(t("decision.answer-label"))}</label>
     <input type="text" class="act" id="answer-q${q.id}" data-answer="q${q.id}" placeholder="${esc(t("decision.answer-placeholder"))}" aria-label="${esc(t("decision.answer-label"))}: Q${q.id}" disabled>` : "";
   const where = q.blocks ? `<details class="qwhere" data-qwhere="${q.id}"><summary>${esc(t("card.more-code"))} · ${placeHtml(q.at, model)} · ${esc(t("blocks"))}: ${q.blocks}</summary><div class="qwhere-body"></div><p><button type="button" class="req-link" data-q-filter="${q.id}" disabled>${esc(t("map.open-filter"))} →</button></p></details>` : "";
-  const remaining = q.remainingEvidence?.length ? `<div class="qremaining-block"><span class="label">${esc(t("question.remaining-evidence"))}</span><ul class="plain">${q.remainingEvidence.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(review.questions[n - 1].text)}</li>`).join("")}</ul></div>` : "";
+  const remaining = q.remainingEvidence?.length ? `<div class="qremaining-block"><span class="label">${esc(t("question.remaining-evidence"))}</span><ul class="plain">${q.remainingEvidence.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(model.questions[n - 1].text)}</li>`).join("")}</ul></div>` : "";
   const checks = q.kind === "decision" && q.remainingEvidence?.length ? `<details class="qchecks"><summary>${esc(t("card.more-checks"))}</summary><div class="stack">${remaining}</div></details>` : "";
   return `
   <div class="qcard ${esc(q.kind)}${child ? " child" : ""}" id="q${q.id}" data-qid="${q.id}"${q.parent ? ` data-parent="${q.parent.question}"` : ""} data-where="Q${q.id}">
@@ -1855,7 +1855,7 @@ function scenarios({ scenarios: tried }, t) {
 function map(review, files, model, t, hl, partCount) {
   const { blocks, owner } = model;
   const finding = (id) => review.findings.find((f) => f.id === id);
-  const qtext = (n) => review.questions[n - 1]?.text ?? "";
+  const qtext = (n) => model.questions[n - 1]?.text ?? "";
   const pr = review.passport?.links?.find((l) => l.kind === "pr");
   const metaTitle = (b) => [b.does, b.serves.length ? `${t("serves")} ${b.serves.map((id) => `R${id}`).join(", ")}` : t("serves-nothing"), b.unit ? `${t("in-unit")} ${b.unit}` : "", `${t("lines").toLowerCase()}: ${b.where}`].filter(Boolean).join(" · ");
   const segbar = (b) => {
@@ -2061,10 +2061,10 @@ function coverage(review, t) {
 </section>`;
 }
 
-function decisionIntro(review, t) {
+function decisionIntro(review, model, t) {
   return `<div class="decision-intro">
   <p>${esc(t("decision.intro-work"))} <a href="#summary">${esc(t("summary"))} →</a></p>
-  ${!review.questions.some((q) => !q.parent && (q.kind === "fact" || q.kind === "evidence")) ? (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit"><b>${esc(t("decision.limit-unverified"))}</b> ${esc(c.text)}</p>`).join("") : ""}
+  ${!model.questions.some((q) => !q.parent && (q.kind === "fact" || q.kind === "evidence")) ? (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit"><b>${esc(t("decision.limit-unverified"))}</b> ${esc(c.text)}</p>`).join("") : ""}
 </div>`;
 }
 
@@ -2159,7 +2159,7 @@ ${tradeoffs(review, t)}
 ${mechanisms(review, model, t)}
 `)}
 ${panel("decisions", `
-${decisionIntro(review, t)}
+${decisionIntro(review, model, t)}
 ${subtabs}
 ${sheet}
 `)}
