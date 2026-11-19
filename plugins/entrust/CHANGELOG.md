@@ -7,7 +7,7 @@ forensics remain in the repository references and release notes.
 
 ### Adaptive frontend
 
-- Add the experimental `adaptive-frontend` skill for responsive changes to an existing UI. The [research record](research/2026-11-20-adaptive-frontend/) includes the full draft history, five studies and the open v6 evaluation.
+- Add the experimental `adaptive-frontend` skill for responsive changes to an existing UI. It distinguishes design fidelity from responsive behavior and calls out blockers to a visual match. The [research record](research/2026-11-20-adaptive-frontend/) includes the full draft history, five studies, their visual and timing reports, and the open v6 evaluation.
 
 ### Review report
 

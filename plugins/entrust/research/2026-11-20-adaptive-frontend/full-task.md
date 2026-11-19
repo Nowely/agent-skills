@@ -64,6 +64,10 @@ The repairs illustrate different questions with different test units:
 
 The interaction equivalent is an icon inside a selectable item. The user should get an explanation **and** keep the existing selection. An accessible name, the existence of text or a screenshot after a click only proves part of the contract. Use an initial selected item distinct from the one containing the icon so an accidental selection becomes visible.
 
+## Visual fidelity on the narrow screen
+
+The owner revisited the accepted images at 280 px. V5 is 7 px shorter than the design; its price text starts 21 px higher and its availability text starts 24 px higher. V4 is 35 px shorter overall. This is visible improvement in several details, with a remaining design discrepancy. A pass under the historical layout-and-behavior rubric did not certify pixel-perfect delivery. The [public visual report](visual/README.md) includes the measured internal landmarks and the original comparison gallery. The owner asked that a future handoff flag visual deviations and specific obstacles even when responsive behavior and interactions already pass.
+
 ## Interpreting the pass
 
 The final verdict covers the frozen local contract on the measured browser, data and public package paths. The judge inspected equivalent outcomes where automation misunderstood a text node or selector. The release and design were not identical at every pixel. Touch used browser emulation; the physical keyboard and end devices were not exercised. A complete deployed customer workflow, real backend and release CI were outside these runs. These boundaries matter when choosing between “ready for review,” “passes this acceptance suite,” and “ready for production.”

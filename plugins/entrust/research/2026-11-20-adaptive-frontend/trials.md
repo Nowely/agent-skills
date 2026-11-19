@@ -1,6 +1,6 @@
 # Trial protocols and observations
 
-These are five local, task-specific studies, not a benchmark or a statistical estimate. A submission is a version presented for acceptance; a return is a consolidated request to correct observable failures. The acceptance rubric was fixed before each trial. Each comparison has one fresh worker per condition, so differences cannot establish a stable effect. The descriptions below generalize the product examples and omit private materials. Times are recorded agent-turn intervals, including waits for the agent's own tools, unless identified as calendar time; they are not human labor, billed cost, or necessarily CPU time.
+These are five local, task-specific studies, not a benchmark or a statistical estimate. A submission is a version presented for acceptance; a return is a consolidated request to correct observable failures. The acceptance rubric was fixed before each trial. Each comparison has one fresh worker per condition, so differences cannot establish a stable effect. The descriptions below generalize the product examples; the owner-approved [visual report](visual/README.md) is the exception for the original comparison images. The [timing ledger](timing.md) gives the complete available phase, support and resource accounting. Times are recorded agent-turn intervals, including waits for the agent's own tools, unless identified as calendar time; they are not human labor, billed cost, or necessarily CPU time.
 
 ## 1. Responsive card pilot
 
@@ -80,7 +80,7 @@ The v5 run reused v4's prepared verification tools and release calibration. The 
 | Measure | v4 | Updated v5 |
 |---|---:|---:|
 | Submissions / returns | 3 / 2 | 4 / 3 |
-| Worker through first submission | 21:14 | 31:55 |
+| Worker through first submission | 21:13 | 31:55 |
 | Worker, all turns | 54:31 | 1:17:56 |
 | Judge on submitted versions | 24:23 | 18:40 |
 | Worker plus submission judging | 1:18:54 | 1:36:36 |
