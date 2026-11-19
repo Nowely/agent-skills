@@ -96,7 +96,8 @@ const outFiles = files.map((f, fi) => {
   const hunks = f.hunks.map((h) => {
     const rows = h.map((l) => {
       if (l.kind === "add") add++; else if (l.kind === "del") del++;
-      return [l.kind === "ctx" ? 0 : l.kind === "add" ? 1 : 2, l.old ?? null, l.new ?? null, l.kind === "ctx" ? 0 : blockOf(f, l), lineHtml(l, f.path)];
+      // [kind, old number, new number, block, highlighted html, text length — for wrapped-height estimates]
+      return [l.kind === "ctx" ? 0 : l.kind === "add" ? 1 : 2, l.old ?? null, l.new ?? null, l.kind === "ctx" ? 0 : blockOf(f, l), lineHtml(l, f.path), l.text.length];
     });
     // a blank changed line no block owns belongs, for drawing only, to the block on both sides of it
     rows.forEach((r, i) => {
@@ -131,13 +132,17 @@ const data = {
   coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, sources: sources(c.sources) })),
   tradeoffs: (review.tradeoffs ?? []).map((x) => ({ text: x.text, consequence: x.consequence, sources: sources(x.sources) })),
   passport: review.passport ?? null,
-  screens: (model.screens ?? []).map((s) => ({ name: s.name, match: s.match, missing: s.missing, historical: s.historical, revision: s.revision, differences: s.differences,
+  // every screen field, provenance included: a historical picture carries its revision and sources
+  screens: (model.screens ?? []).map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, historical: Boolean(s.historical), revision: s.revision ?? null,
+    sources: sources(s.sources), differences: (s.differences ?? []).map((d) => ({ what: d.what, why: d.why, finding: d.finding === undefined ? null : String(d.finding) })),
     pictures: ["mockup", "before", "after"].filter((k) => s[k]).map((k) => ({ kind: k, link: s[k]?.link, data: s[k]?.data })) })),
+  scenarios: model.scenarios.map((x) => ({ id: String(x.id), change: x.change, requirements: x.requirements.map(String), findings: x.findings.map(String),
+    now: x.now ? { edit: x.now.edit ?? [], read: x.now.read ?? [] } : null, target: x.target ? { edit: x.target.edit ?? [], read: x.target.read ?? [] } : null })),
   digest: { diff: diffSha, record: createHash("sha256").update(recordBytes).digest("hex"), key: model.key, diffFile: review.diff.file },
   counters: model.counters,
   requirements: model.requirements.map((r) => ({ id: String(r.id), text: r.text, source: r.source, met: r.met, not_checked: r.not_checked, doubt: r.doubt, permission: r.permission,
     blocks: r.blocks.map((b) => b.id), broken: r.broken.map(String), untested: r.untested.map(String) })),
-  findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), place: placeOf(f.at) })),
+  findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), scenarios: (f.scenarios ?? []).map(String), place: placeOf(f.at) })),
   ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at) })),
   questions: model.questions.map((q) => ({ id: String(q.id), at: q.at, place: placeOf(q.at), text: q.text, kind: q.kind, resolver: q.resolver,
     context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
