@@ -30,6 +30,10 @@ forensics remain in the repository references and release notes.
   printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
   «фрагмент», which is the code's word.
 - The model's `counters.evidenceBlocks`, which only tests read, is gone.
+- Challenges again have an outcome for every point: what is neither accepted on reading nor rejected on a place
+  that refutes it goes to the owner, with the fact, evidence or decision that would settle it and what depends on
+  it. The comparison-pass rule had sent the owner only points that needed something from the owner, which left
+  the rest without an outcome.
 - The evidence banner reads «Blocks linked to evidence request: N» («Блоки, связанные с запросом доказательств: N»):
   it is static HTML, so it names the blocks' link to the request and no longer calls the request open after the
   owner has entered an answer or the request has become not applicable.

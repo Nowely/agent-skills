@@ -93,7 +93,7 @@ A challenge is a point that could change a requirement, a verdict, a finding or 
 
 - **Accept** a point that holds, and name what it changed. One that adds, promotes or drops a finding, or changes the verdict, is accepted only after you have read the place it rests on and it shows what the point says.
 - **Reject** a point only on a place in the code or the task's sources that refutes it: name the place, quote what it says and why that contradicts the point.
-- **Send to the owner** a challenge whose outcome requires a fact, evidence or decision from the owner. Name what would settle it and what depends on it.
+- **Send to the owner** every other point, naming the fact, evidence or decision that would settle it and what depends on it.
 
 When reconciling rewritten or merged points, ask “Could the author follow this recommendation exactly and still leave the original discrepancy in place?” If so, restore the missing action or choice.
 
