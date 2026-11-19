@@ -2,7 +2,7 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [optional fields](#optional-fields).
+See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards) and [the page](#the-page).
 
 ## Making it
 
@@ -30,8 +30,7 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link the page. On it the owner answers each item as [decision cards](#decision-cards) says, comments
-   on lines and paragraphs, and exports the answers: proposals for the next step, not edits to the source.
+   not changed. Link [the page](#the-page).
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
@@ -48,17 +47,15 @@ new evidence that changes a conclusion makes a revised record, named as such.
       "now": "the solution as written",
       "target": "the cleanest solution, by the design standard",
       "recommendation": "accept, fix in place or rewrite as the target, in a sentence",
-      "steps": [{ "text": "what to do first", "findings": [1] }, { "text": "what to do next", "findings": [2] }],
+      "steps": [{ "text": "what to do first", "findings": [1] }],
       "requirements": [{ "id": 1, "text": "...", "source": "task" },
                        { "id": 2, "text": "...", "source": "discussion", "met": "read", "not_checked": "how it looks on screen",
                          "doubt": "what contradicts it" },
                        { "id": 3, "text": "the contract may change outside legacy", "source": "discussion", "permission": true }],
-      "findings": [{ "id": 1, "title": "what is wrong", "direction": "behavior", "evidence": "read",
-                     "at": "path:line", "what": "...", "shown_by": "the caller at path:line", "fix": "...", "breaks": [1] },
-                   { "id": 3, "title": "a size rule cannot change without reading the writes", "direction": "design", "evidence": "judgment",
-                     "at": "path:line", "what": "...", "shown_by": "scenario 1", "fix": "...", "scenarios": [1] },
-                   { "id": 2, "title": "what no test would catch", "direction": "tests", "evidence": "read",
-                     "at": "path:line", "what": "...", "shown_by": "the regression that passes", "fix": "...", "untested": [2] }],
+      "findings": [{ "id": 1, "title": "what is wrong, and no test would catch it", "direction": "behavior", "evidence": "read",
+                     "at": "path:line", "what": "...", "shown_by": "the caller at path:line", "fix": "...", "breaks": [1], "untested": [1] },
+                   { "id": 2, "title": "a size rule cannot change without reading the writes", "direction": "design", "evidence": "judgment",
+                     "at": "path:line", "what": "...", "shown_by": "scenario 1", "fix": "...", "scenarios": [1] }],
       "checks": [{ "from": "the state to start from", "do": ["the first step", "the next"], "expect": "what a person sees",
                    "requirements": [2] }],
       "ideas": [{ "title": "the idea", "at": "path:line", "text": "what it gains and what it costs" }],
@@ -66,50 +63,41 @@ new evidence that changes a conclusion makes a revised record, named as such.
                     "differences": [{ "what": "how the result differs from the mockup", "why": "the reason given" },
                                     { "what": "a difference nothing explains", "finding": 1 }],
                     "missing": "what you could not compare, and the picture that would settle it" },
-                  { "name": "a screen whose result is the mockup", "mockup": "mockup.png", "after": "after.png", "match": true },
-                  { "name": "a panel of another revision", "after": "old.png", "historical": true, "revision": "abc123",
-                    "sources": [{ "at": "snapshots/README.md:4", "quote": "taken at abc123" }], "missing": "the current revision was not compared" }],
+                  { "name": "a panel of another revision", "mockup": "mockup.png", "after": "old.png", "match": true,
+                    "historical": true, "revision": "abc123", "sources": [{ "at": "snapshots/README.md:4", "quote": "taken at abc123" }] }],
       "scenarios": [{ "id": 1, "change": "the gallery needs a wider thumbnail", "requirements": [2],
                       "now": { "edit": ["src/upload.js: storeUpload, the size loop"], "read": ["src/upload.js: the writes and the quota count in that loop"] },
                       "target": { "edit": ["src/upload.js: thumbnailSizes"], "read": [] } }],
       "units": [{ "name": "storeUpload", "jobs": ["checks the file", "picks the sizes", "writes"], "uses": ["Storage"],
-                  "verdict": "split", "findings": [3], "reason": "a size rule cannot change without reading the writes around it" },
+                  "verdict": "split", "findings": [2], "reason": "a size rule cannot change without reading the writes around it" },
                 { "name": "Storage", "existing": true, "jobs": ["keeps the files"] }],
       "mechanisms": [{ "name": "local thumbnail cache", "change": "added", "units": ["storeUpload"],
                        "purpose": "avoid reading a thumbnail twice", "basis": "assumption 3",
                        "instead": "the storage client caches reads already: src/storage.js:40",
                        "benefit": "one read saved per repeat view; frequency unknown", "cost": "a second cache to invalidate, and its tests",
                        "decision": "remove the local cache; keep the client's", "evidence": "read", "findings": [1], "blocks": [1] }],
-      "target_units": [{ "name": "storeUpload", "jobs": ["checks the file", "writes each size"],
-                         "uses": ["thumbnailSizes", "Storage"] },
-                       { "name": "thumbnailSizes", "jobs": ["decides the sizes for an upload"] },
-                       { "name": "Storage", "existing": true, "jobs": ["keeps the files"] }],
+      "target_units": [{ "name": "storeUpload", "jobs": ["checks the file", "writes each size"], "uses": ["thumbnailSizes"] },
+                       { "name": "thumbnailSizes", "jobs": ["decides the sizes for an upload"] }],
       "blocks": [{ "path": "src/a.js", "added": "1-2, 10-16", "removed": "7", "unit": "storeUpload", "kind": "code",
                    "does": "...", "serves": [1], "verdict": "remove", "findings": [1] },
                  { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
                    "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
-      "challenges": [{ "from": "critic", "point": "...", "outcome": "accepted", "note": "what it changed in the record" },
-                     { "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" },
-                     { "from": "verifier", "point": "...", "outcome": "owner", "note": "what the owner decides" }],
-      "questions": [{ "at": "path:line", "text": "what is unexplained, and what would settle it" },
-                    { "at": "path:line", "text": "which behavior to keep", "kind": "decision", "resolver": "owner",
+      "challenges": [{ "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" }],
+      "questions": [{ "at": "path:line", "text": "which behavior to keep", "kind": "decision", "resolver": "owner",
                       "context": [{ "text": "what the code does now", "sources": [{ "ref": "/blocks/0" }] }],
                       "variants": [{ "id": "keep", "text": "keep the new behavior",
                                      "consequences": [{ "text": "what changes and what stays", "sources": [{ "ref": "/mechanisms/0" }] }] },
                                    { "id": "revert", "text": "return to the old behavior",
                                      "consequences": [{ "text": "what is lost", "sources": [{ "at": "src/a.js:7", "quote": "the old guard" }] }] }],
                       "recommendation": { "text": "keep, for this scope", "variant": "keep", "sources": [{ "ref": "/requirements/0" }] },
-                      "remainingEvidence": [3] },
-                    { "at": "path:line", "text": "what the contract guarantees", "kind": "fact", "resolver": "author",
-                      "parent": { "question": 2, "variants": ["keep"] } },
-                    { "at": "path:line", "text": "the visual check this review could not run", "kind": "evidence",
+                      "remainingEvidence": [2] },
+                    { "at": "path:line", "text": "the visual check this review could not run", "kind": "evidence", "resolver": "author",
+                      "parent": { "question": 1, "variants": ["keep"] },
                       "zones": [{ "text": "the narrow widths", "sources": [{ "ref": "/coverageStructured/0" }] }] }],
       "tradeoffs": [{ "text": "the omission the owner accepted", "consequence": "what remains unknown or lost",
                       "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] }],
       "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123",
-                               "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] },
-                             { "kind": "read", "text": "the contracts read, with their places", "sources": [{ "ref": "/requirements/1" }] },
-                             { "kind": "not_checked", "text": "what was not checked, and why", "sources": [{ "ref": "/questions/2" }] }],
+                               "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
                     "repository": "the repository", "base": "the base revision", "head": "the reviewed revision", "reviewedAt": "2026-01-01" },
       "coverage": "what you read and could not check, and the contracts with where you read each"
@@ -160,9 +148,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   also gives the lines they touch together, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
   which a kept block may leave out.
-  `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`, numbered from 1 in
-  the list of questions. `remove` means the target has no such code: work that belongs in another change keeps its
-  verdict, and a step moves it.
+  `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`. `remove` means the
+  target has no such code: work that belongs in another change keeps its verdict, and a step moves it.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
@@ -174,15 +161,17 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
-  `coverageStructured` lists the same coverage as authored statements — `kind` of `ran`, `read` or `not_checked`,
-  `text`, a `revision` for what was run (a `ran` statement on an external source without one is a warning: a claim
-  about a checked version must name it), and `sources`; the page shows these words as written, and never
-  reads a status such as "tests passed" or "merge-ready" out of the prose.
+  `coverageStructured`, optional, lists the same coverage as authored statements — `kind` of `ran`, `read` or
+  `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
+  warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
+  never reads a status such as "tests passed" or "merge-ready" out of the prose. Without it the page shows
+  `coverage`.
 - **Tradeoffs.** Optional: an omission the owner accepted, with its `text`, its `consequence` (what remains unknown
   or lost) and `sources`. A proposal to drop a binding requirement stays a question until its owner accepts it.
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),
-  `repository`, `base`, `head`, `reviewedAt`. `range` remains the source of the scope; the passport stores no copy
-  of the diff digest or the record digest, which are computed from the bytes.
+  `repository`, `base`, `head`, `reviewedAt`; without it the page uses the title, `change.sources` and `range`.
+  `range` remains the source of the scope; the passport stores no copy of the diff digest or the record digest,
+  which are computed from the bytes.
 - **Language.** `language` is the session's language tag, such as `en` or `ru-RU`; write the content in that
   language. The page's and the printout's own words are Russian for `ru` and `ru-*` and English for any other tag.
 
@@ -214,7 +203,8 @@ obtain). The required `kind` comes from what the question asks, never from its n
   questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
   than two variants or a variant without consequences.
 - `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends, and `sources`.
-  Where the data is thin, say so and give the conditional rule instead of filling the field formally.
+  Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
+  recommendation» and gives the conditional rule, and no `variant` is named.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
 - `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
@@ -229,14 +219,15 @@ the review's verdicts in the record, the owner's answers on the page (kept in th
 evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant or the owner's
 own words, a finding «Fix it», «Leave it» or own words, an idea «Take it», «Skip it» or own words, a fact or evidence
 request the owner's answer; choosing one clears the other. Deferring needs a reason and keeps the answer it replaces
-as a draft, and a child retired by its parent keeps its answer as a draft too: neither is in effect, and neither
-returns silently when the parent changes again. An answered fact or evidence request reads «Answered», never
-«decided» or «verified»: it is the owner's input, not a checked result, and a zone mark is not a confirmation
-either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens with «Однозначной
-рекомендации нет» / «No clear recommendation» and names no `variant`. Decisions are never carried between revisions
-by question number.
+as a draft, not in effect. An answered fact or evidence request reads «Answered», never «decided» or «verified»: it
+is the owner's input, not a checked result. Decisions are never carried between revisions by question number.
 
-The export (schema 6) is one payload behind the page's preview, its text and its JSON: the record's and the diff's
+## The page
+
+`report.mjs render` writes the page from the record and the saved diff alone, never a new record field. The owner
+answers each item on it and exports the answers as schema 6: proposals for the next step, not edits to the source.
+
+The export is one payload behind the page's preview, its text and its JSON: the record's and the diff's
 digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
 `deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), `option` (`fix`, `leave`,
 `take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
@@ -244,51 +235,6 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 `lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,
 `line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment never
 answers an item.
-
-## The page
-
-`report.mjs render` writes one standalone, offline file; every part of it is derived from the record and the saved
-diff, never a new record field.
-
-- **Summary** opens the page: the verdict, the recommendation and its steps, the requirements with one status each,
-  the coverage limits and «Start review», which goes to the first open item.
-- **Decisions** shows every question, finding and idea as one card, with sub-tabs by kind, by state (deferred,
-  done) and for the comments; a side panel adds the card's place, sources and related items.
-- **Code** is the diff with the open decisions in its margin and kept code folded: j and k walk the open decisions,
-  a decided block shrinks to one line, a file can be marked «Viewed», and the code can be filtered by requirement,
-  unit and purpose and searched in every file. Purpose comes from the path alone: `__tests__/`, `*.test.*`,
-  `*.spec.*`, `*.browser.mjs`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` styles;
-  pictures, fonts and `assets/`, `icons/`, `keysets/` assets; `.md/.mdx/.rst/.txt` and changelog/readme/license
-  docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like config; the rest production. A
-  block whose own `kind` is `test` in a production file counts as tests.
-- **Details** holds the structure, mechanisms, scenarios, checks by hand, challenges, screens with their
-  provenance, coverage — with the check's warnings about kept blocks that serve no requirement or only assumed
-  ones — and the report's details, with the two print profiles.
-- **Answering.** By click or key, in Decisions or in the code's margin; a key answers only the item in view, and
-  Undo takes its answer back. The answers, comments, «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; a browser that
-  refuses to save is told on the page.
-- **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
-  fields, a scenario and a challenge; listed in Decisions › Comments and exported.
-- **Export.** «Export answers» opens the preview with «Copy text», which says «Copied» only once the clipboard
-  confirms and otherwise selects the text, and «Download JSON».
-- **Without JavaScript, and in print.** The page holds the report as a document: the summary, every card as text,
-  each file's whole diff with every block's verdict, and the details; the diff's code is in the page once. It prints
-  for the owner (the summary and every decision with its answer) or for audit (also every file whole and the
-  details).
-- **Links** reach a tab and an item: `#summary/r1`, `#decisions/f3`, `#decisions/comments`, `#code/b12`,
-  `#code/line/<file index>:<+new or -old line>`, `#details/<tab>/<row>`.
-- **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned
-  `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): each token's pair of GitHub theme colours is
-  a class, pre-adjusted to ≥4.5:1 on the page's code, added and removed backgrounds of both themes. The old and the
-  new line sequences are tokenized whole, so multi-line constructs keep their colouring. Without the bundle the
-  built-in pattern highlighter draws the code; an unsupported language is escaped plain text. Rebuild the bundle
-  as `scripts/vendor/README.md` says.
-
-## Optional fields
-
-`kind`, `at` and `text` are required for each question, and `variants` for a decision; the remaining card fields
-are optional. Without `coverageStructured`, the page uses the `coverage` prose; without a passport, it uses the
-title, `change.sources` and `range`.
 
 ## Visual evidence
 

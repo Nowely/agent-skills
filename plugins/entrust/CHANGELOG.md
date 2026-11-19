@@ -19,7 +19,9 @@ forensics remain in the repository references and release notes.
   «Decided N of M» counts every item, and an answered fact or evidence request reads «Answered», never verified.
   A key answers only the item in view and can be undone. Every word is in the English and the Russian catalog. The
   client is `scripts/page/runtime.js` and `scripts/page/page.css`, inlined at render; `decisions.mjs` keeps the
-  owner's answers and builds the export.
+  owner's answers and builds the export. The page is described in `scripts/page/README.md`, a developer's note the
+  skill does not link: the reviewer reads only that the page is written, that the owner answers there and what the
+  export returns.
 - **Breaking:** the export is schema 6, and the page keeps its answers under `review-report:6:<key>`: each item's
   status and answer in effect, drafts apart, `waiting_for_parent`, line comments anchored to a path, side and line
   of the saved diff, and paragraph comments anchored to an item and a field. Answers saved by an earlier page are
