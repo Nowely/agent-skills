@@ -14,6 +14,15 @@ forensics remain in the repository references and release notes.
 - **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
   export's format number, so a new format never reads answers saved under another. Answers saved in a page
   rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
+- One vocabulary in English and Russian. Cards and the Code tab count blocks («Blocks: N»), not fragments; the
+  decisions note names the finding buttons «Fix» / «Do not fix»; statuses and counters say open, decided,
+  deferred or not applicable («Open findings: N»), and only a wait for a parent says waiting; controls are in
+  sentence case; counts read «Label: N» wherever «N nouns» was wrong for one in English or for 2–4 and 5+ in
+  Russian; Russian says «Единицы кода» and «Ресурсы». Amber marks only a needed change: the evidence and
+  «Not verified:» limits are muted text, and the historical-revision tag is neutral.
+- **Breaking:** custom-language catalogs owe `export.not-applicable`, the heading of the export's not-applicable
+  section, wherever a record has dependent decisions; `fragment.what` and `question.blocks` are gone, and `check`
+  refuses a catalog that still carries them. `check` lists every missing key.
 
 ## 0.42.0 — 2026-11-18
 

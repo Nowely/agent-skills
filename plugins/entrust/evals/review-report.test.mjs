@@ -1227,9 +1227,9 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     for (const word of ["Обзор", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
-      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
+      "Основной код", "Тесты", "Стили", "Ресурсы", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "Открыто", "Единицы кода"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
-    for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
+    for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">Open<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
     // Common chrome is mandatory for every current catalog.
     const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
@@ -1249,6 +1249,39 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
 // The fixture's diff carries an apostrophe and a handler-injection attempt in the path itself.
 const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
+
+test("one vocabulary in English and Russian: cards count blocks, controls read in sentence case, statuses say open, and amber marks only a needed change",
+  "a card counting fragments counts a unit the owner never decides on, a lower-case control reads as prose, a status worded as waiting, remaining or unanswered names a state the page does not have, and an amber limit reads as a change to make",
+  () => {
+    // File and folder names are the record's data, not the report's words; a parent's wait is a state of its own.
+    const names = parseThemeDiff().flatMap((f) => f.path.split("/").map((part, i, parts) => i < parts.length - 1 ? part + "/" : part));
+    const parentWait = /waiting for (?:a parent|Q(?:\d+|\{n\}))|ожидает решения Q(?:\d+|\{n\})/gi;
+    const oldWords = /waiting|remaining|unprocessed|without an answer|ожидает|осталось|необработанн|без ответа/i;
+    for (const language of ["en", "ru"]) {
+      const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = language; });
+      if (result.status !== 0) return result.stderr;
+      const page = fs.readFileSync(html, "utf8"), markup = page.replace(/<script[\s\S]*?<\/script>/g, ""), labels = dataOf(page).labels;
+      if (!page.includes('class="card-limit"') || !page.includes('id="zoom-historical"')) return `${language}: the limits or the historical tag are not on the page`;
+      if (/\.card-limit \{[^}]*--fix/.test(page) || /id="zoom-historical" class="[^"]*v-fix/.test(page)) return `${language}: a limit or the historical tag is amber`;
+      if (!markup.includes(`<details class="count-note"><summary>${labels.blocksWord}: ${THEMED.blocks.length}</summary>`)) return `${language}: the Code tab does not count its blocks`;
+      for (const [, id, summary] of markup.matchAll(/<details class="qwhere" data-qwhere="(\d+)"><summary>([\s\S]*?)<\/summary>/g))
+        if (!summary.endsWith(` · ${labels.blocksWord}: ${THEMED.blocks.filter((b) => b.questions?.includes(+id)).length}`)) return `${language}: Q${id} does not count its blocks: ${summary}`;
+      for (const [, tag, inner] of markup.matchAll(/<(button|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+        const text = inner.replace(/<[^>]*>/g, "").replace(/&[a-z]+;|&#\d+;/g, " ").trim();
+        if (/^\p{Ll}/u.test(text) && !names.some((name) => text.startsWith(name))) return `${language}: the ${tag} «${text}» starts in lower case`;
+      }
+      const statuses = [...markup.matchAll(/<span class="tag v-open (?:qstatus|na-badge)"[^>]*>([^<]*)</g),
+        ...markup.matchAll(/<(?:span|button)\b[^>]*(?:id="count-decisions"|data-choice-filter="\w+")[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
+      if (statuses.length < 10) return `${language}: only ${statuses.length} statuses and counters were found on the page`;
+      statuses.push(...Object.values(labels.status), ...Object.values(labels.answerStatus), labels.tabRemaining, labels.countAnswers, labels.countEntries,
+        labels.countDecisions, labels.countFindings, labels.countDeferred, labels.dependent, labels.unanswered, labels.waitingParent,
+        labels.selectionWaiting, labels.accepted, labels.deferred, labels.notApplicable, labels.export.openFindings, labels.export.openDecisions,
+        labels.export.openDependent, labels.export.openRequests, labels.export.notApplicable);
+      const stale = statuses.find((text) => oldWords.test(text.replace(parentWait, "")));
+      if (stale) return `${language}: the status «${stale}» uses an old word`;
+    }
+    return true;
+  });
 
 test("the popover escapes every attribute and label, apostrophe included, and only links http(s)",
   "a path with an apostrophe broke out of a single-quoted attribute and injected a handler; localized strings rode in unescaped",
@@ -1368,7 +1401,7 @@ test("the v5 page is one Choices list grouped by action, with subtabs over it an
     const checks = page.split('id="panel-checks"')[1].split('id="panel-materials"')[0];
     if (!checks.includes('id="challenges"') || !checks.includes('id="requirements"')) return "the checks tab lacks the challenges or requirements";
     // One quantity: the main decisions open (Q3, the only root) plus the two findings; the child Q4 and the idea never enter.
-    if (!/id="count-decisions"[^>]*aria-label="3 main decisions and findings remaining"[^>]*>3<\/span>/.test(page)) return "the static counter is not the one quantity (roots + findings)";
+    if (!/id="count-decisions"[^>]*aria-label="Open main decisions and findings: 3"[^>]*>3<\/span>/.test(page)) return "the static counter is not the one quantity (roots + findings)";
     return !page.includes('id="panel-findings"') || "the findings kept a duplicate panel";
   });
 

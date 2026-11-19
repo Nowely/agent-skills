@@ -328,17 +328,19 @@ test("retired decisions export separately from deferred decisions", () => {
   state.questions[1] = { choice: "accepted", variant: "no" };
   state.questions[2] = { variant: "x" };
   const payload = D.exportOf(questions, state, {});
-  const t = { status: { decided: "Selected {n}" }, notApplicable: "Not applicable", draftSuffix: "draft {n}",
-    tabRemaining: "{n} main", export: { openFindings: "open" } };
+  const t = { status: { decided: "Selected {n}" }, notApplicable: "not applicable", draftSuffix: "draft {n}",
+    tabRemaining: "{n} main", export: { openFindings: "open", notApplicable: "Not applicable" } };
   const sandbox = { D, state, qById: { 1: questions[0], 2: questions[1] }, blockById: {},
-    data: { questions, findings: [], ideas: [] }, t, exportPayload: () => payload,
+    data: { questions, findings: [], ideas: [], digest: { record: "r", diff: "d" } }, t, exportPayload: () => payload,
     annotationUI: { located: () => false }, stats: () => D.choiceStats(questions, state, []) };
-  const model = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\nexportModel()", sandbox);
+  const api = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\n({ model: exportModel(), text: decisionsText() })", sandbox);
+  const model = api.model;
   assert.equal(payload.questions[1].status, "not-applicable");
   assert.equal(model.deferred.length, 0);
   assert.equal(model.notApplicable.length, 1);
-  assert.match(model.notApplicable[0].text, /Q2.*Not applicable.*Q1.*draft X/);
+  assert.match(model.notApplicable[0].text, /Q2 · not applicable \(Q1\).*draft X/);
   assert.equal(model.notApplicable[0].hash, "#q2");
+  assert.match(api.text, /\nNot applicable\n- Q2 · not applicable \(Q1\)/);
 });
 
 test("export preview refresh retains focus inside a stable container without suppressing updates", () => {
@@ -527,7 +529,7 @@ test("v8 custom catalogs require exactly the applicable new source and export la
     { kind: "evidence" },
   ] };
   const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files",
-    "export.open-decisions", "export.open-dependent", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
+    "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
   const catalog = Object.fromEntries(requiredKeys(review).map((k) => [k, `«${LABELS[k]}»`]));
   for (const key of requiredKeys(review)) {
     const incomplete = { ...catalog };
@@ -542,7 +544,7 @@ test("v8 custom catalogs require exactly the applicable new source and export la
   assert.deepEqual(labelFaults({ ...review, labels: catalog }), []);
   for (const language of ["en", "ru"]) assert.deepEqual(labelFaults({ ...review, language }), []);
   const minimal = requiredKeys({ language: "zz", questions: [] });
-  for (const key of ["source.internal", "source.self", "source.quoted", "source.mention", "export.open-decisions", "export.open-dependent", "export.open-requests"])
+  for (const key of ["source.internal", "source.self", "source.quoted", "source.mention", "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests"])
     assert.ok(!minimal.includes(key), key);
   const selfOnly = requiredKeys({ questions: [{ kind: "decision", context: [{ sources: [{ ref: "/questions/0" }] }] }] });
   assert.ok(selfOnly.includes("source.self"));

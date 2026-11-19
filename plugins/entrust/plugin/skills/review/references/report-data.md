@@ -30,8 +30,8 @@ See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link the page. On it the user marks findings and
-   ideas to apply or skip, decides the question cards, comments on any passage and copies those decisions back
+   not changed. Link the page. On it the user marks findings «Fix» or «Do not fix» and ideas «Take» or
+   «Do not take», decides the question cards, comments on any passage and copies those decisions back
    as text or downloads them as JSON: proposals for the next step, not edits to the source.
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial

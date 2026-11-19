@@ -218,7 +218,7 @@ console.error("[run] themed v5 section");
   check("themed: five tabs start at Choices, one list, the action groups", initial.js && initial.tabs.join() === "overview,decisions,code,checks,materials"
     && initial.panels === 5 && initial.hidden === 4 && initial.qcards === 5 && initial.active === "decisions"
     && initial.groups.join() === "group-owner,group-fix,group-data,group-settled", initial);
-  check("themed: the counter is the one quantity (1 root decision + 2 findings)", initial.counter === "3 remaining", initial.counter);
+  check("themed: the counter is the one quantity (1 root decision + 2 findings)", initial.counter === "3", initial.counter);
   check("themed: the no-JS hint hides and the radios are live under the runtime", await p.locator("#q3 .nojs-note").first().isHidden() && await p.locator('#q3 input[data-question-variant]').first().isEnabled());
   check("themed: evidence and fact cards have no decision controls, the fact answer is on the surface",
     await p.locator("#q1 .decide").count() === 0 && await p.locator("#q2 [data-answer]").isVisible());
@@ -490,7 +490,7 @@ console.error("[run] no-JS themed section");
     && await p.locator('[data-choice-filter="all"]').isDisabled() && await p.locator("#q2 [data-answer]").isDisabled()
     && (await p.textContent("#q3 .qopts")).includes("JavaScript"));
   check("no-JS: the counter is static with an honest title", await p.evaluate(() => { const c = document.getElementById("count-decisions");
-    return c.textContent === "3 remaining" && /static count/i.test(c.title) && /saved answers are not counted/i.test(c.title); }));
+    return c.textContent === "3" && /static count/i.test(c.title) && /saved answers are not counted/i.test(c.title); }));
   check("no-JS: the export button and the subtabs are hidden, the tree opens statically", await p.evaluate(() => document.getElementById("export-open").offsetParent === null
     && document.querySelector(".choice-filters").offsetParent === null
     && document.querySelectorAll(".fdir[open]").length === document.querySelectorAll(".fdir").length));
@@ -610,7 +610,7 @@ if (big) {
       && initial.subtabs.join() === "all,q,f,i,fact,deferred,done", initial);
     check("65507: zero duplicate ids, DOM within budget, the tree open statically", initial.duplicateIds.length === 0 && initial.domNodes <= 15700
       && initial.treeOpen === initial.treeTotal && initial.treeTotal === 53, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
-    check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11 осталось" && initial.exportInHeader
+    check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11" && initial.exportInHeader
       && initial.qcards === 13 && initial.findings === 7 && initial.ideas === 4 && initial.templates === 96 && initial.structureTargetClosed, initial);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-first-screen.png`) });
     const choiceCounts = () => ev(() => {
@@ -874,7 +874,7 @@ if (big) {
       counter: document.getElementById("count-decisions").textContent
     }));
     check("65507: apply -> neutral «Выбрано», the card settles, the counter decrements", /^Выбрано:/.test(decisions.q1apply.chip)
-      && decisions.q1apply.settled === "done" && decisions.q1apply.inSettledGroup && decisions.q1apply.counter === "10 осталось", decisions.q1apply);
+      && decisions.q1apply.settled === "done" && decisions.q1apply.inSettledGroup && decisions.q1apply.counter === "10", decisions.q1apply);
     // Defer with a reason: the variant stays a draft, the card settles as deferred, the radio unchecks.
     await ev(() => { document.getElementById("group-settled").open = true; document.querySelector('#group-settled [data-unit="q1"]').closest("details").open = true; });
     await ev(() => { document.querySelector("#q1 .card-comment").open = true; document.querySelector("#q1 .card-comment .comment-edit").click(); });
@@ -949,7 +949,7 @@ if (big) {
     check("65507: F skip -> «Выбрано: Не исправлять», still settled", decisions.f1skip.chip === "Выбрано: Не исправлять" && decisions.f1skip.settled === "done", decisions.f1skip);
     await p.click('#f1 .decide button[value="skip"]'); await p.waitForTimeout(150);
     decisions.f1empty = await ev(() => ({ chip: document.querySelector('#f1 [data-fstatus]').textContent, settled: document.querySelector('[data-unit="f1"]').dataset.settled || null, home: document.querySelector('[data-unit="f1"]').parentElement.closest(".dgroup").id }));
-    check("65507: toggling off returns the SAME card home, no duplicate", decisions.f1empty.chip === "ожидает" && decisions.f1empty.settled === null && decisions.f1empty.home === "group-fix", decisions.f1empty);
+    check("65507: toggling off returns the SAME card home, no duplicate", decisions.f1empty.chip === "Открыто" && decisions.f1empty.settled === null && decisions.f1empty.home === "group-fix", decisions.f1empty);
     await ev(() => { document.getElementById("ideas").open = true; });
     const counterBeforeIdea = await ev(() => document.getElementById("count-decisions").textContent);
     await p.click('#i1 .decide button[value="apply"]'); await p.waitForTimeout(150);
@@ -1004,7 +1004,7 @@ if (big) {
         const meta = d.questions.find(x => x.id === q.question);
         if (q.status === "not-applicable") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.status === "accepted") rows["Принятые решения"].push({ text: "Q" + q.question + " · " + (q.variant ? "Выбрано: " + q.variant.text : "Выбрано: (вариант не указан)"), hash: "#q" + q.question });
-        else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · отложено" + draftSuffix(q), hash: "#q" + q.question });
+        else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Отложено" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.variant) rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Черновик «" + q.variant.text + "» — не действует", hash: "#q" + q.question });
       }
       for (const f of d.findings) { const v = j.findings[String(f.id)];
@@ -1039,7 +1039,7 @@ if (big) {
       const remaining = roots.filter(q => { const e = j.questions.find(x => x.question === q.id); return !e || (e.status !== "accepted" && e.status !== "deferred"); }).length
         + d.findings.filter(f => !j.findings[String(f.id)]).length;
       const open = d.findings.filter(f => !j.findings[String(f.id)]).map(f => "F" + f.id);
-      rows.remaining = remaining + " осталось" + (open.length ? " · необработанные замечания: " + open.join(", ") : "");
+      rows.remaining = "Открыто основных решений и замечаний: " + remaining + (open.length ? " · Открытые замечания: " + open.join(", ") : "");
       return rows;
     };
     const capturePreview = () => ev(() => ({
@@ -1456,7 +1456,7 @@ if (big) {
     check("65507: a mobile tap is the decision itself (accepted, no draft)", /^Выбрано:/.test(mobileTap.chip) && mobileTap.state.choice === "accepted", mobileTap);
     await p.click('#q2 [data-qreset]'); await p.waitForTimeout(150);
     const mobileRevert = await ev(() => document.querySelector("#q2 [data-qstatus]").textContent);
-    check("65507: mobile reset reverts to waiting", mobileRevert === "ожидает", mobileRevert);
+    check("65507: mobile reset reverts to open", mobileRevert === "Открыто", mobileRevert);
     await p.setViewportSize({ width: 1366, height: 900 });
     results.tree = tree;
 
@@ -1578,7 +1578,7 @@ if (big) {
       && noJs.fragments === 1517 && noJs.nestedCodeDisclosures === 0 && noJs.domNodes < 102296
       && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
-    check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
+    check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
     check("65507 no-JS: every control disabled, the chrome hidden", noJs.fieldsetsDisabled && noJs.radiosDisabled && noJs.zonesDisabled && noJs.answerInputsDisabled
       && noJs.controlsDisabled && noJs.themeBtnHidden && noJs.exportBtnHidden && noJs.subtabsHidden && noJs.commentsHidden, noJs);
     await nojs.evaluate(() => document.getElementById("map").scrollIntoView());
@@ -1738,7 +1738,7 @@ if (big) {
     await ev(() => { document.querySelector("#q1 [data-qreset]").focus(); });
     await p.keyboard.press("Enter"); await p.waitForTimeout(300);
     const keyboardReset = await ev(() => ({ active: document.activeElement.tagName, inQ1: !!document.activeElement.closest && !!document.activeElement.closest('[data-unit="q1"]'), home: document.querySelector('[data-unit="q1"]').parentElement.closest(".dgroup").id, chip: document.querySelector("#q1 [data-qstatus]").textContent }));
-    check("65507: keyboard reset returns the card home with focus inside it", keyboardReset.active !== "BODY" && keyboardReset.inQ1 && keyboardReset.home === "group-owner" && keyboardReset.chip === "ожидает", keyboardReset);
+    check("65507: keyboard reset returns the card home with focus inside it", keyboardReset.active !== "BODY" && keyboardReset.inQ1 && keyboardReset.home === "group-owner" && keyboardReset.chip === "Открыто", keyboardReset);
     await ev(() => { document.getElementById("q1").scrollIntoView({ block: "center" }); }); await p.waitForTimeout(250);
     const box = await ev(() => { const r = document.querySelector('#q1 input[value="keep-mockup"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
     await p.touchscreen.tap(box.x, box.y); await p.waitForTimeout(300);
