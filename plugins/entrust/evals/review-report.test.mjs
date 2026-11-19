@@ -15,7 +15,7 @@ import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, labelsOf, languageOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, CHALLENGERS, DIRECTIONS, EVIDENCE, MECHANISM_CHANGES, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -243,9 +243,20 @@ test("English and Russian hold the same words, and every word the page and the p
       if (Object.keys(catalog).sort().join() !== Object.keys(LABELS).sort().join()) return `${lang}: incomplete catalog`;
       for (const [key, value] of Object.entries(catalog)) if (!value.trim() || LABELS[key].includes("{n}") !== value.includes("{n}")) return `${lang}: invalid ${key}`;
     }
-    // The keys the scripts name outright, on every path, and the keys a full render computes, read through the catalogs.
+    // The keys the scripts name outright, on every path.
     const scripts = ["page.mjs", "report.mjs", "review.mjs", "sources.mjs"].map((name) => fs.readFileSync(path.join(SKILL, "scripts", name), "utf8")).join("\n");
     const named = [...scripts.matchAll(/\bt\("([^"]+)"\s*[,)]/g)].map((m) => m[1]);
+    // The keys a template builds, over the list that owns the values it can take: a record need not use them all.
+    // annotation.* and answer.status.* are built whole on every page, so the render below reads each of them.
+    const plurals = [...new Set(["en", "ru"].flatMap((language) => new Intl.PluralRules(language).resolvedOptions().pluralCategories))];
+    const families = [["verdict.", [...VERDICTS, ...UNIT_VERDICTS]], ["direction.", DIRECTIONS], ["evidence.", EVIDENCE], ["finding.limit.", EVIDENCE],
+      ["source.", SOURCES], ["challenger.", CHALLENGERS], ["outcome.", OUTCOMES], ["question.kind.", QUESTION_KINDS],
+      ["purpose.", PURPOSES], ["purpose.rules.", PURPOSES], ["change.", MECHANISM_CHANGES], ["weight.", BLOCK_KINDS], ["weight.category.", BLOCK_KINDS],
+      ["coverage.", COVERAGE_KINDS.map((kind) => kind.replace("_", "-"))], ["", ["mockup", "before", "after"]], ["file.status.", ["added", "modified", "deleted"]],
+      ...["fix", "idea"].map((kind) => [`decision.${kind}-`, ["apply", "skip", "apply-aria", "skip-aria"]]),
+      ...["weight.added.", "weight.removed.", "weight.shared-count."].map((prefix) => [prefix, plurals])];
+    const built = families.flatMap(([prefix, values]) => values.map((value) => prefix + value));
+    // And the keys a full render reads through the catalogs, the computed ones included.
     const hook = path.join(run, "asked-labels.mjs"), asked = path.join(run, "asked-labels.json");
     fs.writeFileSync(hook, `import fs from "node:fs";
 import { CATALOGS } from ${JSON.stringify(pathToFileURL(path.join(SKILL, "scripts", "labels.mjs")).href)};
@@ -266,7 +277,7 @@ process.on("exit", () => fs.writeFileSync(${JSON.stringify(asked)}, JSON.stringi
       if (!keys.some((key) => key.startsWith("verdict.")) || !keys.some((key) => key.startsWith("weight.added."))) return `${language}: the render's computed words were not read through the catalogs`;
       computed.push(...keys);
     }
-    const missing = [...new Set([...named, ...computed])].filter((key) => !Object.hasOwn(LABELS, key) || !Object.hasOwn(CATALOGS.ru, key));
+    const missing = [...new Set([...named, ...built, ...computed])].filter((key) => !Object.hasOwn(LABELS, key) || !Object.hasOwn(CATALOGS.ru, key));
     return !missing.length || `asked for, but not in both catalogs: ${missing.join(", ")}`;
   });
 
@@ -1360,7 +1371,7 @@ test("one vocabulary in English and Russian: blocks are the unit, controls and t
       if (!banners.length || banners.some((text) => !/: \d+$/.test(text))) return `${language}: the evidence banner does not read «Label: N»: ${banners}`;
       // The banner is static HTML: it names the blocks' link to the request, never a status the request leaves once answered.
       const statusStems = [labels.status.open, labels.status.decided, labels.status.draft, labels.accepted, labels.deferred, labels.notApplicable, ...Object.values(labels.answerStatus)]
-        .flatMap((text) => text.toLowerCase().match(/\p{L}{4,}/gu) ?? []).map((word) => word.slice(0, 5));
+        .flatMap((text) => text.toLowerCase().match(/\p{L}{4,}/gu) ?? []).map((word) => word.slice(0, 5)).concat("pending", "ожида");
       const asserted = banners.find((text) => statusStems.some((stem) => text.toLowerCase().includes(stem)));
       if (asserted) return `${language}: the evidence banner asserts a status it cannot keep: ${asserted}`;
       if (!new RegExp(`^[^\\n:]+: ${record.blocks.length},`, "m").test(result.stdout)) return `${language}: the printout's map does not read «Label: N»`;

@@ -83,7 +83,6 @@ export const LABELS = {
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
-
 // The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
 // the file tree, the picture viewer and the print profiles. Factual status texts are the record's own, not these.
 Object.assign(LABELS, {
@@ -116,7 +115,7 @@ Object.assign(LABELS, {
   "passport.diffSha": "diff sha256", "passport.record": "record",
   "coverage.ran": "Ran", "coverage.read": "Read", "coverage.not-checked": "Not checked",
   "permission": "permission, not an obligation",
-  "block.definition": "A block is one small self-contained part of the diff — a branch, guard, parameter, request, constant, test or cohesive body — the reviewer's unit of work; every nonblank changed line belongs to exactly one block. Verdicts are the review's, not the owner's decisions and not an independent re-check; a block is not a defect, a test or a file.",
+  "block.definition": "A block is one small self-contained part of the diff — a branch, guard, parameter, constant, test or cohesive body — the reviewer's unit of work; every nonblank changed line belongs to exactly one block. Verdicts are the review's, not the owner's decisions and not an independent re-check; a block is not a defect, a test or a file.",
   "file.status.added": "added", "file.status.modified": "modified", "file.status.deleted": "deleted",
   "files.changed-only": "Only files the diff touches are listed; a file's mark is its change in the diff (added, modified, deleted), not a review verdict.",
   "screen.historical": "historical revision",
@@ -380,7 +379,7 @@ Object.assign(CATALOGS.ru, {
   "passport.diffSha": "sha256 diff", "passport.record": "запись",
   "coverage.ran": "Запущено", "coverage.read": "Прочитано", "coverage.not-checked": "Не проверено",
   "permission": "разрешение, не обязательство",
-  "block.definition": "Блок — небольшая самостоятельная часть изменения (ветка, guard, параметр, запрос, константа, тест или связный участок), единица работы ревьюера; каждая непустая изменённая строка входит ровно в один блок. Вердикты принадлежат ревью: это не решения владельца и не независимая перепроверка; блок — не дефект, не тест и не файл.",
+  "block.definition": "Блок — небольшая самостоятельная часть изменения (ветка, guard, параметр, константа, тест или связный участок), единица работы ревьюера; каждая непустая изменённая строка входит ровно в один блок. Вердикты принадлежат ревью: это не решения владельца и не независимая перепроверка; блок — не дефект, не тест и не файл.",
   "file.status.added": "добавлен", "file.status.modified": "изменён", "file.status.deleted": "удалён",
   "files.changed-only": "Перечислены только файлы, которых касается diff; отметка файла — его изменение в diff (добавлен, изменён, удалён), а не вердикт ревью.",
   "screen.historical": "архивная ревизия",

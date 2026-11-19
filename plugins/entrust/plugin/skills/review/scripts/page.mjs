@@ -295,7 +295,7 @@ textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color:
 .js .map[data-show="attention"] .seg.q-resolved > .segbar .bnum::after { content: " ✓"; color: var(--keep) }
 .evidence-banner { display: flex; flex-wrap: wrap; gap: .4rem .9rem; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--v); padding: .5rem .9rem }
 .evidence-banner p { flex: 1 1 20rem; font-size: .95rem }
-/* The map: one line per fragment, the code in a disclosure, the file header sticky. */
+/* The map: one line per block, the code in a disclosure, the file header sticky. */
 .map { display: flex; flex-direction: column; gap: .8rem }
 .file { background: var(--surface); border: 0; border-top: 1px solid var(--line); min-width: 0 }
 .file > header { position: sticky; top: var(--bar-h); z-index: 3; background: var(--surface); padding: .45rem .8rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline }
@@ -351,7 +351,7 @@ pre code { display: inline-block; min-width: 100% }
 /* Verdict-mode hiding is JS-driven; without JS the whole map stays readable. */
 .js .map[data-show="keep"] .seg:not(.v-keep), .js .map[data-show="fix"] .seg:not(.v-fix), .js .map[data-show="remove"] .seg:not(.v-remove), .js .map[data-show="question"] .seg:not(.v-question),
 .js .map[data-show="attention"] .seg.v-keep, .js .map[data-show]:not([data-show="all"]) .gap { display: none }
-/* The fragment popover. */
+/* The block popover. */
 #seg-popover { position: fixed; z-index: 25; width: min(26rem, calc(100vw - 16px)); max-height: 70dvh; overflow: auto; background: var(--surface); color: var(--fg);
   border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 30px rgb(0 0 0 / .2); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .5rem; font-size: .92rem }
 #seg-popover .pop-head { display: flex; flex-wrap: wrap; gap: .4rem .6rem; align-items: baseline }
@@ -934,7 +934,7 @@ const SCRIPT = `
     if (el.matches && el.matches(".card-comment") && !el.open) { el.dataset.editing = ""; const ta = el.querySelector("textarea"); if (document.activeElement === ta) ta.blur(); paintComments(); }
   }, true);
 
-  // ---- the fragment popover: details, sources (add at head, del at base), an honest copy, a comment ----
+  // ---- the block popover: details, sources (add at head, del at base), an honest copy, a comment ----
   const pop = document.getElementById("seg-popover");
   let popReturn = null;
   // Every value that reaches this innerHTML is escaped for a single-quoted attribute: & < > " and ' alike.

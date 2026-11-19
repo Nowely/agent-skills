@@ -167,7 +167,7 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
-  the note quotes it. For `owner`, the note names the fact, evidence or decision needed from the owner and what depends on it.
+  the note quotes it. For `owner`, the note names the fact, evidence or decision that would settle it and what depends on it.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`. `historical: true` marks
   a picture of another revision, with its `revision` and `sources`; without the mark the picture's revision is

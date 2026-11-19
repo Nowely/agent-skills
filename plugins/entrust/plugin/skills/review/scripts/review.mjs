@@ -468,7 +468,6 @@ export function modelOf(review, files, owner, directory) {
   const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
-  const { labels, ...content } = review;
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
   const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
   // Questions keep their place as their number; children are derived from parent, never stored twice.
@@ -506,5 +505,5 @@ export function modelOf(review, files, owner, directory) {
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
     purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
-    key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
+    key: createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10) };
 }

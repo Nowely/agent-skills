@@ -30,15 +30,11 @@ forensics remain in the repository references and release notes.
   printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
   «фрагмент», which is the code's word.
 - The model's `counters.evidenceBlocks`, which only tests read, is gone.
-- A record without `questions`, which the contract leaves optional and `check` accepts, renders as a record with
-  no questions instead of crashing the page. The audit note counts «Fragments: N» like every other count.
-- Challenges again have an outcome for every point: what is neither accepted on reading nor rejected on a place
-  that refutes it goes to the owner, with the fact, evidence or decision that would settle it and what depends on
-  it. The comparison-pass rule had sent the owner only points that needed something from the owner, which left
-  the rest without an outcome.
-- The evidence banner reads «Blocks linked to evidence request: N» («Блоки, связанные с запросом доказательств: N»):
-  it is static HTML, so it names the blocks' link to the request and no longer calls the request open after the
-  owner has entered an answer or the request has become not applicable.
+- A record without `questions`, which `check` accepts, renders as a record with no questions instead of crashing
+  the page. The audit note counts «Fragments: N» like every other count.
+- A challenge sent to the owner names the fact, evidence or decision that would settle it and what depends on it.
+- The evidence banner reads «Blocks linked to evidence request: N» («Блоки, связанные с запросом доказательств: N»)
+  and names no status: it is static HTML and cannot follow an answer.
 - The audit note under «Blocks: N» gives «fragment» one meaning: the block is the reviewer's self-contained unit,
   each nonblank changed line in exactly one block, and a block interrupted by another block's lines or by unchanged
   code the diff leaves out is drawn in several fragments linked by a «continued» line. It used to call the fragment

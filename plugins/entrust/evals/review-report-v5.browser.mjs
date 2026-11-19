@@ -237,7 +237,7 @@ console.error("[run] themed v5 section");
     draft: !document.querySelector("#q3 [data-qdraft]").hidden, hint: !document.querySelector("#q3 .requires-content").hidden,
     settled: document.querySelector('[data-unit="q3"]').dataset.settled || null }));
   check("themed: a reasonless deferral keeps a draft, unchecks the radio, asks for a reason, stays in place",
-    deferred.chip === CATALOGS.en["decision.deferred"] && !deferred.radio && deferred.draft && deferred.hint && deferred.settled === null, deferred);
+    deferred.chip === CATALOGS.en["decision.defer-reason"] && !deferred.radio && deferred.draft && deferred.hint && deferred.settled === null, deferred);
   await p.evaluate(() => { document.querySelector("#q3 .card-comment").open = true; });
   await p.fill("#qnote-q3", "Not now.");
   await p.waitForTimeout(200);
