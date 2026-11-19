@@ -50,9 +50,11 @@ function render(name, record, diffBytes = diff, pictures = true) {
   if (r.status !== 0) throw new Error(`render ${name}: ${r.stderr}`);
   return pathToFileURL(path.join(dir, "review.html")).href;
 }
-// The themed record, with a kept block that serves only an assumed requirement and a screen with its revision.
+// The themed record, with a kept block that serves only an assumed requirement, a screen with its revision and a unit
+// with blocks to keep and to fix.
 const record = structuredClone(THEMED);
 record.blocks[0].serves = [3];
+record.blocks[1].unit = "readArchive";
 record.screens[0] = { ...record.screens[0], revision: "head", sources: [{ ref: "/requirements/0" }] };
 // A finding text long enough that a clamped card would cut it.
 const LONG = "The archive reader converts the currency code while it reads each row, so the display sees only what the reader chose to keep. ".repeat(4).trim();
@@ -477,6 +479,25 @@ test("without JavaScript the page is the whole report, the code once",
         verdicts: document.querySelectorAll(".sfile tr.bn").length, text: document.body.innerText }));
       return r.cards === 8 && r.rows === 27 && r.verdicts === 3 && /Keep the conversion in the reader/.test(r.text) && /Changes tried|Scenarios/.test(r.text) || JSON.stringify({ ...r, text: r.text.length });
     } finally { await o.close(); }
+  });
+
+test("the page and its document without JavaScript word each requirement's state and each unit's lines alike",
+  "two renderers that each derive a fact drift apart; the model owns it, and both only word it",
+  async () => {
+    const doc = await open(THEMED_URL, { js: false }), live = await open(THEMED_URL + "#summary");
+    try {
+      // a unit's lines as «verdict count» pairs, in one order
+      const pairs = (list) => list.map((s) => s.trim()).filter(Boolean).sort().join("; ");
+      const written = await doc.page.evaluate(() => ({
+        states: [...document.querySelectorAll("#summary tr")].filter((tr) => tr.querySelector(".sstate")).map((tr) => `${tr.cells[0].innerText} ${tr.querySelector(".sstate").innerText}`),
+        shares: [...document.querySelectorAll(".sshares")].map((td) => `${td.closest("tr").cells[0].innerText}: ${td.innerText}`) }));
+      const states = await live.page.evaluate(() => [...document.querySelectorAll('[data-sel^="req:"]')].map((tr) => `${tr.cells[0].innerText} ${tr.querySelector(".req-status .tag").innerText}`));
+      await live.page.goto(THEMED_URL + "#details/structure"); await live.page.waitForSelector(".unit-name");
+      const shares = await live.page.evaluate(() => [...document.querySelectorAll('[data-sel^="unit:"]')].map((tr) => `${tr.querySelector(".unit-name").innerText}: ${[...tr.querySelectorAll(".shares span")].map((s) => s.innerText).join(", ")}`));
+      const r = { states: [written.states, states].map((x) => x.join("; ")), shares: [written.shares, shares].map((x) => x.map((row) => { const [name, list] = row.split(": "); return `${name}: ${pairs(list.split(", "))}`; }).join(" | ")) };
+      return r.states[0] === r.states[1] && r.shares[0] === r.shares[1] && ["Permission", "Fails", "Met", "Not checked"].every((w) => r.states[0].includes(w)) && /fix \d+; keep \d+/.test(r.shares[0])
+        || JSON.stringify(r);
+    } finally { await doc.close(); await live.close(); }
   });
 
 test("the owner's print holds every decision whole with the owner's answer and no screen-only words; the audit's adds every file whole and the details",

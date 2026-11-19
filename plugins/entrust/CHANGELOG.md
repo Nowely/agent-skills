@@ -29,6 +29,8 @@ forensics remain in the repository references and release notes.
 - Without JavaScript the page is the whole report as a document — the summary, every card as text, each file's
   whole diff with every block's verdict, and the details — with the diff's code in the page once. It prints for the
   owner (the summary and every decision with its answer) or for audit (also every file whole and the details).
+  The document, the page and the printout word each derived fact — a requirement's state, a unit's lines, a
+  mechanism's weight, a screen's provenance, the variants a child question applies under — from one place.
 - The 274-block record's page is 2.9 MB instead of 6.6 MB, opens in about 0.2 s, and keeps its DOM bounded while
   scrolling: files far from the view give their rows back.
 - Token colours are classes, one rule per colour pair and theme, instead of inline styles on every token.

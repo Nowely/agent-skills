@@ -14,7 +14,7 @@ import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, hostileFixture } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, labelsOf, languageOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, CHALLENGERS, DIRECTIONS, EVIDENCE, MECHANISM_CHANGES, OUTCOMES, SHOTS, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, REQUIREMENT_STATES, PROVENANCES, CHALLENGERS, DIRECTIONS, EVIDENCE, MECHANISM_CHANGES, OUTCOMES, SHOTS, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -225,6 +225,7 @@ test("English and Russian hold the same words, every word the page and the print
     const families = [["verdict.", [...VERDICTS, ...UNIT_VERDICTS]], ["direction.", DIRECTIONS], ["evidence.", EVIDENCE],
       ["source.", SOURCES], ["challenger.", CHALLENGERS], ["outcome.", OUTCOMES], ["question.kind.", QUESTION_KINDS],
       ["purpose.", PURPOSES], ["purpose.rules.", PURPOSES], ["change.", MECHANISM_CHANGES], ["weight.", BLOCK_KINDS], ["weight.category.", BLOCK_KINDS],
+      ["p.req.", REQUIREMENT_STATES], ["p.screen.", PROVENANCES],
       ["coverage.", COVERAGE_KINDS.map((kind) => kind.replace("_", "-"))], ["", SHOTS],
       ...["weight.added.", "weight.removed.", "weight.shared-count.", ...counts.map((key) => `${key}.`)].map((prefix) => [prefix, plurals])];
     const built = families.flatMap(([prefix, values]) => values.map((value) => prefix + value));
@@ -422,7 +423,7 @@ test("weight is rendered in HTML and text without changing the review record",
     if (island.mechanisms[2].weight || result.stdout.includes("Not assessed")) return "an unweighed mechanism carries a weight or is printed";
     // Weighed together, a block two mechanisms share counts once: the lines a decision on both would touch.
     const together = "Weighed mechanisms together, each block counted once (A, B): Code: 2 lines added, 1 line removed";
-    if (!result.stdout.includes(together) || island.together?.names.join() !== "A,B" || island.together.exclusive.code.added !== 2) return `no combined weight:\n${result.stdout.split("## Mechanisms")[1]?.slice(0, 400)}`;
+    if (!result.stdout.includes(together) || island.together?.names.join() !== "A,B" || !together.endsWith(island.together.rows.map((row) => `${row.kind}: ${row.text}`).join())) return `no combined weight:\n${result.stdout.split("## Mechanisms")[1]?.slice(0, 400)}`;
     return island.mechanisms[0].weight.shared.length === 1 && result.stdout.includes("Shared with")
       && result.stdout.includes("Touched in this change") && raw.mechanisms.every(m => m.weight === undefined) || "the shared block or the weight is missing, or derived totals persisted";
   });

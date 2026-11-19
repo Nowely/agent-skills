@@ -54,12 +54,8 @@ const ITEMS = DR.itemsOf(D), itemByKey = new Map();
 const refs = { q: D.questions, f: D.findings, i: D.ideas };
 for (const it of ITEMS) {
   const type = it.key[0], ref = refs[type].find((x) => "" + type + x.id === it.key);
-  Object.assign(it, { label: type.toUpperCase() + ref.id, type, ref, blocks: [] });
+  Object.assign(it, { label: type.toUpperCase() + ref.id, type, ref, blocks: ref.blocks ?? [] });
   itemByKey.set(it.key, it);
-}
-for (const b of B) {
-  for (const f of b.findings) itemByKey.get("f" + f)?.blocks.push(b.id);
-  for (const q of b.questions) itemByKey.get("q" + q)?.blocks.push(b.id);
 }
 const blockItems = (b) => [...b.findings.map((f) => "f" + f), ...b.questions.map((q) => "q" + q)].filter((k) => itemByKey.has(k)).map((k) => itemByKey.get(k));
 const firstPos = {};
@@ -624,7 +620,7 @@ function cardHtml(c) {
     body += `<p class="card-title">${prose(r.title)}</p>${r.at ? `<div class="card-at">${slashBreaks(r.at)}</div>` : ""}${pcWrap(c.key + "/text", `<p class="card-text clamp">${prose(r.text)}</p>`)}`;
   } else {
     body += pcWrap(c.key + "/text", `<p class="card-title q">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
-    if (r.parent) body += `<p class="card-text small">${esc(L("p.applies-while"))} ${chip("q", r.parent.question)} ${esc(L("p.applies-with"))} ${r.parent.variants.map((v) => `<b>${prose(optionLabel(itemByKey.get("q" + r.parent.question), v))}</b>`).join(` ${esc(L("p.or"))} `)}.</p>`;
+    if (r.parent) body += `<p class="card-text small">${esc(L("p.applies-while"))} ${chip("q", r.parent.question)} ${esc(L("p.applies-with"))} ${r.parent.texts.map((v) => `<b>${prose(v)}</b>`).join(` ${esc(L("p.or"))} `)}.</p>`;
     if (r.recommendation) body += `<div class="card-rec"><b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}</div>`;
   }
   body += `<div class="answer-line${st.unverified ? " unverified" : ""}" data-answer="${c.key}">${answerHtml(st)}</div>`;
@@ -709,22 +705,16 @@ function syncItem(key, structural) {
 }
 
 // ---------------------------------------------------------------- Summary
-function verdictShares(blocks) {
-  const s = { keep: 0, fix: 0, remove: 0, question: 0 };
-  for (const b of blocks) s[b.verdict] = (s[b.verdict] ?? 0) + b.size;
-  return s;
-}
 function shareBar(s, cls = "") {
   const total = Object.values(s).reduce((a, b) => a + b, 0) || 1;
   const words = Object.entries(s).filter(([, v]) => v).map(([k, v]) => `${verdictWord(k)} ${P("p.count.lines-n", v)}`).join(", ");
   return `<span class="vbar ${cls}" role="img" aria-label="${esc(words || L("p.no-lines"))}">${["keep", "fix", "remove", "question"].map((k) => s[k] ? `<span class="s-${k}" style="width:${(100 * s[k] / total).toFixed(2)}%"></span>` : "").join("")}</span>`;
 }
-// one status per requirement; what limits it is a note, never a second tag
+// one status per requirement, as review.mjs found it, in words; what limits it is a note, never a second tag
+const REQ_TAG = { permission: "neutral", fail: "bad", met: "ok", unchecked: "open" };
 function reqPrimary(r) {
-  if (r.permission) return { key: "permission", html: `<span class="tag neutral">${esc(L("p.req.permission"))}</span>` };
-  if (r.broken.length) return { key: "fail", html: `<span class="tag bad">${esc(L("p.req.fails"))}</span> ${chips("f", r.broken)}` };
-  if (r.met) return { key: "met", html: `<span class="tag ok">${esc(L("p.req.met"))}</span> <span class="small muted">${esc(L("evidence." + r.met))}</span>` };
-  return { key: "unchecked", html: `<span class="tag open">${esc(L("p.req.unchecked"))}</span>` };
+  const tag = `<span class="tag ${REQ_TAG[r.state]}">${esc(L("p.req." + r.state))}</span>`;
+  return { key: r.state, html: r.state === "fail" ? `${tag} ${chips("f", r.broken)}` : r.state === "met" ? `${tag} <span class="small muted">${esc(L("evidence." + r.met))}</span>` : tag };
 }
 function reqStatus(r) {
   const notes = [];
@@ -747,7 +737,7 @@ function startReview() {
   goCard(c.key, { focus: true });
 }
 function summaryHtml() {
-  const c = D.counters, shares = verdictShares(B);
+  const c = D.counters, shares = c.verdictLines;
   const notChecked = [...D.coverageStructured.filter((x) => x.kind === "not_checked").map((x) => `<li>${prose(x.text)} ${srcList(x.sources)}</li>`),
     ...D.requirements.filter((r) => r.not_checked).map((r) => `<li>${chip("r", r.id)} ${prose(r.not_checked)}</li>`)];
   const requests = ITEMS.filter(isRequest);
@@ -1428,7 +1418,7 @@ function renderDetails() {
   renderDetailBody();
 }
 function unitRows() {
-  const rows = D.units.map((u, i) => { const blocks = u.blocks.map(blk), s = verdictShares(blocks); return { u, i, s, total: Object.values(s).reduce((a, b) => a + b, 0) }; });
+  const rows = D.units.map((u, i) => { const s = u.lines; return { u, i, s, total: Object.values(s).reduce((a, b) => a + b, 0) }; });
   const { key, dir } = S.unitSort;
   const val = (r) => key === "name" ? r.u.name.toLowerCase() : key === "total" ? r.total : r.s.fix;
   return rows.sort((a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (key === "name" ? 1 : dir) || b.total - a.total || a.i - b.i);
@@ -1450,7 +1440,6 @@ function unitsTable() {
       <td class="small hide-sm"><div class="clamp2"><span class="muted">${esc(L("p.unit.uses"))}</span> <span class="mono">${esc(u.uses.join(", ") || "—")}</span></div><div class="clamp2"><span class="muted">${esc(L("p.unit.used-by"))}</span> <span class="mono">${esc(usedBy(u).join(", ") || "—")}</span></div></td>
       <td class="nowrap">${u.blocks.length ? `<button class="btn sm quiet" data-act="unit-code" data-unit="${i}">${esc(L("p.show-in-code"))}</button>` : ""}</td></tr>`).join("")}</tbody></table><p class="muted small gap-top">${esc(L("p.unit.note"))}</p>`;
 }
-const weightWord = (k) => L("weight." + k);
 function renderDetailBody() {
   if (!detailTabs().some((t) => t.id === S.sub.details)) S.sub.details = "structure";
   $$('#panel-details [data-act="xsub"]').forEach((b) => b.setAttribute("aria-selected", String(b.dataset.sub === S.sub.details)));
@@ -1464,8 +1453,8 @@ function renderDetailBody() {
       ${D.targetUnits.length ? `<div class="section-h"><h2>${esc(L("p.units.target"))}</h2><span class="muted">${esc(P("p.count.units", D.targetUnits.length))}</span></div><table class="tbl"><thead><tr><th>${esc(L("unit"))}</th><th>${esc(L("jobs"))}</th><th>${esc(L("uses"))}</th><th>${esc(L("status"))}</th></tr></thead><tbody>${D.targetUnits.map((u) => `<tr><td class="unit-name">${esc(u.name)}</td><td class="sub">${u.jobs.map(prose).join("; ")}</td><td class="mono small">${esc(u.uses.join(", ") || "—")}</td><td class="muted small nowrap">${esc(L(u.existing ? "existing" : D.units.some((x) => x.name === u.name && !x.existing) ? "from-change" : "to-write"))}</td></tr>`).join("")}</tbody></table>` : ""}
 `;
   } else if (sub === "mechanisms") {
-    const counts = (w) => ["code", "test", "other"].map((k) => { const a = w.exclusive[k].added + (w.sharedCounts?.[k].added ?? 0), r = w.exclusive[k].removed + (w.sharedCounts?.[k].removed ?? 0); return a || r ? `<div>${esc(weightWord(k))} +${n(a)} −${n(r)}</div>` : ""; }).join("");
-    html = `${D.together ? `<div class="box box-gap"><p><b>${esc(L("weight.together"))}</b> (${esc(D.together.names.join(", "))}): ${["code", "test", "other"].filter((k) => D.together.exclusive[k].added || D.together.exclusive[k].removed).map((k) => `${esc(weightWord(k))} +${n(D.together.exclusive[k].added)} −${n(D.together.exclusive[k].removed)}`).join(" · ")}</p><p class="muted small">${esc(L("weight.note"))}</p></div>` : ""}
+    const counts = (w) => w.rows.map((row) => `<div>${esc(row.kind)}: ${esc(row.text)}</div>`).join("") || esc(L("weight.unchanged"));
+    html = `${D.together ? `<div class="box box-gap"><p><b>${esc(L("weight.together"))}</b> (${esc(D.together.names.join(", "))}): ${esc(D.together.rows.map((row) => `${row.kind}: ${row.text}`).join(" · ") || L("weight.unchanged"))}</p><p class="muted small">${esc(L("weight.note"))}</p></div>` : ""}
       <table class="tbl"><thead><tr><th>${esc(L("p.mech"))}</th><th>${esc(L("p.mech.change"))}</th><th>${esc(L("decision"))}</th><th class="num">${esc(L("weight"))}</th><th>${esc(L("findings"))}</th></tr></thead><tbody>${D.mechanisms.map((m, i) => `<tr class="selectable" data-sel="mech:${i}" data-act="sel" tabindex="0"><td><b>${esc(m.name)}</b><div class="unit-jobs">${prose(m.purpose ?? "")}</div></td><td class="muted nowrap">${esc(L("change." + m.change))}</td><td>${prose(m.decision ?? "")}</td><td class="num small">${m.weight ? counts(m.weight) + (m.weight.shared.length ? `<div class="muted">${esc(P("p.count.shared", m.weight.shared.length))}</div>` : "") : `<span class="muted">—</span>`}</td><td>${chips("f", m.findings)}</td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "scenarios") {
     const side = (s) => s ? `<div><span class="lbl">${esc(L("edit"))}</span>${s.edit.map(prose).join("; ") || esc(L("nothing"))}</div><div><span class="lbl">${esc(L("read"))}</span>${s.read.map(prose).join("; ") || esc(L("nothing"))}</div>` : `<span class="muted">${esc(L("as-now"))}</span>`;
@@ -1476,7 +1465,7 @@ function renderDetailBody() {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
     html = D.screens.map((s, si) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
-      ${s.historical ? `<p><span class="provenance">${esc(s.revision ? L("p.screen.historical", s.revision) : L("p.screen.historical-unknown"))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(s.revision ? L("p.screen.revision", s.revision) : L("p.screen.revision-unknown"))} ${srcList(s.sources)}</p>`}
+      ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
       ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
       ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
       ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
@@ -1526,7 +1515,7 @@ function graphHtml() {
   const edges = [];
   units.forEach((u, i) => u.uses.forEach((name) => { const j = idx.get(name); if (j === undefined) return; const a = pos[i], b = pos[j]; const x1 = a.x + a.w / 2, y1 = a.y + H, x2 = b.x + b.w / 2, y2 = b.y; edges.push(`<path class="gedge" data-from="${i}" data-to="${j}" d="M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2 - 6}" marker-end="url(#arr)"/>`); }));
   const nodes = units.map((u, i) => {
-    const p = pos[i], s = verdictShares(u.blocks.map(blk)), total = Object.values(s).reduce((a, b) => a + b, 0);
+    const p = pos[i], s = u.lines, total = Object.values(s).reduce((a, b) => a + b, 0);
     let bx = p.x, bar = "";
     if (total) for (const k of ["keep", "fix", "remove", "question"]) if (s[k]) { const w = p.w * s[k] / total; bar += `<rect class="gbar s-${k}" x="${bx}" y="${p.y + H - 4}" width="${w}" height="4"/>`; bx += w; }
     const sub = u.existing ? L("p.unit.existing") : `${["fix", "remove", "question"].filter((k) => s[k]).map((k) => `${verdictWord(k)} ${n(s[k])}`).join(" · ") || verdictWord("keep")} · ${P("p.count.lines-n", total)}`;
@@ -1987,7 +1976,7 @@ window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); s
 window.addEventListener("hashchange", () => route(location.hash));
 
 // ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size
-const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.historical })));
+const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
 let zoomAt = 0, zoomFit = true;
 function openZoom(id) {
   let d = $("#zoom-dialog");

@@ -70,6 +70,10 @@ export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
 export const SOURCES = ["task", "discussion", "project", "question", "assumption"];
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
+// The one state the model gives each requirement, which every rendering words.
+export const REQUIREMENT_STATES = ["permission", "fail", "met", "unchecked"];
+// What the model says of a screen's pictures' revision: historical with or without one, of this one, or nothing.
+export const PROVENANCES = ["historical", "historical-unknown", "revision", "revision-unknown"];
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 export const SHOTS = ["mockup", "before", "after"];
@@ -460,10 +464,18 @@ export function modelOf(review, files, owner, directory) {
     block.where = [block.added.length && `+${compact(block.added)}`, block.removed.length && `-${compact(block.removed)}`].filter(Boolean).join(" ");
   }
   const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
-  const requirements = review.requirements.map((r) => ({ ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)),
-    broken: naming("breaks", r.id), untested: naming("untested", r.id) }));
-  const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
+  // A requirement's one state, in this order: a permission is never met, a finding that breaks it outweighs the
+  // reviewer's «met», and whatever is left is not checked.
+  const requirements = review.requirements.map((r) => {
+    const broken = naming("breaks", r.id);
+    return { ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)), broken, untested: naming("untested", r.id),
+      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked" };
+  });
+  // The lines of some blocks under each block verdict: what a unit or the whole change holds of each.
+  const linesOf = (list) => Object.fromEntries(VERDICTS.map((v) => [v, list.filter((b) => b.verdict === v).reduce((sum, b) => sum + b.size, 0)]));
+  const unit = (u) => { const own = blocks.filter((b) => b.unit === u.name); return { ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: own, lines: linesOf(own) }; };
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
+    provenance: screen.historical ? (screen.revision ? "historical" : "historical-unknown") : screen.revision ? "revision" : "revision-unknown",
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
   const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
@@ -484,7 +496,7 @@ export function modelOf(review, files, owner, directory) {
     files: files.length, lines,
     addedFiles: fileMeta.filter((f) => f.status === "A").length, removedFiles: fileMeta.filter((f) => f.status === "D").length,
     modifiedFiles: fileMeta.filter((f) => f.status === "M").length,
-    blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])),
+    blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])), verdictLines: linesOf(blocks),
     nonblank: { added: blocks.reduce((sum, b) => sum + b.weightLines.added, 0), removed: blocks.reduce((sum, b) => sum + b.weightLines.removed, 0) },
     decisions: questions.filter((q) => q.kind === "decision").length,
   };

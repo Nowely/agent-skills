@@ -28,7 +28,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, key, recordSha, purpose }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -46,7 +46,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     if (q.zones?.length) lines.push(`  ${t("question.zones")}:`, ...q.zones.map((z) => `  - ${z.text} (${srcs(z.sources)})`));
     return lines.join("\n");
   };
-  const state = (r) => [r.permission ? t("permission") : r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
+  // the model's state in words; an unchecked one whose unchecked part is named says it once
+  const state = (r) => [{ permission: () => t("permission"), fail: () => `${t("fails")}: ${r.broken.join(", ")}`, met: () => `${t("met")}, ${word("evidence", r.met)}`, unchecked: () => !r.not_checked && t("not-checked") }[r.state](),
     r.not_checked && `${t("not-checked")}: ${r.not_checked}`, r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
   const unit = (u, status) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${capital(status)}.${u.reason ? ` ${t("reason")}: ${u.reason}` : ""}`;
   const side = (s) => s ? `${t("edit")}: ${s.edit.join("; ")}. ${t("read")}: ${(s.read ?? []).join("; ") || t("nothing")}.` : t("as-now");
@@ -66,10 +67,10 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.tradeoffs?.length ? [`## ${t("tradeoffs")}`, ...review.tradeoffs.map((x) => `- ${x.text} ${t("tradeoff.consequence")}: ${x.consequence} (${srcs(x.sources)})`), ""] : []),
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
       `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
-    ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
-      `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${s.historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
+    ...(screens.length ? [`## ${t("screens")}`, ...screens.flatMap((s) => { const historical = s.provenance.startsWith("historical"); return [
+      `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
-      ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
+      ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]; }), ""] : []),
     ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), t("weight.limit"),
       ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
       ...mechanisms.flatMap((m) => [

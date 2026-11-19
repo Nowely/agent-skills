@@ -9,7 +9,7 @@ import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
-import { sourceOf, PURPOSES, SHOTS } from "./review.mjs";
+import { sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
 import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
@@ -91,6 +91,9 @@ export function page(review, files, model, { syntax } = {}) {
   const placeOf = placer(files), sources = sourcer(review);
   const claims = (list) => (list ?? []).map((c) => ({ text: c.text, sources: sources(c.sources) }));
   const hunks = files.map((f) => rowsOf(f, model, hl));
+  // A mechanism's weight as the printout words it, by kind, with the blocks it shares.
+  const t = labelsOf(review);
+  const weightOf = (weight) => weight && { rows: weightOverview(weight, t, language).map((row) => ({ kind: t(`weight.category.${row.kind}`), text: row.text })), shared: weight.shared };
   const data = {
     title: review.title, range: review.range, language, labels,
     change: review.change, verdict: review.verdict, now: review.now, target: review.target, recommendation: review.recommendation,
@@ -98,7 +101,7 @@ export function page(review, files, model, { syntax } = {}) {
     coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, sources: sources(c.sources) })),
     tradeoffs: (review.tradeoffs ?? []).map((x) => ({ text: x.text, consequence: x.consequence, sources: sources(x.sources) })),
     passport: review.passport ?? null,
-    screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, historical: Boolean(s.historical), revision: s.revision ?? null,
+    screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, revision: s.revision ?? null, provenance: s.provenance,
       sources: sources(s.sources), differences: s.differences.map((d) => ({ what: d.what, why: d.why, finding: d.finding === undefined ? null : String(d.finding) })),
       // A picture given as a file travels once, in the document's <img data-pic>; the runtime takes it from there.
       pictures: SHOTS.filter((k) => s[k]).map((k) => ({ kind: k, link: s[k].link, embedded: Boolean(s[k].data) })) })),
@@ -106,23 +109,27 @@ export function page(review, files, model, { syntax } = {}) {
       now: x.now ? { edit: x.now.edit ?? [], read: x.now.read ?? [] } : null, target: x.target ? { edit: x.target.edit ?? [], read: x.target.read ?? [] } : null })),
     digest: { diff: review.diff.sha256, record: model.recordSha ?? model.key, key: model.key, diffFile: review.diff.file },
     counters: model.counters,
-    requirements: model.requirements.map((r) => ({ id: String(r.id), text: r.text, source: r.source, met: r.met, not_checked: r.not_checked, doubt: r.doubt, permission: r.permission,
+    requirements: model.requirements.map((r) => ({ id: String(r.id), text: r.text, source: r.source, met: r.met, not_checked: r.not_checked, doubt: r.doubt, state: r.state,
       blocks: r.blocks.map((b) => b.id), broken: r.broken.map(String), untested: r.untested.map(String) })),
-    findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), scenarios: (f.scenarios ?? []).map(String), place: placeOf(f.at) })),
+    findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), scenarios: (f.scenarios ?? []).map(String),
+      place: placeOf(f.at), blocks: model.blocks.filter((b) => b.findings.includes(f.id)).map((b) => b.id) })),
     ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at) })),
     questions: model.questions.map((q) => ({ id: String(q.id), at: q.at, place: placeOf(q.at), text: q.text, kind: q.kind, resolver: q.resolver,
       context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
       recommendation: q.recommendation ? { text: q.recommendation.text, variant: q.recommendation.variant, sources: sources(q.recommendation.sources) } : null,
-      remainingEvidence: (q.remainingEvidence ?? []).map(String), parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants } : null,
-      zones: claims(q.zones), children: q.children.map(String) })),
+      remainingEvidence: (q.remainingEvidence ?? []).map(String), zones: claims(q.zones), children: q.children.map(String),
+      blocks: model.blocks.filter((b) => b.questions.includes(q.id)).map((b) => b.id),
+      // the parent's variants this question applies under, by their words
+      parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
+        texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
     checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String) })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),
-      findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id) })),
+      findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id), lines: u.lines })),
     targetUnits: model.target.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, existing: Boolean(u.existing) })),
     mechanisms: model.mechanisms.map((m) => ({ name: m.name, change: m.change, units: m.units ?? [], purpose: m.purpose, basis: m.basis, instead: m.instead,
-      benefit: m.benefit, cost: m.cost, decision: m.decision, evidence: m.evidence, findings: (m.findings ?? []).map(String), blocks: m.blocks ?? [], weight: m.weight })),
-    together: model.together,
+      benefit: m.benefit, cost: m.cost, decision: m.decision, evidence: m.evidence, findings: (m.findings ?? []).map(String), blocks: m.blocks ?? [], weight: weightOf(m.weight) })),
+    together: model.together && { names: model.together.names, ...weightOf(model.together) },
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,
       serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),
     unasked: model.unasked,
@@ -130,7 +137,7 @@ export function page(review, files, model, { syntax } = {}) {
     files: files.map((f, fi) => ({ path: f.path, status: model.files[fi].status, purpose: model.files[fi].purpose,
       add: f.hunks.flat().filter((l) => l.kind === "add").length, del: f.hunks.flat().filter((l) => l.kind === "del").length })),
   };
-  const doc = documentOf(data, labelsOf(review), (si, kind) => model.screens[si][kind].data);
+  const doc = documentOf(data, t, (si, kind) => model.screens[si][kind].data);
   const json = JSON.stringify(data).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, (c) => "\\u" + c.charCodeAt(0).toString(16));
   return `<!doctype html>
 <html lang="${esc(Intl.getCanonicalLocales(review.language ?? "en")[0])}">
