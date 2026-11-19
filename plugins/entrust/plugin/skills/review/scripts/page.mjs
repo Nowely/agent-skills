@@ -3,7 +3,7 @@ import { address, blank } from "./diff.mjs";
 import { diagram } from "./diagram.mjs";
 import { highlight } from "./highlight.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
-import { VERDICTS, PURPOSES, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
+import { VERDICTS, PURPOSES, SHOTS, mechanismCounts, weightCountsText, weightOverview } from "./review.mjs";
 import { esc, prose } from "./text.mjs";
 import { srcHtml, claimsHtml } from "./sources.mjs";
 import { annotations, annotationRecordDigest, sealAnnotationDocument, annotationSha256 } from "./annotations.mjs";
@@ -1800,7 +1800,7 @@ function screens(review, { screens: shown }, t) {
   ${shown.map((s, index) => `
   <article class="finding" id="shot-${index + 1}" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}<a class="shot-link" href="#shot-${index + 1}" aria-label="${esc(t("shot.permalink"))} ${index + 1}: ${esc(s.name)}" title="${esc(t("shot.permalink"))}">#</a></h3>
-    <div class="pair shots">${shot("mockup", s.mockup, s)}${shot("before", s.before, s)}${shot("after", s.after, s)}</div>
+    <div class="pair shots">${SHOTS.map((name) => shot(name, s[name], s)).join("")}</div>
     ${s.revision || s.sources?.length ? `<p class="sub"><span class="mono">${esc(s.revision ?? "")}</span>${s.sources?.length ? ` (${srcHtml(s.sources, review, t)})` : ""}</p>` : ""}
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
       + `<label class="group sub" for="blend-${index + 1}">${esc(t("result"))} <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
@@ -2119,7 +2119,7 @@ export function page(review, files, model, { syntax } = {}) {
       blocksWord: t("blocks"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
     annotationLabels: Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);
-  const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
+  const hasPictures = model.screens.some((s) => SHOTS.some((shot) => s[shot]?.data));
   const D = decisionRuntime(), cfStatic = D.choiceStats(model.questions, D.empty(), review.findings, ideas);
   const tabs = [
     ["overview", t("tab.overview"), ""],

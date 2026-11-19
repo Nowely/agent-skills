@@ -15,7 +15,7 @@ import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
 import { CATALOGS, LABELS, labelsOf, languageOf } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, CHALLENGERS, DIRECTIONS, EVIDENCE, MECHANISM_CHANGES, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
+import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, CHALLENGERS, DIRECTIONS, EVIDENCE, MECHANISM_CHANGES, OUTCOMES, SHOTS, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -252,7 +252,7 @@ test("English and Russian hold the same words, and every word the page and the p
     const families = [["verdict.", [...VERDICTS, ...UNIT_VERDICTS]], ["direction.", DIRECTIONS], ["evidence.", EVIDENCE], ["finding.limit.", EVIDENCE],
       ["source.", SOURCES], ["challenger.", CHALLENGERS], ["outcome.", OUTCOMES], ["question.kind.", QUESTION_KINDS],
       ["purpose.", PURPOSES], ["purpose.rules.", PURPOSES], ["change.", MECHANISM_CHANGES], ["weight.", BLOCK_KINDS], ["weight.category.", BLOCK_KINDS],
-      ["coverage.", COVERAGE_KINDS.map((kind) => kind.replace("_", "-"))], ["", ["mockup", "before", "after"]], ["file.status.", ["added", "modified", "deleted"]],
+      ["coverage.", COVERAGE_KINDS.map((kind) => kind.replace("_", "-"))], ["", SHOTS], ["file.status.", ["added", "modified", "deleted"]],
       ...["fix", "idea"].map((kind) => [`decision.${kind}-`, ["apply", "skip", "apply-aria", "skip-aria"]]),
       ...["weight.added.", "weight.removed.", "weight.shared-count."].map((prefix) => [prefix, plurals])];
     const built = families.flatMap(([prefix, values]) => values.map((value) => prefix + value));

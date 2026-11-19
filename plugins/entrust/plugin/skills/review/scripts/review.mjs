@@ -72,7 +72,7 @@ export const SOURCES = ["task", "discussion", "project", "question", "assumption
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
-const SHOTS = ["mockup", "before", "after"];
+export const SHOTS = ["mockup", "before", "after"];
 
 // What a touched file is for, derived from its path alone: the map and the tree group and filter by it.
 // Deterministic rules, disclosed on the page; a block's own kind only redirects a test block of a production
