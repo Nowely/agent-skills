@@ -1,7 +1,7 @@
 // The review page as plugins/entrust/plugin/skills/review/scripts/page.mjs writes it: one standalone file with its
 // runtime (page/runtime.js) and styles (page/page.css) inline, the record as a JSON island, and each file's diff once,
 // as rows in a <noscript> that the runtime reads back. Run it after an edit to page.mjs, page/, highlight.mjs or the
-// data the page carries.
+// data the page carries; review-page-browser.test.mjs drives the page itself.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -147,4 +147,35 @@ test("without JavaScript the page is the whole report: the summary, every decisi
   const pixel = /data:image\/png;base64,[A-Za-z0-9+/=]+/.exec(details)[0];
   assert.equal(html.split(pixel).length, 3, "the two one-pixel pictures are not each in the page once");
   assert.ok(island.screens[0].pictures.every((p) => !("data" in p)));
+});
+
+// The budget protects what every page carries besides its diff, and what a large diff costs. Every page carries the
+// runtime (about 170 KB), its styles (about 50 KB), the decision runtime, the catalog and the record's data and
+// document: 285 KB for the themed record when this budget was set, so 320 KB leaves room to grow and fails on a second
+// copy of any of them. A large diff costs its rows: each row's markup besides its highlighted code, its block's line
+// and its file's frame included, is about 112 bytes, so 120 fails on a second copy of the code or on heavier rows. The 274-block record's page was 6.6 MB before the
+// redesign, 2.6 MB in the prototype and 2.9 MB here; the generated record below is 1.9 MB.
+test("the page stays within its budget: 320 KB besides the diff's code, and at most 120 bytes of markup per row besides its code", () => {
+  const overhead = (html) => html.length - [...html.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)].reduce((sum, m) => sum + m[0].length, 0);
+  const { html } = draw(THEMED, diffText);
+  assert.ok(overhead(html) <= 320 * 1024, `the themed page carries ${overhead(html)} bytes besides its code`);
+  // 40 files of 180 added lines in 240 blocks.
+  const FILES = 40, LINES = 180;
+  const diff = Array.from({ length: FILES }, (_, f) => [`diff --git a/src/m${f}/part${f}.js b/src/m${f}/part${f}.js`, "new file mode 100644", "--- /dev/null", `+++ b/src/m${f}/part${f}.js`,
+    `@@ -0,0 +1,${LINES} @@`, ...Array.from({ length: LINES }, (_, i) => `+export const value${f}_${i} = ${f * 1000 + i};`)].join("\n")).join("\n") + "\n";
+  const blocks = Array.from({ length: FILES * 6 }, (_, k) => ({ path: `src/m${Math.floor(k / 6)}/part${Math.floor(k / 6)}.js`, added: `${(k % 6) * 30 + 1}-${(k % 6) * 30 + 30}`,
+    does: `Part ${k % 6}.`, serves: [1], verdict: k % 23 === 5 ? "fix" : "keep", ...(k % 23 === 5 ? { findings: [1] } : {}) }));
+  const large = { title: "Large", range: "generated", language: "en", diff: { file: "large.diff", sha256: createHash("sha256").update(diff).digest("hex") },
+    change: { goal: "Modules.", parts: ["Forty."], sources: ["generated"] }, verdict: "Generated.", now: "Now.", target: "Target.", recommendation: "Read it.",
+    requirements: [{ id: 1, text: "Every module exports.", source: "task", met: "read" }], blocks, challenges: [], coverage: "Generated.",
+    findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/m1/part1.js:1", what: "What.", shown_by: "The line.", fix: "Fix." }] };
+  const big = draw(large, diff).html;
+  let rows = 0, code = 0, markup = 0;
+  for (const [file] of big.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)) {
+    markup += file.length;
+    for (const m of file.matchAll(/<td class="cd">(.*)<\/td><\/tr>$/gm)) { rows++; code += m[1].length; }
+  }
+  assert.equal(rows, FILES * LINES);
+  assert.ok((markup - code) / rows <= 120, `${((markup - code) / rows).toFixed(1)} bytes of markup per row besides its code`);
+  assert.ok(big.length <= 2 * 1024 * 1024, `the large page is ${big.length} bytes`);
 });

@@ -1,6 +1,6 @@
-// The records the report suite and the browser acceptance render: one minimal review of the currency-contract
-// case, one themed record with the decision-card fields on the same diff, and the enrichment of a copy of the
-// real 65507 record from the approved prototype's annotations. One source, so the two never drift apart.
+// The records the review suites render: one minimal review of the currency-contract case, one themed record with
+// the decision-card fields on the same diff, and a record whose texts try to become markup. One source, so the
+// suites never drift apart.
 import { createHash } from "node:crypto";
 
 // A review of that case's diff: three changed lines in one file, and two new test files.
@@ -70,10 +70,10 @@ export function reportFixtures(diffSha) {
   return { REVIEW, THEMED };
 }
 
-// A diff and record whose path and PR URL carry apostrophes and handler-injection attempts: an
-// apostrophe is legal in a diff path, so the popover must keep every such value text, never markup.
+// A diff and record whose path and PR URL carry apostrophes and handler-injection attempts: an apostrophe is legal
+// in a diff path, so the page must keep every such value text, never markup.
 export const HOSTILE_PATH = "src/x' onmouseover='alert(1).js";
-export const HOSTILE_URL = "https://example.com/pr' onmouseover='alert(1)";
+const HOSTILE_URL = "https://example.com/pr' onmouseover='alert(1)";
 export function hostileFixture() {
   const diff = `diff --git a/${HOSTILE_PATH} b/${HOSTILE_PATH}\n--- a/${HOSTILE_PATH}\n+++ b/${HOSTILE_PATH}\n@@ -1 +1 @@\n-const old = 1;\n+const x = 2;\n`;
   const record = {
@@ -90,76 +90,4 @@ export function hostileFixture() {
     language: "ru",
   };
   return { diff, record };
-}
-
-// A diff for the Shiki acceptance: a comment that opens on a context line and closes after the removed line
-// (the removed line must carry the comment color), and non-adjacent hunks whose open construct must not
-// color the next hunk across the skipped code. ctl.js tokenizes the same lines alone, as the control.
-export function shikiFixture() {
-  const diff = [
-    "diff --git a/cmt.js b/cmt.js", "--- a/cmt.js", "+++ b/cmt.js", "@@ -1,3 +1,3 @@",
-    " /* begin", "-inside comment", "+inside comment v2", " */",
-    "diff --git a/gap.js b/gap.js", "--- a/gap.js", "+++ b/gap.js", "@@ -1,2 +1,2 @@",
-    " /* open", "-inside", "+inside v2", "@@ -6 +6 @@", "-const c = 3;", "+const c = 4;",
-    "diff --git a/ctl.js b/ctl.js", "--- a/ctl.js", "+++ b/ctl.js", "@@ -1 +1 @@",
-    "-const c = 3;", "+const c = 4;", "",
-  ].join("\n");
-  const record = {
-    title: "Shiki sequences", range: "HEAD~1..HEAD",
-    diff: { file: "source.diff", sha256: createHash("sha256").update(diff).digest("hex") },
-    change: { goal: "A goal.", parts: ["A part."], sources: ["brief.md"] },
-    verdict: "A verdict.", now: "Now.", target: "Target.", recommendation: "Accept.",
-    requirements: [{ id: 1, text: "A requirement.", source: "task", met: "read" }],
-    findings: [],
-    blocks: [
-      { path: "cmt.js", added: "2", removed: "2", does: "A comment.", serves: [1], verdict: "keep" },
-      { path: "gap.js", added: "2, 6", removed: "2, 6", does: "Two hunks.", serves: [1], verdict: "keep" },
-      { path: "ctl.js", added: "1", removed: "1", does: "The control.", serves: [1], verdict: "keep" },
-    ],
-    questions: [], coverage: "What was read.",
-  };
-  return { diff, record };
-}
-
-// The new fields on a COPY of the real 65507 record, taking the approved prototype's annotations as the example
-// content: kinds from what each question asks, children declared through parent, cards from the decisionCards.
-// The immutable original carries none of this: the cards, recommendations, tradeoffs and coverage limits below
-// are the enrichment's, and the acceptance numbers describe the rendered copy, not the original record. The
-// blocks and the diff are the original's own — the enrichment does not touch them.
-export function enrich65507(review, ann) {
-  const KIND = { owner: "decision", requirement: "decision", coverage: "evidence", check: "evidence", contract: "fact" };
-  const sourceOfAnn = (s) => {
-    const q = /^record\.questions\[(\d+)\]$/.exec(s);
-    if (q) return { ref: `/questions/${+q[1] - 1}` };
-    const m = /^mechanism «(.+)»$/.exec(s);
-    if (m) { const i = review.mechanisms.findIndex((x) => x.name === m[1]); if (i >= 0) return { ref: `/mechanisms/${i}` }; }
-    return { at: s };
-  };
-  review.questions = review.questions.map((q, i) => {
-    const aq = ann.questions[i], card = ann.decisionCards[String(i + 1)] ?? {};
-    const sources = (card.sources ?? []).map(sourceOfAnn);
-    const out = { ...q, kind: KIND[aq.kind] ?? "fact", resolver: aq.resolver };
-    if (card.context?.length) out.context = card.context.map((text) => ({ text, sources }));
-    if (card.options?.length) out.variants = card.options.map((o) => ({ id: o.value, text: o.label, consequences: [{ text: o.consequences, sources }] }));
-    if (card.recommendation) out.recommendation = { text: `${card.recommendation.text} ${card.recommendation.basis ?? ""}`.trim(), sources, ...(i === 0 ? { variant: "keep-mockup" } : {}) };
-    const evidence = [...new Set((card.remainingEvidence ?? []).flatMap((s) => [...s.matchAll(/Q(\d+)/g)].map((m) => +m[1])))]
-      .filter((n) => n !== i + 1 && KIND[ann.questions[n - 1]?.kind] === "evidence");
-    if (evidence.length) out.remainingEvidence = evidence;
-    if (card.zones?.length) out.zones = card.zones.map((text) => ({ text, sources }));
-    if (aq.parent) out.parent = { question: aq.parent, variants: ["keep"] };
-    return out;
-  });
-  review.requirements.find((r) => r.id === 9).permission = true;
-  const p = ann.passport;
-  review.passport = { links: [{ kind: "task", label: p.task, url: p.taskUrl }, { kind: "pr", label: `PR ${p.pr}`, url: p.prUrl }, { kind: "figma", label: p.figmaLabel ?? "Figma", url: p.figma }],
-    repository: p.repo, base: p.base, head: p.merge, reviewedAt: p.date };
-  const cs = ann.coverageStructured;
-  review.coverageStructured = [
-    ...cs.ran.map((r) => ({ kind: "ran", text: `${r.what}: ${r.result}`, revision: r.revision, sources: [{ at: r.log }] })),
-    ...cs.read.map((text) => ({ kind: "read", text, sources: [{ at: "coverage" }] })),
-    ...cs.notChecked.map((text) => ({ kind: "not_checked", text, sources: [{ at: "coverage" }] }))];
-  review.tradeoffs = ann.tradeoffs.map((x) => ({ text: `${x.title}. ${x.decision}`, consequence: x.residual, sources: x.source.split(";").map((s) => ({ at: s.trim() })) }));
-  review.screens = review.screens.map((s) => ({ ...s, historical: true, revision: "HEAD 6e669ac / merge d8ee903", sources: [{ at: "snapshots" }] }));
-  review.target = ann.targetSummary.items.map((s) => `- ${s}`).join("\n");
-  return review;
 }

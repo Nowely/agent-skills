@@ -908,11 +908,4 @@ test("the Shiki syntax is sequence-wide per hunk, deterministic, and falls back 
   });
 
 
-test("the page script stays inside its size budget",
-  "an unbounded page.mjs grows the shipped payload and the embedded runtime with nothing to catch it",
-  () => {
-    const size = fs.statSync(path.join(SKILL, "scripts", "page.mjs")).size;
-    return size < 175 * 1024 || `page.mjs is ${size} bytes, past the 175KB budget`;
-  });
-
 process.exit(summarize(await runCases(TESTS), TESTS.length));
