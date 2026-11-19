@@ -44,7 +44,7 @@ try {
     }, { selector, index });
   }
   const saved = await page.evaluate(() => {
-    const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:current:" + data.key;
+    const data = JSON.parse(document.getElementById("data").textContent), key = data.storageKey;
     return { key, value: localStorage.getItem(key), document: data.annotationDocument };
   });
   const passages = JSON.parse(saved.value).passages;
@@ -67,7 +67,7 @@ try {
   const sameDocument = saved.document === await page.evaluate(() => JSON.parse(document.getElementById("data").textContent).annotationDocument);
   const checkRestored = async () => {
     const restored = await page.evaluate(() => {
-      const key = "review-report:current:" + JSON.parse(document.getElementById("data").textContent).key;
+      const key = JSON.parse(document.getElementById("data").textContent).storageKey;
       const passages = JSON.parse(localStorage.getItem(key)).passages;
       return passages.map((p, index) => {
         const marks = [...document.querySelectorAll(`mark[data-annotation="${index}"]`)];
@@ -104,7 +104,7 @@ try {
   await page.evaluate(() => { window.testFindingNode = document.getElementById("f1"); });
   await page.locator('#f1 button[value="apply"]').evaluate((button) => button.click());
   const settled = await page.evaluate(() => {
-    const key = "review-report:current:" + JSON.parse(document.getElementById("data").textContent).key;
+    const key = JSON.parse(document.getElementById("data").textContent).storageKey;
     const finding = document.getElementById("f1");
     return { sameNode: finding === window.testFindingNode, inSettled: !!finding.closest("#group-settled"), choice: JSON.parse(localStorage.getItem(key)).findings["1"] };
   });

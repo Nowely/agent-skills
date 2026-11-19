@@ -35,7 +35,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${name}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = JSON.parse(document.querySelector("#data").textContent).storageKey;
         return { key, quote };
       }, { selector, name });
       await page.reload();
@@ -110,7 +110,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "intermediate";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { intermediate, quote, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { intermediate, quote, key: JSON.parse(document.querySelector("#data").textContent).storageKey };
       });
       await page.reload();
       const result = await page.evaluate(key => ({
@@ -156,7 +156,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "canonical code";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { quote, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { quote, key: JSON.parse(document.querySelector("#data").textContent).storageKey };
       });
       await page.reload();
       await page.waitForSelector("#b38 .l");

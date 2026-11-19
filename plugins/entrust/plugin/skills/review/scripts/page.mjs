@@ -7,7 +7,7 @@ import { VERDICTS, PURPOSES, mechanismCounts, weightCountsText, weightOverview }
 import { esc, prose } from "./text.mjs";
 import { srcHtml, claimsHtml } from "./sources.mjs";
 import { annotations, annotationRecordDigest, sealAnnotationDocument, annotationSha256 } from "./annotations.mjs";
-import { decisionRuntime } from "./decisions.mjs";
+import { decisionRuntime, schema } from "./decisions.mjs";
 
 const STYLE = `
 /* One column per tab, decision-first. Every size is in rem on a 14px base (html 87.5%); code is .92em of it,
@@ -465,7 +465,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 
 const SCRIPT = `
 (() => {
-  const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:current:" + data.key, t = data.labels;
+  const data = JSON.parse(document.getElementById("data").textContent), key = data.storageKey, t = data.labels;
   const D = (${decisionRuntime.toString()})();
   const all = (selector) => [...document.querySelectorAll(selector)];
   const map = document.getElementById("map"), out = document.getElementById("out");
@@ -2081,7 +2081,7 @@ export function page(review, files, model, { syntax } = {}) {
   const mapHtml = map(review, files, model, t, hl, partCount);
   const sheet = decisionSheet(review, model, t, ideas, partCount);
   const pr = review.passport?.links?.find((l) => l.kind === "pr");
-  const data = { annotationDocument: "0".repeat(64), annotationRecord: annotationRecordDigest(review, files), title: review.title, range: review.range, key: model.key,
+  const data = { annotationDocument: "0".repeat(64), annotationRecord: annotationRecordDigest(review, files), title: review.title, range: review.range, key: model.key, storageKey: `review-report:${schema}:${model.key}`,
     digest: { record: model.recordSha ?? model.key, diff: review.diff?.sha256 ?? "" },
     findings: review.findings.map(({ id, title }) => ({ id, title })),
     questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks, zones }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })), zones: (zones ?? []).map((z) => z.text) })),

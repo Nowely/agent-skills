@@ -11,6 +11,9 @@ forensics remain in the repository references and release notes.
   refuses a catalog that still carries it as an unknown label. `report-data.md` now states the current catalog
   rule alone: built-in `en` and `ru` cover every control, another language translates the catalog
   `report.mjs labels en` prints, and `check` names every key the record needs that it lacks.
+- **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
+  export's format number, so a new format never reads answers saved under another. Answers saved in a page
+  rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
 
 ## 0.42.0 — 2026-11-18
 

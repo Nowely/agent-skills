@@ -156,18 +156,23 @@ test("failed browser storage warns only for unsaved answers and recovers after a
   assert.equal(safeEvent.prevented, undefined);
 });
 
-test("current storage key does not load decisions from older namespaces", () => {
-  const runtime = part("  let raw = {};", '  document.documentElement.classList.add("js")');
-  const old = JSON.stringify({ notes: { q1: "old answer" } });
-  const store = { "review-report:review": old, "review-report:v8:review": old };
-  const keys = [];
-  const sandbox = { D: decisionRuntime(), data: { questions: [] }, key: "review-report:current:review",
-    localStorage: { getItem: (key) => { keys.push(key); return store[key] ?? null; }, setItem() {} },
-    document: { getElementById: () => ({ hidden: true }) }, window: { addEventListener() {} } };
-  const state = vm.runInNewContext(runtime + "\nstate", sandbox);
-  assert.deepEqual(keys, ["review-report:current:review"]);
-  assert.equal(state.notes.q1, undefined);
-  assert.match(source, /key = "review-report:current:" \+ data\.key/);
+test("the page stores decisions under the export's format number and the record key", () => {
+  const { diff, record } = hostileFixture(), files = parseDiff(diff), { errors, owner } = check(record, files, ".");
+  assert.deepEqual(errors, []);
+  const html = page(record, files, modelOf(record, files, owner, "."));
+  const data = JSON.parse(html.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
+  const script = html.slice(html.lastIndexOf("<script>"));
+  const runtime = script.slice(script.indexOf("  const data ="), script.indexOf('  document.documentElement.classList.add("js")'));
+  const read = [], written = [];
+  const api = vm.runInNewContext(runtime + "\n({ D, key, save, state })", {
+    document: { getElementById: (id) => id === "data" ? { textContent: JSON.stringify(data) } : { hidden: true } },
+    localStorage: { getItem: (key) => { read.push(key); return null; }, setItem: (key) => { written.push(key); } },
+    window: { addEventListener() {} } });
+  api.save();
+  const { schema } = decisionRuntime();
+  assert.equal(api.key, "review-report:" + schema + ":" + data.key);
+  assert.deepEqual(read, [api.key]); assert.deepEqual(written, [api.key]);
+  assert.equal(api.D.exportOf(data.questions, api.state, {}).schema_version, schema);
 });
 
 test("failed storage keeps annotation proof and original fields in memory and JSON", () => {

@@ -155,7 +155,7 @@ const open = async (url, options = {}) => {
   if (options.javaScriptEnabled !== false) await p.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
   return { page: p, context: context ?? null };
 };
-const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem("review-report:current:" + d.key) || "{}"); });
+const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem(d.storageKey) || "{}"); });
 const tab = async (p, id) => { await p.click(`#tab-${id}`); await p.waitForTimeout(150); };
 const radio = (p, q, value) => p.check(`input[name="vq${q}"][value="${value}"]`);
 const injectHelpers = (p) => p.evaluate(() => {
@@ -350,7 +350,7 @@ console.error("[run] themed v5 section");
   await p.click('[data-purpose-filter="tests"]');
   const treeAnd = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".frow")].filter((r) => r.style.display !== "none").map((r) => r.querySelector(".fname").textContent),
     pressed: document.querySelector('[data-purpose-filter="tests"]').getAttribute("aria-pressed"),
-    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes }));
+    stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes }));
   check("purpose: hiding tests leaves the production file, AND with the name filter", treeAnd.rows.length === 1 && treeAnd.rows[0].includes("archive.js")
     && treeAnd.pressed === "false" && treeAnd.stored.join() === "tests", treeAnd);
   await p.focus("#tree-filter-input"); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
@@ -401,7 +401,7 @@ console.error("[run] themed v5 section");
     inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length,
     show: document.getElementById("map").dataset.show,
     purposePressed: [...document.querySelectorAll("[data-purpose-filter]")].map((b) => b.getAttribute("aria-pressed")),
-    hidden: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes,
+    hidden: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes,
     modePressed: [...document.querySelectorAll(".map-filters [data-show]")].map((b) => b.getAttribute("aria-pressed")),
     rows: [...document.querySelectorAll(".frow")].map((r) => r.style.display),
     treeCount: document.getElementById("tree-filter-count").textContent,
@@ -472,7 +472,7 @@ console.error("[run] mobile unified section");
   await radio(p, 3, "extend");
   const mobile = await p.evaluate(() => ({ chip: document.querySelector("#q3 [data-qstatus]").textContent, state: document.querySelector("#q3 [data-qstatus]").dataset.state,
     confirm: document.querySelector("#q3 [data-confirm]") !== null,
-    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["3"] }));
+    stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions["3"] }));
   check("mobile: a tap is the decision itself — no draft-and-confirm step", mobile.state === "decided" && !mobile.confirm && mobile.stored.choice === "accepted", mobile);
   await p.click("#q3 [data-qreset]");
   check("mobile: reset reverts the choice", await p.evaluate(() => document.querySelector("#q3 [data-qstatus]").dataset.state === "open"));
@@ -559,7 +559,7 @@ console.error("[run] hardening section");
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
   await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
   check("exact catalog: the chrome works on that catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
-    && JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
+    && JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes.includes("tests")));
 }
 console.error("[run] annotations on the minimal ru page");
 {
@@ -759,7 +759,7 @@ if (big) {
     await p.locator("#tree-resize").focus(); await p.keyboard.press("ArrowRight");
     Object.assign(results.v6Tree, await ev(() => ({
       after: document.querySelector(".tree-col").getBoundingClientRect().width,
-      stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeWidth
+      stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).treeWidth
     })));
     await p.click('[data-tree-mode="folder"]');
     check("v6: compact folder/list tree keeps 96 rows and resizes", results.v6Tree.flat && results.v6Tree.rows === 96 &&
@@ -1285,7 +1285,7 @@ if (big) {
     purpose.pairwise = [];
     for (const mode of ["attention", "all", "keep", "fix", "remove", "question"]) {
       for (const hidden of purposeCombos) {
-        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
+        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = d.storageKey; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
         await reloadClean(p); await tab(p, "code");
         await p.click(`[data-show="${mode}"]`); await p.waitForTimeout(200);
         const r = await ev(({ mode, hidden }) => {
@@ -1306,7 +1306,7 @@ if (big) {
       }
     }
     check("65507: purpose pairwise 6 modes × 5 hiding combos — map, tree, pressed state, chip", purpose.pairwise.every(r => r.purposeOk && r.rowsPurposeOk && r.modeOk), { combos: purpose.pairwise.length });
-    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
+    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = d.storageKey; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
     await reloadClean(p); await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(300);
     await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(300);
     purpose.testsToggle = await ev(() => {
@@ -1315,7 +1315,7 @@ if (big) {
       const segs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => s.style.display !== "none");
       const tests = d.blocks.filter(b => b.purpose === "tests");
       const testsSegs = tests.reduce((s, b) => s + (b.parts || 1), 0);
-      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes };
+      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
       && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
@@ -1351,7 +1351,7 @@ if (big) {
     purpose.deepLinkReset = await ev((bid) => {
       const e = document.getElementById("b" + bid);
       const d = JSON.parse(document.getElementById("data").textContent);
-      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
+      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
     }, testsBlock);
     check("65507: a deep link to a hidden tests block resets the hiding", purpose.deepLinkReset.visible && purpose.deepLinkReset.inViewport
       && purpose.deepLinkReset.hiddenPurposes.length === 0 && purpose.deepLinkReset.allPressed, purpose.deepLinkReset);
@@ -1414,7 +1414,7 @@ if (big) {
     tree.hidden = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, showBtn: !document.getElementById("show-tree").hidden }));
     check("65507: hide-tree collapses the panel and offers show-tree", tree.hidden.display === "none" && tree.hidden.showBtn, tree.hidden);
     await reloadClean(p); await tab(p, "code");
-    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeHidden }));
+    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).treeHidden }));
     check("65507: the tree collapse persists across reload", tree.hiddenAfterReload.display === "none" && tree.hiddenAfterReload.stored === true, tree.hiddenAfterReload);
     await p.click("#show-tree"); await p.waitForTimeout(150);
     await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(250);
@@ -1452,7 +1452,7 @@ if (big) {
     check("65507: mobile Q2 — the first variant is within the screen, both present, no confirm step", mobileQ2.count === 2 && mobileQ2.firstOptionInViewport && mobileQ2.bothPresent && mobileQ2.confirmGone, mobileQ2);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-mobile-q2.png`) });
     await p.check('#q2 input[value="keep"]'); await p.waitForTimeout(200);
-    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions || {})["2"] }));
+    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions || {})["2"] }));
     check("65507: a mobile tap is the decision itself (accepted, no draft)", /^Выбрано:/.test(mobileTap.chip) && mobileTap.state.choice === "accepted", mobileTap);
     await p.click('#q2 [data-qreset]'); await p.waitForTimeout(150);
     const mobileRevert = await ev(() => document.querySelector("#q2 [data-qstatus]").textContent);
@@ -1636,7 +1636,7 @@ if (big) {
       const d = JSON.parse(document.getElementById("data").textContent);
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const revealed = document.querySelector(".file.reveal");
-      return { hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
+      return { hiddenTests: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
     });
     check("scenario: hiding tests and finding a file through the tree", dod.treeFind.found && dod.treeFind.segsVisible > 0 && dod.treeFind.hiddenTests.join() === "tests", dod.treeFind);
     await reloadClean(p);
@@ -1644,7 +1644,7 @@ if (big) {
       q2: document.querySelector("#q2 [data-qstatus]").textContent,
       f1: document.querySelector("#f1 [data-fstatus]").textContent,
       i2: document.querySelector("#i2 [data-fstatus]").textContent,
-      hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes
+      hiddenTests: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes
     }));
     check("scenario: reload keeps the decisions and the hiding", /^Выбрано:/.test(dod.afterReload.q2) && dod.afterReload.f1 === "Выбрано: Исправить"
       && dod.afterReload.i2 === "Выбрано: Не брать" && dod.afterReload.hiddenTests.join() === "tests", dod.afterReload);
@@ -1742,7 +1742,7 @@ if (big) {
     await ev(() => { document.getElementById("q1").scrollIntoView({ block: "center" }); }); await p.waitForTimeout(250);
     const box = await ev(() => { const r = document.querySelector('#q1 input[value="keep-mockup"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
     await p.touchscreen.tap(box.x, box.y); await p.waitForTimeout(300);
-    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["1"] }));
+    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions["1"] }));
     check("65507: a touch tap is the same unified choice, focus on the settled summary (rAF)", touchSelect.active === "SUMMARY" && touchSelect.chosenVisible && touchSelect.state.choice === "accepted", touchSelect);
     results.focus = { focusAfterSelect, keyboardReset, touchSelect };
     // The fact answer: discoverable without the comment, «ответ внесён» ≠ «проверено», export distinct.

@@ -64,7 +64,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = JSON.parse(document.querySelector("#data").textContent).storageKey;
         const passage = JSON.parse(localStorage.getItem(key)).passages[0];
         return { key, visibleQuote, domText, startText, endText, intermediate, hiddenSelected, proofPresent: !!passage.proof };
       }, { scenario, selectors });
@@ -191,7 +191,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "crosses lazy body";
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = JSON.parse(document.querySelector("#data").textContent).storageKey;
         return { key, quote, passage: JSON.parse(localStorage.getItem(key)).passages[0] };
       }, selectors);
       assert.equal(saved.passage.proof, undefined, "unproven cross-boundary lazy body must not be marked");
@@ -240,7 +240,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = "hidden qwhere";
         editor.querySelector('[data-annotation-action="save"]').click();
-        return { quote, start, end, key: "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key };
+        return { quote, start, end, key: JSON.parse(document.querySelector("#data").textContent).storageKey };
       }, selectors);
       await page.reload();
       await page.evaluate(() => { document.querySelector("#q4 .qwhere").open = true; });
@@ -295,7 +295,7 @@ try {
         editor.querySelector('[data-annotation-action="save"]').click();
       });
       const size = await page.evaluate(() => {
-        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = JSON.parse(document.querySelector("#data").textContent).storageKey;
         const proof = JSON.parse(localStorage.getItem(key)).passages[0].proof;
         if (!proof) throw Error("proof missing");
         return new TextEncoder().encode(JSON.stringify(proof)).length;
