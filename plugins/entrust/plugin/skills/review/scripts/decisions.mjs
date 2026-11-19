@@ -105,16 +105,39 @@ export function decisionRuntime() {
     if (on) zones[zone] = true; else delete zones[zone];
     return put(items, state, key, { ...entry, zones: Object.keys(zones).length ? zones : undefined });
   };
-  // «Decided N of M»: every applicable item; an answered request counts, a deferred item does not.
+  // «Decided N of M»: every applicable item; an answered request counts, and is counted apart as well, since it is
+  // the owner's input, not a verified result; a deferred item does not count.
   const progress = (items, state) => {
-    const byKey = byKeyOf(items), counts = { total: 0, done: 0, open: 0, deferred: 0 };
+    const byKey = byKeyOf(items), counts = { total: 0, done: 0, answered: 0, open: 0, deferred: 0 };
     for (const i of items) {
       const s = statusIn(i, state, byKey).state;
       if (s === "not-applicable") continue;
       counts.total++;
       if (s === "decided" || s === "answered") counts.done++; else if (s === "open") counts.open++; else counts.deferred++;
+      if (s === "answered") counts.answered++;
     }
     return counts;
+  };
+  // The nearest ancestor still open while the item applies: its answer holds only as long as that ancestor's answer
+  // keeps it applicable.
+  const waitingIn = (item, state, byKey) => {
+    if (statusIn(item, state, byKey).state === "not-applicable") return null;
+    for (let at = item, seen = new Set(); at.parent && !seen.has(at.key); at = byKey.get(at.parent.key)) {
+      seen.add(at.key);
+      if (!byKey.has(at.parent.key)) return null;
+      if (statusIn(byKey.get(at.parent.key), state, byKey).state === "open") return at.parent.key;
+    }
+    return null;
+  };
+  // Undo of one action: the entries it changed go back to what they were, each only if nothing changed it since, so a
+  // later answer to another item stays. `before` and `after` map keys to entries (undefined for none).
+  const undo = (items, state, before, after) => {
+    const answers = { ...state.answers };
+    for (const [key, entry] of Object.entries(before)) {
+      if (JSON.stringify(answers[key]) !== JSON.stringify(after[key])) continue;
+      if (entry === undefined) delete answers[key]; else answers[key] = entry;
+    }
+    return settle(items, { ...state, answers });
   };
   // One comment per anchor: new text replaces it in place, empty text removes it.
   const comment = (list, anchor, text, same) => {
@@ -137,19 +160,11 @@ export function decisionRuntime() {
     const byKey = byKeyOf(items);
     const answerOf = (item, a) => a.choice !== undefined
       ? (item.kind === "decision" ? { variant: { id: a.choice, text: item.variants[a.choice] } } : { option: a.choice }) : has(a.text) ? { text: a.text } : {};
-    const openParent = (item) => {
-      for (let at = item, seen = new Set(); at.parent && !seen.has(at.key); at = byKey.get(at.parent.key)) {
-        seen.add(at.key);
-        if (!byKey.has(at.parent.key)) return null;
-        if (statusIn(byKey.get(at.parent.key), state, byKey).state === "open") return at.parent.key;
-      }
-      return null;
-    };
     return {
       schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
-      progress: progress(items, state),
+      progress: (({ answered, ...counts }) => counts)(progress(items, state)),
       items: items.map((item) => {
-        const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = s.state === "not-applicable" ? null : openParent(item);
+        const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = waitingIn(item, state, byKey);
         const zones = Object.keys(entry.zones ?? {}).map(Number).sort((a, b) => a - b);
         return { item: item.key, kind: item.kind, status: s.state, ...answerOf(item, entry), ...(s.reason ? { reason: s.reason } : {}),
           ...(s.draft ? { draft: answerOf(item, s.draft) } : {}), ...(zones.length ? { zones } : {}), ...(parent ? { waiting_for_parent: parent } : {}) };
@@ -157,10 +172,11 @@ export function decisionRuntime() {
       lineComments: state.lines, paragraphComments: state.paragraphs,
     };
   };
-  return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment, paragraphComment, exportOf,
+  return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
+    waitingFor: (items, state, key) => waitingIn(item(items, key), state, byKeyOf(items)),
     status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
     applicable: (items, state, key) => applicableIn(item(items, key), state, byKeyOf(items)) };
 }
 
-export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment,
-  paragraphComment, exportOf, status, applicable } = decisionRuntime();
+export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment,
+  paragraphComment, exportOf, waitingFor, status, applicable } = decisionRuntime();

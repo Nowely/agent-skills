@@ -107,7 +107,7 @@ const REVIEW_ORDER = GROUPS.flatMap((g) => orderChildren(ITEMS.filter(g.test)));
 let state = DR.empty();
 const S = {
   field: {}, reasonText: {}, lcEdit: null, pcEdit: null, tab: "summary",
-  sel: { summary: null, decisions: null, code: null, details: null }, cur: null,
+  sel: { summary: null, decisions: null, code: null, details: null }, cur: null, file: null,
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
   code: { mode: "attention", order: "diff", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
     pinned: new Set(), whole: new Set(), doneOpen: new Set(), set: null, tree: window.innerWidth > 1150, dirsClosed: new Set(), ctx: false },
@@ -170,6 +170,13 @@ function statusOf(c) {
   return { state: "open", label: L("p.status.open"), cls: "open", draft: s.draft };
 }
 const isOpen = (c) => statusOf(c).state === "open";
+// A compact row names an entered answer for what it is, never a verified result.
+const compactAnswer = (st) => st.answer === undefined ? "" : st.unverified ? `${st.lbl}: ${st.answer}` : st.answer;
+// An answer given while the parent is still open holds only as long as that parent's answer keeps the question.
+function waitingText(c) {
+  const parent = DR.waitingFor(ITEMS, state, c.key);
+  return parent && statusOf(c).state !== "open" ? L("p.waiting", itemByKey.get(parent).label, itemByKey.get(parent).label) : "";
+}
 const settledState = (st) => st.state === "decided" || st.state === "answered";
 const blockOpen = (b) => b.verdict !== "keep" && blockItems(b).some(isOpen);
 const tagHtml = (st) => `<span class="tag ${st.cls}">${esc(st.label)}</span>`;
@@ -192,7 +199,9 @@ function chipTitle(kind, id) {
   const c = itemByKey.get(kind + id); return c ? (c.ref.title ?? c.ref.text ?? "") : "";
 }
 const chips = (kind, ids) => ids.length ? `<span class="chips">${ids.map((id) => chip(kind, id)).join("")}</span>` : "";
-const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${sources.map((s) => s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ")}</span>`;
+// An entry of Details, linked by its tab and row.
+const detailsChip = (s) => `<a class="chip" href="#details/${esc(s.sub)}${s.sel ? "/" + esc(s.sel) : ""}" data-go="d:${esc(s.sub)}/${esc(s.sel)}">${esc(s.text)}</a>`;
+const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${sources.map((s) => s.ref === "d" ? detailsChip(s) : s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ")}</span>`;
 const refsIn = (lists, kind) => [...new Set(lists.flat().filter((s) => s?.ref === kind).map((s) => s.id))];
 function relations(kind, id) {
   const rows = [];
@@ -254,12 +263,20 @@ function toast(text, undo = null) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; undoFn = null; }, undo ? 7000 : 2600);
 }
 function runUndo() { if (!undoFn) return false; const f = undoFn; undoFn = null; $("#toast").hidden = true; f(); return true; }
-// every answer given by a key is announced and can be taken back
-const snapshot = () => ({ state, field: { ...S.field } });
+// An item and every question conditional on it, down the chain: what one answer can change.
+function familyOf(c) {
+  const keys = [c.key];
+  for (let i = 0; i < keys.length; i++) { const x = itemByKey.get(keys[i]); if (x.type === "q") for (const ch of x.ref.children) if (!keys.includes("q" + ch)) keys.push("q" + ch); }
+  return keys;
+}
+// Every answer given by a key is announced and can be taken back: Undo reverses that one action and what followed from
+// it, never a later answer to another item.
+const entriesOf = (keys) => Object.fromEntries(keys.map((k) => [k, state.answers[k]]));
+const snapshot = (key) => { const keys = familyOf(itemByKey.get(key)); return { key, keys, before: entriesOf(keys), field: S.field[key] }; };
 function announce(c, snap) {
-  const st = statusOf(c);
+  const st = statusOf(c), after = entriesOf(snap.keys);
   const what = st.state === "decided" || st.state === "answered" ? st.answer : st.state === "deferred" ? L("p.toast.deferred", st.answer) : st.state === "open" ? L("p.toast.cleared") : st.label;
-  toast(`${c.label}: ${what}`, () => { setState(snap.state); S.field = snap.field; afterChange(c.key, { structural: true }); toast(L("p.toast.undone", c.label)); });
+  toast(`${c.label}: ${what}`, () => { setState(DR.undo(ITEMS, state, snap.before, after)); S.field[c.key] = snap.field; afterChange(c.key, { structural: true }); toast(L("p.toast.undone", c.label)); });
 }
 function refText(fi, side, num) {
   const rev = side === "-" ? D.passport?.base : D.passport?.head;
@@ -355,11 +372,11 @@ function renderShell() {
       <button class="btn quiet sm" data-act="keys" aria-haspopup="dialog">${esc(L("p.keys"))} ${kbd("?")}</button></div>
   </div></nav>
   <main>${TABS.map((t) => `<section class="tabpanel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join("")}</main>
-  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h">${esc(L("p.keys"))}</h2>
+  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h" tabindex="-1" autofocus>${esc(L("p.keys"))}</h2>
     <div class="keys">${keysHtml()}</div>
     <p class="muted small">${esc(L("p.keys.memory"))}</p>
     <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>
-  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h">${esc(L("p.export"))}</h2>
+  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h" tabindex="-1" autofocus>${esc(L("p.export"))}</h2>
     <p class="muted small">${esc(L("p.export.note"))}</p>
     <div id="export-preview"></div>
     <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
@@ -378,7 +395,7 @@ function updateChrome() {
   const set = (id, v, title) => { const el = $("#badge-" + id); el.hidden = v === null; if (v !== null) { el.textContent = n(v); el.title = title; } };
   set("decisions", p.open, P("p.count.open", p.open)); set("code", codeOpen, P("p.count.open-code", codeOpen)); set("summary", null); set("details", null);
   const viewed = `<span class="sep" aria-hidden="true">·</span><span>${esc(L("p.progress.viewed", n(S.viewed.size), n(F.length)))}</span>`;
-  $("#progress").innerHTML = `<span>${esc(L("p.progress", n(p.done), n(p.total)))}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><span style="width:${p.total ? (100 * p.done / p.total).toFixed(1) : 0}%"></span></span>${viewed}`;
+  $("#progress").innerHTML = `<span>${esc(L("p.progress", n(p.done), n(p.total)))}${p.answered ? ` · ${esc(P("p.progress.answered", p.answered))}` : ""}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><span style="width:${p.total ? (100 * p.done / p.total).toFixed(1) : 0}%"></span></span>${viewed}`;
   const so = $("#sum-progress"); if (so) so.innerHTML = summaryProgress();
   const sb = $("#start-btn"); if (sb) sb.textContent = L(p.done || p.deferred ? "p.continue" : "p.start");
   if (S.rendered.decisions) updateSubCounts();
@@ -408,7 +425,9 @@ function setHash() {
   else if (S.tab === "code" && S.sel.code) h += "/b" + S.sel.code;
   else if (S.tab === "details") h += "/" + S.sub.details + (sel ? "/" + sel : "");
   else if (S.tab === "summary" && sel?.startsWith("req:")) h += "/r" + sel.slice(4);
-  history.replaceState(null, "", "#" + h);
+  // An explicit move to another place adds a history entry, so Back returns there; a step within a list replaces it.
+  if (pushNext && location.hash !== "#" + h) history.pushState(null, "", "#" + h); else history.replaceState(null, "", "#" + h);
+  pushNext = false;
 }
 function route(hash) {
   const m = /^#?(summary|decisions|code|details)(?:\/(.+))?$/.exec(hash || "");
@@ -604,12 +623,14 @@ function cardHtml(c) {
     if (r.recommendation) body += `<div class="card-rec"><b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}</div>`;
   }
   body += `<div class="answer-line${st.unverified ? " unverified" : ""}" data-answer="${c.key}">${answerHtml(st)}</div>`;
+  if (c.parent) body += `<p class="waiting small" data-waiting="${c.key}">${esc(waitingText(c))}</p>`;
   body += choiceHtml(c, "card");
+  body += `<p class="leaving-note small">${esc(L("p.card.leaving"))}</p>`;
   const foot = [];
   if (c.blocks.length) foot.push(`<span class="lbl">${esc(L("p.code"))}</span><span>${esc(P("p.count.blocks", c.blocks.length))}</span><button class="btn sm quiet" data-act="item-code" data-key="${c.key}">${esc(L("p.show-in-code"))}</button>`);
   else if (c.placeBlock) foot.push(`<span class="lbl">${esc(L("p.at"))}</span>${chip("b", c.placeBlock)}`);
   if (foot.length) body += `<div class="card-foot">${foot.join("")}</div>`;
-  const compact = `<div class="compact"><span class="card-id">${c.label}</span><span class="ctitle">${prose(itemTitle(c))}</span><span class="answer" data-compact-answer="${c.key}">${esc(st.answer ?? "")}</span><span class="status" data-status="${c.key}">${tagHtml(st)}</span><button class="btn sm quiet" data-act="selcard" data-key="${c.key}">${esc(L("p.change"))}</button></div>`;
+  const compact = `<div class="compact"><span class="card-id">${c.label}</span><span class="ctitle">${prose(itemTitle(c))}</span><span class="answer" data-compact-answer="${c.key}">${esc(compactAnswer(st))}</span><span class="status" data-status="${c.key}">${tagHtml(st)}</span><button class="btn sm quiet" data-act="selcard" data-key="${c.key}">${esc(L("p.change"))}</button></div>`;
   return `<article class="card selectable${settled ? " settled" : ""}${sel ? " sel open-full" : ""}${r.parent ? " child" : ""}" id="card-${c.key}" data-card="${c.key}" data-sel="card:${c.key}" tabindex="-1" aria-label="${esc(`${c.label}: ${itemTitle(c).slice(0, 120)}`)}">${compact}<div class="full">${body}</div></article>`;
 }
 
@@ -649,10 +670,8 @@ function clearAnswer(key) { setState(DR.clear(ITEMS, state, key)); S.field[key] 
 function afterChange(key, { structural, focusText = false, focusReason = false }) {
   const c = itemByKey.get(key);
   // a parent's answer can retire or restore its conditional questions: every descendant is drawn again
-  const keys = new Set([key]);
-  const down = (x) => { if (x.type === "q") for (const ch of x.ref.children) { const k = "q" + ch; if (!keys.has(k)) { keys.add(k); down(itemByKey.get(k)); } } };
-  down(c);
-  for (const k of keys) syncItem(k, structural || k !== key);
+  for (const k of familyOf(c)) syncItem(k, structural || k !== key);
+  reconcileDecList(structural);
   updateChrome(); invalidateWalk(); updatePos();
   if (focusText || focusReason) {
     const scope = S.tab === "code" ? $(`#note-${S.sel.code ?? ""}`) ?? document : $(`#card-${key}`) ?? document;
@@ -664,7 +683,8 @@ function syncItem(key, structural) {
   const c = itemByKey.get(key), st = statusOf(c);
   for (const el of $$(`[data-status="${key}"]`)) el.innerHTML = tagHtml(st);
   for (const el of $$(`[data-answer="${key}"]`)) { el.innerHTML = answerHtml(st); el.classList.toggle("unverified", Boolean(st.unverified)); }
-  for (const el of $$(`[data-compact-answer="${key}"]`)) el.textContent = st.answer ?? "";
+  for (const el of $$(`[data-compact-answer="${key}"]`)) el.textContent = compactAnswer(st);
+  for (const el of $$(`[data-waiting="${key}"]`)) el.textContent = waitingText(c);
   for (const card of $$(`#card-${key}`)) card.classList.toggle("settled", st.state !== "open");
   if (!structural) return;
   const active = document.activeElement;
@@ -708,7 +728,7 @@ function reqLine() {
   const parts = Object.entries(c).filter(([, k]) => k).map(([kind, k]) => P(WORD[kind], k));
   return `<b>${esc(P("p.reqline", D.requirements.length))}</b> <span>${esc(parts.join(" · "))}</span><a href="#summary-reqs" data-act="to-reqs" class="small">${esc(L("p.reqline.table"))}</a>`;
 }
-const summaryProgress = () => { const p = progress(); return `<b>${esc(L("p.progress.of", n(p.done), n(p.total)))}</b><span>${esc(p.deferred ? L("p.progress.decided-deferred", n(p.deferred)) : L("p.progress.decided"))}</span>`; };
+const summaryProgress = () => { const p = progress(); return `<b>${esc(L("p.progress.of", n(p.done), n(p.total)))}</b><span>${esc([L("p.progress.decided"), p.answered && P("p.progress.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
 function firstOpenItem() { return REVIEW_ORDER.find(isOpen); }
 function startReview() {
   const c = firstOpenItem();
@@ -724,7 +744,7 @@ function summaryHtml() {
   return `<div class="statrow">
       <div class="stat"><b>${esc(P("p.count.files", c.files))}</b>${status ? `<span>${esc(status)}</span>` : ""}</div>
       <div class="stat"><b><span class="add">+${n(c.lines.added)}</span> <span class="del">−${n(c.lines.removed)}</span></b><span>${esc(L("p.lines"))}</span></div>
-      <div class="stat"><b>${esc(P("p.count.blocks", c.blocks))}</b>${shareBar(shares)}<div class="legend">${["keep", "fix", "remove", "question"].map((k) => `<span><i class="s-${k}"></i>${esc(L("p.verdict.reviewer"))} ${esc(verdictWord(k))} ${n(c.verdicts[k] ?? 0)}</span>`).join("")}</div></div>
+      <div class="stat"><b>${esc(P("p.count.blocks", c.blocks))}</b>${shareBar(shares)}<div class="legend">${["keep", "fix", "remove", "question"].map((k) => `<span><i class="s-${k}"></i>${esc(L("p.verdict.reviewer"))} ${esc(verdictWord(k))} ${esc(L("p.legend", P("p.count.blocks", c.verdicts[k] ?? 0), P("p.count.lines-n", shares[k])))}</span>`).join("")}</div><p class="muted small">${esc(L("p.legend.note"))}</p></div>
       <div class="cta"><div class="stat" id="sum-progress">${summaryProgress()}</div><button class="btn primary" id="start-btn" data-act="start">${esc(L("p.start"))}</button></div>
       <div class="reqline">${reqLine()}</div>
     </div>
@@ -808,7 +828,7 @@ function renderDecisions() {
 function updateSubCounts() {
   for (const t of DEC_TABS) { const el = $(`[data-subcount="${t.id}"]`); if (el) { const k = subCount(t); el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); } }
   const p = progress(), el = $("#dec-note");
-  const parts = [P("p.count.open", p.open), P("p.count.decided", p.done), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
+  const parts = [P("p.count.open", p.open), P("p.count.decided", p.done - p.answered), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
   if (el) el.innerHTML = `${esc(parts)}. ${esc(L("p.memory"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
 }
 function renderDecList() {
@@ -824,6 +844,25 @@ function renderDecList() {
       : `<div class="empty"><strong>${esc(L("p.empty"))}</strong>${esc(L(sub.id === "done" ? "p.empty.done" : sub.id === "deferred" ? "p.empty.deferred" : "p.empty.none"))}</div>`;
   }
   $("#dec-list").innerHTML = html;
+}
+// After the list changes, the selection, the panel, the URL and the next key agree with it: a card the list no
+// longer shows is no longer selected.
+function syncDecSelection() {
+  const key = S.sel.decisions?.slice(5);
+  if (key && !$(`#dec-list #card-${key}`)) select("decisions", null);
+}
+// A list filtered by state (Deferred, Done) drops a card once the action that took it out is complete. A card being
+// typed in stays until focus leaves it, and says that it is leaving.
+function reconcileDecList(structural) {
+  const sub = DEC_TABS.find((t) => t.id === S.sub.decisions);
+  if (!S.rendered.decisions || !["deferred", "done"].includes(sub.id)) return;
+  const want = ITEMS.filter(sub.test).map((c) => c.key), cards = $$("#dec-list .card");
+  if (want.join() === cards.map((el) => el.dataset.card).join()) return;
+  if (!structural && document.activeElement?.closest?.("#dec-list .card")) {
+    for (const el of cards) el.classList.toggle("leaving", !want.includes(el.dataset.card));
+    return;
+  }
+  renderDecList(); syncDecSelection();
 }
 // A line comment inside the block of an open item is a comment, never an answer to it.
 function notAnswerHint(lk) {
@@ -882,13 +921,17 @@ function fileShown(fi) {
   if (!filtered() || S.code.q) return true; // a name search shows every matching file, its kept code folded
   return fileBlocks[fi].some((b) => inFocus(b) || (b.verdict !== "keep" && inFilters(b))) || hasComment(fi) || S.code.pinned.has(fi) || S.code.whole.has(fi);
 }
+// A file's items by state: open, decided, answered, deferred and not applicable each count apart.
 function fileAttn(fi) {
-  const items = [...new Set(fileBlocks[fi].filter((b) => b.verdict !== "keep").flatMap(blockItems))].filter(applicable);
-  const open = items.filter(isOpen), openBlocks = fileBlocks[fi].filter(blockOpen);
+  const items = [...new Set(fileBlocks[fi].filter((b) => b.verdict !== "keep").flatMap(blockItems))];
+  const by = { open: 0, decided: 0, answered: 0, deferred: 0, na: 0 };
+  for (const c of items) by[statusOf(c).state]++;
+  const openBlocks = fileBlocks[fi].filter(blockOpen);
   const worst = ["remove", "fix", "question"].find((v) => openBlocks.some((b) => b.verdict === v)) ?? null;
-  return { total: items.length, open: open.length, worst };
+  return { total: items.length - by.na, open: by.open, by, worst };
 }
-const attnText = (a) => a.open ? L("p.file.open", n(a.open), P("p.count.of-decisions", a.total)) : L("p.file.decided", P("p.count.decisions", a.total));
+const attnText = (a) => [a.open && L("p.file.open", n(a.open), P("p.count.of-decisions", a.total)), a.by.decided && P("p.count.decided", a.by.decided),
+  a.by.answered && P("p.count.answered", a.by.answered), a.by.deferred && P("p.count.deferred", a.by.deferred), a.by.na && P("p.count.na", a.by.na)].filter(Boolean).join(" · ");
 function fileOrder() {
   const all = F.map((_, fi) => fi);
   if (S.code.order !== "attention") return all;
@@ -1012,9 +1055,10 @@ function noteItem(c, b) {
 }
 function doneHtml(b) {
   const sel = S.sel.code === b.id, items = blockItems(b), sts = items.map(statusOf);
-  const ans = items.map((c, i) => { const st = sts[i]; return `${c.label}: ${st.state === "na" ? st.label : st.state === "deferred" ? L("p.toast.deferred", st.answer) : st.answer}`; }).join(" · ");
-  const tag = sts.some((s) => s.state === "deferred") ? { cls: "dashed", label: L("p.status.deferred") } : sts.every((s) => s.state === "na") ? { cls: "dashed", label: L("p.status.na") } : { cls: "neutral", label: L("p.status.decided") };
-  return `<tr class="done-row" data-b="${b.id}"><td colspan="3"><div class="done-line${sel ? " sel" : ""}" id="note-${b.id}" data-b="${b.id}" tabindex="-1" role="button" data-act="done-open" aria-label="${esc(L("p.done-line", `B${b.id} · ${tag.label}`, ans))}"><span class="tag ${tag.cls}">${esc(tag.label)}</span><span class="bid">B${b.id}</span><span class="ans">${esc(ans)}</span><span class="muted small">${esc(L("p.fold.expand"))}</span></div></td></tr>`;
+  const ans = items.map((c, i) => { const st = sts[i]; return `${c.label}: ${st.state === "na" ? st.label : st.state === "deferred" ? L("p.toast.deferred", st.answer) : compactAnswer(st)}`; }).join(" · ");
+  // one tag per state its items are in: an answered request never reads as decided
+  const tags = [...new Map(sts.map((st) => [st.state, st])).values()];
+  return `<tr class="done-row" data-b="${b.id}"><td colspan="3"><div class="done-line${sel ? " sel" : ""}" id="note-${b.id}" data-b="${b.id}" tabindex="-1" role="button" data-act="done-open" aria-label="${esc(L("p.done-line", `B${b.id} · ${tags.map((st) => st.label).join(", ")}`, ans))}">${tags.map(tagHtml).join("")}<span class="bid">B${b.id}</span><span class="ans">${esc(ans)}</span><span class="muted small">${esc(L("p.fold.expand"))}</span></div></td></tr>`;
 }
 function lcHtml(lk) {
   const [, side] = lk.split(":"), what = L(side[0] === "-" ? "p.lc.removed-line" : "p.lc.line", side.slice(1));
@@ -1066,6 +1110,8 @@ function renderCode() {
   </div>
   <div class="frame code${S.code.tree ? "" : " no-tree"}${S.code.ctx ? " ctx" : ""}" id="code-frame"><a class="skip" href="#files" data-act="skip">${esc(L("p.skip"))}</a><nav class="tree" id="tree" aria-label="${esc(L("files"))}"${S.code.tree ? "" : " hidden"}></nav><div class="files" id="files" tabindex="-1"></div><aside class="panel" id="ctx-code" aria-label="${esc(L("p.context"))}"${S.code.ctx ? "" : " hidden"}></aside></div>`;
   syncToolbar(); syncTbar(); measureCpl(); renderFiles(); renderTree(); renderPanel("code"); updatePos(); if (S.find.open) runFind();
+  // The toolbar wraps at narrow widths, grows with filter tokens and the find bar: its rendered height places the file headers.
+  new ResizeObserver(syncTbar).observe($(".toolbar"));
 }
 function syncToolbar() {
   const sel = $('#panel-code select[data-act="req"]'); if (sel) sel.value = S.code.req;
@@ -1245,7 +1291,7 @@ async function landOn(getEl, offset) {
 }
 // where the code area starts below the sticky bars; measured once, again after a resize or the find bar toggles
 let TB = null;
-const toolbarBottom = () => { if (TB !== null) return TB; const t = $(".toolbar"); if (!t || !t.offsetHeight) return 100; return (TB = getComputedStyle(t).position === "sticky" ? 48 + t.offsetHeight : 48); };
+const toolbarBottom = () => { if (TB !== null) return TB; const t = $(".toolbar"), bar = $(".tabbar").offsetHeight; if (!t || !t.offsetHeight) return bar + 52; return (TB = getComputedStyle(t).position === "sticky" ? bar + t.offsetHeight : bar); };
 function goBlock(bid, { key = null, focus = false, scroll = true } = {}) {
   const b = blk(bid);
   if (S.tab !== "code") showTab("code", { push: false });
@@ -1276,6 +1322,9 @@ function markSelectedBlock() {
 }
 function goFile(fi) {
   if (S.tab !== "code") showTab("code", { push: false });
+  // Choosing a file makes it the context of file actions, and a block of another file is no longer selected.
+  S.file = fi;
+  if (S.sel.code && blk(S.sel.code).file !== fi) { S.cur = null; select("code", null); }
   if (!fileShown(fi)) { if (!fileMatches(fi)) { S.code.q = ""; S.code.purposes = new Set(D.purposes); } S.code.pinned.add(fi); rerenderCode(); }
   if (S.code.collapsed.has(fi) && !S.viewed.has(fi)) { S.code.collapsed.delete(fi); rerenderCode(); }
   fill(fi);
@@ -1312,8 +1361,11 @@ function spy() {
   $$(".tnode.t-file.cur", tree).forEach((x) => x.classList.remove("cur"));
   if (cur !== null) $(`.tnode.t-file[data-f="${cur}"]`, tree)?.classList.add("cur");
 }
+// The file a file action (v) means: the selected block's, else the file chosen last while it is in view, else the first in view.
 function currentFile() {
   if (S.sel.code) return blk(S.sel.code).file;
+  const chosen = S.file !== null && $(`#file-${S.file}`);
+  if (chosen && inView(chosen)) return S.file;
   const top = toolbarBottom() + 10;
   for (const sec of $$("#files .file")) { const r = sec.getBoundingClientRect(); if (r.bottom > top) return +sec.dataset.f; }
   return null;
@@ -1412,8 +1464,8 @@ function renderDetailBody() {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
     html = D.screens.map((s, si) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
-      ${s.historical ? `<p><span class="provenance">${esc(s.revision ? L("p.screen.historical", s.revision) : L("p.screen.historical-unknown"))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen.revision-unknown"))}</p>`}
-      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
+      ${s.historical ? `<p><span class="provenance">${esc(s.revision ? L("p.screen.historical", s.revision) : L("p.screen.historical-unknown"))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(s.revision ? L("p.screen.revision", s.revision) : L("p.screen.revision-unknown"))} ${srcList(s.sources)}</p>`}
+      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
       ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
       ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
       ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`).join("");
@@ -1544,6 +1596,7 @@ function openAnswer(card) {
 function goDetails(sub, sel) { S.sub.details = sub; S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); $(`[data-sel="${CSS.escape(sel)}"]`, $("#panel-details"))?.scrollIntoView({ block: "center" }); }
 function go(spec) {
   const [kind, id] = spec.split(":");
+  if (kind === "d") { const [sub, sel] = spec.slice(2).split("/"); return goDetails(sub, sel || null); }
   if (kind === "b") { const b = blk(+id); const items = blockItems(b); return goBlock(+id, { key: items.length ? (items.find(isOpen) ?? items[0]).key : null }); }
   if (kind === "r") { showTab("summary", { push: false }); return select("summary", "req:" + id, { scroll: true }); }
   if (kind === "m") return goDetails("mechanisms", "mech:" + (+id - 1));
@@ -1562,8 +1615,9 @@ function itemToCode(key) {
   if (w) goBlock(w.blocks[0], { key, focus: true });
 }
 // «Show in Code» from a requirement: its filter, and the selection on its first block in view
+// The newest explicit choice wins: an older filter that would hide what it names is dropped.
 function reqToCode(id) {
-  S.code.req = id; S.code.unit = ""; S.code.q = ""; S.code.mode = "all"; S.code.pinned.clear();
+  resetFilters(); S.code.req = id; S.code.mode = "all"; S.code.pinned.clear();
   showTab("code", { push: false }); if (S.rendered.code) rerenderCode();
   const serving = ORDER.filter((b) => b.serves.includes(id));
   const target = serving.find(blockOpen) ?? serving[0];
@@ -1571,7 +1625,7 @@ function reqToCode(id) {
 }
 function unitToCode(i) {
   const u = D.units[i];
-  S.code.unit = u.name; S.code.req = ""; S.code.q = ""; S.code.mode = "all"; S.code.pinned.clear();
+  resetFilters(); S.code.unit = u.name; S.code.mode = "all"; S.code.pinned.clear();
   showTab("code", { push: false }); if (S.rendered.code) rerenderCode();
   const blocks = ORDER.filter((b) => b.unit === u.name), target = blocks.find(blockOpen) ?? blocks[0];
   if (target) goBlock(target.id); else { select("code", null); setHash(); }
@@ -1586,12 +1640,16 @@ function setToCode(set) {
 // ---------------------------------------------------------------- events
 let textTimer = null, qTimer = null;
 const typingTarget = (t) => t?.matches?.('textarea, select, input:not([type="radio"]):not([type="checkbox"]):not([type="button"])') || t?.isContentEditable;
+// The actions that take the owner to another place: each leaves a history entry behind.
+const NAVIGATES = new Set(["start", "item-code", "req-code", "unit-code", "set-code", "goline", "goanchor", "gounit", "gomech", "gocheck", "goscen", "gostep", "export-go"]);
+let pushNext = false;
 document.addEventListener("click", (e) => {
   const goEl = e.target.closest("[data-go]");
-  if (goEl && !e.metaKey && !e.ctrlKey) { e.preventDefault(); return go(goEl.dataset.go); }
+  if (goEl && !e.metaKey && !e.ctrlKey) { e.preventDefault(); pushNext = true; return go(goEl.dataset.go); }
   const tabBtn = e.target.closest(".tab[data-tab]");
-  if (tabBtn) return showTab(tabBtn.dataset.tab);
+  if (tabBtn) { pushNext = true; return showTab(tabBtn.dataset.tab); }
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
+  if (NAVIGATES.has(a)) pushNext = true;
   if (a === "pick" && act.tagName === "INPUT") return; // radios act on change
   const pop = $("#purpose-pop .pop-menu");
   if (pop && !pop.hidden && !e.target.closest("#purpose-pop")) { pop.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false"); }
@@ -1600,6 +1658,9 @@ document.addEventListener("click", (e) => {
     switch (a) {
       case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; applyTheme(); return save();
       case "export": return openExport();
+      case "zoom": return openZoom(act.dataset.pic);
+      case "zoom-fit": case "zoom-full": zoomFit = a === "zoom-fit"; return showZoom(zoomAt);
+      case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
       case "print": printProfile = act.dataset.profile; return window.print();
       case "export-json": return downloadExport();
       case "export-copy": return copyExport();
@@ -1621,7 +1682,7 @@ document.addEventListener("click", (e) => {
       case "selcard": select("decisions", "card:" + key); $(`#card-${key}`)?.classList.add("open-full"); return;
       case "item-code": return itemToCode(key);
       case "more": S.more[act.dataset.more] = true; return renderPanel(S.tab);
-      case "dsub": S.sub.decisions = act.dataset.sub; renderDecList(); setHash(); return;
+      case "dsub": S.sub.decisions = act.dataset.sub; renderDecList(); syncDecSelection(); setHash(); return;
       case "xsub": S.sub.details = act.dataset.sub; renderDetailBody(); setHash(); return;
       case "sview": S.structView = act.dataset.view; return renderDetailBody();
       case "usort": { const k = act.dataset.key; S.unitSort = { key: k, dir: S.unitSort.key === k ? -S.unitSort.dir : -1 }; return renderDetailBody(); }
@@ -1702,11 +1763,18 @@ document.addEventListener("focusout", (e) => {
   if (t.dataset?.act === "text") {
     clearTimeout(textTimer);
     const key = t.dataset.key;
-    // flush now, synchronously: a variant clicked next runs after this and wins; nothing writes the text later
-    if (t.isConnected && (entryOf(key).text ?? "") !== t.value) setText(key, t.value);
-    setTimeout(() => { if (!document.activeElement?.closest?.(`[data-choice="${key}"]`)) afterChange(key, { structural: true }); }, 0);
+    // The text is written now, so a variant clicked next runs after it and wins, and nothing writes it later; the page
+    // shows it once the pointer is released, since a line that appears above the variants would move them under it.
+    if (t.isConnected && (entryOf(key).text ?? "") !== t.value) setState(DR.write(ITEMS, state, key, t.value));
+    afterPointer(() => afterChange(key, { structural: !document.activeElement?.closest?.(`[data-choice="${key}"]`) }));
   }
 });
+// A redraw waits while a pointer is down, so the control pressed is still there when it is released and its click
+// counts; it runs once the click has had its turn.
+let pointerDown = false, waiting = [];
+const afterPointer = (fn) => { if (pointerDown) waiting.push(fn); else setTimeout(fn, 0); };
+document.addEventListener("pointerdown", () => { pointerDown = true; }, true);
+for (const type of ["pointerup", "pointercancel"]) document.addEventListener(type, () => setTimeout(() => { pointerDown = false; const run = waiting; waiting = []; run.forEach((fn) => fn()); }, 0), true);
 let fieldSnap = null;
 document.addEventListener("focusin", (e) => {
   const note = S.tab === "code" ? e.target.closest?.("#files .note[data-b]") : null;
@@ -1715,7 +1783,7 @@ document.addEventListener("focusin", (e) => {
     const key = itemEl?.dataset.item ?? (S.cur?.bid === bid ? S.cur.key : (items.find(isOpen) ?? items[0])?.key);
     if (key && (S.cur?.bid !== bid || S.cur?.key !== key)) { S.cur = { key, bid }; if (S.sel.code !== bid) select("code", bid); else updatePos(); }
   }
-  if (e.target.matches?.('textarea[data-act="text"], textarea[data-act="reason"]') && fieldSnap?.key !== e.target.dataset.key) fieldSnap = { key: e.target.dataset.key, snap: snapshot() };
+  if (e.target.matches?.('textarea[data-act="text"], textarea[data-act="reason"]') && fieldSnap?.key !== e.target.dataset.key) fieldSnap = { key: e.target.dataset.key, snap: snapshot(e.target.dataset.key) };
   const card = e.target.closest?.("#dec-list .card[data-card]");
   if (card && S.sel.decisions !== "card:" + card.dataset.card) select("decisions", "card:" + card.dataset.card);
   const lnb = e.target.closest?.(".lnb");
@@ -1818,13 +1886,15 @@ function currentItem() {
   return null;
 }
 document.addEventListener("keydown", (e) => {
+  // A dialog takes the keyboard: no report key acts behind it.
+  if (document.querySelector("dialog[open]")) return;
   const t = e.target, typing = typingTarget(t);
   if ((e.key === "f" || e.key === "F") && (e.ctrlKey || e.metaKey) && S.tab === "code") { e.preventDefault(); return openFind(); }
   if (t.id === "find-q" && e.key === "Enter") { e.preventDefault(); return findStep(e.shiftKey ? -1 : 1); }
   if (t.id === "find-q" && e.key === "Escape") { e.preventDefault(); return closeFind(); }
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && typing) {
     if (t.dataset.act === "text") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : null; const c = itemByKey.get(t.dataset.key); if (commitText(t)) { fieldSnap = null; if (snap) announce(c, snap); step(1); } return; }
-    if (t.dataset.act === "reason") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : snapshot(); const c = itemByKey.get(t.dataset.key); if (confirmDefer(t.dataset.key)) { fieldSnap = null; announce(c, snap); step(1); } return; }
+    if (t.dataset.act === "reason") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : snapshot(t.dataset.key); const c = itemByKey.get(t.dataset.key); if (confirmDefer(t.dataset.key)) { fieldSnap = null; announce(c, snap); step(1); } return; }
     if (t.id === "lc-input") { e.preventDefault(); return saveLine(S.lcEdit); }
     if (t.id === "pc-input") { e.preventDefault(); return savePc(S.pcEdit); }
   }
@@ -1876,11 +1946,11 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   // a key answers only the item whose note or card is in view; otherwise it brings it into view and does nothing else
   if (!inView(keyTarget())) return bringIntoView(c);
-  if (pickKey) { const snap = snapshot(); pick(c.key, pickKey); return announce(c, snap); }
+  if (pickKey) { const snap = snapshot(c.key); pick(c.key, pickKey); return announce(c, snap); }
   if ((k === "o" || k === "d") && S.tab === "code" && S.cur) moveAnswerTo(c.key, S.cur.bid);
   if (k === "o") return openField(c.key, "other");
   if (k === "d") return openField(c.key, "defer");
-  if (k === "x") { const snap = snapshot(); clearAnswer(c.key); return announce(c, snap); }
+  if (k === "x") { const snap = snapshot(c.key); clearAnswer(c.key); return announce(c, snap); }
 });
 let spyQueued = false, lastRelease = 0;
 window.addEventListener("scroll", () => {
@@ -1890,6 +1960,29 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
 window.addEventListener("hashchange", () => route(location.hash));
+
+// ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size
+const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.historical })));
+let zoomAt = 0, zoomFit = true;
+function openZoom(id) {
+  let d = $("#zoom-dialog");
+  if (!d) {
+    d = document.createElement("dialog"); d.id = "zoom-dialog"; d.setAttribute("aria-labelledby", "zoom-name");
+    d.innerHTML = `<div class="zoom-bar"><button class="btn sm" data-act="zoom-fit">${esc(L("p.zoom.fit"))}</button><button class="btn sm" data-act="zoom-full">${esc(L("p.zoom.actual"))}</button><button class="btn sm icon" data-act="zoom-prev" aria-label="${esc(L("p.zoom.prev"))}">←</button><span id="zoom-count" class="muted small"></span><button class="btn sm icon" data-act="zoom-next" aria-label="${esc(L("p.zoom.next"))}">→</button><span id="zoom-name" class="small"></span><span id="zoom-historical" class="tag dashed" hidden>${esc(L("p.zoom.historical"))}</span><form method="dialog"><button class="btn sm" autofocus>${esc(L("p.close"))}</button></form></div><div class="zoom-scroll"><img alt=""></div>`;
+    d.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); showZoom(zoomAt + (e.key === "ArrowRight" ? 1 : -1)); } });
+    document.body.append(d);
+  }
+  zoomFit = true; showZoom(PICTURES.findIndex((p) => p.id === id));
+  if (!d.open) d.showModal();
+}
+function showZoom(i) {
+  zoomAt = (i + PICTURES.length) % PICTURES.length;
+  const p = PICTURES[zoomAt], d = $("#zoom-dialog"), img = $("img", d);
+  img.src = p.src; img.alt = p.name; img.classList.toggle("fit", zoomFit);
+  $("#zoom-name").textContent = p.name; $("#zoom-count").textContent = L("p.zoom.of", n(zoomAt + 1), n(PICTURES.length));
+  $("#zoom-historical").hidden = !p.historical;
+  $('[data-act="zoom-fit"]', d).setAttribute("aria-pressed", String(zoomFit)); $('[data-act="zoom-full"]', d).setAttribute("aria-pressed", String(!zoomFit));
+}
 
 // ---------------------------------------------------------------- print: the owner's or the audit's
 // The owner's print is the summary and every decision card with its answer, and the comments; the audit's adds every

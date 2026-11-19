@@ -103,13 +103,38 @@ test("an answer to a fact or evidence request is answered, never decided, and a 
 });
 
 test("progress counts every applicable item: decided and answered are done, deferred is not, not applicable leaves the total", () => {
-  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, open: 7, deferred: 0 });
+  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, answered: 0, open: 7, deferred: 0 });
   let s = D.choose(ITEMS, D.empty(), "q1", "revert");
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, open: 4, deferred: 0 });
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, answered: 0, open: 4, deferred: 0 });
   s = D.write(ITEMS, s, "q4", "yes");
   s = D.defer(ITEMS, D.choose(ITEMS, s, "i1", "take"), "i1", "next quarter");
   s = D.choose(ITEMS, s, "fF1", "leave");
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, open: 1, deferred: 1 });
+  // The answered request counts as done, and apart, since it is no verified result.
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, answered: 1, open: 1, deferred: 1 });
+});
+
+test("undo takes back one action and what followed from it, and leaves a later answer to another item as it is", () => {
+  // The owner keys F1, then answers I1, then undoes F1: I1 stays.
+  const before = D.empty(), afterF1 = D.choose(ITEMS, before, "fF1", "fix"), later = D.choose(ITEMS, afterF1, "i1", "take");
+  const undone = D.undo(ITEMS, later, { fF1: before.answers.fF1 }, { fF1: afterF1.answers.fF1 });
+  assert.deepEqual(undone.answers, { i1: { choice: "take" } });
+  // Q1's variant retired Q2's answer into a draft; undoing Q1 puts both back, as they were before the key.
+  const q2 = D.choose(ITEMS, D.choose(ITEMS, D.empty(), "q1", "keep"), "q2", "yes"), keys = ["q1", "q2"];
+  const retired = D.choose(ITEMS, q2, "q1", "revert"), pick = (s) => Object.fromEntries(keys.map((k) => [k, s.answers[k]]));
+  assert.deepEqual(status(retired, "q2"), { state: "not-applicable", draft: { choice: "yes" } });
+  const back = D.undo(ITEMS, retired, pick(q2), pick(retired));
+  assert.deepEqual([status(back, "q1").choice, status(back, "q2").choice], ["keep", "yes"]);
+  // An item changed again since the action keeps its newer answer.
+  const changed = D.choose(ITEMS, afterF1, "fF1", "leave");
+  assert.deepEqual(D.undo(ITEMS, changed, { fF1: undefined }, { fF1: afterF1.answers.fF1 }).answers.fF1, { choice: "leave" });
+});
+
+test("an answer under a parent still open says which parent it waits for", () => {
+  const s = D.choose(ITEMS, D.choose(ITEMS, D.empty(), "q2", "yes"), "q3", "a");
+  assert.deepEqual([D.waitingFor(ITEMS, s, "q2"), D.waitingFor(ITEMS, s, "q3"), D.waitingFor(ITEMS, s, "q1")], ["q1", "q1", null]);
+  const decided = D.choose(ITEMS, s, "q1", "keep");
+  assert.deepEqual([D.waitingFor(ITEMS, decided, "q2"), D.waitingFor(ITEMS, decided, "q3")], [null, null]);
+  assert.equal(D.waitingFor(ITEMS, D.choose(ITEMS, s, "q1", "revert"), "q2"), null, "a retired question waits for nothing");
 });
 
 test("one comment per line or paragraph: new text replaces it in place, empty text removes it, and storage is read defensively", () => {

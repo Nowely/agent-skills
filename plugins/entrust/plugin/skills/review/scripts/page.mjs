@@ -30,13 +30,19 @@ function placer(files) {
   };
 }
 
-// Sources as the page links them: an internal ref to a requirement, finding, question, block or mechanism becomes
-// its id; anything else stays the text sourceOf gives it.
+// Sources as the page links them: an internal ref to a requirement, finding, question, idea, block or mechanism
+// becomes its id; one to an entry of Details becomes its tab and, where it has one, its row; an external place stays
+// the text sourceOf gives it.
 function sourcer(review) {
-  const KINDS = { requirements: "r", findings: "f", questions: "q", blocks: "b", mechanisms: "m" };
+  const KINDS = { requirements: "r", findings: "f", questions: "q", ideas: "i", blocks: "b", mechanisms: "m" };
+  const DETAILS = { units: ["structure", (i) => `unit:${i}`], target_units: ["structure"], checks: ["checks", (i) => `check:${i}`],
+    scenarios: ["scenarios", (i) => `scen:${review.scenarios[i].id}`], challenges: ["challenges", (i) => `chal:${i}`], screens: ["screens"],
+    coverageStructured: ["coverage"], tradeoffs: ["coverage"] };
   return (list) => (list ?? []).map((s) => {
     const { text } = sourceOf(s, review);
-    const m = s?.ref !== undefined && /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(s.ref)), kind = m && KINDS[m[1]];
+    const m = s?.ref !== undefined && /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(s.ref));
+    if (m && DETAILS[m[1]] && review[m[1]]?.[+m[2]] !== undefined) { const [sub, sel] = DETAILS[m[1]]; return { ref: "d", sub, sel: sel ? sel(+m[2]) : "", text }; }
+    const kind = m && KINDS[m[1]];
     if (!kind) return { text };
     const id = m[1] === "requirements" ? review.requirements[+m[2]]?.id : m[1] === "findings" ? review.findings[+m[2]]?.id : +m[2] + 1;
     return id === undefined ? { text } : { ref: kind, id: String(id), text };
