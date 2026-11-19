@@ -119,12 +119,14 @@ const entryOf = (key) => state.answers[key] ?? {};
 
 // ---------------------------------------------------------------- persistence: answers, comments, «Viewed» and view choices, in this browser
 // Kept under the storage key decisions.mjs gives this record, so another record or another export format never reads
-// them. A browser that refuses to read or write says so on the page, and leaving with unsaved answers asks first.
+// them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
+// kept could not be read, or that it refused the last save — and leaving after a refused save asks first.
 const STORE = DR.storageKey(D.digest.key);
-let storage = "saved";
+let storage = "saved", unsaved = false;
 function load() {
-  let raw = null;
-  try { raw = JSON.parse(localStorage.getItem(STORE) ?? "null"); } catch { storage = "unreadable"; return; }
+  let raw = null, text;
+  try { text = localStorage.getItem(STORE); } catch { storage = "blocked"; return; }
+  try { raw = JSON.parse(text ?? "null"); } catch { storage = "unreadable"; return; }
   if (!raw || typeof raw !== "object") return;
   state = DR.settle(ITEMS, DR.normalize(raw.decisions));
   for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
@@ -136,15 +138,15 @@ function load() {
 }
 function save() {
   const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
-  try { localStorage.setItem(STORE, JSON.stringify(kept)); if (storage === "failed") storage = "saved"; } catch { storage = "failed"; }
+  try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
 function showStorage() {
   const el = $("#storage"); if (!el) return;
   el.hidden = storage === "saved";
-  el.textContent = storage === "saved" ? "" : L(storage === "failed" ? "p.storage.failed" : "p.storage.unreadable");
+  el.textContent = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
 }
-window.addEventListener("beforeunload", (e) => { if (storage === "failed") { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", (e) => { if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------------------------------------------------------------- the owner's options, and each item's status in words
 const OPTION_LABEL = { fix: L("p.option.fix"), leave: L("p.option.leave"), take: L("p.option.take"), skip: L("p.option.skip") };

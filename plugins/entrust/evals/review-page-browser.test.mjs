@@ -448,12 +448,24 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
       && p.paragraphComments[0]?.text === "unclear" || JSON.stringify({ keys, r, comments: p.paragraphComments });
   }));
 
-test("a browser that refuses to save says so on the page",
-  "answers that live only in memory must not look saved",
-  cased(THEMED_URL + "#decisions/f1", { init: () => { Storage.prototype.setItem = () => { throw new Error("refused"); }; } }, async (page) => {
-    await page.keyboard.press("f"); await settle(page);
-    return /refused to save/.test(await text(page, "#storage")) || "no message after a failed save";
-  }));
+test("the page shows what is true of its storage: a refused save, a browser that keeps nothing, saved answers it cannot read — and a save that works clears the message",
+  "answers that live only in memory must not look saved, and a warning no longer true must not stay",
+  async () => {
+    const seen = async (page) => ({ visible: await page.locator("#storage").isVisible(), text: (await page.locator("#storage").textContent()).trim() });
+    const out = {}, errors = [];
+    const visit = async (name, hash, init, act) => {
+      const o = await open(THEMED_URL + hash, { init });
+      try { out[name] = await seen(o.page); if (act) { await o.page.keyboard.press("f"); await settle(o.page); out[name + " then a save"] = await seen(o.page); } errors.push(...o.errors); }
+      finally { await o.close(); }
+    };
+    await visit("refused", "#decisions/f1", () => { Storage.prototype.setItem = () => { throw new Error("refused"); }; }, true);
+    await visit("blocked", "#decisions/f1", () => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } }); }, true);
+    await visit("unreadable", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); }; }, true);
+    const shown = (name, words) => out[name]?.visible && words.test(out[name].text);
+    return !errors.length && !out.refused.visible && shown("refused then a save", /refused to save/) && shown("blocked", /keeps nothing for this page/)
+      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && !out["unreadable then a save"].visible
+      || JSON.stringify({ out, errors });
+  });
 
 test("the export is one schema-6 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
