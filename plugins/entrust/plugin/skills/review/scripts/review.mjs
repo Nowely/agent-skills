@@ -230,21 +230,18 @@ export function check(review, files, directory) {
     claims(who, q.context, "context");
     claims(who, q.zones, "zone");
     const variantIds = new Set();
-    if (q.variants !== undefined) {
-      if (!Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
-      else {
-        if (!q.variants.length && q.kind === "decision") warnings.push(`${who} is a decision with no variants`);
-        for (const v of q.variants) {
-          const w = `${who} variant ${v?.id}`;
-          if (!text(v?.id)) errors.push(`${who}: a variant has no id`);
-          else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
-          else variantIds.add(v.id);
-          if (!text(v?.text)) errors.push(`${w} has no text`);
-          if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
-          else if (!filled(v?.consequences)) warnings.push(`${w} lists no consequences`);
-          else claims(w, v.consequences, "consequence");
-        }
-      }
+    // A decision is a choice between at least two variants, each with what it brings: a choice of one is no choice.
+    if (q.variants !== undefined && !Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
+    else if (q.kind === "decision" && (q.variants?.length ?? 0) < 2) errors.push(`${who} is a decision with ${q.variants?.length ? "one variant" : "no variants"}: give at least two, each with its consequences`);
+    for (const v of Array.isArray(q.variants) ? q.variants : []) {
+      const w = `${who} variant ${v?.id}`;
+      if (!text(v?.id)) errors.push(`${who}: a variant has no id`);
+      else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
+      else variantIds.add(v.id);
+      if (!text(v?.text)) errors.push(`${w} has no text`);
+      if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
+      else if (!filled(v?.consequences)) (q.kind === "decision" ? errors : warnings).push(`${w} lists no consequences`);
+      else claims(w, v.consequences, "consequence");
     }
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;

@@ -54,7 +54,8 @@ export function reportFixtures(diffSha) {
         remainingEvidence: [1, 5] },
       { at: "src/invoices/upper.js:1", text: "Which widths should the display unit cover?", kind: "decision", resolver: "owner",
         parent: { question: 3, variants: ["extend"] },
-        variants: [{ id: "narrow", text: "Narrow cards only", consequences: [{ text: "Less to check.", sources: [{ ref: "/questions/0" }] }] }] },
+        variants: [{ id: "narrow", text: "Narrow cards only", consequences: [{ text: "Less to check.", sources: [{ ref: "/questions/0" }] }] },
+          { id: "every", text: "Every width", consequences: [{ text: "Each width needs its own check.", sources: [{ ref: "/questions/0" }] }] }] },
       { at: "test/archive.test.js:5", text: "The visual check of the list was not run.", kind: "evidence" },
     ];
     r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1, 5], unit: "readArchive" };

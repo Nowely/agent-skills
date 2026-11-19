@@ -99,7 +99,7 @@ When reconciling rewritten or merged points, ask “Could the author follow this
 
 ## Record and respond
 
-Classify each question as a choice, a fact to settle, or evidence to obtain, and write it as a card by [the data contract](references/report-data.md#decision-cards): for a choice, a self-contained context, variants with confirmed consequences, a recommendation with its basis, and the checks the choice does not replace. Never turn a permission into an obligation, an opinion into a fact, or an owner's mark into a checked result.
+Classify each question as a choice, a fact to settle, or evidence to obtain, and write it as a card by [the data contract](references/report-data.md#decision-cards): for a choice, a self-contained context, at least two variants, each with its confirmed consequences, a recommendation with its basis, and the checks the choice does not replace. Never turn a permission into an obligation, an opinion into a fact, or an owner's mark into a checked result.
 
 Fill the record, run `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes and its warnings are answered, read it back as the data contract says, and render the page. A short review skips this and answers from its analysis.
 

@@ -210,9 +210,10 @@ obtain). The required `kind` comes from what the question asks, never from its n
 - `resolver`: the role that answers, when naming one helps; questions group by kind first.
 - `context`: self-contained facts — what happens now, what was before or in the mockup, what the owner already
   decided, the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`.
-- `variants`: the choices of a decision, each a local stable `id` (not a localized text), a `text`, and
-  `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
-  questions, residual risk. Only confirmed consequences; no invented ones.
+- `variants`: the choices of a decision, at least two, each a local stable `id` (not a localized text), a `text`,
+  and `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
+  questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
+  than two variants or a variant without consequences.
 - `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends, and `sources`.
   Where the data is thin, say so and give the conditional rule instead of filling the field formally.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
@@ -226,9 +227,8 @@ obtain). The required `kind` comes from what the question asks, never from its n
 
 Numbering stays positional from 1 (`blocks.questions`, `units.questions`, the check). Decisions have three layers:
 the review's verdicts in the record, the user's decisions on the page (stored and exported), and evidence obtained
-in a later revision of the record. Accepting a decision needs a chosen variant, or — where there are no variants —
-a substantive comment; deferring needs a reason in a comment; an evidence question cannot be closed as "decided".
-On the page a variant radio is the decision on every screen size: picking it accepts at once, another pick changes
+in a later revision of the record. Accepting a decision needs a chosen variant; deferring needs a reason in a
+comment; an evidence question cannot be closed as "decided". On the page a variant radio is the decision on every screen size: picking it accepts at once, another pick changes
 it, Reset clears it — one reversible choice, no separate mobile draft-and-confirm step. A made choice reads as a
 neutral «Selected», never a success badge. Deferring keeps a picked variant as a draft, and a child retired by its
 parent keeps its pick as a draft too — neither is in effect, and neither returns silently when the parent changes
@@ -328,9 +328,9 @@ never a new record field:
 
 ## Optional fields
 
-`kind`, `at` and `text` are required for each question; the remaining card fields are optional. Without
-`coverageStructured`, the page uses the `coverage` prose; without a passport, it uses the title, `change.sources`
-and `range`. Without variants, accepting a decision requires a substantive comment.
+`kind`, `at` and `text` are required for each question, and `variants` for a decision; the remaining card fields
+are optional. Without `coverageStructured`, the page uses the `coverage` prose; without a passport, it uses the
+title, `change.sources` and `range`.
 
 ## Visual evidence
 

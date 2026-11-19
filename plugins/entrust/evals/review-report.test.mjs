@@ -714,6 +714,29 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
       || `thin card: errors ${errors.join("; ")}; warnings ${warnings.join("; ")}`;
   });
 
+test("a decision is refused with fewer than two variants or a variant without consequences; other kinds keep the warning",
+  "a choice of one is no choice, and a variant without what it brings cannot be weighed; the owner answers with a variant or in their own words",
+  () => {
+    const files = parseThemeDiff();
+    const faults = [
+      [(r) => { delete r.questions[2].variants; }, "question 3 is a decision with no variants: give at least two, each with its consequences"],
+      [(r) => { r.questions[2].variants = []; }, "question 3 is a decision with no variants"],
+      [(r) => { r.questions[3].variants.pop(); }, "question 4 is a decision with one variant"],
+      [(r) => { delete r.questions[2].variants[1].consequences; }, "question 3 variant extend lists no consequences"],
+      [(r) => { r.questions[2].variants[0].consequences = []; }, "question 3 variant status-quo lists no consequences"],
+    ];
+    for (const [change, fault] of faults) {
+      const r = structuredClone(THEMED); change(r);
+      const { errors } = check(r, files, run);
+      if (!errors.some((e) => e.includes(fault))) return `expected "${fault}", got: ${errors.join("; ") || "no errors"}`;
+    }
+    const fact = structuredClone(THEMED);
+    fact.questions[1].variants = [{ id: "one", text: "One answer" }];
+    const { errors, warnings } = check(fact, files, run);
+    return !errors.length && warnings.some((w) => w.includes("question 2 variant one lists no consequences"))
+      || `a fact with a variant without consequences: errors ${errors.join("; ")}; warnings ${warnings.join("; ")}`;
+  });
+
 test("check lists faults instead of throwing on malformed lists, and a run without a revision is warned about",
   "a non-array field crashed the validation with an exception instead of a fault list; a ran claim on an external source said nothing about its version",
   () => {
@@ -951,7 +974,8 @@ test("the question tree renders every level once, including fact children and ro
       r.questions.push(
         { at: "src/invoices/upper.js:2", text: "Which widths exactly?", kind: "decision", resolver: "owner",
           parent: { question: 4, variants: ["narrow"] },
-          variants: [{ id: "x", text: "The narrow set", consequences: [{ text: "Less to check.", sources: [{ ref: "/requirements/0" }] }] }] },
+          variants: [{ id: "x", text: "The narrow set", consequences: [{ text: "Less to check.", sources: [{ ref: "/requirements/0" }] }] },
+            { id: "y", text: "The wide set", consequences: [{ text: "More to check.", sources: [{ ref: "/requirements/0" }] }] }] },
         { at: "docs/billing.md", text: "A child of the grandchild.", kind: "fact", parent: { question: 6, variants: ["x"] } },
         { at: "docs/billing.md", text: "An independent fact.", kind: "fact" });
     });

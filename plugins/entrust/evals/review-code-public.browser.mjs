@@ -27,7 +27,8 @@ Object.assign(record, {
   findings: [{ id: 1, title: "Public finding", direction: "behavior", evidence: "read",
     at: "src/large.js:400", what: "A public issue.", shown_by: "The changed line.", fix: "Fix it." }],
   questions: [{ at: "src/large.js:400", text: "Keep this choice?", kind: "decision", resolver: "owner",
-    variants: [{ id: "keep", text: "Keep it", consequences: [{ text: "The line remains.", sources: [{ ref: "/blocks/1" }] }] }] }],
+    variants: [{ id: "keep", text: "Keep it", consequences: [{ text: "The line remains.", sources: [{ ref: "/blocks/1" }] }] },
+      { id: "drop", text: "Drop it", consequences: [{ text: "The line goes.", sources: [{ ref: "/blocks/1" }] }] }] }],
   blocks: [
     { path: "src/large.js", added: "1-300", does: "Kept lines.", serves: [1], verdict: "keep" },
     { path: "src/large.js", added: "301-600", does: "Lines needing attention.", serves: [1], findings: [1], questions: [1], verdict: "fix" },

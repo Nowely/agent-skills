@@ -160,7 +160,7 @@ function rendered(language = "en", change = () => {}) {
   const { diff, record } = hostileFixture();
   record.language = language;
   record.questions = [{ at: "docs/billing.md", text: "Which currency code should the archive display?", kind: "decision", resolver: "owner",
-    variants: [{ id: "upper", text: "Uppercase" }, { id: "raw", text: "Raw" }] }];
+    variants: [{ id: "upper", text: "Uppercase", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }, { id: "raw", text: "Raw", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }] }];
   record.blocks[0].questions = [1];
   change(record);
   const files = parseDiff(diff);
@@ -174,7 +174,7 @@ test("static main counter identifies the Q+F scope and excludes child, fact and 
   const { html } = rendered("en", (r) => {
     r.questions.push(
       { at: "docs/width.md", text: "Which widths?", kind: "decision", parent: { question: 1, variants: ["upper"] },
-        variants: [{ id: "wide", text: "Wide" }] },
+        variants: [{ id: "wide", text: "Wide", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }, { id: "narrow", text: "Narrow", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }] },
       { at: "docs/readers.md", text: "Who reads it?", kind: "fact" }
     );
     r.findings.push({ id: 1, title: "Missing test", direction: "tests", evidence: "read", at: "test/a.js:1",

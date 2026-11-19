@@ -91,7 +91,7 @@ test("annotation document digest seals the static HTML and full underlying recor
   const sources = [{ at: "a", quote: "source" }];
   record.questions = [{ kind: "decision", at: "a:1", text: "Question",
     context: [{ text: "failure", sources, extra: "first" }, { text: "failure", sources, extra: "second" }],
-    variants: [{ id: "x", text: "X" }] }];
+    variants: [{ id: "x", text: "X", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }, { id: "y", text: "Y", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }] }];
   const draw = () => { const { errors, owner } = check(record, files, "."); assert.deepEqual(errors, []); return page(record, files, modelOf(record, files, owner, ".")); };
   const before = JSON.stringify(record), first = draw(), again = draw();
   assert.equal(first, again); assert.equal(JSON.stringify(record), before);
@@ -849,8 +849,8 @@ test("check accepts the language as one well-formed tag and refuses anything els
 test("storage-sensitive messages come from their own keys and show after a failed write", () => {
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [
-    { kind: "decision", at: "a:1", text: "Parent?", variants: [{ id: "yes", text: "Yes" }] },
-    { kind: "decision", at: "a:2", text: "Child?", parent: { question: 1, variants: ["yes"] }, variants: [{ id: "x", text: "X" }] },
+    { kind: "decision", at: "a:1", text: "Parent?", variants: [{ id: "yes", text: "Yes", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }, { id: "no", text: "No", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }] },
+    { kind: "decision", at: "a:2", text: "Child?", parent: { question: 1, variants: ["yes"] }, variants: [{ id: "x", text: "X", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }, { id: "y", text: "Y", consequences: [{ text: "What it brings.", sources: [{ ref: "/requirements/0" }] }] }] },
   ];
   for (const language of ["en", "ru"]) {
     const r = structuredClone(record); r.language = language;
