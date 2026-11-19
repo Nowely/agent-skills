@@ -1314,7 +1314,8 @@ if (big) {
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const segs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => s.style.display !== "none");
       const tests = d.blocks.filter(b => b.purpose === "tests");
-      const testsSegs = tests.reduce((s, b) => s + (b.parts || 1), 0);
+      const testIds = new Set(tests.map(b => String(b.id)));
+      const testsSegs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => testIds.has(s.dataset.block)).length;
       return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81

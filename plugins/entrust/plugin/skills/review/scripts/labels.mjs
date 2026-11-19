@@ -2,14 +2,12 @@
 import { commonClaimSources } from "./sources.mjs";
 export const LABELS = {
   "mechanism-change": "In the reviewed change",
-  "consequence": "Why change it",
   "report-details": "Report details",
   "clear-all": "Clear all decisions and comments",
   "clear-confirm": "Clear all decisions and comments? This cannot be undone.",
   "annotation.annotation": "Comment",
   "annotation.edit": "Edit",
   "annotation.source": "Go to passage",
-  "annotation.saved": "Comment saved",
   "annotation.deleted": "Comment deleted",
   "annotation.restored": "Comment restored",
   "annotation.report": "Report",
@@ -17,7 +15,6 @@ export const LABELS = {
   "annotation.cancel": "Cancel",
   "annotation.undo": "Undo deletion",
   "annotation.dismiss": "Dismiss notification",
-  "weight.shared-part": "Shared contribution",
   "weight.exclusive": "Exclusive to this mechanism",
   "weight": "Touched in this change",
   "weight.code": "code",
@@ -31,8 +28,6 @@ export const LABELS = {
   "weight.category.code": "Code",
   "weight.category.test": "Tests",
   "weight.category.other": "Other",
-  "weight.shared-subset": "Shared with other mechanisms: {n}.",
-  "weight.all-shared": "All these lines are shared with other mechanisms.",
   "weight.unchanged": "No nonblank lines added or removed.",
   "weight.together": "Weighed mechanisms together, each block counted once",
   "map-summary": "Blocks: {n}, every one on the page; listed here, those not kept or with no requirement link.",
@@ -55,9 +50,9 @@ export const LABELS = {
   "weight.shared-count.many": "{n} shared",
   "weight.shared-count.other": "{n} shared",
   "kind": "Code review",
-  "change": "Change", "task": "Task", "sources": "Sources", "requirements": "Requirements",
+  "change": "Change", "sources": "Sources", "requirements": "Requirements",
   "verdict": "Verdict", "now": "How it works now", "target": "Target solution", "recommendation": "Recommendation",
-  "findings": "Findings", "ideas": "Ideas", "ideas-note": "Not needed for the change to be accepted.",
+  "findings": "Findings", "ideas": "Ideas",
   "screens": "Screens", "structure": "Structure", "map": "Change map", "questions": "Questions and oddities",
   "coverage": "Coverage", "decisions": "Decisions", "summary": "Summary", "files": "Files",
   "checks": "Check by hand", "checks-note": "Scenarios for a person to run. The review did not run them.",
@@ -78,20 +73,18 @@ export const LABELS = {
   "met": "met", "fails": "fails", "not-checked": "not checked", "no-test": "no test", "reconsider": "To reconsider",
   "breaks": "Breaks requirement", "untested": "Leaves without a test: requirement", "serves": "Serves requirement", "serves-nothing": "No requirement link recorded",
   "no-block": "no block", "idle": "Blocks without recorded requirement links",
-  "share": "Lines of the change by what the reviewer would do with them",
   "existing": "existing", "existing-code": "existing code", "from-change": "from the change", "to-write": "to write",
   "as-written": "As written", "units": "Units",
   "diagram-note": "An arrow runs from a unit to what it uses. A dashed outline is code the change did not touch; the bar along a unit's foot is the share of its lines to keep, fix and remove.",
   "mockup": "Mockup", "before": "Before", "after": "After", "no-pictures": "no pictures",
   "matches": "Matches the mockup.", "not-compared": "Not compared", "overlay": "Lay the result over the mockup", "result": "Result",
-  "show": "Show", "all": "all", "continued": "continued", "kept-by-you": "kept by you",
-  "copy": "Copy", "copied": "Copied", "clear": "Clear",
+  "show": "Show", "continued": "continued", "kept-by-you": "kept by you",
+  "copied": "Copied",
   "note-block": "Your note on this block", "note-finding": "Your note on this finding", "note-idea": "Your note on this idea",
   "decisions-note": "Mark each finding «Fix» or «Do not fix», add notes where you disagree, select any text of the page to comment on it, then hand this text back to whoever makes the change.",
   "comment": "Comment on the selection", "passages": "Comments on passages", "note-passage": "Your comment on this passage", "remove": "Remove",
-  "decisions-text": "Your decisions as text", "decided": "Findings decided: {n}",
-  "out.title": "Decisions on the review of", "out.ideas": "Ideas to take:",
-  "out.open": "Not decided:", "out.idea-notes": "Notes on ideas not taken:", "out.blocks": "Notes on blocks:", "out.passages": "Comments on passages:",
+  "out.title": "Decisions on the review of",
+  "out.open": "Not decided:",
   "page": "Interactive report",
   "mechanisms": "Mechanisms", "purpose": "Purpose", "basis": "Basis", "instead": "Already available", "benefit": "Benefit", "cost": "Cost", "decision": "Decision",
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
@@ -120,19 +113,18 @@ Object.assign(LABELS, {
   "choice.count.deferred": "Deferred decisions: {n}",
   "question.kind.decision": "decision", "question.kind.fact": "fact to settle", "question.kind.evidence": "evidence to obtain",
   "question.context": "Context", "question.variants": "Variants", "question.consequences": "Consequences",
-  "question.remaining-evidence": "What this decision does not replace", "question.no-context": "No reviewer context was added.",
+  "question.remaining-evidence": "What this decision does not replace",
   "question.zones": "Zones to check", "question.recommendation-note": "The reviewer's opinion; the owner decides.",
   "question.parent": "Depends on",
   "decision.accepted": "Accepted", "decision.deferred": "Deferred", "decision.not-applicable": "Not applicable",
   "decision.requires-content": "Pick a variant, or say in a comment what you decide.",
-  "decision.defer-reason": "Say in a comment why you defer it.", "decision.parent-pending": "Waits for the parent decision.",
+  "decision.defer-reason": "Say in a comment why you defer it.",
   "decision.note": "Comment on the decision", "decision.na-badge": "Not applicable under the variant accepted for the parent question.",
   "decision.requires-js": "Choosing here needs JavaScript; without it the choices only read.",
-  "passport": "Passport", "passport.repository": "Repository", "passport.base": "Base", "passport.head": "Head", "passport.reviewed-at": "Reviewed at",
+  "passport": "Passport", "passport.base": "Base", "passport.head": "Head", "passport.reviewed-at": "Reviewed at",
   "passport.diffSha": "diff sha256", "passport.record": "record",
   "coverage.ran": "Ran", "coverage.read": "Read", "coverage.not-checked": "Not checked",
   "permission": "permission, not an obligation",
-  "scope.files": "files", "scope.added": "added", "scope.removed": "removed",
   "fragment.definition": "A fragment is one small self-contained part of the diff — a branch, guard, parameter, constant, test or cohesive body — the reviewer's unit of work. Every nonblank changed line belongs to exactly one fragment. Verdicts are the review's, not the owner's decisions and not an independent re-check; a fragment is not a defect, a test or a file.",
   "file.status.added": "added", "file.status.modified": "modified", "file.status.deleted": "deleted",
   "files.changed-only": "Only files the diff touches are listed; a file's mark is its change in the diff (added, modified, deleted), not a review verdict.",
@@ -143,13 +135,12 @@ Object.assign(LABELS, {
   "tradeoffs": "Accepted tradeoffs", "tradeoff.consequence": "What remains",
   "skip-to-decisions": "Skip to the decisions",
   "structure.declared-only": "Only the links the reviewer wrote are drawn; a missing arrow does not prove a missing dependency. This is the proposed structure, not a map of the current code's calls.",
-  "out.questions": "Questions:", "out.variant": "variant", "out.deferred": "Deferred:", "out.draft": "draft",
 });
 
 // The words of the tabbed v4 page: the tabs, the theme icon, the map reader (segbar, popover, sources),
 // the purpose filter, the tree filter, the filter chip, the honest export and the no-script reader.
 Object.assign(LABELS, {
-  "tab.overview": "Overview", "tab.findings": "Findings", "tab.code": "Code", "tab.checks": "Checks", "tab.materials": "Materials",
+  "tab.overview": "Overview", "tab.code": "Code", "tab.checks": "Checks", "tab.materials": "Materials",
   "tablist": "Report sections",
   "theme.toggle": "Toggle theme", "theme.current": "Theme:", "theme.next": "Switch to",
   "theme.auto": "auto", "theme.light": "light", "theme.dark": "dark",
@@ -177,9 +168,8 @@ Object.assign(LABELS, {
   "purpose.rules.assets": ".svg/.png/… and the assets/, icons/, keysets/ directories (i18n data)",
   "purpose.rules.docs": ".md/.mdx/.rst/.txt, changelog/readme/license",
   "purpose.rules.config": "package.json/lock files/tsconfig*/a.yaml/.eslintrc and the like",
-  "banner.blocks": "Blocks under an open evidence request: {n}", "banner.one": "one question", "banner.not-many": "not that many decisions", "banner.show": "Show only Q{n}",
+  "banner.blocks": "Blocks under an open evidence request: {n}", "banner.show": "Show only Q{n}",
   "export.download": "Download JSON", "export.copy-text": "Copy text",
-  "export.note": "The JSON carries the record and diff digests to tie it to its revision; the record itself is never changed.",
   "shot.permalink": "Permanent link to this picture",
   "nojs.note": "Without JavaScript all sections show one after another; the tabs work as anchor links. The change map is complete: each file is a closed disclosure, opened by its name. Decision variants, zones and controls are disabled — they need JavaScript; decisions are fixed only with scripts.",
   "nojs.map": "Without JavaScript the map below is complete: open a file by its name. Filters and modes need JavaScript; the tabs above work as anchor links.",
@@ -187,29 +177,25 @@ Object.assign(LABELS, {
   "structure.target": "Target structure: who uses whom",
 });
 
-// The v4 decision-card words: the status chip, the draft a deferred or unconfirmed pick leaves, the gate
-// a child shows while its parent is undecided or has accepted an outside variant, and the mobile confirm.
+// The v4 decision-card words: the status chip, the defer and reset actions, and the gate a child shows while its
+// parent is undecided or has accepted an outside variant.
 Object.assign(LABELS, {
   "decision.status.open": "Open", "decision.status.draft": "Draft: {n}",
-  "decision.confirm": "Confirm selection", "decision.defer": "Defer", "decision.reset": "Reset",
-  "decision.draft-mobile": "Draft: «{n}». Press «Confirm selection» to fix the decision.",
+  "decision.defer": "Defer", "decision.reset": "Reset",
   "decision.gate-pending": "Decide Q{n} first: under the variants listed there this question opens; under another accepted variant it becomes not applicable.",
   "decision.gate-na": "Not applicable: the variant accepted for Q{n} is outside this question's list — no answer is needed.",
   "decision.choose": "Choose a variant",
-  "decision.fact-needed": "Fact needed:", "decision.evidence-needed": "Evidence needed:",
   "decision.export-note": "How decisions are fixed and exported",
 });
 
 export const CATALOGS = { en: LABELS, ru: {
   "mechanism-change": "В рассматриваемом изменении",
-  "consequence": "Почему менять",
   "report-details": "Технические сведения",
   "clear-all": "Очистить все решения и комментарии",
   "clear-confirm": "Очистить все решения и комментарии? Отменить это действие будет нельзя.",
   "annotation.annotation": "Комментарий",
   "annotation.edit": "Изменить",
   "annotation.source": "К отрывку",
-  "annotation.saved": "Комментарий сохранён",
   "annotation.deleted": "Комментарий удалён",
   "annotation.restored": "Комментарий восстановлен",
   "annotation.report": "Отчёт",
@@ -217,7 +203,6 @@ export const CATALOGS = { en: LABELS, ru: {
   "annotation.cancel": "Отмена",
   "annotation.undo": "Отменить удаление",
   "annotation.dismiss": "Закрыть уведомление",
-  "weight.shared-part": "Общая часть",
   "weight.exclusive": "Только эта механика",
   "weight": "Затронуто в этом изменении",
   "weight.code": "код",
@@ -231,8 +216,6 @@ export const CATALOGS = { en: LABELS, ru: {
   "weight.category.code": "Код",
   "weight.category.test": "Тесты",
   "weight.category.other": "Прочее",
-  "weight.shared-subset": "Общие с другими механиками: {n}.",
-  "weight.all-shared": "Все эти строки общие с другими механиками.",
   "weight.unchanged": "Непустые строки не добавлялись и не удалялись.",
   "weight.together": "Взвешенные механики вместе, каждый блок один раз",
   "map-summary": "Блоков: {n}, все на странице; здесь перечислены не оставленные как есть или без связи с требованием.",
@@ -256,7 +239,6 @@ export const CATALOGS = { en: LABELS, ru: {
   "weight.shared-count.other": "{n} общие",
   "kind": "Ревью кода",
   "change": "Изменение",
-  "task": "Задача",
   "sources": "Источники",
   "requirements": "Требования",
   "verdict": "Вывод",
@@ -265,7 +247,6 @@ export const CATALOGS = { en: LABELS, ru: {
   "recommendation": "Рекомендация",
   "findings": "Замечания",
   "ideas": "Идеи",
-  "ideas-note": "Не обязательны для принятия изменения.",
   "screens": "Экраны",
   "structure": "Структура",
   "map": "Карта изменений",
@@ -341,7 +322,6 @@ export const CATALOGS = { en: LABELS, ru: {
   "serves-nothing": "Связь с требованием не указана",
   "no-block": "нет блока",
   "idle": "Блоки без указанной связи с требованием",
-  "share": "Строки изменения по рекомендации ревьюера",
   "existing": "существует",
   "existing-code": "существующий код",
   "from-change": "из изменения",
@@ -358,12 +338,9 @@ export const CATALOGS = { en: LABELS, ru: {
   "overlay": "Наложить результат на макет",
   "result": "Результат",
   "show": "Показать",
-  "all": "все",
   "continued": "продолжение",
   "kept-by-you": "вы решили оставить",
-  "copy": "Копировать",
   "copied": "Скопировано",
-  "clear": "Очистить",
   "note-block": "Комментарий к блоку",
   "note-finding": "Комментарий к замечанию",
   "note-idea": "Комментарий к идее",
@@ -372,14 +349,8 @@ export const CATALOGS = { en: LABELS, ru: {
   "passages": "Комментарии к отрывкам",
   "note-passage": "Комментарий к отрывку",
   "remove": "Удалить",
-  "decisions-text": "Ваши решения текстом",
-  "decided": "Принято решений: {n}",
   "out.title": "Решения по ревью",
-  "out.ideas": "Принять идеи:",
   "out.open": "Без решения:",
-  "out.idea-notes": "Комментарии к непринятым идеям:",
-  "out.blocks": "Комментарии к блокам:",
-  "out.passages": "Комментарии к отрывкам:",
   "page": "Интерактивный отчёт",
   "mechanisms": "Механики",
   "purpose": "Назначение",
@@ -412,19 +383,18 @@ Object.assign(CATALOGS.ru, {
   "choice.count.deferred": "Отложенных решений: {n}",
   "question.kind.decision": "решение", "question.kind.fact": "уточнить факт", "question.kind.evidence": "получить доказательство",
   "question.context": "Контекст", "question.variants": "Варианты", "question.consequences": "Последствия",
-  "question.remaining-evidence": "Что решение не заменяет", "question.no-context": "Контекст ревьюера не добавлен.",
+  "question.remaining-evidence": "Что решение не заменяет",
   "question.zones": "Зоны проверки", "question.recommendation-note": "Мнение ревьюера; решает владелец.",
   "question.parent": "Зависит от",
   "decision.accepted": "Принято", "decision.deferred": "Отложено", "decision.not-applicable": "Неприменимо",
   "decision.requires-content": "Выберите вариант или напишите в комментарии, что решаете.",
-  "decision.defer-reason": "Напишите в комментарии, почему откладываете.", "decision.parent-pending": "Ждёт решения родительского вопроса.",
+  "decision.defer-reason": "Напишите в комментарии, почему откладываете.",
   "decision.note": "Комментарий к решению", "decision.na-badge": "Неприменимо при варианте, принятом для родительского вопроса.",
   "decision.requires-js": "Выбор здесь требует JavaScript; без него варианты только читаются.",
-  "passport": "Паспорт", "passport.repository": "Репозиторий", "passport.base": "База", "passport.head": "Ревизия", "passport.reviewed-at": "Дата ревью",
+  "passport": "Паспорт", "passport.base": "База", "passport.head": "Ревизия", "passport.reviewed-at": "Дата ревью",
   "passport.diffSha": "sha256 diff", "passport.record": "запись",
   "coverage.ran": "Запущено", "coverage.read": "Прочитано", "coverage.not-checked": "Не проверено",
   "permission": "разрешение, не обязательство",
-  "scope.files": "файлов", "scope.added": "добавлено", "scope.removed": "удалено",
   "fragment.definition": "Фрагмент — небольшая самостоятельная часть изменения (ветка, guard, параметр, константа, тест или связный участок), единица работы ревьюера. Каждая непустая изменённая строка входит ровно в один фрагмент. Вердикты принадлежат ревью: это не решения владельца и не независимая перепроверка; фрагмент — не дефект, не тест и не файл.",
   "file.status.added": "добавлен", "file.status.modified": "изменён", "file.status.deleted": "удалён",
   "files.changed-only": "Перечислены только файлы, которых касается diff; отметка файла — его изменение в diff (добавлен, изменён, удалён), а не вердикт ревью.",
@@ -435,12 +405,11 @@ Object.assign(CATALOGS.ru, {
   "tradeoffs": "Принятые компромиссы", "tradeoff.consequence": "Что остаётся",
   "skip-to-decisions": "К решениям",
   "structure.declared-only": "Показаны только связи, явно записанные ревьюером; отсутствие стрелки не доказывает отсутствие зависимости. Это предлагаемая структура, не карта фактических вызовов текущего кода.",
-  "out.questions": "Вопросы:", "out.variant": "вариант", "out.deferred": "Отложено:", "out.draft": "черновик",
 });
 
 // Слова вкладочной страницы v4: вкладки, тема, карта-ридер, фильтры, честный экспорт и читатель без скриптов.
 Object.assign(CATALOGS.ru, {
-  "tab.overview": "Обзор", "tab.findings": "Замечания", "tab.code": "Код", "tab.checks": "Проверки", "tab.materials": "Материалы",
+  "tab.overview": "Обзор", "tab.code": "Код", "tab.checks": "Проверки", "tab.materials": "Материалы",
   "tablist": "Разделы отчёта",
   "theme.toggle": "Переключить тему оформления", "theme.current": "Тема:", "theme.next": "Переключить на",
   "theme.auto": "авто", "theme.light": "светлая", "theme.dark": "тёмная",
@@ -468,9 +437,8 @@ Object.assign(CATALOGS.ru, {
   "purpose.rules.assets": ".svg/.png/… и каталоги assets/, icons/, keysets/ (данные i18n)",
   "purpose.rules.docs": ".md/.mdx/.rst/.txt, changelog/readme/license",
   "purpose.rules.config": "package.json/lock-файлы/tsconfig*/a.yaml/.eslintrc и подобные",
-  "banner.blocks": "Блоки с открытым запросом доказательств: {n}", "banner.one": "один вопрос", "banner.not-many": "не столько решений", "banner.show": "Показать только Q{n}",
+  "banner.blocks": "Блоки с открытым запросом доказательств: {n}", "banner.show": "Показать только Q{n}",
   "export.download": "Скачать JSON", "export.copy-text": "Копировать текст",
-  "export.note": "JSON содержит digest записи и diff для сверки ревизии; исходная запись не изменяется.",
   "shot.permalink": "Постоянная ссылка на этот снимок",
   "nojs.note": "Без JavaScript все разделы показаны подряд; вкладки работают как якорные ссылки. Карта изменений полная: каждый файл — закрытый раскрывающийся блок, открывается по имени. Варианты решений, зоны и кнопки управления отключены — они требуют JavaScript; решения фиксируются только со скриптами.",
   "nojs.map": "Без JavaScript карта ниже полная: откройте файл по имени. Фильтры и режимы требуют JavaScript; вкладки сверху работают как якорные ссылки.",
@@ -480,13 +448,10 @@ Object.assign(CATALOGS.ru, {
 
 Object.assign(CATALOGS.ru, {
   "decision.status.open": "Открыто", "decision.status.draft": "Черновик: {n}",
-  "decision.confirm": "Подтвердить выбор", "decision.defer": "Отложить", "decision.reset": "Сбросить",
-  "decision.draft-mobile": "Черновик: «{n}». Нажмите «Подтвердить выбор», чтобы зафиксировать решение.",
+  "decision.defer": "Отложить", "decision.reset": "Сбросить",
   "decision.gate-pending": "Сначала решите Q{n}: при перечисленных там вариантах вопрос откроется, при другом принятом варианте станет неприменимым.",
   "decision.gate-na": "Неприменимо: для Q{n} принят вариант вне списка этого вопроса — отвечать не нужно.",
   "decision.choose": "Выберите вариант",
-  "decision.fact-needed": "Нужен факт:", "decision.evidence-needed": "Нужно доказательство:",
-  "decision.sheet-note": "Выбор варианта фиксирует решение и обратим на любом экране; комментарий его не заменяет. «Отложить» сохраняет вариант как черновик — он не действует. Рекомендация — мнение ревьюера; решает владелец.",
   "decision.export-note": "Как фиксируются и выгружаются решения",
 });
 
@@ -588,7 +553,6 @@ Object.assign(CATALOGS.ru, {
 // The v5 choice is reversible on every screen: the status chip reads «Selected», never a green success.
 LABELS["decision.status.decided"] = "Selected: {n}";
 CATALOGS.ru["decision.status.decided"] = "Выбрано: {n}";
-LABELS["decision.sheet-note"] = "Choosing a variant fixes the decision and is reversible on any screen; a comment does not replace it. «Defer» keeps the variant as a draft — it is not in effect. The recommendation is the reviewer's opinion; the owner decides.";
 
 // The v6 words: the deduplicated first screen (one working phrase, the verdict only in Overview), the
 // human-readable owner-decision title, the choice-zone labels, the subtab counters, the editorial change
@@ -628,7 +592,6 @@ Object.assign(LABELS, {
   "export.open-requests": "Open fact/evidence requests",
   "export.not-applicable": "Not applicable",
   "storage.failed": "Changes are only in memory: browser storage failed. Download JSON before leaving.",
-  "export.dialog-note": "Answers are not sent. If browser storage fails they remain only in memory. JSON ties answers to the record and diff; the record itself is never changed.",
   "tree.filter": "Search paths in the file tree (not diff contents)",
   "tree.visible-files": "Visible files",
   "source.internal": "Report reference",
@@ -647,7 +610,6 @@ Object.assign(CATALOGS.ru, {
   "export.open-requests": "Открытые запросы фактов/доказательств",
   "export.not-applicable": "Неприменимо",
   "storage.failed": "Изменения только в памяти: не удалось сохранить в браузере. Скачайте JSON перед выходом.",
-  "export.dialog-note": "Ответы никуда не отправляются. При ошибке сохранения в браузере они остаются только в памяти. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
   "tree.filter": "Поиск путей в дереве файлов (не по содержимому diff)",
   "tree.visible-files": "Видно файлов",
   "source.internal": "Ссылка внутри отчёта",
@@ -655,20 +617,14 @@ Object.assign(CATALOGS.ru, {
   "source.quoted": "Приведена цитата",
   "source.self": "Ссылка на этот вопрос внутри отчёта",
 });
-LABELS["decision.draft-deferred"] = "Draft: «{n}» — not in effect (the decision is deferred).";
-CATALOGS.ru["decision.draft-deferred"] = "Черновик: «{n}» — не действует (решение отложено).";
-LABELS["decision.gate-draft"] = " The variant «{n}» is a draft, not in effect.";
-CATALOGS.ru["decision.gate-draft"] = " Вариант «{n}» — черновик, не действует.";
-LABELS["decision.export-method"] = "Cards group by the next action. Choosing a variant fixes the decision and is reversible; a draft is not a made choice. Answers stay in this browser when storage is available and are never sent. Export includes variants, fact answers and comments with the record's digest. A decision does not replace evidence or rewrite fragment verdicts.";
-CATALOGS.ru["decision.export-method"] = "Карточки сгруппированы по следующему действию. Выбор варианта обратим; черновик не считается решением. Ответы сохраняются в этом браузере, когда хранилище доступно, и никуда не отправляются. Варианты, ответы на факты и комментарии выгружаются с digest записи. Решение не заменяет доказательство и не переписывает вердикты фрагментов.";
 
 export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
 
 // The chrome is always rendered; custom catalogs must provide it regardless of optional record fields.
-const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.definition",
+const CHROME_KEYS = ["fragment.definition",
   "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
   "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
-  "tab.overview", "tab.decisions", "tab.findings", "tab.code", "tab.checks", "tab.materials", "tablist", "tab.remaining",
+  "tab.overview", "tab.decisions", "tab.code", "tab.checks", "tab.materials", "tablist", "tab.remaining",
   "theme.toggle", "theme.current", "theme.next", "theme.auto", "theme.light", "theme.dark",
   "map.attention", "map.all", "map.audit-note", "fragments", "map.lines-sum", "map.open-filter",
   "seg.popover", "seg.popover-open", "seg.permalink",
@@ -680,7 +636,7 @@ const CHROME_KEYS = ["scope.files", "scope.added", "scope.removed", "fragment.de
   "purpose.production", "purpose.tests", "purpose.styles", "purpose.assets", "purpose.docs", "purpose.config",
   "purpose.lines-note", "purpose.rules.production", "purpose.rules.tests", "purpose.rules.styles",
   "purpose.rules.assets", "purpose.rules.docs", "purpose.rules.config",
-  "export.download", "export.copy-text", "export.note", "nojs.note", "nojs.map",
+  "export.download", "export.copy-text", "nojs.note", "nojs.map",
   // The v5 chrome stands on every record: the one Choices tab, its subtabs and groups, the unified card
   // shell with its compact comment, the finding's evidence limit, the export dialog, the purpose toggles'
   // hidden chip, the tree's reveal note and the honest no-script counter.
@@ -708,11 +664,11 @@ const FEATURES = [
     ["question.kind.decision", "question.kind.fact", "question.kind.evidence", "question.context", "question.variants",
       "question.consequences", "question.remaining-evidence", "question.zones", "question.recommendation-note",
       "question.parent", "decision.accepted", "decision.deferred", "decision.not-applicable",
-      "decision.requires-content", "decision.defer-reason", "decision.parent-pending",
-      "decision.note", "decision.na-badge", "decision.requires-js", "out.questions", "out.variant", "out.draft",
-      "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.confirm", "decision.defer", "decision.reset",
-      "decision.draft-mobile", "decision.gate-pending", "decision.gate-na",
-      "decision.choose", "decision.fact-needed", "decision.evidence-needed", "decision.sheet-note", "decision.export-note",
+      "decision.requires-content", "decision.defer-reason",
+      "decision.note", "decision.na-badge", "decision.requires-js",
+      "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.defer", "decision.reset",
+      "decision.gate-pending", "decision.gate-na",
+      "decision.choose", "decision.export-note",
       "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
       "decision.zone-note", "decision.limit-unverified", "card.more-checks",
       "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na", "question.owner-decision"]],
@@ -731,7 +687,7 @@ const FEATURES = [
   // The banner that keeps many evidence blocks from reading as many decisions: one per evidence question
   // that has blocks of its own.
   [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
-    ["banner.blocks", "banner.one", "banner.not-many", "banner.show"]],
+    ["banner.blocks", "banner.show"]],
 ];
 const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
   "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];

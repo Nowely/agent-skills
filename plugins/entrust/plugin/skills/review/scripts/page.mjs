@@ -2074,7 +2074,7 @@ export function page(review, files, model, { syntax } = {}) {
   const hl = syntax ? (l) => syntax.line(l) : (l, path) => highlight(l.text, path);
   // An idea is decided like a finding, under an id of its own, and reported apart from them.
   const ideas = (review.ideas ?? []).map((idea, index) => ({ ...idea, id: `i${index + 1}` }));
-  // The map is built first: it records each block's part count, which the code panel and the chip read.
+  // The map is built first: it records each block's part count, which the code panel reads.
   const partCount = Object.create(null);
   const mapHtml = map(review, files, model, t, hl, partCount);
   const sheet = decisionSheet(review, model, t, ideas);
@@ -2085,7 +2085,7 @@ export function page(review, files, model, { syntax } = {}) {
     questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks, zones }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })), zones: (zones ?? []).map((z) => z.text) })),
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, where: b.where, verdict: b.verdict, serves: b.serves, questions: b.questions, unit: b.unit, findings: b.findings,
-      does: b.does, size: b.size, purpose: model.purpose.block[b.id], firstAdd: b.added[0] ?? null, firstDel: b.removed[0] ?? null, parts: partCount[b.id] ?? 1 })),
+      does: b.does, size: b.size, purpose: model.purpose.block[b.id], firstAdd: b.added[0] ?? null, firstDel: b.removed[0] ?? null })),
     blockFile: model.blockFile, files: files.map((f) => f.path),
     purposeLabels: Object.fromEntries(PURPOSES.map((p) => [p, t(`purpose.${p}`)])),
     pr: { url: pr?.url ?? null, label: pr?.label ?? "", base: review.passport?.base ?? "", head: review.passport?.head ?? "" },

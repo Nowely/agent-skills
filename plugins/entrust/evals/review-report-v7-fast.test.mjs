@@ -895,7 +895,7 @@ test("language tags are validated, and the in-memory comment notice has its own 
   }
   for (const language of ["bad_tag", "ru--RU", 'en"><img']) assert.match(labelFaults({ language })[0], /valid language tag/);
   for (const language of ["en", "ru"]) {
-    const t = labelsOf({ language, labels: { "annotation.saved": "Saved on disk" } });
+    const t = labelsOf({ language, labels: { "annotation.restored": "Saved on disk" } });
     assert.notEqual(t("annotation.added"), "Saved on disk");
   }
   const custom = { language: "custom", labels: Object.fromEntries(requiredKeys({ language: "custom" }).map((k) => [k, LABELS[k]])) };
@@ -906,10 +906,8 @@ test("language tags are validated, and the in-memory comment notice has its own 
   assert.match(labelFaults(custom)[0], /annotation\.proof-note/);
 });
 
-test("storage-sensitive messages come only from their own keys, whatever other storage labels say, after a failed write", () => {
-  const others = { "export.dialog-note": "OTHER saved in browser", "decision.export-method": "OTHER saved in browser",
-    "decision.draft-deferred": "OTHER saved {n}", "decision.gate-draft": "OTHER saved {n}" };
-  const newKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
+test("storage-sensitive messages come from their own keys, which custom catalogs owe, and show after a failed write", () => {
+  const storageKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [
     { kind: "decision", at: "a:1", text: "Parent?", variants: [{ id: "yes", text: "Yes" }] },
@@ -918,11 +916,10 @@ test("storage-sensitive messages come only from their own keys, whatever other s
   for (const language of ["en", "ru", "custom"]) {
     const r = structuredClone(record); r.language = language;
     const complete = Object.fromEntries(requiredKeys(r).map((k) => [k, LABELS[k]]));
-    r.labels = { ...(language === "custom" ? complete : {}), ...others };
+    if (language === "custom") r.labels = complete;
     const { owner, errors } = check(r, files, ".");
     assert.deepEqual(errors, []);
     const html = page(r, files, modelOf(r, files, owner, "."));
-    assert.ok(!html.includes("OTHER saved"));
     const data = JSON.parse(html.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
     assert.ok(data.labels.draftDeferred.includes("{n}"));
     assert.ok(data.labels.gateDraft.includes("{n}"));
@@ -937,9 +934,9 @@ test("storage-sensitive messages come only from their own keys, whatever other s
   }
   const custom = { ...structuredClone(record), language: "custom" };
   const complete = Object.fromEntries(requiredKeys(custom).map((k) => [k, LABELS[k]]));
-  for (const k of newKeys) delete complete[k];
-  const fault = labelFaults({ ...custom, labels: { ...complete, ...others } }).join("\n");
-  for (const k of newKeys) assert.ok(fault.includes(k), k);
+  for (const k of storageKeys) delete complete[k];
+  const fault = labelFaults({ ...custom, labels: complete }).join("\n");
+  for (const k of storageKeys) assert.ok(fault.includes(k), k);
 });
 
 test("an answer retired by the parent remains raw in JSON but is marked not applicable in text and preview", () => {
@@ -1192,7 +1189,7 @@ test("chip counts unique matching blocks independently of hidden panel and mobil
   const sandbox = {
     document: { querySelectorAll(selector) { assert.equal(selector, "#map .seg[id][data-block]"); return segments; } },
     map: { dataset: { req: "1" } }, hiddenPurposes: () => [], updateRequirementViews() {},
-    data: { blocks: [{ serves: [1], parts: 3 }, { serves: [1] }, { serves: [1] }], purposeLabels: {} },
+    data: { blocks: [{ serves: [1] }, { serves: [1] }, { serves: [1] }], purposeLabels: {} },
     t: { chip: { requirement: "Requirement {n}" }, code: { linked: "Linked blocks", visible: "Visible" }, blocksWord: "Blocks" },
     chip: {}, chipLabel: {}, chipPos: {}, chipPrev: {}, chipNext: {}, chipBack: {},
     returnState: null, chipIdx: 0, chipKey: ""
@@ -1208,10 +1205,9 @@ test("chip counts unique matching blocks independently of hidden panel and mobil
   segments[0].style.display = "none";
   sandbox.updateChip();
   assert.match(sandbox.chipLabel.textContent, /Visible: 1$/);
-  // A question's chip counts its blocks; a block that continues in three parts is still one block.
+  // A question's chip counts its blocks.
   Object.assign(sandbox, { map: { dataset: { q: "1" } }, chipKey: "",
-    data: { blocks: [{ questions: [1], parts: 3 }, { questions: [1] }, { questions: [2] }], purposeLabels: {} },
-    t: { ...sandbox.t, fragments: "fragments", withParts: "with continuations" } });
+    data: { blocks: [{ questions: [1] }, { questions: [1] }, { questions: [2] }], purposeLabels: {} } });
   sandbox.updateChip();
   assert.equal(sandbox.chipLabel.textContent, "Q1 · Blocks: 2");
 });
@@ -1373,7 +1369,7 @@ test("afterprint recomputes hidden Code chip from restored filtered segments", (
     },
     inserted: new Set(), map: { dataset: { show: "all", req: "1" }, style: { display: "" } },
     state: { hiddenPurposes: [] }, hiddenPurposes() { return sandbox.state.hiddenPurposes; },
-    data: { blocks: [{ serves: [1], parts: 2 }], purposeLabels: {} },
+    data: { blocks: [{ serves: [1] }], purposeLabels: {} },
     t: { chip: { requirement: "T{n}" }, code: { linked: "Linked", visible: "Visible" } },
     chip: {}, chipLabel: {}, chipPos: {}, chipPrev: {}, chipNext: {}, chipBack: {},
     returnState: null, chipIdx: 0, chipKey: "", updateRequirementViews() {},

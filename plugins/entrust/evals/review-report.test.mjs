@@ -133,7 +133,7 @@ test("a review carries the report's words in its reader's language, and a word t
     if (![">Что делать:", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
     const { status, stdout } = report("labels");
     if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
-    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ decided: "Решено" }, 'label "decided" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
+    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ "chip.hidden": "Скрыто" }, 'label "chip.hidden" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
       const { status: refused, stderr } = render((r) => { r.labels = labels; });
       if (refused !== 1 || !stderr.includes(fault)) return `expected "${fault}", got status ${refused}: ${stderr}`;
     }
@@ -1001,7 +1001,7 @@ test("the v4 page is tabs over panels the no-script reader can use, with deep-li
       if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `deep-link target ${id} does not appear exactly once`;
     const data = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
     if (!data.blockFile || data.blocks.some((b) => data.blockFile[b.id] === undefined) || data.files.length !== 3) return "the script cannot map blocks to files";
-    if (data.blocks.some((b) => b.firstAdd === undefined || b.firstDel === undefined || !b.purpose || !b.parts)) return "the popover's sources and purpose are not in the data";
+    if (data.blocks.some((b) => b.firstAdd === undefined || b.firstDel === undefined || !b.purpose)) return "the popover's sources and purpose are not in the data";
     return data.pr.url === null || "a record without a passport invented a PR link";
   });
 
@@ -1059,7 +1059,8 @@ test("the map keeps every block once: 1470 anchors, 1517 fragments, zero duplica
     if (dups.length) return `duplicate ids: ${dups.slice(0, 5).join(", ")}`;
     if ((page.match(/class="segbar"/g) ?? []).length !== 1470 || (page.match(/data-blockcomment="/g) ?? []).length !== 1470) return "headers or comments are duplicated per fragment";
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
-    if (embedded.blocks.reduce((n, b) => n + b.parts, 0) !== 1517) return "runtime fragment accounting differs";
+    // Each fragment after a block's first is a continuation line linking back to the block's one anchor.
+    if ((page.match(/<a href="#b\d+">B\d+ · [^<]+<\/a> · /g) ?? []).length !== 1517 - 1470) return "the continuation lines do not account for the fragments beyond the blocks";
     const fileBodies = page.split('class="file"').slice(1);
     if (fileBodies.length !== 96) return `line-order coverage: ${fileBodies.length} files`;
     if ((page.match(/class="l (?:add|del|ctx)"/g) ?? []).length !== 6740) return "diff line coverage differs from 6740";
@@ -1239,7 +1240,7 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
       if (!themedRequired.includes(key)) return `the v4 control ${key} is not required of a record with the card fields`;
     }
     if (!minimalRequired.includes("code.no-related") || !minimalRequired.includes("code.no-visible")) return "a minimal record was not asked for the Code empty states";
-    if (themedRequired.includes("decision.confirm") === false) return "a record with cards was not asked for the card words";
+    if (themedRequired.includes("decision.choose") === false) return "a record with cards was not asked for the card words";
     const files = parseThemeDiff();
     const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
     const custom = check({ ...structuredClone(THEMED), language: "custom", labels: catalog }, files, run);
@@ -1274,7 +1275,7 @@ test("one vocabulary in English and Russian: blocks are the unit, controls and t
       const page = fs.readFileSync(html, "utf8"), data = dataOf(page), labels = data.labels;
       const style = page.match(/<style>([\s\S]*?)<\/style>/)[1], markup = page.replace(/<script[\s\S]*?<\/script>|<style>[\s\S]*?<\/style>/g, "");
       const textOf = (inner) => inner.replace(/<[^>]*>/g, "").replace(/&[a-z]+;|&#\d+;/g, " ").trim();
-      if (!data.blocks.some((b) => b.parts > 1)) return "the fixture has no block in two fragments";
+      if ((markup.match(/ id="b3"/g) ?? []).length !== 1 || !markup.includes(`<a href="#b3">B3 · ${words.continued}</a>`)) return `${language}: B3 is not one anchor with a continuation line`;
       // Blocks are the unit: the Code tab, the cards' related code and the file disclosures count blocks as «Label: N».
       if (!markup.includes(`<details class="count-note"><summary>${labels.blocksWord}: ${record.blocks.length}</summary>`)) return `${language}: the Code tab does not count its blocks`;
       const cards = [...markup.matchAll(/<details class="qwhere" data-qwhere="(\d+)"><summary>([\s\S]*?)<\/summary>/g)];

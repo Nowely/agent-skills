@@ -37,6 +37,9 @@ forensics remain in the repository references and release notes.
   `counters.evidence-blocks`, `seg.details`, `seg.details-first`, `apply`, `skip`, `apply-all`, `out.apply` and
   `out.skip`; custom catalogs no longer owe them, and `check` refuses a catalog that still carries them. The
   model's `counters.evidenceBlocks`, which only tests read, is gone too.
+- **Breaking:** custom catalogs no longer owe 40 more labels nothing on the page or in the printout reads (`task`,
+  `share`, `copy`, `decided`, the `out.*` and `scope.*` words, `decision.confirm`, `decision.sheet-note`,
+  `export.note` and the rest); `check` refuses a catalog that still carries them.
 
 ## 0.42.0 — 2026-11-18
 
