@@ -175,10 +175,8 @@ try {
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
     for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
       console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
-    // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked.
-    const kept = model.blocks.filter((b) => b.verdict === "keep"), assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
-    for (const [blocks, what] of [[kept.filter((b) => !b.serves.length), "serve no requirement"], [kept.filter(assumed), "serve only assumed requirements"]])
-      if (blocks.length) console.error(`warning: kept blocks ${blocks.map((b) => b.id).join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
+    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only assumed requirements"]])
+      if (ids.length) console.error(`warning: kept blocks ${ids.join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
     for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
       console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }

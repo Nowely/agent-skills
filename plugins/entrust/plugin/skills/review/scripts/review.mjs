@@ -468,20 +468,9 @@ export function modelOf(review, files, owner, directory) {
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
   const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
   // Questions keep their place as their number; children are derived from parent, never stored twice.
-  const questions = (review.questions ?? []).map((q, index) => ({ ...q, id: index + 1, children: [], blocks: 0 }));
+  const questions = (review.questions ?? []).map((q, index) => ({ ...q, id: index + 1, children: [] }));
   for (const q of questions) if (q.parent && questions[q.parent.question - 1]) questions[q.parent.question - 1].children.push(q.id);
-  for (const b of blocks) for (const n of new Set(b.questions)) if (questions[n - 1]) questions[n - 1].blocks++;
-  // The shortest suffix that names each file alone among the touched paths; the full path stays beside it.
-  const paths = files.map((f) => f.path);
-  const shortOf = (p) => {
-    const parts = p.split("/");
-    for (let n = 1; n < parts.length; n++) {
-      const suffix = parts.slice(-n).join("/");
-      if (paths.filter((other) => other === suffix || other.endsWith(`/${suffix}`)).length === 1) return suffix;
-    }
-    return p;
-  };
-  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", short: shortOf(f.path), purpose: purposeOfPath(f.path) }));
+  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", purpose: purposeOfPath(f.path) }));
   // A block of tests inside a production file is tests; every other block follows its file.
   const blockPurpose = Object.fromEntries(blocks.map((b) => [b.id, b.kind === "test" && fileMeta.find((f) => f.path === b.path)?.purpose === "production" ? "tests" : purposeOfPath(b.path)]));
   const purposeCounts = Object.fromEntries(PURPOSES.map((c) => [c, { files: 0, blocks: 0, lines: 0 }]));
@@ -499,8 +488,13 @@ export function modelOf(review, files, owner, directory) {
     nonblank: { added: blocks.reduce((sum, b) => sum + b.weightLines.added, 0), removed: blocks.reduce((sum, b) => sum + b.weightLines.removed, 0) },
     decisions: questions.filter((q) => q.kind === "decision").length,
   };
+  // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked:
+  // the check warns about both, and the page lists them for the reviewer.
+  const kept = blocks.filter((b) => b.verdict === "keep");
+  const assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
+    unasked: { unlinked: kept.filter((b) => !b.serves.length).map((b) => b.id), assumed: kept.filter(assumed).map((b) => b.id) },
     purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
     key: createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10) };
 }

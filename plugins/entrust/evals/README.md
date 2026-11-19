@@ -6,7 +6,7 @@ conformance also needs the installed Codex CLI to generate the schemas it checks
 Claude Code plugin-eval suite for OpenCode's real skill trigger: it checks prompts that must fire and
 prompts that must stay silent. `review/` is the instrument a version of the review skill is measured with:
 cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round, the one that scores a judge's verdicts, and the two that hand each review to an implementer and measure the code that is left
-([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it draws; its records live in `review/report-fixtures.mjs`, shared with `review-report-v5.browser.mjs`, the browser acceptance of the v5 decision-first page (needs playwright-core and a Chromium binary — Chromium and Yandex both run it, `BROWSER=yandex|chromium`; pdfjs-dist adds the real-PDF check; see its header).
+([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it prints; `review-decisions.test.mjs` checks the owner's answers as `decisions.mjs` keeps them, and `review-page.test.mjs` the page `page.mjs` writes; their records live in `review/report-fixtures.mjs`, shared with `review-report-v5.browser.mjs`, the browser acceptance of the v5 decision-first page (needs playwright-core and a Chromium binary — Chromium and Yandex both run it, `BROWSER=yandex|chromium`; pdfjs-dist adds the real-PDF check; see its header).
 
 `review-code-public.browser.mjs` is a separate offline Chromium desktop acceptance: it generates a
 600-line public diff and checks code visibility, navigation and persisted settlement with JavaScript,
@@ -28,7 +28,7 @@ node evals/run-all.mjs        # every suite, one per core at a time, longest fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the twenty-eight suites longest first: protocol, opencode, opencode-owner, agent-run, lock, worktree, conformance, cli, claude, main-proxy, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, review-eval, review-report, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the thirty suites longest first: protocol, opencode, opencode-owner, agent-run, lock, worktree, conformance, cli, claude, main-proxy, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, review-eval, review-report, review-decisions, review-page, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. It runs as many suites at once as the machine has cores: they mostly wait on the
 driver's real timers, so a full run takes about as long as its longest suite rather than ten minutes. Each
 suite's output is printed whole when it ends. A red suite does not stop the run, so one run names every
