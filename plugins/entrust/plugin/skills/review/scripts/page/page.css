@@ -68,7 +68,6 @@ p code, li code, td code, .prose code, .card code, .note code, dd code { backgro
 a { color: var(--accent); }
 h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -.005em; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
-.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--text-3); }
 .sub { color: var(--text-2); }
 .small { font-size: 12.5px; }
@@ -128,7 +127,6 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -.005em; }
 .chip { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--border-strong); border-radius: 4px; font: 600 11.5px/1 var(--mono); color: var(--text-2); background: var(--surface); text-decoration: none; cursor: pointer; white-space: nowrap; vertical-align: 1px; }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.more-chip { font-size: 12px; color: var(--text-2); background: none; border: 0; padding: 0 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
 /* tags: four owner states, the reviewer's verdicts and requirement states — statuses only */
 .tag { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 11.5px; font-weight: 600; white-space: nowrap; border: 1px solid transparent; vertical-align: 1px; }
@@ -418,7 +416,6 @@ tr.note-row td, tr.done-row td, tr.cont-row td, tr.lc-row td { padding: 0 !impor
 .note-item .ni-fix { color: var(--text-2); font-size: 12.5px; margin: 3px 0 0 0; }
 .note-item .ni-fix b { color: var(--text-3); font-weight: 600; }
 .note-item .ni-fix.clamp { -webkit-line-clamp: 2; }
-.note-item .ni-hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
 .note-item .pills { margin-top: 8px; }
 .choice[data-where="note"] { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; margin-top: 8px; }
 .choice[data-where="note"] > .pills { margin-top: 0; }

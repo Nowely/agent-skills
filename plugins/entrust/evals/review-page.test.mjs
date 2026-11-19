@@ -113,6 +113,15 @@ test("token colours are classes with a rule for each theme, and each holds 4.5:1
   }
 });
 
+// A rule for a class nothing writes is dead text that drifts from the page; a class the code builds from a prefix and
+// a value (s-${verdict}, t-${kind}) counts by its prefix.
+test("every class the stylesheet styles is one the page, its document, its highlighter or its runtime writes", () => {
+  const css = CSS.replace(/\/\*[\s\S]*?\*\//g, ""), source = ["page/runtime.js", "page/document.mjs", "page.mjs", "highlight.mjs"].map((name) => fs.readFileSync(new URL(name, SCRIPTS), "utf8")).join("\n");
+  const built = [...source.matchAll(/([a-z][\w-]*-)\$\{/g)].map((m) => m[1]);
+  const styled = [...new Set([...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]))];
+  assert.deepEqual(styled.filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(source) && !built.some((prefix) => name.startsWith(prefix))), []);
+});
+
 test("the island carries what the runtime reads from the model: the kept blocks the check warns about, purposes and digests", () => {
   const record = structuredClone(THEMED);
   record.blocks[0].serves = [3];
