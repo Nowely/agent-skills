@@ -34,9 +34,9 @@ forensics remain in the repository references and release notes.
 - The 274-block record's page is 2.9 MB instead of 6.6 MB, opens in about 0.2 s, and keeps its DOM bounded while
   scrolling: files far from the view give their rows back.
 - Token colours are classes, one rule per colour pair and theme, instead of inline styles on every token.
-- `evals/review-page-browser.test.mjs` drives the page in Chromium from `run-all` on public records only, and
-  replaces the private and macOS-bound browser suites; `review-decisions` and `review-page` replace the fast
-  suites named after page versions.
+- `evals/review-page-browser.test.mjs` drives the page in Chromium on public records only, and replaces the private
+  and macOS-bound browser suites. It runs locally only: CI installs no Playwright, so there it reports NOT RUN.
+  `review-decisions` and `review-page` replace the fast suites named after page versions.
 - Full `entrust:review` records now support a staged comparison of source contracts, peer implementations and test claims. Single and multi reviews preserve the draft, check the reasons for dismissing differences, and reconcile the reader's evidence with the final report.
 - **Breaking:** the report speaks English or Russian, and custom-language catalogs are gone: `language` picks
   Russian for `ru` and `ru-*` and English for any other tag; `check` refuses a record that carries `labels`, and

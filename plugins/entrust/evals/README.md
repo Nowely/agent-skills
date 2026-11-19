@@ -10,10 +10,11 @@ cases in a first-written and a clean form with hidden rubrics, the scripts that 
 
 `review-page-browser.test.mjs` drives the rendered review page in Chromium: tabs and deep links, answering in
 Decisions and in the code's margin, the keys and what they must never do, persistence, the export, reading without
-JavaScript, both print profiles, the Russian page and a large record it generates. It renders public records only and
-needs Playwright with its Chromium: `PLAYWRIGHT_CORE` names Playwright's `index.mjs`, else `playwright-core` or
-`playwright` is found here or in the global npm root. Without them it prints NOT RUN, and `run-all` does not count it
-green.
+JavaScript, both print profiles, the Russian page and a large record it generates. It renders public records only.
+It runs locally only: CI installs no Playwright, so there it prints NOT RUN and checks nothing. Run it yourself
+after a change to the page. It needs Playwright with its Chromium: `PLAYWRIGHT_CORE` names Playwright's
+`index.mjs`, else `playwright-core` or `playwright` is found here or in the global npm root. Without them it prints
+NOT RUN, and `run-all` does not count it green.
 
 ## Running the suites
 

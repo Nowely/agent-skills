@@ -6,8 +6,9 @@
 // export, reading without JavaScript, both print profiles, the Russian page and the large record's speed and bounded
 // DOM. Run it after an edit to page.mjs, page/ or decisions.mjs.
 //
-// It needs Playwright and its Chromium: PLAYWRIGHT_CORE names Playwright's index.mjs, else playwright-core or
-// playwright is imported, from here or the global npm root. Without them it says NOT RUN and exits 0.
+// It runs locally only: CI installs no Playwright. It needs Playwright and its Chromium: PLAYWRIGHT_CORE names
+// Playwright's index.mjs, else playwright-core or playwright is imported, from here or the global npm root. Without
+// them it says NOT RUN and exits 0.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -31,7 +32,7 @@ async function playwright() {
 }
 const browser = await playwright();
 if (!browser) {
-  console.log("NOT RUN: Playwright with its Chromium is not installed here (set PLAYWRIGHT_CORE to Playwright's index.mjs)");
+  console.log("NOT RUN: the page's browser suite runs locally only, and Playwright with its Chromium is not installed here; CI never runs it. Install Playwright, or set PLAYWRIGHT_CORE to its index.mjs, and run it after a change to the page");
   process.exit(0);
 }
 
