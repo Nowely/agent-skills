@@ -1002,7 +1002,7 @@ if (big) {
       const draftSuffix = (q) => q.variant ? " · черновик «" + q.variant.text + "» — не действует" : "";
       for (const q of j.questions) {
         const meta = d.questions.find(x => x.id === q.question);
-        if (q.status === "not-applicable") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
+        if (q.status === "not-applicable") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.status === "accepted") rows["Принятые решения"].push({ text: "Q" + q.question + " · " + (q.variant ? "Выбрано: " + q.variant.text : "Выбрано: (вариант не указан)"), hash: "#q" + q.question });
         else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Отложено" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.variant) rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Черновик «" + q.variant.text + "» — не действует", hash: "#q" + q.question });

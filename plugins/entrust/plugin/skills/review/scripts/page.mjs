@@ -125,16 +125,13 @@ td ol { margin: 0; padding-left: 1.2rem }
 .qstatus { flex: none }
 /* The status chip and the NA badge carry whole sentences: they wrap, never push the card wide. */
 .qstatus, .na-badge { white-space: normal }
-/* A made choice reads neutral «Selected», never a green success; a draft and an entered fact answer are amber. */
-.qstatus[data-state="decided"], .qstatus[data-state="na"], .qstatus[data-state="deferred"] { --v: var(--fg); --v-bg: var(--line) }
-.qstatus[data-state="draft"], .qstatus[data-state="answered"] { --v: var(--fix); --v-bg: var(--fix-bg) }
+/* A choice, a draft and an entered answer read neutral, never a green success; amber is only for a needed change. */
+.qstatus:not([data-state="open"]) { --v: var(--fg); --v-bg: var(--line) }
 .fact-answer-label { font-size: 1rem; color: var(--fg); font-weight: 650 }
 .js label.fact-answer-label { display: block }
 /* The choice zone on F/I cards is named at the same weight as the Q legend: here is where you act. */
 .choice-label { display: block; font-size: 1rem; font-weight: 650; color: var(--fg); margin: .5rem 0 .3rem }
-.qgate { color: var(--fix); margin: .1rem 0; font-size: 1rem }
-.qcard.na .qgate { color: var(--muted) }
-.qdraft { color: var(--fix); margin: .1rem 0; font-size: 1rem }
+.qgate, .qdraft { margin: .1rem 0; font-size: 1rem }
 .qadvice { font-size: 1rem; margin: .1rem 0 }
 .qopts { border: 0; padding: 0; margin: .7rem 0 .2rem; display: flex; flex-direction: column; gap: 0 }
 .qopts legend { font-size: 1rem; color: var(--fg); font-weight: 650; padding: 0; margin-bottom: .3rem }
@@ -429,7 +426,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 .xp-row { display: flex; flex-wrap: wrap; gap: .2rem .8rem; align-items: baseline; justify-content: space-between; font-size: 13px; margin: .15rem 0; max-width: none }
 .xp-row > span { flex: 1 1 20rem; min-width: 0; overflow-wrap: anywhere }
 .xp-goto { flex: none; font-size: 12px; font-weight: 600 }
-.xp-draft > span { color: var(--fix) }
+.xp-draft > span { color: var(--muted) }
 .xp-count { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: .5rem }
 #export-dialog textarea { width: 100%; min-height: 10rem; font: .92rem/1.45 var(--mono); resize: vertical }
 #export-status { font-size: .92rem; min-height: 1.2em }
@@ -708,8 +705,8 @@ const SCRIPT = `
     let label;
     if (q || req || f) {
       const bs = q ? data.blocks.filter((b) => (b.questions || []).includes(+q)) : req ? data.blocks.filter((b) => (b.serves || []).includes(+req)) : data.blocks.filter((b) => (b.findings || []).includes(+f));
-      const n = bs.length, parts = bs.reduce((s, b) => s + (b.parts || 1), 0);
-      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + (req ? t.code.linked : t.blocksWord) + ": " + n + (req ? " · " + t.code.visible + ": " + chipMatches().length : parts > n ? " · " + t.fragments + ": " + parts + " (" + t.withParts + ")" : "")
+      const n = bs.length;
+      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + (req ? t.code.linked : t.blocksWord) + ": " + n + (req ? " · " + t.code.visible + ": " + chipMatches().length : "")
         + (hidden.length ? " · " + t.chip.hidden.replace("{n}", hidden.map((x) => data.purposeLabels[x] || x).join(", ")) : "");
     } else {
       const hiddenBlocks = data.blocks.filter((b) => hidden.includes(b.purpose)).length;
@@ -1162,7 +1159,7 @@ const SCRIPT = `
         const chipEl = card.querySelector("[data-qstatus], [data-fstatus]");
         sum.textContent = "";
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
-        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = (chipEl ? chipEl.textContent : "") + (st === "deferred" ? " · " + t.status.open : "");
+        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = chipEl ? chipEl.textContent : "";
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
         const edit = document.createElement("span"); edit.className = "sr-edit"; edit.textContent = t.commentEdit;
         sum.append(titleEl, chipClone, idEl, edit);
@@ -1915,7 +1912,7 @@ function map(review, files, model, t, hl, partCount) {
     const own = blocks.filter((b) => b.path === path);
     const cat = model.purpose.file[path];
     const adds = own.reduce((sum, b) => sum + b.weightLines.added, 0), rems = own.reduce((sum, b) => sum + b.weightLines.removed, 0);
-    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks").toLowerCase())}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.map((r) => (r.gap ? '<div class="gap">⋯</div>' : "") + segment(path, r)).join("")}</div>`;
+    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks"))}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.map((r) => (r.gap ? '<div class="gap">⋯</div>' : "") + segment(path, r)).join("")}</div>`;
     return `<div class="file-lazy" data-file="${idx}" id="file-${idx}"><details class="file-details"><summary class="mono" title="${esc(path)}">${esc(model.files[idx].short)} <span class="sub">· ${esc(t("blocks"))}: ${own.length} · ${esc(t("lines"))}: ${sizeOf(own)}</span></summary>${inner}</details></div>`;
   };
   return files.map(file).join("\n    ");
@@ -1961,7 +1958,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
   }).join("")}</div>`;
   const banners = model.questions.filter((q) => q.kind === "evidence" && q.blocks >= 2).map((q) => {
     const bs = model.blocks.filter((b) => b.questions.includes(q.id));
-    return `<div class="evidence-banner v-question"><p>${esc(t("blocks"))}: ${bs.length} · ${esc(t("banner.await"))} — <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
+    return `<div class="evidence-banner v-question"><p>${esc(t("banner.blocks", bs.length))} — <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
   }).join("");
   return `
 <section id="files" class="stack"><h2>${esc(t("files"))} · ${model.files.length}</h2>
@@ -2117,7 +2114,7 @@ export function page(review, files, model, { syntax } = {}) {
       noteBlock: t("note-block"), close: t("viewer.close"),
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
       code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
-      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
+      blocksWord: t("blocks"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
     annotationLabels: { ...Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])), unlocated: t("annotation.unverified") } };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));

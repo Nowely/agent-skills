@@ -14,14 +14,19 @@ forensics remain in the repository references and release notes.
 - **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
   export's format number, so a new format never reads answers saved under another. Answers saved in a page
   rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
-- One vocabulary in English and Russian. Cards and the Code tab count blocks («Blocks: N»), not fragments; the
-  decisions note names the finding buttons «Fix» / «Do not fix»; statuses and counters say open, decided,
-  deferred or not applicable («Open findings: N»), and only a wait for a parent says waiting; controls are in
-  sentence case; counts read «Label: N» wherever «N nouns» was wrong for one in English or for 2–4 and 5+ in
-  Russian; Russian says «Единицы кода» and «Ресурсы». Amber marks only a needed change: the evidence and
-  «Not verified:» limits are muted text, and the historical-revision tag is neutral.
+- One vocabulary in English and Russian. Blocks are the unit on the page: the cards, the Code tab, the file cards,
+  the filter chip, the evidence banner and the block popover count and name blocks, and the fragment stays only in
+  the audit definition under «Blocks: N». The decisions note names the finding buttons «Fix» / «Do not fix».
+  Statuses and counters say open, deferred or not applicable («Open findings: N»), and only a wait for a parent
+  says waiting; a deferred decision's settled row shows its own status alone. Controls and the status words the page
+  writes start with a capital letter. Counts read «Label: N» wherever «N nouns» was wrong for one in English or
+  for 2–4 and 5+ in Russian. Russian says «Единицы кода», «Ресурсы», «Связи» and «← Назад».
+- Amber marks only a needed change: the fix, split and merge verdicts, the «no test» tag and a requirement's
+  doubt. A draft, an entered answer, the wait for a parent, the evidence and «Not verified:» limits and the
+  historical-revision tag are neutral.
 - **Breaking:** custom-language catalogs owe `export.not-applicable`, the heading of the export's not-applicable
-  section, wherever a record has dependent decisions; `fragment.what` and `question.blocks` are gone, and `check`
+  section, wherever a record has dependent decisions, and `banner.blocks` (with `{n}`) in place of
+  `banner.await`; `fragment.what`, `question.blocks`, `chip.with-parts` and `banner.await` are gone, and `check`
   refuses a catalog that still carries them. `check` lists every missing key.
 
 ## 0.42.0 — 2026-11-18

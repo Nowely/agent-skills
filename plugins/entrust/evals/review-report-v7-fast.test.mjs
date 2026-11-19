@@ -328,19 +328,30 @@ test("retired decisions export separately from deferred decisions", () => {
   state.questions[1] = { choice: "accepted", variant: "no" };
   state.questions[2] = { variant: "x" };
   const payload = D.exportOf(questions, state, {});
-  const t = { status: { decided: "Selected {n}" }, notApplicable: "not applicable", draftSuffix: "draft {n}",
-    tabRemaining: "{n} main", export: { openFindings: "open", notApplicable: "Not applicable" } };
+  const t = { status: { decided: "Selected {n}" }, notApplicable: "Not applicable", draftSuffix: "draft {n}",
+    tabRemaining: "{n} main", export: { openFindings: "open", notApplicable: "Retired decisions" } };
   const sandbox = { D, state, qById: { 1: questions[0], 2: questions[1] }, blockById: {},
     data: { questions, findings: [], ideas: [], digest: { record: "r", diff: "d" } }, t, exportPayload: () => payload,
     annotationUI: { located: () => false }, stats: () => D.choiceStats(questions, state, []) };
-  const api = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\n({ model: exportModel(), text: decisionsText() })", sandbox);
-  const model = api.model;
+  const api = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\n({ exportModel, text: decisionsText() })", sandbox);
+  const model = api.exportModel();
   assert.equal(payload.questions[1].status, "not-applicable");
   assert.equal(model.deferred.length, 0);
   assert.equal(model.notApplicable.length, 1);
-  assert.match(model.notApplicable[0].text, /Q2 · not applicable \(Q1\).*draft X/);
+  assert.match(model.notApplicable[0].text, /Q2 · Not applicable \(Q1\).*draft X/);
   assert.equal(model.notApplicable[0].hash, "#q2");
-  assert.match(api.text, /\nNot applicable\n- Q2 · not applicable \(Q1\)/);
+  assert.match(api.text, /\nRetired decisions\n- Q2 · Not applicable \(Q1\)/);
+  // The preview names the section with the same heading, not with the status word.
+  const element = (tag) => ({ tag, children: [], dataset: {}, text: "",
+    set textContent(value) { this.text = value; this.children = []; },
+    get textContent() { return this.text + this.children.map((c) => c.textContent).join(""); },
+    append(...children) { this.children.push(...children); } });
+  const host = element("div");
+  vm.runInNewContext(part("  function buildPreview()", "  function openExportDialog()") + "\nbuildPreview()",
+    { exportModel: api.exportModel, document: { getElementById: () => host, createElement: element }, t: { export: {
+      ...t.export, emptyAccepted: "", emptyDeferred: "", emptyComments: "", goto: "Go", partial: "partial" } } });
+  const headings = host.children.map((section) => section.children.find((c) => c.tag === "h3")?.textContent);
+  assert.ok(headings.includes("Retired decisions"), headings.join(" | "));
 });
 
 test("export preview refresh retains focus inside a stable container without suppressing updates", () => {
@@ -377,7 +388,9 @@ test("focused semantic status survives filtering until blur and moves only after
     querySelector: (s) => s === ":scope > .filter-editing" ? note : card,
     querySelectorAll: (s) => s === ".qcard[data-qid]" ? [card] : [],
     prepend(el) { note = el; }, before() {} };
-  const doc = { activeElement: field, getElementById: () => ({}), createElement: (tag) => tag === "details" ? row : tag === "summary" ? summary : ({ setAttribute() {}, append() {} }) };
+  const spans = [];
+  const doc = { activeElement: field, getElementById: () => ({}), createElement: (tag) => tag === "details" ? row : tag === "summary" ? summary
+    : spans[spans.push({ setAttribute() {}, append() {} }) - 1] };
   const sandbox = { D, state, data: { questions: qs }, qById: { 1: qs[0] }, document: doc, settledBody: body,
     unitHome: new Map([[unit, { parent: home, siblings: [unit] }]]), settledMap: {}, t: { filterEditing: "editing", status: { open: "open" }, commentEdit: "edit", cardComment: "Comment" },
     all: (s) => s === "#panel-decisions .dunit" ? [unit] : [], progOpen() {} };
@@ -397,6 +410,8 @@ test("focused semantic status survives filtering until blur and moves only after
   assert.equal(unit.dataset.settled, "done", "focus in another card also postpones the move");
   doc.activeElement = bodyFocus; refresh(); api.applyChoiceFilter("deferred");
   assert.equal(unit.dataset.settled, "deferred"); assert.equal(note.hidden, true);
+  // A deferred row shows the card's own status, not a second one.
+  assert.equal(spans.filter((span) => span.className === "sr-answer").at(-1).textContent, "Status");
   const savedDeferred = D.normalize(JSON.parse(JSON.stringify(state)));
   assert.equal(D.exportOf(qs, savedDeferred, {}).questions[0].status, "deferred");
   doc.activeElement = field; state.questions[1].choice = "accepted"; refresh(); api.applyChoiceFilter("done");
@@ -536,9 +551,9 @@ test("v8 custom catalogs require exactly the applicable new source and export la
     delete incomplete[key];
     assert.match(labelFaults({ ...review, labels: incomplete }).join("\n"), new RegExp(`missing: ${key.replaceAll(".", "\\.")}(?:,|$)`), key);
   }
-  const old = { ...catalog };
-  for (const key of fresh) delete old[key];
-  const faults = labelFaults({ ...review, labels: old });
+  const lacking = { ...catalog };
+  for (const key of fresh) delete lacking[key];
+  const faults = labelFaults({ ...review, labels: lacking });
   assert.equal(faults.length, 1);
   for (const key of fresh) assert.ok(faults[0].includes(key), key);
   assert.deepEqual(labelFaults({ ...review, labels: catalog }), []);
@@ -873,7 +888,7 @@ test("passage preview only offers source navigation for an installed annotation"
   assert.equal(rows[1].children.filter((c) => c.tag === "button" || c.tag === "a").length, 0);
 });
 
-test("language tags and in-memory annotation feedback are validated independently of old overrides", () => {
+test("language tags are validated, and the in-memory comment notice has its own required key no other label stands in for", () => {
   for (const language of ["en", "ru", "custom"]) {
     const review = { language, labels: Object.fromEntries(requiredKeys({ language }).map((k) => [k, LABELS[k]])) };
     assert.deepEqual(labelFaults(review), []);
@@ -891,9 +906,9 @@ test("language tags and in-memory annotation feedback are validated independentl
   assert.match(labelFaults(custom)[0], /annotation\.proof-note/);
 });
 
-test("storage-sensitive messages ignore old overrides after a failed write", () => {
-  const old = { "export.dialog-note": "OLD saved in browser", "decision.export-method": "OLD saved in browser",
-    "decision.draft-deferred": "OLD saved {n}", "decision.gate-draft": "OLD saved {n}" };
+test("storage-sensitive messages come only from their own keys, whatever other storage labels say, after a failed write", () => {
+  const others = { "export.dialog-note": "OTHER saved in browser", "decision.export-method": "OTHER saved in browser",
+    "decision.draft-deferred": "OTHER saved {n}", "decision.gate-draft": "OTHER saved {n}" };
   const newKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [
@@ -903,11 +918,11 @@ test("storage-sensitive messages ignore old overrides after a failed write", () 
   for (const language of ["en", "ru", "custom"]) {
     const r = structuredClone(record); r.language = language;
     const complete = Object.fromEntries(requiredKeys(r).map((k) => [k, LABELS[k]]));
-    r.labels = { ...(language === "custom" ? complete : {}), ...old };
+    r.labels = { ...(language === "custom" ? complete : {}), ...others };
     const { owner, errors } = check(r, files, ".");
     assert.deepEqual(errors, []);
     const html = page(r, files, modelOf(r, files, owner, "."));
-    assert.ok(!html.includes("OLD saved"));
+    assert.ok(!html.includes("OTHER saved"));
     const data = JSON.parse(html.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
     assert.ok(data.labels.draftDeferred.includes("{n}"));
     assert.ok(data.labels.gateDraft.includes("{n}"));
@@ -923,7 +938,7 @@ test("storage-sensitive messages ignore old overrides after a failed write", () 
   const custom = { ...structuredClone(record), language: "custom" };
   const complete = Object.fromEntries(requiredKeys(custom).map((k) => [k, LABELS[k]]));
   for (const k of newKeys) delete complete[k];
-  const fault = labelFaults({ ...custom, labels: { ...complete, ...old } }).join("\n");
+  const fault = labelFaults({ ...custom, labels: { ...complete, ...others } }).join("\n");
   for (const k of newKeys) assert.ok(fault.includes(k), k);
 });
 
@@ -1000,7 +1015,7 @@ test("fact answer statuses follow applicability and parent gates without inventi
   ];
   const original = JSON.stringify(questions);
   state.answers = { q2: "fact", q3: "evidence", q4: "independent fact", q5: "independent evidence",
-    q6: "legacy", q7: "  ", q999: "unknown", legacy: "old" };
+    q6: "no kind", q7: "  ", q999: "unknown", stray: "stray" };
   state.zones["3-0"] = true;
   const check = (expected) => {
     const payload = D.exportOf(questions, state, {});
@@ -1009,7 +1024,7 @@ test("fact answer statuses follow applicability and parent gates without inventi
     assert.deepEqual(payload.factAnswerStatuses.q3, expected);
     assert.deepEqual(payload.factAnswerStatuses.q4, { status: "entered" });
     assert.deepEqual(payload.factAnswerStatuses.q5, { status: "entered" });
-    for (const id of ["q6", "q7", "q999", "legacy"]) assert.equal(Object.hasOwn(payload.factAnswerStatuses, id), false);
+    for (const id of ["q6", "q7", "q999", "stray"]) assert.equal(Object.hasOwn(payload.factAnswerStatuses, id), false);
     assert.deepEqual(payload.factAnswers, state.answers);
     assert.deepEqual(payload.zones, state.zones);
     assert.equal(JSON.stringify(payload.factAnswerStatuses).includes("verified"), false);
@@ -1193,6 +1208,12 @@ test("chip counts unique matching blocks independently of hidden panel and mobil
   segments[0].style.display = "none";
   sandbox.updateChip();
   assert.match(sandbox.chipLabel.textContent, /Visible: 1$/);
+  // A question's chip counts its blocks; a block that continues in three parts is still one block.
+  Object.assign(sandbox, { map: { dataset: { q: "1" } }, chipKey: "",
+    data: { blocks: [{ questions: [1], parts: 3 }, { questions: [1] }, { questions: [2] }], purposeLabels: {} },
+    t: { ...sandbox.t, fragments: "fragments", withParts: "with continuations" } });
+  sandbox.updateChip();
+  assert.equal(sandbox.chipLabel.textContent, "Q1 · Blocks: 2");
 });
 
 test("#panel-code clears each context while retaining hidden purposes and restoring lazy files", () => {
