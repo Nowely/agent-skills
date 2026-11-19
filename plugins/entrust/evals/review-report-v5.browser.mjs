@@ -27,7 +27,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, shikiFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
-import { LABELS, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { check as reviewCheck, modelOf } from "../plugin/skills/review/scripts/review.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
@@ -92,9 +91,6 @@ const renderFixture = ({ diff, record }, name) => {
 };
 const hostile = renderFixture(hostileFixture(), "hostile");
 const shiki = renderFixture(shikiFixture(), "shiki");
-const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-const exactCatalogPage = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
-  record: { ...structuredClone(REVIEW), language: "custom", labels: exactCatalog } }, "exact-catalog");
 const jsFixture = hostileFixture();
 jsFixture.record.passport.links[0].url = "javascript:alert(1)"; jsFixture.record.passport.links[0].label = "";
 const jsFiles = parseDiff(jsFixture.diff), jsDir = path.join(run, "hostile");
@@ -135,7 +131,7 @@ if (fs.existsSync(path.join(SOURCE, "review.json")) && fs.existsSync(ANN)) {
   big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size,
     screenName: bigRecord.screens?.[0]?.name, limit: bigRecord.coverageStructured?.find((c) => c.kind === "not_checked")?.text };
 }
-console.error(`[setup] rendered themed, resolved, minimal-ru, hostile, shiki, exact-catalog${big ? ", 65507 enriched copy" : ""} (${USED})`);
+console.error(`[setup] rendered themed, resolved, minimal-ru, hostile, shiki${big ? ", 65507 enriched copy" : ""} (${USED})`);
 
 // ---- the browser: a persistent profile per browser, as the contract asks ----
 const launch = (name, options = {}) => chromium.launchPersistentContext(path.join(OUT, "profile-" + name), {
@@ -513,9 +509,8 @@ console.error("[run] hardening section");
       prHref: pr?.getAttribute("href") ?? null, prAttrs: pr ? [...pr.attributes].map((a) => a.name).sort() : null,
       text: pop.textContent };
   });
-  check("XSS: a hostile path/URL/labels inject no handler or markup into the popover",
-    popState.visible && popState.onAttrs.length === 0 && popState.imgs === 0
-    && popState.text.includes(HOSTILE_PATH) && popState.text.includes("Добавлено' onmouseover='alert(1)"), popState);
+  check("XSS: a hostile path or URL injects no handler or markup into the popover",
+    popState.visible && popState.onAttrs.length === 0 && popState.imgs === 0 && popState.text.includes(HOSTILE_PATH), popState);
   check("XSS: the copy value and the PR href carry the hostile values intact",
     popState.copy === `${HOSTILE_PATH}:1 (h'1)` && popState.prHref === HOSTILE_URL
     && JSON.stringify(popState.prAttrs) === JSON.stringify(["href", "rel", "target"]), { copy: popState.copy, prHref: popState.prHref });
@@ -550,16 +545,6 @@ console.error("[run] hardening section");
   check("Shiki: non-adjacent hunks do not carry syntax state across the gap",
     colors.gapDel && colors.ctlDel && colors.gapDel.light === colors.ctlDel.light && colors.gapDel.dark === colors.ctlDel.dark
     && colors.gapAdd && colors.ctlAdd && colors.gapAdd.light === colors.ctlAdd.light, colors);
-}
-{
-  const { page: p } = await open(exactCatalogPage.url);
-  const exactState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
-    tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
-  check("exact catalog: the record renders with a catalog of exactly its required keys", exactState.js && exactState.tabs === 5 && exactState.own, exactState);
-  await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
-  await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
-  check("exact catalog: the chrome works on that catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
-    && JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes.includes("tests")));
 }
 console.error("[run] annotations on the minimal ru page");
 {

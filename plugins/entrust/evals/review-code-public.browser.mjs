@@ -33,7 +33,7 @@ Object.assign(record, {
     { path: "src/large.js", added: "301-600", does: "Lines needing attention.", serves: [1], findings: [1], questions: [1], verdict: "fix" },
     { path: "src/other.js", added: "1", does: "Other file.", serves: [1], verdict: "keep" },
   ],
-  language: "en", labels: {},
+  language: "en",
 });
 fs.writeFileSync(path.join(dir, "source.diff"), diff);
 fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(record));

@@ -10,10 +10,11 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { ROOT, registry, runCases, skip, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
-import { CATALOGS, LABELS, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
+import { CATALOGS, LABELS, labelsOf, languageOf } from "../plugin/skills/review/scripts/labels.mjs";
 import { check, modelOf, weightOverview, sourceOf, CHALLENGERS, DIRECTIONS, EVIDENCE, OUTCOMES, SOURCES, UNIT_VERDICTS, VERDICTS, QUESTION_KINDS, COVERAGE_KINDS, PURPOSES, purposeOfPath } from "../plugin/skills/review/scripts/review.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
@@ -199,22 +200,6 @@ test("two reviews of one change keep their decisions apart, and one review rende
     return first === again && first !== key() || "the page's name for its decisions does not follow the review's content";
   });
 
-test("a review carries the report's words in its reader's language, and a word the report does not have is refused",
-  "the reader of a report is the user, in the user's language; a mistyped label must not pass as a translation",
-  () => {
-    const translated = render((r) => { r.labels = { "recommendation": "Что делать", "met": "выполнено", "findings": "Находки", "tab.remaining": "Осталось: {n}" }; });
-    if (translated.status !== 0) return `refused: ${translated.stderr}`;
-    const page = fs.readFileSync(html, "utf8");
-    if (![">Что делать:", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
-    const { status, stdout } = report("labels");
-    if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
-    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ "chip.hidden": "Скрыто" }, 'label "chip.hidden" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
-      const { status: refused, stderr } = render((r) => { r.labels = labels; });
-      if (refused !== 1 || !stderr.includes(fault)) return `expected "${fault}", got status ${refused}: ${stderr}`;
-    }
-    return true;
-  });
-
 test("the printout presents the verdict, current solution, target and recommendations in that order",
   "a conclusion without a distinguishable current and target solution hides what the recommendation changes",
   () => {
@@ -238,23 +223,55 @@ test("check validates without rendering or changing the canonical record; delaye
     return rejected.status === 1 && rejected.stderr.includes("no block covers") && !fs.existsSync(html) || "check accepted an incomplete map";
   });
 
-test("the selected language covers controls and exported decisions without per-review translations",
-  "partial translations silently left Files, Copy and selection comments in English",
+test("English and Russian hold the same words, and every word the page and the printout ask for is in both",
+  "a word one catalog lacks reaches that language's reader as «undefined»; with two catalogs left, neither may fall behind",
   () => {
     for (const [lang, catalog] of Object.entries(CATALOGS)) {
       if (Object.keys(catalog).sort().join() !== Object.keys(LABELS).sort().join()) return `${lang}: incomplete catalog`;
       for (const [key, value] of Object.entries(catalog)) if (!value.trim() || LABELS[key].includes("{n}") !== value.includes("{n}")) return `${lang}: invalid ${key}`;
     }
-    const result = render((r) => { r.language = "ru-RU"; });
-    if (result.status !== 0) return result.stderr;
-    const page = fs.readFileSync(html, "utf8");
-    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к отрывкам", "Рекомендация"])
-      if (!page.includes(text)) return `Russian control or export missing: ${text}`;
-    if (!result.stdout.includes("## Вывод")) return "Markdown is not localized";
-    if (report("labels", "ru").stdout !== JSON.stringify(CATALOGS.ru, null, 2) + "\n") return "the catalog command differs";
-    const incomplete = render((r) => { r.language = "fr"; r.labels = { findings: "Constats" }; });
-    if (incomplete.status !== 1 || !incomplete.stderr.includes("complete labels catalog")) return "unknown locale silently fell back to English";
-    return render((r) => { r.language = "custom"; r.labels = { ...LABELS, findings: "Custom findings" }; }).status === 0 || "a complete custom catalog was refused";
+    // The keys the scripts name outright, on every path, and the keys a full render computes, read through the catalogs.
+    const scripts = ["page.mjs", "report.mjs", "review.mjs", "sources.mjs"].map((name) => fs.readFileSync(path.join(SKILL, "scripts", name), "utf8")).join("\n");
+    const named = [...scripts.matchAll(/\bt\("([^"]+)"\s*[,)]/g)].map((m) => m[1]);
+    const hook = path.join(run, "asked-labels.mjs"), asked = path.join(run, "asked-labels.json");
+    fs.writeFileSync(hook, `import fs from "node:fs";
+import { CATALOGS } from ${JSON.stringify(pathToFileURL(path.join(SKILL, "scripts", "labels.mjs")).href)};
+const asked = new Set();
+for (const language of Object.keys(CATALOGS)) CATALOGS[language] = new Proxy(CATALOGS[language], { get: (words, key) => (typeof key === "string" && asked.add(key), words[key]) });
+process.on("exit", () => fs.writeFileSync(${JSON.stringify(asked)}, JSON.stringify([...asked])));
+`);
+    const computed = [];
+    for (const language of ["en", "ru"]) {
+      const review = structuredClone(THEMED);
+      review.language = language;
+      review.blocks.forEach((b) => { b.kind = "code"; });
+      review.mechanisms = [{ ...MECHANISM, name: "A", blocks: [1, 2] }, { ...MECHANISM, name: "B", blocks: [2] }, { ...MECHANISM, name: "Unknown" }];
+      fs.writeFileSync(data, JSON.stringify(review)); fs.rmSync(asked, { force: true });
+      const result = spawnSync(process.execPath, ["--import", pathToFileURL(hook).href, SCRIPT, "render", data], { cwd: repo, encoding: "utf8" });
+      if (result.status !== 0) return `${language}: ${result.stderr}`;
+      const keys = JSON.parse(fs.readFileSync(asked, "utf8"));
+      if (!keys.some((key) => key.startsWith("verdict.")) || !keys.some((key) => key.startsWith("weight.added."))) return `${language}: the render's computed words were not read through the catalogs`;
+      computed.push(...keys);
+    }
+    const missing = [...new Set([...named, ...computed])].filter((key) => !Object.hasOwn(LABELS, key) || !Object.hasOwn(CATALOGS.ru, key));
+    return !missing.length || `asked for, but not in both catalogs: ${missing.join(", ")}`;
+  });
+
+test("language picks Russian for ru and ru-*, English for any other tag, and a record that carries labels is refused",
+  "two catalogs remain, so every tag must reach one of them; words carried in the record would be a third catalog nobody keeps",
+  () => {
+    const keys = ["files", "export.copy-text", "comment", "passages", "recommendation"];
+    for (const [language, words] of [["ru-RU", CATALOGS.ru], ["de", LABELS]]) {
+      const result = render((r) => { r.language = language; });
+      if (result.status !== 0) return `${language}: ${result.stderr}`;
+      const page = fs.readFileSync(html, "utf8");
+      if (!page.includes(`<html lang="${language}">`)) return `${language}: the page does not carry the record's language`;
+      for (const key of keys) if (!page.includes(words[key])) return `${language}: the page lacks «${words[key]}»`;
+      if (!result.stdout.includes(`## ${words.verdict}`)) return `${language}: the printout is not in its catalog's words`;
+      if (words === LABELS && /\p{Script=Cyrillic}/u.test(page + result.stdout)) return `${language}: Russian reached an English report`;
+    }
+    const carried = render((r) => { r.labels = { findings: "Befunde" }; });
+    return carried.status === 1 && carried.stderr.includes('"labels" is not a field of the record') || `a record carrying labels was not refused: ${carried.stderr}`;
   });
 
 const MECHANISM = { name: "Normalization <rule>", change: "reused", units: ["readArchive"], purpose: "Consistent display.",
@@ -376,7 +393,7 @@ test("weight overview leads with the full footprint, not exclusive lines or net 
     weight.exclusive.code = counts(1);
     if (weightOverview(weight, en, "en")[0].text !== "1 line added") return "bad English singular";
     weight.exclusive.code = counts(2);
-    if (weightOverview(weight, en, "ar")[0].text !== "2 lines added") return "missing CLDR two form";
+    if (weightOverview(weight, en, languageOf({ language: "ar" }))[0].text !== "2 lines added") return "a language without a catalog does not count by the English plural rules";
     weight.exclusive.code = counts(44);
     return weightOverview(weight, en, "en")[0].text === "44 lines added" || "bad English plural";
   });
@@ -611,7 +628,7 @@ test("the page that tells a reviewer what to write names every word the check ac
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
     // The example carries the optional fields of the decision cards too; the minimal REVIEW renders without them.
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 
@@ -754,33 +771,6 @@ test("modelOf derives children, unique counters, file status and the shortest un
     if (sourceOf({ ref: "/questions/0" }, THEMED).anchor !== "#q1") return "an internal source has no anchor";
     if (!sourceOf({ at: "a.js:1", revision: "abc", quote: "x" }, THEMED).text.includes("@ abc")) return "an external source loses its revision";
     return true;
-  });
-
-test("a custom catalog carries the base words plus the keys of the controls the record shows",
-  "the Code wording is required of every record, without silently substituting a different meaning",
-  () => {
-    const files = parseThemeDiff();
-    const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
-    // Remove current mandatory wording from an otherwise complete catalog.
-    const noCode = catalogFor(REVIEW); delete noCode["code.no-related"]; delete noCode["code.no-visible"];
-    const refusedCode = check({ ...structuredClone(REVIEW), language: "custom", labels: noCode }, files, run);
-    if (!refusedCode.errors.some((e) => e.includes("code.no-related") && e.includes("code.no-visible"))) return "a catalog missing the Code wording was not refused";
-    const thin = { ...noCode }; delete thin["findings"];
-    const baseFault = check({ ...structuredClone(REVIEW), language: "custom", labels: thin }, files, run);
-    if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the base words stopped being required";
-    // An enriched record asks for the chrome and the keys of its capabilities; the minimal record's catalog does not serve it.
-    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: noCode }, files, run);
-    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with the minimal record's catalog was accepted, or the chrome keys were not named";
-    const full = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(THEMED) }, files, run);
-    if (full.errors.length) return `a catalog of the enabled capabilities was refused: ${full.errors.join("; ")}`;
-    // One capability alone asks only for its own keys plus the chrome: a passport without cards needs no question words.
-    const passportOnly = { ...structuredClone(REVIEW), questions: [], passport: structuredClone(THEMED.passport) };
-    if (requiredKeys(passportOnly).includes("question.kind.decision")) return "a record without cards was asked for the card words";
-    const minimal = check({ ...passportOnly, language: "custom", labels: catalogFor(passportOnly) }, files, run);
-    if (minimal.errors.length) return `a passport-only catalog was refused: ${minimal.errors.join("; ")}`;
-    const missing = catalogFor(passportOnly); delete missing["passport.diffSha"];
-    const refused = check({ ...passportOnly, language: "custom", labels: missing }, files, run);
-    return refused.errors.some((e) => e.includes("passport.diffSha")) || "a missing capability key was not named";
   });
 
 test("the full printout carries the cards, tradeoffs and coverage limits, and the digest of the record's bytes",
@@ -1297,8 +1287,8 @@ test("the target structure stays closed, C1 is absent, and the print profiles an
     return page.includes('id="export-json-top"') && page.includes('id="copy-top"') && !page.includes('id="export-json"') && !page.includes('id="copy"') || "the export controls are missing or duplicated";
   });
 
-test("the v4 words are localized, and a custom catalog carries the v4 controls",
-  "a new control silently left in English, or a catalog without the chrome words, fails the reader",
+test("the v4 words are localized",
+  "a new control silently left in English fails the reader",
   () => {
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
     if (result.status !== 0) return result.stderr;
@@ -1308,21 +1298,10 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">Open<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
-    // Common chrome is mandatory for every current catalog.
-    const minimalRequired = requiredKeys(REVIEW), themedRequired = requiredKeys(THEMED);
-    for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"]) {
-      if (!minimalRequired.includes(key)) return `the common control ${key} is not required of a minimal record`;
-      if (!themedRequired.includes(key)) return `the v4 control ${key} is not required of a record with the card fields`;
-    }
-    if (!minimalRequired.includes("code.no-related") || !minimalRequired.includes("code.no-visible")) return "a minimal record was not asked for the Code empty states";
-    if (themedRequired.includes("decision.choose") === false) return "a record with cards was not asked for the card words";
-    const files = parseThemeDiff();
-    const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
-    const custom = check({ ...structuredClone(THEMED), language: "custom", labels: catalog }, files, run);
-    return custom.errors.length === 0 || `a complete v4 custom catalog was refused: ${custom.errors.join("; ")}`;
+    return true;
   });
 
-// The popover builds its HTML from the record's own paths, URLs and labels: a hostile value must stay text.
+// The popover builds its HTML from the record's own paths and URLs and the catalog's words: a hostile value must stay text.
 // The fixture's diff carries an apostrophe and a handler-injection attempt in the path itself.
 const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
@@ -1342,7 +1321,7 @@ test("one vocabulary in English and Russian: blocks are the unit, controls and t
     const lowerFirst = /^[^\p{L}\p{N}]*\p{Ll}/u, amberVerdicts = ["fix", "split", "merge"];
     for (const [language, catalog] of Object.entries(CATALOGS))
       for (const [key, text] of Object.entries(catalog))
-        if (!/\.(?:zero|one|two|few|many|other)$/.test(key) && /(?<![A-Z])\{n\}\s+\p{L}/u.test(text)) return `${language}: ${key} puts a number before a noun: ${text}`;
+        if (!/\.(?:one|few|many|other)$/.test(key) && /(?<![A-Z])\{n\}\s+\p{L}/u.test(text)) return `${language}: ${key} puts a number before a noun: ${text}`;
     for (const language of ["en", "ru"]) {
       const words = CATALOGS[language];
       const result = render((r) => { Object.assign(r, structuredClone(record)); r.language = language; });
@@ -1431,7 +1410,7 @@ test("the popover escapes every attribute and label, apostrophe included, and on
     if (vm.runInContext(`escs("'&<>\\\"")`, ctx) !== "&#39;&amp;&lt;&gt;&quot;") return "escs does not escape all five markup characters";
     vm.runInContext(popSrc + `\nopenPop("1", { getBoundingClientRect: () => ({ left: 10, bottom: 10 }) });`, ctx);
     const built = pop.innerHTML;
-    if (built.includes("' onmouseover='") || built.includes("<img")) return "the hostile path, URL or label injected markup into the popover";
+    if (built.includes("' onmouseover='") || built.includes("<img")) return "the hostile path or URL injected markup into the popover";
     if (!built.includes("&#39;")) return "the apostrophe is not escaped in the popover HTML";
     const decode = (s) => s.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
     const copies = [...built.matchAll(/data-copy='([^']*)'/g)].map((m) => decode(m[1]));
@@ -1493,17 +1472,6 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     const open = script.slice(script.indexOf("function openTarget"), script.indexOf('window.addEventListener("hashchange"'));
     const norm = open.match(/const shot = (\/.*?\/)\.exec\(hash\); if \(shot\) hash = "#shot-"/);
     return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
-  });
-
-test("a catalog with exactly the record's required keys renders it end to end; a record using more capabilities is refused for the missing keys",
-  "the check alone can pass while the render refuses, and a record must not silently take English words for a capability it uses",
-  () => {
-    const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-    const ok = render((r) => { r.language = "custom"; r.labels = exactCatalog; });
-    if (ok.status !== 0) return `the record with a catalog of exactly its required keys was refused: ${ok.stderr}`;
-    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the catalog's own words are not on the page";
-    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = exactCatalog; });
-    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record using more capabilities rendered without asking for their words";
   });
 
 // ---- v5: one Choices list, the unified shell, the reversible choice, the export dialog ----
@@ -1974,7 +1942,7 @@ test("mobile targets reach 44px last in the CSS, and the owner print opens every
     return true;
   });
 
-test("the v5 words are localized and owed by capability; the block comment is the compact pattern",
+test("the v5 words are localized; the block comment is the compact pattern",
   "a new control silently in English, or a permanent block input, fails the reader",
   () => {
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
@@ -1987,15 +1955,6 @@ test("the v5 words are localized and owed by capability; the block comment is th
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">All<", ">Owner choice needed<", ">Export answers<", ">answer entered<", ">Fix</button>", ">Take</button>"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
-    const minimalRequired = requiredKeys(REVIEW), themedRequired = requiredKeys(THEMED);
-    for (const key of ["choice.filter.all", "group.owner", "export.open", "card.comment", "nojs.counter-title", "tree.reveal-note", "chip.hidden", "finding.limit.read"]) {
-      if (!minimalRequired.includes(key)) return `the common chrome ${key} is not required of a minimal record`;
-      if (!themedRequired.includes(key)) return `the v5 chrome ${key} is not required of a record with the card fields`;
-    }
-    for (const key of ["decision.answered", "decision.answer-label", "decision.children", "ideas.optional"])
-      if (!themedRequired.includes(key)) return `the capability key ${key} is not required of the themed record`;
-    const noIdeas = structuredClone(THEMED); delete noIdeas.ideas;
-    if (requiredKeys(noIdeas).includes("ideas.optional")) return "a record without ideas was asked for the idea words";
     // The block comment is the same compact pattern, wrapped for the clones to cut.
     if (!page.includes('<div class="block-comment act" data-blockcomment="b1">')) return "the block comment is not the compact wrapper";
     const script = scriptOf(page);
@@ -2061,19 +2020,7 @@ test("requirements are selectable in Code, with unit navigation and a complete n
     if (!output.includes("R2 — A requirement nothing serves. (0)")) return "a requirement with no blocks is not selectable";
     if (!output.includes('data-navigation-view="units"')) return "unit navigation is missing";
     if (!output.includes("document.createElement(\"details\")") || !output.includes("b.unit || t.code.noUnit")) return "unit groups are not derived from block data";
-    if (!output.includes('id="b1"') || !output.includes("data-serves=")) return "the original map or requirement links are missing";
-    for (const key of ["code.requirement", "code.units", "code.no-related", "code.no-visible"]) {
-      if (!LABELS[key] || !CATALOGS.ru[key]) return `missing localization: ${key}`;
-      if (!requiredKeys(THEMED).includes(key) || !requiredKeys(REVIEW).includes(key)) return `the new wording is not required: ${key}`;
-    }
-    const custom = { ...structuredClone(THEMED), language: "custom", labels: Object.fromEntries(requiredKeys(THEMED).map((key) => [key, `«${LABELS[key]}»`])) };
-    if (check(custom, files, run).errors.length) return "an existing enriched custom catalog no longer passes check";
-    if (labelsOf(custom)("code.requirement") !== custom.labels["code.requirement"]) return "the custom selector label is not used";
-    for (const key of ["code.no-related", "code.no-visible"]) {
-      const missing = structuredClone(custom); delete missing.labels[key];
-      if (!check(missing, files, run).errors.some((e) => e.includes(key))) return `missing ${key} was not reported`;
-    }
-    return true;
+    return output.includes('id="b1"') && output.includes("data-serves=") || "the original map or requirement links are missing";
   });
 
 process.exit(summarize(await runCases(TESTS), TESTS.length));

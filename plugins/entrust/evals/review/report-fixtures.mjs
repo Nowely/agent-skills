@@ -69,7 +69,7 @@ export function reportFixtures(diffSha) {
   return { REVIEW, THEMED };
 }
 
-// A diff and record whose path, PR URL and labels carry apostrophes and handler-injection attempts: an
+// A diff and record whose path and PR URL carry apostrophes and handler-injection attempts: an
 // apostrophe is legal in a diff path, so the popover must keep every such value text, never markup.
 export const HOSTILE_PATH = "src/x' onmouseover='alert(1).js";
 export const HOSTILE_URL = "https://example.com/pr' onmouseover='alert(1)";
@@ -86,7 +86,7 @@ export function hostileFixture() {
     questions: [{ at: "docs/billing.md", text: "q'<img src=x onerror=alert(1)>", kind: "fact" }],
     coverage: "What was read.",
     passport: { links: [{ kind: "pr", label: "PR' 1", url: HOSTILE_URL }], repository: "example/repo", base: "b'1", head: "h'1", reviewedAt: "2026-01-01" },
-    language: "ru", labels: { "seg.added-line": "Добавлено' onmouseover='alert(1)", "seg.copy-source": "копировать' <img src=x onerror=alert(1)>", "note-block": "Заметка' onmouseover='alert(1)" },
+    language: "ru",
   };
   return { diff, record };
 }

@@ -6,7 +6,6 @@
 //   node report.mjs comparisons <review.json> [<base-root> <head-root>]   emit the independent reader's source inventory as JSON
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
-//   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
 //
 // It reads only the files it is given, anywhere; references/report-data.md tells the reviewer what to write.
 // `render` refuses a review whose change map leaves a nonblank changed line out, puts one in two blocks, or names
@@ -18,7 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisons } from "./comparisons.mjs";
-import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
+import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
 import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES } from "./review.mjs";
@@ -188,13 +187,8 @@ try {
     const syntax = await createSyntax(files);
     fs.writeFileSync(target, page(review, files, model, { syntax }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
-  } else if (command === "labels") {
-    const code = (argument ?? "en").toLowerCase().split("-")[0];
-    const catalog = Object.hasOwn(CATALOGS, code) ? CATALOGS[code] : null;
-    if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
-    console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

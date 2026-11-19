@@ -1,5 +1,4 @@
-// Report UI catalogs; review.language selects one and review.labels may override its wording.
-import { commonClaimSources } from "./sources.mjs";
+// The report's own words in English and Russian; languageOf picks the catalog from review.language.
 export const LABELS = {
   "mechanism-change": "In the reviewed change",
   "report-details": "Report details",
@@ -39,13 +38,7 @@ export const LABELS = {
   "weight.removed.few": "{n} lines removed",
   "weight.removed.many": "{n} lines removed",
   "weight.removed.other": "{n} lines removed",
-  "weight.added.two": "{n} lines added",
-  "weight.added.zero": "{n} lines added",
-  "weight.removed.two": "{n} lines removed",
-  "weight.removed.zero": "{n} lines removed",
-  "weight.shared-count.zero": "{n} shared",
   "weight.shared-count.one": "{n} shared",
-  "weight.shared-count.two": "{n} shared",
   "weight.shared-count.few": "{n} shared",
   "weight.shared-count.many": "{n} shared",
   "weight.shared-count.other": "{n} shared",
@@ -90,8 +83,6 @@ export const LABELS = {
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
-// The base words every catalog needs; requiredKeys adds the other words a record owes.
-export const BASE_KEYS = Object.keys(LABELS);
 
 // The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
 // the file tree, the picture viewer and the print profiles. Factual status texts are the record's own, not these.
@@ -227,13 +218,7 @@ export const CATALOGS = { en: LABELS, ru: {
   "weight.removed.few": "удалено {n} строки",
   "weight.removed.many": "удалено {n} строк",
   "weight.removed.other": "удалено {n} строки",
-  "weight.added.two": "добавлено {n} строки",
-  "weight.added.zero": "добавлено {n} строк",
-  "weight.removed.two": "удалено {n} строки",
-  "weight.removed.zero": "удалено {n} строк",
-  "weight.shared-count.zero": "{n} общих",
   "weight.shared-count.one": "{n} общая",
-  "weight.shared-count.two": "{n} общие",
   "weight.shared-count.few": "{n} общие",
   "weight.shared-count.many": "{n} общих",
   "weight.shared-count.other": "{n} общие",
@@ -618,133 +603,11 @@ Object.assign(CATALOGS.ru, {
   "source.self": "Ссылка на этот вопрос внутри отчёта",
 });
 
-export const languageOf = (review) => (review.language ?? "en").toLowerCase().split("-")[0];
-
-// The chrome is always rendered; custom catalogs must provide it regardless of optional record fields.
-const CHROME_KEYS = ["fragment.definition",
-  "file.status.added", "file.status.modified", "file.status.deleted", "files.changed-only",
-  "print.owner", "print.auditor", "print.omissions", "skip-to-decisions",
-  "tab.overview", "tab.decisions", "tab.code", "tab.checks", "tab.materials", "tablist", "tab.remaining",
-  "theme.toggle", "theme.current", "theme.next", "theme.auto", "theme.light", "theme.dark",
-  "map.attention", "map.all", "map.audit-note", "fragments", "map.lines-sum", "map.open-filter",
-  "seg.popover", "seg.popover-open", "seg.permalink",
-  "seg.source", "seg.source-open", "seg.added-line", "seg.removed-line", "seg.revision",
-  "seg.copy-source", "seg.copy-source-plain", "seg.no-line", "seg.kept-no-does", "copy.failed",
-  "tree.title", "tree.expand", "tree.collapse", "tree.filter", "tree.filter-placeholder", "tree.hide", "tree.show",
-  "mview.tree", "code.top", "reset", "chip.prev", "chip.next", "chip.back",
-  "chip.requirement", "chip.finding", "chip.purpose",
-  "purpose.production", "purpose.tests", "purpose.styles", "purpose.assets", "purpose.docs", "purpose.config",
-  "purpose.lines-note", "purpose.rules.production", "purpose.rules.tests", "purpose.rules.styles",
-  "purpose.rules.assets", "purpose.rules.docs", "purpose.rules.config",
-  "export.download", "export.copy-text", "nojs.note", "nojs.map",
-  // The v5 chrome stands on every record: the one Choices tab, its subtabs and groups, the unified card
-  // shell with its compact comment, the finding's evidence limit, the export dialog, the purpose toggles'
-  // hidden chip, the tree's reveal note and the honest no-script counter.
-  "choice.filter.all", "choice.filter.q", "choice.filter.f", "choice.filter.i", "choice.filter.fact",
-  "choice.filter.deferred", "choice.filter.done", "choice.filters",
-  "group.owner", "group.fix", "group.data", "group.settled",
-  "card.comment", "card.comment-n", "card.more-basis", "card.more-code", "card.no-blocks",
-  "decision.fix-apply", "decision.fix-skip", "decision.fix-apply-aria", "decision.fix-skip-aria",
-  "finding.limit.ran", "finding.limit.read", "finding.limit.judgment",
-  "decision.selected-no-variant", "decision.draft-suffix", "decision.draft-row", "out.passage-context",
-  "export.open", "export.accepted", "export.deferred", "export.answers", "export.comments",
-  "export.empty-accepted", "export.empty-deferred", "export.empty-comments", "export.partial", "export.goto", "export.text",
-  "export.zones", "decision.zone-marked",
-  "nojs.counter-title", "tree.reveal-note", "chip.hidden", "seg.comment-details", "seg.comment-details-n",
-  // The v6 chrome: the deduplicated first screen, the choice-zone label, the subtab counters, the editorial
-  // change context, the lighter code toolbar, the tree modes and the honest export remainder.
-  "decision.intro-work", "decision.your-decision", "context.change", "purpose.show",
-  "export.open-findings", "tree.mode.folder", "tree.mode.flat", "tree.resize", "choice.count.answers", "choice.count.entries"];
-// The words a record needs only when it uses the capability they name: the base catalog plus the keys of the
-// enabled capabilities, never the whole new catalog for one new field. The predicates run before the check's
-// array guards, so they read every list defensively.
-const listOf = (value) => Array.isArray(value) ? value : [];
-const FEATURES = [
-  [(review) => listOf(review.questions).some((q) => q?.kind !== undefined),
-    ["question.kind.decision", "question.kind.fact", "question.kind.evidence", "question.context", "question.variants",
-      "question.consequences", "question.remaining-evidence", "question.zones", "question.recommendation-note",
-      "question.parent", "decision.accepted", "decision.deferred", "decision.not-applicable",
-      "decision.requires-content", "decision.defer-reason",
-      "decision.note", "decision.na-badge", "decision.requires-js",
-      "decision.status.open", "decision.status.decided", "decision.status.draft", "decision.defer", "decision.reset",
-      "decision.gate-pending", "decision.gate-na",
-      "decision.choose", "decision.export-note",
-      "decision.answer-label", "decision.answer-placeholder", "decision.answered", "decision.answer-row",
-      "decision.zone-note", "decision.limit-unverified", "card.more-checks",
-      "decision.children", "decision.children.wait", "decision.children.open", "decision.children.na", "question.owner-decision"]],
-  [(review) => listOf(review.ideas).length > 0,
-    ["ideas.optional", "ideas.not-counted", "decision.your-choice",
-      "decision.idea-apply", "decision.idea-skip", "decision.idea-apply-aria", "decision.idea-skip-aria"]],
-  [(review) => review.passport !== undefined, ["passport", "passport.base", "passport.head", "passport.reviewed-at", "passport.diffSha", "passport.record"]],
-  [(review) => review.coverageStructured !== undefined, ["coverage.ran", "coverage.read", "coverage.not-checked"]],
-  [(review) => review.tradeoffs !== undefined, ["tradeoffs", "tradeoff.consequence"]],
-  [(review) => listOf(review.requirements).some((r) => r?.permission !== undefined), ["permission"]],
-  [(review) => listOf(review.screens).some((s) => s?.historical !== undefined), ["screen.historical"]],
-  [(review) => listOf(review.screens).some((s) => ["mockup", "before", "after"].some((shot) => s?.[shot] !== undefined)),
-    ["viewer.open", "viewer.fit", "viewer.actual-size", "viewer.previous", "viewer.next", "viewer.close", "shot.permalink"]],
-  [(review) => listOf(review.units).length > 0 || listOf(review.target_units).length > 0, ["structure.declared-only", "structure.target"]],
-  [(review) => listOf(review.mechanisms).length > 0, ["weight.limit"]],
-  // The banner that keeps many evidence blocks from reading as many decisions: one per evidence question
-  // that has blocks of its own.
-  [(review) => listOf(review.blocks).some((b) => listOf(b?.questions).some((n) => listOf(review.questions)[n - 1]?.kind === "evidence")),
-    ["banner.blocks", "banner.show"]],
-];
-const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
-  "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];
-const V8_KEYS = ["tab.remaining", "tree.filter", "export.storage-explanation", "decision.export-local-method",
-  "storage.failed", "annotation.added", "annotation.unverified", "annotation.proof-note", "choice.count.decisions", "choice.count.findings", "choice.count.deferred", "choice.dependent", "choice.unanswered", "choice.waiting-parent", "choice.filter-editing", "tree.visible-files"];
-const v8FeatureKeys = (review) => {
-  const keys = new Set(), questions = listOf(review.questions);
-  if (questions.some((q) => q?.kind === "decision" && listOf(q.variants).length)) keys.add("decision.draft-local");
-  if (questions.some((q) => q?.parent && listOf(q.variants).length)) keys.add("decision.gate-draft-local");
-  if (questions.some((q) => q?.kind === "decision" && !q.parent)) keys.add("export.open-decisions");
-  if (questions.some((q) => q?.kind === "decision" && q.parent)) { keys.add("export.open-dependent"); keys.add("export.not-applicable"); }
-  if (questions.some((q) => q?.kind === "decision" && q.parent)) keys.add("decision.selection-waiting");
-  if (questions.some((q) => q?.kind === "fact" || q?.kind === "evidence")) {
-    keys.add("export.open-requests"); keys.add("answer.status.entered");
-    if (questions.some((q) => (q?.kind === "fact" || q?.kind === "evidence") && q.parent))
-      for (const key of ["answer.status.waiting-parent", "answer.status.not-applicable"]) keys.add(key);
-  }
-  const sources = (items, questionId) => {
-    for (const s of listOf(items)) {
-      if (!s || typeof s !== "object") continue;
-      if (s.ref !== undefined) keys.add(questionId && s.ref === `/questions/${questionId - 1}` ? "source.self" : "source.internal");
-      else if (s.at !== undefined) keys.add(s.quote ? "source.quoted" : "source.mention");
-    }
-  };
-  questions.forEach((q, i) => {
-    if (!q?.kind) return;
-    if (commonClaimSources(q.context) || listOf(q.variants).some((v) => commonClaimSources(v?.consequences))) keys.add("source.each");
-    for (const c of listOf(q.context)) sources(c?.sources, i + 1);
-    for (const v of listOf(q.variants)) for (const c of listOf(v?.consequences)) sources(c?.sources, i + 1);
-    sources(q.recommendation?.sources, i + 1);
-    for (const z of listOf(q.zones)) sources(z?.sources, i + 1);
-  });
-  for (const field of ["tradeoffs", "screens", "coverageStructured"]) for (const item of listOf(review[field])) sources(item?.sources);
-  return [...keys];
-};
-export const requiredKeys = (review) => [...new Set([...BASE_KEYS, ...CODE_KEYS, ...V8_KEYS, ...v8FeatureKeys(review),
-  ...CHROME_KEYS, ...FEATURES.filter(([uses]) => uses(review)).flatMap(([, keys]) => keys)])];
+// Russian for "ru" and "ru-*", English for any other tag; the plural rules follow the same language.
+export const languageOf = (review) => (review.language ?? "").toLowerCase().split("-")[0] === "ru" ? "ru" : "en";
 
 // The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
 export function labelsOf(review) {
-  const own = review.labels ?? {}, base = CATALOGS[languageOf(review)] ?? LABELS;
-  return (key, n) => String(own[key] ?? base[key] ?? LABELS[key]).replace("{n}", n);
-}
-
-export function labelFaults(review) {
-  if (review.language !== undefined && (typeof review.language !== "string" || !review.language.trim())) return ['"language" must be a nonempty language code'];
-  if (review.language !== undefined) {
-    try { Intl.getCanonicalLocales(review.language); } catch { return [`"language" is not a valid language tag: ${JSON.stringify(review.language)}`]; }
-  }
-  const required = requiredKeys(review);
-  const missing = review.language !== undefined && !Object.hasOwn(CATALOGS, languageOf(review))
-    ? required.filter((key) => typeof review.labels?.[key] !== "string" || !review.labels[key].trim()) : [];
-  const faults = missing.length ? [`language "${review.language}" needs a complete labels catalog; missing: ${missing.join(", ")}`] : [];
-  if (review.labels === undefined) return faults;
-  if (typeof review.labels !== "object" || review.labels === null || Array.isArray(review.labels)) return ['"labels" is not an object of label to wording'];
-  return faults.concat(Object.entries(review.labels).flatMap(([key, value]) =>
-    !(key in LABELS) ? [`"labels" has "${key}", which is no label of the report`]
-      : typeof value !== "string" || !value.trim() ? [`label "${key}" has no wording`]
-        : LABELS[key].includes("{n}") && !value.includes("{n}") ? [`label "${key}" has lost its {n}`] : []));
+  const words = CATALOGS[languageOf(review)];
+  return (key, n) => String(words[key]).replace("{n}", n);
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import vm from "node:vm";
-import { LABELS, CATALOGS, labelFaults, labelsOf, requiredKeys } from "../plugin/skills/review/scripts/labels.mjs";
+import { LABELS, CATALOGS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
 import { decisionRuntime } from "../plugin/skills/review/scripts/decisions.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { check, modelOf } from "../plugin/skills/review/scripts/review.mjs";
@@ -56,23 +56,6 @@ test("claim sources merge only exact nonempty ordered arrays within one list", (
   assert.equal(commonClaimSources([{ text: "only", sources }]), null);
   assert.equal(commonClaimSources([{ sources: [] }, { sources: [] }]), null);
   assert.equal(commonClaimSources([{ sources: [null] }, { sources: [null] }]), null);
-});
-
-test("claim-source label is required only when a rendered claim list actually shares sources", () => {
-  const sources = [{ at: "where", quote: "quote" }], same = [{ text: "a", sources }, { text: "b", sources: structuredClone(sources) }];
-  const review = { language: "custom", questions: [{ kind: "decision", context: same, variants: [{ id: "x", consequences: same }] }] };
-  assert.ok(requiredKeys(review).includes("source.each"));
-  const catalog = Object.fromEntries(requiredKeys(review).map((key) => [key, LABELS[key]]));
-  delete catalog["source.each"];
-  assert.match(labelFaults({ ...review, labels: catalog }).join("\n"), /source\.each/);
-  assert.deepEqual(labelFaults({ ...review, labels: { ...catalog, "source.each": "Each claim" } }), []);
-  assert.equal(labelsOf({ language: "en" })("source.each"), "Sources for each item");
-  assert.equal(labelsOf({ language: "ru" })("source.each"), "Источники каждого пункта");
-  const separate = { questions: [{ kind: "decision", context: [same[0]], variants: [{ consequences: [same[1]] }] }] };
-  assert.ok(!requiredKeys(separate).includes("source.each"));
-  assert.ok(!requiredKeys({ questions: [{ context: same }] }).includes("source.each"));
-  const reordered = { questions: [{ kind: "decision", context: [{ sources }, { sources: [{ at: "where", quote: "different" }] }] }] };
-  assert.ok(!requiredKeys(reordered).includes("source.each"));
   const cyclic = {}; cyclic.self = cyclic;
   assert.equal(commonClaimSources([{ sources: [cyclic] }, { sources: [cyclic] }]), null);
 });
@@ -81,7 +64,7 @@ test("standalone no-JS report groups each claim list separately without changing
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   const sources = [{ ref: "/questions/0" }, { at: "where<&", revision: "r<&", quote: "quoted<&" }];
   const claim = (text) => ({ text, sources: structuredClone(sources) });
-  record.language = "ru"; record.labels = {};
+  record.language = "ru";
   record.questions = [{ kind: "decision", resolver: "owner", at: "a:1", text: "Question",
     context: [claim("Context one"), claim("Context two")],
     variants: [{ id: "x", text: "First", consequences: [claim("Consequence one"), claim("Consequence two")] },
@@ -104,7 +87,7 @@ test("standalone no-JS report groups each claim list separately without changing
 
 test("annotation document digest seals the static HTML and full underlying record", () => {
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
-  record.language = "en"; record.labels = {};
+  record.language = "en";
   const sources = [{ at: "a", quote: "source" }];
   record.questions = [{ kind: "decision", at: "a:1", text: "Question",
     context: [{ text: "failure", sources, extra: "first" }, { text: "failure", sources, extra: "second" }],
@@ -314,10 +297,6 @@ test("accepted child exports its unresolved parent without becoming unanswered",
   preview(); assert.match(host.textContent, /Selected X.*waiting for Q1/);
   assert.equal(D.entryOf(settled, 2).choice, "accepted");
   for (const language of ["en", "ru"]) assert.ok(labelsOf({ language })("decision.selection-waiting", 1).includes("Q1"));
-  const custom = { language: "custom", questions };
-  const catalog = Object.fromEntries(requiredKeys(custom).map((key) => [key, LABELS[key]]));
-  delete catalog["decision.selection-waiting"];
-  assert.match(labelFaults({ ...custom, labels: catalog }).join("\n"), /decision\.selection-waiting/);
 });
 
 test("retired decisions export separately from deferred decisions", () => {
@@ -535,35 +514,6 @@ test("tree keeps both filename ends and full accessible paths, and marks a match
   assert.equal(spans[".fname-start"].textContent + spans[".fname-end bdi"].textContent, name);
   assert.ok(spans[".fname-start"].children.some((n) => n.mark));
   assert.ok(spans[".fname-end bdi"].children.some((n) => n.mark));
-});
-
-test("v8 custom catalogs require exactly the applicable new source and export labels", () => {
-  const review = { language: "zz", questions: [
-    { kind: "decision", context: [{ sources: [{ ref: "/questions/0" }, { ref: "/questions/1" }, { at: "coverage" }, { at: "external", quote: "text" }] }] },
-    { kind: "decision", parent: { question: 1, variants: ["yes"] } },
-    { kind: "evidence" },
-  ] };
-  const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files",
-    "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
-  const catalog = Object.fromEntries(requiredKeys(review).map((k) => [k, `«${LABELS[k]}»`]));
-  for (const key of requiredKeys(review)) {
-    const incomplete = { ...catalog };
-    delete incomplete[key];
-    assert.match(labelFaults({ ...review, labels: incomplete }).join("\n"), new RegExp(`missing: ${key.replaceAll(".", "\\.")}(?:,|$)`), key);
-  }
-  const lacking = { ...catalog };
-  for (const key of fresh) delete lacking[key];
-  const faults = labelFaults({ ...review, labels: lacking });
-  assert.equal(faults.length, 1);
-  for (const key of fresh) assert.ok(faults[0].includes(key), key);
-  assert.deepEqual(labelFaults({ ...review, labels: catalog }), []);
-  for (const language of ["en", "ru"]) assert.deepEqual(labelFaults({ ...review, language }), []);
-  const minimal = requiredKeys({ language: "zz", questions: [] });
-  for (const key of ["source.internal", "source.self", "source.quoted", "source.mention", "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests"])
-    assert.ok(!minimal.includes(key), key);
-  const selfOnly = requiredKeys({ questions: [{ kind: "decision", context: [{ sources: [{ ref: "/questions/0" }] }] }] });
-  assert.ok(selfOnly.includes("source.self"));
-  for (const key of ["source.internal", "source.quoted", "source.mention"]) assert.ok(!selfOnly.includes(key), key);
 });
 
 test("annotation proof binds exact fields across reload and fails closed on collisions or mutation", () => {
@@ -888,35 +838,22 @@ test("passage preview only offers source navigation for an installed annotation"
   assert.equal(rows[1].children.filter((c) => c.tag === "button" || c.tag === "a").length, 0);
 });
 
-test("language tags are validated, and the in-memory comment notice has its own required key no other label stands in for", () => {
-  for (const language of ["en", "ru", "custom"]) {
-    const review = { language, labels: Object.fromEntries(requiredKeys({ language }).map((k) => [k, LABELS[k]])) };
-    assert.deepEqual(labelFaults(review), []);
-  }
-  for (const language of ["bad_tag", "ru--RU", 'en"><img']) assert.match(labelFaults({ language })[0], /valid language tag/);
-  for (const language of ["en", "ru"]) {
-    const t = labelsOf({ language, labels: { "annotation.restored": "Saved on disk" } });
-    assert.notEqual(t("annotation.added"), "Saved on disk");
-  }
-  const custom = { language: "custom", labels: Object.fromEntries(requiredKeys({ language: "custom" }).map((k) => [k, LABELS[k]])) };
-  delete custom.labels["annotation.added"];
-  assert.match(labelFaults(custom)[0], /annotation\.added/);
-  delete custom.labels["annotation.unverified"]; delete custom.labels["annotation.proof-note"];
-  assert.match(labelFaults(custom)[0], /annotation\.unverified/);
-  assert.match(labelFaults(custom)[0], /annotation\.proof-note/);
+test("check accepts the language as one well-formed tag and refuses anything else", () => {
+  const { diff, record } = hostileFixture(), files = parseDiff(diff);
+  for (const language of [undefined, "en", "ru", "ru-RU", "de", "zh-Hant-TW"])
+    assert.deepEqual(check({ ...structuredClone(record), language }, files, ".").errors, [], String(language));
+  for (const language of ["bad_tag", "ru--RU", 'en"><img', "", " ", null, 5, ["en"]])
+    assert.deepEqual(check({ ...structuredClone(record), language }, files, ".").errors, [`"language" is not a language tag: ${JSON.stringify(language)}`], String(language));
 });
 
-test("storage-sensitive messages come from their own keys, which custom catalogs owe, and show after a failed write", () => {
-  const storageKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
+test("storage-sensitive messages come from their own keys and show after a failed write", () => {
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [
     { kind: "decision", at: "a:1", text: "Parent?", variants: [{ id: "yes", text: "Yes" }] },
     { kind: "decision", at: "a:2", text: "Child?", parent: { question: 1, variants: ["yes"] }, variants: [{ id: "x", text: "X" }] },
   ];
-  for (const language of ["en", "ru", "custom"]) {
+  for (const language of ["en", "ru"]) {
     const r = structuredClone(record); r.language = language;
-    const complete = Object.fromEntries(requiredKeys(r).map((k) => [k, LABELS[k]]));
-    if (language === "custom") r.labels = complete;
     const { owner, errors } = check(r, files, ".");
     assert.deepEqual(errors, []);
     const html = page(r, files, modelOf(r, files, owner, "."));
@@ -932,11 +869,6 @@ test("storage-sensitive messages come from their own keys, which custom catalogs
     api.state.notes.q1 = "changed"; api.save();
     assert.equal(status.hidden, false);
   }
-  const custom = { ...structuredClone(record), language: "custom" };
-  const complete = Object.fromEntries(requiredKeys(custom).map((k) => [k, LABELS[k]]));
-  for (const k of storageKeys) delete complete[k];
-  const fault = labelFaults({ ...custom, labels: complete }).join("\n");
-  for (const k of storageKeys) assert.ok(fault.includes(k), k);
 });
 
 test("an answer retired by the parent remains raw in JSON but is marked not applicable in text and preview", () => {
@@ -1038,23 +970,13 @@ test("fact answer statuses follow applicability and parent gates without inventi
     assert.ok(t("answer.status.waiting-parent", 1).includes("Q1"));
     assert.notEqual(t("answer.status.entered"), t("answer.status.not-applicable"));
   }
-  const custom = { language: "custom", questions: [{ kind: "fact", parent: { question: 1, variants: ["yes"] } }] };
-  const catalog = Object.fromEntries(requiredKeys(custom).map((key) => [key, LABELS[key]]));
-  for (const key of ["answer.status.entered", "answer.status.waiting-parent", "answer.status.not-applicable"]) delete catalog[key];
-  const fault = labelFaults({ ...custom, labels: catalog }).join("\n");
-  for (const key of ["answer.status.entered", "answer.status.waiting-parent", "answer.status.not-applicable"]) assert.ok(fault.includes(key), key);
-  const independent = requiredKeys({ questions: [{ kind: "fact" }] });
-  assert.ok(independent.includes("answer.status.entered"));
-  assert.ok(!independent.includes("answer.status.waiting-parent"));
-  assert.ok(!independent.includes("answer.status.not-applicable"));
 });
 
 test("rendered answer status labels are localized without altering the input record", () => {
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [{ kind: "fact", at: "a:1", text: "A fact?" }];
-  for (const language of ["en", "ru", "custom"]) {
+  for (const language of ["en", "ru"]) {
     const review = structuredClone(record); review.language = language;
-    review.labels = language === "custom" ? Object.fromEntries(requiredKeys(review).map((k) => [k, LABELS[k]])) : {};
     const original = JSON.stringify(review), { errors, owner } = check(review, files, ".");
     assert.deepEqual(errors, []);
     const html = page(review, files, modelOf(review, files, owner, "."));
@@ -1387,15 +1309,4 @@ test("afterprint recomputes hidden Code chip from restored filtered segments", (
   segments[0].offsetParent = {};
   sandbox.updateChip();
   assert.equal(sandbox.chipLabel.textContent, "T1 · Linked: 1 · Visible: 1");
-});
-
-test("custom catalogs must translate code.linked", () => {
-  for (const review of [{ language: "custom" }, { language: "custom", passport: {} }]) {
-    review.labels = Object.fromEntries(requiredKeys(review).map((key) => [key, LABELS[key]]));
-    delete review.labels["code.linked"];
-    assert.ok(labelFaults(review).some((fault) => fault.includes("code.linked")));
-    review.labels["code.linked"] = "translated linked";
-    assert.deepEqual(labelFaults(review), []);
-  }
-  assert.ok(LABELS["code.linked"] && CATALOGS.ru["code.linked"]);
 });

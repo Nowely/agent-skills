@@ -113,8 +113,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
                              { "kind": "not_checked", "text": "what was not checked, and why", "sources": [{ "ref": "/questions/2" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
                     "repository": "the repository", "base": "the base revision", "head": "the reviewed revision", "reviewedAt": "2026-01-01" },
-      "coverage": "what you read and could not check, and the contracts with where you read each",
-      "labels": { "findings": "the report's own word, in the user's language" }
+      "coverage": "what you read and could not check, and the contracts with where you read each"
     }
 
 ## Comparison pass
@@ -185,10 +184,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),
   `repository`, `base`, `head`, `reviewedAt`. `range` remains the source of the scope; the passport stores no copy
   of the diff digest or the record digest, which are computed from the bytes.
-- **Language.** `language` is the session's language code; write the content in that language. Built-in `en`
-  and `ru` cover every control. Another language needs a `labels` catalog: `report.mjs labels en` prints the
-  whole English catalog to translate, and `check` names every key the record needs that the catalog lacks.
-  `check` rejects an invalid language tag (`Intl.getCanonicalLocales`).
+- **Language.** `language` is the session's language tag, such as `en` or `ru-RU`; write the content in that
+  language. The page's and the printout's own words are Russian for `ru` and `ru-*` and English for any other tag.
 
 ## Sources
 

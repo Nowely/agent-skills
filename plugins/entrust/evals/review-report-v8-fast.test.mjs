@@ -159,7 +159,6 @@ test("schema 5 export retains revision metadata and annotations without fabricat
 function rendered(language = "en", change = () => {}) {
   const { diff, record } = hostileFixture();
   record.language = language;
-  record.labels = {};
   record.questions = [{ at: "docs/billing.md", text: "Which currency code should the archive display?", kind: "decision", resolver: "owner",
     variants: [{ id: "upper", text: "Uppercase" }, { id: "raw", text: "Raw" }] }];
   record.blocks[0].questions = [1];

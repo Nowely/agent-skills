@@ -5,7 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
-import { labelFaults } from "./labels.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -19,8 +18,7 @@ export function weightCountsText(counts, t) {
 // The overview counts each attributed block once within a mechanism, including its shared subset.
 export function weightOverview(weight, t, language) {
   if (!weight) return [];
-  let plurals;
-  try { plurals = new Intl.PluralRules(language); } catch { plurals = new Intl.PluralRules("en"); }
+  const plurals = new Intl.PluralRules(language);
   const delta = (counts, shared) => ["added", "removed"].filter(side => counts[side])
     .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])
       + (shared[side] ? ` (${t(`weight.shared-count.${plurals.select(shared[side])}`, shared[side])})` : "")).join(", ");
@@ -119,6 +117,9 @@ export function compact(list) {
   return runs.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(", ");
 }
 
+// The page writes the language into <html lang> as Intl canonicalizes it, and Intl takes one well-formed tag.
+const languageTag = (value) => { if (typeof value !== "string") return false; try { Intl.getCanonicalLocales(value); return true; } catch { return false; } };
+
 // Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
 // Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
 // without the optional fields of the decision-first report gets none of them.
@@ -133,7 +134,8 @@ export function check(review, files, directory) {
   if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
   for (const field of ["challenges", "questions", "steps", "checks", "ideas", "screens", "units", "target_units"])
     if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
-  errors.push(...labelFaults(review));
+  if (review.language !== undefined && !languageTag(review.language)) errors.push(`"language" is not a language tag: ${JSON.stringify(review.language)}`);
+  if (review.labels !== undefined) errors.push('"labels" is not a field of the record: the report speaks Russian for a "ru" language and English for any other');
   errors.push(...comparisonFaults(review, directory));
   if (errors.length) return { errors, warnings, owner };
 

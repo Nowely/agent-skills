@@ -8,10 +8,10 @@ forensics remain in the repository references and release notes.
 ### Review report
 
 - Full `entrust:review` records now support a staged comparison of source contracts, peer implementations and test claims. Single and multi reviews preserve the draft, check the reasons for dismissing differences, and reconcile the reader's evidence with the final report.
-- **Breaking:** custom-language catalogs no longer need `tree.files`, which the page stopped reading; `check`
-  refuses a catalog that still carries it as an unknown label. `report-data.md` now states the current catalog
-  rule alone: built-in `en` and `ru` cover every control, another language translates the catalog
-  `report.mjs labels en` prints, and `check` names every key the record needs that it lacks.
+- **Breaking:** the report speaks English or Russian, and custom-language catalogs are gone: `language` picks
+  Russian for `ru` and `ru-*` and English for any other tag; `check` refuses a record that carries `labels`, and
+  `report.mjs labels` is removed. The content is still written in the session's language, which `<html lang>`
+  carries.
 - **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
   export's format number, so a new format never reads answers saved under another. Answers saved in a page
   rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
@@ -25,22 +25,11 @@ forensics remain in the repository references and release notes.
 - Amber marks only a needed change: the fix, split and merge verdicts, the «no test» tag and a requirement's
   doubt. A draft, an entered answer, the wait for a parent, the evidence and «Not verified:» limits and the
   historical-revision tag are neutral.
-- **Breaking:** custom-language catalogs owe `export.not-applicable`, the heading of the export's not-applicable
-  section, wherever a record has dependent decisions, and `banner.blocks` (with `{n}`) in place of
-  `banner.await`; `fragment.what`, `question.blocks`, `chip.with-parts` and `banner.await` are gone, and `check`
-  refuses a catalog that still carries them. `check` lists every missing key.
 - Tags on the page (a requirement's status and source, verdicts, purposes, file marks and the like) start with a
   capital letter through one `.tag` style rule; the catalogs and the text printout keep their words as the
   printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
   «фрагмент», which is the code's word.
-- **Breaking:** labels nothing on the page or in the printout read are gone: `annotation.unlocated` (an
-  unlocated passage says `annotation.unverified`, as it already did), `decision.remaining`,
-  `counters.evidence-blocks`, `seg.details`, `seg.details-first`, `apply`, `skip`, `apply-all`, `out.apply` and
-  `out.skip`; custom catalogs no longer owe them, and `check` refuses a catalog that still carries them. The
-  model's `counters.evidenceBlocks`, which only tests read, is gone too.
-- **Breaking:** custom catalogs no longer owe 40 more labels nothing on the page or in the printout reads (`task`,
-  `share`, `copy`, `decided`, the `out.*` and `scope.*` words, `decision.confirm`, `decision.sheet-note`,
-  `export.note` and the rest); `check` refuses a catalog that still carries them.
+- The model's `counters.evidenceBlocks`, which only tests read, is gone.
 
 ## 0.42.0 — 2026-11-18
 
