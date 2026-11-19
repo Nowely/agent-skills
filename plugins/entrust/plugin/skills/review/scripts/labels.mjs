@@ -9,7 +9,7 @@ export const LABELS = {
   "annotation.annotation": "Comment",
   "annotation.edit": "Edit",
   "annotation.source": "Go to passage",
-  "annotation.unlocated": "Source unavailable (legacy or changed report)",
+  "annotation.unlocated": "Source unavailable in this report",
   "annotation.saved": "Comment saved",
   "annotation.deleted": "Comment deleted",
   "annotation.restored": "Comment restored",
@@ -98,8 +98,7 @@ export const LABELS = {
   "change.added": "added", "change.reused": "reused", "change.changed": "changed", "change.removed": "removed",
 };
 
-// The catalog a legacy record needs: a custom language that translated the report before the decision cards
-// keeps working on a record without the new fields. A record that uses them needs the new words too.
+// The base words every catalog needs; requiredKeys adds the other words a record owes.
 export const BASE_KEYS = Object.keys(LABELS);
 
 // The words of the decision-first report: question cards, their decisions, the passport, structured coverage,
@@ -107,7 +106,7 @@ export const BASE_KEYS = Object.keys(LABELS);
 Object.assign(LABELS, {
   "source.each": "Sources for each item",
   "annotation.added": "Comment added in memory",
-  "annotation.unverified": "Passage identity cannot be verified. The comment remains without a highlight or source link. Some selections and legacy notes cannot be located automatically.",
+  "annotation.unverified": "Passage identity cannot be verified. The comment remains without a highlight or source link. Some selections cannot be located automatically.",
   "annotation.proof-note": "The selected text and location proof travel in the JSON export. Some selections cannot be located automatically.",
   "choice.waiting-parent": "Of these, waiting for a parent decision: {n}",
   "choice.filter-editing": "Kept here while editing; its current status may not match this group or filter.",
@@ -218,7 +217,7 @@ export const CATALOGS = { en: LABELS, ru: {
   "annotation.annotation": "Комментарий",
   "annotation.edit": "Изменить",
   "annotation.source": "К фрагменту",
-  "annotation.unlocated": "Источник не найден (старый или изменённый отчёт)",
+  "annotation.unlocated": "Источник не найден в этом отчёте",
   "annotation.saved": "Комментарий сохранён",
   "annotation.deleted": "Комментарий удалён",
   "annotation.restored": "Комментарий восстановлен",
@@ -412,7 +411,7 @@ export const CATALOGS = { en: LABELS, ru: {
 Object.assign(CATALOGS.ru, {
   "source.each": "Источники каждого пункта",
   "annotation.added": "Комментарий добавлен в память",
-  "annotation.unverified": "Не удалось подтвердить место фрагмента. Комментарий останется без подсветки и ссылки к источнику. Некоторые выделения и старые заметки не привязываются автоматически.",
+  "annotation.unverified": "Не удалось подтвердить место фрагмента. Комментарий останется без подсветки и ссылки к источнику. Некоторые выделения не привязываются автоматически.",
   "annotation.proof-note": "Выделенный текст и данные привязки попадают в JSON-выгрузку. Некоторые выделения не привязываются автоматически.",
   "choice.waiting-parent": "Из них ждут решения родителя: {n}",
   "choice.filter-editing": "Карточка остаётся здесь при редактировании; её текущий статус может не соответствовать группе или фильтру.",
@@ -654,7 +653,6 @@ Object.assign(LABELS, {
   "export.dialog-note": "Answers are not sent. If browser storage fails they remain only in memory. JSON ties answers to the record and diff; the record itself is never changed.",
   "tree.filter": "Search paths in the file tree (not diff contents)",
   "tree.visible-files": "Visible files",
-  "tree.files": "files",
   "source.internal": "Report reference",
   "source.mention": "Mention without a quote",
   "source.quoted": "Quote provided",
@@ -673,7 +671,6 @@ Object.assign(CATALOGS.ru, {
   "export.dialog-note": "Ответы никуда не отправляются. При ошибке сохранения в браузере они остаются только в памяти. JSON привязывает ответы к записи и diff; исходная запись не изменяется.",
   "tree.filter": "Поиск путей в дереве файлов (не по содержимому diff)",
   "tree.visible-files": "Видно файлов",
-  "tree.files": "файлов",
   "source.internal": "Ссылка внутри отчёта",
   "source.mention": "Упоминание без цитаты",
   "source.quoted": "Приведена цитата",
@@ -760,7 +757,7 @@ const FEATURES = [
 const CODE_KEYS = ["code.requirement", "code.all-requirements", "code.files", "code.units",
   "code.select-requirement", "code.no-related", "code.no-visible", "code.no-unit", "code.linked", "code.visible", "code.filters-cleared"];
 const V8_KEYS = ["tab.remaining", "tree.filter", "export.storage-explanation", "decision.export-local-method",
-  "storage.failed", "annotation.added", "annotation.unverified", "annotation.proof-note", "choice.count.decisions", "choice.count.findings", "choice.count.deferred", "choice.dependent", "choice.unanswered", "choice.waiting-parent", "choice.filter-editing", "tree.visible-files", "tree.files"];
+  "storage.failed", "annotation.added", "annotation.unverified", "annotation.proof-note", "choice.count.decisions", "choice.count.findings", "choice.count.deferred", "choice.dependent", "choice.unanswered", "choice.waiting-parent", "choice.filter-editing", "tree.visible-files"];
 const v8FeatureKeys = (review) => {
   const keys = new Set(), questions = listOf(review.questions);
   if (questions.some((q) => q?.kind === "decision" && listOf(q.variants).length)) keys.add("decision.draft-local");

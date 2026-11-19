@@ -171,36 +171,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),
   `repository`, `base`, `head`, `reviewedAt`. `range` remains the source of the scope; the passport stores no copy
   of the diff digest or the record digest, which are computed from the bytes.
-- **Language.** `language` is the session's language code; built-in `en` and `ru` cover every control. Another
-  language needs a `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
-  The catalog a record needs is the old base set plus, for a record that uses any new field, the chrome words
-  (tabs, theme, map reader, filters, export, no-script notes) and the words of every capability it shows — the
-  viewer for pictures, the cards, passport, coverage, tradeoffs, permission and historical marks — so a control
-  is never silently left in English on a record authored for this version. An old record without the new fields
-  still falls back to built-in words for the older chrome. **Breaking change:** every custom catalog, including
-  one on an old record, must also translate the exact `code.requirement`, `code.all-requirements`, `code.files`,
-  `code.units`, `code.select-requirement`, `code.no-related`, `code.no-visible`, `code.no-unit`, `code.linked`,
-  `code.visible`, and `code.filters-cleared` keys. The v8 report also requires `tab.remaining`, `tree.filter`,
-  `export.storage-explanation`, `decision.export-local-method`, `storage.failed`, `choice.count.decisions`,
-  `choice.count.findings`, `choice.count.deferred`, `choice.dependent`, `choice.unanswered`,
-  `choice.waiting-parent`, `choice.filter-editing`, `annotation.added`, `annotation.unverified`,
-  `annotation.proof-note`, `tree.visible-files`, and `tree.files`
-  for every custom catalog. Decision, dependent decision and fact/evidence capabilities respectively add
-  `export.open-decisions`, `export.open-dependent`, and `export.open-requests`. Fact/evidence requests also
-  require `answer.status.entered`; dependent requests require `answer.status.waiting-parent` and
-  `answer.status.not-applicable`.
-  Dependent decisions also require `decision.selection-waiting`. Decision variants and dependent
-  variants respectively add `decision.draft-local` and `decision.gate-draft-local`. The old keys
-  `export.dialog-note`, `decision.export-method`, `decision.draft-deferred`, and `decision.gate-draft` no longer
-  control these messages; existing overrides must be translated under the new keys. Sources add the keys their
-  fields use: `source.internal`, `source.self`, `source.quoted`, and/or `source.mention`. Self means a question's
-  own `/questions/N` reference; a quote is supplied text, not a verified source. `check` lists all missing keys.
-  `source.each` is required only if a context or one variant's consequences contain at least two claims with
-  identical, nonempty, ordered source arrays. The page names that set once as the sources for each item; it does
-  not combine different groups or sources with different fields, order, revisions, or quotations.
-  Translate each distinction accurately; `annotation.added` describes an in-memory change, not a successful
-  storage write. Built-in `en` and `ru` need no catalog updates. Invalid language tags are rejected by `check`
-  using `Intl.getCanonicalLocales`; previously accepted invalid tags must be corrected.
+- **Language.** `language` is the session's language code; write the content in that language. Built-in `en`
+  and `ru` cover every control. Another language needs a `labels` catalog: `report.mjs labels en` prints the
+  whole English catalog to translate, and `check` names every key the record needs that the catalog lacks.
+  `check` rejects an invalid language tag (`Intl.getCanonicalLocales`).
 
   Schema 5 includes `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
   unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions

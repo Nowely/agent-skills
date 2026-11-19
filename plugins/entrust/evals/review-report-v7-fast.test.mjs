@@ -521,7 +521,7 @@ test("v8 custom catalogs require exactly the applicable new source and export la
     { kind: "decision", parent: { question: 1, variants: ["yes"] } },
     { kind: "evidence" },
   ] };
-  const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files", "tree.files",
+  const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files",
     "export.open-decisions", "export.open-dependent", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
   const catalog = Object.fromEntries(requiredKeys(review).map((k) => [k, `«${LABELS[k]}»`]));
   for (const key of requiredKeys(review)) {
@@ -637,12 +637,10 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.equal(api.locate({ ...note, proof: oldFieldProof }), null);
   assert.equal(api.locate({ ...note, proof: { ...note.proof, field: "context.1.text" } }), null);
   const saved = JSON.stringify(note);
-  const legacy = { id: "legacy-id", quote: "failure", where: "Q1", note: "old", anchor: { id: "q1", start: 0, end: 7, text: "failure" } };
-  assert.equal(api.locate(legacy), null);
-  const sourceLegacy = { ...legacy, id: "legacy-source", anchor: { ...legacy.anchor, id: "source-12" } };
-  assert.equal(api.locate(sourceLegacy), null);
-  const state = decisionRuntime().empty(); state.passages.push(legacy, sourceLegacy);
-  assert.equal(JSON.stringify(decisionRuntime().exportOf([], state, {}).passages), JSON.stringify([legacy, sourceLegacy]));
+  const unproved = { quote: "failure", where: "Q1", note: "kept" };
+  assert.equal(api.locate(unproved), null);
+  const state = decisionRuntime().empty(); state.passages.push(unproved);
+  assert.equal(JSON.stringify(decisionRuntime().exportOf([], state, {}).passages), JSON.stringify([unproved]));
   root = new Element("main", { id: "review-content" }, new Element("div", { class: "settled-row" }, question()));
   assert.ok(api.locate(note)); assert.equal(JSON.stringify(note), saved);
   const markedField = root.childNodes[0].childNodes[0].childNodes[0], marker = new Element("button", { class: "annotation-marker" });
@@ -764,10 +762,10 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.ok(api.locate(blockNote));
   root.childNodes[0].isConnected = true;
   const locations = new Map(), rows = [{ contains: () => false }, { contains: () => false }], found = [];
-  const legacyBlock = { quote: "😀c", note: "legacy", anchor: { id: "b1", start: 1, end: 4, text: "😀c" } };
+  const unprovedBlock = { quote: "😀c", where: "B1", note: "kept" };
   const refreshStart = src.indexOf("  const pendingRefresh ="), refreshEnd = src.indexOf("  list.addEventListener('focusout'", refreshStart);
   const refresh = vm.runInNewContext(src.slice(refreshStart, refreshEnd) + "\nrefresh", {
-    state: () => ({ passages: [blockNote, legacyBlock] }), located: locations, invalidated: new Set(), document,
+    state: () => ({ passages: [blockNote, unprovedBlock] }), located: locations, invalidated: new Set(), document,
     list: { children: rows }, editor: { open: false }, getSelection: () => ({ rangeCount: 0 }),
     locate: api.locate, renderOne: (_p, index) => { found.push(index); locations.set(index, { isConnected: true }); }, locationsChanged() {},
   });
@@ -786,7 +784,7 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.equal(unmarked.quote, "17"); assert.equal(unmarked.proof, undefined); assert.equal(api.locate(unmarked), null);
 });
 
-test("legacy annotations remain exported without markers or a source action", () => {
+test("a passage without a proof is exported unchanged, without a marker or a source action", () => {
   const src = fs.readFileSync(new URL("../plugin/skills/review/scripts/annotations.mjs", import.meta.url), "utf8");
   const start = src.indexOf("  function renderOne("), end = src.indexOf("  function render()", start);
   const created = [];
@@ -796,7 +794,7 @@ test("legacy annotations remain exported without markers or a source action", ()
   const renderOne = vm.runInNewContext(src.slice(start, end) + "\nrenderOne", {
     document: { createElement: element }, list, t: { annotation: "Comment", edit: "Edit", unverified: "unlocated" },
   });
-  const p = { quote: "failure", note: "keep this", where: "Q1", anchor: { id: "q1", start: 0, end: 7, text: "failure" } };
+  const p = { quote: "failure", note: "keep this", where: "Q1" };
   renderOne(p, 0, null);
   assert.equal(created.filter((el) => el.className === "annotation-marker").length, 0);
   assert.equal(created.filter((el) => el.tag === "button").length, 1);

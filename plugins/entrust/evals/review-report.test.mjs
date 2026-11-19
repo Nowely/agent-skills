@@ -547,12 +547,12 @@ const modelOfThemed = () => {
   return modelOf(THEMED, files, owner, run);
 };
 
-test("a legacy record stays valid and warning-free; the themed record with decision cards passes check",
-  "optional fields must not make old records deficient, and a record of another theme and order must stand on its own",
+test("the minimal record is valid and warning-free; the themed record with decision cards passes check",
+  "optional fields must not make a record without them deficient, and a record of another theme and order must stand on its own",
   () => {
     const files = parseThemeDiff();
-    const legacy = check(REVIEW, files, run);
-    if (legacy.errors.length || legacy.warnings.length) return `legacy record: ${[...legacy.errors, ...legacy.warnings].join("; ")}`;
+    const minimal = check(REVIEW, files, run);
+    if (minimal.errors.length || minimal.warnings.length) return `minimal record: ${[...minimal.errors, ...minimal.warnings].join("; ")}`;
     const themed = check(THEMED, files, run);
     if (themed.errors.length) return `themed record: ${themed.errors.join("; ")}`;
     // The external source carries a quote and its file is not beside the record: named, unreachable, a warning only.
@@ -1333,15 +1333,15 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
   });
 
-test("an upgraded old custom catalog renders an old record end to end; a new record owes the v4 keys",
-  "the check alone can pass while the render refuses, and a new record must not silently take English chrome",
+test("a catalog with exactly the record's required keys renders it end to end; a record using more capabilities is refused for the missing keys",
+  "the check alone can pass while the render refuses, and a record must not silently take English words for a capability it uses",
   () => {
-    const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-    const ok = render((r) => { r.language = "custom"; r.labels = oldCatalog; });
-    if (ok.status !== 0) return `an old record with a genuine old catalog was refused: ${ok.stderr}`;
-    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
-    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = oldCatalog; });
-    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
+    const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
+    const ok = render((r) => { r.language = "custom"; r.labels = exactCatalog; });
+    if (ok.status !== 0) return `the record with a catalog of exactly its required keys was refused: ${ok.stderr}`;
+    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the catalog's own words are not on the page";
+    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = exactCatalog; });
+    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record using more capabilities rendered without asking for their words";
   });
 
 // ---- v5: one Choices list, the unified shell, the reversible choice, the export dialog ----

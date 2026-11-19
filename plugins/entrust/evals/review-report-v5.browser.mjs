@@ -92,9 +92,9 @@ const renderFixture = ({ diff, record }, name) => {
 };
 const hostile = renderFixture(hostileFixture(), "hostile");
 const shiki = renderFixture(shikiFixture(), "shiki");
-const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-const legacyCatalog = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
-  record: { ...structuredClone(REVIEW), language: "custom", labels: oldCatalog } }, "legacy-catalog");
+const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
+const exactCatalogPage = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
+  record: { ...structuredClone(REVIEW), language: "custom", labels: exactCatalog } }, "exact-catalog");
 const jsFixture = hostileFixture();
 jsFixture.record.passport.links[0].url = "javascript:alert(1)"; jsFixture.record.passport.links[0].label = "";
 const jsFiles = parseDiff(jsFixture.diff), jsDir = path.join(run, "hostile");
@@ -104,7 +104,7 @@ const jsUrl = { url: `file://${path.join(jsDir, "js-url.html")}` };
 const resolvedRecord = structuredClone(THEMED);
 resolvedRecord.blocks[1].questions = [3];
 const resolved = render(resolvedRecord, "resolved.json");
-const legacyRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms: [
+const minimalRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms: [
   { name: "Первая механика", change: "reused", units: ["readArchive"], purpose: "Назначение механики: показать, как существующее поведение сохраняется без нового состояния, и почему это важно для читателя отчёта.",
     basis: "Основание: требование 1 и существующий контракт читателя, который уже преобразует код валюты в верхний регистр при выводе.",
     benefit: "Польза: повторное использование уже проверенного пути без дополнительных тестов и без новой поверхности ошибки.",
@@ -114,7 +114,7 @@ const legacyRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms
     basis: "Основание: тот же контракт читателя и требование 1; отдельного источника у второй механики нет, и это записано явно.",
     benefit: "Польза: одно правило на два сценария, без расхождения форматов при выводе списка и отдельной карточки.",
     cost: "Цена: связанность сценариев через общий путь, которую нужно учитывать при изменении формата вывода.",
-    decision: "Оставить общий путь и не вводить второй преобразователь для отдельного сценария.", evidence: "read" }] }, "legacy-ru.json");
+    decision: "Оставить общий путь и не вводить второй преобразователь для отдельного сценария.", evidence: "read" }] }, "minimal-ru.json");
 const SOURCE = process.env.REVIEW_65507_DIR ?? "/private/tmp/entrust/cloud-components/65507-review-current";
 const ANN = process.env.REVIEW_65507_ANNOTATIONS ?? "/private/tmp/entrust/65507-review-analysis/prototype/annotations-v2.json";
 const ORIGINAL_SHA = "fb7ce806b3c90420da1cca37ea11c64dc0f2f0b655b040f8ad3244f1c4ef4cfc";
@@ -135,7 +135,7 @@ if (fs.existsSync(path.join(SOURCE, "review.json")) && fs.existsSync(ANN)) {
   big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size,
     screenName: bigRecord.screens?.[0]?.name, limit: bigRecord.coverageStructured?.find((c) => c.kind === "not_checked")?.text };
 }
-console.error(`[setup] rendered themed, resolved, legacy-ru, hostile, shiki, legacy-catalog${big ? ", 65507 enriched copy" : ""} (${USED})`);
+console.error(`[setup] rendered themed, resolved, minimal-ru, hostile, shiki, exact-catalog${big ? ", 65507 enriched copy" : ""} (${USED})`);
 
 // ---- the browser: a persistent profile per browser, as the contract asks ----
 const launch = (name, options = {}) => chromium.launchPersistentContext(path.join(OUT, "profile-" + name), {
@@ -552,21 +552,21 @@ console.error("[run] hardening section");
     && colors.gapAdd && colors.ctlAdd && colors.gapAdd.light === colors.ctlAdd.light, colors);
 }
 {
-  const { page: p } = await open(legacyCatalog.url);
-  const legacyState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
+  const { page: p } = await open(exactCatalogPage.url);
+  const exactState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
     tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
-  check("legacy catalog: an old record renders with its upgraded catalog", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
+  check("exact catalog: the record renders with a catalog of exactly its required keys", exactState.js && exactState.tabs === 5 && exactState.own, exactState);
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
   await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
-  check("legacy catalog: the chrome works on the upgraded catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
+  check("exact catalog: the chrome works on that catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
     && JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
 }
-console.error("[run] legacy annotations section");
+console.error("[run] annotations on the minimal ru page");
 {
-  const { page: p } = await open(legacyRu.url + "#panel-checks");
+  const { page: p } = await open(minimalRu.url + "#panel-checks");
   const fn = new Function(`return (${fs.readFileSync(path.join(HERE, "review-annotations.browser.mjs"), "utf8")})`)();
-  try { await fn(p); check("legacy annotations runtime on the v5 page", true); }
-  catch (e) { check("legacy annotations runtime on the v5 page", false, String(e)); }
+  try { await fn(p); check("annotations runtime on the minimal ru page", true); }
+  catch (e) { check("annotations runtime on the minimal ru page", false, String(e)); }
 }
 console.error("[run] 65507 full matrix");
 if (big) {

@@ -3,6 +3,15 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Review report
+
+- **Breaking:** custom-language catalogs no longer need `tree.files`, which the page stopped reading; `check`
+  refuses a catalog that still carries it as an unknown label. `report-data.md` now states the current catalog
+  rule alone: built-in `en` and `ru` cover every control, another language translates the catalog
+  `report.mjs labels en` prints, and `check` names every key the record needs that it lacks.
+
 ## 0.42.0 — 2026-11-18
 
 ### Review report v8

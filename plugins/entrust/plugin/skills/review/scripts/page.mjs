@@ -2118,7 +2118,7 @@ export function page(review, files, model, { syntax } = {}) {
       noteBlock: t("note-block"), close: t("viewer.close"),
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
       code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
-      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files"), treeFiles: t("tree.files"), treeVisibleFiles: t("tree.visible-files") },
+      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
     annotationLabels: { ...Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])), unlocated: t("annotation.unverified") } };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
