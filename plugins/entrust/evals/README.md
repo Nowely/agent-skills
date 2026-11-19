@@ -8,6 +8,14 @@ prompts that must stay silent. `review/` is the instrument a version of the revi
 cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round, the one that scores a judge's verdicts, and the two that hand each review to an implementer and measure the code that is left
 ([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it prints; `review-decisions.test.mjs` checks the owner's answers as `decisions.mjs` keeps them, and `review-page.test.mjs` the page `page.mjs` writes; their records live in `review/report-fixtures.mjs`.
 
+`design-to-code/` is the instrument for the design-to-code skill: the `offer-card` case (an unstyled start, the
+reference that is its answer, the design context and brief), `prepare.mjs`, which renders the reference into a
+design pack and gives the implementer a directory without the answer, and `score.mjs`, which checks the result with
+the judge's own copy of the design; the run protocol is in
+[its research run](../research/2026-11-20-design-to-code/protocol.md). `design-to-code.test.mjs` checks the skill's
+`core.mjs` without a browser and plants defects in the offer card to see the check find them; its browser cases need
+Playwright with Chromium and are reported as skipped without it, as in CI.
+
 `review-page-browser.test.mjs` drives the rendered review page in Chromium: tabs and deep links, answering in
 Decisions and in the code's margin, the keys and what they must never do, persistence, the export, reading without
 JavaScript, both print profiles, the Russian page and a large record it generates. It renders public records only.
