@@ -129,9 +129,11 @@ export function decisionRuntime() {
     }
     return null;
   };
-  // Undo of one action: the entries it changed go back to what they were, each only if nothing changed it since, so a
-  // later answer to another item stays. `before` and `after` map keys to entries (undefined for none).
-  const undo = (items, state, before, after) => {
+  // Undo of one action on `key`: the entries it changed go back to what they were, each only if nothing changed it
+  // since, so a later answer to another item stays. `before` and `after` map keys to entries (undefined for none). An
+  // action whose own item has changed since is superseded: the same state comes back.
+  const undo = (items, state, key, before, after) => {
+    if (JSON.stringify(state.answers[key]) !== JSON.stringify(after[key])) return state;
     const answers = { ...state.answers };
     for (const [key, entry] of Object.entries(before)) {
       if (JSON.stringify(answers[key]) !== JSON.stringify(after[key])) continue;

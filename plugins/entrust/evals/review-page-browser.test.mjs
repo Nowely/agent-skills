@@ -196,6 +196,57 @@ test("g then a letter switches tabs, and Shift+K right after Shift+J steps back 
     return a === "1" && b === "2" && c === "1" || `files ${a} → ${b} → ${c}`;
   }));
 
+test("o then Esc changes nothing: no answer is cleared, focus returns to the card or note, and the next j moves on",
+  "o cleared a decided answer, and Esc left focus in the field, so «j j» became the answer",
+  async () => {
+    const results = [];
+    for (const [url, keys, item] of [[THEMED_URL, [], "q3"], [THEMED_URL + "#decisions/q2", [], "q2"], [THEMED_URL + "#decisions/f1", ["f"], "f1"]]) {
+      const o = await open(url), page = o.page;
+      try {
+        if (url === THEMED_URL) { await page.click("#start-btn"); await settle(page); }
+        for (const k of keys) { await page.keyboard.press(k); await settle(page); }
+        const before = await text(page, `#card-${item} [data-answer="${item}"]`);
+        await page.keyboard.press("o"); await settle(page); await page.keyboard.press("Escape"); await settle(page);
+        const focus = await page.evaluate(() => document.activeElement.id);
+        await page.keyboard.press("j"); await page.keyboard.press("j"); await settle(page);
+        const after = await text(page, `#card-${item} [data-answer="${item}"]`), typed = await page.evaluate(() => [...document.querySelectorAll("textarea")].some((t) => /j/.test(t.value)));
+        if (focus !== `card-${item}` || after !== before || typed || o.errors.length) results.push(`${item}: focus ${focus}, «${before}» → «${after}», typed ${typed} ${o.errors.join("; ")}`);
+      } finally { await o.close(); }
+    }
+    // In the code's margin: F1 answered by key, then o and Esc on its note.
+    const o = await open(THEMED_URL + "#code"), page = o.page;
+    try {
+      await page.waitForTimeout(300); await page.keyboard.press("j"); await page.waitForTimeout(400);
+      // the decided block shrinks to one line; open it, then o and Esc on its note
+      await page.keyboard.press("f"); await settle(page); await page.click('#files .done-line[data-b="2"]'); await settle(page);
+      await page.keyboard.press("o"); await settle(page);
+      const field = await page.evaluate(() => document.activeElement.matches("#note-2 textarea"));
+      await page.keyboard.press("Escape"); await settle(page);
+      const answer = await page.evaluate(() => document.querySelector('#note-2 [data-answer="f1"]')?.innerText ?? ""), focus = await page.evaluate(() => document.activeElement.id);
+      if (!field || !/Fix it/.test(answer) || focus !== "note-2") results.push(`margin: field ${field}, «${answer}», focus ${focus}`);
+    } finally { await o.close(); }
+    return !results.length || results.join("; ");
+  });
+
+test("Undo says so when the answer it would take back has changed since, and the answer of the last open card keeps its Undo",
+  "Undo claimed «undone» while it restored nothing, and moving on from the last card replaced the toast that carried Undo",
+  async () => {
+    const o = await open(THEMED_URL + "#decisions/f1"), page = o.page;
+    try {
+      await page.keyboard.press("f"); await settle(page);
+      await page.locator('#card-f1 input[data-opt="leave"]').check(); await settle(page);
+      await page.keyboard.press("u"); await settle(page);
+      const superseded = { toast: await text(page, "#toast"), f1: await text(page, '#card-f1 [data-answer="f1"]') };
+      await page.click('[data-sub="fact"]'); await page.click("#card-q1"); await settle(page);
+      for (let i = 0; i < 3; i++) { await page.keyboard.press("o"); await page.keyboard.type("seen"); await page.keyboard.press("Control+Enter"); await settle(page); }
+      const last = { toast: await text(page, "#toast"), undo: await page.locator('#toast [data-act="undo"]').count() };
+      await page.keyboard.press("u"); await settle(page);
+      const q5 = await statusOf(page, "q5");
+      return /changed since/.test(superseded.toast) && /Leave it/.test(superseded.f1) && /^Q5: /.test(last.toast) && last.undo === 1 && q5 === "Open"
+        || JSON.stringify({ superseded, last, q5 });
+    } finally { await o.close(); }
+  });
+
 // ---- the external review of PR #106: thirteen defects the prototype had, each a case that fails on it
 test("review 1: Undo takes back the one keyed answer, and a later answer to another item stays",
   "Undo restored a snapshot of all answers, so undoing F1 also wiped the later answer to I1",
@@ -230,7 +281,7 @@ test("review 3: «v» marks the file just chosen in the tree, not the file of an
 test("review 4: a variant clicked right after typing an own answer wins, with its radio alone checked",
   "a fast click after typing could be lost, or leave the own answer in effect under a checked variant",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
-    await page.locator('#card-q3 input[data-act="pick"][data-opt=""]').check();
+    await page.locator('#card-q3 input[data-act="pick"][data-opt=""]').click();
     await page.locator('#card-q3 textarea[data-act="text"]').pressSequentially("my own way");
     await page.locator('#card-q3 input[data-opt="status-quo"]').click(); await settle(page);
     const checked = await page.evaluate(() => [...document.querySelectorAll('#card-q3 input[data-act="pick"]')].filter((i) => i.checked).map((i) => i.dataset.opt));

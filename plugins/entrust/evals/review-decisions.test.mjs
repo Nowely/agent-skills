@@ -116,17 +116,17 @@ test("progress counts every applicable item: decided and answered are done, defe
 test("undo takes back one action and what followed from it, and leaves a later answer to another item as it is", () => {
   // The owner keys F1, then answers I1, then undoes F1: I1 stays.
   const before = D.empty(), afterF1 = D.choose(ITEMS, before, "fF1", "fix"), later = D.choose(ITEMS, afterF1, "i1", "take");
-  const undone = D.undo(ITEMS, later, { fF1: before.answers.fF1 }, { fF1: afterF1.answers.fF1 });
+  const undone = D.undo(ITEMS, later, "fF1", { fF1: before.answers.fF1 }, { fF1: afterF1.answers.fF1 });
   assert.deepEqual(undone.answers, { i1: { choice: "take" } });
   // Q1's variant retired Q2's answer into a draft; undoing Q1 puts both back, as they were before the key.
   const q2 = D.choose(ITEMS, D.choose(ITEMS, D.empty(), "q1", "keep"), "q2", "yes"), keys = ["q1", "q2"];
   const retired = D.choose(ITEMS, q2, "q1", "revert"), pick = (s) => Object.fromEntries(keys.map((k) => [k, s.answers[k]]));
   assert.deepEqual(status(retired, "q2"), { state: "not-applicable", draft: { choice: "yes" } });
-  const back = D.undo(ITEMS, retired, pick(q2), pick(retired));
+  const back = D.undo(ITEMS, retired, "q1", pick(q2), pick(retired));
   assert.deepEqual([status(back, "q1").choice, status(back, "q2").choice], ["keep", "yes"]);
-  // An item changed again since the action keeps its newer answer.
+  // An action whose item has changed since is superseded: the same state comes back, and the newer answer stays.
   const changed = D.choose(ITEMS, afterF1, "fF1", "leave");
-  assert.deepEqual(D.undo(ITEMS, changed, { fF1: undefined }, { fF1: afterF1.answers.fF1 }).answers.fF1, { choice: "leave" });
+  assert.equal(D.undo(ITEMS, changed, "fF1", { fF1: undefined }, { fF1: afterF1.answers.fF1 }), changed);
 });
 
 test("an answer under a parent still open says which parent it waits for", () => {

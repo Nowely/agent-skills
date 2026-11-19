@@ -276,7 +276,11 @@ const snapshot = (key) => { const keys = familyOf(itemByKey.get(key)); return { 
 function announce(c, snap) {
   const st = statusOf(c), after = entriesOf(snap.keys);
   const what = st.state === "decided" || st.state === "answered" ? st.answer : st.state === "deferred" ? L("p.toast.deferred", st.answer) : st.state === "open" ? L("p.toast.cleared") : st.label;
-  toast(`${c.label}: ${what}`, () => { setState(DR.undo(ITEMS, state, snap.before, after)); S.field[c.key] = snap.field; afterChange(c.key, { structural: true }); toast(L("p.toast.undone", c.label)); });
+  toast(`${c.label}: ${what}`, () => {
+    const next = DR.undo(ITEMS, state, c.key, snap.before, after);
+    if (next === state) return toast(L("p.toast.superseded", c.label));
+    setState(next); S.field[c.key] = snap.field; afterChange(c.key, { structural: true }); toast(L("p.toast.undone", c.label));
+  });
 }
 function refText(fi, side, num) {
   const rev = side === "-" ? D.passport?.base : D.passport?.head;
@@ -577,7 +581,8 @@ function deferField(c) {
     <div class="field-actions"><button class="btn sm" data-act="defer-save" data-key="${c.key}">${esc(L("p.defer"))}</button><button class="btn sm quiet" data-act="field-close" data-key="${c.key}">${esc(L("p.cancel"))}</button><span>${esc(L("p.defer.keys", MOD))}</span><span class="defer-hint" data-defer-hint="${c.key}"></span></div></div>`;
 }
 // The own-answer field is open while the owner chose «Other», or while an own answer is in effect.
-const otherOpen = (c) => S.field[c.key] === "other" || (optionsOf(c).length && entryOf(c.key).text !== undefined && !entryOf(c.key).deferred);
+const ownInEffect = (c) => Boolean(optionsOf(c).length && entryOf(c.key).text !== undefined && !entryOf(c.key).deferred);
+const otherOpen = (c) => S.field[c.key] === "other" || ownInEffect(c);
 function textField(c) {
   const solo = !optionsOf(c).length, entry = entryOf(c.key);
   const label = L(solo ? (isRequest(c) ? "p.text.request" : "p.text.yours") : "p.text.other");
@@ -594,17 +599,18 @@ function choiceInner(c, where) {
   const deferred = st.state === "deferred" ? `<div class="draft">${esc(L("p.deferred", st.answer))}<button class="btn sm" data-act="undefer" data-key="${c.key}">${esc(L("p.undefer"))}</button></div>` : "";
   const touched = Object.keys(entry).length;
   const actions = `<div class="choice-actions">${st.state === "deferred" ? "" : `<button class="btn sm" data-act="defer" data-key="${c.key}" aria-expanded="${field === "defer"}">${esc(L("p.defer.open"))}<span class="key">d</span></button>`}${touched ? `<button class="btn sm quiet" data-act="clear" data-key="${c.key}">${esc(L("p.clear"))}<span class="key">x</span></button>` : ""}</div>`;
-  const chosen = (o) => st.state === "decided" && entry.choice === o.id;
+  // A checked radio is the answer in effect; the own-answer field may be open while an earlier answer still holds.
+  const chosen = (o) => st.state === "decided" && entry.choice === o.id, own = ownInEffect(c);
   let body = "";
   if (!opts.length) body = textField(c);
   else if (where === "card") {
     const name = `ch-${c.key}-${S.uid}`;
     body = `<div class="opts" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="radio" name="${name}" data-act="pick" data-key="${c.key}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
-      <label class="opt${other ? " on" : ""}"><input type="radio" name="${name}" data-act="pick" data-key="${c.key}" data-opt=""${other ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
+      <label class="opt${own ? " on" : ""}"><input type="radio" name="${name}" data-act="pick" data-key="${c.key}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
   } else {
     const vertical = opts.some((o) => o.label.length > 40) || opts.length > 3;
     body = `<div class="pills${vertical ? " vertical" : ""}" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="radio" aria-checked="${chosen(o)}" data-act="pick" data-key="${c.key}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
-      <button class="pill" role="radio" aria-checked="${Boolean(other)}" data-act="pick" data-key="${c.key}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
+      <button class="pill" role="radio" aria-checked="${own}" data-act="pick" data-key="${c.key}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
   }
   return zones + body + draftHtml(c) + deferred + (field === "defer" ? deferField(c) : "") + actions;
 }
@@ -636,13 +642,13 @@ function cardHtml(c) {
 
 // ---------------------------------------------------------------- changing an answer, and keeping every view in step
 function setState(next) { state = next; indexComments(); save(); }
-// A variant (or «fix it», «take it»…) is the answer; an empty option is «Other», which opens the own-answer field
-// and takes the option back, so one answer stays in effect.
+// A variant (or «fix it», «take it»…) is the answer; an empty option is «Other», which only opens the own-answer
+// field: the answer in effect changes once the owner writes there, and closing the field untouched keeps it.
 function pick(key, opt) {
   const c = itemByKey.get(key);
   if (!applicable(c)) return;
   if (opt) { setState(DR.choose(ITEMS, state, key, opt)); S.field[key] = null; }
-  else { setState(DR.write(ITEMS, state, key, entryOf(key).deferred ? "" : entryOf(key).text ?? "")); S.field[key] = "other"; }
+  else S.field[key] = "other";
   afterChange(key, { structural: true, focusText: !opt });
 }
 function setText(key, value) { setState(DR.write(ITEMS, state, key, value)); afterChange(key, { structural: false }); }
@@ -686,6 +692,12 @@ function syncItem(key, structural) {
   for (const el of $$(`[data-compact-answer="${key}"]`)) el.textContent = compactAnswer(st);
   for (const el of $$(`[data-waiting="${key}"]`)) el.textContent = waitingText(c);
   for (const card of $$(`#card-${key}`)) card.classList.toggle("settled", st.state !== "open");
+  // while the owner types an own answer, the radios already show which answer is in effect
+  const own = ownInEffect(c), entry = entryOf(key);
+  for (const el of $$(`[data-choice="${key}"] [data-act="pick"]`)) {
+    const on = el.dataset.opt ? st.state === "decided" && entry.choice === el.dataset.opt : own;
+    if (el.tagName === "INPUT") el.checked = on; else el.setAttribute("aria-checked", String(on));
+  }
   if (!structural) return;
   const active = document.activeElement;
   for (const box of $$(`[data-choice="${key}"]`)) {
@@ -1240,12 +1252,13 @@ function updatePos() {
   } else text = `${esc(P("p.count.decisions", list.length))} · <b>${esc(P("p.count.open", open))}</b>${open ? ` · ${esc(L("p.pos.press"))} ${kbd("j")}` : ""}`;
   el.innerHTML = `<button class="btn sm icon" data-act="prev" aria-label="${esc(L("p.pos.prev"))}" title="${esc(L("p.pos.prev"))}"${list.length ? "" : " disabled"}>‹</button><span aria-live="polite">${text}</span><button class="btn sm icon" data-act="next" aria-label="${esc(L("p.pos.next"))}" title="${esc(L("p.pos.next"))}"${list.length ? "" : " disabled"}>›</button>`;
 }
-function step(dir, byItem = false) {
-  if (S.tab === "decisions") return stepCards(dir);
+// `quiet`: moving on after an answer says nothing when nothing is left, so the answer's own toast keeps its Undo.
+function step(dir, byItem = false, { quiet = false } = {}) {
+  if (S.tab === "decisions") return stepCards(dir, quiet);
   if (S.tab !== "code") return;
   const list = walk(); if (!list.length) return;
   const open = (x) => isOpen(x.c);
-  if (!list.some(open)) return toast(L("p.pos.all-done"));
+  if (!list.some(open)) return quiet ? undefined : toast(L("p.pos.all-done"));
   let i = S.cur ? list.findIndex((x) => x.c.key === S.cur.key) : -1;
   const j = i >= 0 ? list[i].blocks.indexOf(S.cur.bid) : -1;
   if (!byItem && i >= 0 && open(list[i])) {
@@ -1258,9 +1271,9 @@ function step(dir, byItem = false) {
     if (open(x)) return goBlock(dir > 0 || byItem ? x.blocks[0] : x.blocks[x.blocks.length - 1], { key: x.c.key, focus: true });
   }
 }
-function stepCards(dir) {
+function stepCards(dir, quiet = false) {
   const els = $$("#dec-list .card"), keys = els.map((e) => e.dataset.card).filter((k) => isOpen(itemByKey.get(k)));
-  if (!keys.length) return toast(L("p.cards.none-open"));
+  if (!keys.length) return quiet ? undefined : toast(L("p.cards.none-open"));
   const all = els.map((e) => e.dataset.card), cur = S.sel.decisions?.slice(5), pos = all.indexOf(cur);
   const next = dir > 0 ? keys.find((k) => all.indexOf(k) > pos) ?? keys[0] : [...keys].reverse().find((k) => all.indexOf(k) < pos) ?? keys[keys.length - 1];
   select("decisions", "card:" + next, { collapsePrev: true });
@@ -1879,6 +1892,11 @@ function findStep(dir) {
 }
 // the sticky offsets follow the toolbar's real height (the find bar adds a row)
 function syncTbar() { TB = null; const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--tbar", t.offsetHeight + "px"); }
+// where focus goes back to from a field: the selected note in Code, the item's card in Decisions
+function focusHome(key) {
+  const home = S.tab === "code" ? S.sel.code && $(`#note-${S.sel.code}`) : $(`#card-${key}`);
+  home?.focus({ preventScroll: true });
+}
 // the item the decision keys act on: the focused or selected note's decision in Code, the selected card in Decisions
 function currentItem() {
   if (S.tab === "code" && S.cur && itemByKey.has(S.cur.key)) return itemByKey.get(S.cur.key);
@@ -1893,8 +1911,8 @@ document.addEventListener("keydown", (e) => {
   if (t.id === "find-q" && e.key === "Enter") { e.preventDefault(); return findStep(e.shiftKey ? -1 : 1); }
   if (t.id === "find-q" && e.key === "Escape") { e.preventDefault(); return closeFind(); }
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && typing) {
-    if (t.dataset.act === "text") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : null; const c = itemByKey.get(t.dataset.key); if (commitText(t)) { fieldSnap = null; if (snap) announce(c, snap); step(1); } return; }
-    if (t.dataset.act === "reason") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : snapshot(t.dataset.key); const c = itemByKey.get(t.dataset.key); if (confirmDefer(t.dataset.key)) { fieldSnap = null; announce(c, snap); step(1); } return; }
+    if (t.dataset.act === "text") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : null; const c = itemByKey.get(t.dataset.key); if (commitText(t)) { fieldSnap = null; if (snap) announce(c, snap); step(1, false, { quiet: true }); } return; }
+    if (t.dataset.act === "reason") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : snapshot(t.dataset.key); const c = itemByKey.get(t.dataset.key); if (confirmDefer(t.dataset.key)) { fieldSnap = null; announce(c, snap); step(1, false, { quiet: true }); } return; }
     if (t.id === "lc-input") { e.preventDefault(); return saveLine(S.lcEdit); }
     if (t.id === "pc-input") { e.preventDefault(); return savePc(S.pcEdit); }
   }
@@ -1903,7 +1921,15 @@ document.addEventListener("keydown", (e) => {
     if ($("#copybox")) { $("#copybox").remove(); return; }
     if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) { const an = S.pcEdit; S.pcEdit = null; return refreshPc(an); }
-    if (t.dataset?.key && S.field[t.dataset.key]) { const key = t.dataset.key; S.field[key] = null; afterChange(key, { structural: true }); return S.tab === "code" && S.sel.code ? $(`#note-${S.sel.code}`)?.focus() : null; }
+    // Esc leaves a field: what was written there stays, an untouched field changes nothing, and focus returns to the
+    // note or card, so the next key moves on instead of typing.
+    if (typing && t.dataset?.key) {
+      const key = t.dataset.key;
+      t.blur();
+      if (S.field[key]) { S.field[key] = null; delete S.reasonText[key]; }
+      afterChange(key, { structural: true });
+      return focusHome(key);
+    }
     if (typing) { t.blur(); return S.tab === "code" && S.sel.code ? $(`#note-${S.sel.code}`)?.focus() : null; }
     if (S.tab === "code" && S.code.ctx) { S.code.ctx = false; $("#ctx-code").hidden = true; $("#code-frame").classList.remove("ctx"); syncToolbar(); measureCpl(); return; }
     if (S.sel[S.tab] && S.tab !== "details") { if (S.tab === "code") S.cur = null; return select(S.tab, null); }

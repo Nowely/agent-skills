@@ -324,6 +324,7 @@ export const LABELS = {
   "p.card.leaving": "No longer in this list: it leaves when you move on.", "p.zoom.fit": "Fit",
   "p.zoom.actual": "Actual size", "p.zoom.prev": "Previous picture", "p.zoom.next": "Next picture",
   "p.zoom.of": "{n} of {m}", "p.zoom.open": "Open larger: {n}", "p.zoom.historical": "Historical picture",
+  "p.toast.superseded": "{n} has changed since: nothing was undone.",
 };
 
 export const CATALOGS = { en: LABELS, ru: {
@@ -664,6 +665,7 @@ export const CATALOGS = { en: LABELS, ru: {
   "p.card.leaving": "Больше не в этом списке: карточка уйдёт, когда вы перейдёте дальше.", "p.zoom.fit": "Вписать",
   "p.zoom.actual": "Исходный размер", "p.zoom.prev": "Предыдущий снимок", "p.zoom.next": "Следующий снимок",
   "p.zoom.of": "{n} из {m}", "p.zoom.open": "Открыть крупнее: {n}", "p.zoom.historical": "Исторический снимок",
+  "p.toast.superseded": "{n} с тех пор изменён: ничего не отменено.",
 } };
 
 // Russian for "ru" and "ru-*", English for any other tag; the plural rules follow the same language.
