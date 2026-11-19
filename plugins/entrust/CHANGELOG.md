@@ -5,9 +5,16 @@ forensics remain in the repository references and release notes.
 
 ## 0.44.0 — 2026-11-20
 
-### Adaptive frontend
+### Design to code
 
-- Add the experimental `adaptive-frontend` skill for responsive changes to an existing UI. It distinguishes design fidelity from responsive behavior and calls out blockers to a visual match. The [research record](research/2026-11-20-adaptive-frontend/) includes the full draft history, five studies, their visual and timing reports, and the open v6 evaluation.
+- Add the experimental `design-to-code` skill: UI built from Figma frames to match them at every frame and adapt
+  between them. The design is gathered once into a pack (outline, spec, 2× image, context, Code Connect map,
+  variables, assets); `scripts/design.mjs` measures the page in Chromium and names where an offset begins, so a round
+  of fixing reads a short text report instead of images; a sweep narrows one mounted page through every width; a
+  ledger records deliberate deviations (accepted, or proposed with options) and the design's gaps; each check keeps
+  the page before the work and writes a gallery of design, before and after. It replaces the unreleased
+  `adaptive-frontend` draft, whose record stays in [its research run](research/2026-11-20-adaptive-frontend/); the
+  new skill's reasons and test protocol are in [research/2026-11-20-design-to-code](research/2026-11-20-design-to-code/).
 
 ### Review report
 
