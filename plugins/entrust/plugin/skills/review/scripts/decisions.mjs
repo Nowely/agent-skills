@@ -105,15 +105,18 @@ export function decisionRuntime() {
     if (on) zones[zone] = true; else delete zones[zone];
     return put(items, state, key, { ...entry, zones: Object.keys(zones).length ? zones : undefined });
   };
-  // «Decided N of M»: every applicable item; an answered request counts, and is counted apart as well, since it is
-  // the owner's input, not a verified result; a deferred item does not count.
+  // What counts as done, wherever the page counts or lists done items: a decided item, and an answered request, which
+  // keeps its own state, since it is the owner's input, not a verified result.
+  const DONE = ["decided", "answered"];
+  // «Decided N of M»: every applicable item; an answered request counts, and is counted apart as well; a deferred item
+  // does not count.
   const progress = (items, state) => {
     const byKey = byKeyOf(items), counts = { total: 0, done: 0, answered: 0, open: 0, deferred: 0 };
     for (const i of items) {
       const s = statusIn(i, state, byKey).state;
       if (s === "not-applicable") continue;
       counts.total++;
-      if (s === "decided" || s === "answered") counts.done++; else if (s === "open") counts.open++; else counts.deferred++;
+      if (DONE.includes(s)) counts.done++; else if (s === "open") counts.open++; else counts.deferred++;
       if (s === "answered") counts.answered++;
     }
     return counts;
@@ -176,9 +179,10 @@ export function decisionRuntime() {
   };
   return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
     waitingFor: (items, state, key) => waitingIn(item(items, key), state, byKeyOf(items)),
+    done: (items, state, key) => DONE.includes(statusIn(item(items, key), state, byKeyOf(items)).state),
     status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
     applicable: (items, state, key) => applicableIn(item(items, key), state, byKeyOf(items)) };
 }
 
 export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment,
-  paragraphComment, exportOf, waitingFor, status, applicable } = decisionRuntime();
+  paragraphComment, exportOf, waitingFor, done, status, applicable } = decisionRuntime();

@@ -177,7 +177,6 @@ function waitingText(c) {
   const parent = DR.waitingFor(ITEMS, state, c.key);
   return parent && statusOf(c).state !== "open" ? L("p.waiting", itemByKey.get(parent).label, itemByKey.get(parent).label) : "";
 }
-const settledState = (st) => st.state === "decided" || st.state === "answered";
 const blockOpen = (b) => b.verdict !== "keep" && blockItems(b).some(isOpen);
 const tagHtml = (st) => `<span class="tag ${st.cls}">${esc(st.label)}</span>`;
 const answerHtml = (st) => st.answer ? `<span class="lbl">${esc(st.lbl)}:</span>${esc(st.answer)}` : "";
@@ -820,8 +819,8 @@ const DEC_TABS = [
   ...GROUPS.map((g) => ({ id: g.id, label: g.label, test: g.test })),
   { id: "comments", label: L("p.sub.comments"), test: () => false },
   { id: "deferred", label: L("p.sub.deferred"), test: (c) => statusOf(c).state === "deferred" },
-  // an answered evidence request stays with its request: it is the owner's input, not a verified, finished item
-  { id: "done", label: L("p.sub.done"), test: (c) => settledState(statusOf(c)) && c.kind !== "evidence" },
+  // done as decisions.mjs counts it: an answered request is here too, under its «Answered» tag
+  { id: "done", label: L("p.sub.done"), test: (c) => DR.done(ITEMS, state, c.key) },
 ];
 function subCount(t) {
   if (t.id === "comments") return comments().length;

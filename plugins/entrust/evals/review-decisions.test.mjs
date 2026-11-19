@@ -109,8 +109,9 @@ test("progress counts every applicable item: decided and answered are done, defe
   s = D.write(ITEMS, s, "q4", "yes");
   s = D.defer(ITEMS, D.choose(ITEMS, s, "i1", "take"), "i1", "next quarter");
   s = D.choose(ITEMS, s, "fF1", "leave");
-  // The answered request counts as done, and apart, since it is no verified result.
+  // The answered request counts as done, and apart, since it is no verified result; done is one rule for counting and listing.
   assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, answered: 1, open: 1, deferred: 1 });
+  assert.deepEqual(ITEMS.filter((i) => D.done(ITEMS, s, i.key)).map((i) => i.key), ["q1", "q4", "fF1"]);
 });
 
 test("undo takes back one action and what followed from it, and leaves a later answer to another item as it is", () => {

@@ -247,6 +247,16 @@ test("Undo says so when the answer it would take back has changed since, and the
     } finally { await o.close(); }
   });
 
+test("Done lists what progress counts as done: an answered evidence request is there, tagged «Answered»",
+  "the Done sub-tab left out answered evidence while progress counted it, two rules for one fact",
+  cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
+    await page.keyboard.press("o"); await page.keyboard.type("seen on a phone"); await page.keyboard.press("Control+Enter"); await settle(page);
+    await page.click('[data-sub="done"]'); await settle(page);
+    const cards = await page.locator("#dec-list .card").evaluateAll((els) => els.map((el) => el.dataset.card));
+    const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await text(page, "#progress");
+    return cards.includes("q1") && tag === "Answered" && new RegExp(`Decided ${cards.length} of 8`).test(progress) || JSON.stringify({ cards, tag, progress });
+  }));
+
 // ---- the external review of PR #106: thirteen defects the prototype had, each a case that fails on it
 test("review 1: Undo takes back the one keyed answer, and a later answer to another item stays",
   "Undo restored a snapshot of all answers, so undoing F1 also wiped the later answer to I1",
