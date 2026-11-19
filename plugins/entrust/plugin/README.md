@@ -29,6 +29,7 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 
 | Skill | Started by | What it does |
 | --- | --- | --- |
+| [adaptive-frontend](skills/adaptive-frontend/SKILL.md) | you: `/entrust:adaptive-frontend`, `$entrust:adaptive-frontend`; or an agent making a responsive change | delivers a user journey through the existing public UI and checks layout, interactions and consumer behavior through a resize; experimental |
 | [orchestrate](skills/orchestrate/SKILL.md) | you: `/entrust:orchestrate`, `$entrust:orchestrate` | plans, delegates, verifies and synthesises |
 | [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | starts full Claude Code execution after confirmation; the host relays messages and replies, with tool activity in the existing journal |
 | [review](skills/review/SKILL.md) | you: `/entrust:review`, `$entrust:review` | proposes a plan for approval before reviewing behavior, necessity, design and tests, with evidence, questions and the smallest clean solution; one reviewer by default, or on request a coordinator that uses fresh-context helpers per direction and keeps the one map and report. A complete review has a structured report with a connected code map and mechanism costs; incomplete coverage is partial. On request, a complete review can have an interactive HTML view where you mark what to apply |

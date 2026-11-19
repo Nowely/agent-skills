@@ -5,6 +5,10 @@ forensics remain in the repository references and release notes.
 
 ## 0.44.0 — 2026-11-20
 
+### Adaptive frontend
+
+- Add the experimental `adaptive-frontend` skill for responsive changes to an existing UI. The [research record](research/2026-11-20-adaptive-frontend/) includes the full draft history, five studies and the open v6 evaluation.
+
 ### Review report
 
 - Esc closes the purpose menu in Code as a click outside it does, and sets its button's `aria-expanded` back to
