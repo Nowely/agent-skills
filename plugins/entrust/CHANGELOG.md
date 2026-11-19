@@ -7,6 +7,7 @@ forensics remain in the repository references and release notes.
 
 ### Review report
 
+- Full `entrust:review` records now support a staged comparison of source contracts, peer implementations and test claims. Single and multi reviews preserve the draft, check the reasons for dismissing differences, and reconcile the reader's evidence with the final report.
 - **Breaking:** custom-language catalogs no longer need `tree.files`, which the page stopped reading; `check`
   refuses a catalog that still carries it as an unknown label. `report-data.md` now states the current catalog
   rule alone: built-in `en` and `ru` cover every control, another language translates the catalog

@@ -24,6 +24,7 @@ Identify the diff (base and head, or uncommitted work), the task, the project in
 - **Where:** in this session (default), or in a subagent while this session conducts, which keeps the analysis out of the working session.
 - **Checking agents:** an independent target, a critic and a verifier (default), or none. The plan says in a clause what each does: the target sketches the solution from the task and the base code without seeing the change, the critic challenges the draft, the verifier checks its facts.
 - **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page; its checking agents get the draft response, and its challenges go in the response. The plan offers the short review only for a small change.
+- **Full record:** name one comparison reader, or use staged self-review when no additional agent is approved.
 - **Agents:** each agent the choices above start, with its exact model and the session that starts it, and scouts up to a stated number. By default the independent target and the critic run on the reviewer's model, the verifier and scouts on a lighter one. On four real changes of 307 to 1,085 lines, a review with them took 610k to 1M tokens and 8 to 31 minutes, about 70% of the tokens theirs and the reconciling they cause. Every agent gets the plan's scope; where it allows tests, one scout runs them once at the start for all.
 - **Scope and limits:** what will be read; the tests, application or screenshots run, named by command or suite, or the bound of the choice; any outside provider that receives the code; `<out>`, the folder where the record, the page and the agents' files go; what is known to be out of reach.
 
@@ -69,6 +70,8 @@ Finish every direction, even after a serious finding; collect candidates now and
 
 **Tests.** For each requirement and risky branch, name the test that catches a plausible regression, or the regression that escapes and the smallest test that would catch it, at a level the project uses. Check that tests detect wrong behavior rather than repeat the implementation, and that a reused utility's actual semantics fit this task.
 
+Collect comparable sources: promises and consumers, paths for the same case, and assertions that distinguish outcomes. Include removed paths and unchanged consumers.
+
 <a id="refuting-a-candidate"></a>
 
 ## Refute, then challenge
@@ -77,20 +80,22 @@ Reopen the code and seek a reason each candidate is wrong: an upstream guarantee
 
 - **Behavioral defect:** a reachable entry, its path and the wrong observable result. A conceivable input nothing supplies is a question.
 - **Unnecessary mechanism:** what makes it unnecessary, and the required behavior the whole removal preserves, over time too. Without the key contract it stays a question.
-- **Design finding:** the concrete burden, its evidence and why the proposal improves it, shown by a change grounded in the task walked through both arrangements. It must stand with every behavior finding fixed in place. Label it `judgment`; a shape preference is an idea.
-- **Test gap:** the meaningful regression the current tests miss.
+- **Design finding:** cite the concrete burden and show how the smallest fix removes it. For a structural proposal, walk a change grounded in the task through both arrangements. A finding must stand with every behavior finding fixed in place. Label it `judgment`. A shape preference is an idea.
+- **Tests:** for a misleading name, compare what the name promises with what the test exercises and asserts. For a gap, show the meaningful regression the current tests miss.
 
-Scrutinise the fixes the same way, and after a large removal reassess what remains. Reconcile into one target and trace every requirement and rule through it. A confirmed problem is a finding, an open premise a question, an improvement the change does not need an idea, and an owner-accepted omission a tradeoff with its source and consequence; a proposal to drop a binding requirement stays a question until its owner accepts it. Mark pre-existing problems apart unless the change worsens or relies on them; an old implementation the new requirement depends on and that does not meet it is in scope.
+Scrutinise the fixes the same way, and after a large removal reassess what remains. Reconcile into one target and trace every requirement and rule through it. A confirmed problem is a finding. Keep it at its actual impact, with minor findings that do not affect the verdict marked non-blocking. A missing fact, evidence or choice becomes an owner question when it could change a conclusion or next action. An improvement the change does not need is an idea. An owner-accepted omission is a tradeoff with its source and consequence. A proposal to drop a binding requirement stays a question until its owner accepts it. Mark pre-existing problems apart unless the change worsens or relies on them; an old implementation the new requirement depends on and that does not meet it is in scope.
 
-If the plan includes checking agents, save the draft record, run `check` until it passes, and print it with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
+**Full draft.** Save, check and freeze one [comparison inventory](references/report-data.md#comparison-pass). Give the same reader the full draft and three successive briefs: [structure](references/comparison-structure.md), [paths](references/comparison-paths.md), then [decisions](references/comparison-decisions.md). Deliver each after the previous return is saved. Verify and reconcile the results into the record before challenge.
+
+If the plan includes checking agents, print the reconciled draft with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
 
 A challenge is a point that could change a requirement, a verdict, a finding or its rank, or a question. A point two agents raise is one challenge; a citation the verifier corrects is fixed in place. Record no agreement; a point its own agent argued against is an agreement.
 
 - **Accept** a point that holds, and name what it changed. One that adds, promotes or drops a finding, or changes the verdict, is accepted only after you have read the place it rests on and it shows what the point says.
 - **Reject** a point only on a place in the code or the task's sources that refutes it: name the place, quote what it says and why that contradicts the point.
-- **Send to the owner** every other point: one you would reject on judgment alone, one whose place you could not read, or one whose source has no such place.
+- **Send to the owner** a challenge whose outcome requires a fact, evidence or decision from the owner. Name what would settle it and what depends on it.
 
-Then reconcile again.
+When reconciling rewritten or merged points, ask “Could the author follow this recommendation exactly and still leave the original discrepancy in place?” If so, restore the missing action or choice.
 
 ## Record and respond
 

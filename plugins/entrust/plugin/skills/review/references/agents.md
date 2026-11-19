@@ -17,6 +17,8 @@ returns, asking the conductor for the critic and verifier; it receives their ret
 then if it had not. A fresh reviewer could continue from what it saved. It returns the response and the record's
 path; questions for the user go back through the conductor.
 
+For a full draft, the conductor runs the approved comparison reader before the critic and verifier. Freeze one draft, its inventory and the sources it names. Give that reader the three briefs from the main skill in order, one turn per stage. Return its saved findings and decisions to the original reviewer for reconciliation. In multi, send the merged draft once. Preserve the direction helpers' reports so an existing finding keeps its origin.
+
 ## Independent target
 
 The owner's task and discussion, the project instructions and the repository at the base, not the change. The author's

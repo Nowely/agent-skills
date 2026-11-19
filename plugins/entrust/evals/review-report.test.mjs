@@ -6,6 +6,7 @@
 // references/report-data.md or to the report's shape in SKILL.md.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
@@ -77,6 +78,80 @@ test("lines prints every changed line under its file, with the address a block n
     const archive = stdout.split("test/archive.test.js")[0];
     return status === 0 && archive.startsWith("src/invoices/archive.js\n") && ["+2", "-3", "+4"].every((a) => archive.includes(`\n  ${a} `))
       && stdout.includes("\n  +8 ") || `unexpected listing:\n${stdout}`;
+  });
+
+test("a frozen comparison can be traced to the final report or to an explicit limit",
+  "a clean render must not silently drop an issued comparison or accept a link that names no author-facing item",
+  () => {
+    fs.writeFileSync(data, JSON.stringify(REVIEW));
+    const emitted = report("comparisons", data);
+    if (emitted.status !== 0) return emitted.stderr;
+    const inventory = JSON.parse(emitted.stdout);
+    if (inventory.diffSha256 !== REVIEW.diff.sha256 || !inventory.comparisons.length ||
+        !inventory.comparisons.some(c => c.left.side === "base" && c.right.side === "head" && c.left.value !== c.right.value))
+      return "patch replacements or their revision sides were lost";
+    const name = "comparisons.json";
+    fs.writeFileSync(path.join(run, name), emitted.stdout);
+    const pass = { inventory: name, sha256: createHash("sha256").update(emitted.stdout).digest("hex"),
+      decisions: inventory.comparisons.map((row, i) => i === 0 ? { key: row.key, ref: "/findings/0" }
+        : { key: row.key, unchecked: "No runtime contract was available." }) };
+    const valid = render(r => { r.comparisonReview = pass; });
+    if (valid.status !== 0) return valid.stderr;
+    for (const [alter, fault] of [
+      [p => p.decisions.pop(), "missing decision"],
+      [p => p.decisions.push(p.decisions[0]), "duplicate comparison decision"],
+      [p => { p.decisions[0].ref = "/findings/99999"; }, "does not resolve"],
+      [p => { p.decisions[0].settled = "also closed"; }, "choose one"],
+      [p => { p.sha256 = "stale"; }, "inventory digest"],
+    ]) {
+      const result = render(r => { r.comparisonReview = structuredClone(pass); alter(r.comparisonReview); });
+      if (result.status === 0 || !result.stderr.includes(fault)) return "failed to detect " + fault;
+    }
+    return true;
+  });
+
+test("comparison witnesses preserve source values, or record why a parser could not supply them",
+  "a plausible but false agreement can hide a change when a snapshot is stale or a string literal is normalized",
+  () => {
+    const fixture = fs.mkdtempSync(path.join(run, "pairs-"));
+    const base = path.join(fixture, "base"), head = path.join(fixture, "head");
+    fs.mkdirSync(base); fs.mkdirSync(head);
+    const inputs = [
+      ["message.ts", ["export const names = [{id: 'a', label: getLabel()}, {id: 'b', label: getLabel()}];"],
+        ["export const names = [{id: 'a', label: 'A  B'}, {id: 'b', label: getLabel()}];"]],
+      ["box.scss", [".box { color: red; }", ".outer { padding: 0; }"],
+        [".box { color: red; }", ".outer { padding: 0; }", ".box { margin: 0; }"]],
+    ];
+    let diff = "";
+    for (const [file, a, b] of inputs) {
+      fs.writeFileSync(path.join(base, file), a.join("\n") + "\n");
+      fs.writeFileSync(path.join(head, file), b.join("\n") + "\n");
+      diff += ["diff --git a/" + file + " b/" + file, "--- a/" + file, "+++ b/" + file,
+        "@@ -1," + a.length + " +1," + b.length + " @@", ...a.map(l => "-" + l), ...b.map(l => "+" + l)].join("\n") + "\n";
+    }
+    const record = path.join(fixture, "review.json");
+    fs.writeFileSync(path.join(fixture, "input.diff"), diff);
+    fs.writeFileSync(record, JSON.stringify({diff: {file: "input.diff", sha256: createHash("sha256").update(diff).digest("hex")}}));
+    const build = () => report("comparisons", record, base, head);
+    const first = build();
+    if (first.status !== 0 || build().stdout !== first.stdout) return "source inventory not reproducible: " + first.stderr;
+    const {comparisons: pairs, limits} = JSON.parse(first.stdout);
+    const resolver = createRequire(path.join(repo, "package.json"));
+    const installed = name => { try { resolver.resolve(name); return true; } catch { return false; } };
+    if (installed("typescript")) {
+      const item = pairs.find(p => p.contrast?.fieldForms?.label);
+      if (!item || item.contrast.fieldForms.label.base !== "CallExpression" || item.contrast.fieldForms.label.head !== "StringLiteral" ||
+          !item.right.value.includes("'A  B'") || item.left.side !== "base") return "source change lost its provenance or literal whitespace";
+      fs.writeFileSync(path.join(head, "message.ts"), "export const unrelated = 1;\n");
+      const stale = JSON.parse(build().stdout);
+      if (!stale.limits.some(l => l.file === "message.ts" && l.reason.includes("differs from the saved patch")) ||
+          stale.comparisons.some(p => p.file === "message.ts" && p.contrast)) return "stale snapshot presented as structural evidence";
+    } else if (!limits.some(l => l.file === "message.ts" && l.reason.includes("parser unavailable"))) return "missing parser was unreported";
+    if (installed("postcss-scss")) {
+      const css = pairs.find(p => p.file === "box.scss" && p.contrast);
+      if (!css || css.left.line !== 1 || css.right.line !== 3 || css.contrast.interveningSiblings.join() !== ".outer:2") return "cascade context missing";
+    } else if (!limits.some(l => l.file === "box.scss" && l.reason.includes("parser unavailable"))) return "missing style parser was unreported";
+    return true;
   });
 
 test("a complete review becomes one page that loads nothing from elsewhere and treats every text as text",
