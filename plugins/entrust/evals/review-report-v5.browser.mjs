@@ -25,6 +25,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CATALOGS } from "../plugin/skills/review/scripts/labels.mjs";
 import { prepare } from "./review/prepare.mjs";
 import { reportFixtures, enrich65507, hostileFixture, shikiFixture, HOSTILE_PATH, HOSTILE_URL } from "./review/report-fixtures.mjs";
 import { page } from "../plugin/skills/review/scripts/page.mjs";
@@ -236,7 +237,7 @@ console.error("[run] themed v5 section");
     draft: !document.querySelector("#q3 [data-qdraft]").hidden, hint: !document.querySelector("#q3 .requires-content").hidden,
     settled: document.querySelector('[data-unit="q3"]').dataset.settled || null }));
   check("themed: a reasonless deferral keeps a draft, unchecks the radio, asks for a reason, stays in place",
-    deferred.chip === "deferred" && !deferred.radio && deferred.draft && deferred.hint && deferred.settled === null, deferred);
+    deferred.chip === CATALOGS.en["decision.deferred"] && !deferred.radio && deferred.draft && deferred.hint && deferred.settled === null, deferred);
   await p.evaluate(() => { document.querySelector("#q3 .card-comment").open = true; });
   await p.fill("#qnote-q3", "Not now.");
   await p.waitForTimeout(200);
@@ -874,7 +875,7 @@ if (big) {
     }));
     decisions.q1deferredState = (await ls()).questions?.["1"];
     check("65507: a reasoned deferral keeps the draft, unchecks the radio, settles as a deferred row",
-      !decisions.q1deferred.radioChecked && decisions.q1deferred.chip === "отложено" && decisions.q1deferred.draftVisible
+      !decisions.q1deferred.radioChecked && decisions.q1deferred.chip === CATALOGS.ru["decision.deferred"] && decisions.q1deferred.draftVisible
       && decisions.q1deferred.settled === "deferred" && decisions.q1deferred.backHome === "group-settled"
       && decisions.q1deferredState.choice === "deferred" && decisions.q1deferredState.variant === "keep-mockup", decisions.q1deferred);
     await p.check('#q1 input[value="keep-mockup"]'); await p.waitForTimeout(150);
@@ -913,7 +914,7 @@ if (big) {
     }));
     check("65507: Q2 base retires Q9-Q11 with the draft kept; the whole unit settles", decisions.q2base.naCards.join() === "q10,q11,q9"
       && decisions.q2base.q9disabled && !decisions.q2base.q9radioChecked && decisions.q2base.q9gateMentionsDraft
-      && decisions.q2base.q9status === "неприменимо" && decisions.q2base.q2settled === "done", decisions.q2base);
+      && decisions.q2base.q9status === CATALOGS.ru["decision.not-applicable"] && decisions.q2base.q2settled === "done", decisions.q2base);
     await ev(() => { document.getElementById("group-settled").open = true; document.querySelector('#group-settled [data-unit="q2"]').closest("details").open = true; });
     await p.check('#q2 input[value="keep"]'); await p.waitForTimeout(200);
     decisions.q2keepAgain = await ev(() => ({
@@ -1683,6 +1684,8 @@ if (big) {
       await p.click(`#q${q} [data-defer]`); await p.waitForTimeout(150);
     }
     const previewFull = { perTab: {} };
+    // A deferred row reads «Q2 · Отложено»; a saved variant would add the draft suffix after it.
+    const deferredWord = CATALOGS.ru["decision.deferred"], draftWord = CATALOGS.ru["decision.draft-suffix"].split(" ")[0];
     for (const id of initial.tabs) {
       await tab(p, id);
       await p.click("#export-open"); await p.waitForTimeout(200);
@@ -1694,8 +1697,8 @@ if (big) {
       const gotos = cap.sections.flatMap(s => s.rows.map(r => r.goto)).filter(Boolean);
       const checks = {
         f1Skip: prevText.includes("F1 · Не исправлять"), i2Skip: prevText.includes("I2 · Не брать"),
-        q2DeferredNoVariant: prevText.includes("Q2 · отложено") && !prevText.includes("Q2 · отложено · черновик"),
-        q6DeferredNoVariant: prevText.includes("Q6 · отложено") && !prevText.includes("Q6 · отложено · черновик"),
+        q2DeferredNoVariant: prevText.includes(`Q2 · ${deferredWord}`) && !prevText.includes(`Q2 · ${deferredWord} · ${draftWord}`),
+        q6DeferredNoVariant: prevText.includes(`Q6 · ${deferredWord}`) && !prevText.includes(`Q6 · ${deferredWord} · ${draftWord}`),
         gotoAll: ["#f1", "#i2", "#q2", "#q6"].every(h => gotos.includes(h))
       };
       previewFull.perTab[id] = { parity, checks };
@@ -1705,7 +1708,7 @@ if (big) {
     await p.click("#export-open"); await p.waitForTimeout(200);
     await p.click('#export-preview a[href="#q6"]'); await p.waitForTimeout(600);
     const previewGoto = await ev(() => ({ dialogOpen: document.getElementById("export-dialog").open, tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, q6Visible: document.getElementById("q6").offsetParent !== null, chip: document.querySelector("#q6 [data-qstatus]").textContent }));
-    check("65507: «Перейти» to a variant-less deferred Q lands on its card", !previewGoto.dialogOpen && previewGoto.q6Visible && previewGoto.chip === "отложено", previewGoto);
+    check("65507: «Перейти» to a variant-less deferred Q lands on its card", !previewGoto.dialogOpen && previewGoto.q6Visible && previewGoto.chip === CATALOGS.ru["decision.deferred"], previewGoto);
     results.previewFull = previewFull;
     // Focus: keyboard selection lands on the settled summary (not BODY); reset returns focus into the card; touch the same.
     await p.evaluate(() => localStorage.clear()); await reloadClean(p); await tab(p, "decisions");

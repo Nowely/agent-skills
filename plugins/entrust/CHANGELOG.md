@@ -17,7 +17,7 @@ forensics remain in the repository references and release notes.
   rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
 - One vocabulary in English and Russian. Blocks are the unit on the page: the cards, the Code tab, the file cards,
   the filter chip, the evidence banner and the block popover count and name blocks, and the fragment stays only in
-  the audit definition under «Blocks: N». The decisions note names the finding buttons «Fix» / «Do not fix».
+  the audit note under «Blocks: N». The decisions note names the finding buttons «Fix» / «Do not fix».
   Statuses and counters say open, deferred or not applicable («Open findings: N»), and only a wait for a parent
   says waiting; a deferred decision's settled row shows its own status alone. Controls and the status words the page
   writes start with a capital letter. Counts read «Label: N» wherever «N nouns» was wrong for one in English or
@@ -30,6 +30,17 @@ forensics remain in the repository references and release notes.
   printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
   «фрагмент», which is the code's word.
 - The model's `counters.evidenceBlocks`, which only tests read, is gone.
+- The evidence banner reads «Blocks linked to evidence request: N» («Блоки, связанные с запросом доказательств: N»):
+  it is static HTML, so it names the blocks' link to the request and no longer calls the request open after the
+  owner has entered an answer or the request has become not applicable.
+- The audit note under «Blocks: N» gives «fragment» one meaning: the block is the reviewer's self-contained unit,
+  each nonblank changed line in exactly one block, and a block interrupted by another block's lines or by unchanged
+  code the diff leaves out is drawn in several fragments linked by a «continued» line. It used to call the fragment
+  the reviewer's unit of work.
+- Test cases the usual runs skip expect the vocabulary change's words, read from the catalogs: the report suite's
+  no-JavaScript counter («Открыто основных решений и замечаний: N») and the browser acceptance's status chips and
+  deferred export rows («Deferred», «Отложено», «Неприменимо») still expected the old ones (E143 of the
+  comparison-pass change).
 
 ## 0.42.0 — 2026-11-18
 

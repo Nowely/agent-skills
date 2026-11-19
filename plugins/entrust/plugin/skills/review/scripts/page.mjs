@@ -1993,7 +1993,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
       ${banners}
       <noscript><p class="sub">${esc(t("nojs.map"))}</p></noscript>
       <div id="map" class="map" data-show="attention" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
-        <details class="count-note"><summary>${esc(t("blocks"))}: ${model.blocks.length}</summary><p class="sub">${esc(t("map.audit-note"))} ${esc(t("fragments"))}: ${totalParts}. ${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
+        <details class="count-note"><summary>${esc(t("blocks"))}: ${model.blocks.length}</summary><p class="sub">${esc(t("map.audit-note"))} ${esc(t("fragments"))}: ${totalParts}. ${esc(t("block.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
         ${mapHtml}
       </div>
     </div>

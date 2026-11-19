@@ -1306,8 +1306,8 @@ test("the v4 words are localized",
 const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
 
-test("one vocabulary in English and Russian: blocks are the unit, controls and tags start with a capital, statuses say open, counts read «Label: N», and amber marks only a needed change",
-  "a card counting fragments counts a unit the owner never decides on, a lower-case control reads as prose, a status worded as waiting, remaining or unanswered names a state the page does not have, «1 blocks» is wrong, and an amber line reads as a change to make",
+test("one vocabulary in English and Russian: blocks are the unit, controls and tags start with a capital, statuses say open, the evidence banner names no status, counts read «Label: N», and amber marks only a needed change",
+  "a card counting fragments counts a unit the owner never decides on, a lower-case control reads as prose, a status worded as waiting, remaining or unanswered names a state the page does not have, the static banner cannot follow an answer, «1 blocks» is wrong, and an amber line reads as a change to make",
   () => {
     // A question-linked block that resumes after another block: one block in two fragments, so a fragment count differs.
     const record = structuredClone(THEMED);
@@ -1342,6 +1342,11 @@ test("one vocabulary in English and Russian: blocks are the unit, controls and t
       if (!fileCards.length || fileCards.some((count) => !new RegExp(` · ${words.blocks}: \\d+$`).test(count))) return `${language}: a file card does not read «${words.blocks}: N»: ${fileCards}`;
       const banners = [...markup.matchAll(/<div class="evidence-banner[^"]*"><p>([^<]*) — /g)].map((m) => m[1]);
       if (!banners.length || banners.some((text) => !/: \d+$/.test(text))) return `${language}: the evidence banner does not read «Label: N»: ${banners}`;
+      // The banner is static HTML: it names the blocks' link to the request, never a status the request leaves once answered.
+      const statusStems = [labels.status.open, labels.status.decided, labels.status.draft, labels.accepted, labels.deferred, labels.notApplicable, ...Object.values(labels.answerStatus)]
+        .flatMap((text) => text.toLowerCase().match(/\p{L}{4,}/gu) ?? []).map((word) => word.slice(0, 5));
+      const asserted = banners.find((text) => statusStems.some((stem) => text.toLowerCase().includes(stem)));
+      if (asserted) return `${language}: the evidence banner asserts a status it cannot keep: ${asserted}`;
       if (!new RegExp(`^[^\\n:]+: ${record.blocks.length},`, "m").test(result.stdout)) return `${language}: the printout's map does not read «Label: N»`;
       // Controls start with a capital letter, in the markup and in the words the runtime writes into buttons, chips and headings.
       for (const [, tag, inner] of markup.matchAll(/<(button|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
@@ -1910,7 +1915,8 @@ test("the no-JS counter is the static Q+F with an honest title, and the v5 contr
     if (report("render", copy).status !== 0) return "render failed";
     const page = fs.readFileSync(path.join(dir, "review.html"), "utf8");
     const badge = page.match(/<span class="tab-count" id="count-decisions"[^>]*>[^<]*<\/span>/)?.[0] ?? "";
-    if (!badge.includes("Осталось основных решений и замечаний: 11")) return `the static counter is not 11: ${badge}`;
+    const remaining = labelsOf(review)("tab.remaining", 11);
+    if (!badge.includes(remaining)) return `the static counter is not «${remaining}»: ${badge}`;
     if (!/статический/i.test(badge) || !/без JavaScript/i.test(badge) || !/сохранённые ответы не учитываются/i.test(badge)) return `the counter's title is not honest: ${badge}`;
     if (!/data-choice-filter="all"[^>]*aria-pressed="true"[^>]*disabled/.test(page)) return "the All control is not disabled";
     for (const part of ['id="export-open" class="act" disabled', 'data-answer="q4"'])
