@@ -166,6 +166,21 @@ test("without JavaScript the page is the whole report: the summary, every decisi
 // verdict line and its file's frame shared out — came to 118 bytes on the mixed diff below and 117 on the 274-block
 // record's real one (7,213 rows, a 2.9 MB page) when this guard was set; 130 is what a second copy of a row's code or
 // a heavier row crosses.
+// The document only words what the model found; a renderer that derives a state or a count itself drifts from the
+// page and the printout. The themed record's requirements take all four states, and a unit gets blocks to keep and to fix.
+test("without JavaScript each requirement's state and each unit's lines by verdict are the model's, in words", () => {
+  const record = structuredClone(THEMED);
+  record.blocks[1].unit = "readArchive";
+  const { html, model } = draw(record, diffText), words = CATALOGS.en;
+  const part = (id) => html.match(new RegExp(`<noscript id="${id}">([\\s\\S]*?)</noscript>`))?.[1] ?? "";
+  assert.deepEqual(model.requirements.map((r) => r.state).sort(), ["fail", "met", "permission", "unchecked"]);
+  const states = [...part("static-report").matchAll(/<tr><td>R(\d+)<\/td>[\s\S]*?<span class="sstate">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(states, model.requirements.map((r) => [String(r.id), words[`p.req.${r.state}`]]));
+  const lines = [...part("static-details").matchAll(/<td><code>([^<]*)<\/code><\/td>[\s\S]*?<td class="sshares">([^<]*)<\/td>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(lines, model.units.map((u) => [u.name, Object.entries(u.lines).filter(([, n]) => n).map(([v, n]) => `${words[`verdict.${v}`].toLowerCase()} ${n}`).join(", ")]));
+  assert.ok(lines.some(([, shares]) => shares.includes(", ")), "no unit has lines under two verdicts");
+});
+
 test("the page carries its runtime, its styles, its catalog and each row's code once, on the themed record and on a mixed diff", () => {
   const codeOf = (html) => [...html.matchAll(/<noscript id="code-\d+">[\s\S]*?<\/noscript>/g)].map((m) => m[0]);
   const once = (html, text, what) => assert.equal(html.split(text).length, 2, `${what} is in the page other than once`);

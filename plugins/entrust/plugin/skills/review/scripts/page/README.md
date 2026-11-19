@@ -30,7 +30,10 @@ drives it in Chromium, locally only.
   provenance, coverage — with the check's warnings about kept blocks that serve no requirement or only assumed
   ones — and the report's details, with the two print profiles.
 - **Answering.** By click or key, in Decisions or in the code's margin, one answer per item as the data contract's
-  decision cards say; a key answers only the item in view, and Undo takes its answer back. The answers, comments,
+  decision cards say; a key answers only the item in view, and Undo takes its answer back. «Decided N of M» counts
+  every applicable item: an item its parent makes not applicable leaves M, a decided item and an answered request
+  count in N, the answered ones also apart («N of them answered, not verified»), and a deferred item is not decided;
+  `decisions.mjs` owns that count and what the Done sub-tab lists. The answers, comments,
   «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; the page says when the browser
   keeps nothing for it, cannot read what it kept, or refuses a save.
 - **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
