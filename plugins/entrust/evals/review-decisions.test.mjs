@@ -1,6 +1,7 @@
 // The owner's answers as plugins/entrust/plugin/skills/review/scripts/decisions.mjs keeps them: one answer per item,
 // a deferral only with a reason, conditional questions retired and restored by their parent's answer, progress over
-// every item, and comments on lines and paragraphs. Run it after an edit to decisions.mjs.
+// every item, comments on lines and paragraphs, and the schema-6 export of them all. Run it after an edit to
+// decisions.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decisionRuntime } from "../plugin/skills/review/scripts/decisions.mjs";
@@ -122,4 +123,40 @@ test("one comment per line or paragraph: new text replaces it in place, empty te
   assert.deepEqual(D.normalize({ answers: { q1: { choice: "keep" } }, lines: [{ path: "a", side: "left", line: 1, text: "x" }, { path: "a", side: "head", line: 2, text: "ok" }],
     paragraphs: [{ item: "q1", text: "no field" }] }), { answers: { q1: { choice: "keep" } }, lines: [{ path: "a", side: "head", line: 2, text: "ok" }], paragraphs: [] });
   for (const raw of [null, "x", [], 5]) assert.deepEqual(D.normalize(raw), D.empty());
+});
+
+test("the export is schema 6 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
+  const items = D.itemsOf({ questions: [
+    { id: 1, kind: "decision", variants: [{ id: "keep", text: "Keep it" }, { id: "revert", text: "Revert it" }] },
+    { id: 2, kind: "decision", variants: [{ id: "yes", text: "Yes" }, { id: "no", text: "No" }], parent: { question: 1, variants: ["keep"] } },
+    { id: 3, kind: "evidence" }], findings: [{ id: 1 }], ideas: [{}] });
+  let s = D.choose(items, D.empty(), "q2", "yes");
+  s = D.markZone(items, D.write(items, s, "q3", "seen on a phone"), "q3", "1", true);
+  s = D.defer(items, D.choose(items, s, "f1", "fix"), "f1", "after the release");
+  s = D.write(items, s, "i1", "only if cheap");
+  s = D.lineComment(s, { path: "a.js", side: "base", line: 7 }, "why remove this?");
+  s = D.paragraphComment(s, { item: "q1", field: "context.0" }, "is this still true?");
+  const meta = { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "k1", title: "A review", range: "HEAD~1..HEAD" };
+  const out = D.exportOf(items, s, meta);
+  assert.deepEqual({ ...out, items: undefined, lineComments: undefined, paragraphComments: undefined },
+    { schema_version: 6, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
+      progress: { total: 5, done: 3, open: 1, deferred: 1 }, items: undefined, lineComments: undefined, paragraphComments: undefined });
+  assert.deepEqual(out.items, [
+    { item: "q1", kind: "decision", status: "open" },
+    // Q2's answer is in effect while its parent is open, and it says so: the parent can still retire it.
+    { item: "q2", kind: "decision", status: "decided", variant: { id: "yes", text: "Yes" }, waiting_for_parent: "q1" },
+    { item: "q3", kind: "evidence", status: "answered", text: "seen on a phone", zones: [1] },
+    { item: "f1", kind: "finding", status: "deferred", reason: "after the release", draft: { option: "fix" } },
+    { item: "i1", kind: "idea", status: "decided", text: "only if cheap" }]);
+  assert.deepEqual(out.lineComments, [{ path: "a.js", side: "base", line: 7, text: "why remove this?" }]);
+  assert.deepEqual(out.paragraphComments, [{ item: "q1", field: "context.0", text: "is this still true?" }]);
+  // A retired child travels as not applicable with its answer as a draft, and no longer waits for anything.
+  const retired = D.exportOf(items, D.choose(items, s, "q1", "revert"), meta).items[1];
+  assert.deepEqual(retired, { item: "q2", kind: "decision", status: "not-applicable", draft: { variant: { id: "yes", text: "Yes" } } });
+  assert.doesNotMatch(JSON.stringify(out), /verified|accepted/);
+});
+
+test("the page keeps answers under a key that names the export format and the record", () => {
+  assert.equal(D.schema, 6);
+  assert.equal(D.storageKey("0123456789"), "review-report:6:0123456789");
 });

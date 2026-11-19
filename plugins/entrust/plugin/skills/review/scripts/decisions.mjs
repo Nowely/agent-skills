@@ -9,6 +9,9 @@
 // a conditional question its parent retires, and neither answer returns silently. An answer to a fact or evidence
 // request is the owner's input, never a verified result.
 export function decisionRuntime() {
+  // The export format's number; the page's storage key carries it too, so a new format never reads older answers.
+  const schema = 6;
+  const storageKey = (key) => `review-report:${schema}:${key}`;
   // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
   // report (an item or part of it, and a field). A comment never answers anything.
   const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
@@ -18,6 +21,7 @@ export function decisionRuntime() {
   // id, ideas by their place in the list. A question names its parent's key and the variants it applies under.
   const itemsOf = ({ questions = [], findings = [], ideas = [] }) => [
     ...questions.map((q) => ({ key: `q${q.id}`, kind: q.kind, options: q.kind === "decision" ? (q.variants ?? []).map((v) => v.id) : [],
+      variants: Object.fromEntries((q.variants ?? []).map((v) => [v.id, v.text])),
       parent: q.parent ? { key: `q${q.parent.question}`, variants: q.parent.variants } : null })),
     ...findings.map((f) => ({ key: `f${f.id}`, kind: "finding", options: OPTIONS.finding, parent: null })),
     ...ideas.map((_, index) => ({ key: `i${index + 1}`, kind: "idea", options: OPTIONS.idea, parent: null })),
@@ -124,10 +128,39 @@ export function decisionRuntime() {
     ({ ...state, lines: comment(state.lines, { path, side, line }, text, (c, a) => c.path === a.path && c.side === a.side && c.line === a.line) });
   const paragraphComment = (state, { item, field }, text) =>
     ({ ...state, paragraphs: comment(state.paragraphs, { item, field }, text, (c, a) => c.item === a.item && c.field === a.field) });
-  return { empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment, paragraphComment,
+  // The one payload behind the export's preview, its text and its JSON. Each item says its status and the answer in
+  // effect; an answer not in effect travels as a draft; a request's answer is "answered", never verified; a zone mark is
+  // the owner's mark. A conditional item whose parent is still open says so: its answer holds only while the parent
+  // leaves it applicable. A line comment holds for the saved diff the digest names; a paragraph comment names the
+  // item or part of the report and its field.
+  const exportOf = (items, state, meta) => {
+    const byKey = byKeyOf(items);
+    const answerOf = (item, a) => a.choice !== undefined
+      ? (item.kind === "decision" ? { variant: { id: a.choice, text: item.variants[a.choice] } } : { option: a.choice }) : has(a.text) ? { text: a.text } : {};
+    const openParent = (item) => {
+      for (let at = item, seen = new Set(); at.parent && !seen.has(at.key); at = byKey.get(at.parent.key)) {
+        seen.add(at.key);
+        if (!byKey.has(at.parent.key)) return null;
+        if (statusIn(byKey.get(at.parent.key), state, byKey).state === "open") return at.parent.key;
+      }
+      return null;
+    };
+    return {
+      schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
+      progress: progress(items, state),
+      items: items.map((item) => {
+        const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = s.state === "not-applicable" ? null : openParent(item);
+        const zones = Object.keys(entry.zones ?? {}).map(Number).sort((a, b) => a - b);
+        return { item: item.key, kind: item.kind, status: s.state, ...answerOf(item, entry), ...(s.reason ? { reason: s.reason } : {}),
+          ...(s.draft ? { draft: answerOf(item, s.draft) } : {}), ...(zones.length ? { zones } : {}), ...(parent ? { waiting_for_parent: parent } : {}) };
+      }),
+      lineComments: state.lines, paragraphComments: state.paragraphs,
+    };
+  };
+  return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment, paragraphComment, exportOf,
     status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
     applicable: (items, state, key) => applicableIn(item(items, key), state, byKeyOf(items)) };
 }
 
-export const { empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment, paragraphComment,
-  status, applicable } = decisionRuntime();
+export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, lineComment,
+  paragraphComment, exportOf, status, applicable } = decisionRuntime();

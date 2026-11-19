@@ -573,6 +573,13 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .dialog-in h2 { font-size: 15px; margin-bottom: 10px; }
 .dialog-in > p { margin: 12px 0 0; }
 .dialog-actions { margin-top: 14px; text-align: right; }
+.storage { margin: 0; padding: 8px 24px; background: var(--warn-bg); color: var(--warn); border-bottom: 1px solid var(--warn-bd); font-size: 13px; }
+.dialog-in.export { width: min(760px, 92vw); }
+#export-preview { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px 8px; margin: 10px 0; }
+.xp h3 { font-size: 12px; color: var(--text-3); margin: 10px 0 4px; }
+.xp p { margin: 2px 0; display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+#export-status { min-height: 1.4em; margin: 6px 0; font-size: 13px; }
+#export-text { display: block; width: 100%; margin-top: 4px; font: 12px/1.5 var(--mono); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
 .gbar.s-keep { fill: var(--border-strong); } .gbar.s-fix { fill: var(--warn-line); } .gbar.s-remove { fill: var(--bad-line); } .gbar.s-question { fill: var(--q-line); }
 .t-c { color: #57606a; } .t-s { color: #0a3069; } .t-n { color: #0550ae; } .t-k { color: #cf222e; }
 :root[data-theme="dark"] .t-c { color: #8b949e; } :root[data-theme="dark"] .t-s { color: #a5d6ff; } :root[data-theme="dark"] .t-n { color: #79c0ff; } :root[data-theme="dark"] .t-k { color: #ff7b72; }

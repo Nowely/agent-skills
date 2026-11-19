@@ -119,6 +119,35 @@ function indexComments() {
 }
 const entryOf = (key) => state.answers[key] ?? {};
 
+// ---------------------------------------------------------------- persistence: answers, comments, «Viewed» and view choices, in this browser
+// Kept under the storage key decisions.mjs gives this record, so another record or another export format never reads
+// them. A browser that refuses to read or write says so on the page, and leaving with unsaved answers asks first.
+const STORE = DR.storageKey(D.digest.key);
+let storage = "saved";
+function load() {
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(STORE) ?? "null"); } catch { storage = "unreadable"; return; }
+  if (!raw || typeof raw !== "object") return;
+  state = DR.settle(ITEMS, DR.normalize(raw.decisions));
+  for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
+  const ui = raw.ui ?? {};
+  if (["auto", "light", "dark"].includes(ui.theme)) S.theme = ui.theme;
+  if (typeof ui.tree === "boolean") S.code.tree = ui.tree;
+  if (Array.isArray(ui.dirsClosed)) S.code.dirsClosed = new Set(ui.dirsClosed.filter((d) => typeof d === "string"));
+  if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
+}
+function save() {
+  const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
+  try { localStorage.setItem(STORE, JSON.stringify(kept)); if (storage === "failed") storage = "saved"; } catch { storage = "failed"; }
+  showStorage();
+}
+function showStorage() {
+  const el = $("#storage"); if (!el) return;
+  el.hidden = storage === "saved";
+  el.textContent = storage === "saved" ? "" : L(storage === "failed" ? "p.storage.failed" : "p.storage.unreadable");
+}
+window.addEventListener("beforeunload", (e) => { if (storage === "failed") { e.preventDefault(); e.returnValue = ""; } });
+
 // ---------------------------------------------------------------- the owner's options, and each item's status in words
 const OPTION_LABEL = { fix: L("p.option.fix"), leave: L("p.option.leave"), take: L("p.option.take"), skip: L("p.option.skip") };
 function optionsOf(c) {
@@ -247,6 +276,60 @@ function copy(text) {
   try { navigator.clipboard.writeText(text).then(() => toast(L("p.copy.copied", text)), fail); } catch { fail(); }
 }
 
+// ---------------------------------------------------------------- the export: one payload from decisions.mjs, shown as a preview, as text and as JSON
+function exportPayload() {
+  return DR.exportOf(ITEMS, state, { recordSha: D.digest.record, diffSha: D.digest.diff, key: D.digest.key, title: D.title, range: D.range });
+}
+// The payload's rows in words, by section: each row is its text and the place «Show» goes to.
+function exportModel() {
+  const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [] };
+  const answerWords = (c, a) => a.variant ? a.variant.text : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
+  for (const x of payload.items) {
+    const c = itemByKey.get(x.item), draft = x.draft ? ` · ${L("p.export.draft", answerWords(c, x.draft))}` : "";
+    const zones = x.zones ? ` · ${L("p.export.zones", x.zones.map((i) => c.ref.zones[i].text).join("; "))}` : "";
+    const waiting = x.waiting_for_parent ? ` · ${L("p.export.waiting", itemByKey.get(x.waiting_for_parent).label)}` : "";
+    const row = (text) => ({ text: `${c.label}: ${text}`, go: c.key });
+    if (x.status === "decided") sections.decided.push(row(answerWords(c, x) + zones + waiting));
+    else if (x.status === "answered") sections.answered.push(row(L("p.export.entered", x.text) + zones + waiting));
+    else if (x.status === "deferred") sections.deferred.push(row(x.reason + draft + zones));
+    else if (x.status === "not-applicable") sections.na.push(row(L("p.export.na", itemByKey.get(c.parent.key).label) + draft));
+    else sections.open.push(row(itemTitle(c) + draft + zones + waiting));
+  }
+  for (const x of payload.lineComments) sections.comments.push({ text: `${x.path}:${x.side === "base" ? "−" : ""}${x.line}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
+  for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
+  const p = payload.progress;
+  return { payload, sections, progress: L("p.progress", n(p.done), n(p.total)) + (p.deferred ? ` · ${P("p.count.deferred", p.deferred)}` : "") };
+}
+const EXPORT_SECTIONS = [["decided", "p.export.decided"], ["answered", "p.export.answered"], ["deferred", "p.export.deferred"], ["na", "p.export.not-applicable"],
+  ["comments", "p.export.comments"], ["open", "p.export.open"]];
+function exportText(m) {
+  const lines = [L("p.export.head", m.payload.title, m.payload.range)];
+  for (const [id, head] of EXPORT_SECTIONS) if (m.sections[id].length) lines.push("", L(head), ...m.sections[id].map((r) => "- " + r.text));
+  lines.push("", m.progress, L("p.export.digests", m.payload.record_sha256, m.payload.diff_sha256));
+  return lines.join("\n");
+}
+function openExport() {
+  const m = exportModel(), dialog = $("#export-dialog");
+  $("#export-preview").innerHTML = EXPORT_SECTIONS.filter(([id]) => m.sections[id].length).map(([id, head]) => `<section class="xp"><h3>${esc(L(head))}</h3>${m.sections[id].map((r) => `<p>${esc(r.text)}${r.go ? `<button class="btn sm quiet" data-act="export-go" data-target="${esc(r.go)}">${esc(L("p.show-it"))}</button>` : ""}</p>`).join("")}</section>`).join("")
+    + `<p class="muted small">${esc(m.progress)}</p>`;
+  $("#export-text").value = exportText(m);
+  $("#export-status").textContent = "";
+  if (!dialog.open) dialog.showModal();
+}
+// «Copied» only after the clipboard confirms; on refusal the text is selected for the owner to copy.
+function copyExport() {
+  const box = $("#export-text"), status = $("#export-status");
+  const fail = () => { box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
+  try { navigator.clipboard.writeText(box.value).then(() => { status.textContent = L("p.export.copied"); }, fail); } catch { fail(); }
+}
+function downloadExport() {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(exportPayload(), null, 2)], { type: "application/json" }));
+  a.download = `decisions-${D.digest.key}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ---------------------------------------------------------------- shell
 const TABS = [{ id: "summary", label: L("p.tab.summary") }, { id: "decisions", label: L("p.tab.decisions") }, { id: "code", label: L("p.tab.code") }, { id: "details", label: L("p.tab.details") }];
 const KEYS = [
@@ -262,7 +345,8 @@ function renderShell() {
   app.innerHTML = `
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
-    <div class="mh-right"><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
+    <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
+  <p class="storage" id="storage" role="status" hidden></p>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
     <div class="tabs" role="tablist" aria-label="${esc(L("p.tabs"))}">${TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${esc(t.label)}<span class="count" id="badge-${t.id}" hidden></span></button>`).join("")}</div>
     <div class="tb-right"><span class="progress" id="progress"></span>
@@ -272,8 +356,14 @@ function renderShell() {
   <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h">${esc(L("p.keys"))}</h2>
     <div class="keys">${keysHtml()}</div>
     <p class="muted small">${esc(L("p.keys.memory"))}</p>
-    <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>`;
-  applyTheme();
+    <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>
+  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h">${esc(L("p.export"))}</h2>
+    <p class="muted small">${esc(L("p.export.note"))}</p>
+    <div id="export-preview"></div>
+    <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
+    <p id="export-status" role="status"></p>
+    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>`;
+  applyTheme(); showStorage();
 }
 function applyTheme() {
   if (S.theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = S.theme;
@@ -522,7 +612,7 @@ function cardHtml(c) {
 }
 
 // ---------------------------------------------------------------- changing an answer, and keeping every view in step
-function setState(next) { state = next; indexComments(); }
+function setState(next) { state = next; indexComments(); save(); }
 // A variant (or «fix it», «take it»…) is the answer; an empty option is «Other», which opens the own-answer field
 // and takes the option back, so one answer stays in effect.
 function pick(key, opt) {
@@ -1229,7 +1319,7 @@ function setViewed(fi, on) {
   if (on) { S.viewed.add(fi); S.code.collapsed.add(fi); } else { S.viewed.delete(fi); S.code.collapsed.delete(fi); }
   const sec = $(`#file-${fi}`);
   if (sec) { sec.classList.toggle("viewed", on); sec.classList.toggle("collapsed", S.code.collapsed.has(fi)); $(".fh", sec).innerHTML = fileHeader(fi); if (!S.code.collapsed.has(fi)) fill(fi); }
-  renderTree(); updateChrome();
+  renderTree(); updateChrome(); save();
   if (on && sec && sec.getBoundingClientRect().top < toolbarBottom()) landOn(() => $(`#file-${fi}`), toolbarBottom() + 6);
 }
 // line numbers: one tab stop per file, arrows between lines
@@ -1504,7 +1594,11 @@ document.addEventListener("click", (e) => {
   if (a) {
     const key = act.dataset.key;
     switch (a) {
-      case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; return applyTheme();
+      case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; applyTheme(); return save();
+      case "export": return openExport();
+      case "export-json": return downloadExport();
+      case "export-copy": return copyExport();
+      case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : goCard(go); }
       case "keys": return $("#keys-dialog").showModal();
       case "start": return startReview();
       case "sel": {
@@ -1537,7 +1631,7 @@ document.addEventListener("click", (e) => {
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
-      case "tree": { S.code.tree = !S.code.tree; act.setAttribute("aria-pressed", String(S.code.tree)); $("#tree").hidden = !S.code.tree; $("#code-frame").classList.toggle("no-tree", !S.code.tree); if (S.code.tree) renderTree(); measureCpl(); return; }
+      case "tree": { S.code.tree = !S.code.tree; act.setAttribute("aria-pressed", String(S.code.tree)); $("#tree").hidden = !S.code.tree; $("#code-frame").classList.toggle("no-tree", !S.code.tree); if (S.code.tree) renderTree(); measureCpl(); return save(); }
       case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
@@ -1554,7 +1648,7 @@ document.addEventListener("click", (e) => {
       case "done-close": { const bid = +act.dataset.b; S.code.doneOpen.delete(bid); fill(blk(bid).file, true); $(`#note-${bid}`)?.focus({ preventScroll: true }); return; }
       case "fcollapse": { const fi = +act.dataset.f; if (S.code.collapsed.has(fi)) S.code.collapsed.delete(fi); else S.code.collapsed.add(fi); const sec = $(`#file-${fi}`), col = S.code.collapsed.has(fi); sec.classList.toggle("collapsed", col); $(".fh", sec).innerHTML = fileHeader(fi); if (!col) fill(fi); $(`#file-${fi} .fold-btn`)?.focus(); return; }
       case "whole": { const fi = +act.dataset.f; if (S.code.whole.has(fi)) S.code.whole.delete(fi); else S.code.whole.add(fi); S.code.collapsed.delete(fi); $(`#file-${fi}`)?.classList.remove("collapsed"); $(`#file-${fi} .fh`).innerHTML = fileHeader(fi); fill(fi, true); renderTree(); $(`#file-${fi} [data-act="whole"]`)?.focus(); return; }
-      case "dir": { const p = act.dataset.dir; if (S.code.dirsClosed.has(p)) S.code.dirsClosed.delete(p); else S.code.dirsClosed.add(p); return renderTree(); }
+      case "dir": { const p = act.dataset.dir; if (S.code.dirsClosed.has(p)) S.code.dirsClosed.delete(p); else S.code.dirsClosed.add(p); renderTree(); return save(); }
       case "gofile": return goFile(+act.dataset.f);
       case "prev": return step(-1);
       case "next": return step(1);
@@ -1587,7 +1681,7 @@ document.addEventListener("change", (e) => {
   if (a === "zone") { setState(DR.markZone(ITEMS, state, t.dataset.key, t.dataset.zone, t.checked)); return afterChange(t.dataset.key, { structural: false }); }
   if (a === "purpose") { if (t.checked) S.code.purposes.add(t.value); else S.code.purposes.delete(t.value); S.code.pinned.clear(); return rerenderCode(); }
   if (a === "req") { S.code.req = t.value; S.code.pinned.clear(); return rerenderCode(); }
-  if (a === "order") { S.code.order = t.value; return rerenderCode(); }
+  if (a === "order") { S.code.order = t.value; rerenderCode(); return save(); }
   if (a === "viewed") return setViewed(+t.dataset.f, t.checked);
 });
 document.addEventListener("input", (e) => {
@@ -1793,6 +1887,7 @@ window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); s
 window.addEventListener("hashchange", () => route(location.hash));
 
 // ---------------------------------------------------------------- start
+load();
 indexComments();
 renderShell();
 updateChrome();
