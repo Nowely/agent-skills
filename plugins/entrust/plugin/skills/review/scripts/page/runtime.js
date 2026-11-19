@@ -2014,13 +2014,26 @@ function showZoom(i) {
 // file whole, kept code unfolded, with each block's verdict, and the details, taken from the document in the page's
 // <noscript> elements, so no file has to be drawn on screen first. Printing from the browser's menu prints the owner's.
 let printProfile = "owner";
+// Both prints are the document in the page's <noscript> elements — every card whole, with its variants, their
+// consequences and the recommendation, and nothing that only works on screen — with the owner's answer added to each
+// card and the comments listed. The audit's also has every file whole with each block's verdict, and the details.
 function buildPrint() {
   let el = $("#print");
   if (!el) { el = document.createElement("div"); el.id = "print"; document.body.append(el); }
-  const decisions = GROUPS.map((g) => { const cards = ITEMS.filter(g.test); return cards.length ? `<h2 class="group-h">${esc(g.label)}</h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>` : ""; }).join("");
-  const code = printProfile === "audit" ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "";
-  el.innerHTML = `<header class="print-head"><p class="muted">${esc(L("kind"))} · ${esc(L(printProfile === "audit" ? "p.print.audit" : "p.print.owner"))}</p><h1>${esc(D.title)}</h1><p>${esc(L("p.progress", n(progress().done), n(progress().total)))}</p></header>
-    <section><h2>${esc(L("p.tab.summary"))}</h2>${summaryHtml()}</section><section><h2>${esc(L("p.tab.decisions"))}</h2>${decisions}<h2 class="group-h">${esc(L("p.sub.comments"))}</h2>${commentsListHtml()}</section>${code ? `<section class="static"><h2>${esc(L("p.tab.code"))}</h2>${code}</section>` : ""}`;
+  const audit = printProfile === "audit", p = progress();
+  el.innerHTML = $("#static-report").textContent + (audit ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "");
+  $$(".static-note, .static nav", el).forEach((x) => x.remove());
+  if (!audit) $("#code", el).remove();
+  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), L("p.progress", n(p.done), n(p.total)), p.answered && P("p.progress.answered", p.answered)].filter(Boolean).join(" · "))}</p>`);
+  for (const c of ITEMS) el.querySelector(`[id="decisions/${c.key}"]`)?.insertAdjacentHTML("beforeend", `<p class="sanswer"><b>${esc(L("p.print.answer"))}</b> ${esc(printAnswer(c))}</p>`);
+  const notes = exportModel().sections.comments;
+  if (notes.length) $("#decisions", el).insertAdjacentHTML("beforeend", `<h3>${esc(L("p.sub.comments"))}</h3><ul>${notes.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`);
+}
+// The owner's answer to an item in words: its state and answer, a draft, the parent it waits for and marked zones.
+function printAnswer(c) {
+  const st = statusOf(c), zones = Object.keys(entryOf(c.key).zones ?? {}).map((i) => c.ref.zones[i].text);
+  return [st.label, st.answer && `${st.lbl}: ${st.answer}`, st.draft && L("p.draft", st.draft.choice !== undefined ? L("p.draft.option", draftText(c, st.draft)) : L("p.draft.own", st.draft.text)),
+    waitingText(c), zones.length && L("p.export.zones", zones.join("; "))].filter(Boolean).join(" · ");
 }
 window.addEventListener("beforeprint", buildPrint);
 window.addEventListener("afterprint", () => { $("#print")?.remove(); printProfile = "owner"; });

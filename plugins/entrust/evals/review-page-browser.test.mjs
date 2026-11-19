@@ -54,6 +54,9 @@ function render(name, record, diffBytes = diff, pictures = true) {
 const record = structuredClone(THEMED);
 record.blocks[0].serves = [3];
 record.screens[0] = { ...record.screens[0], revision: "head", sources: [{ ref: "/requirements/0" }] };
+// A finding text long enough that a clamped card would cut it.
+const LONG = "The archive reader converts the currency code while it reads each row, so the display sees only what the reader chose to keep. ".repeat(4).trim();
+record.findings[1].what = LONG;
 const THEMED_URL = render("themed", record);
 const RU_URL = render("ru", { ...structuredClone(record), language: "ru" });
 // A large record: 40 files of 180 added lines, seven blocks each, a few of them to fix or to ask about.
@@ -476,18 +479,25 @@ test("without JavaScript the page is the whole report, the code once",
     } finally { await o.close(); }
   });
 
-test("the owner's print holds the summary and the answered decisions; the audit's adds every file whole and the details, drawn or not",
-  "lazily drawn files printed blank, and kept code stayed folded",
+test("the owner's print holds every decision whole with the owner's answer and no screen-only words; the audit's adds every file whole and the details",
+  "the print hid the variants, cut text with «…», printed screen hints, and lazily drawn files printed blank",
   cased(THEMED_URL + "#decisions/f1", {}, async (page) => {
     await page.keyboard.press("f"); await settle(page);
     await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
-    const owner = await page.evaluate(() => ({ cards: document.querySelectorAll("#print .card").length, rows: document.querySelectorAll("#print tr.r").length, text: document.querySelector("#print").innerText }));
+    await page.emulateMedia({ media: "print" });
+    const owner = await page.evaluate(() => ({ text: document.querySelector("#print").innerText, rows: document.querySelectorAll("#print tr.r").length,
+      clamped: [...document.querySelectorAll("#print *")].filter((el) => !["none", ""].includes(getComputedStyle(el).webkitLineClamp)).length,
+      f1: document.querySelector('#print [id="decisions/f1"]')?.innerText ?? "" }));
+    await page.emulateMedia({ media: "screen" });
     await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    const q3 = THEMED.questions[2], must = [...q3.variants.flatMap((v) => [v.text, ...v.consequences.map((x) => x.text)]), q3.recommendation.text, LONG];
+    const missing = must.filter((t) => !owner.text.includes(t)), screen = ["Show all", "See the table", "select a row", "Click a line number", "Start review", "Show in Code", "Answer here"].filter((t) => owner.text.includes(t));
     await page.goto(THEMED_URL + "#details/report"); await page.waitForSelector(".tabbar");
     await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
     await page.click('[data-act="print"][data-profile="audit"]');
     const audit = await page.evaluate(() => ({ rows: document.querySelectorAll("#print tr.r").length, verdicts: document.querySelectorAll("#print tr.bn").length, details: Boolean(document.querySelector("#print #details")) }));
-    return owner.cards === 8 && owner.rows === 0 && /Your answer:\s*Fix it/.test(owner.text) && audit.rows === 27 && audit.verdicts === 3 && audit.details || JSON.stringify({ owner: { ...owner, text: owner.text.length }, audit });
+    return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && audit.rows === 27 && audit.verdicts === 3 && audit.details
+      || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), audit });
   }));
 
 test("the Russian page speaks Russian: its own words come from the catalog, none in English",

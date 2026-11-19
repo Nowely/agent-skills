@@ -616,6 +616,7 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .sfile tr.bn td { padding: 6px 10px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 12.5px; }
 .sfile tr.bn.v-fix td, .sfile tr.bn.v-remove td, .sfile tr.bn.v-question td { border-left: 3px solid var(--accent); }
 .print-actions { display: flex; gap: 8px; margin: 0 0 6px; }
+.static .sanswer { margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--border); }
 #print { display: none; }
 .sfile { margin: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .sfile h3 { font: 600 13px var(--mono); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
@@ -630,10 +631,7 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 @media print {
   body > #app, .toast, .copybox { display: none !important; }
   #print { display: block; }
-  #print .print-head { margin-bottom: 12px; }
-  #print .choice, #print button:not(.linkbtn), #print .compact, #print .pc-btn, #print .key, #print .cta, #print .card-foot { display: none !important; }
-  #print .card, #print .card.settled { display: block; padding: 10px 14px; background: none; break-inside: avoid; }
-  #print .card .full { display: block !important; }
+  .static .scard { break-inside: avoid; }
   #print .sfile, .sfile { break-inside: auto; }
   #print .sfile tr, .sfile tr { break-inside: avoid; }
 }
