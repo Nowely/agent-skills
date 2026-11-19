@@ -61,7 +61,7 @@ record.screens[0] = { ...record.screens[0], revision: "head", sources: [{ ref: "
 const LONG = "The archive reader converts the currency code while it reads each row, so the display sees only what the reader chose to keep. ".repeat(4).trim();
 record.findings[1].what = LONG;
 const THEMED_URL = render("themed", record);
-const RU_URL = render("ru", { ...structuredClone(record), language: "ru" });
+const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru", RU);
 // A large record: 40 files of 180 added lines, seven blocks each, a few of them to fix or to ask about.
 const FILES = 40, LINES = 180, UNIT = "theGeneratedModulesThatExportTheirValuesOneByOne";
 const bigDiff = Array.from({ length: FILES }, (_, f) => [`diff --git a/src/m${f}/part${f}.js b/src/m${f}/part${f}.js`, "new file mode 100644", "--- /dev/null",
@@ -534,16 +534,52 @@ test("the owner's print holds every decision whole with the owner's answer and n
       || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), audit });
   }));
 
-test("the Russian page speaks Russian: its own words come from the catalog, none in English",
-  "every word on the page is in both catalogs; an English literal in the runtime would reach a Russian reader",
-  cased(RU_URL + "#decisions/q3", {}, async (page) => {
-    await page.keyboard.press("?"); await settle(page);
-    const help = await page.evaluate(() => { const d = document.querySelector("#keys-dialog").cloneNode(true); d.querySelectorAll(".kbd").forEach((k) => k.remove()); return d.innerText; });
-    await page.keyboard.press("Escape");
-    const chrome = await page.evaluate(() => [".tabbar", "#dec-seg", "#dec-note", "#ctx-decisions .panel-title", '#card-q3 [data-act="defer"]'].map((s) => document.querySelector(s).innerText).join(" "));
-    const latin = (s) => s.replace(/\b(Q|F|R|B|I)\d+\b|\b(Ctrl|Shift|Enter|Esc|path:line|diff|JSON)\b/g, "").match(/[A-Za-z]{2,}/g);
-    return !latin(help) && !latin(chrome) && /Решения/.test(chrome) || `English words: ${[...(latin(help) ?? []), ...(latin(chrome) ?? [])].join(", ")}`;
-  }));
+test("the Russian page speaks Russian on every tab, in its toasts, dialogs and export, without JavaScript and in both prints: no English word but the record's own",
+  "every word the page writes is in both catalogs; an English literal in the runtime or the document would reach a Russian reader",
+  async () => {
+    // The record's words, its key names among them, and its diff's are its own; ids, digests, keys and JavaScript are names.
+    const own = new Set(`${JSON.stringify(RU)}\n${diff}`.match(/[A-Za-z]{2,}/g)), english = new Map();
+    const scan = (where, text) => {
+      for (const word of text.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? [])
+        if (!own.has(word) && !english.has(word)) english.set(word, where);
+    };
+    // what a reader sees, hears from a screen reader, or types into
+    const seen = (page) => page.evaluate(() => [document.title, document.body.innerText, document.querySelector("#toast")?.textContent ?? "",
+      ...[...document.querySelectorAll("[aria-label], [title], [placeholder]")].flatMap((el) => ["aria-label", "title", "placeholder"].map((a) => el.getAttribute(a) ?? "")),
+      ...[...document.querySelectorAll("textarea")].map((el) => el.value)].join("\n"));
+    const o = await open(RU_URL), page = o.page, errors = [];
+    try {
+      const go = async (hash) => { await page.evaluate((h) => { location.hash = h; }, hash); await page.waitForTimeout(250); await settle(page); };
+      for (const hash of ["summary", "decisions", "code", ...["structure", "mechanisms", "scenarios", "checks", "challenges", "screens", "coverage", "report"].map((x) => `details/${x}`)]) {
+        await go(hash); scan(hash, await seen(page));
+      }
+      await go("details/structure"); await page.click('[data-act="sview"][data-view="graph"]'); await settle(page); scan("the units' graph", await seen(page));
+      await go("decisions");
+      for (const sub of await page.locator('#dec-seg [data-act="dsub"]').evaluateAll((els) => els.map((el) => el.dataset.sub))) {
+        await page.click(`#dec-seg [data-sub="${sub}"]`); await settle(page); scan(`decisions/${sub}`, await seen(page));
+      }
+      // the toasts: a key out of view, an answer, Undo, Undo of an answer changed since
+      await go("decisions/f1"); await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await settle(page);
+      for (const [where, act] of [["a key out of view", () => page.keyboard.press("f")], ["a keyed answer", () => page.keyboard.press("f")], ["Undo", () => page.keyboard.press("u")],
+        ["an answer changed since", async () => { await page.keyboard.press("f"); await page.locator('#card-f1 input[data-opt="leave"]').check(); await page.keyboard.press("u"); }]]) {
+        await act(); await settle(page); scan(where, await seen(page));
+      }
+      await page.click('#card-f2 [data-act="defer"]'); await settle(page); scan("a deferral's reason", await seen(page));
+      await page.keyboard.press("Escape"); await page.keyboard.press("?"); await settle(page); scan("the keys", await seen(page)); await page.keyboard.press("Escape");
+      await page.click('[data-act="export"]'); await settle(page); scan("the export", await seen(page)); await page.keyboard.press("Escape");
+      // both prints
+      await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
+      for (const profile of ["owner", "audit"]) {
+        await go("details/report"); await page.click(`[data-act="print"][data-profile="${profile}"]`); await page.emulateMedia({ media: "print" });
+        scan(`the ${profile}'s print`, await page.evaluate(() => document.querySelector("#print").innerText));
+        await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+      }
+      errors.push(...o.errors);
+    } finally { await o.close(); }
+    const plain = await open(RU_URL, { js: false });
+    try { scan("without JavaScript", await plain.page.evaluate(() => document.body.innerText)); } finally { await plain.close(); }
+    return !english.size && !errors.length || `English words: ${[...english].map(([w, where]) => `${w} (${where})`).join(", ")}${errors.length ? `; page errors: ${errors.join("; ")}` : ""}`;
+  });
 
 // ---- the large record
 test("the large record opens fast, keeps its DOM bounded while scrolling, lands tree clicks and finds text in files not drawn",
