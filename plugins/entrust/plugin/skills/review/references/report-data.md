@@ -2,7 +2,7 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [optional fields](#optional-fields).
+See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), and [optional fields](#optional-fields).
 
 ## Making it
 
@@ -117,6 +117,20 @@ new evidence that changes a conclusion makes a revised record, named as such.
       "labels": { "findings": "the report's own word, in the user's language" }
     }
 
+## Comparison pass
+
+Freeze the checked full draft and the saved diff before handing them to the reader. Run from the directory of the approved project toolchain:
+
+    node "<skill-dir>/scripts/report.mjs" comparisons <out>/review.json <base-root> <head-root> > <out>/comparisons.json
+
+The two roots contain the paths from the diff at their respective revisions. The command checks the patch lines against those files and reads installed TypeScript and PostCSS SCSS parsers when available. Use only trusted, in-scope toolchains. Without source trees, omit both roots to index two-sided replacements in the patch. Read `limits` for unsupported formats, missing sources and unindexed files. Add the evidenced comparisons the automated views miss, including one-sided changes with an unchanged peer or a consumer elsewhere. Freeze the resulting inventory before the reader sees it.
+
+Each comparison has a unique `key`, a stage (`structure` or `paths`), a default `file`, the `property` being compared, and `left` and `right` witnesses. Each witness specifies `side` (`base` or `head`), one-based `line`, the observed `value` and optionally its own `file`. A `contrast` records additional facts measured by the parser. Use source addresses to read full expressions, context and contracts. A block description can help locate a decision; the pair's evidence comes from the sources.
+
+The final record binds the reader's decisions to the frozen inventory with optional `comparisonReview`: `inventory` (filename beside the record), `sha256` (hash of that file's bytes), and `decisions` (one entry per issued key). For example, `{"key":"K","ref":"/ideas/0"}` links the comparison to the first idea. Use a zero-based reference to a finding, question or idea for points that reach the author. For other decisions give the key and either `settled` with a source-backed explanation, or `unchecked` with the missing evidence. A coverage count records how many pairs were decided; it does not certify the completeness of the inventory or the truth of the decisions. Older records without the pass remain readable.
+
+Keep the stage ledgers beside the frozen draft for attribution and efficient replays. The main reviewer records the source limits and any unchecked comparisons in coverage, attaches `comparisonReview` to the reconciled record, and runs the ordinary check and render. If a stage changes, reuse earlier snapshots with matching source, inventory and instructions; label a replay from saved files when the reader's original context is unavailable.
+
 ## Fields
 
 - **Requirements.** `source`: `task`, what the task states; `discussion`, a decision made while the work was discussed;
@@ -129,8 +143,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Verdict, now, target.** A few lines each; a line starting `- ` is drawn as a list item.
 - **Steps.** What to do, in order, each naming the findings it settles; left out when the recommendation is one thing.
 - **Findings.** `id` is letters, digits, `_` or `-`: it travels into the page's anchors. `direction`: `behavior`, `necessity`, `design` or `tests`. `evidence`: `ran`, `read` or `judgment`.
-  `shown_by` is what shows it; a candidate with nothing to put there is a question. `breaks` lists requirements shown
-  unmet; a finding about tests lists under `untested` the requirements whose regression no test would catch.
+  `shown_by` is the evidence. A candidate without evidence becomes a question only when settling it could change a conclusion or next action.
+  `breaks` lists requirements shown unmet. For a test gap, `untested` lists the requirements whose regression no test would catch.
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs.
 - **Ideas.** `title`, `text`, and `at` when the idea has a place.
 - **Scenarios.** Optional: a change grounded in the task walked through the code and the target, with the places
@@ -154,7 +168,7 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
-  the note quotes it; `owner` is every other point, and the note says what the owner decides.
+  the note quotes it. For `owner`, the note names the fact, evidence or decision needed from the owner and what depends on it.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`. `historical: true` marks
   a picture of another revision, with its `revision` and `sources`; without the mark the picture's revision is

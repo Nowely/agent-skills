@@ -1,0 +1,10 @@
+# Challenge the decisions
+
+Return to the **original comparison inventory** as well as the saved decisions. A ledger can mention an interesting fact and still answer a different question. Work through the inventory by group. Reopen any decision whose witness differs on the named property, even if the ledger calls it checked, expected, or already covered. Also reopen dismissals based on current output, a matching test, assumed convention or unknown intent.
+
+Start with all rows carrying a measured `contrast` and then the remaining qualified decisions. For each reopened key:
+1. Quote the two relevant source fragments or values with their addresses. State the precise property being compared and the difference on that property. If you conclude the sides agree, show that they agree on that same property.
+2. Try the smallest counterexample or equivalent edit that tests the dismissal. Name what the user, maintainer or tool would observe, or what unnecessary work could disappear while preserving the result. Check the closest independent contract, consumer or precedent. A test agreeing with the implementation establishes current behavior; look separately for what explains the difference.
+3. Decide what the author can do with this evidence. Preserve a verified discrepancy or a safe simplification as a concrete, possibly nonblocking point. If the difference is real and an owner choice changes the action, ask the specific question and give both alternatives. Record an explained difference with the evidence that settles it. If you cannot establish a material consequence or a choice, record that limit.
+
+Before handing back, match every actionable decision to a specific author-facing finding, idea or question. Read the proposed item back: would the author learn the observed difference and the action from that item alone? A broad question, a block description or a pre-existing issue on the same lines covers it only if it states the same difference and consequence. Re-read each final claim against the cited sources and remove unsupported parts. Save the rechecked keys and the resulting findings; all three stages belong to the same reader.

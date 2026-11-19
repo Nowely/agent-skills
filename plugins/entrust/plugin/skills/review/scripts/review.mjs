@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
+import { comparisonFaults } from "./comparisons.mjs";
 import { labelFaults } from "./labels.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
@@ -133,6 +134,7 @@ export function check(review, files, directory) {
   for (const field of ["challenges", "questions", "steps", "checks", "ideas", "screens", "units", "target_units"])
     if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
   errors.push(...labelFaults(review));
+  errors.push(...comparisonFaults(review, directory));
   if (errors.length) return { errors, warnings, owner };
 
   const known = (items, what, key) => {

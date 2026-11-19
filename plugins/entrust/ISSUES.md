@@ -356,3 +356,12 @@ settled catalogue that genuinely lacks the requested model; do not silently subs
 **Issue text.** Make model discovery/resolution respect OpenCode's documented plugin-initialization boundary
 before declaring a requested model unavailable. Prefer a readiness signal to an arbitrary fixed sleep.
 No installed adapter or user configuration was changed during the review experiment that found this.
+
+## E143. The no-JavaScript counter test still expects the previous Russian label
+
+**Evidence level 3.** At `4ad9147e`, `evals/review-report.test.mjs:1870` expects «Осталось основных
+решений и замечаний: 11». The Russian `tab.remaining` entry in
+`plugin/skills/review/scripts/labels.mjs:603` says «Открыто основных решений и замечаний: {n}».
+With the optional report fixture available, the suite rendered the badge with the current label and the
+correct count of 11, then failed the old wording assertion. The same case failed on the rebased feature
+branch. Without that fixture the suite skips this case.
