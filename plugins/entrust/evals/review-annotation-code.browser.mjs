@@ -47,7 +47,7 @@ try {
         if (!editor.open) throw Error("editor did not open");
         editor.querySelector("textarea").value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = "review-report:current:" + JSON.parse(document.querySelector("#data").textContent).key;
+        const key = JSON.parse(document.querySelector("#data").textContent).storageKey;
         return { key, quote, expected, proof: JSON.parse(localStorage.getItem(key)).passages[0].proof };
       }, scenario);
       assert.equal(saved.proof?.kind, "code", "code proof missing");

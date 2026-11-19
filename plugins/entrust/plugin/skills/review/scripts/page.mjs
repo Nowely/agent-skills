@@ -7,7 +7,7 @@ import { VERDICTS, PURPOSES, mechanismCounts, weightCountsText, weightOverview }
 import { esc, prose } from "./text.mjs";
 import { srcHtml, claimsHtml } from "./sources.mjs";
 import { annotations, annotationRecordDigest, sealAnnotationDocument, annotationSha256 } from "./annotations.mjs";
-import { decisionRuntime } from "./decisions.mjs";
+import { decisionRuntime, schema } from "./decisions.mjs";
 
 const STYLE = `
 /* One column per tab, decision-first. Every size is in rem on a 14px base (html 87.5%); code is .92em of it,
@@ -54,6 +54,8 @@ section, [data-anchor], .seg, .qcard, .finding, .mechanism { scroll-margin-top: 
 .v-keep { --v: var(--keep); --v-bg: var(--keep-bg) } .v-fix { --v: var(--fix); --v-bg: var(--fix-bg) } .v-remove { --v: var(--remove); --v-bg: var(--remove-bg) }
 .v-open, .v-question { --v: var(--open-fg); --v-bg: var(--line) }
 .tag { display: inline-block; padding: 0 .45rem; border-radius: 3px; background: var(--v-bg); color: var(--v); font-size: 12px; font-weight: 650; white-space: nowrap }
+/* A tag starts with a capital on the page; the catalog keeps its word as the printout's sentences need it. */
+.tag::first-letter { text-transform: uppercase }
 .chip { display: inline-block; margin: 0 .25rem .2rem 0; padding: 0 .4rem; border: 1px solid var(--v); border-radius: 3px; color: var(--v); font-size: 12px; text-decoration: none; font-weight: 600 }
 .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-variant-numeric: tabular-nums }
 /* The page header: the title left, the theme icon at the right edge. */
@@ -120,21 +122,18 @@ td ol { margin: 0; padding-left: 1.2rem }
 .card-meta { font-size: 12px; color: var(--muted); flex-basis: 100%; order: 5 }
 .card-head .qstatus { margin-left: auto; order: 4 }
 .card-question { margin: 0; font-size: 1rem }
-.card-limit { margin: 0; font-size: 1rem; color: var(--fix) }
+.card-limit { margin: 0; font-size: 1rem; color: var(--muted) }
 .card-consequence { margin: 0; font-size: 1rem }
 .qstatus { flex: none }
 /* The status chip and the NA badge carry whole sentences: they wrap, never push the card wide. */
 .qstatus, .na-badge { white-space: normal }
-/* A made choice reads neutral «Selected», never a green success; a draft and an entered fact answer are amber. */
-.qstatus[data-state="decided"], .qstatus[data-state="na"], .qstatus[data-state="deferred"] { --v: var(--fg); --v-bg: var(--line) }
-.qstatus[data-state="draft"], .qstatus[data-state="answered"] { --v: var(--fix); --v-bg: var(--fix-bg) }
+/* A choice, a draft and an entered answer read neutral, never a green success; amber is only for a needed change. */
+.qstatus:not([data-state="open"]) { --v: var(--fg); --v-bg: var(--line) }
 .fact-answer-label { font-size: 1rem; color: var(--fg); font-weight: 650 }
 .js label.fact-answer-label { display: block }
 /* The choice zone on F/I cards is named at the same weight as the Q legend: here is where you act. */
 .choice-label { display: block; font-size: 1rem; font-weight: 650; color: var(--fg); margin: .5rem 0 .3rem }
-.qgate { color: var(--fix); margin: .1rem 0; font-size: 1rem }
-.qcard.na .qgate { color: var(--muted) }
-.qdraft { color: var(--fix); margin: .1rem 0; font-size: 1rem }
+.qgate, .qdraft { margin: .1rem 0; font-size: 1rem }
 .qadvice { font-size: 1rem; margin: .1rem 0 }
 .qopts { border: 0; padding: 0; margin: .7rem 0 .2rem; display: flex; flex-direction: column; gap: 0 }
 .qopts legend { font-size: 1rem; color: var(--fg); font-weight: 650; padding: 0; margin-bottom: .3rem }
@@ -429,7 +428,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 .xp-row { display: flex; flex-wrap: wrap; gap: .2rem .8rem; align-items: baseline; justify-content: space-between; font-size: 13px; margin: .15rem 0; max-width: none }
 .xp-row > span { flex: 1 1 20rem; min-width: 0; overflow-wrap: anywhere }
 .xp-goto { flex: none; font-size: 12px; font-weight: 600 }
-.xp-draft > span { color: var(--fix) }
+.xp-draft > span { color: var(--muted) }
 .xp-count { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: .5rem }
 #export-dialog textarea { width: 100%; min-height: 10rem; font: .92rem/1.45 var(--mono); resize: vertical }
 #export-status { font-size: .92rem; min-height: 1.2em }
@@ -465,7 +464,7 @@ mark[data-annotation] { background: color-mix(in srgb, var(--accent) 18%, var(--
 
 const SCRIPT = `
 (() => {
-  const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:current:" + data.key, t = data.labels;
+  const data = JSON.parse(document.getElementById("data").textContent), key = data.storageKey, t = data.labels;
   const D = (${decisionRuntime.toString()})();
   const all = (selector) => [...document.querySelectorAll(selector)];
   const map = document.getElementById("map"), out = document.getElementById("out");
@@ -708,8 +707,8 @@ const SCRIPT = `
     let label;
     if (q || req || f) {
       const bs = q ? data.blocks.filter((b) => (b.questions || []).includes(+q)) : req ? data.blocks.filter((b) => (b.serves || []).includes(+req)) : data.blocks.filter((b) => (b.findings || []).includes(+f));
-      const n = bs.length, parts = bs.reduce((s, b) => s + (b.parts || 1), 0);
-      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + (req ? t.code.linked : t.blocksWord) + ": " + n + (req ? " · " + t.code.visible + ": " + chipMatches().length : parts > n ? " · " + t.fragments + ": " + parts + " (" + t.withParts + ")" : "")
+      const n = bs.length;
+      label = (q ? "Q" + q : req ? t.chip.requirement.replace("{n}", req) : t.chip.finding.replace("{n}", f)) + " · " + (req ? t.code.linked : t.blocksWord) + ": " + n + (req ? " · " + t.code.visible + ": " + chipMatches().length : "")
         + (hidden.length ? " · " + t.chip.hidden.replace("{n}", hidden.map((x) => data.purposeLabels[x] || x).join(", ")) : "");
     } else {
       const hiddenBlocks = data.blocks.filter((b) => hidden.includes(b.purpose)).length;
@@ -1054,7 +1053,7 @@ const SCRIPT = `
     }
     j.passages.forEach((p, index) => {
       const found = annotationUI.located(index);
-      comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : "") + (found ? "" : " · " + data.annotationLabels.unlocated), ...(found ? { passage: index } : {}) });
+      comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : "") + (found ? "" : " · " + data.annotationLabels.unverified), ...(found ? { passage: index } : {}) });
     });
     const open = data.findings.filter((f) => !j.findings[f.id]).map((f) => "F" + f.id);
     const remaining = t.tabRemaining.replace("{n}", stats().remaining) + (open.length ? " · " + t.export.openFindings + ": " + open.join(", ") : "");
@@ -1064,7 +1063,7 @@ const SCRIPT = `
     const m = exportModel();
     const part = (title, rows) => rows.length ? ["", title, ...rows.map((r) => "- " + r.text)] : [];
     return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")",
-      ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred), ...part(t.notApplicable, m.notApplicable),
+      ...part(t.export.accepted, m.accepted), ...part(t.export.deferred, m.deferred), ...part(t.export.notApplicable, m.notApplicable),
       ...part(t.export.answers, m.answers), ...part(t.export.zones, m.zones), ...part(t.export.comments, m.comments),
       ...part(t.export.openDecisions, m.openDecisions), ...part(t.export.openDependent, m.openDependent), ...part(t.export.openRequests, m.openRequests), "", m.remaining,
       t.export.versionRecord + " " + data.digest.record.slice(0, 12) + " · " + t.export.versionDiff + " " + data.digest.diff.slice(0, 12)].join("\\n");
@@ -1089,7 +1088,7 @@ const SCRIPT = `
     };
     sec(t.export.accepted, m.accepted, t.export.emptyAccepted);
     sec(t.export.deferred, m.deferred, t.export.emptyDeferred);
-    if (m.notApplicable.length) sec(t.notApplicable, m.notApplicable, "");
+    if (m.notApplicable.length) sec(t.export.notApplicable, m.notApplicable, "");
     if (m.answers.length) sec(t.export.answers, m.answers, "");
     if (m.zones.length) sec(t.export.zones, m.zones, "");
     sec(t.export.comments, m.comments, t.export.emptyComments);
@@ -1162,7 +1161,7 @@ const SCRIPT = `
         const chipEl = card.querySelector("[data-qstatus], [data-fstatus]");
         sum.textContent = "";
         const idEl = document.createElement("span"); idEl.className = "sr-id"; idEl.textContent = card.id.toUpperCase();
-        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = (chipEl ? chipEl.textContent : "") + (st === "deferred" ? " · " + t.status.open : "");
+        const chipClone = document.createElement("span"); chipClone.className = "sr-answer"; chipClone.textContent = chipEl ? chipEl.textContent : "";
         const titleEl = document.createElement("span"); titleEl.className = "sr-title"; titleEl.textContent = (card.querySelector(".card-title") || {}).textContent || "";
         const edit = document.createElement("span"); edit.className = "sr-edit"; edit.textContent = t.commentEdit;
         sum.append(titleEl, chipClone, idEl, edit);
@@ -1643,12 +1642,12 @@ const applySkip = (id, kind, ariaArg, t) => `<div class="card-choice"><span clas
 
 // One question card in the unified shell: head → essence → limit → choice → answer → comment → disclosures.
 // The state machine is the record's: variants, gate, draft, zones; only the shell is shared.
-function questionCard(q, review, model, t, child, partCount) {
+function questionCard(q, review, model, t, child) {
   const variants = q.variants ?? [];
   const rec = q.recommendation;
   const asLimit = q.kind === "decision" && variants.length && rec && !rec.variant && noClearRec(rec.text);
   const limit = asLimit ? prose(rec.text)
-    : q.kind !== "decision" && q.remainingEvidence?.length ? `${esc(t("decision.limit-unverified"))} ${q.remainingEvidence.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ")}` : "";
+    : q.kind !== "decision" && q.remainingEvidence?.length ? `<b>${esc(t("decision.limit-unverified"))}</b> ${q.remainingEvidence.map((n) => `<a href="#q${n}">Q${n}</a>`).join(", ")}` : "";
   const advice = rec && !asLimit ? `<p class="qadvice"><strong>${esc(t("recommendation"))}:</strong> ${prose(rec.text)}${rec.variant ? ` <span class="sub">[${esc(rec.variant)}]</span>` : ""}${rec.sources?.length ? ` <span class="sub">(${srcHtml(rec.sources, review, t, q.id)})</span>` : ""}<br><span class="sub">${esc(t("question.recommendation-note"))}</span></p>` : "";
   const actions = q.kind === "decision" && variants.length ? `
     <div class="qactions act"><button type="button" data-defer="${q.id}" aria-label="${esc(t("decision.defer"))}: Q${q.id}">${esc(t("decision.defer"))}</button><button type="button" data-qreset="${q.id}" aria-label="${esc(t("decision.reset"))}: Q${q.id}" hidden>${esc(t("decision.reset"))}</button></div>
@@ -1657,8 +1656,7 @@ function questionCard(q, review, model, t, child, partCount) {
   const answer = q.kind === "fact" || q.kind === "evidence" ? `
     <label class="fact-answer-label act" for="answer-q${q.id}">${esc(t("decision.answer-label"))}</label>
     <input type="text" class="act" id="answer-q${q.id}" data-answer="q${q.id}" placeholder="${esc(t("decision.answer-placeholder"))}" aria-label="${esc(t("decision.answer-label"))}: Q${q.id}" disabled>` : "";
-  const qparts = q.blocks ? model.blocks.filter((b) => b.questions.includes(q.id)).reduce((sum, b) => sum + (partCount[b.id] ?? 1), 0) : 0;
-  const where = q.blocks ? `<details class="qwhere" data-qwhere="${q.id}"><summary>${esc(t("card.more-code"))} · ${placeHtml(q.at, model)} · ${qparts} ${esc(t("fragments"))}</summary><div class="qwhere-body"></div><p><button type="button" class="req-link" data-q-filter="${q.id}" disabled>${esc(t("map.open-filter"))} →</button></p></details>` : "";
+  const where = q.blocks ? `<details class="qwhere" data-qwhere="${q.id}"><summary>${esc(t("card.more-code"))} · ${placeHtml(q.at, model)} · ${esc(t("blocks"))}: ${q.blocks}</summary><div class="qwhere-body"></div><p><button type="button" class="req-link" data-q-filter="${q.id}" disabled>${esc(t("map.open-filter"))} →</button></p></details>` : "";
   const remaining = q.remainingEvidence?.length ? `<div class="qremaining-block"><span class="label">${esc(t("question.remaining-evidence"))}</span><ul class="plain">${q.remainingEvidence.map((n) => `<li><a href="#q${n}">Q${n}</a> ${prose(review.questions[n - 1].text)}</li>`).join("")}</ul></div>` : "";
   const checks = q.kind === "decision" && q.remainingEvidence?.length ? `<details class="qchecks"><summary>${esc(t("card.more-checks"))}</summary><div class="stack">${remaining}</div></details>` : "";
   return `
@@ -1716,7 +1714,7 @@ function ideaCard(idea, model, t) {
   </article>`;
 }
 
-function decisionSheet(review, model, t, ideas, partCount) {
+function decisionSheet(review, model, t, ideas) {
   const qs = model.questions, byId = Object.fromEntries(qs.map((q) => [q.id, q]));
   const drawn = new Set();
   // The acyclic tree under each root, every question once: children in a disclosure under the parent's card
@@ -1724,7 +1722,7 @@ function decisionSheet(review, model, t, ideas, partCount) {
   const unitOf = (q, child) => {
     if (drawn.has(q.id)) return "";
     drawn.add(q.id);
-    const card = questionCard(q, review, model, t, child, partCount);
+    const card = questionCard(q, review, model, t, child);
     const kids = q.children.map((c) => byId[c] ? unitOf(byId[c], true) : "").join("");
     if (!kids) return card;
     const kidIds = q.children.map((c) => "Q" + c).join(", ");
@@ -1742,7 +1740,7 @@ function decisionSheet(review, model, t, ideas, partCount) {
   <div class="dgroup" id="group-fix" role="group" aria-label="${esc(t("findings"))}"><h3 class="dgroup-title">${esc(t("group.fix"))}</h3><div class="dgroup-body">${findings || `<p>${esc(t("none"))}</p>`}</div>
     ${ideas.length ? `<details class="ideas-opt" id="ideas"><summary>${esc(t("ideas.optional", ideas.length))} <span class="sub">— ${esc(t("ideas.not-counted"))}</span></summary><div class="dgroup-body">${ideaUnits}</div></details>` : ""}
   </div>
-  ${dataRoots.length ? `<div class="dgroup" id="group-data" role="group" aria-label="${esc(t("questions"))}"><h3 class="dgroup-title">${esc(t("group.data"))}</h3>${(review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit">${esc(t("decision.limit-unverified"))} ${esc(c.text)}</p>`).join("")}<div class="dgroup-body">${dataRoots.map(unit).join("")}</div></div>` : ""}
+  ${dataRoots.length ? `<div class="dgroup" id="group-data" role="group" aria-label="${esc(t("questions"))}"><h3 class="dgroup-title">${esc(t("group.data"))}</h3>${(review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit"><b>${esc(t("decision.limit-unverified"))}</b> ${esc(c.text)}</p>`).join("")}<div class="dgroup-body">${dataRoots.map(unit).join("")}</div></div>` : ""}
   <details class="dgroup" id="group-settled"><summary>${esc(t("group.settled"))} <span class="sub" id="settled-count"></span></summary><div class="dgroup-body"></div></details>
 </section>`;
 }
@@ -1829,7 +1827,7 @@ function structure({ units, target }, t) {
   return `
 <section id="structure" class="stack"><h2>${esc(t("structure"))}</h2>
   <div class="pair">${figure(t("as-written"), now)}</div>
-  ${then.length ? `<details class="structure-target"><summary>${esc(t("structure.target"))} · ${then.filter((n) => n.tone !== "existing").length} ${esc(t("units"))} · ${edges.length} ${esc(t("uses").toLowerCase())}</summary>
+  ${then.length ? `<details class="structure-target"><summary>${esc(t("structure.target"))} · ${esc(t("units"))}: ${then.filter((n) => n.tone !== "existing").length} · ${esc(t("uses"))}: ${edges.length}</summary>
     <div class="scroll">${diagram(then, t("target"))}</div>
     ${edges.length ? `<details><summary class="sub">${esc(t("uses"))}: ${esc(t("target"))} (${edges.length})</summary><ul class="plain sub">${edges.join("")}</ul></details>` : ""}
     <p class="sub">${esc(t("structure.declared-only"))}</p></details>` : `<p class="sub">${esc(t("structure.declared-only"))}</p>`}
@@ -1916,8 +1914,8 @@ function map(review, files, model, t, hl, partCount) {
     const own = blocks.filter((b) => b.path === path);
     const cat = model.purpose.file[path];
     const adds = own.reduce((sum, b) => sum + b.weightLines.added, 0), rems = own.reduce((sum, b) => sum + b.weightLines.removed, 0);
-    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks").toLowerCase())}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.map((r) => (r.gap ? '<div class="gap">⋯</div>' : "") + segment(path, r)).join("")}</div>`;
-    return `<div class="file-lazy" data-file="${idx}" id="file-${idx}"><details class="file-details"><summary class="mono" title="${esc(path)}">${esc(model.files[idx].short)} <span class="sub">· ${own.length} ${esc(t("blocks").toLowerCase())} · ${sizeOf(own)} ${esc(t("lines").toLowerCase())}</span></summary>${inner}</details></div>`;
+    const inner = `<div class="file" data-purpose="${esc(cat)}"><header><strong class="mono" title="${esc(path)}">${esc(path)}</strong><span class="sub req-count" title="${esc(t("map.lines-sum"))}">+${adds}/−${rems} · ${esc(t("blocks"))}: ${own.length}</span><span class="tag v-open">${esc(t(`purpose.${cat}`))}</span><span class="reveal-note sub">${esc(t("tree.reveal-note"))}</span></header>${parts.map((r) => (r.gap ? '<div class="gap">⋯</div>' : "") + segment(path, r)).join("")}</div>`;
+    return `<div class="file-lazy" data-file="${idx}" id="file-${idx}"><details class="file-details"><summary class="mono" title="${esc(path)}">${esc(model.files[idx].short)} <span class="sub">· ${esc(t("blocks"))}: ${own.length} · ${esc(t("lines"))}: ${sizeOf(own)}</span></summary>${inner}</details></div>`;
   };
   return files.map(file).join("\n    ");
 }
@@ -1962,7 +1960,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
   }).join("")}</div>`;
   const banners = model.questions.filter((q) => q.kind === "evidence" && q.blocks >= 2).map((q) => {
     const bs = model.blocks.filter((b) => b.questions.includes(q.id));
-    return `<div class="evidence-banner v-question"><p>${bs.length} ${esc(t("blocks").toLowerCase())} ${esc(t("banner.await"))} — <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
+    return `<div class="evidence-banner v-question"><p>${esc(t("banner.blocks", bs.length))} — <a href="#q${q.id}">Q${q.id} →</a></p><button type="button" data-q-filter="${q.id}" disabled>${esc(t("banner.show", q.id))}</button></div>`;
   }).join("");
   return `
 <section id="files" class="stack"><h2>${esc(t("files"))} · ${model.files.length}</h2>
@@ -1995,7 +1993,7 @@ function codePanel(review, files, model, t, mapHtml, partCount) {
       ${banners}
       <noscript><p class="sub">${esc(t("nojs.map"))}</p></noscript>
       <div id="map" class="map" data-show="attention" style="--kept: ${esc(JSON.stringify(t("kept-by-you")))}">
-        <details class="count-note"><summary>${esc(t("fragment.what"))} · ${esc(t("blocks"))}: ${model.blocks.length}</summary><p class="sub">${esc(t("map.audit-note"))} ${esc(t("fragments"))}: ${totalParts}. ${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
+        <details class="count-note"><summary>${esc(t("blocks"))}: ${model.blocks.length}</summary><p class="sub">${esc(t("map.audit-note"))} ${esc(t("fragments"))}: ${totalParts}. ${esc(t("fragment.definition"))} +${model.counters.nonblank.added}/−${model.counters.nonblank.removed}. ${esc(t("purpose.lines-note"))} ${esc(t("files.changed-only"))}</p></details>
         ${mapHtml}
       </div>
     </div>
@@ -2066,7 +2064,7 @@ function coverage(review, t) {
 function decisionIntro(review, t) {
   return `<div class="decision-intro">
   <p>${esc(t("decision.intro-work"))} <a href="#summary">${esc(t("summary"))} →</a></p>
-  ${!review.questions.some((q) => !q.parent && (q.kind === "fact" || q.kind === "evidence")) ? (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit">${esc(t("decision.limit-unverified"))} ${esc(c.text)}</p>`).join("") : ""}
+  ${!review.questions.some((q) => !q.parent && (q.kind === "fact" || q.kind === "evidence")) ? (review.coverageStructured ?? []).filter((c) => c.kind === "not_checked").map((c) => `<p class="card-limit"><b>${esc(t("decision.limit-unverified"))}</b> ${esc(c.text)}</p>`).join("") : ""}
 </div>`;
 }
 
@@ -2076,18 +2074,18 @@ export function page(review, files, model, { syntax } = {}) {
   const hl = syntax ? (l) => syntax.line(l) : (l, path) => highlight(l.text, path);
   // An idea is decided like a finding, under an id of its own, and reported apart from them.
   const ideas = (review.ideas ?? []).map((idea, index) => ({ ...idea, id: `i${index + 1}` }));
-  // The map is built first: it records each block's part count, which the banners, the chip and the cards read.
+  // The map is built first: it records each block's part count, which the code panel reads.
   const partCount = Object.create(null);
   const mapHtml = map(review, files, model, t, hl, partCount);
-  const sheet = decisionSheet(review, model, t, ideas, partCount);
+  const sheet = decisionSheet(review, model, t, ideas);
   const pr = review.passport?.links?.find((l) => l.kind === "pr");
-  const data = { annotationDocument: "0".repeat(64), annotationRecord: annotationRecordDigest(review, files), title: review.title, range: review.range, key: model.key,
+  const data = { annotationDocument: "0".repeat(64), annotationRecord: annotationRecordDigest(review, files), title: review.title, range: review.range, key: model.key, storageKey: `review-report:${schema}:${model.key}`,
     digest: { record: model.recordSha ?? model.key, diff: review.diff?.sha256 ?? "" },
     findings: review.findings.map(({ id, title }) => ({ id, title })),
     questions: model.questions.map(({ id, kind, resolver, parent, children, variants, text, blocks, zones }) => ({ id, kind, resolver, parent, children, text, blocks, variants: (variants ?? []).map(({ id, text }) => ({ id, text })), zones: (zones ?? []).map((z) => z.text) })),
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, where: b.where, verdict: b.verdict, serves: b.serves, questions: b.questions, unit: b.unit, findings: b.findings,
-      does: b.does, size: b.size, purpose: model.purpose.block[b.id], firstAdd: b.added[0] ?? null, firstDel: b.removed[0] ?? null, parts: partCount[b.id] ?? 1 })),
+      does: b.does, size: b.size, purpose: model.purpose.block[b.id], firstAdd: b.added[0] ?? null, firstDel: b.removed[0] ?? null })),
     blockFile: model.blockFile, files: files.map((f) => f.path),
     purposeLabels: Object.fromEntries(PURPOSES.map((p) => [p, t(`purpose.${p}`)])),
     pr: { url: pr?.url ?? null, label: pr?.label ?? "", base: review.passport?.base ?? "", head: review.passport?.head ?? "" },
@@ -2109,7 +2107,7 @@ export function page(review, files, model, { syntax } = {}) {
       segCommentDetails: t("seg.comment-details"), segCommentDetailsN: t("seg.comment-details-n", "{n}"), whereEmpty: t("card.no-blocks"),
       export: { accepted: t("export.accepted"), deferred: t("export.deferred"), answers: t("export.answers"), zones: t("export.zones"), comments: t("export.comments"),
         emptyAccepted: t("export.empty-accepted"), emptyDeferred: t("export.empty-deferred"), emptyComments: t("export.empty-comments"),
-        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"), openFindings: t("export.open-findings"), openDecisions: t("export.open-decisions"), openDependent: t("export.open-dependent"), openRequests: t("export.open-requests"),
+        partial: t("export.partial"), goto: t("export.goto"), passageContext: t("out.passage-context"), openFindings: t("export.open-findings"), openDecisions: t("export.open-decisions"), openDependent: t("export.open-dependent"), openRequests: t("export.open-requests"), notApplicable: t("export.not-applicable"),
         versionRecord: review.passport ? t("passport.record") : "record_sha256", versionDiff: review.passport ? t("passport.diffSha") : "diff_sha256" },
       verdict: Object.fromEntries(VERDICTS.map((v) => [v, t(`verdict.${v}`)])),
       findings: t("findings"), questions: t("questions"), serves: t("serves"), servesNothing: t("serves-nothing"), inUnit: t("in-unit"),
@@ -2118,8 +2116,8 @@ export function page(review, files, model, { syntax } = {}) {
       noteBlock: t("note-block"), close: t("viewer.close"),
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
       code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
-      blocksWord: t("blocks"), fragments: t("fragments"), withParts: t("chip.with-parts"), files: t("files"), treeFiles: t("tree.files"), treeVisibleFiles: t("tree.visible-files") },
-    annotationLabels: { ...Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])), unlocated: t("annotation.unverified") } };
+      blocksWord: t("blocks"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
+    annotationLabels: Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
   const D = decisionRuntime(), cfStatic = D.choiceStats(model.questions, D.empty(), review.findings, ideas);
@@ -2202,7 +2200,7 @@ ${hasPictures ? `<dialog id="zoom-dialog" aria-label="${esc(t("screens"))}">
     <span id="zoom-count" class="sub"></span>
     <button type="button" data-zoom-next aria-label="${esc(t("viewer.next"))}">→</button>
     <span id="zoom-name" class="sub"></span>
-    <span id="zoom-historical" class="tag v-fix" hidden>${esc(t("screen.historical"))}</span>
+    <span id="zoom-historical" class="tag v-open" hidden>${esc(t("screen.historical"))}</span>
     <form method="dialog"><button type="submit">${esc(t("viewer.close"))}</button></form>
   </div>
   <div class="zoom-scroll"><img alt=""></div>

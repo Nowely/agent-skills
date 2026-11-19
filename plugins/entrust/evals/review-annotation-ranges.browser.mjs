@@ -57,7 +57,7 @@ try {
         if (!editor.open) throw Error(`editor did not open; quote=${JSON.stringify(quote)} node=${JSON.stringify(first.data)}`);
         editor.querySelector('textarea').value = `note ${scenario}`;
         editor.querySelector('[data-annotation-action="save"]').click();
-        const key = 'review-report:current:' + JSON.parse(document.querySelector('#data').textContent).key;
+        const key = JSON.parse(document.querySelector('#data').textContent).storageKey;
         return { quote, markedText, key, proof: JSON.parse(localStorage.getItem(key)).passages[0].proof };
       }, scenario);
       assert.equal(saved.proof?.kind, scenario === "multi-field" ? "range" : "related-code");

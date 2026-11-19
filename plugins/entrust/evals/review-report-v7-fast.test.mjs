@@ -156,18 +156,23 @@ test("failed browser storage warns only for unsaved answers and recovers after a
   assert.equal(safeEvent.prevented, undefined);
 });
 
-test("current storage key does not load decisions from older namespaces", () => {
-  const runtime = part("  let raw = {};", '  document.documentElement.classList.add("js")');
-  const old = JSON.stringify({ notes: { q1: "old answer" } });
-  const store = { "review-report:review": old, "review-report:v8:review": old };
-  const keys = [];
-  const sandbox = { D: decisionRuntime(), data: { questions: [] }, key: "review-report:current:review",
-    localStorage: { getItem: (key) => { keys.push(key); return store[key] ?? null; }, setItem() {} },
-    document: { getElementById: () => ({ hidden: true }) }, window: { addEventListener() {} } };
-  const state = vm.runInNewContext(runtime + "\nstate", sandbox);
-  assert.deepEqual(keys, ["review-report:current:review"]);
-  assert.equal(state.notes.q1, undefined);
-  assert.match(source, /key = "review-report:current:" \+ data\.key/);
+test("the page stores decisions under the export's format number and the record key", () => {
+  const { diff, record } = hostileFixture(), files = parseDiff(diff), { errors, owner } = check(record, files, ".");
+  assert.deepEqual(errors, []);
+  const html = page(record, files, modelOf(record, files, owner, "."));
+  const data = JSON.parse(html.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
+  const script = html.slice(html.lastIndexOf("<script>"));
+  const runtime = script.slice(script.indexOf("  const data ="), script.indexOf('  document.documentElement.classList.add("js")'));
+  const read = [], written = [];
+  const api = vm.runInNewContext(runtime + "\n({ D, key, save, state })", {
+    document: { getElementById: (id) => id === "data" ? { textContent: JSON.stringify(data) } : { hidden: true } },
+    localStorage: { getItem: (key) => { read.push(key); return null; }, setItem: (key) => { written.push(key); } },
+    window: { addEventListener() {} } });
+  api.save();
+  const { schema } = decisionRuntime();
+  assert.equal(api.key, "review-report:" + schema + ":" + data.key);
+  assert.deepEqual(read, [api.key]); assert.deepEqual(written, [api.key]);
+  assert.equal(api.D.exportOf(data.questions, api.state, {}).schema_version, schema);
 });
 
 test("failed storage keeps annotation proof and original fields in memory and JSON", () => {
@@ -324,16 +329,29 @@ test("retired decisions export separately from deferred decisions", () => {
   state.questions[2] = { variant: "x" };
   const payload = D.exportOf(questions, state, {});
   const t = { status: { decided: "Selected {n}" }, notApplicable: "Not applicable", draftSuffix: "draft {n}",
-    tabRemaining: "{n} main", export: { openFindings: "open" } };
+    tabRemaining: "{n} main", export: { openFindings: "open", notApplicable: "Retired decisions" } };
   const sandbox = { D, state, qById: { 1: questions[0], 2: questions[1] }, blockById: {},
-    data: { questions, findings: [], ideas: [] }, t, exportPayload: () => payload,
+    data: { questions, findings: [], ideas: [], digest: { record: "r", diff: "d" } }, t, exportPayload: () => payload,
     annotationUI: { located: () => false }, stats: () => D.choiceStats(questions, state, []) };
-  const model = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\nexportModel()", sandbox);
+  const api = vm.runInNewContext(part("  function exportModel()", "  function buildPreview()") + "\n({ exportModel, text: decisionsText() })", sandbox);
+  const model = api.exportModel();
   assert.equal(payload.questions[1].status, "not-applicable");
   assert.equal(model.deferred.length, 0);
   assert.equal(model.notApplicable.length, 1);
-  assert.match(model.notApplicable[0].text, /Q2.*Not applicable.*Q1.*draft X/);
+  assert.match(model.notApplicable[0].text, /Q2 · Not applicable \(Q1\).*draft X/);
   assert.equal(model.notApplicable[0].hash, "#q2");
+  assert.match(api.text, /\nRetired decisions\n- Q2 · Not applicable \(Q1\)/);
+  // The preview names the section with the same heading, not with the status word.
+  const element = (tag) => ({ tag, children: [], dataset: {}, text: "",
+    set textContent(value) { this.text = value; this.children = []; },
+    get textContent() { return this.text + this.children.map((c) => c.textContent).join(""); },
+    append(...children) { this.children.push(...children); } });
+  const host = element("div");
+  vm.runInNewContext(part("  function buildPreview()", "  function openExportDialog()") + "\nbuildPreview()",
+    { exportModel: api.exportModel, document: { getElementById: () => host, createElement: element }, t: { export: {
+      ...t.export, emptyAccepted: "", emptyDeferred: "", emptyComments: "", goto: "Go", partial: "partial" } } });
+  const headings = host.children.map((section) => section.children.find((c) => c.tag === "h3")?.textContent);
+  assert.ok(headings.includes("Retired decisions"), headings.join(" | "));
 });
 
 test("export preview refresh retains focus inside a stable container without suppressing updates", () => {
@@ -370,7 +388,9 @@ test("focused semantic status survives filtering until blur and moves only after
     querySelector: (s) => s === ":scope > .filter-editing" ? note : card,
     querySelectorAll: (s) => s === ".qcard[data-qid]" ? [card] : [],
     prepend(el) { note = el; }, before() {} };
-  const doc = { activeElement: field, getElementById: () => ({}), createElement: (tag) => tag === "details" ? row : tag === "summary" ? summary : ({ setAttribute() {}, append() {} }) };
+  const spans = [];
+  const doc = { activeElement: field, getElementById: () => ({}), createElement: (tag) => tag === "details" ? row : tag === "summary" ? summary
+    : spans[spans.push({ setAttribute() {}, append() {} }) - 1] };
   const sandbox = { D, state, data: { questions: qs }, qById: { 1: qs[0] }, document: doc, settledBody: body,
     unitHome: new Map([[unit, { parent: home, siblings: [unit] }]]), settledMap: {}, t: { filterEditing: "editing", status: { open: "open" }, commentEdit: "edit", cardComment: "Comment" },
     all: (s) => s === "#panel-decisions .dunit" ? [unit] : [], progOpen() {} };
@@ -390,6 +410,8 @@ test("focused semantic status survives filtering until blur and moves only after
   assert.equal(unit.dataset.settled, "done", "focus in another card also postpones the move");
   doc.activeElement = bodyFocus; refresh(); api.applyChoiceFilter("deferred");
   assert.equal(unit.dataset.settled, "deferred"); assert.equal(note.hidden, true);
+  // A deferred row shows the card's own status, not a second one.
+  assert.equal(spans.filter((span) => span.className === "sr-answer").at(-1).textContent, "Status");
   const savedDeferred = D.normalize(JSON.parse(JSON.stringify(state)));
   assert.equal(D.exportOf(qs, savedDeferred, {}).questions[0].status, "deferred");
   doc.activeElement = field; state.questions[1].choice = "accepted"; refresh(); api.applyChoiceFilter("done");
@@ -521,23 +543,23 @@ test("v8 custom catalogs require exactly the applicable new source and export la
     { kind: "decision", parent: { question: 1, variants: ["yes"] } },
     { kind: "evidence" },
   ] };
-  const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files", "tree.files",
-    "export.open-decisions", "export.open-dependent", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
+  const fresh = ["storage.failed", "annotation.added", "choice.count.deferred", "choice.waiting-parent", "choice.count.decisions", "choice.count.findings", "choice.dependent", "choice.unanswered", "tree.visible-files",
+    "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests", "source.internal", "source.self", "source.quoted", "source.mention"];
   const catalog = Object.fromEntries(requiredKeys(review).map((k) => [k, `«${LABELS[k]}»`]));
   for (const key of requiredKeys(review)) {
     const incomplete = { ...catalog };
     delete incomplete[key];
     assert.match(labelFaults({ ...review, labels: incomplete }).join("\n"), new RegExp(`missing: ${key.replaceAll(".", "\\.")}(?:,|$)`), key);
   }
-  const old = { ...catalog };
-  for (const key of fresh) delete old[key];
-  const faults = labelFaults({ ...review, labels: old });
+  const lacking = { ...catalog };
+  for (const key of fresh) delete lacking[key];
+  const faults = labelFaults({ ...review, labels: lacking });
   assert.equal(faults.length, 1);
   for (const key of fresh) assert.ok(faults[0].includes(key), key);
   assert.deepEqual(labelFaults({ ...review, labels: catalog }), []);
   for (const language of ["en", "ru"]) assert.deepEqual(labelFaults({ ...review, language }), []);
   const minimal = requiredKeys({ language: "zz", questions: [] });
-  for (const key of ["source.internal", "source.self", "source.quoted", "source.mention", "export.open-decisions", "export.open-dependent", "export.open-requests"])
+  for (const key of ["source.internal", "source.self", "source.quoted", "source.mention", "export.open-decisions", "export.open-dependent", "export.not-applicable", "export.open-requests"])
     assert.ok(!minimal.includes(key), key);
   const selfOnly = requiredKeys({ questions: [{ kind: "decision", context: [{ sources: [{ ref: "/questions/0" }] }] }] });
   assert.ok(selfOnly.includes("source.self"));
@@ -637,12 +659,10 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.equal(api.locate({ ...note, proof: oldFieldProof }), null);
   assert.equal(api.locate({ ...note, proof: { ...note.proof, field: "context.1.text" } }), null);
   const saved = JSON.stringify(note);
-  const legacy = { id: "legacy-id", quote: "failure", where: "Q1", note: "old", anchor: { id: "q1", start: 0, end: 7, text: "failure" } };
-  assert.equal(api.locate(legacy), null);
-  const sourceLegacy = { ...legacy, id: "legacy-source", anchor: { ...legacy.anchor, id: "source-12" } };
-  assert.equal(api.locate(sourceLegacy), null);
-  const state = decisionRuntime().empty(); state.passages.push(legacy, sourceLegacy);
-  assert.equal(JSON.stringify(decisionRuntime().exportOf([], state, {}).passages), JSON.stringify([legacy, sourceLegacy]));
+  const unproved = { quote: "failure", where: "Q1", note: "kept" };
+  assert.equal(api.locate(unproved), null);
+  const state = decisionRuntime().empty(); state.passages.push(unproved);
+  assert.equal(JSON.stringify(decisionRuntime().exportOf([], state, {}).passages), JSON.stringify([unproved]));
   root = new Element("main", { id: "review-content" }, new Element("div", { class: "settled-row" }, question()));
   assert.ok(api.locate(note)); assert.equal(JSON.stringify(note), saved);
   const markedField = root.childNodes[0].childNodes[0].childNodes[0], marker = new Element("button", { class: "annotation-marker" });
@@ -764,10 +784,10 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.ok(api.locate(blockNote));
   root.childNodes[0].isConnected = true;
   const locations = new Map(), rows = [{ contains: () => false }, { contains: () => false }], found = [];
-  const legacyBlock = { quote: "😀c", note: "legacy", anchor: { id: "b1", start: 1, end: 4, text: "😀c" } };
+  const unprovedBlock = { quote: "😀c", where: "B1", note: "kept" };
   const refreshStart = src.indexOf("  const pendingRefresh ="), refreshEnd = src.indexOf("  list.addEventListener('focusout'", refreshStart);
   const refresh = vm.runInNewContext(src.slice(refreshStart, refreshEnd) + "\nrefresh", {
-    state: () => ({ passages: [blockNote, legacyBlock] }), located: locations, invalidated: new Set(), document,
+    state: () => ({ passages: [blockNote, unprovedBlock] }), located: locations, invalidated: new Set(), document,
     list: { children: rows }, editor: { open: false }, getSelection: () => ({ rangeCount: 0 }),
     locate: api.locate, renderOne: (_p, index) => { found.push(index); locations.set(index, { isConnected: true }); }, locationsChanged() {},
   });
@@ -786,7 +806,7 @@ test("annotation proof binds exact fields across reload and fails closed on coll
   assert.equal(unmarked.quote, "17"); assert.equal(unmarked.proof, undefined); assert.equal(api.locate(unmarked), null);
 });
 
-test("legacy annotations remain exported without markers or a source action", () => {
+test("a passage without a proof is exported unchanged, without a marker or a source action", () => {
   const src = fs.readFileSync(new URL("../plugin/skills/review/scripts/annotations.mjs", import.meta.url), "utf8");
   const start = src.indexOf("  function renderOne("), end = src.indexOf("  function render()", start);
   const created = [];
@@ -796,7 +816,7 @@ test("legacy annotations remain exported without markers or a source action", ()
   const renderOne = vm.runInNewContext(src.slice(start, end) + "\nrenderOne", {
     document: { createElement: element }, list, t: { annotation: "Comment", edit: "Edit", unverified: "unlocated" },
   });
-  const p = { quote: "failure", note: "keep this", where: "Q1", anchor: { id: "q1", start: 0, end: 7, text: "failure" } };
+  const p = { quote: "failure", note: "keep this", where: "Q1" };
   renderOne(p, 0, null);
   assert.equal(created.filter((el) => el.className === "annotation-marker").length, 0);
   assert.equal(created.filter((el) => el.tag === "button").length, 1);
@@ -842,7 +862,7 @@ test("passage preview only offers source navigation for an installed annotation"
   ];
   const payload = { questions: [], findings: {}, notes: {}, passages, zones: {}, factAnswers: {}, waitingForParent: [] };
   const sandbox = { exportPayload: () => payload, annotationUI: { located: (i) => i === 0 },
-    data: { questions: [], findings: [], ideas: [], annotationLabels: { unlocated: "unlocated" } },
+    data: { questions: [], findings: [], ideas: [], annotationLabels: { unverified: "unverified" } },
     t: { export: { passageContext: "Selected", openFindings: "findings" }, tabRemaining: "{n} remaining" },
     qById: {}, blockById: {}, D: {}, state: {}, stats: () => ({ remaining: 0 }) };
   const make = vm.runInNewContext(part("  function exportModel()", "  function decisionsText()") + "\nexportModel", sandbox);
@@ -851,7 +871,7 @@ test("passage preview only offers source navigation for an installed annotation"
   assert.equal(model.comments[0].hash, undefined);
   assert.equal(model.comments[1].passage, undefined);
   assert.equal(model.comments[1].hash, undefined);
-  assert.match(model.comments[1].text, /unlocated/);
+  assert.match(model.comments[1].text, / · unverified$/);
   assert.equal(JSON.stringify(model.payload), snapshot);
   const element = (tag) => ({ tag, children: [], dataset: {}, text: "",
     set textContent(value) { this.text = value; this.children = []; },
@@ -868,14 +888,14 @@ test("passage preview only offers source navigation for an installed annotation"
   assert.equal(rows[1].children.filter((c) => c.tag === "button" || c.tag === "a").length, 0);
 });
 
-test("language tags and in-memory annotation feedback are validated independently of old overrides", () => {
+test("language tags are validated, and the in-memory comment notice has its own required key no other label stands in for", () => {
   for (const language of ["en", "ru", "custom"]) {
     const review = { language, labels: Object.fromEntries(requiredKeys({ language }).map((k) => [k, LABELS[k]])) };
     assert.deepEqual(labelFaults(review), []);
   }
   for (const language of ["bad_tag", "ru--RU", 'en"><img']) assert.match(labelFaults({ language })[0], /valid language tag/);
   for (const language of ["en", "ru"]) {
-    const t = labelsOf({ language, labels: { "annotation.saved": "Saved on disk" } });
+    const t = labelsOf({ language, labels: { "annotation.restored": "Saved on disk" } });
     assert.notEqual(t("annotation.added"), "Saved on disk");
   }
   const custom = { language: "custom", labels: Object.fromEntries(requiredKeys({ language: "custom" }).map((k) => [k, LABELS[k]])) };
@@ -886,10 +906,8 @@ test("language tags and in-memory annotation feedback are validated independentl
   assert.match(labelFaults(custom)[0], /annotation\.proof-note/);
 });
 
-test("storage-sensitive messages ignore old overrides after a failed write", () => {
-  const old = { "export.dialog-note": "OLD saved in browser", "decision.export-method": "OLD saved in browser",
-    "decision.draft-deferred": "OLD saved {n}", "decision.gate-draft": "OLD saved {n}" };
-  const newKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
+test("storage-sensitive messages come from their own keys, which custom catalogs owe, and show after a failed write", () => {
+  const storageKeys = ["export.storage-explanation", "decision.export-local-method", "decision.draft-local", "decision.gate-draft-local"];
   const { diff, record } = hostileFixture(), files = parseDiff(diff);
   record.questions = [
     { kind: "decision", at: "a:1", text: "Parent?", variants: [{ id: "yes", text: "Yes" }] },
@@ -898,11 +916,10 @@ test("storage-sensitive messages ignore old overrides after a failed write", () 
   for (const language of ["en", "ru", "custom"]) {
     const r = structuredClone(record); r.language = language;
     const complete = Object.fromEntries(requiredKeys(r).map((k) => [k, LABELS[k]]));
-    r.labels = { ...(language === "custom" ? complete : {}), ...old };
+    if (language === "custom") r.labels = complete;
     const { owner, errors } = check(r, files, ".");
     assert.deepEqual(errors, []);
     const html = page(r, files, modelOf(r, files, owner, "."));
-    assert.ok(!html.includes("OLD saved"));
     const data = JSON.parse(html.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
     assert.ok(data.labels.draftDeferred.includes("{n}"));
     assert.ok(data.labels.gateDraft.includes("{n}"));
@@ -917,9 +934,9 @@ test("storage-sensitive messages ignore old overrides after a failed write", () 
   }
   const custom = { ...structuredClone(record), language: "custom" };
   const complete = Object.fromEntries(requiredKeys(custom).map((k) => [k, LABELS[k]]));
-  for (const k of newKeys) delete complete[k];
-  const fault = labelFaults({ ...custom, labels: { ...complete, ...old } }).join("\n");
-  for (const k of newKeys) assert.ok(fault.includes(k), k);
+  for (const k of storageKeys) delete complete[k];
+  const fault = labelFaults({ ...custom, labels: complete }).join("\n");
+  for (const k of storageKeys) assert.ok(fault.includes(k), k);
 });
 
 test("an answer retired by the parent remains raw in JSON but is marked not applicable in text and preview", () => {
@@ -995,7 +1012,7 @@ test("fact answer statuses follow applicability and parent gates without inventi
   ];
   const original = JSON.stringify(questions);
   state.answers = { q2: "fact", q3: "evidence", q4: "independent fact", q5: "independent evidence",
-    q6: "legacy", q7: "  ", q999: "unknown", legacy: "old" };
+    q6: "no kind", q7: "  ", q999: "unknown", stray: "stray" };
   state.zones["3-0"] = true;
   const check = (expected) => {
     const payload = D.exportOf(questions, state, {});
@@ -1004,7 +1021,7 @@ test("fact answer statuses follow applicability and parent gates without inventi
     assert.deepEqual(payload.factAnswerStatuses.q3, expected);
     assert.deepEqual(payload.factAnswerStatuses.q4, { status: "entered" });
     assert.deepEqual(payload.factAnswerStatuses.q5, { status: "entered" });
-    for (const id of ["q6", "q7", "q999", "legacy"]) assert.equal(Object.hasOwn(payload.factAnswerStatuses, id), false);
+    for (const id of ["q6", "q7", "q999", "stray"]) assert.equal(Object.hasOwn(payload.factAnswerStatuses, id), false);
     assert.deepEqual(payload.factAnswers, state.answers);
     assert.deepEqual(payload.zones, state.zones);
     assert.equal(JSON.stringify(payload.factAnswerStatuses).includes("verified"), false);
@@ -1172,7 +1189,7 @@ test("chip counts unique matching blocks independently of hidden panel and mobil
   const sandbox = {
     document: { querySelectorAll(selector) { assert.equal(selector, "#map .seg[id][data-block]"); return segments; } },
     map: { dataset: { req: "1" } }, hiddenPurposes: () => [], updateRequirementViews() {},
-    data: { blocks: [{ serves: [1], parts: 3 }, { serves: [1] }, { serves: [1] }], purposeLabels: {} },
+    data: { blocks: [{ serves: [1] }, { serves: [1] }, { serves: [1] }], purposeLabels: {} },
     t: { chip: { requirement: "Requirement {n}" }, code: { linked: "Linked blocks", visible: "Visible" }, blocksWord: "Blocks" },
     chip: {}, chipLabel: {}, chipPos: {}, chipPrev: {}, chipNext: {}, chipBack: {},
     returnState: null, chipIdx: 0, chipKey: ""
@@ -1188,6 +1205,11 @@ test("chip counts unique matching blocks independently of hidden panel and mobil
   segments[0].style.display = "none";
   sandbox.updateChip();
   assert.match(sandbox.chipLabel.textContent, /Visible: 1$/);
+  // A question's chip counts its blocks.
+  Object.assign(sandbox, { map: { dataset: { q: "1" } }, chipKey: "",
+    data: { blocks: [{ questions: [1] }, { questions: [1] }, { questions: [2] }], purposeLabels: {} } });
+  sandbox.updateChip();
+  assert.equal(sandbox.chipLabel.textContent, "Q1 · Blocks: 2");
 });
 
 test("#panel-code clears each context while retaining hidden purposes and restoring lazy files", () => {
@@ -1347,7 +1369,7 @@ test("afterprint recomputes hidden Code chip from restored filtered segments", (
     },
     inserted: new Set(), map: { dataset: { show: "all", req: "1" }, style: { display: "" } },
     state: { hiddenPurposes: [] }, hiddenPurposes() { return sandbox.state.hiddenPurposes; },
-    data: { blocks: [{ serves: [1], parts: 2 }], purposeLabels: {} },
+    data: { blocks: [{ serves: [1] }], purposeLabels: {} },
     t: { chip: { requirement: "T{n}" }, code: { linked: "Linked", visible: "Visible" } },
     chip: {}, chipLabel: {}, chipPos: {}, chipPrev: {}, chipNext: {}, chipBack: {},
     returnState: null, chipIdx: 0, chipKey: "", updateRequirementViews() {},

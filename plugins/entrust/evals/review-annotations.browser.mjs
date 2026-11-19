@@ -5,7 +5,7 @@
 // must land on the right tab by itself.
 async (page) => {
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  const key = await page.evaluate(() => 'review-report:current:' + JSON.parse(document.querySelector('#data').textContent).key);
+  const key = await page.evaluate(() => JSON.parse(document.querySelector('#data').textContent).storageKey);
   const original = await page.evaluate(k => localStorage.getItem(k), key);
   const checks = [];
   const state = () => page.evaluate(k => JSON.parse(localStorage.getItem(k) || '{}'), key);

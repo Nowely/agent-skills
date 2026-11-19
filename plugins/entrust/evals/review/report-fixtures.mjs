@@ -1,4 +1,4 @@
-// The records the report suite and the browser acceptance render: one legacy review of the currency-contract
+// The records the report suite and the browser acceptance render: one minimal review of the currency-contract
 // case, one themed record with the decision-card fields on the same diff, and the enrichment of a copy of the
 // real 65507 record from the approved prototype's annotations. One source, so the two never drift apart.
 import { createHash } from "node:crypto";

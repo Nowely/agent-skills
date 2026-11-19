@@ -5,6 +5,8 @@
 // or an outside parent variant keeps the pick as a draft, never in effect. An answer entered on a fact card is
 // not a checked result. Decisions are never carried between revisions by question number.
 export function decisionRuntime() {
+  // The export format's number; the page's storage key carries it too, so a new format never reads older answers.
+  const schema = 5;
   // answers: fact answers entered on the surface, exported as factAnswers;
   // hiddenPurposes/treeHidden/treeWidth/treeMode: the code view's UI state, stored beside the decisions, never exported.
   const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {}, answers: {}, hiddenPurposes: [], treeHidden: false, treeWidth: 0, treeMode: "folder" });
@@ -136,7 +138,7 @@ export function decisionRuntime() {
         comment: noteOf(state, q.id) || null };
     });
     return {
-      schema_version: 5, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
+      schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
       findings: state.findings,
       questions: entries,
       // A decision accepted by comment alone (no variants to pick): named, so a reader never mistakes it for a
@@ -152,10 +154,10 @@ export function decisionRuntime() {
         .map((q) => ({ question: q.id, parent: waitingParentIn(q, state, byId), kind: q.kind })),
     };
   };
-  return { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
+  return { schema, empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
     applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)),
     waitingParent: (q, state, questions) => waitingParentIn(q, state, byIdOf(questions)) };
 }
 
 const runtime = decisionRuntime();
-export const { empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;
+export const { schema, empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;

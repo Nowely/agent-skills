@@ -30,8 +30,8 @@ See [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link the page. On it the user marks findings and
-   ideas to apply or skip, decides the question cards, comments on any passage and copies those decisions back
+   not changed. Link the page. On it the user marks findings «Fix» or «Do not fix» and ideas «Take» or
+   «Do not take», decides the question cards, comments on any passage and copies those decisions back
    as text or downloads them as JSON: proposals for the next step, not edits to the source.
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
@@ -171,52 +171,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),
   `repository`, `base`, `head`, `reviewedAt`. `range` remains the source of the scope; the passport stores no copy
   of the diff digest or the record digest, which are computed from the bytes.
-- **Language.** `language` is the session's language code; built-in `en` and `ru` cover every control. Another
-  language needs a `labels` catalog (`report.mjs labels en` prints one). Write the content in that language.
-  The catalog a record needs is the old base set plus, for a record that uses any new field, the chrome words
-  (tabs, theme, map reader, filters, export, no-script notes) and the words of every capability it shows — the
-  viewer for pictures, the cards, passport, coverage, tradeoffs, permission and historical marks — so a control
-  is never silently left in English on a record authored for this version. An old record without the new fields
-  still falls back to built-in words for the older chrome. **Breaking change:** every custom catalog, including
-  one on an old record, must also translate the exact `code.requirement`, `code.all-requirements`, `code.files`,
-  `code.units`, `code.select-requirement`, `code.no-related`, `code.no-visible`, `code.no-unit`, `code.linked`,
-  `code.visible`, and `code.filters-cleared` keys. The v8 report also requires `tab.remaining`, `tree.filter`,
-  `export.storage-explanation`, `decision.export-local-method`, `storage.failed`, `choice.count.decisions`,
-  `choice.count.findings`, `choice.count.deferred`, `choice.dependent`, `choice.unanswered`,
-  `choice.waiting-parent`, `choice.filter-editing`, `annotation.added`, `annotation.unverified`,
-  `annotation.proof-note`, `tree.visible-files`, and `tree.files`
-  for every custom catalog. Decision, dependent decision and fact/evidence capabilities respectively add
-  `export.open-decisions`, `export.open-dependent`, and `export.open-requests`. Fact/evidence requests also
-  require `answer.status.entered`; dependent requests require `answer.status.waiting-parent` and
-  `answer.status.not-applicable`.
-  Dependent decisions also require `decision.selection-waiting`. Decision variants and dependent
-  variants respectively add `decision.draft-local` and `decision.gate-draft-local`. The old keys
-  `export.dialog-note`, `decision.export-method`, `decision.draft-deferred`, and `decision.gate-draft` no longer
-  control these messages; existing overrides must be translated under the new keys. Sources add the keys their
-  fields use: `source.internal`, `source.self`, `source.quoted`, and/or `source.mention`. Self means a question's
-  own `/questions/N` reference; a quote is supplied text, not a verified source. `check` lists all missing keys.
-  `source.each` is required only if a context or one variant's consequences contain at least two claims with
-  identical, nonempty, ordered source arrays. The page names that set once as the sources for each item; it does
-  not combine different groups or sources with different fields, order, revisions, or quotations.
-  Translate each distinction accurately; `annotation.added` describes an in-memory change, not a successful
-  storage write. Built-in `en` and `ru` need no catalog updates. Invalid language tags are rejected by `check`
-  using `Intl.getCanonicalLocales`; previously accepted invalid tags must be corrected.
-
-  Schema 5 includes `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
-  unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions
-  and requests with an answer are excluded; their existing data remains in the export. The list does not change
-  applicability or mean an answer is verified. A deferred parent retains its existing behavior. An accepted decision whose ancestor is still unresolved
-  has an additive `waiting_parent: N` on its question entry: the choice remains recorded, not an unanswered
-  item, but is conditional on QN. The `factAnswerStatuses` object maps each known
-  fact/evidence answer ID with nonblank content to `{status: "entered"}`, `{status: "waiting-parent", parent: N}`,
-  or `{status: "not-applicable"}`. It uses the same applicability and parent gate as the page. IDs that do not
-  identify a known fact/evidence question, and blank answers, remain untouched in
-  `factAnswers` without an invented status. The statuses never mean
-  verified; raw answers and zones remain unchanged.
-  A current passage contains `quote`, `where`, and `note`, and optionally a `proof` of kind `field`,
-  `related-code`, `range`, or `code`. The report checks the document and relevant structure before locating a
-  passage; unsupported or unconfirmed passages remain saved and exported without a location link. It does not
-  guess a relocation. Old passage state and old anchors are not read.
+- **Language.** `language` is the session's language code; write the content in that language. Built-in `en`
+  and `ru` cover every control. Another language needs a `labels` catalog: `report.mjs labels en` prints the
+  whole English catalog to translate, and `check` names every key the record needs that the catalog lacks.
+  `check` rejects an invalid language tag (`Intl.getCanonicalLocales`).
 
 ## Sources
 
@@ -264,7 +222,7 @@ it, Reset clears it — one reversible choice, no separate mobile draft-and-conf
 neutral «Selected», never a success badge. Deferring keeps a picked variant as a draft, and a child retired by its
 parent keeps its pick as a draft too — neither is in effect, and neither returns silently when the parent changes
 again. A fact or evidence card carries an answer field on its surface: an entered answer reads «answer entered»
-(amber), never «verified» — it is the owner's input, not a checked result, and a zone mark without evidence is not
+in a neutral tone, never «verified» — it is the owner's input, not a checked result, and a zone mark without evidence is not
 a confirmation either. Where the data leaves no clear recommendation, the reviewer's `recommendation.text` opens
 with «Однозначной рекомендации нет» / «No clear recommendation» and names no `variant`: the page shows that text
 in the card's limit slot on the surface, not as a direction. The export (schema 5) carries the record and diff
@@ -272,6 +230,23 @@ digests, the question number, the variant id and text, the comment and the statu
 variant that is not in effect (deferred or not applicable), `applyWithoutVariant` lists the questions accepted by
 comment alone, and `factAnswers` carries the entered fact answers apart from the comments. Decisions are never
 carried between revisions by question number.
+
+Schema 5 includes `waitingForParent`: entries `{question, parent, kind}` are applicable unanswered decisions or
+unanswered fact/evidence requests waiting for the named ancestor. Accepted or reasonedly deferred decisions
+and requests with an answer are excluded; their existing data remains in the export. The list does not change
+applicability or mean an answer is verified. A deferred parent retains its existing behavior. An accepted decision whose ancestor is still unresolved
+has an additive `waiting_parent: N` on its question entry: the choice remains recorded, not an unanswered
+item, but is conditional on QN. The `factAnswerStatuses` object maps each known
+fact/evidence answer ID with nonblank content to `{status: "entered"}`, `{status: "waiting-parent", parent: N}`,
+or `{status: "not-applicable"}`. It uses the same applicability and parent gate as the page. IDs that do not
+identify a known fact/evidence question, and blank answers, remain untouched in
+`factAnswers` without an invented status. The statuses never mean
+verified; raw answers and zones remain unchanged.
+
+A passage contains `quote`, `where`, and `note`, and optionally a `proof` of kind `field`,
+`related-code`, `range`, or `code`. The report checks the document and relevant structure before locating a
+passage; unsupported or unconfirmed passages remain saved and exported without a location link. It does not
+guess a relocation.
 
 ## The page
 
@@ -307,10 +282,11 @@ never a new record field:
   +N/−M, the count not kept); the name filter highlights the match and Enter opens the first; a click reveals
   the file's blocks in any verdict mode through every ancestor, subject to the active requirement and purpose
   filters; the scrollspy marks the
-  current file; the collapse persists. One line per fragment (verdict dot, B-permalink, what it does, verdict
-  tag, F/Q links, source, details), the code in a disclosure, a popover with the fragment's sources: an added
+  current file; the collapse persists. One line per block (verdict dot, B-permalink, what it does, verdict
+  tag, F/Q links, source, details), a «continued» line where a block resumes after other code, the code in a
+  disclosure, a popover with the block's sources: an added
   line at the head revision, a removed line at the base, each copyable as `path:line (revision)`; without a
-  passport the copy is `path:line` alone. Kept fragments start collapsed; the default view shows what needs
+  passport the copy is `path:line` alone. Kept blocks start collapsed; the default view shows what needs
   attention, the full audit is one click away.
 - **Code by requirement.** The Code tab's requirement selector uses each block's recorded `serves` links;
   counts are unique blocks, not lines or fragments, and a block can serve more than one requirement. A
@@ -318,7 +294,7 @@ never a new record field:
   Selecting a requirement replaces the active question or finding context while keeping hidden purposes.
   Files and Units are navigation views of the same slice, not separate copies of the diff. Units group blocks
   by their recorded `unit`; they do not assert a parent-child relationship between blocks. Following a block
-  opens the canonical fragment in the map. Without JavaScript the selector and unit navigation are disabled
+  opens it in the map. Without JavaScript the selector and unit navigation are disabled
   and the full static map remains available.
 - **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned
   `@shikijs` 4.6.0, the JavaScript regex engine — no WASM, no network): both GitHub themes in every span, token
@@ -337,7 +313,7 @@ never a new record field:
   what remains travels with it.
 - **Print.** The owner profile hides the map and the tree and prints the decisions complete — the lazy «related
   code» bodies are built first, then every nested disclosure opens; the auditor prints everything, every
-  fragment. After printing, the page returns to what it was, lazy files and filter views included.
+  block. After printing, the page returns to what it was, lazy files and filter views included.
 
 ## Optional fields
 

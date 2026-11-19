@@ -92,9 +92,9 @@ const renderFixture = ({ diff, record }, name) => {
 };
 const hostile = renderFixture(hostileFixture(), "hostile");
 const shiki = renderFixture(shikiFixture(), "shiki");
-const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-const legacyCatalog = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
-  record: { ...structuredClone(REVIEW), language: "custom", labels: oldCatalog } }, "legacy-catalog");
+const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
+const exactCatalogPage = renderFixture({ diff: fs.readFileSync(path.join(run, "source.diff"), "utf8"),
+  record: { ...structuredClone(REVIEW), language: "custom", labels: exactCatalog } }, "exact-catalog");
 const jsFixture = hostileFixture();
 jsFixture.record.passport.links[0].url = "javascript:alert(1)"; jsFixture.record.passport.links[0].label = "";
 const jsFiles = parseDiff(jsFixture.diff), jsDir = path.join(run, "hostile");
@@ -104,7 +104,7 @@ const jsUrl = { url: `file://${path.join(jsDir, "js-url.html")}` };
 const resolvedRecord = structuredClone(THEMED);
 resolvedRecord.blocks[1].questions = [3];
 const resolved = render(resolvedRecord, "resolved.json");
-const legacyRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms: [
+const minimalRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms: [
   { name: "Первая механика", change: "reused", units: ["readArchive"], purpose: "Назначение механики: показать, как существующее поведение сохраняется без нового состояния, и почему это важно для читателя отчёта.",
     basis: "Основание: требование 1 и существующий контракт читателя, который уже преобразует код валюты в верхний регистр при выводе.",
     benefit: "Польза: повторное использование уже проверенного пути без дополнительных тестов и без новой поверхности ошибки.",
@@ -114,7 +114,7 @@ const legacyRu = render({ ...structuredClone(REVIEW), language: "ru", mechanisms
     basis: "Основание: тот же контракт читателя и требование 1; отдельного источника у второй механики нет, и это записано явно.",
     benefit: "Польза: одно правило на два сценария, без расхождения форматов при выводе списка и отдельной карточки.",
     cost: "Цена: связанность сценариев через общий путь, которую нужно учитывать при изменении формата вывода.",
-    decision: "Оставить общий путь и не вводить второй преобразователь для отдельного сценария.", evidence: "read" }] }, "legacy-ru.json");
+    decision: "Оставить общий путь и не вводить второй преобразователь для отдельного сценария.", evidence: "read" }] }, "minimal-ru.json");
 const SOURCE = process.env.REVIEW_65507_DIR ?? "/private/tmp/entrust/cloud-components/65507-review-current";
 const ANN = process.env.REVIEW_65507_ANNOTATIONS ?? "/private/tmp/entrust/65507-review-analysis/prototype/annotations-v2.json";
 const ORIGINAL_SHA = "fb7ce806b3c90420da1cca37ea11c64dc0f2f0b655b040f8ad3244f1c4ef4cfc";
@@ -135,7 +135,7 @@ if (fs.existsSync(path.join(SOURCE, "review.json")) && fs.existsSync(ANN)) {
   big = { record: file, html: file.replace(/\.json$/, ".html"), url: `file://${file.replace(/\.json$/, ".html")}`, bytes: fs.statSync(file.replace(/\.json$/, ".html")).size,
     screenName: bigRecord.screens?.[0]?.name, limit: bigRecord.coverageStructured?.find((c) => c.kind === "not_checked")?.text };
 }
-console.error(`[setup] rendered themed, resolved, legacy-ru, hostile, shiki, legacy-catalog${big ? ", 65507 enriched copy" : ""} (${USED})`);
+console.error(`[setup] rendered themed, resolved, minimal-ru, hostile, shiki, exact-catalog${big ? ", 65507 enriched copy" : ""} (${USED})`);
 
 // ---- the browser: a persistent profile per browser, as the contract asks ----
 const launch = (name, options = {}) => chromium.launchPersistentContext(path.join(OUT, "profile-" + name), {
@@ -155,7 +155,7 @@ const open = async (url, options = {}) => {
   if (options.javaScriptEnabled !== false) await p.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
   return { page: p, context: context ?? null };
 };
-const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem("review-report:current:" + d.key) || "{}"); });
+const state = (p) => p.evaluate(() => { const d = JSON.parse(document.getElementById("data").textContent); return JSON.parse(localStorage.getItem(d.storageKey) || "{}"); });
 const tab = async (p, id) => { await p.click(`#tab-${id}`); await p.waitForTimeout(150); };
 const radio = (p, q, value) => p.check(`input[name="vq${q}"][value="${value}"]`);
 const injectHelpers = (p) => p.evaluate(() => {
@@ -218,7 +218,7 @@ console.error("[run] themed v5 section");
   check("themed: five tabs start at Choices, one list, the action groups", initial.js && initial.tabs.join() === "overview,decisions,code,checks,materials"
     && initial.panels === 5 && initial.hidden === 4 && initial.qcards === 5 && initial.active === "decisions"
     && initial.groups.join() === "group-owner,group-fix,group-data,group-settled", initial);
-  check("themed: the counter is the one quantity (1 root decision + 2 findings)", initial.counter === "3 remaining", initial.counter);
+  check("themed: the counter is the one quantity (1 root decision + 2 findings)", initial.counter === "3", initial.counter);
   check("themed: the no-JS hint hides and the radios are live under the runtime", await p.locator("#q3 .nojs-note").first().isHidden() && await p.locator('#q3 input[data-question-variant]').first().isEnabled());
   check("themed: evidence and fact cards have no decision controls, the fact answer is on the surface",
     await p.locator("#q1 .decide").count() === 0 && await p.locator("#q2 [data-answer]").isVisible());
@@ -350,7 +350,7 @@ console.error("[run] themed v5 section");
   await p.click('[data-purpose-filter="tests"]');
   const treeAnd = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".frow")].filter((r) => r.style.display !== "none").map((r) => r.querySelector(".fname").textContent),
     pressed: document.querySelector('[data-purpose-filter="tests"]').getAttribute("aria-pressed"),
-    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes }));
+    stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes }));
   check("purpose: hiding tests leaves the production file, AND with the name filter", treeAnd.rows.length === 1 && treeAnd.rows[0].includes("archive.js")
     && treeAnd.pressed === "false" && treeAnd.stored.join() === "tests", treeAnd);
   await p.focus("#tree-filter-input"); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
@@ -401,7 +401,7 @@ console.error("[run] themed v5 section");
     inserted: document.querySelectorAll(".file-lazy .file").length, open: document.querySelectorAll("details[open]").length,
     show: document.getElementById("map").dataset.show,
     purposePressed: [...document.querySelectorAll("[data-purpose-filter]")].map((b) => b.getAttribute("aria-pressed")),
-    hidden: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes,
+    hidden: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes,
     modePressed: [...document.querySelectorAll(".map-filters [data-show]")].map((b) => b.getAttribute("aria-pressed")),
     rows: [...document.querySelectorAll(".frow")].map((r) => r.style.display),
     treeCount: document.getElementById("tree-filter-count").textContent,
@@ -472,7 +472,7 @@ console.error("[run] mobile unified section");
   await radio(p, 3, "extend");
   const mobile = await p.evaluate(() => ({ chip: document.querySelector("#q3 [data-qstatus]").textContent, state: document.querySelector("#q3 [data-qstatus]").dataset.state,
     confirm: document.querySelector("#q3 [data-confirm]") !== null,
-    stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["3"] }));
+    stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions["3"] }));
   check("mobile: a tap is the decision itself — no draft-and-confirm step", mobile.state === "decided" && !mobile.confirm && mobile.stored.choice === "accepted", mobile);
   await p.click("#q3 [data-qreset]");
   check("mobile: reset reverts the choice", await p.evaluate(() => document.querySelector("#q3 [data-qstatus]").dataset.state === "open"));
@@ -490,7 +490,7 @@ console.error("[run] no-JS themed section");
     && await p.locator('[data-choice-filter="all"]').isDisabled() && await p.locator("#q2 [data-answer]").isDisabled()
     && (await p.textContent("#q3 .qopts")).includes("JavaScript"));
   check("no-JS: the counter is static with an honest title", await p.evaluate(() => { const c = document.getElementById("count-decisions");
-    return c.textContent === "3 remaining" && /static count/i.test(c.title) && /saved answers are not counted/i.test(c.title); }));
+    return c.textContent === "3" && /static count/i.test(c.title) && /saved answers are not counted/i.test(c.title); }));
   check("no-JS: the export button and the subtabs are hidden, the tree opens statically", await p.evaluate(() => document.getElementById("export-open").offsetParent === null
     && document.querySelector(".choice-filters").offsetParent === null
     && document.querySelectorAll(".fdir[open]").length === document.querySelectorAll(".fdir").length));
@@ -552,21 +552,21 @@ console.error("[run] hardening section");
     && colors.gapAdd && colors.ctlAdd && colors.gapAdd.light === colors.ctlAdd.light, colors);
 }
 {
-  const { page: p } = await open(legacyCatalog.url);
-  const legacyState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
+  const { page: p } = await open(exactCatalogPage.url);
+  const exactState = await p.evaluate(() => ({ js: document.documentElement.classList.contains("js"),
     tabs: document.querySelectorAll(".tabs [role=tab]").length, own: document.body.textContent.includes("«Findings»") }));
-  check("legacy catalog: an old record renders with its upgraded catalog", legacyState.js && legacyState.tabs === 5 && legacyState.own, legacyState);
+  check("exact catalog: the record renders with a catalog of exactly its required keys", exactState.js && exactState.tabs === 5 && exactState.own, exactState);
   await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(200);
   await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(150);
-  check("legacy catalog: the chrome works on the upgraded catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
-    && JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes.includes("tests")));
+  check("exact catalog: the chrome works on that catalog", await p.evaluate(() => !document.getElementById("filter-chip").hidden
+    && JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes.includes("tests")));
 }
-console.error("[run] legacy annotations section");
+console.error("[run] annotations on the minimal ru page");
 {
-  const { page: p } = await open(legacyRu.url + "#panel-checks");
+  const { page: p } = await open(minimalRu.url + "#panel-checks");
   const fn = new Function(`return (${fs.readFileSync(path.join(HERE, "review-annotations.browser.mjs"), "utf8")})`)();
-  try { await fn(p); check("legacy annotations runtime on the v5 page", true); }
-  catch (e) { check("legacy annotations runtime on the v5 page", false, String(e)); }
+  try { await fn(p); check("annotations runtime on the minimal ru page", true); }
+  catch (e) { check("annotations runtime on the minimal ru page", false, String(e)); }
 }
 console.error("[run] 65507 full matrix");
 if (big) {
@@ -610,7 +610,7 @@ if (big) {
       && initial.subtabs.join() === "all,q,f,i,fact,deferred,done", initial);
     check("65507: zero duplicate ids, DOM within budget, the tree open statically", initial.duplicateIds.length === 0 && initial.domNodes <= 15700
       && initial.treeOpen === initial.treeTotal && initial.treeTotal === 53, { dup: initial.duplicateIds, dom: initial.domNodes, tree: [initial.treeOpen, initial.treeTotal] });
-    check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11 осталось" && initial.exportInHeader
+    check("65507: the counter is ONE quantity — 4 main Q + 7 F, ideas outside", initial.counter === "11" && initial.exportInHeader
       && initial.qcards === 13 && initial.findings === 7 && initial.ideas === 4 && initial.templates === 96 && initial.structureTargetClosed, initial);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-first-screen.png`) });
     const choiceCounts = () => ev(() => {
@@ -759,7 +759,7 @@ if (big) {
     await p.locator("#tree-resize").focus(); await p.keyboard.press("ArrowRight");
     Object.assign(results.v6Tree, await ev(() => ({
       after: document.querySelector(".tree-col").getBoundingClientRect().width,
-      stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeWidth
+      stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).treeWidth
     })));
     await p.click('[data-tree-mode="folder"]');
     check("v6: compact folder/list tree keeps 96 rows and resizes", results.v6Tree.flat && results.v6Tree.rows === 96 &&
@@ -874,7 +874,7 @@ if (big) {
       counter: document.getElementById("count-decisions").textContent
     }));
     check("65507: apply -> neutral «Выбрано», the card settles, the counter decrements", /^Выбрано:/.test(decisions.q1apply.chip)
-      && decisions.q1apply.settled === "done" && decisions.q1apply.inSettledGroup && decisions.q1apply.counter === "10 осталось", decisions.q1apply);
+      && decisions.q1apply.settled === "done" && decisions.q1apply.inSettledGroup && decisions.q1apply.counter === "10", decisions.q1apply);
     // Defer with a reason: the variant stays a draft, the card settles as deferred, the radio unchecks.
     await ev(() => { document.getElementById("group-settled").open = true; document.querySelector('#group-settled [data-unit="q1"]').closest("details").open = true; });
     await ev(() => { document.querySelector("#q1 .card-comment").open = true; document.querySelector("#q1 .card-comment .comment-edit").click(); });
@@ -949,7 +949,7 @@ if (big) {
     check("65507: F skip -> «Выбрано: Не исправлять», still settled", decisions.f1skip.chip === "Выбрано: Не исправлять" && decisions.f1skip.settled === "done", decisions.f1skip);
     await p.click('#f1 .decide button[value="skip"]'); await p.waitForTimeout(150);
     decisions.f1empty = await ev(() => ({ chip: document.querySelector('#f1 [data-fstatus]').textContent, settled: document.querySelector('[data-unit="f1"]').dataset.settled || null, home: document.querySelector('[data-unit="f1"]').parentElement.closest(".dgroup").id }));
-    check("65507: toggling off returns the SAME card home, no duplicate", decisions.f1empty.chip === "ожидает" && decisions.f1empty.settled === null && decisions.f1empty.home === "group-fix", decisions.f1empty);
+    check("65507: toggling off returns the SAME card home, no duplicate", decisions.f1empty.chip === "Открыто" && decisions.f1empty.settled === null && decisions.f1empty.home === "group-fix", decisions.f1empty);
     await ev(() => { document.getElementById("ideas").open = true; });
     const counterBeforeIdea = await ev(() => document.getElementById("count-decisions").textContent);
     await p.click('#i1 .decide button[value="apply"]'); await p.waitForTimeout(150);
@@ -993,7 +993,7 @@ if (big) {
 
     // ---- the export dialog: parity preview === text === JSON from EVERY tab ----
     const pageData = await ev(() => JSON.parse(document.getElementById("data").textContent));
-    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
+    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Неприменимо", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
     // The expected rows are reconstructed HERE from the downloaded JSON alone — every user datum the
     // schema-5 payload carries (Q/F/I choices and drafts, factAnswers, zones, passages, block notes and
     // questions[].comment from shared notes) — independent of the page's builders.
@@ -1002,9 +1002,9 @@ if (big) {
       const draftSuffix = (q) => q.variant ? " · черновик «" + q.variant.text + "» — не действует" : "";
       for (const q of j.questions) {
         const meta = d.questions.find(x => x.id === q.question);
-        if (q.status === "not-applicable") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
+        if (q.status === "not-applicable") rows["Неприменимо"].push({ text: "Q" + q.question + " · Неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.status === "accepted") rows["Принятые решения"].push({ text: "Q" + q.question + " · " + (q.variant ? "Выбрано: " + q.variant.text : "Выбрано: (вариант не указан)"), hash: "#q" + q.question });
-        else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · отложено" + draftSuffix(q), hash: "#q" + q.question });
+        else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Отложено" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.variant) rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Черновик «" + q.variant.text + "» — не действует", hash: "#q" + q.question });
       }
       for (const f of d.findings) { const v = j.findings[String(f.id)];
@@ -1039,7 +1039,7 @@ if (big) {
       const remaining = roots.filter(q => { const e = j.questions.find(x => x.question === q.id); return !e || (e.status !== "accepted" && e.status !== "deferred"); }).length
         + d.findings.filter(f => !j.findings[String(f.id)]).length;
       const open = d.findings.filter(f => !j.findings[String(f.id)]).map(f => "F" + f.id);
-      rows.remaining = remaining + " осталось" + (open.length ? " · необработанные замечания: " + open.join(", ") : "");
+      rows.remaining = "Открыто основных решений и замечаний: " + remaining + (open.length ? " · Открытые замечания: " + open.join(", ") : "");
       return rows;
     };
     const capturePreview = () => ev(() => ({
@@ -1285,7 +1285,7 @@ if (big) {
     purpose.pairwise = [];
     for (const mode of ["attention", "all", "keep", "fix", "remove", "question"]) {
       for (const hidden of purposeCombos) {
-        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
+        await ev((h) => { const d = JSON.parse(document.getElementById("data").textContent); const k = d.storageKey; const st = JSON.parse(localStorage.getItem(k) || "{}"); st.hiddenPurposes = h; localStorage.setItem(k, JSON.stringify(st)); }, hidden);
         await reloadClean(p); await tab(p, "code");
         await p.click(`[data-show="${mode}"]`); await p.waitForTimeout(200);
         const r = await ev(({ mode, hidden }) => {
@@ -1306,7 +1306,7 @@ if (big) {
       }
     }
     check("65507: purpose pairwise 6 modes × 5 hiding combos — map, tree, pressed state, chip", purpose.pairwise.every(r => r.purposeOk && r.rowsPurposeOk && r.modeOk), { combos: purpose.pairwise.length });
-    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = "review-report:current:" + d.key; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
+    await ev(() => { const d = JSON.parse(document.getElementById("data").textContent); const k = d.storageKey; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || "{}"), hiddenPurposes: [] })); });
     await reloadClean(p); await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(300);
     await p.click('[data-purpose-filter="tests"]'); await p.waitForTimeout(300);
     purpose.testsToggle = await ev(() => {
@@ -1314,8 +1314,9 @@ if (big) {
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const segs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => s.style.display !== "none");
       const tests = d.blocks.filter(b => b.purpose === "tests");
-      const testsSegs = tests.reduce((s, b) => s + (b.parts || 1), 0);
-      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes };
+      const testIds = new Set(tests.map(b => String(b.id)));
+      const testsSegs = [...document.querySelectorAll("#map .seg[data-block]")].filter(s => testIds.has(s.dataset.block)).length;
+      return { rows: rows.length, segs: segs.length, testsBlocks: tests.length, testsSegs, chip: document.getElementById("filter-chip-label").textContent, stored: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes };
     });
     check("65507: hiding tests removes 15 files / 388 blocks (their fragments), stored additively", purpose.testsToggle.rows === 81
       && purpose.testsToggle.segs === 1517 - purpose.testsToggle.testsSegs && purpose.testsToggle.testsBlocks === 388 && purpose.testsToggle.testsSegs === 396
@@ -1351,7 +1352,7 @@ if (big) {
     purpose.deepLinkReset = await ev((bid) => {
       const e = document.getElementById("b" + bid);
       const d = JSON.parse(document.getElementById("data").textContent);
-      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
+      return { visible: e.offsetParent !== null && e.style.display !== "none", inViewport: (() => { const r = e.getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight; })(), hiddenPurposes: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes || [], allPressed: [...document.querySelectorAll("[data-purpose-filter]")].every(b => b.getAttribute("aria-pressed") === "true") };
     }, testsBlock);
     check("65507: a deep link to a hidden tests block resets the hiding", purpose.deepLinkReset.visible && purpose.deepLinkReset.inViewport
       && purpose.deepLinkReset.hiddenPurposes.length === 0 && purpose.deepLinkReset.allPressed, purpose.deepLinkReset);
@@ -1414,7 +1415,7 @@ if (big) {
     tree.hidden = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, showBtn: !document.getElementById("show-tree").hidden }));
     check("65507: hide-tree collapses the panel and offers show-tree", tree.hidden.display === "none" && tree.hidden.showBtn, tree.hidden);
     await reloadClean(p); await tab(p, "code");
-    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).treeHidden }));
+    tree.hiddenAfterReload = await ev(() => ({ display: getComputedStyle(document.querySelector(".tree-col")).display, stored: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).treeHidden }));
     check("65507: the tree collapse persists across reload", tree.hiddenAfterReload.display === "none" && tree.hiddenAfterReload.stored === true, tree.hiddenAfterReload);
     await p.click("#show-tree"); await p.waitForTimeout(150);
     await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(250);
@@ -1452,11 +1453,11 @@ if (big) {
     check("65507: mobile Q2 — the first variant is within the screen, both present, no confirm step", mobileQ2.count === 2 && mobileQ2.firstOptionInViewport && mobileQ2.bothPresent && mobileQ2.confirmGone, mobileQ2);
     await p.screenshot({ path: path.join(OUT, `v5-${USED}-mobile-q2.png`) });
     await p.check('#q2 input[value="keep"]'); await p.waitForTimeout(200);
-    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions || {})["2"] }));
+    const mobileTap = await ev(() => ({ chip: document.querySelector("#q2 [data-qstatus]").textContent, state: (JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions || {})["2"] }));
     check("65507: a mobile tap is the decision itself (accepted, no draft)", /^Выбрано:/.test(mobileTap.chip) && mobileTap.state.choice === "accepted", mobileTap);
     await p.click('#q2 [data-qreset]'); await p.waitForTimeout(150);
     const mobileRevert = await ev(() => document.querySelector("#q2 [data-qstatus]").textContent);
-    check("65507: mobile reset reverts to waiting", mobileRevert === "ожидает", mobileRevert);
+    check("65507: mobile reset reverts to open", mobileRevert === "Открыто", mobileRevert);
     await p.setViewportSize({ width: 1366, height: 900 });
     results.tree = tree;
 
@@ -1464,9 +1465,9 @@ if (big) {
     await tab(p, "materials");
     const passageSaved = await ev(() => document.querySelectorAll("#passages .passage").length);
     check("65507: the passage comment is listed", passageSaved >= 1, passageSaved);
-    await p.click('#passages .passage button:has-text("К фрагменту")'); await p.waitForTimeout(600);
+    await p.click('#passages .passage button:has-text("К отрывку")'); await p.waitForTimeout(600);
     const annotationBack = await ev(() => { const m = document.querySelector(".annotation-marker"); const r = m.getBoundingClientRect(); return { tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, markerVisible: m.offsetParent !== null && r.top >= 0 && r.top < innerHeight, focused: document.activeElement === m }; });
-    check("65507: «К фрагменту» returns to the visible, focused marker", annotationBack.markerVisible && annotationBack.focused, annotationBack);
+    check("65507: «К отрывку» returns to the visible, focused marker", annotationBack.markerVisible && annotationBack.focused, annotationBack);
 
     // ---- print: owner nested complete, auditor full, restore; real PDFs ----
     await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(300);
@@ -1578,7 +1579,7 @@ if (big) {
       && noJs.fragments === 1517 && noJs.nestedCodeDisclosures === 0 && noJs.domNodes < 102296
       && noJs.fileDetails === 96 && noJs.fileDetailsClosed === 96 && noJs.treeOpenStatic === 53 && noJs.panelsInMarkup === 5 && noJs.hiddenPanelsInMarkup === 0
       && noJs.keepSegNotCssHidden && noJs.tabAnchors && noJs.groupsReadable && noJs.structureTargetClosed, noJs);
-    check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11 осталось" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
+    check("65507 no-JS: the counter is the static 11 with an honest title", noJs.counter === "11" && /статический/i.test(noJs.counterTitle) && /без JavaScript/i.test(noJs.counterTitle), { counter: noJs.counter, title: noJs.counterTitle });
     check("65507 no-JS: every control disabled, the chrome hidden", noJs.fieldsetsDisabled && noJs.radiosDisabled && noJs.zonesDisabled && noJs.answerInputsDisabled
       && noJs.controlsDisabled && noJs.themeBtnHidden && noJs.exportBtnHidden && noJs.subtabsHidden && noJs.commentsHidden, noJs);
     await nojs.evaluate(() => document.getElementById("map").scrollIntoView());
@@ -1636,7 +1637,7 @@ if (big) {
       const d = JSON.parse(document.getElementById("data").textContent);
       const rows = [...document.querySelectorAll(".frow")].filter(r => r.style.display !== "none");
       const revealed = document.querySelector(".file.reveal");
-      return { hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + d.key)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
+      return { hiddenTests: JSON.parse(localStorage.getItem(d.storageKey)).hiddenPurposes, found: rows.some(r => d.files[+r.dataset.frow].includes("ResponsivePopover")), segsVisible: revealed ? [...revealed.querySelectorAll(".seg")].filter(s => getComputedStyle(s).display !== "none").length : 0 };
     });
     check("scenario: hiding tests and finding a file through the tree", dod.treeFind.found && dod.treeFind.segsVisible > 0 && dod.treeFind.hiddenTests.join() === "tests", dod.treeFind);
     await reloadClean(p);
@@ -1644,7 +1645,7 @@ if (big) {
       q2: document.querySelector("#q2 [data-qstatus]").textContent,
       f1: document.querySelector("#f1 [data-fstatus]").textContent,
       i2: document.querySelector("#i2 [data-fstatus]").textContent,
-      hiddenTests: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).hiddenPurposes
+      hiddenTests: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).hiddenPurposes
     }));
     check("scenario: reload keeps the decisions and the hiding", /^Выбрано:/.test(dod.afterReload.q2) && dod.afterReload.f1 === "Выбрано: Исправить"
       && dod.afterReload.i2 === "Выбрано: Не брать" && dod.afterReload.hiddenTests.join() === "tests", dod.afterReload);
@@ -1738,11 +1739,11 @@ if (big) {
     await ev(() => { document.querySelector("#q1 [data-qreset]").focus(); });
     await p.keyboard.press("Enter"); await p.waitForTimeout(300);
     const keyboardReset = await ev(() => ({ active: document.activeElement.tagName, inQ1: !!document.activeElement.closest && !!document.activeElement.closest('[data-unit="q1"]'), home: document.querySelector('[data-unit="q1"]').parentElement.closest(".dgroup").id, chip: document.querySelector("#q1 [data-qstatus]").textContent }));
-    check("65507: keyboard reset returns the card home with focus inside it", keyboardReset.active !== "BODY" && keyboardReset.inQ1 && keyboardReset.home === "group-owner" && keyboardReset.chip === "ожидает", keyboardReset);
+    check("65507: keyboard reset returns the card home with focus inside it", keyboardReset.active !== "BODY" && keyboardReset.inQ1 && keyboardReset.home === "group-owner" && keyboardReset.chip === "Открыто", keyboardReset);
     await ev(() => { document.getElementById("q1").scrollIntoView({ block: "center" }); }); await p.waitForTimeout(250);
     const box = await ev(() => { const r = document.querySelector('#q1 input[value="keep-mockup"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
     await p.touchscreen.tap(box.x, box.y); await p.waitForTimeout(300);
-    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem("review-report:current:" + JSON.parse(document.getElementById("data").textContent).key)).questions["1"] }));
+    const touchSelect = await ev(() => ({ active: document.activeElement.tagName, chosenVisible: document.activeElement.textContent.includes("Выбрано"), state: JSON.parse(localStorage.getItem(JSON.parse(document.getElementById("data").textContent).storageKey)).questions["1"] }));
     check("65507: a touch tap is the same unified choice, focus on the settled summary (rAF)", touchSelect.active === "SUMMARY" && touchSelect.chosenVisible && touchSelect.state.choice === "accepted", touchSelect);
     results.focus = { focusAfterSelect, keyboardReset, touchSelect };
     // The fact answer: discoverable without the comment, «ответ внесён» ≠ «проверено», export distinct.

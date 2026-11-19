@@ -133,7 +133,7 @@ test("a review carries the report's words in its reader's language, and a word t
     if (![">Что делать:", ">выполнено<", "Осталось: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
     const { status, stdout } = report("labels");
     if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
-    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ decided: "Решено" }, 'label "decided" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
+    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ "chip.hidden": "Скрыто" }, 'label "chip.hidden" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
       const { status: refused, stderr } = render((r) => { r.labels = labels; });
       if (refused !== 1 || !stderr.includes(fault)) return `expected "${fault}", got status ${refused}: ${stderr}`;
     }
@@ -173,7 +173,7 @@ test("the selected language covers controls and exported decisions without per-r
     const result = render((r) => { r.language = "ru-RU"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к фрагментам", "Рекомендация"])
+    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к отрывкам", "Рекомендация"])
       if (!page.includes(text)) return `Russian control or export missing: ${text}`;
     if (!result.stdout.includes("## Вывод")) return "Markdown is not localized";
     if (report("labels", "ru").stdout !== JSON.stringify(CATALOGS.ru, null, 2) + "\n") return "the catalog command differs";
@@ -307,7 +307,7 @@ test("weight overview leads with the full footprint, not exclusive lines or net 
   });
 
 test("weight is rendered in HTML and text without changing the review record",
-  "legacy unknowns and shared block evidence must be visible in both outputs",
+  "a mechanism without line attribution and shared block evidence must be visible in both outputs",
   () => {
     const result = render(r => {
       r.blocks.forEach(b => { b.kind = "code"; });
@@ -488,9 +488,9 @@ test("unsupported or incomplete diffs and records without a saved diff are refus
     fs.writeFileSync(input, "\x1b[1mdiff --git a/a.js b/a.js\x1b[m\n");
     const colored = report("scaffold", input, target);
     if (colored.status !== 1 || !colored.stderr.includes("--no-color")) return `a colored diff gave no way out: ${colored.stderr}`;
-    const legacy = { ...structuredClone(REVIEW) };
-    delete legacy.diff;
-    fs.writeFileSync(target, JSON.stringify(legacy));
+    const undiffed = { ...structuredClone(REVIEW) };
+    delete undiffed.diff;
+    fs.writeFileSync(target, JSON.stringify(undiffed));
     const result = report("check", target);
     return result.status === 1 && result.stderr.includes("no saved diff") || "a record without a saved diff was accepted";
   });
@@ -535,7 +535,7 @@ test("the page that tells a reviewer what to write names every word the check ac
     const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES, ...CHALLENGERS, ...OUTCOMES, ...QUESTION_KINDS, ...COVERAGE_KINDS].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    // The example carries the optional fields of the decision cards too; the legacy REVIEW below renders without them.
+    // The example carries the optional fields of the decision cards too; the minimal REVIEW renders without them.
     try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "labels", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
@@ -547,12 +547,12 @@ const modelOfThemed = () => {
   return modelOf(THEMED, files, owner, run);
 };
 
-test("a legacy record stays valid and warning-free; the themed record with decision cards passes check",
-  "optional fields must not make old records deficient, and a record of another theme and order must stand on its own",
+test("the minimal record is valid and warning-free; the themed record with decision cards passes check",
+  "optional fields must not make a record without them deficient, and a record of another theme and order must stand on its own",
   () => {
     const files = parseThemeDiff();
-    const legacy = check(REVIEW, files, run);
-    if (legacy.errors.length || legacy.warnings.length) return `legacy record: ${[...legacy.errors, ...legacy.warnings].join("; ")}`;
+    const minimal = check(REVIEW, files, run);
+    if (minimal.errors.length || minimal.warnings.length) return `minimal record: ${[...minimal.errors, ...minimal.warnings].join("; ")}`;
     const themed = check(THEMED, files, run);
     if (themed.errors.length) return `themed record: ${themed.errors.join("; ")}`;
     // The external source carries a quote and its file is not beside the record: named, unreachable, a warning only.
@@ -662,9 +662,8 @@ test("modelOf derives children, unique counters, file status and the shortest un
   () => {
     const model = modelOfThemed();
     if (model.questions[2].children.join() !== "4" || model.questions[3].children.length) return "children are not derived from parent alone";
-    if (model.questions[0].blocks !== 1 || model.questions[4].blocks !== 1) return "per-question fragment counts differ";
-    // One fragment names both evidence questions: it is one fragment awaiting evidence, not two.
-    if (model.counters.evidenceBlocks !== 1) return `evidence fragments double-counted: ${model.counters.evidenceBlocks}`;
+    // One block names both evidence questions: each question counts it once, as its own related code shows.
+    if (model.questions[0].blocks !== 1 || model.questions[4].blocks !== 1) return "per-question block counts differ";
     if (model.counters.decisions !== 2 || model.counters.blocks !== 3) return "decision or block counters differ";
     const byPath = Object.fromEntries(model.files.map((f) => [f.path, f]));
     if (byPath["src/invoices/archive.js"].status !== "M" || byPath["test/archive.test.js"].status !== "A" || byPath["test/outputs.test.js"].status !== "A") return "file status is not taken from the diff headers";
@@ -683,20 +682,20 @@ test("modelOf derives children, unique counters, file status and the shortest un
   });
 
 test("a custom catalog carries the base words plus the keys of the controls the record shows",
-  "v7 Code wording is required even on old records, without silently substituting a different meaning",
+  "the Code wording is required of every record, without silently substituting a different meaning",
   () => {
     const files = parseThemeDiff();
     const catalogFor = (r) => Object.fromEntries(requiredKeys(r).map((key) => [key, LABELS[key]]));
     // Remove current mandatory wording from an otherwise complete catalog.
-    const oldCatalog = catalogFor(REVIEW); delete oldCatalog["code.no-related"]; delete oldCatalog["code.no-visible"];
-    const legacy = check({ ...structuredClone(REVIEW), language: "custom", labels: oldCatalog }, files, run);
-    if (!legacy.errors.some((e) => e.includes("code.no-related") && e.includes("code.no-visible"))) return "old catalog missing Code wording was not refused";
-    const thin = { ...oldCatalog }; delete thin["findings"];
+    const noCode = catalogFor(REVIEW); delete noCode["code.no-related"]; delete noCode["code.no-visible"];
+    const refusedCode = check({ ...structuredClone(REVIEW), language: "custom", labels: noCode }, files, run);
+    if (!refusedCode.errors.some((e) => e.includes("code.no-related") && e.includes("code.no-visible"))) return "a catalog missing the Code wording was not refused";
+    const thin = { ...noCode }; delete thin["findings"];
     const baseFault = check({ ...structuredClone(REVIEW), language: "custom", labels: thin }, files, run);
-    if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the old base set stopped being required";
-    // An enriched record asks for the chrome and the keys of its capabilities; the old catalog no longer serves it.
-    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: oldCatalog }, files, run);
-    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with an old catalog was accepted, or the chrome keys were not named";
+    if (!baseFault.errors.some((e) => e.includes("complete labels catalog"))) return "the base words stopped being required";
+    // An enriched record asks for the chrome and the keys of its capabilities; the minimal record's catalog does not serve it.
+    const enriched = check({ ...structuredClone(THEMED), language: "custom", labels: noCode }, files, run);
+    if (!enriched.errors.some((e) => e.includes("complete labels catalog"))) return "an enriched record with the minimal record's catalog was accepted, or the chrome keys were not named";
     const full = check({ ...structuredClone(THEMED), language: "custom", labels: catalogFor(THEMED) }, files, run);
     if (full.errors.length) return `a catalog of the enabled capabilities was refused: ${full.errors.join("; ")}`;
     // One capability alone asks only for its own keys plus the chrome: a passport without cards needs no question words.
@@ -724,13 +723,13 @@ test("the full printout carries the cards, tradeoffs and coverage limits, and th
     const digest = createHash("sha256").update(fs.readFileSync(data)).digest("hex");
     if (!out.includes(`record ${digest}`)) return "the printout does not carry the record's byte digest";
     if (!out.includes(`diff sha256 ${THEMED.diff.sha256}`)) return "the printout does not carry the diff digest";
-    // The legacy printout keeps its old shape: no card machinery, no passport, no invented sections.
-    const legacy = render();
-    if (legacy.status !== 0) return legacy.stderr;
+    // The minimal record's printout has no card machinery, no passport, no invented sections.
+    const minimal = render();
+    if (minimal.status !== 0) return minimal.stderr;
     for (const absent of ["## Accepted tradeoffs", "Passport:", "(decision", "Ran:"])
-      if (legacy.stdout.includes(absent)) return `the legacy printout grew "${absent}"`;
-    if (!legacy.stdout.includes("- Q1 `docs/billing.md`: A question.")) return "the legacy question line changed";
-    return legacy.stdout.includes(`record ${createHash("sha256").update(fs.readFileSync(data)).digest("hex")}`) || "the legacy printout lacks the digest";
+      if (minimal.stdout.includes(absent)) return `the minimal printout grew "${absent}"`;
+    if (!minimal.stdout.includes("- Q1 `docs/billing.md`: A question.")) return "the minimal record's question line changed";
+    return minimal.stdout.includes(`record ${createHash("sha256").update(fs.readFileSync(data)).digest("hex")}`) || "the minimal printout lacks the digest";
   });
 
 // The decision runtime on a small stand: Q1 a decision with two variants, Q2 its child applying under "keep",
@@ -847,10 +846,10 @@ test("the page renders each B/F/Q anchor once, the counters equal the model, and
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
     if (embedded.digest.record !== digest || embedded.digest.diff !== THEMED.diff.sha256) return "the page's digests are not the bytes' digests";
     // The simpler record renders its fact through the same path.
-    const legacy = render();
-    if (legacy.status !== 0) return legacy.stderr;
-    const old = fs.readFileSync(html, "utf8");
-    if (!old.includes('id="q1"') || !old.includes("A question.")) return "the fact question is missing";
+    const minimal = render();
+    if (minimal.status !== 0) return minimal.stderr;
+    const minimalPage = fs.readFileSync(html, "utf8");
+    if (!minimalPage.includes('id="q1"') || !minimalPage.includes("A question.")) return "the fact question is missing";
     return true;
   });
 
@@ -973,7 +972,9 @@ test("a copy of the real 65507 record, enriched with the new fields, checks and 
     const model = modelOf(review, files, owner, dir);
     for (const cell of [`Файлы · ${model.files.length}`, `Блоки: ${model.blocks.length}`, 'id="count-decisions"'])
       if (!page.includes(cell)) return `the page counters differ from the model: missing ${cell}`;
-    if (model.counters.evidenceBlocks !== 224 + 4 - model.blocks.filter((b) => b.questions.includes(3) && b.questions.includes(5)).length) return "evidence fragments are not a unique set";
+    // Each evidence banner counts the unique blocks of its own question.
+    for (const q of model.questions.filter((q) => q.kind === "evidence" && q.blocks >= 2))
+      if (!page.includes(`<p>${labelsOf(review)("banner.blocks", q.blocks)} — <a href="#q${q.id}">`)) return `the Q${q.id} banner does not count its unique blocks`;
     // Deterministic at this scale, and the immutable original never changed.
     const again = report("render", copy);
     if (again.status !== 0 || page !== fs.readFileSync(path.join(dir, "review.html"), "utf8")) return "the enriched render is not byte-stable";
@@ -1000,7 +1001,7 @@ test("the v4 page is tabs over panels the no-script reader can use, with deep-li
       if ((page.match(new RegExp(`id="${id}"`, "g")) ?? []).length !== 1) return `deep-link target ${id} does not appear exactly once`;
     const data = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
     if (!data.blockFile || data.blocks.some((b) => data.blockFile[b.id] === undefined) || data.files.length !== 3) return "the script cannot map blocks to files";
-    if (data.blocks.some((b) => b.firstAdd === undefined || b.firstDel === undefined || !b.purpose || !b.parts)) return "the popover's sources and purpose are not in the data";
+    if (data.blocks.some((b) => b.firstAdd === undefined || b.firstDel === undefined || !b.purpose)) return "the popover's sources and purpose are not in the data";
     return data.pr.url === null || "a record without a passport invented a PR link";
   });
 
@@ -1058,7 +1059,8 @@ test("the map keeps every block once: 1470 anchors, 1517 fragments, zero duplica
     if (dups.length) return `duplicate ids: ${dups.slice(0, 5).join(", ")}`;
     if ((page.match(/class="segbar"/g) ?? []).length !== 1470 || (page.match(/data-blockcomment="/g) ?? []).length !== 1470) return "headers or comments are duplicated per fragment";
     const embedded = JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(page)[1]);
-    if (embedded.blocks.reduce((n, b) => n + b.parts, 0) !== 1517) return "runtime fragment accounting differs";
+    // Each fragment after a block's first is a continuation line linking back to the block's one anchor.
+    if ((page.match(/<a href="#b\d+">B\d+ · [^<]+<\/a> · /g) ?? []).length !== 1517 - 1470) return "the continuation lines do not account for the fragments beyond the blocks";
     const fileBodies = page.split('class="file"').slice(1);
     if (fileBodies.length !== 96) return `line-order coverage: ${fileBodies.length} files`;
     if ((page.match(/class="l (?:add|del|ctx)"/g) ?? []).length !== 6740) return "diff line coverage differs from 6740";
@@ -1160,8 +1162,8 @@ test("the Shiki syntax is sequence-wide per hunk, deterministic, and falls back 
       if (first.line(files[1].hunks[0][0], "b.bin") !== "&lt;x&gt; &amp; &quot;y&quot;") return "an unsupported language is not escaped plain";
       // The pattern fallback still draws code when no syntax is given, and page() uses it.
       if (!highlight("const x = 1;", "a.js").includes('class="t-k"')) return "the pattern fallback broke";
-      const model = modelOfThemed(), legacyPage = page(THEMED, parseThemeDiff(), model);
-      if (!legacyPage.includes('class="t-k"') || legacyPage.includes("--shiki-dark:")) return "page() without a syntax did not fall back";
+      const model = modelOfThemed(), patternPage = page(THEMED, parseThemeDiff(), model);
+      if (!patternPage.includes('class="t-k"') || patternPage.includes("--shiki-dark:")) return "page() without a syntax did not fall back";
       return true;
     })();
   });
@@ -1221,24 +1223,24 @@ test("the target structure stays closed, C1 is absent, and the print profiles an
   });
 
 test("the v4 words are localized, and a custom catalog carries the v4 controls",
-  "a new control silently left in English, or a legacy catalog broken by the v4 chrome, fails the reader",
+  "a new control silently left in English, or a catalog without the chrome words, fails the reader",
   () => {
     const result = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "ru"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
     for (const word of ["Обзор", "Решения", "Замечания", "Код", "Проверки", "Материалы", "Требуют внимания", "Скачать JSON", "Копировать текст",
-      "Основной код", "Тесты", "Стили", "Ассеты", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "ожидает"])
+      "Основной код", "Тесты", "Стили", "Ресурсы", "Документация", "Конфигурация", "Поиск путей в дереве файлов", "Выгрузить ответы", "Нужен выбор владельца", "Отложить", "Сбросить", "Открыто", "Единицы кода"])
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
-    for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">waiting<"])
+    for (const english of [">Overview<", ">Need attention", ">Download JSON<", ">Choose a variant<", ">Open<"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
     // Common chrome is mandatory for every current catalog.
-    const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
+    const minimalRequired = requiredKeys(REVIEW), themedRequired = requiredKeys(THEMED);
     for (const key of ["tab.overview", "theme.auto", "map.attention", "seg.popover", "export.download", "nojs.note", "purpose.production", "copy.failed"]) {
-      if (!oldRequired.includes(key)) return `the common control ${key} is not required of a minimal record`;
-      if (!newRequired.includes(key)) return `the v4 control ${key} is not required of a record with the new fields`;
+      if (!minimalRequired.includes(key)) return `the common control ${key} is not required of a minimal record`;
+      if (!themedRequired.includes(key)) return `the v4 control ${key} is not required of a record with the card fields`;
     }
-    if (!oldRequired.includes("code.no-related") || !oldRequired.includes("code.no-visible")) return "an old record was not asked for the v7 empty states";
-    if (newRequired.includes("decision.confirm") === false) return "a record with cards was not asked for the card words";
+    if (!minimalRequired.includes("code.no-related") || !minimalRequired.includes("code.no-visible")) return "a minimal record was not asked for the Code empty states";
+    if (themedRequired.includes("decision.choose") === false) return "a record with cards was not asked for the card words";
     const files = parseThemeDiff();
     const catalog = Object.fromEntries(requiredKeys(THEMED).map((key) => [key, LABELS[key]]));
     const custom = check({ ...structuredClone(THEMED), language: "custom", labels: catalog }, files, run);
@@ -1249,6 +1251,91 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
 // The fixture's diff carries an apostrophe and a handler-injection attempt in the path itself.
 const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
+
+test("one vocabulary in English and Russian: blocks are the unit, controls and tags start with a capital, statuses say open, counts read «Label: N», and amber marks only a needed change",
+  "a card counting fragments counts a unit the owner never decides on, a lower-case control reads as prose, a status worded as waiting, remaining or unanswered names a state the page does not have, «1 blocks» is wrong, and an amber line reads as a change to make",
+  () => {
+    // A question-linked block that resumes after another block: one block in two fragments, so a fragment count differs.
+    const record = structuredClone(THEMED);
+    record.blocks[2] = { ...record.blocks[2], added: "1-4, 9-13" };
+    record.blocks.push({ path: "test/outputs.test.js", added: "5-8", does: "Checks the middle output.", serves: [1], verdict: "question", questions: [1], unit: "readArchive" });
+    const linked = (q) => record.blocks.filter((b) => b.questions?.includes(q)).length;
+    // File and folder names are the record's data, not the report's words; a parent's wait is a state of its own.
+    const names = parseThemeDiff().flatMap((f) => f.path.split("/").map((part, i, parts) => i < parts.length - 1 ? part + "/" : part));
+    const parentWait = /waiting for (?:a parent|Q(?:\d+|\{n\}))|(?:ожидает|ждёт|ждут) решения (?:родителя|Q(?:\d+|\{n\}))/gi;
+    const oldWords = /\bwait(?:ing)?\b|\bawait|\bremaining\b|\bunprocessed\b|without an answer|ожида|жд[уёе]т|осталось|необработанн|без ответа/i;
+    const lowerFirst = /^[^\p{L}\p{N}]*\p{Ll}/u, amberVerdicts = ["fix", "split", "merge"];
+    for (const [language, catalog] of Object.entries(CATALOGS))
+      for (const [key, text] of Object.entries(catalog))
+        if (!/\.(?:zero|one|two|few|many|other)$/.test(key) && /(?<![A-Z])\{n\}\s+\p{L}/u.test(text)) return `${language}: ${key} puts a number before a noun: ${text}`;
+    for (const language of ["en", "ru"]) {
+      const words = CATALOGS[language];
+      const result = render((r) => { Object.assign(r, structuredClone(record)); r.language = language; });
+      if (result.status !== 0) return result.stderr;
+      const page = fs.readFileSync(html, "utf8"), data = dataOf(page), labels = data.labels;
+      const style = page.match(/<style>([\s\S]*?)<\/style>/)[1], markup = page.replace(/<script[\s\S]*?<\/script>|<style>[\s\S]*?<\/style>/g, "");
+      const textOf = (inner) => inner.replace(/<[^>]*>/g, "").replace(/&[a-z]+;|&#\d+;/g, " ").trim();
+      if ((markup.match(/ id="b3"/g) ?? []).length !== 1 || !markup.includes(`<a href="#b3">B3 · ${words.continued}</a>`)) return `${language}: B3 is not one anchor with a continuation line`;
+      // Blocks are the unit: the Code tab, the cards' related code and the file disclosures count blocks as «Label: N».
+      if (!markup.includes(`<details class="count-note"><summary>${labels.blocksWord}: ${record.blocks.length}</summary>`)) return `${language}: the Code tab does not count its blocks`;
+      const cards = [...markup.matchAll(/<details class="qwhere" data-qwhere="(\d+)"><summary>([\s\S]*?)<\/summary>/g)];
+      if (!cards.some(([, id]) => id === "1")) return `${language}: Q1 has no related code`;
+      for (const [, id, summary] of cards)
+        if (!summary.endsWith(` · ${labels.blocksWord}: ${linked(+id)}`)) return `${language}: Q${id} does not count its blocks: ${summary}`;
+      for (const [, summary] of markup.matchAll(/<details class="file-details"><summary[^>]*>([\s\S]*?)<\/summary>/g))
+        if (!new RegExp(`· ${words.blocks}: \\d+ · ${words.lines}: \\d+`).test(textOf(summary))) return `${language}: a file disclosure does not read «Label: N»: ${textOf(summary)}`;
+      const fileCards = [...markup.matchAll(/<header><strong class="mono"[^>]*>[^<]*<\/strong><span class="sub req-count"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
+      if (!fileCards.length || fileCards.some((count) => !new RegExp(` · ${words.blocks}: \\d+$`).test(count))) return `${language}: a file card does not read «${words.blocks}: N»: ${fileCards}`;
+      const banners = [...markup.matchAll(/<div class="evidence-banner[^"]*"><p>([^<]*) — /g)].map((m) => m[1]);
+      if (!banners.length || banners.some((text) => !/: \d+$/.test(text))) return `${language}: the evidence banner does not read «Label: N»: ${banners}`;
+      if (!new RegExp(`^[^\\n:]+: ${record.blocks.length},`, "m").test(result.stdout)) return `${language}: the printout's map does not read «Label: N»`;
+      // Controls start with a capital letter, in the markup and in the words the runtime writes into buttons, chips and headings.
+      for (const [, tag, inner] of markup.matchAll(/<(button|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+        const text = textOf(inner);
+        if (lowerFirst.test(text) && !names.some((name) => text.startsWith(name))) return `${language}: the ${tag} «${text}» starts in lower case`;
+      }
+      const runtime = [...Object.values(labels.status), labels.deferred, labels.notApplicable, labels.accepted, labels.copySource, labels.copySourcePlain,
+        labels.fixApply, labels.fixSkip, labels.ideaApply, labels.ideaSkip, labels.commentEdit, labels.children,
+        ...["accepted", "deferred", "answers", "zones", "comments", "openDecisions", "openDependent", "openRequests", "notApplicable", "goto"].map((k) => labels.export[k])];
+      const lower = runtime.find((text) => typeof text !== "string" || lowerFirst.test(text));
+      if (lower !== undefined) return `${language}: the runtime word «${lower}» starts in lower case`;
+      // Statuses and counters say open, deferred or not applicable; only a wait for a parent waits.
+      const statuses = [...markup.matchAll(/<span class="tag v-open (?:qstatus|na-badge)"[^>]*>([^<]*)</g),
+        ...markup.matchAll(/<(?:span|button)\b[^>]*(?:id="count-decisions"|data-choice-filter="\w+")[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
+      if (statuses.length < 10) return `${language}: only ${statuses.length} statuses and counters were found on the page`;
+      statuses.push(...banners, ...Object.values(labels.status), ...Object.values(labels.answerStatus), labels.tabRemaining, labels.countAnswers, labels.countEntries,
+        labels.countDecisions, labels.countFindings, labels.countDeferred, labels.dependent, labels.unanswered, labels.waitingParent,
+        labels.selectionWaiting, labels.accepted, labels.deferred, labels.notApplicable, labels.export.openFindings, labels.export.openDecisions,
+        labels.export.openDependent, labels.export.openRequests, labels.export.notApplicable);
+      const stale = statuses.find((text) => oldWords.test(text.replace(parentWait, "")));
+      if (stale) return `${language}: the status «${stale}» uses an old word`;
+      // The decisions note names the finding buttons by their own words.
+      const note = markup.match(/<section id="decisions"[^>]*>[\s\S]*?<p class="sub">([^<]*)<\/p>/)?.[1] ?? "";
+      if (!note.includes(labels.fixApply) || !note.includes(labels.fixSkip)) return `${language}: the decisions note does not name «${labels.fixApply}» and «${labels.fixSkip}»: ${note}`;
+      // «Not verified:» is a bold prefix wherever a limit says it.
+      const unverified = words["decision.limit-unverified"];
+      const limits = [...markup.matchAll(/<p class="card-limit">([\s\S]*?)<\/p>/g)].map((m) => m[1]).filter((limit) => limit.includes(unverified));
+      if (!limits.length || limits.some((limit) => !limit.startsWith(`<b>${unverified}</b> `))) return `${language}: «${unverified}» is not a bold prefix: ${limits}`;
+      // Amber is the tone of a needed change: the fix, split and merge verdicts, the «no test» tag and a doubt.
+      for (const [, selector, body] of style.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const selectors = selector.split(",").map((x) => x.trim());
+        if (body.includes("var(--fix)") && selectors.some((x) => ![".v-fix", ".doubt"].includes(x))) return `${language}: ${selector.trim()} is amber`;
+        if (body.includes("var(--fix-bg)") && selectors.some((x) => x !== ".v-fix")) return `${language}: ${selector.trim()} has an amber background`;
+      }
+      // A tag starts with a capital through one .tag rule; its catalog word stays as the printout's sentences need it.
+      const firstLetter = [...style.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.includes("::first-letter"));
+      if (firstLetter.length !== 1 || firstLetter[0][1].trim() !== ".tag::first-letter" || firstLetter[0][2].trim() !== "text-transform: uppercase"
+        || !/\n\.tag \{[^}]*display: inline-block/.test(style)) return `${language}: tags are not capitalized by one inline-block .tag rule`;
+      const amberWords = [...amberVerdicts.map((v) => words[`verdict.${v}`]), words["no-test"]];
+      for (const [element, attributes, text] of markup.matchAll(/<\w+\b([^>]*\bclass="[^"]*\bv-fix\b[^"]*"[^>]*)>([^<]*)/g)) {
+        const kind = /class="(\w+)/.exec(attributes)[1], block = /href="#b(\d+)"/.exec(attributes), verdict = /data-verdict="(\w+)"/.exec(attributes);
+        const allowed = kind === "tag" ? amberWords.includes(text.trim()) : kind === "chip" ? !!block && amberVerdicts.includes(record.blocks[block[1] - 1].verdict)
+          : kind === "seg" && !!verdict && amberVerdicts.includes(verdict[1]);
+        if (!allowed) return `${language}: amber marks something that needs no change: ${element.slice(0, 120)}`;
+      }
+    }
+    return true;
+  });
 
 test("the popover escapes every attribute and label, apostrophe included, and only links http(s)",
   "a path with an apostrophe broke out of a single-quoted attribute and injected a handler; localized strings rode in unescaped",
@@ -1333,15 +1420,15 @@ test("afterprint restores every filter view from the snapshot, not the dataset a
     return !!norm && norm[1].includes("#shot") || "openTarget does not normalize #shotN to #shot-N";
   });
 
-test("an upgraded old custom catalog renders an old record end to end; a new record owes the v4 keys",
-  "the check alone can pass while the render refuses, and a new record must not silently take English chrome",
+test("a catalog with exactly the record's required keys renders it end to end; a record using more capabilities is refused for the missing keys",
+  "the check alone can pass while the render refuses, and a record must not silently take English words for a capability it uses",
   () => {
-    const oldCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
-    const ok = render((r) => { r.language = "custom"; r.labels = oldCatalog; });
-    if (ok.status !== 0) return `an old record with a genuine old catalog was refused: ${ok.stderr}`;
-    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the old catalog's own words are not on the page";
-    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = oldCatalog; });
-    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record with the new fields rendered on an old catalog without asking for the chrome words";
+    const exactCatalog = Object.fromEntries(requiredKeys(REVIEW).map((key) => [key, "«" + LABELS[key] + "»"]));
+    const ok = render((r) => { r.language = "custom"; r.labels = exactCatalog; });
+    if (ok.status !== 0) return `the record with a catalog of exactly its required keys was refused: ${ok.stderr}`;
+    if (!fs.readFileSync(html, "utf8").includes("«Findings»")) return "the catalog's own words are not on the page";
+    const refused = render((r) => { Object.assign(r, structuredClone(THEMED)); r.language = "custom"; r.labels = exactCatalog; });
+    return refused.status === 1 && refused.stderr.includes("complete labels catalog") || "a record using more capabilities rendered without asking for their words";
   });
 
 // ---- v5: one Choices list, the unified shell, the reversible choice, the export dialog ----
@@ -1368,7 +1455,7 @@ test("the v5 page is one Choices list grouped by action, with subtabs over it an
     const checks = page.split('id="panel-checks"')[1].split('id="panel-materials"')[0];
     if (!checks.includes('id="challenges"') || !checks.includes('id="requirements"')) return "the checks tab lacks the challenges or requirements";
     // One quantity: the main decisions open (Q3, the only root) plus the two findings; the child Q4 and the idea never enter.
-    if (!/id="count-decisions"[^>]*aria-label="3 main decisions and findings remaining"[^>]*>3<\/span>/.test(page)) return "the static counter is not the one quantity (roots + findings)";
+    if (!/id="count-decisions"[^>]*aria-label="Open main decisions and findings: 3"[^>]*>3<\/span>/.test(page)) return "the static counter is not the one quantity (roots + findings)";
     return !page.includes('id="panel-findings"') || "the findings kept a duplicate panel";
   });
 
@@ -1554,11 +1641,10 @@ test("the surface limit is the record's own uncertainty; a clear recommendation 
     // The unchecked limits are visible in the data/check group rather than duplicated in the intro.
     const group = page.split('id="group-data"')[1]?.split('class="dgroup-body"')[0] ?? "";
     if (!group.includes("card-limit") || !group.includes("current-merge pixel-diff")) return "the data group lacks the record's unchecked limits";
-    const legacy = render();
-    if (legacy.status !== 0) return legacy.stderr;
-    const old = fs.readFileSync(html, "utf8");
-    const oldIntro = old.split('<div class="decision-intro">')[1].split("choice-filters")[0];
-    return !oldIntro.includes("card-limit") || "a record without coverageStructured grew an empty limit";
+    const minimal = render();
+    if (minimal.status !== 0) return minimal.stderr;
+    const intro = fs.readFileSync(html, "utf8").split('<div class="decision-intro">')[1].split("choice-filters")[0];
+    return !intro.includes("card-limit") || "a record without coverageStructured grew an empty limit";
   });
 
 test("the fact answer is «answer entered», never «verified», and exports apart from the comments",
@@ -1569,9 +1655,9 @@ test("the fact answer is «answer entered», never «verified», and exports apa
     if (out.schema_version !== 5) return "the schema changed";
     if (out.factAnswers?.q3 !== "https://example.test/proof") return "the export lacks factAnswers";
     if (out.notes.q3 !== "a discussion") return "the answer displaced the comment";
-    // An old store without the new keys normalizes clean; the answer never decides a question.
-    const old = normalize({ findings: { 1: "apply" }, questions: { 1: { choice: "accepted", variant: "keep" } } });
-    if (Object.keys(old.answers).length || old.hiddenPurposes.length || old.treeHidden) return "the old store grew non-empty v5 state";
+    // A store without the answer and code-view keys normalizes clean; the answer never decides a question.
+    const partial = normalize({ findings: { 1: "apply" }, questions: { 1: { choice: "accepted", variant: "keep" } } });
+    if (Object.keys(partial.answers).length || partial.hiddenPurposes.length || partial.treeHidden) return "a partial store grew non-empty answers or code-view state";
     if (exportOf(DQS, state, {}).questions.some(q => q.question === 3)) return "an answer counted as a decision";
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
@@ -1635,7 +1721,7 @@ test("the export dialog is native and fed by one model; every control keeps its 
     const download = script.slice(script.indexOf("function downloadJson"), script.indexOf("// ---- paint"));
     if (!payloadFn.includes("D.exportOf") || !model.includes("exportPayload()")) return "the export model is not built from the one schema-4 payload";
     if (!download.includes("exportModel().payload")) return "the JSON download is a second builder, not the one payload";
-    if (!model.includes("j.zones") || !model.includes("e.comment")) return "the model drops the zones or the payload's comment (the legacy entry note)";
+    if (!model.includes("j.zones") || !model.includes("e.comment")) return "the model drops the zones or the payload's comment";
     if (!text.includes("m.zones") || !preview.includes("m.zones")) return "the marked zones do not reach the text and the preview";
     if (!script.includes("xp-goto") || !script.includes("openTarget(hash)")) return "the preview rows have no working Go link";
     if (!script.includes("factAnswers") && !script.includes("D.exportOf")) return "the JSON export is missing";
@@ -1643,9 +1729,9 @@ test("the export dialog is native and fed by one model; every control keeps its 
   });
 
 test("the export payload carries current comments, zones, passages and fact answers",
-  "user input must travel in the current export without reviving legacy entry notes",
+  "user input must travel in the export, and a note stored inside a question entry is not its comment",
   () => {
-    const state = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "legacy note in the entry" } },
+    const state = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "a note in the entry" } },
       notes: { q1: "current comment", b1: "block note" }, zones: { "1-0": true }, answers: { q3: "proof" },
       passages: [{ where: "a.js:1", quote: "x", note: "n", proof: { kind: "field", object: "b1" } }] });
     const out = exportOf(DQS, state, {});
@@ -1653,7 +1739,7 @@ test("the export payload carries current comments, zones, passages and fact answ
     if (out.zones?.["1-0"] !== true || out.factAnswers?.q3 !== "proof" || out.passages?.length !== 1 || out.notes?.b1 !== "block note")
       return "the export drops the zones, factAnswers, passages or block notes";
     const both = normalize({ questions: { 1: { choice: "accepted", variant: "keep", note: "entry" } }, notes: { q1: "shared" } });
-    if (exportOf(DQS, both, {}).questions.find((q) => q.question === 1).comment !== "shared") return "the legacy entry note replaced the current comment";
+    if (exportOf(DQS, both, {}).questions.find((q) => q.question === 1).comment !== "shared") return "a note in the entry replaced the comment";
     // The page's data carries the zone texts, so the preview can name a marked zone without the record's DOM.
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     if (result.status !== 0) return result.stderr;
@@ -1826,13 +1912,13 @@ test("the v5 words are localized and owed by capability; the block comment is th
       if (!page.includes(word)) return `the Russian page lacks "${word}"`;
     for (const english of [">All<", ">Owner choice needed<", ">Export answers<", ">answer entered<", ">Fix</button>", ">Take</button>"])
       if (page.includes(english)) return `English leaked into the Russian page: ${english}`;
-    const oldRequired = requiredKeys(REVIEW), newRequired = requiredKeys(THEMED);
+    const minimalRequired = requiredKeys(REVIEW), themedRequired = requiredKeys(THEMED);
     for (const key of ["choice.filter.all", "group.owner", "export.open", "card.comment", "nojs.counter-title", "tree.reveal-note", "chip.hidden", "finding.limit.read"]) {
-      if (!oldRequired.includes(key)) return `the common chrome ${key} is not required of a minimal record`;
-      if (!newRequired.includes(key)) return `the v5 chrome ${key} is not required of a record with the new fields`;
+      if (!minimalRequired.includes(key)) return `the common chrome ${key} is not required of a minimal record`;
+      if (!themedRequired.includes(key)) return `the v5 chrome ${key} is not required of a record with the card fields`;
     }
     for (const key of ["decision.answered", "decision.answer-label", "decision.children", "ideas.optional"])
-      if (!newRequired.includes(key)) return `the capability key ${key} is not required of the themed record`;
+      if (!themedRequired.includes(key)) return `the capability key ${key} is not required of the themed record`;
     const noIdeas = structuredClone(THEMED); delete noIdeas.ideas;
     if (requiredKeys(noIdeas).includes("ideas.optional")) return "a record without ideas was asked for the idea words";
     // The block comment is the same compact pattern, wrapped for the clones to cut.
