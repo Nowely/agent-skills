@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Does the review skill's report script hold a review to its diff? Runs plugin/skills/review/scripts/report.mjs
 // on one prepared case with a review written here; it calls no model. It checks that a complete review becomes
-// a page that loads nothing from elsewhere and a printout in the shape SKILL.md gives the report, and that an
-// incomplete one is refused with every fault listed. Run it after an edit to those scripts, to
+// a page and a printout in the shape SKILL.md gives the report, and that an incomplete one is refused with every
+// fault listed; review-page.test.mjs checks the page itself. Run it after an edit to those scripts, to
 // references/report-data.md or to the report's shape in SKILL.md.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -147,24 +147,6 @@ test("comparison witnesses preserve source values, or record why a parser could 
       const css = pairs.find(p => p.file === "box.scss" && p.contrast);
       if (!css || css.left.line !== 1 || css.right.line !== 3 || css.contrast.interveningSiblings.join() !== ".outer:2") return "cascade context missing";
     } else if (!limits.some(l => l.file === "box.scss" && l.reason.includes("parser unavailable"))) return "missing style parser was unreported";
-    return true;
-  });
-
-test("a complete review becomes one page that loads nothing from elsewhere and treats every text as text",
-  "the page shows private code: a script or stylesheet fetched from a host, or a title run as markup, is a leak or an injection",
-  () => {
-    const { status, stderr } = render();
-    if (status !== 0) return `render failed: ${stderr}`;
-    const page = fs.readFileSync(html, "utf8"), markup = page.replace(/<script\b[\s\S]*?<\/script>/g, "");
-    // The page's markup links nothing and loads nothing: its scripts and styles are inline, its pictures travel as data.
-    const outside = markup.match(/\bsrc="(?!data:)|<link\b|@import|url\(|href="(?!#)/);
-    if (outside) return `the page reaches outside itself: ${outside[0]}`;
-    if (/<script\b[^>]*\bsrc=/.test(page)) return "a script is loaded from elsewhere";
-    const island = dataOf(page);
-    // A picture given as a file travels once, in the document; the island says only that it is there.
-    if ((markup.match(/<img data-pic="0-(before|after)" src="data:image\/png;base64,/g) ?? []).length !== 2 || island.screens[0].pictures.filter((p) => p.embedded).length !== 2
-      || JSON.stringify(island).includes("base64")) return "the two pictures given as files are not in the page once";
-    if (markup.includes("<currency>") || !markup.includes("&lt;currency&gt;") || island.title !== REVIEW.title) return "the title reached the page unescaped, or not as the record has it";
     return true;
   });
 

@@ -30,10 +30,8 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link the page. On it the owner answers each decision with a variant or in their own words, each
-   finding «Fix it», «Leave it» or in their own words, each idea «Take it», «Skip it» or in their own words, and
-   each fact or evidence request; comments on lines and paragraphs; and exports the answers as text or JSON:
-   proposals for the next step, not edits to the source.
+   not changed. Link the page. On it the owner answers each item as [decision cards](#decision-cards) says, comments
+   on lines and paragraphs, and exports the answers: proposals for the next step, not edits to the source.
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
@@ -266,9 +264,8 @@ diff, never a new record field.
 - **Details** holds the structure, mechanisms, scenarios, checks by hand, challenges, screens with their
   provenance, coverage — with the check's warnings about kept blocks that serve no requirement or only assumed
   ones — and the report's details, with the two print profiles.
-- **Answering.** By click or key, in Decisions or in the code's margin; «Decided N of M» counts every applicable
-  item, an answered request apart. A key answers only the item in view, and Undo takes back that one answer. The
-  answers, comments, «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; a browser that
+- **Answering.** By click or key, in Decisions or in the code's margin; a key answers only the item in view, and
+  Undo takes its answer back. The answers, comments, «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; a browser that
   refuses to save is told on the page.
 - **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
   fields, a scenario and a challenge; listed in Decisions › Comments and exported.
