@@ -585,7 +585,28 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 :root[data-theme="dark"] .t-c { color: #8b949e; } :root[data-theme="dark"] .t-s { color: #a5d6ff; } :root[data-theme="dark"] .t-n { color: #79c0ff; } :root[data-theme="dark"] .t-k { color: #ff7b72; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-c { color: #8b949e; } :root:not([data-theme="light"]) .t-s { color: #a5d6ff; } :root:not([data-theme="light"]) .t-n { color: #79c0ff; } :root:not([data-theme="light"]) .t-k { color: #ff7b72; } }
 
-/* ---------- without JavaScript: each file's diff from its <noscript> ---------- */
+/* ---------- without JavaScript: the report as a document, from its <noscript> elements ---------- */
+.static { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.static header { padding: 20px 0 8px; }
+.static h1 { font-size: 22px; margin: 4px 0 8px; }
+.static h2 { font-size: 18px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.static h3 { font-size: 15px; margin: 18px 0 6px; }
+.static h4 { font-size: 13.5px; margin: 14px 0 4px; }
+.static h5 { font-size: 12.5px; margin: 8px 0 2px; color: var(--text-2); }
+.static .static-note { padding: 8px 12px; background: var(--accent-bg); border: 1px solid var(--accent-border); border-radius: 6px; }
+.static .stbl { width: 100%; border-collapse: collapse; background: var(--surface); }
+.static .stbl th, .static .stbl td { text-align: left; vertical-align: top; padding: 6px 8px; border: 1px solid var(--border); }
+.static .scard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+.static .scard h4 { margin: 0 0 4px; color: var(--text-2); }
+.static .stitle { font-weight: 600; margin: 0 0 2px; }
+.static .sat { font: 12px var(--mono); color: var(--text-3); margin: 0 0 6px; }
+.static .srcs { color: var(--text-3); font-size: 12.5px; }
+.static figure { display: inline-block; margin: 6px 10px 6px 0; }
+.static figure img { max-width: 360px; border: 1px solid var(--border); }
+.sfile tr.bn td { padding: 6px 10px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 12.5px; }
+.sfile tr.bn.v-fix td, .sfile tr.bn.v-remove td, .sfile tr.bn.v-question td { border-left: 3px solid var(--accent); }
+.print-actions { display: flex; gap: 8px; margin: 0 0 6px; }
+#print { display: none; }
 .sfile { margin: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .sfile h3 { font: 600 13px var(--mono); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
 .sfile .diff td.lo, .sfile .diff td.ln { width: 48px; text-align: right; padding: 0 8px; color: var(--num); }
@@ -595,4 +616,14 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .sfile .diff tr.d td.cd::before { content: "-"; }
 .sfile .diff tbody + tbody tr:first-child td { border-top: 1px dashed var(--border); }
 
-@media print { .tabbar, .toolbar, .tree, .panel, .pc-btn, .skip, .toast { display: none !important; } .frame { display: block; } }
+/* ---------- print: the runtime builds #print (the owner's or the audit's); without JavaScript the document prints ---------- */
+@media print {
+  body > #app, .toast, .copybox { display: none !important; }
+  #print { display: block; }
+  #print .print-head { margin-bottom: 12px; }
+  #print .choice, #print button:not(.linkbtn), #print .compact, #print .pc-btn, #print .key, #print .cta, #print .card-foot { display: none !important; }
+  #print .card, #print .card.settled { display: block; padding: 10px 14px; background: none; break-inside: avoid; }
+  #print .card .full { display: block !important; }
+  #print .sfile, .sfile { break-inside: auto; }
+  #print .sfile tr, .sfile tr { break-inside: avoid; }
+}

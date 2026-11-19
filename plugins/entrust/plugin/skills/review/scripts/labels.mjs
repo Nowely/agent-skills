@@ -309,6 +309,10 @@ export const LABELS = {
   "p.export.entered": "answer entered: {n}", "p.export.na": "not applicable under the answer to {n}",
   "p.storage.failed": "The browser refused to save: answers and comments are only in this page's memory. Export them before you leave.",
   "p.storage.unreadable": "The answers saved in this browser could not be read; the page starts without them.",
+  "p.print": "Print", "p.print.owner": "Print for the owner", "p.print.audit": "Print for audit",
+  "p.print.note": "The owner's print holds the summary and every decision with its answer; the audit's adds every file whole, with each block's verdict, and the details. The browser's own Print prints the owner's.",
+  "p.static.note": "This is the whole report to read. Answering, comments and the export need JavaScript.",
+  "p.screen.revision": "Pictures of revision {n}",
 };
 
 export const CATALOGS = { en: LABELS, ru: {
@@ -634,13 +638,20 @@ export const CATALOGS = { en: LABELS, ru: {
   "p.export.na": "неприменимо при ответе на {n}",
   "p.storage.failed": "Браузер не дал сохранить: ответы и комментарии есть только в памяти этой страницы. Экспортируйте их перед уходом.",
   "p.storage.unreadable": "Сохранённые в этом браузере ответы прочитать не удалось; страница открыта без них.",
+  "p.print": "Печать", "p.print.owner": "Печать для владельца", "p.print.audit": "Печать для аудита",
+  "p.print.note": "Печать для владельца — сводка и все решения с ответами; для аудита — ещё все файлы целиком, с вердиктом каждого блока, и подробности. Печать из меню браузера печатает вариант для владельца.",
+  "p.static.note": "Это весь отчёт для чтения. Отвечать, комментировать и экспортировать можно только с JavaScript.",
+  "p.screen.revision": "Снимки ревизии {n}",
 } };
 
 // Russian for "ru" and "ru-*", English for any other tag; the plural rules follow the same language.
 export const languageOf = (review) => (review.language ?? "").toLowerCase().split("-")[0] === "ru" ? "ru" : "en";
 
-// The wording for one review: `t(key)`, or `t(key, n)` where the label has a place for a number.
+// The wording for one review: `t(key)`, or `t(key, n, m)` where the label has places for values; `t.count(key, n)`
+// picks a count's form by the language's plural rules and writes the number as the language does.
 export function labelsOf(review) {
-  const words = CATALOGS[languageOf(review)];
-  return (key, n) => String(words[key]).replace("{n}", n);
+  const language = languageOf(review), words = CATALOGS[language], rules = new Intl.PluralRules(language);
+  const t = (key, n, m) => String(words[key]).replace("{n}", n).replace("{m}", m);
+  t.count = (key, count) => t(`${key}.${rules.select(count)}`, count.toLocaleString(language));
+  return t;
 }

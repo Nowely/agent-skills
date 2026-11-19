@@ -1,14 +1,16 @@
 // The page: one standalone, offline HTML file drawn from the record and its saved diff. Its client is
 // page/runtime.js and page/page.css, inlined here; decisions.mjs's runtime is handed to it whole, so the page and
-// the tests share one owner of the owner's answers. The record travels as one JSON island. The diff's code travels
-// once, as markup: each file's rows sit in a <noscript>, which a reader without JavaScript sees as the diff and the
-// runtime reads as text, drawing a file only when it nears the viewport.
+// the tests share one owner of the owner's answers. The record travels as one JSON island. The report as a document
+// (page/document.mjs) sits in <noscript> elements: a reader without JavaScript reads it, the runtime never builds it.
+// The diff's code travels once, as markup: each file's rows sit in their <noscript>, which that reader sees as the
+// diff and the runtime reads as text, drawing a file only when it nears the viewport.
 import fs from "node:fs";
-import { CATALOGS, languageOf } from "./labels.mjs";
+import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
 import { sourceOf, PURPOSES, SHOTS } from "./review.mjs";
+import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
 const RUNTIME = read("runtime.js").trim(), STYLE = read("page.css");
@@ -59,12 +61,20 @@ function rowsOf(file, model, hl) {
   });
 }
 
-// One file's diff as the no-JavaScript reader sees it. One row per line of source, in a shape runtime.js parses:
-// a hunk opens with <tbody>, a row carries its numbers in data-r and its code as the last cell.
-function fileMarkup(fi, file, hunks) {
+// One file's diff as the no-JavaScript reader and the audit print see it, with a line for each block's verdict. One
+// row per line of source, in a shape runtime.js parses: a hunk opens with <tbody>, a row carries its numbers in data-r
+// and its code as the last cell; a block's line is not a row.
+function fileMarkup(fi, file, hunks, blocks, blockLine) {
   const row = (r) => `<tr class="r ${"cad"[r[0]]}" data-r="${r[0]},${r[1] ?? ""},${r[2] ?? ""},${r[3] || ""},${r[5]}"><td class="lo">${r[1] ?? ""}</td><td class="ln">${r[2] ?? ""}</td><td class="cd">${r[4]}</td></tr>`;
+  const seen = new Set();
+  let last = 0;
+  const rows = (list) => list.map((r) => {
+    const line = r[0] && r[3] && r[3] !== last ? blockLine(blocks[r[3] - 1], seen.has(r[3])) + "\n" : "";
+    if (r[0]) { if (r[3]) seen.add(r[3]); last = r[3]; }
+    return line + row(r);
+  }).join("\n");
   return `<noscript id="code-${fi}"><section class="sfile"><h3>${esc(file.path)}</h3><table class="diff">
-${hunks.map((rows) => `<tbody>\n${rows.map(row).join("\n")}\n</tbody>`).join("\n")}
+${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).join("\n")}
 </table></section></noscript>`;
 }
 
@@ -84,7 +94,8 @@ export function page(review, files, model, { syntax } = {}) {
     passport: review.passport ?? null,
     screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, historical: Boolean(s.historical), revision: s.revision ?? null,
       sources: sources(s.sources), differences: s.differences.map((d) => ({ what: d.what, why: d.why, finding: d.finding === undefined ? null : String(d.finding) })),
-      pictures: SHOTS.filter((k) => s[k]).map((k) => ({ kind: k, link: s[k].link, data: s[k].data })) })),
+      // A picture given as a file travels once, in the document's <img data-pic>; the runtime takes it from there.
+      pictures: SHOTS.filter((k) => s[k]).map((k) => ({ kind: k, link: s[k].link, embedded: Boolean(s[k].data) })) })),
     scenarios: model.scenarios.map((x) => ({ id: String(x.id), change: x.change, requirements: x.requirements.map(String), findings: x.findings.map(String),
       now: x.now ? { edit: x.now.edit ?? [], read: x.now.read ?? [] } : null, target: x.target ? { edit: x.target.edit ?? [], read: x.target.read ?? [] } : null })),
     digest: { diff: review.diff.sha256, record: model.recordSha ?? model.key, key: model.key, diffFile: review.diff.file },
@@ -113,6 +124,7 @@ export function page(review, files, model, { syntax } = {}) {
     files: files.map((f, fi) => ({ path: f.path, status: model.files[fi].status, purpose: model.files[fi].purpose,
       add: f.hunks.flat().filter((l) => l.kind === "add").length, del: f.hunks.flat().filter((l) => l.kind === "del").length })),
   };
+  const doc = documentOf(data, labelsOf(review), (si, kind) => model.screens[si][kind].data);
   const json = JSON.stringify(data).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, (c) => "\\u" + c.charCodeAt(0).toString(16));
   return `<!doctype html>
 <html lang="${esc(Intl.getCanonicalLocales(review.language ?? "en")[0])}">
@@ -126,7 +138,9 @@ ${STYLE}${syntax?.css ?? ""}
 </head>
 <body>
 <div id="app"></div>
-${files.map((f, fi) => fileMarkup(fi, f, hunks[fi])).join("\n")}
+${doc.report}
+${files.map((f, fi) => fileMarkup(fi, f, hunks[fi], data.blocks, doc.blockLine)).join("\n")}
+${doc.details}
 <script type="application/json" id="data">${json}</script>
 <script>
 ${RUNTIME}(${decisionRuntime.toString()});

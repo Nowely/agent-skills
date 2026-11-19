@@ -30,6 +30,8 @@ const kbd = (k) => `<span class="kbd">${esc(k)}</span>`;
 // A row is [kind 0 context | 1 added | 2 removed, old number, new number, block, code markup, length]; page.mjs
 // writes one row per line, a hunk opening with <tbody>.
 const B = D.blocks, F = D.files;
+// A picture given as a file travels once, in the document's details; the island says only that it is there.
+const PICS = new Map([...(document.getElementById("static-details")?.textContent ?? "").matchAll(/<img data-pic="([^"]+)" src="([^"]+)"/g)].map((m) => [m[1], m[2]]));
 const CELL = '<td class="cd">';
 for (const [fi, f] of F.entries()) {
   f.hunks = [];
@@ -713,14 +715,13 @@ function startReview() {
   if (!c) return toast(L("p.start.none"));
   goCard(c.key, { focus: true });
 }
-function renderSummary() {
+function summaryHtml() {
   const c = D.counters, shares = verdictShares(B);
   const notChecked = [...D.coverageStructured.filter((x) => x.kind === "not_checked").map((x) => `<li>${prose(x.text)} ${srcList(x.sources)}</li>`),
     ...D.requirements.filter((r) => r.not_checked).map((r) => `<li>${chip("r", r.id)} ${prose(r.not_checked)}</li>`)];
   const requests = ITEMS.filter(isRequest);
   const status = [c.addedFiles && P("p.count.new", c.addedFiles), c.removedFiles && P("p.count.deleted", c.removedFiles)].filter(Boolean).join(" · ");
-  $("#panel-summary").innerHTML = `<div class="frame"><div class="col">
-    <div class="statrow">
+  return `<div class="statrow">
       <div class="stat"><b>${esc(P("p.count.files", c.files))}</b>${status ? `<span>${esc(status)}</span>` : ""}</div>
       <div class="stat"><b><span class="add">+${n(c.lines.added)}</span> <span class="del">−${n(c.lines.removed)}</span></b><span>${esc(L("p.lines"))}</span></div>
       <div class="stat"><b>${esc(P("p.count.blocks", c.blocks))}</b>${shareBar(shares)}<div class="legend">${["keep", "fix", "remove", "question"].map((k) => `<span><i class="s-${k}"></i>${esc(L("p.verdict.reviewer"))} ${esc(verdictWord(k))} ${n(c.verdicts[k] ?? 0)}</span>`).join("")}</div></div>
@@ -742,8 +743,10 @@ function renderSummary() {
       ${requests.length ? `<h3 class="gap-top">${esc(L("p.limits.requests"))}</h3><ul class="plain">${requests.map((x) => `<li>${chip("q", x.ref.id)} <span class="status" data-status="${x.key}">${tagHtml(statusOf(x))}</span> ${prose(x.ref.text.length > 220 ? x.ref.text.slice(0, 220) + "…" : x.ref.text)}</li>`).join("")}</ul>` : ""}
       ${D.coverage ? `<h3 class="gap-top">${esc(L("p.coverage.written"))}</h3><p class="${D.coverage.length > 360 ? "clamp" : ""}" id="cov-text">${prose(D.coverage)}</p>${D.coverage.length > 360 ? `<button class="linkbtn small" data-act="cov-more" aria-expanded="false">${esc(L("p.show-all"))}</button>` : ""}` : ""}
       <p class="muted small gap-top">${esc(L("p.limits.more"))}</p>
-    </div>
-  </div><aside class="panel" id="ctx-summary" aria-label="${esc(L("p.context"))}"></aside></div>`;
+    </div>`;
+}
+function renderSummary() {
+  $("#panel-summary").innerHTML = `<div class="frame"><div class="col">${summaryHtml()}</div><aside class="panel" id="ctx-summary" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderPanel("summary");
 }
 function summaryPanel(sel) {
@@ -1408,9 +1411,9 @@ function renderDetailBody() {
   } else if (sub === "challenges") {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
-    html = D.screens.map((s) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
+    html = D.screens.map((s, si) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
       ${s.historical ? `<p><span class="provenance">${esc(s.revision ? L("p.screen.historical", s.revision) : L("p.screen.historical-unknown"))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen.revision-unknown"))}</p>`}
-      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.data ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><img src="${p.data}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
+      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
       ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
       ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
       ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`).join("");
@@ -1431,7 +1434,8 @@ function renderDetailBody() {
       <dt>${esc(L("passport.record"))}</dt><dd><span class="mono small muted">sha256 ${esc(D.digest.record)}</span></dd>
       <dt>${esc(L("p.report.language"))}</dt><dd>${esc(D.language)}</dd>
       <dt>${esc(L("p.report.size"))}</dt><dd>${esc([P("p.count.files", D.counters.files), P("p.count.blocks", D.counters.blocks), P("p.count.items", ITEMS.length)].join(", "))}</dd>
-      </dl></div><p class="muted small gap-top">${esc(L("p.memory"))}</p>`;
+      </dl></div><p class="muted small gap-top">${esc(L("p.memory"))}</p>
+      <div class="section-h"><h2>${esc(L("p.print"))}</h2></div><div class="box"><p class="print-actions"><button class="btn sm" data-act="print" data-profile="owner">${esc(L("p.print.owner"))}</button><button class="btn sm" data-act="print" data-profile="audit">${esc(L("p.print.audit"))}</button></p><p class="muted small">${esc(L("p.print.note"))}</p></div>`;
   }
   $("#det-body").innerHTML = html;
   if (sub === "structure" && S.structView === "graph") wireGraph();
@@ -1596,6 +1600,7 @@ document.addEventListener("click", (e) => {
     switch (a) {
       case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; applyTheme(); return save();
       case "export": return openExport();
+      case "print": printProfile = act.dataset.profile; return window.print();
       case "export-json": return downloadExport();
       case "export-copy": return copyExport();
       case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : goCard(go); }
@@ -1885,6 +1890,22 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
 window.addEventListener("hashchange", () => route(location.hash));
+
+// ---------------------------------------------------------------- print: the owner's or the audit's
+// The owner's print is the summary and every decision card with its answer, and the comments; the audit's adds every
+// file whole, kept code unfolded, with each block's verdict, and the details, taken from the document in the page's
+// <noscript> elements, so no file has to be drawn on screen first. Printing from the browser's menu prints the owner's.
+let printProfile = "owner";
+function buildPrint() {
+  let el = $("#print");
+  if (!el) { el = document.createElement("div"); el.id = "print"; document.body.append(el); }
+  const decisions = GROUPS.map((g) => { const cards = ITEMS.filter(g.test); return cards.length ? `<h2 class="group-h">${esc(g.label)}</h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>` : ""; }).join("");
+  const code = printProfile === "audit" ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "";
+  el.innerHTML = `<header class="print-head"><p class="muted">${esc(L("kind"))} · ${esc(L(printProfile === "audit" ? "p.print.audit" : "p.print.owner"))}</p><h1>${esc(D.title)}</h1><p>${esc(L("p.progress", n(progress().done), n(progress().total)))}</p></header>
+    <section><h2>${esc(L("p.tab.summary"))}</h2>${summaryHtml()}</section><section><h2>${esc(L("p.tab.decisions"))}</h2>${decisions}<h2 class="group-h">${esc(L("p.sub.comments"))}</h2>${commentsListHtml()}</section>${code ? `<section class="static"><h2>${esc(L("p.tab.code"))}</h2>${code}</section>` : ""}`;
+}
+window.addEventListener("beforeprint", buildPrint);
+window.addEventListener("afterprint", () => { $("#print")?.remove(); printProfile = "owner"; });
 
 // ---------------------------------------------------------------- start
 load();

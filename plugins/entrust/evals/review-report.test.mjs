@@ -157,11 +157,13 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if (status !== 0) return `render failed: ${stderr}`;
     const page = fs.readFileSync(html, "utf8"), markup = page.replace(/<script\b[\s\S]*?<\/script>/g, "");
     // The page's markup links nothing and loads nothing: its scripts and styles are inline, its pictures travel as data.
-    const outside = markup.match(/\bsrc=|<link\b|@import|url\(|href="(?!#)/);
+    const outside = markup.match(/\bsrc="(?!data:)|<link\b|@import|url\(|href="(?!#)/);
     if (outside) return `the page reaches outside itself: ${outside[0]}`;
     if (/<script\b[^>]*\bsrc=/.test(page)) return "a script is loaded from elsewhere";
     const island = dataOf(page);
-    if (island.screens[0].pictures.filter((p) => p.data?.startsWith("data:image/png;base64,")).length !== 2) return "the two pictures given as files are not in the page";
+    // A picture given as a file travels once, in the document; the island says only that it is there.
+    if ((markup.match(/<img data-pic="0-(before|after)" src="data:image\/png;base64,/g) ?? []).length !== 2 || island.screens[0].pictures.filter((p) => p.embedded).length !== 2
+      || JSON.stringify(island).includes("base64")) return "the two pictures given as files are not in the page once";
     if (markup.includes("<currency>") || !markup.includes("&lt;currency&gt;") || island.title !== REVIEW.title) return "the title reached the page unescaped, or not as the record has it";
     return true;
   });
@@ -212,8 +214,9 @@ test("English and Russian hold the same words, every word the page and the print
     // holds in a variable; a count, P("…"), in every plural form either language has.
     const read = (name) => fs.readFileSync(path.join(SKILL, "scripts", name), "utf8");
     const plurals = [...new Set(["en", "ru"].flatMap((language) => new Intl.PluralRules(language).resolvedOptions().pluralCategories))];
-    const scripts = ["review.mjs", "sources.mjs", "page.mjs"].map(read).join("\n"), printout = read("report.mjs"), runtime = read("page/runtime.js");
-    const counts = [...new Set([...runtime.matchAll(/"(p\.[\w.-]+)"/g)].map((m) => m[1]).filter((key) => !Object.hasOwn(LABELS, key) && Object.hasOwn(LABELS, `${key}.other`)))];
+    const scripts = ["review.mjs", "sources.mjs", "page.mjs", "page/document.mjs"].map(read).join("\n"), printout = read("report.mjs"), runtime = read("page/runtime.js");
+    const counts = [...new Set([...runtime.matchAll(/"(p\.[\w.-]+)"/g), ...scripts.matchAll(/\bt\.count\("([^"]+)"/g)].map((m) => m[1])
+      .filter((key) => !Object.hasOwn(LABELS, key) && Object.hasOwn(LABELS, `${key}.other`)))];
     const named = [...scripts.matchAll(/\bt\("([^"]+)"\s*[,)]/g), ...runtime.matchAll(/\bL\("([^"]+)"/g), ...runtime.matchAll(/"(p\.[\w.-]+)"/g)]
       .map((m) => m[1]).filter((key) => !key.endsWith(".") && !counts.includes(key))
       .concat([...printout.matchAll(/"([\w.-]+)(?=")/g)].map((m) => m[1]).filter((key) => Object.hasOwn(LABELS, key)));

@@ -46,7 +46,7 @@ test("the page is standalone: inline styles and scripts, nothing loaded or linke
   for (const language of ["en", "ru-RU"]) {
     const { html } = draw({ ...structuredClone(THEMED), language }, diffText), island = islandOf(html);
     assert.match(html, new RegExp(`^<!doctype html>\\n<html lang="${language}">`));
-    assert.doesNotMatch(markupOf(html), /\bsrc=|<link\b|@import|url\(|href=/);
+    assert.doesNotMatch(markupOf(html), /\bsrc="(?!data:image\/)|<link\b|@import|url\(|href="(?!#)/);
     assert.doesNotMatch(html, /<script\b[^>]*\bsrc=/);
     assert.deepEqual(island.labels, CATALOGS[language.startsWith("ru") ? "ru" : "en"]);
     assert.ok(html.includes(CSS), "the stylesheet is not inline whole");
@@ -122,4 +122,29 @@ test("the island carries what the runtime reads from the model: the kept blocks 
   assert.deepEqual(island.purposeCounts, model.purpose.counts);
   assert.equal(island.digest.diff, THEMED.diff.sha256);
   assert.equal(island.digest.key, model.key);
+});
+
+test("without JavaScript the page is the whole report: the summary, every decision card as text, each file's diff with every block's verdict, and the details", () => {
+  const { html, model } = draw(THEMED, diffText), island = islandOf(html);
+  const part = (id) => html.match(new RegExp(`<noscript id="${id}">([\\s\\S]*?)</noscript>`))?.[1] ?? "";
+  const report = part("static-report"), details = part("static-details");
+  for (const text of ["The change does its task.", "One test is missing.", "Accept it.", "Add the test.", "Upper case wherever a price is shown.", "How the list draws it."])
+    assert.ok(report.includes(text), `the summary lacks «${text}»`);
+  // Every item is a card under the id its deep link names, and a decision's card carries its variants with their consequences.
+  for (const key of ["q1", "q2", "q3", "q4", "q5", "f1", "f2", "i1"]) assert.equal(report.split(`id="decisions/${key}"`).length, 2, `card ${key}`);
+  const q3 = report.split('id="decisions/q3"')[1].split("</article>")[0];
+  for (const v of THEMED.questions[2].variants) assert.ok(q3.includes(v.text) && v.consequences.every((x) => q3.includes(x.text)), `Q3 lacks the variant ${v.id} or its consequences`);
+  assert.ok(q3.includes(THEMED.questions[2].recommendation.text) && q3.includes(THEMED.questions[2].context[0].text));
+  assert.ok(report.split('id="decisions/q4"')[1].includes("Move it to a display unit"), "the child does not say under which variant of its parent it applies");
+  // Every block's verdict stands before its first line, in its file's diff.
+  for (const b of model.blocks) {
+    const fi = model.blockFile[b.id], line = part(`code-${fi}`).match(new RegExp(`<tr class="bn v-${b.verdict}" id="code/b${b.id}">.*`))?.[0];
+    assert.ok(line?.includes(`<b>${CATALOGS.en[`verdict.${b.verdict}`].toLowerCase()}</b>`), `B${b.id} has no verdict line`);
+  }
+  for (const text of ["The archive reader converts the code.", "readArchive", "The reader should not convert.", "Open the list.", "The list", "The suite ran on the working copy.", THEMED.diff.sha256])
+    assert.ok(details.includes(text), `the details lack «${text}»`);
+  // A picture given as a file is in the page once, in the document.
+  const pixel = /data:image\/png;base64,[A-Za-z0-9+/=]+/.exec(details)[0];
+  assert.equal(html.split(pixel).length, 3, "the two one-pixel pictures are not each in the page once");
+  assert.ok(island.screens[0].pictures.every((p) => !("data" in p)));
 });
