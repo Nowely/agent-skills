@@ -28,6 +28,15 @@ forensics remain in the repository references and release notes.
   section, wherever a record has dependent decisions, and `banner.blocks` (with `{n}`) in place of
   `banner.await`; `fragment.what`, `question.blocks`, `chip.with-parts` and `banner.await` are gone, and `check`
   refuses a catalog that still carries them. `check` lists every missing key.
+- Tags on the page (a requirement's status and source, verdicts, purposes, file marks and the like) start with a
+  capital letter through one `.tag` style rule; the catalogs and the text printout keep their words as the
+  printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
+  «фрагмент», which is the code's word.
+- **Breaking:** labels nothing on the page or in the printout read are gone: `annotation.unlocated` (an
+  unlocated passage says `annotation.unverified`, as it already did), `decision.remaining`,
+  `counters.evidence-blocks`, `seg.details`, `seg.details-first`, `apply`, `skip`, `apply-all`, `out.apply` and
+  `out.skip`; custom catalogs no longer owe them, and `check` refuses a catalog that still carries them. The
+  model's `counters.evidenceBlocks`, which only tests read, is gone too.
 
 ## 0.42.0 — 2026-11-18
 

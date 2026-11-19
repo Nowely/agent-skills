@@ -862,7 +862,7 @@ test("passage preview only offers source navigation for an installed annotation"
   ];
   const payload = { questions: [], findings: {}, notes: {}, passages, zones: {}, factAnswers: {}, waitingForParent: [] };
   const sandbox = { exportPayload: () => payload, annotationUI: { located: (i) => i === 0 },
-    data: { questions: [], findings: [], ideas: [], annotationLabels: { unlocated: "unlocated" } },
+    data: { questions: [], findings: [], ideas: [], annotationLabels: { unverified: "unverified" } },
     t: { export: { passageContext: "Selected", openFindings: "findings" }, tabRemaining: "{n} remaining" },
     qById: {}, blockById: {}, D: {}, state: {}, stats: () => ({ remaining: 0 }) };
   const make = vm.runInNewContext(part("  function exportModel()", "  function decisionsText()") + "\nexportModel", sandbox);
@@ -871,7 +871,7 @@ test("passage preview only offers source navigation for an installed annotation"
   assert.equal(model.comments[0].hash, undefined);
   assert.equal(model.comments[1].passage, undefined);
   assert.equal(model.comments[1].hash, undefined);
-  assert.match(model.comments[1].text, /unlocated/);
+  assert.match(model.comments[1].text, / · unverified$/);
   assert.equal(JSON.stringify(model.payload), snapshot);
   const element = (tag) => ({ tag, children: [], dataset: {}, text: "",
     set textContent(value) { this.text = value; this.children = []; },

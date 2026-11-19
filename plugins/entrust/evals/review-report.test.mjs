@@ -173,7 +173,7 @@ test("the selected language covers controls and exported decisions without per-r
     const result = render((r) => { r.language = "ru-RU"; });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8");
-    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к фрагментам", "Рекомендация"])
+    for (const text of ["Файлы", "Копировать", "Комментировать выделение", "Комментарии к отрывкам", "Рекомендация"])
       if (!page.includes(text)) return `Russian control or export missing: ${text}`;
     if (!result.stdout.includes("## Вывод")) return "Markdown is not localized";
     if (report("labels", "ru").stdout !== JSON.stringify(CATALOGS.ru, null, 2) + "\n") return "the catalog command differs";
@@ -662,9 +662,8 @@ test("modelOf derives children, unique counters, file status and the shortest un
   () => {
     const model = modelOfThemed();
     if (model.questions[2].children.join() !== "4" || model.questions[3].children.length) return "children are not derived from parent alone";
-    if (model.questions[0].blocks !== 1 || model.questions[4].blocks !== 1) return "per-question fragment counts differ";
-    // One fragment names both evidence questions: it is one fragment awaiting evidence, not two.
-    if (model.counters.evidenceBlocks !== 1) return `evidence fragments double-counted: ${model.counters.evidenceBlocks}`;
+    // One block names both evidence questions: each question counts it once, as its own related code shows.
+    if (model.questions[0].blocks !== 1 || model.questions[4].blocks !== 1) return "per-question block counts differ";
     if (model.counters.decisions !== 2 || model.counters.blocks !== 3) return "decision or block counters differ";
     const byPath = Object.fromEntries(model.files.map((f) => [f.path, f]));
     if (byPath["src/invoices/archive.js"].status !== "M" || byPath["test/archive.test.js"].status !== "A" || byPath["test/outputs.test.js"].status !== "A") return "file status is not taken from the diff headers";
@@ -973,7 +972,9 @@ test("a copy of the real 65507 record, enriched with the new fields, checks and 
     const model = modelOf(review, files, owner, dir);
     for (const cell of [`Файлы · ${model.files.length}`, `Блоки: ${model.blocks.length}`, 'id="count-decisions"'])
       if (!page.includes(cell)) return `the page counters differ from the model: missing ${cell}`;
-    if (model.counters.evidenceBlocks !== 224 + 4 - model.blocks.filter((b) => b.questions.includes(3) && b.questions.includes(5)).length) return "evidence fragments are not a unique set";
+    // Each evidence banner counts the unique blocks of its own question.
+    for (const q of model.questions.filter((q) => q.kind === "evidence" && q.blocks >= 2))
+      if (!page.includes(`<p>${labelsOf(review)("banner.blocks", q.blocks)} — <a href="#q${q.id}">`)) return `the Q${q.id} banner does not count its unique blocks`;
     // Deterministic at this scale, and the immutable original never changed.
     const again = report("render", copy);
     if (again.status !== 0 || page !== fs.readFileSync(path.join(dir, "review.html"), "utf8")) return "the enriched render is not byte-stable";
@@ -1250,7 +1251,7 @@ test("the v4 words are localized, and a custom catalog carries the v4 controls",
 const scriptOf = (pageHtml) => pageHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script id="data" type="application\/json">(.*?)<\/script>/s)[1]);
 
-test("one vocabulary in English and Russian: blocks are the unit, controls read in sentence case, statuses say open, counts read «Label: N», and amber marks only a needed change",
+test("one vocabulary in English and Russian: blocks are the unit, controls and tags start with a capital, statuses say open, counts read «Label: N», and amber marks only a needed change",
   "a card counting fragments counts a unit the owner never decides on, a lower-case control reads as prose, a status worded as waiting, remaining or unanswered names a state the page does not have, «1 blocks» is wrong, and an amber line reads as a change to make",
   () => {
     // A question-linked block that resumes after another block: one block in two fragments, so a fragment count differs.
@@ -1320,6 +1321,10 @@ test("one vocabulary in English and Russian: blocks are the unit, controls read 
         if (body.includes("var(--fix)") && selectors.some((x) => ![".v-fix", ".doubt"].includes(x))) return `${language}: ${selector.trim()} is amber`;
         if (body.includes("var(--fix-bg)") && selectors.some((x) => x !== ".v-fix")) return `${language}: ${selector.trim()} has an amber background`;
       }
+      // A tag starts with a capital through one .tag rule; its catalog word stays as the printout's sentences need it.
+      const firstLetter = [...style.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.includes("::first-letter"));
+      if (firstLetter.length !== 1 || firstLetter[0][1].trim() !== ".tag::first-letter" || firstLetter[0][2].trim() !== "text-transform: uppercase"
+        || !/\n\.tag \{[^}]*display: inline-block/.test(style)) return `${language}: tags are not capitalized by one inline-block .tag rule`;
       const amberWords = [...amberVerdicts.map((v) => words[`verdict.${v}`]), words["no-test"]];
       for (const [element, attributes, text] of markup.matchAll(/<\w+\b([^>]*\bclass="[^"]*\bv-fix\b[^"]*"[^>]*)>([^<]*)/g)) {
         const kind = /class="(\w+)/.exec(attributes)[1], block = /href="#b(\d+)"/.exec(attributes), verdict = /data-verdict="(\w+)"/.exec(attributes);

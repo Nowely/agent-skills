@@ -54,6 +54,8 @@ section, [data-anchor], .seg, .qcard, .finding, .mechanism { scroll-margin-top: 
 .v-keep { --v: var(--keep); --v-bg: var(--keep-bg) } .v-fix { --v: var(--fix); --v-bg: var(--fix-bg) } .v-remove { --v: var(--remove); --v-bg: var(--remove-bg) }
 .v-open, .v-question { --v: var(--open-fg); --v-bg: var(--line) }
 .tag { display: inline-block; padding: 0 .45rem; border-radius: 3px; background: var(--v-bg); color: var(--v); font-size: 12px; font-weight: 650; white-space: nowrap }
+/* A tag starts with a capital on the page; the catalog keeps its word as the printout's sentences need it. */
+.tag::first-letter { text-transform: uppercase }
 .chip { display: inline-block; margin: 0 .25rem .2rem 0; padding: 0 .4rem; border: 1px solid var(--v); border-radius: 3px; color: var(--v); font-size: 12px; text-decoration: none; font-weight: 600 }
 .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-variant-numeric: tabular-nums }
 /* The page header: the title left, the theme icon at the right edge. */
@@ -1051,7 +1053,7 @@ const SCRIPT = `
     }
     j.passages.forEach((p, index) => {
       const found = annotationUI.located(index);
-      comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : "") + (found ? "" : " · " + data.annotationLabels.unlocated), ...(found ? { passage: index } : {}) });
+      comments.push({ text: t.export.passageContext + " · " + p.where + ": «" + p.quote + "»" + (p.note ? " — " + p.note : "") + (found ? "" : " · " + data.annotationLabels.unverified), ...(found ? { passage: index } : {}) });
     });
     const open = data.findings.filter((f) => !j.findings[f.id]).map((f) => "F" + f.id);
     const remaining = t.tabRemaining.replace("{n}", stats().remaining) + (open.length ? " · " + t.export.openFindings + ": " + open.join(", ") : "");
@@ -2115,7 +2117,7 @@ export function page(review, files, model, { syntax } = {}) {
       chip: { requirement: t("chip.requirement", "{n}"), finding: t("chip.finding", "{n}"), purpose: t("chip.purpose", "{n}"), hidden: t("chip.hidden", "{n}") },
       code: { selectRequirement: t("code.select-requirement"), noRelated: t("code.no-related"), noVisible: t("code.no-visible"), noUnit: t("code.no-unit"), linked: t("code.linked"), visible: t("code.visible"), filtersCleared: t("code.filters-cleared") },
       blocksWord: t("blocks"), files: t("files"), treeVisibleFiles: t("tree.visible-files") },
-    annotationLabels: { ...Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])), unlocated: t("annotation.unverified") } };
+    annotationLabels: Object.fromEntries(["annotation", "edit", "source", "added", "deleted", "restored", "report", "unverified"].map(k => [k, t(`annotation.${k}`)])) };
   const drawn = structure(model, t);
   const hasPictures = model.screens.some((s) => ["mockup", "before", "after"].some((shot) => s[shot]?.data));
   const D = decisionRuntime(), cfStatic = D.choiceStats(model.questions, D.empty(), review.findings, ideas);

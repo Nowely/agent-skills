@@ -993,7 +993,7 @@ if (big) {
 
     // ---- the export dialog: parity preview === text === JSON from EVERY tab ----
     const pageData = await ev(() => JSON.parse(document.getElementById("data").textContent));
-    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
+    const BUCKETS = ["Принятые решения", "Отложенные и черновики", "Неприменимо", "Ответы на факты", "Отмеченные зоны", "Комментарии"];
     // The expected rows are reconstructed HERE from the downloaded JSON alone — every user datum the
     // schema-5 payload carries (Q/F/I choices and drafts, factAnswers, zones, passages, block notes and
     // questions[].comment from shared notes) — independent of the page's builders.
@@ -1002,7 +1002,7 @@ if (big) {
       const draftSuffix = (q) => q.variant ? " · черновик «" + q.variant.text + "» — не действует" : "";
       for (const q of j.questions) {
         const meta = d.questions.find(x => x.id === q.question);
-        if (q.status === "not-applicable") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
+        if (q.status === "not-applicable") rows["Неприменимо"].push({ text: "Q" + q.question + " · Неприменимо (Q" + meta.parent.question + ")" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.status === "accepted") rows["Принятые решения"].push({ text: "Q" + q.question + " · " + (q.variant ? "Выбрано: " + q.variant.text : "Выбрано: (вариант не указан)"), hash: "#q" + q.question });
         else if (q.status === "deferred") rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Отложено" + draftSuffix(q), hash: "#q" + q.question });
         else if (q.variant) rows["Отложенные и черновики"].push({ text: "Q" + q.question + " · Черновик «" + q.variant.text + "» — не действует", hash: "#q" + q.question });
@@ -1464,9 +1464,9 @@ if (big) {
     await tab(p, "materials");
     const passageSaved = await ev(() => document.querySelectorAll("#passages .passage").length);
     check("65507: the passage comment is listed", passageSaved >= 1, passageSaved);
-    await p.click('#passages .passage button:has-text("К фрагменту")'); await p.waitForTimeout(600);
+    await p.click('#passages .passage button:has-text("К отрывку")'); await p.waitForTimeout(600);
     const annotationBack = await ev(() => { const m = document.querySelector(".annotation-marker"); const r = m.getBoundingClientRect(); return { tab: document.querySelector('.tabs [aria-selected="true"]').dataset.tab, markerVisible: m.offsetParent !== null && r.top >= 0 && r.top < innerHeight, focused: document.activeElement === m }; });
-    check("65507: «К фрагменту» returns to the visible, focused marker", annotationBack.markerVisible && annotationBack.focused, annotationBack);
+    check("65507: «К отрывку» returns to the visible, focused marker", annotationBack.markerVisible && annotationBack.focused, annotationBack);
 
     // ---- print: owner nested complete, auditor full, restore; real PDFs ----
     await tab(p, "code"); await p.click('[data-show="all"]'); await p.waitForTimeout(300);

@@ -488,8 +488,7 @@ export function modelOf(review, files, owner, directory) {
   for (const f of fileMeta) purposeCounts[f.purpose].files++;
   for (const b of blocks) { const c = purposeCounts[blockPurpose[b.id]]; c.blocks++; c.lines += b.size; }
   const blockFile = Object.fromEntries(blocks.map((b) => [b.id, files.findIndex((f) => f.path === b.path)]));
-  // Counters over unique sets: a fragment naming two evidence questions is one fragment awaiting evidence.
-  const evidenceIds = new Set(questions.filter((q) => q.kind === "evidence").map((q) => q.id));
+  // Counters over unique sets.
   const lines = { added: 0, removed: 0 };
   for (const f of files) for (const l of changedLines(f)) lines[l.kind === "add" ? "added" : "removed"]++;
   const counters = {
@@ -498,7 +497,6 @@ export function modelOf(review, files, owner, directory) {
     modifiedFiles: fileMeta.filter((f) => f.status === "M").length,
     blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])),
     nonblank: { added: blocks.reduce((sum, b) => sum + b.weightLines.added, 0), removed: blocks.reduce((sum, b) => sum + b.weightLines.removed, 0) },
-    evidenceBlocks: new Set(blocks.filter((b) => b.questions.some((n) => evidenceIds.has(n))).map((b) => b.id)).size,
     decisions: questions.filter((q) => q.kind === "decision").length,
   };
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
