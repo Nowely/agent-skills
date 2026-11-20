@@ -3,8 +3,8 @@
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
 passed, 1 on a failure, 2 when something could not be measured (a frame without its image, an alignment group that
-never has two elements, or no browser at all), and 3 when what remains awaits the owner's decision. A failure
-outranks 2, and 2 outranks 3. Playwright is
+never has two elements, or no browser at all), and 3 when what remains awaits the owner's decision. An image-only spec has no measured text and remains incomplete:
+inspect text and layout visually. A failure outranks 2, and 2 outranks 3. Playwright is
 resolved from the working directory first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
 skips the sweep; `--before` records the page as it is now as the "before" state.
 

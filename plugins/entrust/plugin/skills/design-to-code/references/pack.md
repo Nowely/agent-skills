@@ -11,7 +11,7 @@ further Figma calls and another agent can take over.
   assets/                 every icon and image the frames use, as the design holds them
   frames/<frame>/
     spec.json             its texts: characters, box, alignment, font
-    reference.png         the frame at 2×
+    reference.png         the frame at its available scale
     metadata.xml, context.tsx   the MCP answers the spec was made from, when it was
   out/                    the check's results
 ```
@@ -38,8 +38,9 @@ model tokens are spent and nothing is retyped.
    places every text layer by the outline and takes its text from the context by node id. It prints which reading of
    x and y it chose (relative to the parent, or absolute on the canvas) and which layers got no text; if the
    landmarks land outside the frame, run it again with the other reading as `--coords`.
-4. Export the frame at 2× as `reference.png` (`get_screenshot`, or `download_assets` on the remote server); the check
-   takes its device scale from the image's width over the frame's. Compare every text in the spec with it: correct
+4. Save a `reference.png` from the available export; prefer 2× when the exporter supports it. Record its actual scale.
+   The check rounds the image-width-to-frame-width ratio to an integer device scale, so a non-integer scale needs a
+   visual comparison at a consistent size rather than being treated as a pixel-exact measurement. Compare every text in the spec with it: correct
    one that reads differently, and write in the ones the context did not give. A layer whose text the code builds
    from data (`{count} cores`) is reported as missing, not guessed. Nothing later catches a wrong text in the spec:
    the check looks for that text on the page and excludes text from the pixel comparison.
@@ -65,10 +66,16 @@ where the product's data cannot produce a text, the check cannot find it, and th
 showing a state (an open menu, a selected row, hover) gets `setup` steps in `design.json` that put the page in that
 state before it is measured.
 
-## Without a spec
+## Screenshots without a spec
 
-When a frame has only an image, keep `landmarks` empty: the check then compares the root's size and the areas that
-differ. To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
+Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
+assumption and compare at a consistent size. Make a spec with the reference's frame dimensions and `landmarks: []`.
+The check compares the root and pixel regions, includes text pixels, and reports the frame incomplete because it
+cannot verify the text semantically. Visually inspect text, placement, typography and states against the screenshot;
+report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do not invent
+Figma metadata or imply an assumed scale is measured.
+
+To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
 text widths, which a Figma spec does not.
 

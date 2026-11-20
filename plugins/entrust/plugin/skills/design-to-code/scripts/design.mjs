@@ -13,7 +13,7 @@
 // when the config has one (not with --frame or --no-sweep), prints a summary, writes report.md, result.json, the
 // images and, for a check of every frame, gallery.html (the design, the page before the work, the page now) to <dir>
 // (default: out/ beside design.json), and exits 0 when the comparison passes, 1 on a failure, 2 when it could not
-// measure everything, 3 when what remains awaits the owner's decision; a failure outranks 2, and 2 outranks 3. `snapshot` writes a spec (and with
+// measure everything (including image-only text), 3 when what remains awaits the owner's decision; a failure outranks 2, and 2 outranks 3. `snapshot` writes a spec (and with
 // --images a reference PNG) from the page as it renders now: a baseline from an accepted implementation.
 // references/check.md describes design.json, the ledger and the output.
 //
@@ -304,8 +304,8 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
   return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
 }
 
-// Compares the design's image with the page's, both at the device scale. Everywhere but the texts' boxes, which the
-// text checks own, it finds the areas that differ and returns each as a box in CSS px, so a wrong icon, colour,
+// Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
+// it finds the areas that differ and returns each as a box in CSS px, so a wrong icon, colour,
 // border or image size is a finding with a place. Where the design's image is transparent there is nothing to match.
 async function pixelDiff(page, reference, actual, { scale, ignore, shifts = [] }) {
   return page.evaluate(async ([ref, act, scale, ignore, shifts]) => {
@@ -432,8 +432,9 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
       if (!fs.existsSync(before) || flags.before) { fs.mkdirSync(path.dirname(before), { recursive: true }); fs.writeFileSync(before, shot); }
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
+      const imageOnly = !spec.landmarks.some((l) => l.text);
       if (reference) {
-        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
+        const ignore = imageOnly ? [] : [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
         const shifts = spec.landmarks.map((l, i) => measured.landmarks[i]?.found
           && { label: l.text ?? l.selector, box: l.box, dx: measured.landmarks[i].box.x - l.box.x, dy: measured.landmarks[i].box.y - l.box.y }).filter(Boolean);
         const { png, regions: found, ...pixels } = await pixelDiff(scratch, reference, shot, { scale, ignore, shifts });
@@ -445,6 +446,7 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
         regions = nameRegions(found, spec.landmarks);
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions });
+      if (imageOnly) { result.imageOnly = true; result.pass = false; }
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: dataUrl(fs.readFileSync(before)), after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -525,9 +527,10 @@ async function check(file, flags) {
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured ?? [];
+    const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
     const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
-    const status = failed ? "fail" : missingReferences.length || unmeasured.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
+    const status = failed ? "fail" : missingReferences.length || unmeasured.length || imageOnlyFrames.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
     const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;
     fs.mkdirSync(out, { recursive: true });
@@ -540,7 +543,7 @@ async function check(file, flags) {
     const comparable = history.filter((h) => JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
     const previous = comparable.at(-1);
     const best = [...comparable, record].reduce((a, h) => (h.score < a.score ? h : a), record);
-    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, status, missingReferences };
+    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.

@@ -1,7 +1,7 @@
 ---
 name: design-to-code
 description: >-
-  Build or change UI from a Figma design so it matches the design at every frame and adapts between them, with every
+  Build or change UI from a design or screenshots so it matches each reference and adapts between them, with every
   remaining difference explained (вёрстка по макету, pixel-perfect, адаптив). Gathers the frames into a design pack, reviews the design's gaps,
   checks the page against the design in numbers with a script, keeps a ledger of deliberate deviations, and saves
   the design, before and after for review. Use when given Figma links or frames, or asked to match a mockup or make
@@ -13,10 +13,9 @@ license: MIT
 
 # Design to code
 
-A design is a set of numbers and so is a rendered page; matching them is a comparison of numbers, made by
-`scripts/design.mjs`, not of impressions. It prints a short summary that names where an offset starts and which
-areas outside the text differ, so a round reads a few lines of text instead of comparing images. Open the images
-when the summary cannot explain a difference, and for the final look.
+Compare the design and the rendered page visually as well as with `scripts/design.mjs`. The script locates measured
+differences; it cannot judge every visual relationship or behaviour. Inspect the reference, before and after images
+at corresponding sizes and states; investigate the script's findings and anything visible that it missed.
 
 Two files carry the work, and anyone can continue from them: the **design pack** (what the design says) and the
 **ledger** (where the page differs from it on purpose, and why). Both live in `.design/<task>/` in the project; ask
@@ -29,14 +28,14 @@ project already names is written with that name; a new raw value is a finding, n
 
 Follow [pack.md](references/pack.md). In short:
 
-1. Open the link's parent: a link usually points at one node of a group. Take every frame the change touches, one per
-   state and width, and name each by both (`card-selected-480`).
-2. For each frame, write its `spec.json` (every text with its box and font) and its image at 2× as `reference.png`.
-   With a Figma token, `node "<skill-dir>/scripts/design.mjs" figma <frame link> --out .design/<task>/frames/<name>`
-   writes both and costs no model tokens. Through MCP, `design.mjs spec` reads the outline and takes each text from
-   the design context by node id. Then compare every text in `spec.json` with the frame's screenshot and write in
-   those it could not take: nothing later catches a wrong text in the spec.
-3. With the Figma MCP tools, read the available design context and variables. Use existing Code Connect mappings
+1. Gather all supplied references by state and width (`card-selected-480`). If Figma is available, inspect the linked
+   node's parent and related frames; otherwise work from the supplied screenshots. Record unknown dimensions, scale,
+   states and behaviour as unknown rather than assuming them.
+2. For each reference, make a `spec.json` and save its image as `reference.png`. Prefer a 2× export when available;
+   retain an image's actual resolution and scale. With Figma, the methods in [pack.md](references/pack.md) can extract
+   text and geometry. Compare extracted text with the image. With only an image, use an empty landmark list and
+   visually inspect text and layout; the check reports that reference as incomplete, not as an automatic pass.
+3. When Figma is available, read its design context and variables with the MCP tools. Use existing Code Connect mappings
    when available and useful. Compare design assets with the project's existing icons and supported components; use
    the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself;
    retype a tool's answer into a file only when another agent will build from it.
@@ -44,7 +43,8 @@ Follow [pack.md](references/pack.md). In short:
    the widths to sweep with the widths where the layout should change ([check.md](references/check.md#designjson)).
 5. Render each frame with the frame's own data. Text the data cannot produce is a gap for step 2.
 
-When the implementer cannot reach Figma, whoever can builds the pack and hands over its path.
+If Figma was supplied but is inaccessible, use available exports and record what could not be checked. An image-only
+reference is sufficient to continue implementation and visual review; do not infer unseen states or exact sizes.
 
 ## 2. Read the design before building
 
@@ -75,7 +75,7 @@ node "<skill-dir>/scripts/design.mjs" check .design/<task>/design.json
 ```
 
 Read the summary top-down: the root first, then **start here**, the first place where an offset begins rather than
-being inherited, then the areas outside text that differ, each with its place. Fix that one cause, then check every
+being inherited, then the differing areas, each with its place. Fix that one cause, then check every
 frame again; a fix for one width can move another. Offsets marked *inherited* follow from a cause above them: do not
 fix them separately.
 
@@ -87,7 +87,9 @@ reason), what to ask (a question in `review.md` with its options). Then check ev
 component differs, the layout would overlap or the experience would suffer: the goal is that no difference is left
 unexplained.
 
-A check passes once observed differences are resolved or accepted by the owner or an applicable owner rule. A
+A measured check passes once observed differences are resolved or accepted by the owner or an applicable owner rule.
+For image-only references, visually judge text and layout against the reference and explain the check's incomplete
+status; a numerical pass is not the only route to a reviewed result. A
 `proposed` difference remains pending. Report what could not be measured separately and continue independent work.
 An accepted change of size or position also excuses what it pushes along. A difference you cannot remove and cannot
 justify is reported, not hidden. The sweep in the same run narrows
@@ -104,8 +106,8 @@ for the component. For a component other packages consume, exercise the built pa
 Give the owner:
 
 - the check's verdict per frame and for the sweep (`out/report.md`);
-- `out/gallery.html`: per frame the design, the page before the work, the page now and their difference, then the
-  sweep and every ledger entry;
+- `out/gallery.html`: per frame the reference, the page before the work, the page now and their difference, then the
+  sweep and every ledger entry; inspect these images yourself and make the before/after comparison available to the owner;
 - the ledger's entries: accepted with who decided, proposed with the options; and `review.md`'s open questions;
 - what was not checked: states and widths without a frame, a device, a browser other than Chromium, a real
   consumer.

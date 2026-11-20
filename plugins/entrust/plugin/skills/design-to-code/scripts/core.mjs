@@ -590,6 +590,7 @@ const counts = (frames, sweep) => {
 };
 // Root first, then in the design's order: the root is fixed before what is inside it.
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
+const frameVerdict = (f) => f.issues.some((i) => i.status === "fail") ? "fail" : f.imageOnly ? "incomplete" : f.pass ? "pass" : "pending";
 
 export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
@@ -601,7 +602,8 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {
-    out.push(`## ${f.frame} — ${f.pass ? "pass" : "fail"}`, "");
+    out.push(`## ${f.frame} — ${frameVerdict(f)}`, "");
+    if (f.imageOnly) out.push("Image-only reference: text was not measured; inspect the images visually.", "");
     const { spec, page } = f.root;
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
     if (f.fonts.length) out.push(`Fonts not available on the page, so text cannot match: ${f.fonts.join(", ")}.`);
@@ -644,7 +646,7 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
-      : pending ? `awaiting a decision on ${pending}` : "pass";
+      : f.imageOnly ? "incomplete, image-only reference: inspect text visually" : pending ? `awaiting a decision on ${pending}` : "pass";
     out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
     if (f.fonts.length) out.push(`  fonts not available: ${f.fonts.join(", ")}`);
     const shown = f.causes.filter((c) => !c.repeat);
@@ -678,8 +680,9 @@ export function renderGallery({ title = "Design check", frames, sweep, ledger = 
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
-    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
-    return `<section><h2>${esc(f.result.frame)} <span class="${f.result.pass ? "pass" : "fail"}">${f.result.pass ? "pass" : "fail"}</span></h2>
+    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? "Image-only reference: inspect text visually." : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
+    const verdict = frameVerdict(f.result);
+    return `<section><h2>${esc(f.result.frame)} <span class="${verdict === "pass" ? "pass" : "fail"}">${verdict}</span></h2>
 ${lines.map((l) => `<p>${l}</p>`).join("\n")}
 <div class="row">${columns.filter(([k]) => f.images[k]).map(([k, label]) => `<figure><figcaption>${label}</figcaption><img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}"></figure>`).join("")}</div>
 </section>`;

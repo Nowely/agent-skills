@@ -380,6 +380,28 @@ test("a missing reference image makes the visual check incomplete", browser, () 
   assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /Reference image not measured: 720/);
 });
 
+test("an image-only reference requires visual text review, including when it matches", browser, () => {
+  const dir = variant();
+  const specFile = path.join(dir, "design/720/spec.json");
+  const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
+  fs.writeFileSync(specFile, JSON.stringify({ ...spec, landmarks: [] }));
+  const same = check(dir, "--frame", "720");
+  assert.equal(same.status, 2, same.stdout + same.stderr);
+  assert.equal(same.result.status, "incomplete");
+  assert.deepEqual(same.result.imageOnlyFrames, ["720"]);
+  assert.match(same.stdout, /image-only reference: inspect text visually/);
+  assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /text was not measured/);
+  const full = check(dir, "--no-sweep");
+  assert.equal(full.status, 2, full.stdout + full.stderr);
+  assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /Image-only reference: inspect text visually/);
+  const page = path.join(dir, "page.html");
+  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">New<", ">Old<"));
+  const changed = check(dir, "--frame", "720");
+  assert.notEqual(changed.status, 0, changed.stdout + changed.stderr);
+  assert.equal(changed.result.frames[0].imageOnly, true);
+  assert.ok(changed.result.frames[0].pixels.ratio > 0);
+});
+
 test("a page snapshot matches repeated text in document order", browser, () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>article { width: 280px; } p { margin: 12px; }</style><article><p>Disk, GB</p><p>One <span>GB</span> used</p><p>GB</p><p>Two <span>GB</span> free</p></article>`);
