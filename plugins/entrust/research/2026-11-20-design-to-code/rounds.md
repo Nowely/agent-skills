@@ -549,3 +549,9 @@ v16 used two checker rounds and retained the 6 px narrow-layout mismatch. Dense 
 Draft 17 was returned on the real library case: the built public consumer failed to load missing image resources, and the worker could not compare actual ready-card output against matching reference data. [Result, costs and references](14-iteration-03.md). Draft 18 moved an early real-entry and packaged-consumer check into the workflow.
 
 Draft 18 ran on a screenshot-only case. The strict numeric judge failed, but an independently reviewed visible result was close, and a new pixel-identical alternate-CSS control showed that the judge can reject identical pixels. [Result, calibration limits and costs](15-iteration-04.md). Draft 19 distinguishes visible screenshot evidence from unprovided internal line-box metrics. No owner acceptance or causal improvement is inferred.
+
+## Iteration 5: delivery succeeds, readability still fails
+
+Draft 19 ran on the real library task. The built public consumer smoke passed, unlike iteration 3, but the frozen submission was returned: a dense fixture visibly overlaps price with hardware values at multiple widths, and state behaviour remains incomplete. A resize PASS in the existing evaluator asserts width and text presence, not readability. [The result, costs and paired evidence](16-iteration-05.md) preserve that distinction.
+
+Draft 20 makes the existing stress-check instruction name readability and usable controls at representative widths. It was not exercised by a sixth implementation worker; the owner limited this series to five. This observation does not establish that the user’s first-submission goal has been achieved.

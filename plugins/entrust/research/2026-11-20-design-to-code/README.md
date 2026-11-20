@@ -138,3 +138,11 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Iterations 3 and 4: real package and screenshot-only
 
 [Iteration 3](14-iteration-03.md) records the returned real-card submission, a failed packaged-consumer load, costs and reference pairs with explicitly different fixture data. [Iteration 4](15-iteration-04.md) records the screenshot-only case, the strict failed result, the independent visual observation and a pixel-identical CSS control that exposed a false rejection by the numeric observer.
+
+## Iteration 5: packaged entry, incomplete first submission
+
+[The fifth iteration](16-iteration-05.md) independently loaded the built public consumer but returned the first submission for observed dense-data overlap and other state gaps. Its [visual report](16-iteration-05-visual.html) puts each shown card beside a reference, with data differences named. The owner set a limit of five implementation iterations; the follow-up draft has not had a sixth worker run.
+
+## Five-iteration summary
+
+[The comparison and available accounting](17-iteration-summary.md) records first-submission outcomes, frozen versions, available role costs, visual references and remaining uncertainty. The five-run cap was reached; the final revision has not had another implementation trial.
