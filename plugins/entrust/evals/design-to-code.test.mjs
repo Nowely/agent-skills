@@ -238,6 +238,26 @@ test("texts come from the design context by node id when the outline carries onl
   const joined = joinContext(spec, code);
   assert.deepEqual(joined.spec.landmarks.map((l) => [l.text, l.nth]), [["SKU AUR-14P", undefined], ["125 898,00 ₽ / месяц", undefined], ["Description", undefined]]);
   assert.deepEqual([joined.joined, joined.missing], [["1:2", "1:5"], ["9:9"]]);
+  // What the code does not state is not guessed: an expression, an unknown entity, code that does not parse.
+  const doubtful = contextTexts(`<div style={{ a: { b: { c: 1 } } }}><p data-node-id="2:1">{count} cores</p><p data-node-id="2:2">{\`\${ram} GB\`}</p>
+<p data-node-id="2:3">&quot;Pro&quot;&#8239;14</p><p data-node-id="2:4">x&weird;</p><p data-node-id="2:5">{\`Доступно 1\`}</p></div>`);
+  assert.deepEqual(Object.fromEntries(doubtful), { "2:3": '"Pro" 14', "2:5": "Доступно 1" });
+  assert.equal(contextTexts('<div data-node-id="1:1"><p data-node-id="1:2">A</p>').size, 0);
+});
+
+test("an entry bounded by max covers only differences that have a size", () => {
+  const probes = [{ width: 320, issues: [{ landmark: "A × B", property: "overlap", actual: "40 × 12 px" }] }];
+  const ledger = [{ landmark: "A × B", property: "overlap", max: 1, category: "platform", status: "accepted", reason: "tiny" }];
+  assert.equal(sweepIssues(probes, ledger)[0].status, "fail");
+  assert.equal(sweepIssues(probes, [{ ...ledger[0], max: undefined }])[0].status, "accepted");
+});
+
+test("a proposal still counts in the score: relabelling a failure is no progress", () => {
+  const failing = compare({}, { height: 217 });
+  const proposed = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
+  const accepted = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "accepted", reason: "more air" }]);
+  assert.equal(proposed.score, failing.score);
+  assert.equal(accepted.score, 0);
 });
 
 test("a frame waiting for a decision says so, not that it failed", () => {
@@ -436,22 +456,28 @@ test("each round's score is kept, and the summary shows the round before and the
   assert.ok(!fs.existsSync(path.join(dir, "out/rounds")), "no copies of the work: the project's version control keeps it");
 });
 
-test("alignment is judged on painted pixels: a fractional 1/64 px is no finding, 2 px is; a group of one is not measured", browser, () => {
+test("alignment is the spread as laid out against the tolerance; a group short of two everywhere is not measured, at some widths only reported", browser, () => {
   const dir = tmp();
-  const page = (second) => `<!doctype html><style>body{margin:0} #root{position:relative;width:300px;height:90px} .v{position:absolute;width:40px;height:12px;background:#000}</style>
+  const page = (second, hideBelow = 0) => `<!doctype html><style>body{margin:0} #root{position:relative;width:100%;height:90px} .v{position:absolute;width:40px;height:12px;background:#000}
+@media (max-width: ${hideBelow}px) { .v + .v { display: none } }</style>
 <div id="root"><div class="v" style="left:10px;top:0"></div><div class="v" style="left:${second}px;top:30px"></div><div class="w" style="position:absolute;top:60px">x</div></div>`;
-  const run = (second, align) => {
-    fs.writeFileSync(path.join(dir, "page.html"), page(second));
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], sweep: { from: 300, to: 320, step: 20, align } }));
+  const run = (second, align, { tolerance, hideBelow } = {}) => {
+    fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align } }));
     return check(dir);
   };
-  assert.equal(run(11.015625, [{ selector: ".v", edge: "left" }]).status, 0);
-  const off = run(12, [{ selector: ".v", edge: "left" }]);
-  assert.equal(off.status, 1);
-  assert.deepEqual(off.result.sweep.issues.map((i) => [i.property, i.delta]), [["align", 2]]);
+  const v = [{ selector: ".v", edge: "left" }];
+  const fraction = run(11.015625, v);
+  assert.equal(fraction.status, 1, "1.015625 px is more than a tolerance of 1");
+  assert.deepEqual(fraction.result.sweep.issues.map((i) => [i.property, i.delta]), [["align", 1.02]]);
+  assert.equal(run(11.015625, v, { tolerance: 1.5 }).status, 0);
+  assert.equal(run(12, v, { tolerance: 1.5 }).status, 1);
   const one = run(12, [{ selector: ".w", edge: "left" }]);
   assert.equal(one.status, 2, one.stdout);
-  assert.match(one.stdout, /not measured: \.w matched 1/);
+  assert.match(one.stdout, /not measured: \.w matched 1 at every width/);
+  const narrow = run(10, v, { hideBelow: 310 });
+  assert.equal(narrow.status, 0, narrow.stdout);
+  assert.match(narrow.stdout, /\.v matched fewer than two at 300: aligned only where it has two or more/);
 });
 
 test("a prepared run scores the unstyled start as failing, the reference as passing, and ignores the implementer's ledger", browser, () => {

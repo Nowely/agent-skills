@@ -21,7 +21,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -272,7 +271,8 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     const cs = getComputedStyle(el);
     const clipX = /hidden|clip/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
     const clipY = /hidden|clip/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
-    if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", actual: clipX ? "cut off horizontally" : "cut off vertically" });
+    const cut = Math.max(clipX ? el.scrollWidth - el.clientWidth : 0, clipY ? el.scrollHeight - el.clientHeight : 0);
+    if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", delta: cut, actual: `${cut} px cut off ${clipX ? "horizontally" : "vertically"}` });
   }
   const nodes = textNodes();
   const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b })));
@@ -285,16 +285,16 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     if (a.node === b.node) continue;
     const w = Math.min(a.b.right, b.b.right) - Math.max(a.b.left, b.b.left);
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
-    if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", actual: `${Math.round(w)} × ${Math.round(h)} px` });
+    if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.round(Math.min(w, h)), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
-  // Edges as painted: Chromium lays boxes out in 1/64 px and paints them at whole pixels, so 11.015625 shows at 11.
-  // A group that matches fewer than two visible elements measures nothing and says so.
+  // The spread of the group's edges as laid out, against the configured tolerance. A group that matches fewer than
+  // two visible elements measures nothing at this width and says so.
   const unmeasured = [];
   for (const g of align) {
     const rects = [...root.querySelectorAll(g.selector)].filter(visible).map((el) => el.getBoundingClientRect());
     const edgeOf = (r) => (g.edge === "right" ? r.right : g.edge === "center" ? (r.left + r.right) / 2 : g.edge === "top" ? r.top : r.left);
     if (rects.length < 2) { unmeasured.push({ selector: g.selector, matched: rects.length }); continue; }
-    const values = rects.map((r) => Math.round(edgeOf(r))), spread = Math.max(...values) - Math.min(...values);
+    const values = rects.map(edgeOf), spread = Math.round((Math.max(...values) - Math.min(...values)) * 100) / 100;
     if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: spread, actual: `${g.edge ?? "left"} edges ${spread} px apart` });
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
@@ -479,20 +479,23 @@ async function sweep(browser, cfg, ledger) {
     const back = await probe(order[0]);
     const first = probes[0];
     if (Math.abs(back.root.width - first.root.width) > 1 || Math.abs(back.root.height - first.root.height) > 1) {
-      back.issues.push({ landmark: "root", property: "resize", actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
+      back.issues.push({ landmark: "root", property: "resize", delta: Math.round(Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height))), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
     }
     const changes = switches(probes, s.switches ?? [], step);
     const issues = sweepIssues([...probes, back], ledger, changes.issues);
     const failing = issues.filter((i) => i.status === "fail");
-    const unmeasured = new Map();
-    for (const p of [...probes, back]) for (const u of p.unmeasured) {
-      const k = `${u.selector}\u0000${u.matched}`;
-      if (!unmeasured.has(k)) unmeasured.set(k, { ...u, widths: [] });
-      unmeasured.get(k).widths.push(p.width);
+    // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
+    // hidden on narrow screens does, was measured where it exists, and the widths without it are only reported.
+    const all = [...probes, back], short = new Map();
+    for (const p of all) for (const u of p.unmeasured) {
+      if (!short.has(u.selector)) short.set(u.selector, { selector: u.selector, matched: u.matched, widths: [] });
+      short.get(u.selector).widths.push(p.width);
     }
+    const groups = [...short.values()].map(({ widths, ...u }) => ({ ...u, ranges: ranges(widths), everywhere: widths.length === all.length }));
     return {
-      from, to, step, pass: failing.length === 0, issues, switches: changes.seen, score: failing.length * 10,
-      unmeasured: [...unmeasured.values()].map(({ widths, ...u }) => ({ ...u, ranges: ranges(widths) })),
+      from, to, step, pass: failing.length === 0, issues, switches: changes.seen,
+      score: issues.filter((i) => i.status !== "accepted").length * 10,
+      unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
     };
   } finally {
     await context.close();

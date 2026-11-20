@@ -167,33 +167,81 @@ export function joinContext(spec, context) {
   return { spec: { ...spec, landmarks: numberDuplicates(landmarks.map(({ nth, ...l }) => l)) }, joined, missing };
 }
 
-// node id → text, from JSX-like code: elements, attributes (quoted or in braces), text, and `{"..."}` literals. An
-// element's text is all the text inside it, in order, its children's included: one Figma text layer can be
-// rendered as a paragraph with styled spans.
+// node id → text, from JSX-like code. An element's text is all the text inside it, in order, its children's
+// included: one Figma text layer can be rendered as a paragraph with styled spans. Only what the code states is
+// taken: literal text, string literals in braces, and entities it can decode. An element whose text depends on an
+// expression (`{count} cores`) or an entity it cannot decode gets no text, so that the layer is reported as missing
+// rather than given a wrong one; code it cannot parse to the end gives no texts at all.
+const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 export function contextTexts(code) {
-  const out = new Map();
-  const stack = [];
-  const literal = (s) => s.replace(/\{\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\}/g, "$2").replace(/\{[^{}]*\}/g, " ");
-  const token = /<\/\s*([A-Za-z][\w.:-]*)\s*>|<([A-Za-z][\w.:-]*)((?:\s+(?:[\w:.-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}))?|\{[^{}]*\}))*)\s*(\/?)>/g;
-  let last = 0;
-  const addText = (raw) => {
-    const t = norm(literal(raw).replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"));
-    if (!t) return;
-    for (const el of stack) el.text.push(t);
+  const out = new Map(), stack = [];
+  let i = 0, broken = false;
+  const text = (t, el = stack) => { for (const e of el) e.parts.push(t); };
+  const doubt = () => { for (const e of stack) e.doubt = true; };
+  // From an opening brace to its partner, through nested braces, strings and template literals.
+  const braced = (from) => {
+    let depth = 0, j = from;
+    for (; j < code.length; j++) {
+      const c = code[j];
+      if (c === '"' || c === "'" || c === "`") {
+        for (j++; j < code.length && code[j] !== c; j++) if (code[j] === "\\") j++;
+      } else if (c === "{") depth++;
+      else if (c === "}" && --depth === 0) return j;
+    }
+    return -1;
   };
-  for (const m of code.matchAll(token)) {
-    addText(code.slice(last, m.index));
-    last = m.index + m[0].length;
-    if (m[1]) {
-      const el = stack.pop();
-      if (el?.id) out.set(el.id, norm(el.text.join(" ")));
+  const decode = (raw) => raw.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+    if (e[0] === "#") return String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+    if (NAMED[e.toLowerCase()] !== undefined) return NAMED[e.toLowerCase()];
+    doubt();
+    return m;
+  });
+  let pending = "";
+  const flush = () => { if (stack.length && pending.trim()) text(decode(pending)); pending = ""; };
+  while (i < code.length && !broken) {
+    const c = code[i];
+    if (c === "<" && /[A-Za-z\/]/.test(code[i + 1] ?? "")) {
+      flush();
+      if (code[i + 1] === "/") {
+        const end = code.indexOf(">", i), name = code.slice(i + 2, end).trim();
+        const el = stack.pop();
+        if (!el || el.name !== name) { broken = true; break; }
+        if (el.id) out.set(el.id, el.doubt ? null : norm(el.parts.join(" ")));
+        i = end + 1;
+        continue;
+      }
+      const name = code.slice(i + 1).match(/^[A-Za-z][\w.:-]*/)[0];
+      let j = i + 1 + name.length, selfClosing = false;
+      for (; j < code.length; j++) {
+        const d = code[j];
+        if (d === '"' || d === "'") { for (j++; j < code.length && code[j] !== d; j++); }
+        else if (d === "{") { j = braced(j); if (j < 0) { broken = true; break; } }
+        else if (d === "/" && code[j + 1] === ">") { selfClosing = true; j++; break; }
+        else if (d === ">") break;
+      }
+      if (broken || j >= code.length) { broken = true; break; }
+      const attrs = code.slice(i + 1 + name.length, selfClosing ? j - 1 : j);
+      const id = attrs.match(/data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
+      const el = { name, id: id ? (id[1] ?? id[2] ?? id[3]) : null, parts: [], doubt: false };
+      if (!selfClosing) stack.push(el);
+      i = j + 1;
       continue;
     }
-    const id = m[3]?.match(/data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
-    const el = { id: id ? (id[1] ?? id[2] ?? id[3]) : null, text: [] };
-    if (m[4]) { if (el.id && !out.has(el.id)) out.set(el.id, ""); continue; }
-    stack.push(el);
+    if (c === "{" && stack.length) {
+      flush();
+      const end = braced(i);
+      if (end < 0) { broken = true; break; }
+      const inner = code.slice(i + 1, end).trim();
+      const lit = inner.match(/^(["'])((?:\\.|(?!\1).)*)\1$/) ?? inner.match(/^`([^`$]*)`$/);
+      if (lit) text(decode(lit[2] ?? lit[1]));
+      else if (!/^\/\*[\s\S]*\*\/$/.test(inner)) doubt();
+      i = end + 1;
+      continue;
+    }
+    if (stack.length) pending += c;
+    i++;
   }
+  if (broken || stack.length) return new Map();
   for (const [k, v] of [...out]) if (!v) out.delete(k);
   return out;
 }
@@ -242,7 +290,8 @@ export function ledgerEntryFor(issue, frame, ledger = []) {
     && (e.property === "*" || e.property === issue.property)
     && (issue.property === "region" ? (e.property === "*" || (e.region && within(issue.box, e.region)))
       : (e.landmark === "*" || e.landmark === issue.landmark || (Array.isArray(e.landmark) && e.landmark.includes(issue.landmark))))
-    && (e.max === undefined || issue.delta === undefined || Math.abs(issue.delta) <= e.max));
+    // An entry bounded by size covers only a difference that has one: never an overlap or a switch of unknown size.
+    && (e.max === undefined || (issue.delta !== undefined && Math.abs(issue.delta) <= e.max)));
 }
 
 // The text to look for on the page: the design's own, unless the ledger records that the page says something else.
@@ -382,9 +431,12 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   }
   const classified = issues.map((i) => (i.status ? i : classify(i, frame, ledger)));
   const failing = classified.filter((i) => i.status === "fail");
+  // The score counts what is not settled: a failure, and a proposal still awaiting the owner. Turning a failure into
+  // a proposal is no progress.
+  const open = classified.filter((i) => i.status !== "accepted");
   return {
     frame, pass: failing.length === 0 && !classified.some((i) => i.status === "pending"), issues: classified, causes: steps,
-    score: round(failing.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
+    score: round(open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
     pixels: measured.pixels, fonts: measured.fonts ?? [], images: measured.images ?? {},
@@ -558,7 +610,8 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
   if (sweep) {
     out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${sweep.pass ? "pass" : "fail"}`, "");
     out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
-    for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at ${u.ranges}; it needs two or more.`, "");
+    for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at every width; it needs two or more.`, "");
+    for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(u.selector)} matched fewer than two at ${u.ranges}; it was measured at the other widths.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
       for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(i.landmark)} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
@@ -595,7 +648,8 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     const failing = sweep.issues.filter((i) => i.status === "fail");
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
-    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at ${u.ranges}; an alignment needs two or more`);
+    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at every width; an alignment needs two or more`);
+    for (const u of sweep.partial ?? []) out.push(`  ${u.selector} matched fewer than two at ${u.ranges}: aligned only where it has two or more`);
   }
   out.push("", `Full tables: ${file}`);
   return out.join("\n");
