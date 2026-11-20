@@ -53,7 +53,12 @@ function loadConfig(file) {
   const dir = path.dirname(path.resolve(file));
   const cfg = readJson(file);
   const at = (p) => (p ? path.resolve(dir, p) : p);
-  const url = (u) => (!u || /^[a-z][\w+.-]*:/i.test(u) ? u : pathToFileURL(path.resolve(dir, u)).href);
+  // A file path may carry a query or a fragment (a story's arguments): only the path is a file.
+  const url = (u) => {
+    if (!u || /^[a-z][\w+.-]*:/i.test(u)) return u;
+    const [, file, rest] = u.match(/^([^?#]*)(.*)$/);
+    return pathToFileURL(path.resolve(dir, file)).href + rest;
+  };
   for (const key of ["url", "root", "frames"]) if (!cfg[key]) throw new Error(`design.json: no "${key}"`);
   if (new Set(cfg.frames.map((f) => f.name)).size !== cfg.frames.length) throw new Error("design.json: frame names must be unique");
   const stories = cfg.sweep?.stories ?? [];

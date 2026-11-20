@@ -787,3 +787,12 @@ test("a frame of a state drawn outside the component names its own root", browse
   assert.equal(changed.status, 1, changed.stdout + changed.stderr);
   assert.ok(changed.result.frames[0].issues.some((i) => i.landmark === "Was 10, now 8" && i.actual === "missing"));
 });
+
+test("a story's file path keeps its query", browser, () => {
+  const f = smallFrame();
+  fs.writeFileSync(path.join(f.dir, "page.html"), fs.readFileSync(path.join(f.dir, "page.html"), "utf8") + '<script>if (location.search !== "?data=x") document.querySelector("main").remove();</script>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, url: "page.html?data=x" }));
+  const r = check(f.dir);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+});
