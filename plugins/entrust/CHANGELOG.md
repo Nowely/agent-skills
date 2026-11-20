@@ -3,6 +3,13 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Review report
+
+- Esc closes the purpose menu in Code as a click outside it does, and sets its button's `aria-expanded` back to
+  false; one function closes the menu for both.
+
 ## 0.43.0 — 2026-11-20
 
 ### Review report

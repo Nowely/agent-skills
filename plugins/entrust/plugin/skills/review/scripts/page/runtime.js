@@ -1353,6 +1353,13 @@ function goFile(fi) {
   fill(fi);
   landOn(() => $(`#file-${fi}`), toolbarBottom() + 6).then(() => $(`#file-${fi} .fold-btn`)?.focus({ preventScroll: true }));
 }
+// The purpose menu closes here alone, whatever closes it, and says so to assistive technology; true when it was open.
+function closePurposeMenu() {
+  const m = $("#purpose-pop .pop-menu");
+  if (!m || m.hidden) return false;
+  m.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false");
+  return true;
+}
 function resetFilters() { S.code.q = ""; S.code.req = ""; S.code.unit = ""; S.code.set = null; S.code.purposes = new Set(D.purposes); }
 function goLine(lk, { hl = "lnsel" } = {}) {
   const at = rowOfLk(lk); if (!at) return Promise.resolve();
@@ -1678,8 +1685,7 @@ document.addEventListener("click", (e) => {
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
   if (NAVIGATES.has(a)) pushNext = true;
   if (a === "pick" && act.tagName === "INPUT") return; // radios act on change
-  const pop = $("#purpose-pop .pop-menu");
-  if (pop && !pop.hidden && !e.target.closest("#purpose-pop")) { pop.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false"); }
+  if (!e.target.closest("#purpose-pop")) closePurposeMenu();
   if (a) {
     const key = act.dataset.key;
     switch (a) {
@@ -1728,7 +1734,7 @@ document.addEventListener("click", (e) => {
       case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
-      case "purpose-menu": { const m = $("#purpose-pop .pop-menu"); m.hidden = !m.hidden; act.setAttribute("aria-expanded", String(!m.hidden)); return; }
+      case "purpose-menu": { if (!closePurposeMenu()) { $("#purpose-pop .pop-menu").hidden = false; act.setAttribute("aria-expanded", "true"); } return; }
       case "unit-clear": S.code.unit = ""; return rerenderCode();
       case "set-clear": S.code.set = null; return rerenderCode();
       case "undo": return runUndo();
@@ -1945,7 +1951,7 @@ document.addEventListener("keydown", (e) => {
     if (t.classList.contains("pc-input")) { e.preventDefault(); return savePc(t.dataset.anchor, t); }
   }
   if (e.key === "Escape") {
-    const m = $("#purpose-pop .pop-menu"); if (m && !m.hidden) { m.hidden = true; $("#purpose-btn").focus(); return; }
+    if (closePurposeMenu()) { $("#purpose-btn").focus(); return; }
     if ($("#copybox")) { $("#copybox").remove(); return; }
     if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) return closePc();

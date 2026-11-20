@@ -463,6 +463,16 @@ test("review 13: Back returns from a cross-entity jump, and j steps leave no his
     return /code\/b2$/.test(there) && /decisions\/f1$/.test(page.url()) && await page.getAttribute("#tab-decisions", "aria-selected") === "true" || `${there} → back → ${page.url()}`;
   }));
 
+// ---- the feedback on PR #108: each a case that fails on 0.43.0
+test("feedback 4: Esc closes the purpose menu and says so to assistive technology, as a click outside it does",
+  "Esc hid the menu and left aria-expanded true",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click("#purpose-btn"); const opened = await page.getAttribute("#purpose-btn", "aria-expanded");
+    await page.keyboard.press("Escape");
+    const hidden = await page.locator("#purpose-pop .pop-menu").isHidden(), after = await page.getAttribute("#purpose-btn", "aria-expanded");
+    return opened === "true" && hidden && after === "false" || JSON.stringify({ opened, hidden, after });
+  }));
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
