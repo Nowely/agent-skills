@@ -5,7 +5,7 @@ further Figma calls and another agent can take over.
 
 ```text
 .design/<task>/
-  design.json             the page, root, host, frames and sweep: check.md
+  design.json             the page, root, host, frames, sweep and journeys: check.md
   deviations.json         the ledger: check.md
   review.md               step 2: the map to the UI kit, the gaps, the options, the acceptance list
   assets/                 every icon and image the frames use, as the design holds them

@@ -40,7 +40,7 @@ you inferred. Build the layout from these relationships, not from the frames' co
 
 ## Options, not silent choices
 
-List a gap only where the build had to decide something. For each, say the default built and two or three options
+List a gap only where the build had to decide something. For each, say the default you will build and two or three options
 with what each changes for the user and costs to build. Ask the owner only where the options change behaviour or
 scope; keep building the rest. A design error with an evident fix, such as a wrong word form, is built fixed.
 
@@ -57,9 +57,11 @@ and, at handoff, its result with its evidence:
 | Item | Checked by | Result |
 |---|---|---|
 | every supplied reference, each state and width | its frame in `design.json` (an image-only frame where no spec fits) | pass, or what remains and why |
-| the dense story | `sweep.stories` and its pictures | no collision, no covered control |
+| the dense story: name what it adds (the longest values, every badge, every conditional action) | `sweep.stories` and its pictures | no overlap, no covered control |
+| the map to the kit | each `none` or `raw` in `review.md` is in the ledger or the questions | |
 | every popup, menu and sheet | its journeys in `design.json`: hover, move into it, leave it, `hidden`; tap it open and closed; focus it and press Escape | the result of each |
 | every action | a journey: it works, and the state around it survives a resize (its `width` step) | |
+| the consumers | the project's tests for the component; the built package, for one other packages consume | |
 | the owner's past returns, when the project keeps them (`.design/returns.md`, or its agent notes) | how each was checked | |
 
 A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked. A
