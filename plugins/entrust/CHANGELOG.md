@@ -33,6 +33,10 @@ forensics remain in the repository references and release notes.
   record's own fields: a requirement the new revision meets or breaks, a tradeoff for what the owner left, a question
   asked again for what stayed open. A finding or idea the owner left is not raised again unless its premise changed.
   The data contract says who takes the export: whoever makes the change; the review applies none of it.
+- A generated file — a package manager's lock file, or a file the project marks generated — is one block, not read
+  line by line: its verdict rests on whether its source explains it. In a lock file, a resolved host outside the
+  project's registries or an `integrity` changed for the same version is a finding, and a version change the
+  manifest does not explain is a question; with the generator allowed, the file is regenerated and compared.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and

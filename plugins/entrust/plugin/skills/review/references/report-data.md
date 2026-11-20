@@ -2,7 +2,7 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page) and [the next revision](#the-next-revision).
+See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), [the next revision](#the-next-revision) and [generated files](#generated-files).
 
 ## Making it
 
@@ -19,6 +19,7 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
+   A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
@@ -266,6 +267,24 @@ out, and the response says so.
   - an answer to a fact request is the owner's statement, recorded as context or a requirement as it reads. An answer
     to an evidence request is a claim to check, never evidence: what the review obtains settles it;
   - a comment is the owner's word: one asking for a change is a requirement, one asking a question gets an answer.
+
+## Generated files
+
+A file a tool wrote is not read line by line: a package manager's lock file (`pnpm-lock.yaml`, `package-lock.json`,
+`yarn.lock`, `npm-shrinkwrap.json`, `Cargo.lock`, `go.sum`, `poetry.lock`, `uv.lock`, `Gemfile.lock`,
+`composer.lock` and the like), or a file the project marks generated — `linguist-generated` in `.gitattributes`, or a
+header such as `@generated` or `Code generated … DO NOT EDIT`.
+
+- It is one block over its whole ranges, taken from the diff's hunk headers; `lines` is not printed for it. The
+  check's warning about a large block is answered by naming this section.
+- Its verdict rests on whether its source explains it:
+  - a lock file: each dependency the manifest adds, removes or moves to another range is there. A resolved host
+    outside the project's registries, or an `integrity` that changed while its version did not, is a finding; a
+    version change the manifest change does not explain is a question. Search the lock file's diff for them rather
+    than read it;
+  - another generated file: the generator or its input changed to match.
+- When the plan allows running the generator, regenerate and compare: the evidence is `ran`. Otherwise it is `read`,
+  of the source change and the searches. Content its source does not explain is never `keep`.
 
 ## Visual evidence
 

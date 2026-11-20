@@ -48,7 +48,7 @@ Read the whole diff, the base version of rewritten logic, the producers of chang
 
 ## Analyse
 
-For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check.
+For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge; a [generated file](references/report-data.md#generated-files) is a single block, judged by its source. Divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check.
 
 The record's fields are the data contract's. What they mean here:
 
