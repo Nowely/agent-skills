@@ -30,7 +30,10 @@ forensics remain in the repository references and release notes.
   cannot be swept is a gap rather than a crash, drawn truncation and clipped text are measured as painted, covered
   controls leave labels, disabled controls and transparent native overlays alone, and scores are compared only
   against the same tolerance, frames and images. A story's file path keeps its query. The `listing-card` eval case
-  runs a short controlled pair with a frozen judge.
+  runs a short controlled pair with a frozen judge. A setup step that fails leaves its frame incomplete in seconds
+  instead of ending the check; journeys and the root are judged as a person sees them; covered controls need the
+  centre or a side and ignore the page around the component and pinned bars; journeys count in what a score is
+  measured against; and the acceptance list must have lines under its heading.
 
 ## 0.44.0 — 2026-11-20
 

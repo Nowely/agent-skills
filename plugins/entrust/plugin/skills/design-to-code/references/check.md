@@ -7,7 +7,7 @@ passed, 1 on a failure, 2 when something could not be measured, and 3 when what 
 decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
 left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements;
 everything, when there is no browser; and, for a check of every frame, what the acceptance list needs: `review.md`
-beside `design.json` with an acceptance list, a frame for every `frames/<name>/reference.png` in the pack, and a dense
+beside `design.json` with an acceptance list (a heading that names it, with table rows or list items under it), a frame for every `frames/<name>/reference.png` in the pack, and a dense
 story in a configured sweep. A
 failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
 project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. The page
@@ -21,7 +21,7 @@ Paths are relative to the file.
 | Field | Meaning |
 |---|---|
 | `url` | the page or story that renders the component: `http(s)://…`, or a file path |
-| `root` | CSS selector of the component's root; positions are measured from its corners. The first match that is visible is taken; a root on the page but hidden leaves the frame incomplete |
+| `root` | CSS selector of the component's root; positions are measured from its corners. The first match a person can see is taken (not hidden, not transparent); a root that never shows leaves a frame incomplete, a story not swept and a journey failed |
 | `host` | CSS selector of the element given each frame's width, when the component is sized by its container; without it the viewport takes the width |
 | `viewport` | the viewport width when `host` is set; default 1280 |
 | `tolerance` | how far a position or an alignment may differ, in CSS px; default 1 |
@@ -30,17 +30,21 @@ Paths are relative to the file.
 | `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
 | `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: more pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
-`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap`,
-`{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px), `{ "fill": ["<selector>", "<text>"] }`,
-`{ "press": "Escape" }`, `{ "wait": 200 }`.
+`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap` (the
+page is then opened for touch), `{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px),
+`{ "fill": ["<selector>", "<text>"] }`, `{ "press": "Escape" }`, `{ "wait": 200 }`. Selectors may use Playwright's
+own forms, such as `text=Help`. A step on something that never appears fails in 5 seconds; a frame whose setup fails
+is reported incomplete and the rest is checked. An unknown step is an error in `design.json`. The pointer rests
+outside the page, so nothing is measured hovered unless a step hovers it.
 
 ## Journeys
 
 Each journey opens the page afresh, at the widest frame's width unless it gives `width`, by touch when it says
 `"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and three that expect,
-each given a second to come true: `{ "visible": "<selector>" }`, `{ "hidden": "<selector>" }` (no match counts as
-hidden), `{ "text": ["<selector>", "<text>"] }`. The first step that does not hold fails the journey, with its number;
-a failing journey fails the check. For a popup:
+each given a second to come true, as a person sees (a size, not hidden, not transparent): `{ "visible": "<selector>" }`
+(any match seen), `{ "hidden": "<selector>" }` (none seen, or no match), `{ "text": ["<selector>", "<text>"] }` (a match
+seen that shows the text). The first step that does not hold fails the journey, with its number; a failing journey
+fails the check and adds 10 to the score. For a popup:
 
 ```json
 { "name": "help: leaving closes it", "steps": [{ "hover": ".help" }, { "visible": ".popover" },
@@ -93,7 +97,8 @@ top where an offset begins, between two landmarks the design places one after th
 an edge of the root, or a landmark's own width or height that changed and carried its neighbours ("the width of
 “New” changes by +9 px") (the first 8 px band from the top, its largest step first); the first findings that are not
 inherited; how many are left; and the score, which adds up what is not settled, failures and proposals alike, with
-the round before and the lowest so far, counted only over rounds measured against the same specs and sweep.
+the round before and the lowest so far, counted only over rounds measured the same way: the same tolerance, page,
+frames, specs, images, sweep and journeys.
 `out/report.md` holds every finding in tables.
 
 - An offset marked *inherited* equals the one it follows from: it disappears with its cause.
@@ -110,9 +115,11 @@ the round before and the lowest so far, counted only over rounds measured agains
   before trusting the text findings. The check cannot know the design's font; it reads the family the page names.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
-  `outside` (text past the root), `overlap` (two texts over each other), `covered` (a button, link or field with
-  another element over its centre or one of four inner points, the window scrolled to it; its own label, a disabled
-  control and a point a clipping box cuts away do not count), `align` (a group's edges further apart than
+  `outside` (text past the root), `overlap` (two texts over each other), `covered` (a button, link or field inside
+  the component with another element over its centre or two of its four inner points, the window scrolled to it; not counted:
+  its own content and label, a transparent native control laid exactly over it, the page outside the component, a
+  fixed or sticky bar, a point a clipping box cuts away; not tried: a disabled control, one the pointer ignores, one
+  of two pixels or less), `align` (a group's edges further apart than
   the tolerance, as laid out; a group with fewer than two elements at some widths is aligned where it has two, and
   one that never has two is not measured), `resize`
   (the widest layout not restored), and the widths between which the layout changes; with `switches`, a change

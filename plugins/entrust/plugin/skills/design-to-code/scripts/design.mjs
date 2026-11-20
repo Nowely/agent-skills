@@ -63,7 +63,9 @@ function loadConfig(file) {
   if (new Set(cfg.frames.map((f) => f.name)).size !== cfg.frames.length) throw new Error("design.json: frame names must be unique");
   const stories = cfg.sweep?.stories ?? [], journeys = cfg.journeys ?? [];
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
-  if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps))) throw new Error("design.json: each journey needs a name and steps");
+  if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps) || !j.steps.length)) throw new Error("design.json: each journey needs a name and steps");
+  const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? []), ...journeys.flatMap((j) => j.steps)];
+  for (const step of steps) { const fault = stepFault(step); if (fault) throw new Error(`design.json: ${fault}`); }
   return {
     ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
@@ -92,11 +94,24 @@ async function chromium() {
 // Animations end at once instead of not running: content that fades in is captured as it ends, not stuck at opacity 0.
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
 
-// The component's root: the first match the user can see. A popover kept hidden in the page is not the one open.
-const rootOf = (page, selector) => page.locator(selector).filter({ visible: true }).first();
+// The component's root: the first match the user can see, opacity included; open() marks it, so the picture and the
+// measurements come from the same element. A popover kept hidden in the page is not the one open.
+const MARK = "data-design-root";
+const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
+async function rootOf(page, selector) {
+  const marked = page.locator(`[${MARK}]`);
+  return (await marked.count()) ? marked.first() : page.locator(selector).filter({ visible: true }).first();
+}
+const markRoot = (page, selector) => page.evaluate(([sel, mark, seen]) => {
+  const visible = new Function(`return (${seen})`)();
+  for (const e of document.querySelectorAll(`[${mark}]`)) e.removeAttribute(mark);
+  const el = [...document.querySelectorAll(sel)].find(visible);
+  el?.setAttribute(mark, "");
+  return Boolean(el);
+}, [selector, MARK, seenIn.toString()]);
 
 async function settle(page, selector) {
-  await rootOf(page, selector).evaluate(async (root) => {
+  await (await rootOf(page, selector)).evaluate(async (root) => {
     await document.fonts.ready;
     // Animations a script started end too: content it fades in is captured as it ends.
     for (const a of document.getAnimations()) {
@@ -132,6 +147,24 @@ async function setWidth(page, cfg, width, viewportHeight) {
   }
 }
 
+const STEPS = ["wait", "press", "fill", "move", "tap", "click", "hover", "focus", "visible", "hidden", "text"];
+const stepFault = (step) => (!step || typeof step !== "object" || Object.keys(step).length !== 1 || !STEPS.includes(Object.keys(step)[0])
+  ? `a step is one of ${STEPS.join(", ")}: ${JSON.stringify(step)}` : null);
+
+// Whether any match of a Playwright selector is seen, as a person would: a size, not hidden, not transparent; with a
+// text, one that shows it. A journey's expectation polls this for a second.
+const anySeen = (page, selector, text = null) => page.locator(selector).evaluateAll((els, [t, seen]) => {
+  const visible = new Function(`return (${seen})`)();
+  return els.some((e) => visible(e) && (t === null || e.innerText.includes(t)));
+}, [text, seenIn.toString()]);
+async function until(page, check, ms = 1000) {
+  for (const end = Date.now() + ms; ;) {
+    if (await check()) return true;
+    if (Date.now() > end) return false;
+    await page.waitForTimeout(50);
+  }
+}
+
 async function runStep(page, step) {
   const [action] = Object.keys(step);
   const arg = step[action];
@@ -141,42 +174,47 @@ async function runStep(page, step) {
   if (action === "fill") return page.locator(arg[0]).first().fill(arg[1]);
   if (action === "move") return point ? page.mouse.move(arg[0], arg[1], { steps: 8 }) : page.locator(arg).first().hover();
   if (action === "tap") return point ? page.touchscreen.tap(arg[0], arg[1]) : page.locator(arg).first().tap();
-  // What a journey expects, given a second to come true.
-  if (action === "visible" || action === "hidden") {
-    return page.locator(arg).first().waitFor({ state: action, timeout: 1000 }).catch(() => { throw new Error(`${arg} is not ${action}`); });
-  }
-  if (action === "text") {
-    return page.waitForFunction(([sel, text]) => [...document.querySelectorAll(sel)].some((e) => e.innerText.includes(text)), arg, { timeout: 1000 })
-      .catch(() => { throw new Error(`no ${arg[0]} shows “${arg[1]}”`); });
-  }
+  // What a journey expects, given a second to come true: any match seen, none seen, one seen with the text.
+  if (action === "visible" && !(await until(page, () => anySeen(page, arg)))) throw new Error(`no ${arg} is visible`);
+  if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg))))) throw new Error(`${arg} is still visible`);
+  if (action === "text" && !(await until(page, () => anySeen(page, arg[0], arg[1])))) throw new Error(`no visible ${arg[0]} shows “${arg[1]}”`);
+  if (["visible", "hidden", "text"].includes(action)) return;
   if (!["click", "hover", "focus"].includes(action)) throw new Error(`unknown step ${JSON.stringify(step)}`);
   return page.locator(arg).first()[action]();
 }
 
+// A page that could not be put in its state: the frame, story or journey is reported, the rest of the check goes on.
+const unmeasured = (message) => Object.assign(new Error(message), { unmeasured: true, exit: 2 });
+
 async function open(browser, cfg, { url, width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
   const viewportWidth = viewport ?? (cfg.host ? Math.max(cfg.viewport ?? 1280, width) : width);
-  const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch: touch });
+  const hasTouch = touch || setup.some((step) => "tap" in step);
+  const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch });
   const page = await context.newPage();
-  await page.goto(url, { waitUntil: "load" });
-  // The pointer rests in the far corner, so nothing at the page's top-left is measured hovered.
-  await page.mouse.move(viewportWidth - 1, height - 1);
+  // A step on something that never appears fails in seconds, not in Playwright's default half minute.
+  page.setDefaultTimeout(5000);
+  await page.goto(url, { waitUntil: "load", timeout: 30000 });
+  // The pointer rests outside the page, so nothing is measured hovered.
+  await page.mouse.move(-5, -5);
   await page.addStyleTag({ content: STILL });
   if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
   try {
     for (const step of setup) await runStep(page, step);
     await page.locator(cfg.root).first().waitFor({ state: "attached", timeout: 15000 });
   } catch (e) {
-    const absent = e.name === "TimeoutError" && !(await page.locator(cfg.root).count());
+    const absent = !(await page.locator(cfg.root).count());
     await context.close();
-    if (!absent) throw e;
-    const cause = setup.length ? ` (setup: ${e.message.split("\n")[0]})` : "";
-    throw Object.assign(new Error(`Root ${cfg.root} was absent at capture time${cause}.`), { missingRoot: true, exit: 2 });
+    if (absent) throw unmeasured(`Root ${cfg.root} was absent at capture time${setup.length ? ` (setup: ${e.message.split("\n")[0]})` : ""}.`);
+    throw unmeasured(`A setup step failed: ${e.message.split("\n")[0]}`);
   }
-  if (!(await rootOf(page, cfg.root).waitFor({ state: "visible", timeout: 3000 }).then(() => true, () => false))) {
+  const shown = await page.waitForFunction(([sel, seen]) => [...document.querySelectorAll(sel)].some(new Function(`return (${seen})`)()),
+    [cfg.root, seenIn.toString()], { timeout: 3000 }).then(() => true, () => false);
+  if (!shown) {
     await context.close();
-    throw Object.assign(new Error(`Root ${cfg.root} was on the page but not visible at capture time.`), { missingRoot: true, exit: 2 });
+    throw unmeasured(`Root ${cfg.root} was on the page but not visible at capture time.`);
   }
   if (cfg.host) await setWidth(page, cfg, width, height);
+  await markRoot(page, cfg.root);
   await settle(page, cfg.root);
   return { context, page };
 }
@@ -187,7 +225,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   const norm = (s) => s.replace(/\s+/g, " ").trim();
   const key = (s) => s.replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
   const seen = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
-  const root = [...document.querySelectorAll(rootSelector)].find(seen) ?? document.querySelector(rootSelector);
+  const root = document.querySelector("[data-design-root]") ?? [...document.querySelectorAll(rootSelector)].find(seen) ?? document.querySelector(rootSelector);
   if (!root) return { error: `the root ${rootSelector} is not on the page` };
   const rr = root.getBoundingClientRect();
   const visible = (el) => el?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
@@ -414,6 +452,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (!visible(el) || !el.textContent.trim()) continue;
     const cs = getComputedStyle(el);
     if (deliberate(cs)) continue;
+    const own = el.getBoundingClientRect();
+    if (own.width <= 2 || own.height <= 2) continue; // kept for screen readers alone
     const clipX = /hidden|clip/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
     const clipY = /hidden|clip/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
     const cut = Math.max(clipX ? el.scrollWidth - el.clientWidth : 0, clipY ? el.scrollHeight - el.clientHeight : 0);
@@ -472,23 +512,29 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   };
   const [sx, sy] = [scrollX, scrollY];
   for (const el of root.querySelectorAll("a[href],button,input,select,textarea,summary,[role=button],[role=link],[tabindex]:not([tabindex='-1'])")) {
-    if (!visible(el) || el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") continue;
+    const ecs = getComputedStyle(el);
+    if (!visible(el) || el.matches(":disabled") || el.getAttribute("aria-disabled") === "true" || ecs.pointerEvents === "none") continue;
     // An inline link that wraps is tried on its first line, not on the box around both.
     const box = () => (getComputedStyle(el).display === "inline" && el.getClientRects().length ? el.getClientRects()[0] : el.getBoundingClientRect());
     let r = box();
-    if (!r.width || !r.height) continue;
+    // A control drawn by its label or kept for screen readers alone (a few pixels, clipped away) is not for the pointer.
+    if (r.width <= 2 || r.height <= 2) continue;
     if (r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth) {
       scrollTo(scrollX + r.left + r.width / 2 - innerWidth / 2, scrollY + r.top + r.height / 2 - innerHeight / 2);
       r = box();
     }
     const cut = clips(el);
-    // Not a cover: the control's own label, or a transparent native control laid over it to take the click (a file input).
-    const own = (hit) => el.contains(hit) || hit.contains(el) || [...(el.labels ?? [])].some((l) => l.contains(hit)) || Boolean(hit.closest("label")?.contains(el))
-      || (hit.matches("input, select, textarea") && !visible(hit));
+    // Not a cover: the control's own content or label; a transparent native control laid exactly over it to take the
+    // click (a file input on its button); the page around the component; a sticky or fixed bar content scrolls under.
+    const same = (a, b) => ["left", "top", "right", "bottom"].every((k) => Math.abs(a[k] - b[k]) <= 4);
+    const pinned = (hit) => { for (let p = hit; p && p !== root; p = p.parentElement) if (/fixed|sticky/.test(getComputedStyle(p).position)) return true; return false; };
+    const own = (hit) => el.contains(hit) || [...(el.labels ?? [])].some((l) => l.contains(hit)) || Boolean(hit.closest("label")?.contains(el))
+      || (hit.matches("input, select, textarea") && !visible(hit) && same(hit.getBoundingClientRect(), r)) || !root.contains(hit) || pinned(hit);
     const points = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]].map(([fx, fy]) => [r.left + r.width * fx, r.top + r.height * fy])
       .filter(([x, y]) => x >= 0 && y >= 0 && x < innerWidth && y < innerHeight && cut.every((c) => x >= c.left && x < c.right && y >= c.top && y < c.bottom));
-    const hits = points.map(([x, y]) => document.elementFromPoint(x, y)).filter((hit) => hit && !own(hit));
-    if (hits.length) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0])}` });
+    const hits = points.map(([x, y], i) => ({ i, hit: document.elementFromPoint(x, y) })).filter(({ hit }) => hit && !own(hit));
+    // Its centre, or a side of it: a badge on one corner is a design, not a cover.
+    if (hits.some(({ i }) => i === 0) || hits.length >= 2) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0].hit)}` });
   }
   scrollTo(sx, sy);
   return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
@@ -611,7 +657,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
     let opened;
     try { opened = await open(browser, fcfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) }); }
     catch (e) {
-      if (!e.missingRoot) throw e;
+      if (!e.unmeasured) throw e;
       const before = beforeFrame(out, frame, null, e.message);
       results.push({ frame: frame.name, pass: false, verdict: "incomplete", unmeasured: e.message, beforeUnavailable: before.reason,
         score: null, causes: [], issues: [], root: { spec: spec.frame, page: null }, images: {},
@@ -624,7 +670,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
         : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
       const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
-      const shot = await rootOf(page, fcfg.root).screenshot({ animations: "disabled", caret: "hide" });
+      const shot = await (await rootOf(page, fcfg.root)).screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, frameKey(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
@@ -679,7 +725,7 @@ async function sweep(browser, cfg, ledger) {
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
         // A picture for the gallery only: a root with no size to capture leaves a gap, not a failed check.
         if (shots && frameWidths.has(width) && !shots.has(width)) {
-          shots.set(width, await rootOf(page, cfg.root).screenshot({ animations: "disabled", caret: "hide", timeout: 5000 }).catch(() => null));
+          shots.set(width, await (await rootOf(page, cfg.root)).screenshot({ animations: "disabled", caret: "hide", timeout: 5000 }).catch(() => null));
         }
         return { width, ...r };
       };
@@ -737,7 +783,7 @@ async function journeys(browser, cfg) {
   for (const j of cfg.journeys) {
     let opened, failed;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
-    catch (e) { if (!e.missingRoot) throw e; failed = e.message; }
+    catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
     if (opened) {
       try {
         for (const [i, step] of j.steps.entries()) {
@@ -753,9 +799,16 @@ async function journeys(browser, cfg) {
 // What a full check expects beyond the frames: review.md with the acceptance list, every reference in the pack's
 // frames/ checked by a frame, and a dense story in the sweep. A gap leaves the check incomplete, so "pass" means the
 // acceptance list was written and its measured part ran.
+// The list is a heading that names it, with at least one line under it: a table row or a list item.
 const reviewed = (cfg) => {
   const file = path.join(cfg.dir, "review.md");
-  return fs.existsSync(file) && /acceptance/i.test(fs.readFileSync(file, "utf8"));
+  if (!fs.existsSync(file)) return false;
+  const text = fs.readFileSync(file, "utf8"), heading = text.search(/^#+[^\n]*acceptance/im);
+  if (heading < 0) return false;
+  const section = text.slice(heading).split("\n").slice(1).join("\n").split(/^#+ /m)[0];
+  const lines = section.split("\n");
+  const rows = lines.filter((line) => /^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s|:-]*\|\s*$/.test(line));
+  return rows.length >= 2 || lines.some((line) => /^\s*([-*]|\d+\.)\s+\S/.test(line));
 };
 function acceptanceGaps(cfg, flags, sweepResult) {
   const gaps = [];
@@ -787,7 +840,7 @@ async function check(file, flags) {
     if (cfg.sweep && full && !flags["no-sweep"]) {
       try { sweepResult = await sweep(browser, cfg, ledger); }
       catch (e) {
-        if (!e.missingRoot) throw e;
+        if (!e.unmeasured) throw e;
         sweepResult = { from: cfg.sweep.from, to: cfg.sweep.to, step: cfg.sweep.step ?? 8, pass: false, verdict: "incomplete",
           reason: e.message, issues: [], switches: [], score: 0 };
       }
@@ -814,7 +867,7 @@ async function check(file, flags) {
     // series, since its score says nothing about the page against the earlier ones.
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
     const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
-      frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null])).digest("hex").slice(0, 12);
+      frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full ? cfg.journeys : null])).digest("hex").slice(0, 12);
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: reviewed(cfg), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
@@ -823,7 +876,7 @@ async function check(file, flags) {
     const previous = comparable.at(-1);
     const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
     const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
-    const restarted = history.length > 0 && history.at(-1).basis !== basis;
+    const restarted = history.length > 0 && !comparable.length;
     const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
@@ -858,7 +911,7 @@ async function snapshot(file, flags) {
         if (flags.images) {
           if (!frame.reference) throw Object.assign(new Error(`${frame.name}: no "reference" path to write the image to`), { exit: 2 });
           fs.mkdirSync(path.dirname(frame.reference), { recursive: true });
-          fs.writeFileSync(frame.reference, await rootOf(page, fcfg.root).screenshot({ animations: "disabled", caret: "hide" }));
+          fs.writeFileSync(frame.reference, await (await rootOf(page, fcfg.root)).screenshot({ animations: "disabled", caret: "hide" }));
         }
         console.log(`${frame.name}: ${landmarks.length} landmarks → ${path.relative(process.cwd(), frame.spec)}`);
       } finally {

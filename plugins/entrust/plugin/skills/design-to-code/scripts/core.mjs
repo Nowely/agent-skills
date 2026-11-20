@@ -612,7 +612,7 @@ const cell = (v) => (v === undefined ? "" : String(v).replace(/\|/g, "\\|").repl
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
-export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason ? null
+export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason || sweep?.stories?.some((st) => st.unmeasured) ? null
   : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0) + journeys.filter((j) => !j.pass).length * 10);
 const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];

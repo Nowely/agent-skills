@@ -350,3 +350,44 @@ edit of the working tree.
 `node --test evals/design-to-code.test.mjs`: 59 passed. The pilots on the new case are in
 [10-sonnet-pilots.md](10-sonnet-pilots.md). The page is frozen as [drafts/10-v10.md](drafts/10-v10.md); round 10
 changed the script and check.md, not the page.
+
+### Rounds 9 and 10's verifier, and round 10b
+
+A fresh verifier checked rounds 9 and 10 against a frozen copy of 6a762a1. It confirmed:
+
+- the acceptance gaps;
+- the story path query;
+- 25 of 27 targeted mutations failing their tests.
+
+What held only in part, and what round 10b changed:
+
+- **A failing setup step ended the whole check with no report, after 30 s.** Now the frame is reported incomplete
+  and the rest is checked. Every step on something that never appears fails in 5 s. An unknown step is an error in
+  `design.json`. A `tap` in a frame's setup opens the page for touch.
+- **Journeys looked at the first match, and `text` held on a hidden element.** Now `visible`, `hidden` and `text`
+  see as a person does: any match with a size, not hidden, not transparent. They accept Playwright's selectors.
+- **`covered`.** It no longer counts:
+  - the page outside the component;
+  - fixed and sticky bars;
+  - a control the pointer ignores or a few-pixel screen-reader control (Bootstrap's `.btn-check`);
+  - a badge on one corner, since a finding now needs the centre or two inner points.
+
+  A parent's `::after` laid over a button now counts, as does a transparent file input spanning a drop zone. The
+  exception for transparent native controls now holds only for one laid exactly over the control.
+- **The root.** A transparent first match was pictured while the numbers came from the second. Now the root a
+  person can see is marked once, and the picture and the numbers both come from it.
+- **Scores.** Journeys are part of what a score is measured against. A sweep missing a story is not scored. "A new
+  series" is said only when no earlier round was measured the same way.
+- **The pointer** rests outside the page: the far corner hovered a card in a tall story.
+- **Screen-reader text** is no longer a sweep `clipped`.
+- **The acceptance list** must be a heading that names it, with rows or items under it; the word alone no longer
+  passes.
+- **The listing judge** now:
+  - takes whatever `renderListing` put in `#host` as the root;
+  - counts a text as shown only when a person could see it;
+  - ignores regions of 4 px or less one way;
+  - refuses an out directory inside the implementation.
+
+  All four pilot arms were judged again, with the same verdicts.
+
+`node --test evals/design-to-code.test.mjs`: 65 passed.

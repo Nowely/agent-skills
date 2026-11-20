@@ -314,7 +314,7 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(CASE, "case.json"), "utf8"))
 // The reference card rendered once as the design: its specs and 2× images, in a directory a test copies.
 let design;
 // What a check expects of every pack before it can pass: the acceptance list in review.md.
-const REVIEW = "# Review\n\n## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n";
+const REVIEW = "# Review\n\n## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| every frame | its frame | pass |\n";
 function designDir() {
   if (design) return design;
   design = tmp();
@@ -840,7 +840,7 @@ test("journeys hold or fail step by step, by pointer and by touch", browser, () 
   const r = check(f.dir);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.deepEqual(r.result.journeys.map((j) => [j.name, j.pass]), [["hover opens and shows the text", true], ["leaving closes it", false], ["a tap toggles it", true]]);
-  assert.match(r.result.journeys[1].failed, /step 5.*#pop is not hidden/);
+  assert.match(r.result.journeys[1].failed, /step 5.*#pop is still visible/);
   assert.match(r.stdout, /journeys: 2 of 3 hold/);
   assert.match(r.stdout, /journey fails: leaving closes it/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<h2>Journeys<\/h2>/);
@@ -913,7 +913,8 @@ test("a story that cannot be swept is a gap, and the frames' own sweep is kept",
   const r = check(f.dir);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /Not checked: the story empty was not swept: Root main was absent/);
-  assert.notEqual(r.result.score, null);
+  assert.equal(r.result.score, null, "a sweep missing a story is not scored against complete ones");
+  assert.ok(r.result.sweep.stories.some((st) => st.name === "page" && !st.unmeasured));
 });
 
 test("the visible root is measured, a scripted animation is finished, and a change of tolerance starts a new series", browser, () => {
@@ -924,4 +925,79 @@ test("the visible root is measured, a scripted animation is finished, and a chan
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, tolerance: 30 }));
   assert.match(check(f.dir).stdout, /scores start a new series/);
+});
+
+// ------------------------------------------------------------------ round 10b: the second verifier's findings
+
+test("a failing setup step leaves its frame unmeasured, in seconds, with the report written", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [...cfg.frames, { ...cfg.frames[0], name: "state", setup: [{ click: ".never" }] }] }));
+  const start = Date.now();
+  const r = check(f.dir);
+  assert.equal(r.status, 2, r.stdout + r.stderr);
+  assert.ok(Date.now() - start < 25000, "a step that cannot run fails in seconds");
+  assert.match(r.result.frames[1].unmeasured, /A setup step failed/);
+  assert.ok(fs.existsSync(path.join(f.dir, "out/report.md")));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], setup: [{ jump: "main" }] }] }));
+  assert.match(check(f.dir).stderr, /a step is one of/);
+});
+
+test("journeys see as a person does: a hidden text is not shown, one visible match of many is still visible", browser, () => {
+  const f = smallFrame();
+  fs.appendFileSync(f.page, '<div class="pop" style="display:none">Help</div><div class="pop">Other</div><div class="fade" style="opacity:0">Faded</div>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [
+    { name: "hidden text", steps: [{ text: [".pop", "Help"] }] },
+    { name: "one of two visible", steps: [{ hidden: ".pop" }] },
+    { name: "transparent is hidden", steps: [{ hidden: ".fade" }] },
+    { name: "Playwright selectors", steps: [{ visible: "text=Other" }, { text: ["text=Other", "Other"] }] },
+  ] }));
+  const r = check(f.dir);
+  assert.deepEqual(r.result.journeys.map((j) => j.pass), [false, false, true, true], JSON.stringify(r.result.journeys));
+  assert.match(r.stdout, /score: \d+/);
+  assert.ok(r.result.score >= 20, "each failing journey adds 10");
+});
+
+test("covered: the centre or most of a control, inside the component, not a badge, a pinned bar or a label-drawn input", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const sweep = (name, body) => {
+    fs.writeFileSync(path.join(f.dir, `${name}.html`), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style><main>${body}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === name && i.property === "covered").map((i) => i.landmark);
+  };
+  assert.deepEqual(sweep("badge", '<span style="position:relative;display:inline-block"><button aria-label="Inbox" style="width:32px;height:32px"></button><span style="position:absolute;right:-6px;top:-6px;width:16px;height:16px;background:red;border-radius:8px">3</span></span>'), []);
+  assert.deepEqual(sweep("btncheck", '<input type="radio" id="d" name="g" style="position:absolute;clip:rect(0,0,0,0);pointer-events:none"><label for="d" style="display:inline-block;width:60px;height:24px;background:#eee">Day</label><input type="radio" id="w" name="g" style="position:absolute;clip:rect(0,0,0,0);pointer-events:none"><label for="w" style="display:inline-block;width:60px;height:24px;background:#ddd">Week</label>'), []);
+  assert.deepEqual(sweep("toast", '<button aria-label="Save" style="width:60px;height:24px"></button><div style="position:fixed;left:0;top:0;width:200px;height:40px;background:#333">Saved</div>'), []);
+  assert.deepEqual(sweep("after", '<div class="card" style="position:relative;padding:8px"><button aria-label="More" style="width:40px;height:24px"></button><style>.card::after{content:"";position:absolute;inset:0}</style></div>'), ["More"]);
+  assert.deepEqual(sweep("dropzone", '<div style="position:relative;width:280px;height:60px"><button aria-label="Remove" style="position:relative;width:60px;height:24px;margin:18px">x</button><input type="file" style="position:absolute;inset:0;opacity:0"></div>'), ["Remove"]);
+});
+
+test("the visible root is marked: a transparent first match is skipped for the picture and the numbers alike", browser, () => {
+  const f = smallFrame();
+  f.write('<main style="opacity:0;width:200px;height:50px"><span>Gone</span></main><main><span>Ready</span></main>');
+  const r = check(f.dir);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.deepEqual(r.result.frames[0].root.page, { width: 300, height: 80 });
+});
+
+test("the pointer rests outside the page, and a change of journeys starts a new series", browser, () => {
+  const f = smallFrame();
+  f.write('<style>main:hover .tip{display:block}.tip{display:none}</style><main style="position:relative;width:100vw;height:100vh"><span>Ready</span><span class="tip">Tip</span></main>');
+  const plain = check(f.dir);
+  assert.deepEqual(plain.result.frames[0].unexpected, [], "nothing is hovered");
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "shown", steps: [{ visible: "main" }] }] }));
+  assert.match(check(f.dir).stdout, /scores start a new series/);
+});
+
+test("the acceptance list is a heading with lines under it, not the word alone", browser, () => {
+  const f = smallFrame();
+  const review = path.join(f.dir, "review.md");
+  for (const [text, status] of [["No acceptance list was written.\n", 2], ["## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n", 2],
+    ["## Acceptance\n\n- every frame: pass\n", 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass |\n", 0], ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 2]]) {
+    fs.writeFileSync(review, text);
+    assert.equal(check(f.dir).status, status, text);
+  }
 });
