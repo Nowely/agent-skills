@@ -56,10 +56,10 @@ and, at handoff, its result with its evidence:
 
 | Item | Checked by | Result |
 |---|---|---|
-| every supplied reference, each state and width | its frame in `design.json`, or by eye in the gallery with the reason no frame fits | pass, or what remains and why |
+| every supplied reference, each state and width | its frame in `design.json` (an image-only frame where no spec fits) | pass, or what remains and why |
 | the dense story | `sweep.stories` and its pictures | no collision, no covered control |
-| every popup, menu and sheet | pointer: open it, move into it, leave it, see it closed; touch: tap it open and closed; the keyboard | the result of each |
-| every action | it works and the state around it survives a resize | |
+| every popup, menu and sheet | its journeys in `design.json`: hover, move into it, leave it, `hidden`; tap it open and closed; focus it and press Escape | the result of each |
+| every action | a journey: it works, and the state around it survives a resize | |
 | the owner's past returns, when the project keeps them (`.design/returns.md`, or its agent notes) | how each was checked | |
 
 A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked.

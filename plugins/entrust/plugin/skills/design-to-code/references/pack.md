@@ -74,7 +74,7 @@ state before it is measured; a state drawn outside the component, such as a popo
 
 Add one **dense story**: the longest legal data the product allows, every badge and every conditional action at
 once. No frame draws it; it is where texts collide and actions cover each other. Sweep it with `sweep.stories`, and
-look at its pictures in the gallery.
+look at its pictures in the gallery. A full check without one is incomplete.
 
 ## Screenshots without a spec
 
