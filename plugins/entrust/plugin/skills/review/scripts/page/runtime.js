@@ -191,12 +191,15 @@ window.addEventListener("beforeunload", (e) => { flushText(); if (unsaved) { e.p
 // ---------------------------------------------------------------- the owner's options, and each item's status in words
 const OPTION_LABEL = { fix: L("p.option.fix"), leave: L("p.option.leave"), take: L("p.option.take"), skip: L("p.option.skip") };
 function optionsOf(c) {
-  if (c.kind === "decision") return c.ref.variants.map((v) => ({ id: v.id, label: v.text, sub: v.consequences.map((x) => x.text).join(" "), rec: c.ref.recommendation?.variant === v.id }));
+  if (c.kind === "decision") { const rec = c.ref.recommendation ?? {}; return c.ref.variants.map((v) => ({ id: v.id, label: v.text, sub: v.consequences.map((x) => x.text).join(" "), rec: rec.variant === v.id || (rec.variants ?? []).includes(v.id) })); }
   return c.options.map((id, i) => ({ id, label: OPTION_LABEL[id], key: i ? "n" : "f" }));
 }
 const optionLabel = (c, id) => optionsOf(c).find((o) => o.id === id)?.label ?? id;
-const draftText = (c, draft) => draft.choice !== undefined ? optionLabel(c, draft.choice) : draft.text;
+// A choice in words: the variant, or the several a decision whose variants combine took, in their order.
+const choiceLabel = (c, choice) => [].concat(choice).map((id) => optionLabel(c, id)).join(", ");
+const draftText = (c, draft) => draft.choice !== undefined ? choiceLabel(c, draft.choice) : draft.text;
 const isRequest = (c) => c.kind === "fact" || c.kind === "evidence";
+const isChosen = (c, id) => statusOf(c).state === "decided" && [].concat(entryOf(c.key).choice ?? []).includes(id);
 const applicable = (c) => DR.applicable(ITEMS, state, c.key);
 function statusOf(c) {
   const s = DR.status(ITEMS, state, c.key);
@@ -204,7 +207,7 @@ function statusOf(c) {
   if (s.state === "deferred") return { state: "deferred", label: L("p.status.deferred"), cls: "dashed", lbl: L("p.answer.deferred-because"), answer: s.reason, draft: s.draft };
   if (s.state === "answered") return { state: "answered", label: L("p.status.answered"), cls: "neutral", lbl: L("p.answer.entered"), answer: s.text, unverified: true };
   if (s.state === "decided") return { state: "decided", label: L("p.status.decided"), cls: "neutral",
-    lbl: s.choice !== undefined ? L("p.answer.yours") : L("p.answer.own"), answer: s.choice !== undefined ? optionLabel(c, s.choice) : s.text };
+    lbl: s.choice !== undefined ? L("p.answer.yours") : L("p.answer.own"), answer: s.choice !== undefined ? choiceLabel(c, s.choice) : s.text };
   return { state: "open", label: L("p.status.open"), cls: "open", draft: s.draft };
 }
 const isOpen = (c) => statusOf(c).state === "open";
@@ -653,18 +656,20 @@ function choiceInner(c, where) {
   const deferred = st.state === "deferred" ? `<div class="draft">${esc(L("p.deferred", st.answer))}<button class="btn sm" data-act="undefer" data-key="${esc(c.key)}">${esc(L("p.undefer"))}</button></div>` : "";
   const touched = Object.keys(entry).length;
   const actions = `<div class="choice-actions">${st.state === "deferred" ? "" : `<button class="btn sm" data-act="defer" data-key="${esc(c.key)}" aria-expanded="${field === "defer"}">${esc(L("p.defer.open"))}<span class="key">d</span></button>`}${touched ? `<button class="btn sm quiet" data-act="clear" data-key="${esc(c.key)}">${esc(L("p.clear"))}<span class="key">x</span></button>` : ""}</div>`;
-  // A checked radio is the answer in effect; the own-answer field may be open while an earlier answer still holds.
-  const chosen = (o) => st.state === "decided" && entry.choice === o.id, own = ownInEffect(c);
+  // A checked control is the answer in effect; the own-answer field may be open while an earlier answer still holds.
+  // A decision whose variants combine takes several, as checkboxes; any other takes one, as radios.
+  const chosen = (o) => isChosen(c, o.id), own = ownInEffect(c), several = Boolean(c.multiple);
+  const type = several ? "checkbox" : "radio", group = several ? "group" : "radiogroup";
   let body = "";
   if (!opts.length) body = textField(c);
   else if (where === "card") {
     const name = `ch-${c.key}-${S.uid}`;
-    body = `<div class="opts" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
-      <label class="opt${own ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
+    body = `${several ? `<p class="muted small">${esc(L("p.choose-several"))}</p>` : ""}<div class="opts" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="${type}" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
+      <label class="opt${own ? " on" : ""}"><input type="${type}" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
   } else {
     const vertical = opts.some((o) => o.label.length > 40) || opts.length > 3;
-    body = `<div class="pills${vertical ? " vertical" : ""}" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="radio" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
-      <button class="pill" role="radio" aria-checked="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
+    body = `<div class="pills${vertical ? " vertical" : ""}" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="${type}" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
+      <button class="pill" role="${type}" aria-checked="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
   }
   return zones + body + draftHtml(c) + deferred + (field === "defer" ? deferField(c) : "") + actions;
 }
@@ -749,7 +754,7 @@ function syncItem(key, structural) {
   // while the owner types an own answer, the radios already show which answer is in effect
   const own = ownInEffect(c), entry = entryOf(key);
   for (const el of $$(`[data-choice="${key}"] [data-act="pick"]`)) {
-    const on = el.dataset.opt ? st.state === "decided" && entry.choice === el.dataset.opt : own;
+    const on = el.dataset.opt ? isChosen(c, el.dataset.opt) : own;
     if (el.tagName === "INPUT") el.checked = on; else el.setAttribute("aria-checked", String(on));
   }
   if (!structural) return;

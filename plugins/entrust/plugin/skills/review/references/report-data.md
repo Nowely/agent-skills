@@ -207,7 +207,11 @@ obtain). The required `kind` comes from what the question asks, never from its n
   and `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
   questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
   than two variants or a variant without consequences.
-- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends, and `sources`.
+- `multiple: true`: the variants combine, and the owner may take one or several; without it they exclude each other.
+  Set it when one answer could not say the combination the owner may want, which they would otherwise write in their
+  own words, unmatched to the variants. A conditional question then applies while any chosen variant is listed.
+- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends (or, where the
+  variants combine, the `variants` it recommends together), and `sources`.
   Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
   recommendation» and gives the conditional rule, and no `variant` is named.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
@@ -230,11 +234,11 @@ is the owner's input, not a checked result. Decisions are never carried between 
 ## The page
 
 `report.mjs render` writes the page from the record and the saved diff alone, never a new record field. The owner
-answers each item on it and exports the answers as schema 6: proposals for the next step, not edits to the source.
+answers each item on it and exports the answers as schema 7: proposals for the next step, not edits to the source.
 
 The export is one payload behind the page's preview, its text and its JSON: the record's and the diff's
 digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
-`deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), `option` (`fix`, `leave`,
+`deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), or `variants` where they combine, `option` (`fix`, `leave`,
 `take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
 `zones`, and `waiting_for_parent` while an ancestor whose answer decides whether the item applies is still open.
 `lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,

@@ -655,6 +655,38 @@ test("feedback 6: without JavaScript a file's long path wraps in its header, and
     return out.header[0] <= out.header[1] && [...out.en, ...out.ru].every(([, boxes]) => boxes.length && boxes.every((k) => k === 1)) || JSON.stringify(out);
   });
 
+// ---- a decision whose variants combine
+// The themed record with Q3's variants combining, on block B3: Q4 applies while «extend» is among those chosen.
+const MULTI = (() => { const r = structuredClone(record); r.questions[2].multiple = true; r.blocks[2].questions = [1, 3, 5]; return r; })();
+const MULTI_URL = render("multiple", MULTI);
+test("a decision whose variants combine takes several: checkboxes on the card and in the code, its child applies while a listed variant is among them, and the export names them all",
+  "a decision could take one variant only, so a combination had to be written in the owner's own words",
+  cased(MULTI_URL + "#code/b3", {}, async (page) => {
+    await settle(page);
+    const pills = await page.locator('#panel-code [data-choice="q3"] [data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.getAttribute("role")));
+    // in the code's margin the note stays after the first variant, so a second can be taken there too
+    await page.click('#panel-code [data-choice="q3"] [data-opt="status-quo"]'); await settle(page);
+    await page.click('#panel-code [data-choice="q3"] [data-opt="extend"]', { timeout: 3000 }).catch(() => {}); await settle(page);
+    const codeAnswer = await page.evaluate(() => [...document.querySelectorAll('[data-answer="q3"]')].map((el) => el.textContent).join("|"));
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(MULTI_URL + "#decisions/q3"); await page.waitForSelector(".tabbar"); await settle(page);
+    const boxes = await page.locator('#card-q3 input[data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.type));
+    const hint = await text(page, "#card-q3 .choice");
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const both = { q3: await statusOf(page, "q3"), answer: await text(page, '#card-q3 [data-answer="q3"]'), q4: await statusOf(page, "q4") };
+    await page.locator('#card-q3 input[data-opt="extend"]').uncheck(); await settle(page);
+    const one = { q4: await statusOf(page, "q4"), answer: await text(page, '#card-q3 [data-answer="q3"]') };
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const data = await payload(page), q3 = data.items.find((x) => x.item === "q3");
+    const ok = boxes.length === 2 && boxes.every((t) => t === "checkbox") && /One or more may be chosen/.test(hint)
+      && both.q3 === "Decided" && /Keep the conversion in the reader, Move it to a display unit/.test(both.answer) && both.q4 === "Open"
+      && one.q4 === "Not applicable" && !/Move it/.test(one.answer)
+      && JSON.stringify(q3.variants?.map((v) => v.id)) === '["status-quo","extend"]' && q3.variant === undefined
+      && pills.length === 2 && pills.every((role) => role === "checkbox") && /Keep the conversion in the reader, Move it to a display unit/.test(codeAnswer);
+    return ok || JSON.stringify({ pills, codeAnswer, boxes, hint: hint.slice(0, 60), both, one, q3 });
+  }));
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
@@ -794,7 +826,7 @@ test("the page reads what a page of the same stored format kept: an answer, a de
       && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
   }));
 
-test("the export is one schema-6 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
+test("the export is one schema-7 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
@@ -803,7 +835,7 @@ test("the export is one schema-6 payload behind the preview, the text and the JS
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
     const q3 = p.items.find((x) => x.item === "q3");
-    return p.schema_version === 6 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
+    return p.schema_version === 7 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
       && p.lineComments[0]?.path === "src/invoices/archive.js" && p.lineComments[0].side === "head" && p.lineComments[0].line === 4
       && p.paragraphComments[0]?.item === "q3" && p.paragraphComments[0].field === "text" && t.includes("Q3: Keep the conversion in the reader") && t.includes("check this")
       || JSON.stringify({ q3, lines: p.lineComments, paragraphs: p.paragraphComments });

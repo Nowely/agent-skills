@@ -115,8 +115,8 @@ export function page(review, files, model, { syntax } = {}) {
       place: placeOf(f.at), blocks: model.blocks.filter((b) => b.findings.includes(f.id)).map((b) => b.id) })),
     ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at) })),
     questions: model.questions.map((q) => ({ id: String(q.id), at: q.at, place: placeOf(q.at), text: q.text, kind: q.kind, resolver: q.resolver,
-      context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
-      recommendation: q.recommendation ? { text: q.recommendation.text, variant: q.recommendation.variant, sources: sources(q.recommendation.sources) } : null,
+      multiple: q.multiple === true, context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
+      recommendation: q.recommendation ? { text: q.recommendation.text, variant: q.recommendation.variant, variants: q.recommendation.variants, sources: sources(q.recommendation.sources) } : null,
       remainingEvidence: (q.remainingEvidence ?? []).map(String), zones: claims(q.zones), children: q.children.map(String),
       blocks: model.blocks.filter((b) => b.questions.includes(q.id)).map((b) => b.id),
       // the parent's variants this question applies under, by their words

@@ -3,14 +3,14 @@
 // these answers, and evidence obtained in a later revision of the record. The same runtime is handed to the page's
 // script and imported by the tests; it touches no DOM, and every change returns a new state.
 //
-// One answer per item: a decision takes a variant or the owner's own words, a finding «fix it», «leave it» or own
+// One answer per item: a decision takes a variant — one or several, when its variants combine — or the owner's own words, a finding «fix it», «leave it» or own
 // words, an idea «take it», «skip it» or own words, a fact or evidence request the owner's answer. Choosing one
 // clears the other. Deferring takes a reason and keeps the answer it replaces as a draft, never in effect; so does
 // a conditional question its parent retires, and neither answer returns silently. An answer to a fact or evidence
 // request is the owner's input, never a verified result.
 export function decisionRuntime() {
   // The export format's number: it tells a later reader how to read the export, and changes with the export alone.
-  const schema = 6;
+  const schema = 7;
   // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
   // report (an item or part of it, and a field). A comment never answers anything.
   const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
@@ -20,6 +20,7 @@ export function decisionRuntime() {
   // id, ideas by their place in the list. A question names its parent's key and the variants it applies under.
   const itemsOf = ({ questions = [], findings = [], ideas = [] }) => [
     ...questions.map((q) => ({ key: `q${q.id}`, kind: q.kind, options: q.kind === "decision" ? (q.variants ?? []).map((v) => v.id) : [],
+      multiple: q.kind === "decision" && q.multiple === true,
       variants: Object.fromEntries((q.variants ?? []).map((v) => [v.id, v.text])),
       parent: q.parent ? { key: `q${q.parent.question}`, variants: q.parent.variants } : null })),
     ...findings.map((f) => ({ key: `f${f.id}`, kind: "finding", options: OPTIONS.finding, parent: null })),
@@ -36,6 +37,8 @@ export function decisionRuntime() {
   const entryOf = (state, key) => state.answers[key] ?? {};
   const byKeyOf = (items) => new Map(items.map((item) => [item.key, item]));
   const has = (text) => String(text ?? "").trim() !== "";
+  // The variants chosen, as a list whether the question takes one or several.
+  const chosen = (entry) => entry.choice === undefined ? [] : [].concat(entry.choice);
   // A conditional question applies while its parent applies and has no variant in effect, or has one it lists.
   const applicableIn = (item, state, byKey, seen = new Set()) => {
     if (!item.parent) return true;
@@ -44,7 +47,7 @@ export function decisionRuntime() {
     const parent = byKey.get(item.parent.key);
     if (!parent || !applicableIn(parent, state, byKey, seen)) return false;
     const entry = entryOf(state, parent.key);
-    return entry.deferred || entry.choice === undefined || item.parent.variants.includes(entry.choice);
+    return entry.deferred || entry.choice === undefined || chosen(entry).some((id) => item.parent.variants.includes(id));
   };
   const statusIn = (item, state, byKey) => {
     const entry = entryOf(state, item.key), draft = entry.draft ?? null;
@@ -84,9 +87,13 @@ export function decisionRuntime() {
     if (statusIn(item(items, key), state, byKeyOf(items)).state === "not-applicable") return state;
     return fn(items, state, key, entryOf(state, key), ...args);
   };
+  // A question of several variants toggles the one named, in the variants' order, and none left is no answer.
   const choose = change((items, state, key, entry, option) => {
-    if (!item(items, key).options.includes(option)) throw new Error(`${key} has no option ${option}`);
-    return put(items, state, key, { zones: entry.zones, choice: option });
+    const it = item(items, key);
+    if (!it.options.includes(option)) throw new Error(`${key} has no option ${option}`);
+    if (!it.multiple) return put(items, state, key, { zones: entry.zones, choice: option });
+    const was = chosen(entry), next = it.options.filter((id) => was.includes(id) !== (id === option));
+    return put(items, state, key, { zones: entry.zones, choice: next.length ? next : undefined });
   });
   const write = change((items, state, key, entry, text) => put(items, state, key, { zones: entry.zones, text: String(text ?? "") }));
   // A deferral without a reason is refused: the same state comes back.
@@ -165,7 +172,8 @@ export function decisionRuntime() {
   const exportOf = (items, state, meta) => {
     const byKey = byKeyOf(items);
     const answerOf = (item, a) => a.choice !== undefined
-      ? (item.kind === "decision" ? { variant: { id: a.choice, text: item.variants[a.choice] } } : { option: a.choice }) : has(a.text) ? { text: a.text } : {};
+      ? (item.kind !== "decision" ? { option: a.choice } : item.multiple ? { variants: chosen(a).map((id) => ({ id, text: item.variants[id] })) } : { variant: { id: a.choice, text: item.variants[a.choice] } })
+      : has(a.text) ? { text: a.text } : {};
     return {
       schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
       progress: (({ total, done, open, deferred }) => ({ total, done, open, deferred }))(progress(items, state)),

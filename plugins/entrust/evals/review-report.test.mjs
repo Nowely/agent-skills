@@ -652,6 +652,11 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
       [(r) => { r.questions[2].recommendation.sources.push({ ref: "/questions/2" }); }, 'source ref "/questions/2" is the entry that makes the claim'],
       [(r) => { r.screens[1].sources = [{ ref: "/screens/1" }]; }, 'source ref "/screens/1" is the entry that makes the claim'],
       [(r) => { r.questions[2].context[0].sources = [{ ref: "/questions/02" }]; }, 'source ref "/questions/02" is the entry that makes the claim'],
+      // Variants that combine: only on a decision, only true, and a recommendation of several only there.
+      [(r) => { r.questions[0].multiple = true; }, "multiple is true on a decision whose variants combine"],
+      [(r) => { r.questions[2].multiple = "yes"; }, "multiple is true on a decision whose variants combine"],
+      [(r) => { r.questions[2].recommendation.variants = ["extend"]; }, "variants is for a decision whose variants combine"],
+      [(r) => { r.questions[2].multiple = true; r.questions[2].recommendation.variants = ["absent"]; }, 'names variant "absent", which is not listed'],
     ];
     for (const [change, fault] of faults) {
       const r = structuredClone(THEMED); change(r);
