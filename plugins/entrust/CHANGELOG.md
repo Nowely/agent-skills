@@ -37,7 +37,8 @@ forensics remain in the repository references and release notes.
   of it. In orchestrate, the fix round after a cross-review the user answered gets the record and the export.
 - A package manager's lock file is one block judged by its manifest, not read line by line: a package fetched from
   outside the project's registries, or a hash changed for the same version, is a finding, and a package or version
-  neither the manifest nor the task explains is a question. A file the project marks generated is one block too, read
+  neither the manifest nor the task explains is a question. No list names lock files: the reviewer establishes from
+  the file and the project's tooling which tool writes it and from what. A file the project marks generated is one block too, read
   unless it is regenerated and compared; a mark the change adds is read like any change.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that

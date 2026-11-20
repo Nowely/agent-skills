@@ -283,18 +283,19 @@ record does not hold is left out, and the response says so. A short review appli
 ## Generated files
 
 Two kinds of file are one block each, judged by their source rather than line by line: a package manager's lock
-file (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `bun.lock`, `npm-shrinkwrap.json`, `Cargo.lock`, `go.sum`,
-`poetry.lock`, `uv.lock`, `Pipfile.lock`, `Gemfile.lock`, `composer.lock` and the like), and a file the project marks
-generated — `linguist-generated` in `.gitattributes`, or a header such as `@generated` or `Code generated … DO NOT
-EDIT`. A mark counts only when the project's own tooling writes the file; a mark the change adds is itself a change to
-judge, and the file is read.
+file beside its manifest, and a file the project marks generated — `linguist-generated` in `.gitattributes`, or a
+header such as `@generated` or `Code generated … DO NOT EDIT`. No list names them all: the reviewer establishes from
+the file and the project's tooling which tool writes it and from what, and names both in the block's `does`; a file
+it cannot establish so is read. A mark counts only when the project's own tooling writes the file; a mark the change
+adds is itself a change to judge, and the file is read.
 
 - Its block's `added` and `removed` span the file, such as `1-4210`: unchanged lines in a range are ignored, and
   `all` is only for a block to remove. Skip its part of the `lines` printout. Its `does` names this section, which
   answers the check's warning about a large block.
 - A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
-  outside the project's registries — a `resolved`, `tarball`, `source` or `remote` host, a git, file or `http:` URL —
-  or a hash (`integrity`, `checksum`, `h1:`, `hash`) changed while its version did not, is a finding. A package or
+  outside the project's registries — a host in a field such as `resolved`, `tarball`, `source` or `remote`, a git,
+  file or `http:` URL — or a hash (such as `integrity`, `checksum`, `h1:` or `hash`) changed while its version did
+  not, is a finding. A package or
   version that neither the manifest change nor the task explains is a question, one listing them all. Search the
   lock file's diff for these rather than read it.
 - Another generated file: the generator or its input changed to match. Unless it is regenerated, its diff is read as
