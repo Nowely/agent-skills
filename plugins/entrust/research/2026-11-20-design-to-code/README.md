@@ -99,3 +99,12 @@ Before running the pair, use the [third protocol](08-pair-protocol.md) for the p
 ## First skill-only submission
 
 The [first-submission study](09-first-submission.md) records the implementation, independent acceptance, token and time accounting, observed gaps, limitations and alternatives for one or two reviewers. The [visual evidence](09-first-submission.md#visual-evidence) includes reference and submitted views.
+
+## Round 8: done means checked
+
+Reviewing the first submission with a fresh Fable reader set the aim: when the agent says done, the work is done in
+fact. The [eighth round](rounds.md#round-8-what-the-first-real-submission-missed) adds an acceptance list written
+before the first edit and run before handoff (every reference, a dense story, every popup, every action, the owner's
+past returns), sweeps dense stories, reports controls another element covers, gives a popover frame its own root,
+keeps scores comparable only within the same specs, and fixes two regressions of b8eb852. Frozen as
+[drafts/09-v9.md](drafts/09-v9.md).

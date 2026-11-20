@@ -231,3 +231,52 @@ Corrected: the first family of a text's stack is tried only when it is not a sys
 text's own style and weight, character by character, without emoji. On the verifier's fonts, rerun: bold-only, the
 icon font and emoji are not reported; a Cyrillic phrase in the Latin-only font and the 404 font are. check.md
 describes the size cause and the font rule. 38 tests pass.
+
+## Round 8: what the first real submission missed
+
+Inputs: the owner's b8eb852 (unmeasured content), the [third pair protocol](08-pair-protocol.md) and the
+[first submission](09-first-submission.md), reviewed by two readers in parallel: a fresh Fable reviewer given the
+code and the records without conclusions, and the coordinator, who reran each finding Fable marked reproduced.
+
+**The owner's aim**, restated for this round: when the agent says done, the work is done in fact; the first
+submission is the one to accept.
+
+**What the first submission says.** 26 references were supplied and 4 became frames; the discount popover's image
+was first opened after the return. `review.md` was written after implementation and six check rounds; the first
+product write came four minutes in. The sweep ran on the ordinary story only, so the dense data's collisions never
+reached it: a frameless `design.json` on a dense copy of the public card reported 19 text overlaps. An action laid
+over a help icon was outside every check: an icon button covering a price gave no finding. Popup dismissal is
+behaviour, outside the check, and nothing in the skill asked for it. The judge found all four issue classes in 4:38
+with 3.4M input tokens against the worker's 42M; its strength was a prepared suite and a dense fixture.
+
+**Defects in b8eb852, reproduced on HEAD and passing on 17499ed:**
+
+- content that fades in was reported missing: `animation: none` left it at its starting opacity, and the new
+  visibility test counts opacity;
+- a text the design itself truncates with an ellipsis failed every round as `clipped`.
+
+**Also reproduced:** rounds were compared across different specs (an emptied spec still printed "previous round"),
+which is how 09's 3072 → 832 was read as progress; every page text missing from the spec was its own failure and
+listed first, so nine extra texts pushed the real offset out of the summary; a `text` entry listing two landmarks
+mapped both to one match.
+
+**Changes:**
+
+- *The skill.* Done means checked: the acceptance list is written before the first product edit and run before
+  saying done, every line with its evidence: every supplied reference (a frame, or by eye with a reason), a dense
+  story, every popup (open, move in, leave, closed; touch; keyboard), every action through a resize, and the owner's
+  past returns from `.design/returns.md`, which each return extends. `review.md` gains how the parts relate across
+  widths: what moves together, what lines up, what wraps, truncates or grows, where conditional actions go.
+- *The check.* `sweep.stories` sweeps more pages the same way and pictures them at the frames' widths; `covered`
+  reports a control with another element over its centre; a frame names its own `root` for a popover or sheet;
+  rounds are compared only within the same specs and sweep, and after two rounds without a new lowest the summary
+  says to stop; page text missing from the spec is one line and leaves the frame incomplete; animations end at once
+  instead of not running; an ellipsis or line clamp is deliberate truncation.
+- *Removed:* the migration of old `before/` names (nothing was released) and the 64-digit hash in directory names.
+
+**Not taken:** two specialist reviewers and the one-versus-two-reviewer experiment, which cost three reviewer
+windows for n = 1 and do not measure returns to the owner; full filesystem isolation of workers, since 09's leak was
+a memory search (memory off and a clean agent home suffice; otherwise the run is marked non-blind). An independent
+prober at handoff is held back as the next lever if a run with this edition still returns.
+
+The page is frozen as [drafts/09-v9.md](drafts/09-v9.md). `node --test evals/design-to-code.test.mjs`: 50 passed.

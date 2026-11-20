@@ -16,6 +16,14 @@ forensics remain in the repository references and release notes.
   captures and show why a before image is unavailable. The [updated pair protocol](research/2026-11-20-design-to-code/08-pair-protocol.md)
   verifies baseline Git objects and records the worker's filesystem access.
 
+- Done means checked: the skill writes an acceptance list before the first product edit (every supplied reference,
+  a dense story, every popup and action, the owner's past returns) and runs it before handoff, each line with its
+  evidence. The check sweeps dense stories (`sweep.stories`) and pictures them in the gallery, reports a control
+  another element covers, lets a popover frame name its own root, compares scores only between rounds measured
+  against the same specs and says when to stop adjusting. Page text missing from the spec is listed once and leaves
+  the frame incomplete. Content that fades in is captured as it ends, and a text cut with an ellipsis is
+  deliberate truncation, not a finding.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report
