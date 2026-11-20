@@ -1,7 +1,8 @@
 # Reading the design
 
-Before building, write `review.md` in the pack: what the design maps to in the project, and what it leaves unsaid.
-A design is a drawing of some states at some widths; the code has to decide the rest.
+Before building, write `review.md` in the pack: what the design maps to in the project, what it leaves unsaid, and
+the options where the build had to decide. A design is a drawing of some states at some widths; the code has to
+decide the rest.
 
 ## The map
 
@@ -25,12 +26,17 @@ rest of the product: name them.
 - **Interaction:** what the first gesture does, what stays selected when an inner control is used, the focus order.
 - **Consistency:** a spacing off the system's scale, a type style or a colour the system does not have, rows of
   one kind aligned differently, an icon from outside the set.
-- **Accessibility:** text contrast at least 4.5:1 (3:1 for large text and controls), targets at least 24 × 24 px,
-  text that survives 200 % zoom and a reflow at 320 px (WCAG 2.2: 1.4.3, 2.5.8, 1.4.4, 1.4.10).
+- **Accessibility:** text contrast at least 4.5:1, and 3:1 for large text and for controls' boundaries and icons;
+  targets at least 24 × 24 px; text that survives 200 % zoom and a reflow at 320 px (WCAG 2.2: 1.4.3, 1.4.11, 2.5.8,
+  1.4.4, 1.4.10).
 
 ## Options, not silent choices
 
-For each gap, build a default and record it in the ledger as `proposed`, with two or three options and what each
-changes for the user and costs to build. Ask the owner only where the options change behaviour or scope; keep
-building the rest. A design error with an evident fix, such as a wrong word form, is built fixed and recorded the
-same way. An improvement the request does not need is an idea: list it with its gain and cost, do not build it.
+List a gap only where the build had to decide something. For each, say the default built and two or three options
+with what each changes for the user and costs to build. Ask the owner only where the options change behaviour or
+scope; keep building the rest. A design error with an evident fix, such as a wrong word form, is built fixed.
+
+The ledger is for differences the page shows against a frame: a fixed word form, the kit's badge, a default that
+departs from a drawing. Those go there as `proposed`, with the same options. A gap no frame shows, such as a hover
+state, stays in `review.md`. An improvement the request does not need is an idea: list it with its gain and cost,
+do not build it.
