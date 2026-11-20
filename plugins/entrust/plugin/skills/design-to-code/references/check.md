@@ -2,22 +2,35 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, runs the sweep and the journeys, prints a summary and writes the files
-listed under [Output](#output); [the summary](#the-summary-and-the-report) says what each line means. It exits 0 when the comparison
-passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
-decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
-left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements;
-everything, when there is no browser; and, for a complete check (every frame and the sweep), what the acceptance
-list needs: `review.md` beside `design.json` with an acceptance list (its lines under a heading that names it; see
-[review.md](review.md#the-acceptance-list)), a frame for every `frames/<name>/reference.png` in the pack, a sweep with
-a dense story whose URL is no frame's page (a story differing only in its query, as Storybook's do, counts as its
-own), and at least one journey when a control inside the component, in a frame, opens something (`aria-expanded`,
-`popovertarget`, or an `aria-haspopup` other than false). A
-failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
-project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. Both are partial checks:
-they write no `handoff.md` or gallery, and their verdict is said to be about what they measured. Every check
-removes an earlier `handoff.md` first, so the one that exists is the last complete check's. The page
-before the work is the one the first check saw. If the root was absent after setup, the gallery records its
-absence. Delete `out/before/` to start a new baseline.
+listed under [Output](#output); [the summary](#the-summary-and-the-report) says what each line means. Playwright is
+resolved from the working directory first: run it from the project that has it.
+
+**Exit codes**, the first that applies: 1 a failure; 2 something not measured; 3 what remains awaits the owner's
+decision; 0 a pass. Not measured are:
+
+- a frame without its image, a frame whose reference is an image alone (its text is left to the eye), and a frame
+  showing text its spec does not have;
+- an alignment group that never has two elements;
+- everything, when there is no browser;
+- in a complete check, what the acceptance list needs (below).
+
+**A complete check** is every frame with the sweep. It writes the evidence file (`handoff.md`) and the gallery, and
+it does not pass without:
+
+- `review.md` beside `design.json` with an acceptance list whose every row has a result (its lines under a heading
+  that names it; see [review.md](review.md#the-acceptance-list));
+- a frame for every `frames/<name>/reference.png` in the pack;
+- a sweep with a dense story whose URL is no frame's page (a story differing only in its query, as Storybook's do,
+  counts as its own; the script cannot tell whether it is dense);
+- for each control inside the component, in a frame, that opens something (`aria-expanded`, `popovertarget`, or an
+  `aria-haspopup` other than false), a journey that acts on it and expects something hidden. A hover hint without
+  these attributes is not found: list it in the acceptance list yourself.
+
+**Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. They write
+no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
+about what they measured. Every check first removes an earlier `handoff.md`, so the one that exists is the last
+complete check's. The page before the work is the one the first check saw. If the root was absent after setup, the
+gallery records its absence. Delete `out/before/` to start a new baseline.
 
 ## design.json
 
@@ -89,7 +102,7 @@ findings from being counted again as regions. With screenshots alone, inspect te
 | `max` | the largest difference in px the entry covers, at each width in the sweep; only a difference with a size (a position, a size, an overflow, a cut, an overlap, an alignment spread, a resize) can be covered, never a layout switch or a covered control; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one. A `text` entry names one design text |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
-| `status` | `accepted`: excused; `proposed`: shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
+| `status` | `accepted`: excused, set only by the owner, with `decidedBy`; `proposed`: written by you, shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
 | `reason` | why, in a sentence the owner can judge |
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |
 
@@ -147,5 +160,5 @@ In `out/` beside `design.json`, or `--out`:
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
 | `handoff.md` | written by a complete check, stamped with its time and, in a Git repository, the commit and whether the tree had uncommitted changes: the evidence a handoff quotes. It lists the pictures to look at first, then each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it sees something visible and never expects anything hidden), each ledger entry with what it excused, awaits or that it matched nothing, ledger faults, the acceptance list's rows (a blank result reads "not checked"), and what the script did not check |
-| `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
-| `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, each frame's settings, spec and image, the sweep), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |
+| `gallery.html` | written by a complete check: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, the journeys, and every ledger entry with its reason: the record to hand over |
+| `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, the root, host and viewport, each frame's settings, spec and image, the sweep and the journeys), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

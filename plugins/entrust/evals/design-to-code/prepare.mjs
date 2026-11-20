@@ -78,6 +78,6 @@ write(path.join(judge, "design.json"), {
   ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}),
 });
 // The judge's own pack needs no review of its own: its acceptance list is the case.
-write(path.join(judge, "review.md"), "# Judge\n\n## Acceptance list\n\n- the case's frames, sweep and answer key\n");
+write(path.join(judge, "review.md"), "# Judge\n\n## Acceptance list\n\n- the case's frames, sweep and answer key: judged by score.mjs\n");
 write(path.join(judge, "run.json"), { case: name, arm, dir, prepared: new Date().toISOString() });
 console.log(fs.readFileSync(path.join(caseDir, "brief.md"), "utf8").trim());

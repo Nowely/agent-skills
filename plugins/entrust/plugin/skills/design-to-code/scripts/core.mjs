@@ -284,6 +284,8 @@ export function ledgerFaults(entries) {
     if (!PROPERTIES.includes(e.property) && e.property !== "*") faults.push(`${at}: property must be one of ${PROPERTIES.join(", ")} or *`);
     if (!CATEGORIES.includes(e.category)) faults.push(`${at}: category must be one of ${CATEGORIES.join(", ")}`);
     if (!STATUSES.includes(e.status)) faults.push(`${at}: status must be accepted or proposed`);
+    // The implementer proposes; only the owner accepts, and the entry says who.
+    if (e.status === "accepted" && !String(e.decidedBy ?? "").trim()) faults.push(`${at}: an accepted entry names who decided it in "decidedBy": only the owner accepts; write "proposed"`);
     // A proposal covers one difference: a wildcard waiting for a decision would silence everything it matches.
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);

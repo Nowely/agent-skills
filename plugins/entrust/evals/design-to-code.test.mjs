@@ -165,7 +165,7 @@ test("an accepted change of size excuses everything it pushes down; a proposed o
 });
 
 test("a text the ledger replaces is looked for as the page's text and reported", () => {
-  const ledger = [{ landmark: "32 ядер", property: "text", actual: "32 ядра", category: "design-error", status: "accepted", reason: "plural form" }];
+  const ledger = [{ landmark: "32 ядер", property: "text", actual: "32 ядра", category: "design-error", status: "accepted", decidedBy: "owner", reason: "plural form" }];
   assert.equal(pageText({ text: "32 ядер" }, "280", ledger), "32 ядра");
   assert.equal(pageText({ text: "32 ядер" }, "280", [{ ...ledger[0], frame: "601" }]), "32 ядер");
   const spec = { frame: { width: 100, height: 40 }, landmarks: [{ text: "32 ядер", box: box(0, 0, 50, 20) }] };
@@ -174,11 +174,11 @@ test("a text the ledger replaces is looked for as the page's text and reported",
 });
 
 test("a ledger entry needs a reason, a known category and status, and only an accepted one may use *", () => {
-  assert.deepEqual(ledgerFaults([{ landmark: "New", property: "y", category: "owner", status: "accepted", reason: "x" }]), []);
+  assert.deepEqual(ledgerFaults([{ landmark: "New", property: "y", category: "owner", status: "accepted", decidedBy: "owner", reason: "x" }]), []);
   const faults = ledgerFaults([{ landmark: "New", property: "z", category: "taste", status: "rejected" }]).join("\n");
   for (const word of ["property", "category", "status", "reason"]) assert.match(faults, new RegExp(word));
   assert.match(ledgerFaults([{ landmark: "*", property: "*", category: "ux", status: "proposed", reason: "later" }]).join(), /only an accepted entry may use \*/);
-  assert.match(ledgerFaults([{ property: "region", category: "system", status: "accepted", reason: "kit icon" }]).join(), /region/);
+  assert.match(ledgerFaults([{ property: "region", category: "system", status: "accepted", decidedBy: "owner", reason: "kit icon" }]).join(), /region/);
 });
 
 test("font size, weight, line height and colour are compared when the spec states them", () => {
@@ -193,9 +193,9 @@ test("a differing area outside the texts is a finding with its place, excused by
   assert.deepEqual(r.issues.map((i) => [i.landmark, i.property, i.status]), [["region near “New”", "region", "fail"]]);
   assert.equal(r.moved, 1);
   const ok = compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions,
-    ledger: [{ property: "region", region: [16, 16, 104, 104], category: "system", status: "accepted", reason: "the kit's image" }] });
+    ledger: [{ property: "region", region: [16, 16, 104, 104], category: "system", status: "accepted", decidedBy: "owner", reason: "the kit's image" }] });
   assert.equal(ok.pass, true);
-  const allProperties = { landmark: "New", property: "*", category: "system", status: "accepted", reason: "kit badge" };
+  const allProperties = { landmark: "New", property: "*", category: "system", status: "accepted", decidedBy: "owner", reason: "kit badge" };
   assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [allProperties] }).pass, false);
   assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [{ ...allProperties, landmark: "*" }] }).pass, true);
 });
@@ -231,7 +231,7 @@ test("widths become ranges and the reports lead with the root and where to start
 });
 
 test("a sweep entry bounded by max excuses the widths it covers and not a larger difference at another", () => {
-  const ledger = [{ landmark: ".v", property: "align", max: 1.02, category: "platform", status: "accepted", reason: "subpixel" }];
+  const ledger = [{ landmark: ".v", property: "align", max: 1.02, category: "platform", status: "accepted", decidedBy: "owner", reason: "subpixel" }];
   const probes = [
     { width: 601, issues: [{ landmark: ".v", property: "align", delta: 1.02, actual: "left edges 1.02 px apart" }] },
     { width: 624, issues: [{ landmark: ".v", property: "align", delta: 8, actual: "left edges 8 px apart" }] },
@@ -269,13 +269,13 @@ const s = "<p data-node-id='3:5'>Str</p>";`);
 
 test("an entry bounded by max covers only differences that have a size", () => {
   const probes = [{ width: 320, issues: [{ landmark: "A × B", property: "overlap", actual: "40 × 12 px" }] }];
-  const ledger = [{ landmark: "A × B", property: "overlap", max: 1, category: "platform", status: "accepted", reason: "tiny" }];
+  const ledger = [{ landmark: "A × B", property: "overlap", max: 1, category: "platform", status: "accepted", decidedBy: "owner", reason: "tiny" }];
   assert.equal(sweepIssues(probes, ledger)[0].status, "fail");
   assert.equal(sweepIssues(probes, [{ ...ledger[0], max: undefined }])[0].status, "accepted");
 });
 
 test("a frame's size is held to the ledger's max as measured, not as rounded for display", () => {
-  const entry = (max) => [{ landmark: "root", property: "width", max, category: "platform", status: "accepted", reason: "subpixel" }];
+  const entry = (max) => [{ landmark: "root", property: "width", max, category: "platform", status: "accepted", decidedBy: "owner", reason: "subpixel" }];
   assert.equal(compare({}, { width: 301.004 }, entry(1)).issues.find((i) => i.property === "width").status, "fail");
   assert.equal(compare({}, { width: 301.015625 }, entry(1.019)).issues.find((i) => i.property === "width").status, "accepted");
 });
@@ -283,7 +283,7 @@ test("a frame's size is held to the ledger's max as measured, not as rounded for
 test("a proposal still counts in the score: relabelling a failure is no progress", () => {
   const failing = compare({}, { height: 217 });
   const proposed = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
-  const accepted = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "accepted", reason: "more air" }]);
+  const accepted = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "accepted", decidedBy: "owner", reason: "more air" }]);
   assert.equal(proposed.score, failing.score);
   assert.equal(accepted.score, 0);
 });
@@ -382,7 +382,7 @@ test("extra text inside a matched node and text under an invisible parent cannot
   f.write('<main><div style="clip-path:inset(100%)"><span>Ready</span></div></main>');
   assert.ok(check(f.dir).result.frames[0].issues.some((i) => i.landmark === "Ready" && i.actual === "missing"));
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "presence",
-    category: "owner", status: "accepted", reason: "omit the label" }]));
+    category: "owner", status: "accepted", decidedBy: "owner", reason: "omit the label" }]));
   const allowed = check(f.dir);
   assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr);
   fs.writeFileSync(path.join(f.dir, "ledger.json"), "[]");
@@ -401,7 +401,7 @@ test("an eleventh independent region still fails when the ledger accepts the ten
   for (let i = 0; i < 11; i++) {
     const x = 5 + i * 22, side = i === 10 ? 6 : 10;
     marks.push(`<i style="position:absolute;left:${x}px;top:40px;width:${side}px;height:${side}px;background:black"></i>`);
-    if (i !== 10) ledger.push({ property: "region", region: [x, 40, side, side], category: "owner", status: "accepted", reason: "accepted mark" });
+    if (i !== 10) ledger.push({ property: "region", region: [x, 40, side, side], category: "owner", status: "accepted", decidedBy: "owner", reason: "accepted mark" });
   }
   f.write(`<main><span>Ready</span>${marks.join("")}</main>`);
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify(ledger));
@@ -503,7 +503,7 @@ test("a smaller font is found even where its line height keeps every position", 
 test("an accepted deviation passes, a proposed one remains pending, an unlisted one fails", browser, () => {
   const css = ".card { padding-bottom: 28px; }";
   const entry = { landmark: "root", property: "height", category: "owner", reason: "the owner asked for more space below" };
-  const accepted = check(variant(css, [{ ...entry, status: "accepted" }]), "--frame", "720");
+  const accepted = check(variant(css, [{ ...entry, status: "accepted", decidedBy: "owner" }]), "--frame", "720");
   assert.equal(accepted.status, 0, accepted.stdout);
   const pending = check(variant(css, [{ ...entry, status: "proposed" }]), "--frame", "720");
   assert.equal(pending.status, 3);
@@ -600,7 +600,7 @@ test("what is not text is checked too: an image's size and a background's colour
 });
 
 test("the kit's shorter badge, once accepted, excuses everything below it and the areas that moved with it", browser, () => {
-  const entry = { landmark: ["New", "Bestseller"], property: "*", category: "system", status: "accepted", reason: "the kit's badge is 19 px high" };
+  const entry = { landmark: ["New", "Bestseller"], property: "*", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit's badge is 19 px high" };
   const r = check(variant(".badge { line-height: 19px; }", [entry]), "--no-sweep");
   assert.equal(r.status, 0, r.stdout);
   assert.equal(check(variant(".badge { line-height: 19px; }"), "--no-sweep").status, 1);
@@ -683,7 +683,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   assert.equal(run(12, v, { tolerance: 1.5 }).status, 1);
   // E143: an entry's max is held to the measured spread on both sides of the bound, not to the rounded one.
   const bounded = (second, max) => {
-    fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: ".v", property: "align", max, category: "platform", status: "accepted", reason: "subpixel" }]));
+    fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: ".v", property: "align", max, category: "platform", status: "accepted", decidedBy: "owner", reason: "subpixel" }]));
     fs.writeFileSync(path.join(dir, "page.html"), page(10).replace('left:10px;top:30px"', `left:10px;top:30px;transform:translateX(${second - 10}px)"`));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
     fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v, stories: [{ name: "page", url: "page.html?dense" }] } }));
@@ -712,7 +712,7 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
   assert.ok(fs.existsSync(path.join(dir, "design/720/reference.png")));
   assert.ok(!fs.readdirSync(dir, { recursive: true }).some((f) => /reference\.html$/.test(f)), "the answer stays out");
   const score = () => JSON.parse(spawnSync(process.execPath, [path.join(HERE, "design-to-code/score.mjs"), dir], { encoding: "utf8" }).stdout);
-  fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: "*", property: "*", category: "owner", status: "accepted", reason: "everything" }]));
+  fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: "*", property: "*", category: "owner", status: "accepted", decidedBy: "owner", reason: "everything" }]));
   const start = score();
   assert.equal(start.pass, false);
   assert.deepEqual(start.ledgerEntries, ["accepted owner: * * — everything"]);
@@ -735,7 +735,7 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
 // ------------------------------------------------------------------ round 8: what the first real submission missed
 
 test("a text deviation names one design text", () => {
-  const base = { property: "text", actual: "Go", category: "owner", status: "accepted", reason: "the owner renamed it" };
+  const base = { property: "text", actual: "Go", category: "owner", status: "accepted", decidedBy: "owner", reason: "the owner renamed it" };
   assert.match(ledgerFaults([{ ...base, landmark: ["Ready", "Steady"] }]).join(), /one design text/);
   assert.match(ledgerFaults([{ ...base, landmark: "*" }]).join(), /one design text/);
   assert.deepEqual(ledgerFaults([{ ...base, landmark: "Ready" }]), []);
@@ -1042,7 +1042,7 @@ test("pass is not given without a sweep, with the frames' page as the story, or 
   assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is a frame's own page/);
   f.write('<main><span>Ready</span><button aria-expanded="false" style="position:absolute;left:200px;top:0">More</button></main>');
   const opener = run(cfg);
-  assert.match(opener.stdout, /1 control opens something \(“More”\) and no journey checks them/);
+  assert.match(opener.stdout, /1 control opens something with no journey that opens and closes it: “More”/);
   assert.equal(opener.status, 1, "the button is not in the spec either");
 });
 
@@ -1060,7 +1060,8 @@ test("the handoff's evidence counts what the ledger excused, names unused entrie
   assert.match(handoff, /proposed: Gone presence — drop it \(ux · matched nothing\); options: keep; drop/);
   assert.match(handoff, /^- popup: not checked$/m);
   assert.match(handoff, /^- frame~[0-9a-f]{8}\/side\.png$/m);
-  assert.equal(r.status, 0, r.stdout);
+  assert.equal(r.status, 2, "a blank result leaves the check incomplete");
+  assert.match(r.stdout, /acceptance: 1 of 2 rows have a result; still blank: “popup”/);
 });
 
 // ------------------------------------------------------------------ round 11c: the third verifier's findings
@@ -1069,15 +1070,15 @@ test("the handoff credits each ledger entry by itself, reads the result column a
   const f = smallFrame();
   f.write('<main><span style="margin-left:9px">Ready</span></main>');
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([
-    { landmark: "Gone", property: "x", category: "system", status: "accepted", reason: "the kit" },
-    { landmark: "Ready", property: "x", category: "system", status: "accepted", reason: "the kit" },
-    { landmark: ["*"], property: "font", category: "platform", status: "accepted", reason: "smoothing" }]));
+    { landmark: "Gone", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
+    { landmark: "Ready", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
+    { landmark: ["*"], property: "font", category: "platform", status: "accepted", decidedBy: "owner", reason: "smoothing" }]));
   fs.writeFileSync(path.join(f.dir, "review.md"), "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  assert.match(handoff, /accepted: Gone x — the kit \(system · matched nothing\)/);
-  assert.match(handoff, /accepted: Ready x — the kit \(system · excuses 1\)/);
-  assert.match(handoff, /\* font — smoothing \(platform · wildcard · matched nothing\)/);
+  assert.match(handoff, /accepted: Gone x — the kit \(system · decided by owner · matched nothing\)/);
+  assert.match(handoff, /accepted: Ready x — the kit \(system · decided by owner · excuses 1\)/);
+  assert.match(handoff, /\* font — smoothing \(platform · decided by owner · wildcard · matched nothing\)/);
   for (const line of [/^- frame: pass$/m, /^- popup: not checked$/m, /^- dense story: swept$/m, /^- probe: not checked$/m]) assert.match(handoff, line);
   assert.ok(handoff.indexOf("## Pictures to look at first") < handoff.indexOf("## Frames"), "pictures come before the numbers");
   for (const p of handoff.match(/^- (\S+\.png)$/gm).map((l) => l.slice(2))) assert.ok(fs.existsSync(path.join(f.dir, "out", p)), p);
@@ -1099,4 +1100,21 @@ test("journeys can change the width and expect the focus; a hidden step on what 
   assert.match(check(f.dir).stderr, /journey names must be unique/);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], setup: [{ width: 280 }] }] }));
   assert.match(check(f.dir).stderr, /a step is one of/);
+});
+
+test("only the owner accepts: an accepted entry without decidedBy is a ledger fault", () => {
+  const entry = { landmark: "Ready", property: "x", category: "system", reason: "the kit" };
+  assert.match(ledgerFaults([{ ...entry, status: "accepted" }]).join(), /names who decided it/);
+  assert.deepEqual(ledgerFaults([{ ...entry, status: "accepted", decidedBy: "owner" }]), []);
+  assert.deepEqual(ledgerFaults([{ ...entry, status: "proposed" }]), []);
+});
+
+test("each control that opens something needs a journey that opens and closes it", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span>Ready</span><button id="a" aria-expanded="false" style="position:absolute;left:150px;top:0">A</button><button id="b" aria-expanded="false" style="position:absolute;left:200px;top:0">B</button></main>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "a", steps: [{ click: "#a" }, { visible: "main" }, { hidden: ".gone" }] },
+    { name: "b opens only", steps: [{ click: "#b" }, { visible: "main" }] }] }));
+  const r = check(f.dir);
+  assert.match(r.stdout, /^Not checked: 1 control opens something with no journey that opens and closes it: “B”\.$/m, "A is opened and closed, B only opened");
 });

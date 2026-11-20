@@ -801,12 +801,21 @@ async function journeys(browser, cfg) {
     let opened, failed;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
-    const seen = new Set(), notes = [];
+    const seen = new Set(), notes = [], touched = new Set();
     if (opened) {
       try {
         for (const [i, step] of j.steps.entries()) {
           try {
             if ("width" in step) { await setWidth(opened.page, cfg, step.width, 900); await settle(opened.page, cfg.root); continue; }
+            // Which control that opens something this step acts on, named as the check names openers.
+            const [action] = Object.keys(step);
+            if (["hover", "click", "tap", "focus", "move"].includes(action) && typeof step[action] === "string") {
+              const name = await opened.page.locator(step[action]).first().evaluate((el) => {
+                const o = el.closest("[aria-haspopup], [aria-expanded], [popovertarget]") ?? el;
+                return (o.getAttribute("aria-label") || o.title || o.textContent || o.tagName.toLowerCase()).replace(/\s+/g, " ").trim().slice(0, 40);
+              }, null, { timeout: 2000 }).catch(() => null);
+              if (name) touched.add(name);
+            }
             await runStep(opened.page, step);
             if ("visible" in step) seen.add(step.visible);
             // A hidden step on what the journey never saw open proves nothing about closing it.
@@ -815,7 +824,8 @@ async function journeys(browser, cfg) {
         }
       } finally { await opened.context.close(); }
     }
-    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}) });
+    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}),
+      touched: [...touched], closes: j.steps.some((step) => "hidden" in step) });
   }
   return results;
 }
@@ -863,14 +873,19 @@ function acceptanceRows(cfg) {
 // The list exists when its section has at least one line.
 const reviewed = (cfg) => acceptanceRows(cfg).length > 0;
 
-function acceptanceGaps(cfg, flags, sweepResult, results) {
+function acceptanceGaps(cfg, flags, sweepResult, results, journeyResults) {
   const gaps = [];
-  if (!reviewed(cfg)) gaps.push("review.md has no acceptance list: write it before the first product edit");
+  const rows = acceptanceRows(cfg), blank = rows.filter((r) => !r.result);
+  if (!rows.length) gaps.push("review.md has no acceptance list: write it before the first edit to the product's code");
+  else if (blank.length) gaps.push(`acceptance: ${rows.length - blank.length} of ${rows.length} rows have a result; still blank: ${blank.slice(0, 4).map((r) => `“${r.item}”`).join(", ")}${blank.length > 4 ? ", …" : ""}`);
   if (!cfg.sweep) gaps.push("no sweep: the widths between the frames and a dense story were not checked");
   const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
   for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url)) gaps.push(`the story ${st.name} is a frame's own page: a dense story renders data of its own`);
+  // Each control that opens something wants a journey that acts on it and expects something hidden afterwards.
   const openers = [...new Set(results.flatMap((r) => r.openers ?? []))];
-  if (openers.length && !cfg.journeys.length) gaps.push(`${openers.length} control${openers.length === 1 ? "" : "s"} open${openers.length === 1 ? "s" : ""} something (${openers.slice(0, 4).map((o) => `“${o}”`).join(", ")}${openers.length > 4 ? ", …" : ""}) and no journey checks them`);
+  const closed = new Set(journeyResults.filter((j) => j.closes).flatMap((j) => j.touched));
+  const unchecked = openers.filter((o) => !closed.has(o));
+  if (unchecked.length) gaps.push(`${unchecked.length} control${unchecked.length === 1 ? "" : "s"} open${unchecked.length === 1 ? "s" : ""} something with no journey that opens and closes ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.slice(0, 4).map((o) => `“${o}”`).join(", ")}${unchecked.length > 4 ? ", …" : ""}`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
   if (fs.existsSync(dir)) {
@@ -909,7 +924,7 @@ async function check(file, flags) {
     const journeyResults = full ? await journeys(browser, cfg) : [];
     // A complete check (every frame, the sweep) is the evidence for a handoff; --frame and --no-sweep are partial.
     const complete = full && !flags["no-sweep"];
-    const gaps = complete ? acceptanceGaps(cfg, flags, sweepResult, results) : [];
+    const gaps = complete ? acceptanceGaps(cfg, flags, sweepResult, results, journeyResults) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);

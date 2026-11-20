@@ -32,7 +32,7 @@ const frame = (name) => ({ spec: path.join(HERE, "design", name, "spec.json"), r
 const frames = ["wide-760", "medium-520", "narrow-320"].map((name) => ({ name, width: Number(name.split("-")[1]), ...frame(name) }));
 frames.push({ name: "deal-popover", width: 760, root: POP, setup: [{ hover: "text=−12%" }], ...frame("deal-popover") });
 // The judge's own pack: its acceptance list is this file's header.
-fs.writeFileSync(path.join(out, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge.mjs's criteria\n");
+fs.writeFileSync(path.join(out, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge.mjs's criteria: judged below\n");
 fs.writeFileSync(path.join(out, "design.json"), JSON.stringify({ url: "build/story.html?data=frame", root: "#host > *", host: "#host", frames,
   sweep: { from: 280, to: 800, step: 8, stories: [{ name: "dense", url: "build/story.html?data=dense" }] } }, null, 1));
 const run = spawnSync(process.execPath, [DESIGN, "check", path.join(out, "design.json")], { encoding: "utf8" });
