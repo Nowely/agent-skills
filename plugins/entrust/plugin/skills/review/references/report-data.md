@@ -157,7 +157,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`. `historical: true` marks
   a picture of another revision, with its `revision` and `sources`; without the mark the picture's revision is
-  unknown, not the current one. A historical picture never establishes the current result.
+  unknown, not the current one. A historical picture never establishes the current result. Where the record's text
+  already says which revision a picture shows, its mark and `revision` say the same.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
@@ -185,6 +186,9 @@ Every analytical claim added by the fields below carries `sources`, a list in on
 - `{ "at": "logs/test.txt:12", "revision": "abc123", "quote": "..." }` — external: the place is required; the
   revision is required for a claim about a checked version, and the quote is what makes the claim travel without
   the file. A source named but unreachable, or external without a quote, is a warning, not a fault.
+
+A source shows the claim. A ref to the entry that makes it — a question cited for its own variant's consequence, a
+screen for its own provenance — says only where the claim stands, and the check refuses it.
 
 The check sees that a source is named and resolves; it does not prove that the text matches the source — that is
 the verifier's work.

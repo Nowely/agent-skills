@@ -647,6 +647,10 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
       [(r) => { r.tradeoffs[0].sources = undefined; }, "names no source"],
       [(r) => { r.passport.links[0].url = "javascript:alert(1)"; }, "url is an http(s) link"],
       [(r) => { r.questions[3].parent.variants = []; }, "parent lists no variants"],
+      // A claim cannot cite the entry that makes it: that says where the claim stands, not what shows it.
+      [(r) => { r.questions[2].variants[0].consequences[0].sources = [{ ref: "/questions/2" }]; }, 'source ref "/questions/2" is the entry that makes the claim'],
+      [(r) => { r.questions[2].recommendation.sources.push({ ref: "/questions/2" }); }, 'source ref "/questions/2" is the entry that makes the claim'],
+      [(r) => { r.screens[1].sources = [{ ref: "/screens/1" }]; }, 'source ref "/screens/1" is the entry that makes the claim'],
     ];
     for (const [change, fault] of faults) {
       const r = structuredClone(THEMED); change(r);

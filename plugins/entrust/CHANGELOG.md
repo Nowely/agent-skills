@@ -22,6 +22,10 @@ forensics remain in the repository references and release notes.
   the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
   counted apart, «requests answered N of M, not verified», in the bar, the summary, the export's text and the print.
   Done still lists both, and the export's JSON progress is unchanged.
+- **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
+  context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
+  says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
+  revision agree with what the record's text already says of it.
 
 ## 0.43.0 — 2026-11-20
 
