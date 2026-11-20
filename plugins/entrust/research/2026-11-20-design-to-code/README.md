@@ -78,3 +78,7 @@ full task only when those warrant it.
 ## Follow-up calibration
 
 The [third draft and calibration](03-calibration.md) exercise the checker on a real design input and preserved public builds. A corrected snapshot matches itself, but one accepted control fails the current alignment threshold. The release comparison gate remains open and no model comparison has been run. The prior experiment protocol remains historical; both proposed arms now receive the same design inputs.
+
+## Independent recommendations
+
+An Astra review separates the observed calibration results from next-edition hypotheses, including a reproduced bounded-exception failure and the limits of alignment groups. The [recommendations](04-recommendations.md) also record what worked and a proposed stop/go sequence.

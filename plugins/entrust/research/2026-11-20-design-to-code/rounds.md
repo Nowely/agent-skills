@@ -49,3 +49,7 @@ difference image; the context of the case omitted three colours and said every a
 in its page.
 
 `node plugins/entrust/evals/design-to-code.test.mjs`: 25 cases, 25 passed, about 45 s.
+
+## Independent recommendations
+
+After the round 2 calibration, one independent advisor inspected the report and relevant code. The advisor found a bounded-exception aggregation defect and documented concrete successes, limits and [ideas for the next version](04-recommendations.md). No model implementation comparison was run.

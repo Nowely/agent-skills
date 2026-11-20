@@ -16,6 +16,18 @@ The existing explicit alignment check was then used with the same groups and its
 
 **Gate result: not passed.** The current check has not distinguished the positive case from both accepted controls under one verified design specification. An independent human review is still needed to classify the output. The agreed next stage, a short paired model experiment, was not run.
 
+### Alignment observations and full-frame coverage
+
+| Saved build | 601 px alignment sweep | 624 px alignment sweep |
+|---|---|---|
+| Previously observed misalignment | Findings at 3, 6 and 8 px after display rounding | Findings at 2 and 3 px after display rounding |
+| Previously accepted build A | Pass | Pass |
+| Previously accepted build B | Finding at 1.015625 px, against the 1 px threshold | Pass |
+
+The figures in the first row come from the alignment groups, not from a trusted Figma geometry specification. Every one of the six **full-frame comparisons** returned fail, with 12 frame findings each. Therefore a sweep pass does not mean visual parity. The acceptable tolerance for the borderline finding and the truth of the other frame findings remain unverified.
+
+The checker also reported an unrelated font-availability warning during the corrected self-comparison. Its validity was not independently established. Refer to the [independent assessment](04-recommendations.md) for a separately reproduced bounded-exception problem and a proposal for confirming the real design geometry.
+
 ## Other changes
 
 The comparison looks for the actual design text first and measures a recorded alternate only if it is present. A proposed deviation remains pending rather than turning the result green; absent reference imagery is incomplete. The browser regression suite exercises these states and the saved Git diff in a disposable clone with existing edits and a new file. A large unsaved file is reported. Arc's documented diff and status commands were inspected, but a complete staged/unstaged/untracked round-trip was not established. For that reason the skill no longer claims that a non-Git project has a recoverable snapshot. No automatic restore was added.
