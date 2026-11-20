@@ -66,9 +66,11 @@ function loadConfig(file) {
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
   if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps) || !j.steps.length)) throw new Error("design.json: each journey needs a name and steps");
   // A journey that expects nothing cannot fail, so its "holds" would prove nothing.
-  for (const j of journeys) if (!j.steps.some((step) => ["visible", "hidden", "text"].some((k) => step && k in step))) throw new Error(`design.json: the journey "${j.name}" expects nothing: add a visible, hidden or text step`);
-  const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? []), ...journeys.flatMap((j) => j.steps)];
+  for (const j of journeys) if (!j.steps.some((step) => EXPECT.some((k) => step && k in step))) throw new Error(`design.json: the journey "${j.name}" expects nothing: add a visible, hidden, text or focused step`);
+  const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? [])];
   for (const step of steps) { const fault = stepFault(step); if (fault) throw new Error(`design.json: ${fault}`); }
+  for (const step of journeys.flatMap((j) => j.steps)) { const fault = stepFault(step, true); if (fault) throw new Error(`design.json: ${fault}`); }
+  if (new Set(journeys.map((j) => j.name)).size !== journeys.length) throw new Error("design.json: journey names must be unique");
   return {
     ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
@@ -150,9 +152,15 @@ async function setWidth(page, cfg, width, viewportHeight) {
   }
 }
 
-const STEPS = ["wait", "press", "fill", "move", "tap", "click", "hover", "focus", "visible", "hidden", "text"];
-const stepFault = (step) => (!step || typeof step !== "object" || Object.keys(step).length !== 1 || !STEPS.includes(Object.keys(step)[0])
-  ? `a step is one of ${STEPS.join(", ")}: ${JSON.stringify(step)}` : null);
+const STEPS = ["wait", "press", "fill", "move", "tap", "click", "hover", "focus", "visible", "hidden", "text", "focused"];
+const EXPECT = ["visible", "hidden", "text", "focused"];
+// A journey may also change the width it runs at: a state entered must survive a resize.
+const stepFault = (step, journey = false) => {
+  const known = journey ? [...STEPS, "width"] : STEPS;
+  if (!step || typeof step !== "object" || Object.keys(step).length !== 1 || !known.includes(Object.keys(step)[0])) return `a step is one of ${known.join(", ")}: ${JSON.stringify(step)}`;
+  if ("text" in step && !(Array.isArray(step.text) && step.text[1])) return `a text step names a selector and a text that is not empty: ${JSON.stringify(step)}`;
+  return null;
+};
 
 // Whether any match of a Playwright selector is seen, as a person would: a size, not hidden, not transparent; with a
 // text, one that shows it. A journey's expectation polls this for a second.
@@ -181,7 +189,8 @@ async function runStep(page, step) {
   if (action === "visible" && !(await until(page, () => anySeen(page, arg)))) throw new Error(`no ${arg} is visible`);
   if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg))))) throw new Error(`${arg} is still visible`);
   if (action === "text" && !(await until(page, () => anySeen(page, arg[0], arg[1])))) throw new Error(`no visible ${arg[0]} shows “${arg[1]}”`);
-  if (["visible", "hidden", "text"].includes(action)) return;
+  if (action === "focused" && !(await until(page, () => page.locator(arg).evaluateAll((els) => els.some((e) => e.contains(document.activeElement)))))) throw new Error(`${arg} does not have the focus`);
+  if (EXPECT.includes(action)) return;
   if (!["click", "hover", "focus"].includes(action)) throw new Error(`unknown step ${JSON.stringify(step)}`);
   return page.locator(arg).first()[action]();
 }
@@ -433,7 +442,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     }
     const textBoxes = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => boxOf([line])));
     // Controls that open something (a popup, a menu, a sheet): each wants journeys.
-    const openers = [...root.querySelectorAll("[aria-haspopup]:not([aria-haspopup=false]), [aria-expanded], [popovertarget]")].filter(visible)
+    const opens = (el) => el.hasAttribute("aria-expanded") || el.hasAttribute("popovertarget") || !/^(false|)$/i.test((el.getAttribute("aria-haspopup") ?? "").trim());
+    const openers = [...root.querySelectorAll("[aria-haspopup], [aria-expanded], [popovertarget]")].filter((el) => visible(el) && opens(el))
       .map((el) => norm(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase()).slice(0, 40));
     return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected, openers };
   }
@@ -791,14 +801,21 @@ async function journeys(browser, cfg) {
     let opened, failed;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
+    const seen = new Set(), notes = [];
     if (opened) {
       try {
         for (const [i, step] of j.steps.entries()) {
-          try { await runStep(opened.page, step); } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
+          try {
+            if ("width" in step) { await setWidth(opened.page, cfg, step.width, 900); await settle(opened.page, cfg.root); continue; }
+            await runStep(opened.page, step);
+            if ("visible" in step) seen.add(step.visible);
+            // A hidden step on what the journey never saw open proves nothing about closing it.
+            if ("hidden" in step && !seen.has(step.hidden)) notes.push(`${step.hidden} was never seen open before it was expected hidden`);
+          } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
       } finally { await opened.context.close(); }
     }
-    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}) });
+    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}) });
   }
   return results;
 }
@@ -806,36 +823,54 @@ async function journeys(browser, cfg) {
 // What a full check expects beyond the frames: review.md with the acceptance list, every reference in the pack's
 // frames/ checked by a frame, and a dense story in the sweep. A gap leaves the check incomplete, so "pass" means the
 // acceptance list was written and its measured part ran.
-// The acceptance list's rows as written: the item and its result, for the handoff.
+// The acceptance list as written in review.md: every line under a heading that names it (in English or Russian),
+// subheadings included, code blocks left out; each table row past the header or each list item is a line, with its
+// result from a column named Result (or Status), else the last column, or after a colon in a list item.
 function acceptanceRows(cfg) {
   const file = path.join(cfg.dir, "review.md");
   if (!fs.existsSync(file)) return [];
-  const text = fs.readFileSync(file, "utf8"), heading = text.search(/^#+[^\n]*acceptance/im);
-  if (heading < 0) return [];
-  const rows = text.slice(heading).split("\n").slice(1).join("\n").split(/^#+ /m)[0].split("\n")
-    .filter((line) => /^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s|:-]*\|\s*$/.test(line))
-    .map((line) => line.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
-  return rows.slice(1).map((cells) => ({ item: cells[0], result: cells.length > 1 ? cells.at(-1) : "" }));
+  const lines = fs.readFileSync(file, "utf8").replace(/^(```|~~~)[\s\S]*?^\1[^\n]*$/gm, "").split("\n");
+  const body = [];
+  let level = 0;
+  for (const line of lines) {
+    const h = line.match(/^(#+)\s+(.*)$/);
+    if (h) {
+      if (level && h[1].length <= level) level = 0;
+      if (!level && /acceptance|приёмк|приемк/i.test(h[2])) level = h[1].length;
+      body.push("");
+    } else if (level) body.push(line);
+  }
+  const rows = [];
+  let table = [];
+  const flush = () => {
+    const cells = table.filter((l) => !/^\s*\|?[\s|:-]*\|?\s*$/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+    if (cells.length > 1) {
+      const result = cells[0].findIndex((c) => /result|status|результат|итог/i.test(c));
+      for (const row of cells.slice(1)) rows.push({ item: row[0], result: row[result >= 0 ? result : row.length - 1] ?? "" });
+    }
+    table = [];
+  };
+  for (const line of body) {
+    if (/^\s*\|/.test(line)) { table.push(line); continue; }
+    flush();
+    const item = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*\S)/);
+    if (item) { const [, what, result = ""] = item[1].match(/^(.*?)(?::\s+(.*))?$/); rows.push({ item: what, result }); }
+  }
+  flush();
+  return rows;
 }
 
-// The list is a heading that names it, with at least one line under it: a table row or a list item.
-const reviewed = (cfg) => {
-  const file = path.join(cfg.dir, "review.md");
-  if (!fs.existsSync(file)) return false;
-  const text = fs.readFileSync(file, "utf8"), heading = text.search(/^#+[^\n]*acceptance/im);
-  if (heading < 0) return false;
-  const section = text.slice(heading).split("\n").slice(1).join("\n").split(/^#+ /m)[0];
-  const lines = section.split("\n");
-  const rows = lines.filter((line) => /^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s|:-]*\|\s*$/.test(line));
-  return rows.length >= 2 || lines.some((line) => /^\s*([-*]|\d+\.)\s+\S/.test(line));
-};
+// The list exists when its section has at least one line.
+const reviewed = (cfg) => acceptanceRows(cfg).length > 0;
+
 function acceptanceGaps(cfg, flags, sweepResult, results) {
   const gaps = [];
   if (!reviewed(cfg)) gaps.push("review.md has no acceptance list: write it before the first product edit");
   if (!cfg.sweep) gaps.push("no sweep: the widths between the frames and a dense story were not checked");
-  for (const st of cfg.sweep?.stories ?? []) if (st.url === cfg.url) gaps.push(`the story ${st.name} is the frames' own page: a dense story renders data of its own`);
+  const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
+  for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url)) gaps.push(`the story ${st.name} is a frame's own page: a dense story renders data of its own`);
   const openers = [...new Set(results.flatMap((r) => r.openers ?? []))];
-  if (openers.length && !cfg.journeys.length) gaps.push(`${openers.length} controls open something (${openers.slice(0, 4).map((o) => `“${o}”`).join(", ")}${openers.length > 4 ? ", …" : ""}) and no journey checks them`);
+  if (openers.length && !cfg.journeys.length) gaps.push(`${openers.length} control${openers.length === 1 ? "" : "s"} open${openers.length === 1 ? "s" : ""} something (${openers.slice(0, 4).map((o) => `“${o}”`).join(", ")}${openers.length > 4 ? ", …" : ""}) and no journey checks them`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
   if (fs.existsSync(dir)) {
@@ -850,6 +885,9 @@ function acceptanceGaps(cfg, flags, sweepResult, results) {
 async function check(file, flags) {
   const cfg = loadConfig(file);
   const out = path.resolve(flags.out ?? path.join(cfg.dir, "out"));
+  // The evidence a handoff quotes is only ever the last complete check's: any other run removes it first.
+  const handoff = path.join(out, "handoff.md");
+  fs.rmSync(handoff, { force: true });
   const raw = cfg.ledger && fs.existsSync(cfg.ledger) ? readJson(cfg.ledger) : [];
   const ledgerProblems = ledgerFaults(raw);
   const ledger = Array.isArray(raw) ? raw : [];
@@ -904,20 +942,19 @@ async function check(file, flags) {
     const restarted = history.length > 0 && !comparable.length;
     const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
-    // The evidence a handoff quotes comes from a check of every frame; a narrower check removes it, so it is never stale.
-    const handoff = path.join(out, "handoff.md");
     if (complete) {
-      const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: cfg.dir, encoding: "utf8" });
-      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, acceptance: acceptanceRows(cfg),
-        stamp: `${record.time}${commit.status === 0 ? ` · commit ${commit.stdout.trim()}` : ""}`,
-        pictures: [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter(Boolean), "gallery.html"] })}\n`);
-    } else fs.rmSync(handoff, { force: true });
+      const git = (...args) => spawnSync("git", args, { cwd: cfg.dir, encoding: "utf8" });
+      const commit = git("rev-parse", "--short", "HEAD"), dirty = git("status", "--porcelain").stdout?.trim();
+      const stamp = `${record.time}${commit.status === 0 ? ` · commit ${commit.stdout.trim()}${dirty ? " with uncommitted changes" : ""}` : ""}`;
+      const pictures = [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
+      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, acceptance: acceptanceRows(cfg), stamp, pictures })}\n`);
+    }
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
-    // The gallery is the record to hand over: written only by a check of every frame.
-    if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
+    // The gallery is the record to hand over: written only by a complete check.
+    if (complete) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
-    console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
+    console.log(`Verdict: ${status}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
     if (complete) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
     else console.log(`A partial check (${flags.frame ? "--frame" : "--no-sweep"}): it is not the evidence for a handoff.`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;

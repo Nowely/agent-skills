@@ -318,7 +318,7 @@ const weaker = (a, b) => (a === "fail" || b === "fail" ? "fail" : a === "pending
 
 function classify(issue, frame, ledger) {
   const entry = ledgerEntryFor(issue, frame, ledger);
-  return { ...issue, status: statusOf(entry), ...(entry ? { ledger: entry.id ?? entry.reason } : {}) };
+  return { ...issue, status: statusOf(entry), ...(entry ? { ledger: entry.id ?? entry.reason, entries: [ledger.indexOf(entry)] } : {}) };
 }
 
 // ------------------------------------------------------------------ one frame
@@ -403,7 +403,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     const inherited = !own.has(`${axis}\u0000${p.index}`);
     const base = { expected: shown(expected), actual: shown(actual), delta, inherited };
     if (!over(left)) {
-      if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason });
+      if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)) });
       return;
     }
     issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), status: "fail" });
@@ -444,7 +444,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     const entries = [...chain.entries, ...(carriedEntry ? [carriedEntry] : []), ...(rootEntry ? [rootEntry] : [])];
     const status = entries.reduce((s, e) => weaker(s, statusOf(e)), "accepted");
     if (over(dH - amount)) add("root", "height", spec.frame.height, measured.root.height, { status: "fail" });
-    else add("root", "height", spec.frame.height, measured.root.height, { status, ledger: entries[0]?.id ?? entries[0]?.reason });
+    else add("root", "height", spec.frame.height, measured.root.height, { status, ledger: entries[0]?.id ?? entries[0]?.reason, entries: entries.map((x) => ledger.indexOf(x)) });
   }
   // An area that moved with a text is that text's finding already, excused or not with it.
   for (const r of regions.filter((x) => !x.movedWith)) {
@@ -464,7 +464,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, imageOnly, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    frame, pass: verdict === "pass", verdict, imageOnly, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -732,8 +732,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // images: { design, before, after, diff } as data URLs, any of them absent.
 // The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
 // the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
-export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], acceptance = [], pictures = [],
-  round: n, status, score, stamp = "" }) {
+export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], ledgerProblems = [], acceptance = [],
+  pictures = [], round: n, status, score, stamp = "" }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
@@ -744,16 +744,21 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   };
   const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
-    "or goes under what was not checked.", "", "## Frames", ""];
+    "or goes under what was not checked.", "", "## Pictures to look at first", "",
+    "Before reading the lines below, open each and write in the handoff one sentence on what differs from the design.", ""];
+  for (const p of pictures) out.push(`- ${p}`);
+  out.push("", "## Frames", "");
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && "image-only: text judged by eye",
+      f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
   }
   if (sweep) {
     out.push("", "## Widths and stories", "");
     out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
+    for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${u.selector}: not measured, it never has two elements`);
     for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}`);
   }
   out.push("", "## Journeys", "");
@@ -762,22 +767,25 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     const spec = journeySpecs.find((x) => x.name === j.name) ?? { steps: [] };
     const how = [spec.touch && "touch", spec.width && `${spec.width} px`].filter(Boolean).join(", ");
     const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
-    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `fails at ${j.failed}`}${opensOnly ? "; checks opening only, not closing" : ""}`);
+    const notes = [opensOnly && "checks opening only, not closing", ...(j.notes ?? [])].filter(Boolean);
+    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
   }
   out.push("", "## Deviations", "");
+  for (const p of ledgerProblems) out.push(`- the ledger is invalid: ${p}`);
   if (!ledger.length) out.push("- none");
-  const used = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])].map((i) => i.ledger).filter(Boolean);
-  for (const e of ledger) {
-    const uses = used.filter((u) => u === (e.id ?? e.reason)).length;
-    const scope = [e.frame && `frame ${[].concat(e.frame).join(", ")}`, e.category, e.decidedBy && `decided by ${e.decidedBy}`,
-      (e.landmark === "*" || e.property === "*") && "wildcard", uses ? `excuses ${uses}` : "matched nothing"].filter(Boolean).join(" · ");
-    out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${scope})${e.status === "proposed" && e.options ? `; options: ${[].concat(e.options).join("; ")}` : ""}`);
+  const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
+  const text = (v) => (v && typeof v === "object" ? JSON.stringify(v) : String(v));
+  for (const [index, e] of ledger.entries()) {
+    const uses = all.filter((i) => i.entries?.includes(index)).length;
+    const wildcard = [].concat(e.landmark).includes("*") || e.property === "*";
+    const use = !uses ? "matched nothing" : e.status === "accepted" ? `excuses ${uses}` : `awaits your decision on ${uses}`;
+    const scope = [e.frame && `frame ${[].concat(e.frame).join(", ")}`, e.category, e.decidedBy && `decided by ${e.decidedBy}`, wildcard && "wildcard", use]
+      .filter(Boolean).join(" · ");
+    out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${scope})${e.status === "proposed" && e.options ? `; options: ${[].concat(e.options).map(text).join("; ")}` : ""}`);
   }
   out.push("", "## The acceptance list", "");
   if (!acceptance.length) out.push("- no rows found in review.md");
   for (const a of acceptance) out.push(`- ${a.item}: ${a.result || "not checked"}`);
-  out.push("", "## Pictures to look at before saying done", "");
-  for (const p of pictures) out.push(`- ${p}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");

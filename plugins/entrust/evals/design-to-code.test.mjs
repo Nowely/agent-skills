@@ -339,6 +339,12 @@ function variant(css = "", ledger = []) {
   fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify(ledger));
   return dir;
 }
+// A complete check of the offer card with a coarse sweep: the gallery and the handoff come only from complete checks.
+const quick = (dir) => {
+  const file = path.join(dir, "design.json"), c = JSON.parse(fs.readFileSync(file, "utf8"));
+  fs.writeFileSync(file, JSON.stringify({ ...c, sweep: { ...c.sweep, step: 240 } }));
+  return dir;
+};
 const check = (dir, ...flags) => {
   const r = cli("check", path.join(dir, "design.json"), ...flags);
   const result = fs.existsSync(path.join(dir, "out/result.json")) ? JSON.parse(fs.readFileSync(path.join(dir, "out/result.json"), "utf8")) : null;
@@ -521,7 +527,7 @@ test("a proposed text alternative reports what the page actually contains", brow
 test("a missing reference image makes the visual check incomplete", browser, () => {
   const dir = variant();
   fs.rmSync(path.join(dir, "design/720/reference.png"));
-  const result = check(dir, "--no-sweep");
+  const result = check(quick(dir));
   assert.equal(result.status, 2, result.stdout + result.stderr);
   assert.equal(result.result.status, "incomplete");
   assert.deepEqual(result.result.missingReferences, ["720"]);
@@ -543,7 +549,7 @@ test("an image-only reference requires visual text review, including when it mat
   assert.deepEqual(same.result.imageOnlyFrames, ["720"]);
   assert.match(same.stdout, /image-only reference: inspect text visually/);
   assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /text was not measured/);
-  const full = check(dir, "--no-sweep");
+  const full = check(quick(dir));
   assert.equal(full.status, 2, full.stdout + full.stderr);
   assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /Image-only reference: inspect text visually/);
   const page = path.join(dir, "page.html");
@@ -630,13 +636,16 @@ test("the sweep finds a card that stops fitting between the frames, and a layout
 
 test("a check of one frame leaves the gallery of the last full check; a full check writes before, design and after", browser, () => {
   const dir = variant(".badges { margin-top: 12px; }");
-  check(dir, "--no-sweep");
+  check(quick(dir));
   const gallery = path.join(dir, "out/gallery.html");
   const full = fs.readFileSync(gallery, "utf8");
   for (const caption of ["Design", "Before", "After", "Difference"]) assert.match(full, new RegExp(`<figcaption>${caption}</figcaption>`));
-  assert.equal((full.match(/<section><h2>/g) ?? []).length, 3);
+  // The three frames, the widths, and the story.
+  assert.deepEqual([...full.matchAll(/<section><h2>([^<]+)/g)].map((m) => m[1].trim()), ["720", "480", "320", "Widths 280–760", "Story: page"]);
   check(dir, "--frame", "720");
   assert.equal(fs.readFileSync(gallery, "utf8"), full);
+  check(dir, "--no-sweep");
+  assert.equal(fs.readFileSync(gallery, "utf8"), full, "a check without the sweep is partial too");
 });
 
 test("each round's score is kept, and the summary shows the round before and the lowest", browser, () => {
@@ -1030,10 +1039,10 @@ test("pass is not given without a sweep, with the frames' page as the story, or 
   const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
   const { sweep, ...noSweep } = cfg;
   assert.match(run(noSweep).stdout, /Not checked: no sweep/);
-  assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is the frames' own page/);
+  assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is a frame's own page/);
   f.write('<main><span>Ready</span><button aria-expanded="false" style="position:absolute;left:200px;top:0">More</button></main>');
   const opener = run(cfg);
-  assert.match(opener.stdout, /1 controls open something \(“More”\) and no journey checks them/);
+  assert.match(opener.stdout, /1 control opens something \(“More”\) and no journey checks them/);
   assert.equal(opener.status, 1, "the button is not in the spec either");
 });
 
@@ -1052,4 +1061,42 @@ test("the handoff's evidence counts what the ledger excused, names unused entrie
   assert.match(handoff, /^- popup: not checked$/m);
   assert.match(handoff, /^- frame~[0-9a-f]{8}\/side\.png$/m);
   assert.equal(r.status, 0, r.stdout);
+});
+
+// ------------------------------------------------------------------ round 11c: the third verifier's findings
+
+test("the handoff credits each ledger entry by itself, reads the result column and list items, and lists real pictures only", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span style="margin-left:9px">Ready</span></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([
+    { landmark: "Gone", property: "x", category: "system", status: "accepted", reason: "the kit" },
+    { landmark: "Ready", property: "x", category: "system", status: "accepted", reason: "the kit" },
+    { landmark: ["*"], property: "font", category: "platform", status: "accepted", reason: "smoothing" }]));
+  fs.writeFileSync(path.join(f.dir, "review.md"), "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
+  check(f.dir);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /accepted: Gone x — the kit \(system · matched nothing\)/);
+  assert.match(handoff, /accepted: Ready x — the kit \(system · excuses 1\)/);
+  assert.match(handoff, /\* font — smoothing \(platform · wildcard · matched nothing\)/);
+  for (const line of [/^- frame: pass$/m, /^- popup: not checked$/m, /^- dense story: swept$/m, /^- probe: not checked$/m]) assert.match(handoff, line);
+  assert.ok(handoff.indexOf("## Pictures to look at first") < handoff.indexOf("## Frames"), "pictures come before the numbers");
+  for (const p of handoff.match(/^- (\S+\.png)$/gm).map((l) => l.slice(2))) assert.ok(fs.existsSync(path.join(f.dir, "out", p)), p);
+});
+
+test("journeys can change the width and expect the focus; a hidden step on what never opened is noted", browser, () => {
+  const f = smallFrame();
+  fs.appendFileSync(f.page, '<button id="a">A</button><button id="b">B</button>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [
+    { name: "tab order", steps: [{ focus: "#a" }, { press: "Tab" }, { focused: "#b" }] },
+    { name: "survives a resize", steps: [{ width: 280 }, { visible: "main" }] },
+    { name: "closing what never opened", steps: [{ hidden: ".nothing" }] },
+  ] }));
+  const r = check(f.dir);
+  assert.deepEqual(r.result.journeys.map((j) => j.pass), [true, true, true], JSON.stringify(r.result.journeys));
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /closing what never opened: holds; \.nothing was never seen open/);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "x", steps: [{ visible: "main" }] }, { name: "x", steps: [{ visible: "main" }] }] }));
+  assert.match(check(f.dir).stderr, /journey names must be unique/);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], setup: [{ width: 280 }] }] }));
+  assert.match(check(f.dir).stderr, /a step is one of/);
 });

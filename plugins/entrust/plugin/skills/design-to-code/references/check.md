@@ -2,18 +2,20 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, runs the sweep and the journeys, prints a summary and writes the files
-listed under [Output](#output). It exits 0 when the comparison
+listed under [Output](#output); [the summary](#the-summary-and-the-report) says what each line means. It exits 0 when the comparison
 passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
 decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
 left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements;
 everything, when there is no browser; and, for a complete check (every frame and the sweep), what the acceptance
-list needs: `review.md` beside `design.json` with an acceptance list (a heading that names it, with table rows or list
-items under it), a frame for every `frames/<name>/reference.png` in the pack, a sweep with a dense story whose URL is
-not the frames' own page, and journeys when a control on the page opens something (`aria-expanded`,
-`aria-haspopup`, `popovertarget`). A
+list needs: `review.md` beside `design.json` with an acceptance list (its lines under a heading that names it; see
+[review.md](review.md#the-acceptance-list)), a frame for every `frames/<name>/reference.png` in the pack, a sweep with
+a dense story whose URL is no frame's page (a story differing only in its query, as Storybook's do, counts as its
+own), and at least one journey when a control inside the component, in a frame, opens something (`aria-expanded`,
+`popovertarget`, or an `aria-haspopup` other than false). A
 failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
 project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. Both are partial checks:
-they write no `handoff.md` and remove an earlier one. The page
+they write no `handoff.md` or gallery, and their verdict is said to be about what they measured. Every check
+removes an earlier `handoff.md` first, so the one that exists is the last complete check's. The page
 before the work is the one the first check saw. If the root was absent after setup, the gallery records its
 absence. Delete `out/before/` to start a new baseline.
 
@@ -46,7 +48,10 @@ Each journey opens the page afresh, at the widest frame's width unless it gives 
 `"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and three that expect,
 each given a second to come true, as a person sees (a size, not hidden, not transparent): `{ "visible": "<selector>" }`
 (any match seen), `{ "hidden": "<selector>" }` (none seen, or no match), `{ "text": ["<selector>", "<text>"] }` (a match
-seen that shows the text). A journey with none of these three is an error in `design.json`, since it could not fail.
+seen that shows the text, which may not be empty), `{ "focused": "<selector>" }` (the focus is in a match). A journey
+may also change its width, `{ "width": 320 }`, to see a state survive a resize. A journey with no expectation is an
+error in `design.json`, since it could not fail, and so are two journeys with one name. A `hidden` step on what the
+journey never saw visible is noted in `handoff.md`: it proves nothing about closing.
 The first step that does not hold fails the journey, with its number; a failing journey fails the check and adds 10
 to the score. For a popup:
 
@@ -141,6 +146,6 @@ In `out/` beside `design.json`, or `--out`:
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
-| `handoff.md` | written by a complete check, stamped with its time and the commit: the evidence a handoff quotes. It holds each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it never expects anything hidden), each ledger entry with what it excused or that it matched nothing, the acceptance list's rows (a blank result reads "not checked"), the pictures to look at, and what the script did not check |
+| `handoff.md` | written by a complete check, stamped with its time and, in a Git repository, the commit and whether the tree had uncommitted changes: the evidence a handoff quotes. It lists the pictures to look at first, then each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it sees something visible and never expects anything hidden), each ledger entry with what it excused, awaits or that it matched nothing, ledger faults, the acceptance list's rows (a blank result reads "not checked"), and what the script did not check |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, each frame's settings, spec and image, the sweep), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |
