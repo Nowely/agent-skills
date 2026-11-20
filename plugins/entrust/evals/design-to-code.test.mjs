@@ -16,8 +16,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  causes, compareFrame, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderReport, renderSummary, specFromMetadata,
-  specFromRest, switches,
+  causes, compareFrame, contextTexts, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderReport,
+  renderSummary, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -215,6 +215,36 @@ test("widths become ranges and the reports lead with the root and where to start
   assert.equal(causes([], SPEC, { root: { width: 300, height: 200 } }).length, 0);
 });
 
+test("a sweep entry bounded by max excuses the widths it covers and not a larger difference at another", () => {
+  const ledger = [{ landmark: ".v", property: "align", max: 1.02, category: "platform", status: "accepted", reason: "subpixel" }];
+  const probes = [
+    { width: 601, issues: [{ landmark: ".v", property: "align", delta: 1.02, actual: "left edges 1.02 px apart" }] },
+    { width: 624, issues: [{ landmark: ".v", property: "align", delta: 8, actual: "left edges 8 px apart" }] },
+  ];
+  assert.deepEqual(sweepIssues(probes, ledger).map((i) => [i.ranges, i.status, i.delta]), [["601", "accepted", 1.02], ["624", "fail", 8]]);
+});
+
+test("texts come from the design context by node id when the outline carries only layer names", () => {
+  const code = `<div data-node-id="1:1" style={{ width: 280 }}>
+  <p className="text-[12px]" data-node-id="1:2">SKU AUR-14P</p>
+  <div data-node-id="1:3"><p className={cx("a", "b")}>{"New"}</p></div>
+  <p data-node-id="1:5">125 898,00 ₽ <span>/ месяц</span></p>
+  <img src={imgA} data-node-id="1:6" alt="" />
+</div>`;
+  assert.deepEqual(Object.fromEntries(contextTexts(code)), { "1:2": "SKU AUR-14P", "1:3": "New", "1:5": "125 898,00 ₽ / месяц", "1:1": "SKU AUR-14P New 125 898,00 ₽ / месяц" });
+  const spec = { frame: { width: 280, height: 100 }, landmarks: [
+    { text: "Value", id: "1:2", box: box(0, 0, 50, 16) }, { text: "Value", id: "1:5", nth: 1, box: box(0, 40, 90, 20) }, { text: "Description", id: "9:9", box: box(0, 70, 50, 16) },
+  ] };
+  const joined = joinContext(spec, code);
+  assert.deepEqual(joined.spec.landmarks.map((l) => [l.text, l.nth]), [["SKU AUR-14P", undefined], ["125 898,00 ₽ / месяц", undefined], ["Description", undefined]]);
+  assert.deepEqual([joined.joined, joined.missing], [["1:2", "1:5"], ["9:9"]]);
+});
+
+test("a frame waiting for a decision says so, not that it failed", () => {
+  const r = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
+  assert.match(renderSummary({ frames: [r] }), /f: awaiting a decision on 1/);
+});
+
 // ------------------------------------------------------------------ in the browser
 
 const playwright = (() => {
@@ -390,44 +420,38 @@ test("a check of one frame leaves the gallery of the last full check; a full che
   assert.equal(fs.readFileSync(gallery, "utf8"), full);
 });
 
-test("each round's work is saved as a diff, and the summary names the best round", browser, () => {
+test("each round's score is kept, and the summary shows the round before and the lowest", browser, () => {
   const dir = variant();
-  const git = (...args) => spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
-  git("init", "-q"); git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "start");
-  git("add", "page.html", "design.json"); git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "page");
   const page = path.join(dir, "page.html"), original = fs.readFileSync(page, "utf8");
-  fs.writeFileSync(page, original.replace("</style>", ".badges { margin-top: 8px; }\n</style>"));
-  check(dir, "--no-sweep");
-  fs.writeFileSync(page, original.replace("</style>", ".badges { margin-top: 20px; }\n</style>"));
-  const second = check(dir, "--no-sweep");
-  assert.ok(fs.existsSync(path.join(dir, "out/rounds/1.diff")) && fs.existsSync(path.join(dir, "out/rounds/2.diff")));
-  assert.match(fs.readFileSync(path.join(dir, "out/rounds/1.diff"), "utf8"), /margin-top: 8px/);
-  assert.match(second.stdout, /best so far: round 1/);
+  for (const css of [".badges { margin-top: 8px; }", ".badges { margin-top: 20px; }"]) {
+    fs.writeFileSync(page, original.replace("</style>", `${css}\n</style>`));
+    check(dir, "--no-sweep");
+  }
+  fs.writeFileSync(page, original.replace("</style>", ".badges { margin-top: 10px; }\n</style>"));
+  const third = check(dir, "--no-sweep");
+  const history = fs.readFileSync(path.join(dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(history.map((h) => [h.round, h.status]), [[1, "fail"], [2, "fail"], [3, "fail"]]);
+  assert.ok(history[0].score < history[1].score, JSON.stringify(history));
+  assert.match(third.stdout, new RegExp(`previous round: ${history[1].score} · lowest: ${history[0].score} in round 1`));
+  assert.ok(!fs.existsSync(path.join(dir, "out/rounds")), "no copies of the work: the project's version control keeps it");
 });
 
-test("snapshot retains existing tracked and new changes and names files too large to save", browser, () => {
-  const dir = variant();
-  const git = (...args) => spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
-  assert.equal(git("init", "-q").status, 0);
-  assert.equal(git("add", "page.html", "design.json").status, 0);
-  assert.equal(git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base").status, 0);
-  const page = path.join(dir, "page.html");
-  fs.appendFileSync(page, "<!-- existing user edit -->");
-  assert.equal(git("add", "page.html").status, 0);
-  fs.appendFileSync(page, "<!-- additional edit -->");
-  fs.writeFileSync(path.join(dir, "new.txt"), "user-created file");
-  fs.writeFileSync(path.join(dir, "oversized.bin"), Buffer.alloc((1 << 20) + 1));
-  const result = check(dir, "--frame", "720");
-  const history = JSON.parse(fs.readFileSync(path.join(dir, "out/history.jsonl"), "utf8").trim());
-  assert.equal(history.snapshot.status, "partial", result.stdout);
-  assert.ok(history.snapshot.omitted.includes("oversized.bin"));
-  const clean = tmp();
-  const clone = spawnSync("git", ["clone", "-q", dir, clean], { encoding: "utf8" });
-  assert.equal(clone.status, 0, clone.stderr);
-  const apply = spawnSync("git", ["-C", clean, "apply", path.join(dir, "out", history.snapshot.path)], { encoding: "utf8" });
-  assert.equal(apply.status, 0, apply.stderr);
-  assert.match(fs.readFileSync(path.join(clean, "page.html"), "utf8"), /existing user edit.*additional edit/);
-  assert.equal(fs.readFileSync(path.join(clean, "new.txt"), "utf8"), "user-created file");
+test("alignment is judged on painted pixels: a fractional 1/64 px is no finding, 2 px is; a group of one is not measured", browser, () => {
+  const dir = tmp();
+  const page = (second) => `<!doctype html><style>body{margin:0} #root{position:relative;width:300px;height:90px} .v{position:absolute;width:40px;height:12px;background:#000}</style>
+<div id="root"><div class="v" style="left:10px;top:0"></div><div class="v" style="left:${second}px;top:30px"></div><div class="w" style="position:absolute;top:60px">x</div></div>`;
+  const run = (second, align) => {
+    fs.writeFileSync(path.join(dir, "page.html"), page(second));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], sweep: { from: 300, to: 320, step: 20, align } }));
+    return check(dir);
+  };
+  assert.equal(run(11.015625, [{ selector: ".v", edge: "left" }]).status, 0);
+  const off = run(12, [{ selector: ".v", edge: "left" }]);
+  assert.equal(off.status, 1);
+  assert.deepEqual(off.result.sweep.issues.map((i) => [i.property, i.delta]), [["align", 2]]);
+  const one = run(12, [{ selector: ".w", edge: "left" }]);
+  assert.equal(one.status, 2, one.stdout);
+  assert.match(one.stdout, /not measured: \.w matched 1/);
 });
 
 test("a prepared run scores the unstyled start as failing, the reference as passing, and ignores the implementer's ledger", browser, () => {
@@ -454,4 +478,7 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
   const given = JSON.parse(fs.readFileSync(path.join(skill, "design/720/spec.json"), "utf8"));
   assert.equal(given.widths, undefined, "the implementer's spec compares no text widths, as Figma's would not");
   assert.equal(JSON.parse(fs.readFileSync(`${skill}.judge/design/720/spec.json`, "utf8")).widths, true);
+  fs.rmSync(path.join(`${dir}.judge`, "design/720/reference.png"));
+  const partial = score();
+  assert.deepEqual([partial.status, partial.missingReferences], ["incomplete", ["720"]], "a check that measured part of the run is still scored");
 });

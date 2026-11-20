@@ -151,6 +151,53 @@ export function parseFigmaUrl(url) {
   return { key, id };
 }
 
+// The MCP outline names text layers but does not carry their text; the design context does, by node id
+// (`data-node-id`). For each text landmark whose id the context has, take the context's text. Returns the spec, the
+// ids joined, and the ids the context did not give a text for: read those from the frame's image.
+export function joinContext(spec, context) {
+  const texts = contextTexts(context);
+  const joined = [], missing = [];
+  const landmarks = spec.landmarks.map((l) => {
+    if (!l.text || !l.id) return l;
+    const t = texts.get(l.id);
+    if (!t) { missing.push(l.id); return l; }
+    joined.push(l.id);
+    return { ...l, text: t };
+  });
+  return { spec: { ...spec, landmarks: numberDuplicates(landmarks.map(({ nth, ...l }) => l)) }, joined, missing };
+}
+
+// node id → text, from JSX-like code: elements, attributes (quoted or in braces), text, and `{"..."}` literals. An
+// element's text is all the text inside it, in order, its children's included: one Figma text layer can be
+// rendered as a paragraph with styled spans.
+export function contextTexts(code) {
+  const out = new Map();
+  const stack = [];
+  const literal = (s) => s.replace(/\{\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\}/g, "$2").replace(/\{[^{}]*\}/g, " ");
+  const token = /<\/\s*([A-Za-z][\w.:-]*)\s*>|<([A-Za-z][\w.:-]*)((?:\s+(?:[\w:.-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}))?|\{[^{}]*\}))*)\s*(\/?)>/g;
+  let last = 0;
+  const addText = (raw) => {
+    const t = norm(literal(raw).replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"));
+    if (!t) return;
+    for (const el of stack) el.text.push(t);
+  };
+  for (const m of code.matchAll(token)) {
+    addText(code.slice(last, m.index));
+    last = m.index + m[0].length;
+    if (m[1]) {
+      const el = stack.pop();
+      if (el?.id) out.set(el.id, norm(el.text.join(" ")));
+      continue;
+    }
+    const id = m[3]?.match(/data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
+    const el = { id: id ? (id[1] ?? id[2] ?? id[3]) : null, text: [] };
+    if (m[4]) { if (el.id && !out.has(el.id)) out.set(el.id, ""); continue; }
+    stack.push(el);
+  }
+  for (const [k, v] of [...out]) if (!v) out.delete(k);
+  return out;
+}
+
 // The nth occurrence, in reading order, of a text that appears more than once.
 export function numberDuplicates(landmarks) {
   const seen = new Map();
@@ -425,14 +472,21 @@ export function nameRegions(regions, landmarks) {
 
 // Issues seen at many widths, each kept once with the widths it was seen at, as ranges; then the issues that belong to
 // no single width, such as a missing layout change.
+// Each width's issue is classified with its own size before widths are grouped, so an entry bounded by `max` excuses
+// the widths it covers and not a larger difference at another width. A group keeps its largest difference.
 export function sweepIssues(probes, ledger = [], extra = []) {
   const byKey = new Map();
-  for (const p of probes) for (const issue of p.issues) {
-    const k = `${issue.property}\u0000${issue.landmark}`;
-    if (!byKey.has(k)) byKey.set(k, { ...issue, widths: [] });
-    byKey.get(k).widths.push(p.width);
+  for (const p of probes) for (const raw of p.issues) {
+    const issue = classify(raw, "sweep", ledger);
+    const k = `${issue.property}\u0000${issue.landmark}\u0000${issue.status}`;
+    const group = byKey.get(k);
+    if (!group) byKey.set(k, { ...issue, widths: [p.width] });
+    else {
+      group.widths.push(p.width);
+      if (Math.abs(issue.delta ?? 0) > Math.abs(group.delta ?? 0)) Object.assign(group, { delta: issue.delta, actual: issue.actual });
+    }
   }
-  return [...[...byKey.values()].map((i) => ({ ...classify(i, "sweep", ledger), ranges: ranges(i.widths) })),
+  return [...[...byKey.values()].map(({ widths, ...i }) => ({ ...i, ranges: ranges(widths) })),
     ...extra.map((i) => ({ ...classify(i, "sweep", ledger), ranges: "" }))];
 }
 
@@ -504,6 +558,7 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
   if (sweep) {
     out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${sweep.pass ? "pass" : "fail"}`, "");
     out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
+    for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at ${u.ranges}; it needs two or more.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
       for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(i.landmark)} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
@@ -515,15 +570,18 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, best }, { limit = 8, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, previous, best }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
     + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`
-    + `${best && best.round !== n ? ` · best so far: round ${best.round}, score ${best.score}${best.diff ? ` (${best.diff})` : ""}` : ""}`];
+    + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
-    out.push("", `${f.frame}: ${f.pass ? "pass" : `fail, ${failing.length} findings`}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
+    const pending = f.issues.filter((i) => i.status === "pending").length;
+    const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
+      : pending ? `awaiting a decision on ${pending}` : "pass";
+    out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
     if (f.fonts.length) out.push(`  fonts not available: ${f.fonts.join(", ")}`);
     const shown = f.causes.filter((c) => !c.repeat);
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
@@ -537,6 +595,7 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     const failing = sweep.issues.filter((i) => i.status === "fail");
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
+    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at ${u.ranges}; an alignment needs two or more`);
   }
   out.push("", `Full tables: ${file}`);
   return out.join("\n");

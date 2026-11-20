@@ -26,7 +26,8 @@ if (!fs.existsSync(path.join(judge, "design.json"))) { console.error(`${judge}/d
 
 fs.rmSync(path.join(judge, "out", "result.json"), { force: true });
 const run = spawnSync(process.execPath, [DESIGN, "check", path.join(judge, "design.json"), "--out", path.join(judge, "out")], { encoding: "utf8" });
-if (run.status === 2 || !fs.existsSync(path.join(judge, "out", "result.json"))) { process.stderr.write(run.stdout + run.stderr); process.exit(2); }
+// Exit 2 with a result is a check that measured part of the run: scored as incomplete. Without one, it could not run.
+if (!fs.existsSync(path.join(judge, "out", "result.json"))) { process.stderr.write(run.stdout + run.stderr); process.exit(2); }
 const result = JSON.parse(fs.readFileSync(path.join(judge, "out", "result.json"), "utf8"));
 const spec = (f) => JSON.parse(fs.readFileSync(path.join(judge, "design", f.frame, "spec.json"), "utf8"));
 const geometry = new Set(["x", "y", "height", "width", "presence"]);

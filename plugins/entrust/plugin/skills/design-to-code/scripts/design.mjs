@@ -2,17 +2,19 @@
 // Turns a rendered component into numbers and holds them against the design's.
 //
 //   node design.mjs figma <figma link with node-id> --out <frame directory> [--scale 2]
-//   node design.mjs spec <metadata.xml> [--frame <id|name>] [--coords auto|relative|absolute] [--out spec.json]
+//   node design.mjs spec <metadata.xml> [--context <design-context>] [--frame <id|name>] [--coords auto|relative|absolute] [--out spec.json]
 //   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--before] [--out <dir>]
 //   node design.mjs snapshot <design.json> [--frame <name>] [--images] [--scale <n>] [--force]
 //
 // `figma` fetches one frame from Figma's REST API (FIGMA_TOKEN): its spec, every text with its characters, box,
-// alignment and font, and its image. `spec` reads the MCP server's `get_metadata` outline instead. `check`
-// measures every frame of design.json in Chromium against its spec and image, applies the ledger of deliberate
-// deviations, runs the sweep when the config has one (not with --frame or --no-sweep), prints a summary, writes
-// report.md, result.json, the images, the round's diff and, for a check of every frame, gallery.html (the design,
-// the page before the work, the page now) to <dir> (default: out/ beside design.json), and exits 0 when the comparison passes, 1 on failure, 2 when measurement is incomplete, and 3 when an observed deviation is pending. `snapshot` writes a spec (and with --images
-// a reference PNG) from the page as it renders now: a baseline from an accepted implementation.
+// alignment and font, and its image. `spec` reads the MCP server's `get_metadata` outline instead, taking each
+// text from the frame's `get_design_context` answer by node id when given one. `check` measures every frame of
+// design.json in Chromium against its spec and image, applies the ledger of deliberate deviations, runs the sweep
+// when the config has one (not with --frame or --no-sweep), prints a summary, writes report.md, result.json, the
+// images and, for a check of every frame, gallery.html (the design, the page before the work, the page now) to <dir>
+// (default: out/ beside design.json), and exits 0 when the comparison passes, 1 on a failure, 2 when it could not
+// measure everything, 3 when what remains awaits the owner's decision. `snapshot` writes a spec (and with
+// --images a reference PNG) from the page as it renders now: a baseline from an accepted implementation.
 // references/check.md describes design.json, the ledger and the output.
 //
 // Playwright is resolved from the working directory first, so run this from the project that has it installed.
@@ -23,8 +25,8 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, ledgerFaults, nameRegions, pageText, parseFigmaUrl, renderGallery, renderReport, renderSummary, specFromMetadata,
-  specFromRest, sweepIssues, switches,
+  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
+  specFromMetadata, specFromRest, sweepIssues, switches,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -123,7 +125,7 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
 
 // Runs inside the page. One function, so its helpers travel with it: measure the spec's landmarks, snapshot every
 // text as a landmark, or probe the layout at the current width for the sweep.
-function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
+function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1 }) {
   const norm = (s) => s.replace(/\s+/g, " ").trim();
   const key = (s) => s.replace(/\s+/g, "").toLocaleLowerCase();
   const root = document.querySelector(rootSelector);
@@ -263,8 +265,8 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
   const label = (s) => { const t = norm(s); return t.length > 40 ? `${t.slice(0, 39)}…` : t; };
   const issues = [];
   const de = document.documentElement;
-  if (de.scrollWidth > de.clientWidth + 1) issues.push({ landmark: "document", property: "overflow", actual: `${de.scrollWidth - de.clientWidth} px wider than the viewport` });
-  if (root.scrollWidth > root.clientWidth + 1) issues.push({ landmark: "root", property: "overflow", actual: `${root.scrollWidth - root.clientWidth} px wider than the root` });
+  if (de.scrollWidth > de.clientWidth + 1) issues.push({ landmark: "document", property: "overflow", delta: de.scrollWidth - de.clientWidth, actual: `${de.scrollWidth - de.clientWidth} px wider than the viewport` });
+  if (root.scrollWidth > root.clientWidth + 1) issues.push({ landmark: "root", property: "overflow", delta: root.scrollWidth - root.clientWidth, actual: `${root.scrollWidth - root.clientWidth} px wider than the root` });
   for (const el of [root, ...root.querySelectorAll("*")]) {
     if (!visible(el) || !el.textContent.trim()) continue;
     const cs = getComputedStyle(el);
@@ -276,7 +278,7 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
   const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b })));
   for (const { node, b } of lines) {
     const out = Math.max(rr.left - b.left, b.right - rr.right, b.bottom - rr.bottom, rr.top - b.top);
-    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", actual: `${Math.round(out)} px outside the root` });
+    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: Math.round(out), actual: `${Math.round(out)} px outside the root` });
   }
   for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
     const a = lines[i], b = lines[j];
@@ -285,19 +287,21 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
+  // Edges as painted: Chromium lays boxes out in 1/64 px and paints them at whole pixels, so 11.015625 shows at 11.
+  // A group that matches fewer than two visible elements measures nothing and says so.
+  const unmeasured = [];
   for (const g of align) {
     const rects = [...root.querySelectorAll(g.selector)].filter(visible).map((el) => el.getBoundingClientRect());
     const edgeOf = (r) => (g.edge === "right" ? r.right : g.edge === "center" ? (r.left + r.right) / 2 : g.edge === "top" ? r.top : r.left);
-    if (rects.length > 1) {
-      const values = rects.map(edgeOf), spread = Math.max(...values) - Math.min(...values);
-      if (spread > 1) issues.push({ landmark: g.selector, property: "align", actual: `${g.edge ?? "left"} edges ${Math.round(spread * 100) / 100} px apart (limit 1 px)` });
-    }
+    if (rects.length < 2) { unmeasured.push({ selector: g.selector, matched: rects.length }); continue; }
+    const values = rects.map((r) => Math.round(edgeOf(r))), spread = Math.max(...values) - Math.min(...values);
+    if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: spread, actual: `${g.edge ?? "left"} edges ${spread} px apart` });
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
   // wraps keeps its first line's place, so wrapping inside one layout does not count.
   const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
   const rows = tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
-  return { root: { width: rr.width, height: rr.height }, issues, rows };
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
 }
 
 // Compares the design's image with the page's, both at the device scale. Everywhere but the texts' boxes, which the
@@ -466,7 +470,7 @@ async function sweep(browser, cfg, ledger) {
   try {
     const probe = async (width) => {
       await setWidth(page, cfg, width, s.height ?? 900);
-      const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [] });
+      const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
       if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
       return { width, ...r };
     };
@@ -480,45 +484,19 @@ async function sweep(browser, cfg, ledger) {
     const changes = switches(probes, s.switches ?? [], step);
     const issues = sweepIssues([...probes, back], ledger, changes.issues);
     const failing = issues.filter((i) => i.status === "fail");
-    return { from, to, step, pass: failing.length === 0, issues, switches: changes.seen, score: failing.length * 10 };
+    const unmeasured = new Map();
+    for (const p of [...probes, back]) for (const u of p.unmeasured) {
+      const k = `${u.selector}\u0000${u.matched}`;
+      if (!unmeasured.has(k)) unmeasured.set(k, { ...u, widths: [] });
+      unmeasured.get(k).widths.push(p.width);
+    }
+    return {
+      from, to, step, pass: failing.length === 0, issues, switches: changes.seen, score: failing.length * 10,
+      unmeasured: [...unmeasured.values()].map(({ widths, ...u }) => ({ ...u, ranges: ranges(widths) })),
+    };
   } finally {
     await context.close();
   }
-}
-
-// The work as it stands, saved per round, so the best round can be restored: `git apply` the diff on a clean tree.
-// Tracked changes and new files, apart from the pack itself; nothing when the project is not in git.
-function saveRound(cfg, out, n) {
-  const git = (args, cwd) => {
-    try { return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 << 20 }); } catch (e) { return typeof e.stdout === "string" ? e.stdout : null; }
-  };
-  const top = git(["rev-parse", "--show-toplevel"], cfg.dir)?.trim();
-  if (!top) return { status: "unavailable", reason: "Git worktree unavailable; preserve changes using the project's version control before relying on a restore" };
-  // The pack is not the work, nor its output; a pack at the repository's top keeps only its output out.
-  const canonicalTop = fs.realpathSync(top);
-  const projectDir = fs.realpathSync(process.cwd());
-  const inside = (p) => p === canonicalTop || p.startsWith(canonicalTop + path.sep);
-  // Limit snapshots to the invoked project, not unrelated work elsewhere in a monorepo.
-  // Tests and callers outside the repository may use a pack at the repository root.
-  const cwd = inside(projectDir) ? projectDir : fs.realpathSync(cfg.dir) === canonicalTop ? canonicalTop : null;
-  if (!cwd) return { status: "unavailable", reason: "Invoke the check from the project inside the Git worktree to snapshot its changes" };
-  const rel = (p) => path.relative(canonicalTop, fs.realpathSync(p)).split(path.sep).join("/");
-  const skip = [rel(cfg.dir) || rel(out)].filter(Boolean).map((p) => `:(top,exclude)${p}`);
-  let diff = git(["diff", "HEAD", "--binary", "--", ".", ...skip], cwd);
-  const untracked = git(["ls-files", "--others", "--exclude-standard", "-z", "--", ".", ...skip], cwd);
-  if (diff === null || untracked === null) return { status: "unavailable", reason: "Git could not enumerate changes" };
-  const omitted = [];
-  for (const f of untracked.split("\0").filter(Boolean)) {
-    if (fs.statSync(path.join(cwd, f)).size > 1 << 20) { omitted.push(f); continue; }
-    const patch = git(["diff", "--no-index", "--binary", "--", "/dev/null", f], cwd);
-    if (patch === null) { omitted.push(f); continue; }
-    diff += patch;
-  }
-  if (!diff.trim()) return omitted.length ? { status: "partial", omitted } : { status: "empty" };
-  const file = path.join(out, "rounds", `${n}.diff`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, diff);
-  return { status: omitted.length ? "partial" : "saved", path: path.relative(out, file), ...(omitted.length ? { omitted } : {}) };
 }
 
 async function check(file, flags) {
@@ -537,22 +515,23 @@ async function check(file, flags) {
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
+    const unmeasured = sweepResult?.unmeasured ?? [];
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
     const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
-    const status = failed ? "fail" : missingReferences.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
+    const status = failed ? "fail" : missingReferences.length || unmeasured.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
     const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;
     fs.mkdirSync(out, { recursive: true });
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
-    const snapshot = saveRound(cfg, out, n);
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), pass, score, snapshot, ...(snapshot.path ? { diff: snapshot.path } : {}) };
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
-    // The best round is the lowest score among rounds that checked the same frames and sweep as this one.
-    const comparable = [...history, record].filter((h) => JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
-    const best = comparable.reduce((a, h) => (h.score < a.score ? h : a), record);
-    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, best, status, missingReferences };
+    // Progress is read against rounds that checked the same frames and sweep: the one before and the lowest.
+    const comparable = history.filter((h) => JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
+    const previous = comparable.at(-1);
+    const best = [...comparable, record].reduce((a, h) => (h.score < a.score ? h : a), record);
+    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, status, missingReferences };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
@@ -560,7 +539,6 @@ async function check(file, flags) {
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
     console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
-    console.log(`Round snapshot: ${snapshot.status}${snapshot.reason ? ` — ${snapshot.reason}` : ""}${snapshot.omitted?.length ? ` — omitted: ${snapshot.omitted.join(", ")}` : ""}`);
     if (full) console.log(`Gallery (design, before, after): ${where}/gallery.html`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
@@ -632,9 +610,16 @@ async function main(argv) {
   if (!command || !file || flags.help) { console.log(USAGE); return command ? 0 : 2; }
   if (command === "figma") return figma(file, flags);
   if (command === "spec") {
-    const spec = specFromMetadata(fs.readFileSync(file, "utf8"), { frame: flags.frame, coords: flags.coords ?? "auto" });
-    const genericNames = spec.landmarks.filter((landmark) => /^(value|description|text)$/i.test(landmark.text ?? "")).length;
-    if (genericNames) console.error(`Metadata has ${genericNames} generic text-layer names; verify displayed characters against design context and image.`);
+    let spec = specFromMetadata(fs.readFileSync(file, "utf8"), { frame: flags.frame, coords: flags.coords ?? "auto" });
+    if (flags.context) {
+      const joined = joinContext(spec, fs.readFileSync(flags.context, "utf8"));
+      spec = joined.spec;
+      console.error(`Texts from the design context: ${joined.joined.length} of ${joined.joined.length + joined.missing.length} layers${joined.missing.length ? `; read these from the frame's image: ${joined.missing.join(", ")}` : ""}.`);
+    } else {
+      // The outline carries layer names, which are the text only when nobody renamed the layer.
+      const generic = spec.landmarks.filter((l) => /^(value|description|text|label|title|caption)(\s*\d+)?$/i.test(l.text ?? "")).length;
+      if (generic) console.error(`${generic} text layers have generic names: pass --context with the frame's design context, or correct them from the image.`);
+    }
     if (flags.out) { writeJson(flags.out, spec); console.log(`${spec.landmarks.length} landmarks, ${spec.source} → ${flags.out}`); } else console.log(JSON.stringify(spec, null, 2));
     return 0;
   }
