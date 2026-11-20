@@ -485,6 +485,15 @@ test("feedback 1: every group heading counts the open cards listed under it, aft
     return groups.length && !wrong.length || JSON.stringify(groups);
   }));
 
+test("feedback 2: under a filter, a question's note in the code says how many blocks one answer covers in all and how many the filter shows",
+  "the note counted only the blocks the filter left, so one answer seemed to cover less than it does",
+  cased(BIG_URL + "#code", {}, async (page) => {
+    await page.fill("#file-q", "part7.js"); await page.waitForTimeout(400);
+    const all = big.blocks.filter((b) => b.questions?.includes(1)).length, shown = big.blocks.filter((b) => b.questions?.includes(1) && b.path.endsWith("part7.js")).length;
+    const note = await text(page, '.note-item[data-item="q1"] .pills');
+    return shown < all && note.includes(`all ${all} blocks`) && note.includes(`${shown} shown`) || `all ${all}, shown ${shown}: «${note}»`;
+  }));
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",

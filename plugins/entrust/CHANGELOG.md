@@ -11,6 +11,8 @@ forensics remain in the repository references and release notes.
   false; one function closes the menu for both.
 - In Decisions › All, a group's heading counts its open items again after an answer changes which items apply; it
   kept the count from the list's last drawing. Every count of Decisions is now written by one function.
+- Under a filter, a question's note in Code says how many blocks one answer covers in all and how many the filter
+  shows; it counted only the shown ones, so one answer seemed to cover less than it does.
 
 ## 0.43.0 — 2026-11-20
 

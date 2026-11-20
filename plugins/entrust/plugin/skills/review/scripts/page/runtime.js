@@ -1070,11 +1070,13 @@ function moveAnswerTo(key, bid) {
 }
 function noteItem(c, b) {
   const r = c.ref, st = statusOf(c), w = walk().find((x) => x.c === c), pos = w ? w.blocks.indexOf(b.id) : -1;
+  // one answer covers every block of the item; under a filter, how many of them it shows is said apart
+  const all = walkAll().find((x) => x.c === c)?.blocks.length ?? c.blocks.length, shown = w ? w.blocks.length : all;
   const posText = w && w.blocks.length > 1 ? `<span class="muted small nowrap">${esc(L("p.block-of", pos + 1, w.blocks.length))}</span>` : "";
   if (!answersHere(c, b)) {
     const opts = optionsOf(c);
     const hint = `${opts.length ? `${kbd("1")}–${kbd(String(opts.length))} ${esc(L("p.hint.choose"))} · ` : ""}${kbd("o")} ${esc(L(opts.length ? "p.hint.other" : "p.hint.answer"))} · ${kbd("d")} ${esc(L("p.hint.defer"))}`;
-    return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", w ? w.blocks.length : c.blocks.length))}</span><span class="key-hint small muted">${hint}</span></div></div>`;
+    return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", all))}${shown < all ? ` · ${esc(P("p.one-answer.shown", shown))}` : ""}</span><span class="key-hint small muted">${hint}</span></div></div>`;
   }
   const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}` : "";
   if (st.state !== "open") return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
