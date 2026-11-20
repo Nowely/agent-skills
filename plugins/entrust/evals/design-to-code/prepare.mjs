@@ -5,9 +5,11 @@
 //
 // <dir> gets the case's unstyled start.html as index.html and the design: every frame's reference.png (rendered
 // from the case's reference.html at the case's scale) and design/context.md. The skill arm also gets each frame's
-// spec.json and a design.json for the check script; the plain arm gets the images and the context, as a design
-// export usually arrives. <dir>.judge/ gets its own design.json and design, pointing at <dir>/index.html, for
-// score.mjs; the reference implementation never enters <dir>. Prints the brief to give the implementer.
+// spec.json, as Figma would give it (texts with boxes and fonts, no exact text widths), and a design.json for the
+// check script; the plain arm gets the images and the context, as a design export usually arrives. <dir>.judge/
+// gets its own design.json and the full specs, pointing at <dir>/index.html, and the case's deviations.json as
+// its ledger when the case has one, for score.mjs; the reference implementation never enters <dir>. Prints the
+// brief to give the implementer.
 //
 // Run it from a directory where Playwright resolves (see the skill's design.mjs).
 
@@ -49,7 +51,12 @@ try {
     for (const file of ["reference.png", "spec.json"]) {
       const from = path.join(scratch, "design", f.name, file);
       write(path.join(judge, "design", f.name, file), fs.readFileSync(from));
-      if (arm === "skill" || file === "reference.png") write(path.join(dir, "design", f.name, file), fs.readFileSync(from));
+      if (file === "reference.png") write(path.join(dir, "design", f.name, file), fs.readFileSync(from));
+      else if (arm === "skill") {
+        // A Figma text box is not the width of its glyphs, so the implementer's spec does not compare widths.
+        const { widths, ...spec } = JSON.parse(fs.readFileSync(from, "utf8"));
+        write(path.join(dir, "design", f.name, file), { ...spec, source: "design" });
+      }
     }
   }
 } finally {
@@ -58,6 +65,11 @@ try {
 fs.copyFileSync(path.join(caseDir, "start.html"), path.join(dir, "index.html"));
 fs.copyFileSync(path.join(caseDir, "context.md"), path.join(dir, "design", "context.md"));
 if (arm === "skill") write(path.join(dir, "design.json"), config("index.html", "design"));
-write(path.join(judge, "design.json"), config(path.relative(judge, path.join(dir, "index.html")).split(path.sep).join("/"), "design"));
+const answers = path.join(caseDir, "deviations.json");
+if (fs.existsSync(answers)) fs.copyFileSync(answers, path.join(judge, "deviations.json"));
+write(path.join(judge, "design.json"), {
+  ...config(path.relative(judge, path.join(dir, "index.html")).split(path.sep).join("/"), "design"),
+  ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}),
+});
 write(path.join(judge, "run.json"), { case: name, arm, dir, prepared: new Date().toISOString() });
 console.log(fs.readFileSync(path.join(caseDir, "brief.md"), "utf8").trim());

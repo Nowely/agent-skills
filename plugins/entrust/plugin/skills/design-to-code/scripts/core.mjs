@@ -1,14 +1,17 @@
-// The half of the design check that needs no browser: a Figma metadata outline turned into a spec, a measured page
-// held against that spec, the ledger of deliberate deviations, and the report. design.mjs measures; this file judges.
+// The half of the design check that needs no browser: a Figma frame turned into a spec, a measured page held
+// against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
-export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "pixels", "overflow", "clipped", "overlap",
-  "outside", "align", "resize"];
+export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
+  "overlap", "outside", "align", "resize", "switch"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
-export const STATUSES = ["accepted", "proposed", "rejected"];
+export const STATUSES = ["accepted", "proposed"];
 
 const round = (n) => Math.round(n * 100) / 100;
 const num = (v) => (v === undefined || v === "" ? NaN : Number(v));
 export const norm = (s) => String(s).replace(/\s+/g, " ").trim();
+// How a text is matched on the page: spaces and letter case do not count, since markup splits and CSS transforms
+// them ("1 499 €" is found in `1 499<span>€</span>`, "NEW" in a `text-transform: uppercase` "New").
+export const key = (s) => String(s).replace(/\s+/g, "").toLocaleLowerCase();
 
 // ------------------------------------------------------------------ XML
 
@@ -38,7 +41,7 @@ export function parseXml(text) {
   return root;
 }
 
-// ------------------------------------------------------------------ Figma metadata → spec
+// ------------------------------------------------------------------ Figma → spec
 
 // A group or boolean operation has no coordinate space of its own: its children are placed in its parent's.
 const NO_SPACE = /^(group|boolean[-_ ]?operation)$/i;
@@ -88,15 +91,14 @@ export function detectCoords(frame) {
   return score("absolute") > score("relative") ? "absolute" : "relative";
 }
 
-export function specFromMetadata(xml, { frame: selector, coords = "auto", boxes = false } = {}) {
+// From the MCP server's `get_metadata` outline: text layers, by their name when the outline carries no text.
+export function specFromMetadata(xml, { frame: selector, coords = "auto" } = {}) {
   const frame = findFrame(parseXml(xml), selector);
   const mode = coords === "auto" ? detectCoords(frame) : coords;
   if (!["relative", "absolute"].includes(mode)) throw new Error(`coords must be auto, relative or absolute, not ${coords}`);
   const landmarks = place(frame, mode)
-    .filter(({ node }) => /^text$/i.test(node.tag) || (boxes && /^instance$/i.test(node.tag)))
-    .map(({ node, box }) => /^text$/i.test(node.tag)
-      ? { text: norm(node.attrs.characters ?? node.attrs.name ?? ""), box, id: node.attrs.id }
-      : { name: node.attrs.name, box, id: node.attrs.id })
+    .filter(({ node }) => /^text$/i.test(node.tag))
+    .map(({ node, box }) => ({ text: norm(node.attrs.characters ?? node.attrs.name ?? ""), box, id: node.attrs.id }))
     .filter((l) => l.text !== "");
   return {
     frame: { id: frame.attrs.id, name: frame.attrs.name, width: num(frame.attrs.width), height: num(frame.attrs.height) },
@@ -105,18 +107,62 @@ export function specFromMetadata(xml, { frame: selector, coords = "auto", boxes 
   };
 }
 
+const hex = ({ r, g, b }) => `#${[r, g, b].map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`;
+const ALIGN = { LEFT: "left", RIGHT: "right", CENTER: "center", JUSTIFIED: "left" };
+
+// From a node of Figma's REST API (`GET /v1/files/:key/nodes`): every visible text with its absolute box, its text
+// (not the layer's name), its alignment, and its size, weight, line height and colour.
+export function specFromRest(node) {
+  const frame = node.absoluteBoundingBox;
+  if (!frame) throw new Error(`node ${node.id} has no absoluteBoundingBox`);
+  const landmarks = [];
+  const walk = (n) => {
+    for (const c of n.children ?? []) {
+      if (c.visible === false) continue;
+      if (c.type === "TEXT" && c.absoluteBoundingBox && norm(c.characters ?? "")) {
+        const b = c.absoluteBoundingBox, s = c.style ?? {};
+        const fill = (c.fills ?? []).find((f) => f.type === "SOLID" && f.visible !== false);
+        landmarks.push({
+          text: norm(c.characters), id: c.id,
+          box: { x: round(b.x - frame.x), y: round(b.y - frame.y), width: round(b.width), height: round(b.height) },
+          ...(ALIGN[s.textAlignHorizontal] ? { align: ALIGN[s.textAlignHorizontal] } : {}),
+          font: {
+            ...(s.fontSize ? { size: s.fontSize } : {}), ...(s.fontWeight ? { weight: s.fontWeight } : {}),
+            ...(s.lineHeightPx ? { lineHeight: round(s.lineHeightPx) } : {}), ...(fill ? { color: hex(fill.color) } : {}),
+          },
+        });
+      }
+      walk(c);
+    }
+  };
+  walk(node);
+  return {
+    frame: { id: node.id, name: node.name, width: round(frame.width), height: round(frame.height) },
+    source: "figma-rest",
+    landmarks: numberDuplicates(landmarks.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x)),
+  };
+}
+
+// "https://www.figma.com/design/<key>/<name>?node-id=12-34" → { key, id: "12:34" }
+export function parseFigmaUrl(url) {
+  const key = String(url).match(/figma\.com\/(?:file|design|proto)\/([A-Za-z0-9]+)/)?.[1];
+  const id = new URL(url).searchParams.get("node-id")?.replace(/-/g, ":");
+  if (!key || !id) throw new Error(`not a Figma link with a node-id: ${url}`);
+  return { key, id };
+}
+
 // The nth occurrence, in reading order, of a text that appears more than once.
 export function numberDuplicates(landmarks) {
   const seen = new Map();
   return landmarks.map((l) => {
     if (!l.text) return l;
-    const n = seen.get(l.text) ?? 0;
-    seen.set(l.text, n + 1);
+    const n = seen.get(key(l.text)) ?? 0;
+    seen.set(key(l.text), n + 1);
     return n ? { ...l, nth: n } : l;
   });
 }
 
-export const landmarkLabel = (l) => l.text ?? l.selector ?? l.name ?? "?";
+export const landmarkLabel = (l) => l.text ?? l.selector ?? "?";
 
 // ------------------------------------------------------------------ ledger
 
@@ -124,12 +170,16 @@ export function ledgerFaults(entries) {
   if (!Array.isArray(entries)) return ["the ledger is not a JSON array"];
   return entries.flatMap((e, i) => {
     const at = `entry ${i + 1}${e?.id ? ` (${e.id})` : ""}`;
-    const faults = [];
     if (!e || typeof e !== "object") return [`${at}: not an object`];
-    if (!e.landmark) faults.push(`${at}: no landmark (a design text, a selector, "root" or "*")`);
+    const faults = [];
+    if (e.property === "region") {
+      if (!Array.isArray(e.region) || e.region.length !== 4 || !e.region.every(Number.isFinite)) faults.push(`${at}: a region entry gives "region": [x, y, width, height]`);
+    } else if (!e.landmark || (Array.isArray(e.landmark) && !e.landmark.length)) faults.push(`${at}: no landmark (a design text or a list of them, a selector, "root" or "*")`);
     if (!PROPERTIES.includes(e.property) && e.property !== "*") faults.push(`${at}: property must be one of ${PROPERTIES.join(", ")} or *`);
     if (!CATEGORIES.includes(e.category)) faults.push(`${at}: category must be one of ${CATEGORIES.join(", ")}`);
-    if (!STATUSES.includes(e.status)) faults.push(`${at}: status must be one of ${STATUSES.join(", ")}`);
+    if (!STATUSES.includes(e.status)) faults.push(`${at}: status must be accepted or proposed`);
+    // A proposal covers one difference: a wildcard waiting for a decision would silence everything it matches.
+    if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     return faults;
@@ -138,141 +188,267 @@ export function ledgerFaults(entries) {
 
 const frameMatches = (entry, frame) => entry.frame === undefined || entry.frame === "*" || entry.frame === frame
   || (Array.isArray(entry.frame) && entry.frame.includes(frame));
+const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x + b.width <= r[0] + r[2] + pad && b.y + b.height <= r[1] + r[3] + pad;
 
 export function ledgerEntryFor(issue, frame, ledger = []) {
-  return ledger.find((e) => frameMatches(e, frame)
-    && (e.landmark === "*" || e.landmark === issue.landmark)
+  return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
     && (e.property === "*" || e.property === issue.property)
+    && (issue.property === "region" ? (e.property === "*" || (e.region && within(issue.box, e.region)))
+      : (e.landmark === "*" || e.landmark === issue.landmark || (Array.isArray(e.landmark) && e.landmark.includes(issue.landmark))))
     && (e.max === undefined || issue.delta === undefined || Math.abs(issue.delta) <= e.max));
 }
 
 // The text to look for on the page: the design's own, unless the ledger records that the page says something else.
 export function pageText(landmark, frame, ledger = []) {
-  const e = ledger.find((x) => x.property === "text" && x.landmark === landmark.text && frameMatches(x, frame) && x.status !== "rejected");
+  const e = ledger.find((x) => x.property === "text" && x.landmark === landmark.text && frameMatches(x, frame) && STATUSES.includes(x.status));
   return e ? e.actual : landmark.text;
 }
 
+const statusOf = (entry) => (!entry ? "fail" : entry.status === "accepted" ? "accepted" : "pending");
+const weaker = (a, b) => (a === "fail" || b === "fail" ? "fail" : a === "pending" || b === "pending" ? "pending" : "accepted");
+
 function classify(issue, frame, ledger) {
   const entry = ledgerEntryFor(issue, frame, ledger);
-  const status = !entry || entry.status === "rejected" ? "fail" : entry.status === "accepted" ? "accepted" : "pending";
-  return { ...issue, status, ...(entry ? { ledger: entry.id ?? entry.reason } : {}) };
+  return { ...issue, status: statusOf(entry), ...(entry ? { ledger: entry.id ?? entry.reason } : {}) };
 }
 
 // ------------------------------------------------------------------ one frame
 
-// Which edge of a text to compare horizontally: the one its alignment holds still when the text changes width.
-function horizontal(spec, page, align) {
-  if (align === "right") return [spec.x + spec.width, page.x + page.width];
-  if (align === "center") return [spec.x + spec.width / 2, page.x + page.width / 2];
-  return [spec.x, page.x];
+const FONT = { size: 0.5, lineHeight: 0.5, weight: 0 };
+const channels = (c) => String(c).match(/[0-9a-f]{2}/gi)?.slice(0, 3).map((h) => parseInt(h, 16)) ?? [];
+const sameColour = (a, b) => { const x = channels(a), y = channels(b); return x.length === 3 && y.length === 3 && x.every((v, i) => Math.abs(v - y[i]) <= 2); };
+
+// Where a landmark's horizontal position is read from: its left edge from the root's left, its right edge from the
+// root's right, or its centre from the root's centre, whichever moved least. A text holds the edge its alignment
+// holds when its width changes, and a box the side it is anchored to when the root narrows, so the reading that
+// barely moved is the one that tells; a narrower root is then a finding of the root, not of everything anchored
+// right. On a tie the design's alignment, then the page's, decides.
+const READINGS = {
+  left: (b) => b.x,
+  right: (b, w) => b.x + b.width - w,
+  center: (b, w) => b.x + b.width / 2 - w / 2,
+};
+function reading(l, m, sw, pw) {
+  const prefer = [l.align, m.align, "left", "right", "center"].filter((a, i, all) => a && all.indexOf(a) === i);
+  let best;
+  for (const align of prefer) {
+    const ex = READINGS[align](l.box, sw), ax = READINGS[align](m.box, pw);
+    if (!best || Math.abs(ax - ex) < Math.abs(best.ax - best.ex) - 0.01) best = { align, ex, ax };
+  }
+  return best;
 }
 
-const FONT = { size: 0.5, lineHeight: 0.5, weight: 0 };
-
-export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = [] }) {
-  const over = (a, b) => Math.abs(a - b) > tolerance;
+export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = [], regions = [] }) {
+  const over = (d) => Math.abs(d) > tolerance;
+  const sw = spec.frame.width, pw = measured.root.width;
   const placed = [];
   spec.landmarks.forEach((l, index) => {
     const m = measured.landmarks[index];
     if (!m?.found) return;
-    const align = l.text ? m.align : "left";
-    const [ex, ax] = horizontal(l.box, m.box, align);
-    placed.push({ index, label: landmarkLabel(l), l, m, align, ex, ax, dx: ax - ex, dy: m.box.y - l.box.y, dh: m.box.height - l.box.height });
+    const { align, ex, ax } = reading(l, m, sw, pw);
+    placed.push({ index, label: landmarkLabel(l), l, m, align, ex, ax, dx: ax - ex, dy: m.box.y - l.box.y, dh: m.box.height - l.box.height,
+      dw: m.box.width - l.box.width });
   });
   const steps = causes(placed, spec, measured, tolerance);
+  const own = new Map(steps.map((c) => [`${c.axis}\u0000${c.index}`, c]));
+  const excuse = (label, property, delta) => ledgerEntryFor({ landmark: label, property, delta }, frame, ledger);
+
+  // What of each landmark's offset the ledger accounts for: its own step, if excused, plus what it inherits from
+  // the landmark it follows, if that was excused. An offset is a finding only by what is left.
+  const byIndex = new Map(placed.map((p) => [p.index, p]));
+  const memo = new Map();
+  const excused = (p, axis) => {
+    const k = `${axis}\u0000${p.index}`;
+    if (memo.has(k)) return memo.get(k);
+    memo.set(k, { amount: 0, status: "accepted", entries: [] });
+    const link = p[axis === "y" ? "up" : "side"];
+    const from = link && byIndex.get(link.index);
+    let result = from ? { ...excused(from, axis) } : { amount: 0, status: "accepted", entries: [] };
+    result = { ...result, entries: [...result.entries] };
+    if (from && link.term) {
+      const change = link.term === "height" ? from.dh : (link.sign ?? 1) * from.dw;
+      const e = excuse(from.label, link.term, change);
+      if (e) { result.amount += change; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); }
+    }
+    const step = own.get(k);
+    if (step) {
+      const e = excuse(p.label, axis, step.step);
+      if (e) { result.amount += step.step; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); }
+    }
+    memo.set(k, result);
+    return result;
+  };
+
   const issues = [];
   const add = (landmark, property, expected, actual, extra = {}) => issues.push({
     landmark, property, expected, actual,
     ...(typeof expected === "number" && typeof actual === "number" ? { delta: round(actual - expected) } : {}), ...extra,
   });
+  const offset = (p, axis, expected, actual, delta) => {
+    const e = excused(p, axis), left = round(delta - e.amount);
+    const inherited = !own.has(`${axis}\u0000${p.index}`);
+    const base = { delta: round(delta), inherited };
+    if (!over(left)) {
+      if (e.entries.length) issues.push({ landmark: p.label, property: axis, expected, actual, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason });
+      return;
+    }
+    issues.push({ landmark: p.label, property: axis, expected, actual, ...base, ...(e.entries.length ? { unexcused: left } : {}), status: "fail" });
+  };
+
+  if (over(pw - sw)) add("root", "width", sw, round(pw));
   spec.landmarks.forEach((l, index) => {
-    const label = landmarkLabel(l), p = placed.find((q) => q.index === index);
+    const label = landmarkLabel(l), p = byIndex.get(index);
     if (l.text) {
       const text = pageText(l, frame, ledger);
       if (text !== l.text) add(label, "text", l.text, text);
     }
     if (!p) return add(label, "presence", "present", "missing");
     const { m } = p;
-    if (over(p.ax, p.ex)) add(label, "x", round(p.ex), round(p.ax), { inherited: !steps.some((c) => c.index === index && c.axis === "x") });
-    if (over(m.box.y, l.box.y)) add(label, "y", l.box.y, round(m.box.y), { inherited: !steps.some((c) => c.index === index && c.axis === "y") });
-    if (over(m.box.height, l.box.height)) add(label, "height", l.box.height, round(m.box.height));
-    if ((l.checkWidth ?? spec.widths) && l.text && Math.abs(m.box.width - l.box.width) > Math.max(tolerance, l.box.width * 0.02)) {
-      add(label, "width", l.box.width, round(m.box.width));
+    if (over(p.dx)) offset(p, "x", round(p.ex), round(p.ax), p.dx);
+    if (over(p.dy)) offset(p, "y", l.box.y, round(m.box.y), p.dy);
+    if (over(p.dh)) add(label, "height", l.box.height, round(m.box.height));
+    if ((l.checkWidth ?? spec.widths) && l.text && Math.abs(p.dw) > Math.max(tolerance, l.box.width * 0.02)) add(label, "width", l.box.width, round(m.box.width));
+    for (const [k, limit] of Object.entries(FONT)) {
+      const want = Number(l.font?.[k]), got = Number(m.font?.[k]);
+      if (Number.isFinite(want) && Number.isFinite(got) && Math.abs(got - want) > limit) add(label, "font", `${k} ${want}`, `${k} ${got}`);
     }
-    for (const [key, limit] of Object.entries(FONT)) {
-      const want = Number(l.font?.[key]), got = Number(m.font?.[key]);
-      if (Number.isFinite(want) && Number.isFinite(got) && Math.abs(got - want) > limit) add(label, "font", `${key} ${want}`, `${key} ${got}`);
-    }
+    if (l.font?.color && m.font?.color && !sameColour(l.font.color, m.font.color)) add(label, "font", `color ${l.font.color}`, `color ${m.font.color}`);
   });
-  if (over(measured.root.width, spec.frame.width)) add("root", "width", spec.frame.width, round(measured.root.width));
-  if (over(measured.root.height, spec.frame.height)) add("root", "height", spec.frame.height, round(measured.root.height));
-  if (measured.pixels && measured.pixelLimit !== undefined && measured.pixels.ratio > measured.pixelLimit) {
-    add("*", "pixels", measured.pixelLimit, measured.pixels.ratio);
+  // The root's height is the lowest landmark's offset carried down plus the bottom step: excused as they are.
+  const dH = measured.root.height - spec.frame.height;
+  if (over(dH)) {
+    const lowest = placed.find((p) => p.index === steps.lowest);
+    const chain = lowest ? excused(lowest, "y") : { amount: 0, status: "accepted", entries: [] };
+    const carriedEntry = lowest && excuse(lowest.label, "height", lowest.dh);
+    const carried = carriedEntry ? lowest.dh : 0;
+    const bottom = steps.find((c) => c.index === "bottom");
+    const rootEntry = bottom && excuse("root", "height", bottom.step);
+    const amount = chain.amount + carried + (bottom && rootEntry ? bottom.step : 0);
+    const entries = [...chain.entries, ...(carriedEntry ? [carriedEntry] : []), ...(rootEntry ? [rootEntry] : [])];
+    const status = entries.reduce((s, e) => weaker(s, statusOf(e)), "accepted");
+    if (over(dH - amount)) add("root", "height", spec.frame.height, round(measured.root.height), { status: "fail" });
+    else add("root", "height", spec.frame.height, round(measured.root.height), { status, ledger: entries[0]?.id ?? entries[0]?.reason });
   }
-  const classified = issues.map((i) => classify(i, frame, ledger));
+  // An area that moved with a text is that text's finding already, excused or not with it.
+  for (const r of regions.filter((x) => !x.movedWith)) {
+    add(`region near “${r.near}”`, "region", "as designed", `${r.box.width}×${r.box.height} px at ${r.box.x}, ${r.box.y} differs`, { box: r.box, area: r.area });
+  }
+  const classified = issues.map((i) => (i.status ? i : classify(i, frame, ledger)));
   const failing = classified.filter((i) => i.status === "fail");
   return {
     frame, pass: failing.length === 0, issues: classified, causes: steps,
-    score: round(failing.reduce((s, i) => s + (i.delta === undefined ? 10 : Math.max(0, Math.abs(i.delta) - tolerance)), 0)),
+    score: round(failing.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
+      : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
     pixels: measured.pixels, fonts: measured.fonts ?? [], images: measured.images ?? {},
+    moved: regions.filter((x) => x.movedWith).length,
   };
 }
 
 // Where an offset is introduced rather than inherited. Each landmark is read against the one it follows in the
-// design: vertically, the nearest landmark above that shares some of its width, else the nearest row above;
-// horizontally, the nearest landmark on the side its alignment holds (the left, or the right for right-aligned
-// text) that shares some of its height, else the root's edge; centred text, against the root. An offset equal to that neighbour's was carried from
-// it; one that differs is a spacing, size or column width between the two: the place to fix. The root's bottom
-// edge is read against the lowest landmark, so a changed bottom padding shows too.
+// design. Vertically: the nearest landmark above that shares some of its width, else the nearest row above; the
+// offset may be carried from that neighbour's top or, through its height, from its bottom, whichever explains more
+// (an auto-layout stack follows the bottom; a text box Figma drew taller than its line moves nothing below it).
+// Horizontally: the nearest landmark on the side its alignment holds that shares some of its height, its near or
+// far edge, else the root's edge; centred text, against the root. What neither explains is a step: a spacing, size
+// or column width between the two, the place to fix. The root's own width comes first, and its bottom edge is read
+// against the lowest landmark, so a changed padding shows too. Each landmark gets `up` and `side`: what it follows.
 export function causes(placed, spec, measured, tolerance = 1) {
   const out = [];
   const bottom = (q) => q.l.box.y + q.l.box.height, right = (q) => q.l.box.x + q.l.box.width;
   const overlapX = (a, b) => Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 0;
   const overlapY = (a, b) => Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 0;
   const seen = new Set();
-  const record = (p, axis, from, d, fromD, edge) => {
-    const step = round(d - fromD);
+  const record = (p, axis, from, step, edgeName) => {
     if (Math.abs(step) <= tolerance) return;
-    const after = from?.label ?? edge;
-    const key = `${axis}\u0000${after}\u0000${step}`;
-    out.push({ index: p.index, axis, after, before: p.label, step, y: p.l.box.y, x: p.l.box.x, ...(seen.has(key) ? { repeat: true } : {}) });
-    seen.add(key);
+    const after = from?.label ?? edgeName;
+    const k = `${axis}\u0000${after}\u0000${step}`;
+    out.push({ index: p.index, axis, after, before: p.label, step, y: p.l.box.y, x: p.l.box.x, ...(seen.has(k) ? { repeat: true } : {}) });
+    seen.add(k);
   };
+  // The smaller of the two readings: carried from the neighbour's near edge, or from its far edge.
+  const best = (d, near, far) => (far === undefined || Math.abs(d - near) <= Math.abs(d - far) ? [round(d - near), null] : [round(d - far), "far"]);
+  const dW = measured.root.width - spec.frame.width;
+  if (Math.abs(dW) > tolerance) out.push({ index: "root", axis: "x", after: "the design's width", before: "the root", step: round(dW), y: -1, x: 0 });
   for (const p of placed) {
     const b = p.l.box;
     const higher = placed.filter((q) => q !== p && bottom(q) <= b.y + 1);
     const above = higher.filter((q) => overlapX(q.l.box, b)).sort((q, r) => bottom(r) - bottom(q))[0]
       ?? higher.sort((q, r) => bottom(r) - bottom(q) || Math.abs(q.l.box.x - b.x) - Math.abs(r.l.box.x - b.x))[0];
-    record(p, "y", above, p.dy, above ? above.dy + above.dh : 0, "the top of the root");
+    const [stepY, viaY] = above ? best(p.dy, above.dy, above.dy + above.dh) : [round(p.dy), null];
+    p.up = above ? { index: above.index, term: viaY ? "height" : null } : null;
+    record(p, "y", above, stepY, "the top of the root");
     // Centred text sits where its box puts it, not after a neighbour: it is read against the root alone.
     const rightward = p.align === "right";
     const beside = p.align === "center" ? undefined : placed.filter((q) => q !== p && overlapY(q.l.box, b) && (rightward ? q.l.box.x >= right(p) - 1 : right(q) <= b.x + 1))
       .sort((q, r) => (rightward ? q.l.box.x - r.l.box.x : right(r) - right(q)))[0];
-    record(p, "x", beside, p.dx, beside?.dx ?? 0, p.align === "center" ? "the root" : rightward ? "the right edge of the root" : "the left edge of the root");
+    // A neighbour's shift in this landmark's frame of reference: its left edge for a left chain, else its right.
+    // A left chain follows the neighbour's left edge (a column) or its right edge (a gap after it), measured from the
+    // root's left; a right chain its right edge or its left edge, measured from the root's right. The edge that
+    // involves the neighbour's width carries that width's change, with its sign.
+    let stepX, viaX = null;
+    if (beside) {
+      const fromLeft = beside.m.box.x - beside.l.box.x;
+      const fromRight = (beside.m.box.x + beside.m.box.width - measured.root.width) - (beside.l.box.x + beside.l.box.width - spec.frame.width);
+      [stepX, viaX] = rightward ? best(p.dx, fromRight, fromRight - beside.dw) : best(p.dx, fromLeft, fromLeft + beside.dw);
+    } else stepX = round(p.dx);
+    p.side = beside ? { index: beside.index, term: viaX ? "width" : null, sign: rightward ? -1 : 1 } : null;
+    record(p, "x", beside, stepX, p.align === "center" ? "the root" : rightward ? "the right edge of the root" : "the left edge of the root");
   }
   const lowest = [...placed].sort((q, r) => bottom(r) - bottom(q))[0];
   if (lowest) {
     const step = round((measured.root.height - spec.frame.height) - (lowest.dy + lowest.dh));
-    if (Math.abs(step) > tolerance) out.push({ index: -1, axis: "y", after: lowest.label, before: "the bottom of the root", step, y: spec.frame.height, x: 0 });
+    if (Math.abs(step) > tolerance) out.push({ index: "bottom", axis: "y", after: lowest.label, before: "the bottom of the root", step, y: spec.frame.height, x: 0 });
   }
   // Top to bottom by bands of 8 px, the largest step first within a band: a line's half-pixel lead over its
-  // neighbour does not put a small offset ahead of the large one beside it.
+  // neighbour does not put a small offset ahead of the large one beside it. The root's width goes first.
   const band = (c) => Math.floor(c.y / 8);
-  return out.sort((a, b) => band(a) - band(b) || Math.abs(b.step) - Math.abs(a.step) || a.x - b.x);
+  const sorted = out.sort((a, b) => band(a) - band(b) || Math.abs(b.step) - Math.abs(a.step) || a.x - b.x);
+  sorted.lowest = lowest?.index;
+  return sorted;
+}
+
+// Differing areas of the image outside every text, as the browser found them, named by the nearest text.
+export function nameRegions(regions, landmarks) {
+  const centre = (b) => [b.x + b.width / 2, b.y + b.height / 2];
+  return regions.map((r) => {
+    const [cx, cy] = centre(r.box);
+    const near = [...landmarks].sort((a, b) => {
+      const [ax, ay] = centre(a.box), [bx, by] = centre(b.box);
+      return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy);
+    })[0];
+    return { ...r, near: near ? landmarkLabel(near) : "the root" };
+  });
 }
 
 // ------------------------------------------------------------------ sweep
 
-// Issues seen at many widths, each kept once with the widths it was seen at, as ranges.
-export function sweepIssues(probes, ledger = [], frame = "sweep") {
+// Issues seen at many widths, each kept once with the widths it was seen at, as ranges; then the issues that belong to
+// no single width, such as a missing layout change.
+export function sweepIssues(probes, ledger = [], extra = []) {
   const byKey = new Map();
   for (const p of probes) for (const issue of p.issues) {
-    const key = `${issue.property}\u0000${issue.landmark}`;
-    if (!byKey.has(key)) byKey.set(key, { ...issue, widths: [] });
-    byKey.get(key).widths.push(p.width);
+    const k = `${issue.property}\u0000${issue.landmark}`;
+    if (!byKey.has(k)) byKey.set(k, { ...issue, widths: [] });
+    byKey.get(k).widths.push(p.width);
   }
-  return [...byKey.values()].map((i) => ({ ...classify(i, frame, ledger), ranges: ranges(i.widths) }));
+  return [...[...byKey.values()].map((i) => ({ ...classify(i, "sweep", ledger), ranges: ranges(i.widths) })),
+    ...extra.map((i) => ({ ...classify(i, "sweep", ledger), ranges: "" }))];
+}
+
+// Where the layout changes on the way down: between two neighbouring widths whose texts sit in different rows.
+// With the widths the design says it should change at, a change elsewhere or none near one is a finding.
+export function switches(probes, expected = [], step = 8) {
+  const seen = [];
+  for (let i = 1; i < probes.length; i++) {
+    if (probes[i].rows !== probes[i - 1].rows) seen.push([probes[i].width, probes[i - 1].width]);
+  }
+  const near = (s, [lo, hi]) => s > lo - step && s <= hi + step;
+  const issues = [
+    ...expected.filter((s) => !seen.some((c) => near(s, c))).map((s) => ({ landmark: `at ${s}`, property: "switch", actual: "no layout change near this width" })),
+    ...(expected.length ? seen.filter((c) => !expected.some((s) => near(s, c))).map(([lo, hi]) => ({ landmark: `${lo}–${hi}`, property: "switch", actual: "a layout change the design does not name" })) : []),
+  ];
+  return { seen: seen.map(([lo, hi]) => `${lo}–${hi}`), issues };
 }
 
 export function ranges(widths) {
@@ -285,19 +461,24 @@ export function ranges(widths) {
   return out.map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(", ");
 }
 
-// ------------------------------------------------------------------ report
+// ------------------------------------------------------------------ reports
 
 const cell = (v) => (v === undefined ? "" : String(v).replace(/\|/g, "\\|").replace(/\n/g, " "));
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
-
-export function renderReport({ frames = [], sweep, ledgerProblems = [] }) {
-  const out = ["# Layout check", ""];
+const sayCause = (c) => `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(c.step)} px`;
+const total = (frames, sweep) => round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0));
+const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
-  const count = (s) => all.filter((i) => i.status === s).length;
-  const passed = frames.filter((f) => f.pass).length;
-  out.push(`Frames: ${passed} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
-    + ` · accepted deviations: ${count("accepted")} · pending decisions: ${count("pending")}`
-    + ` · score: ${round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0))} (lower is better)`, "");
+  return (s) => all.filter((i) => i.status === s).length;
+};
+// Root first, then in the design's order: the root is fixed before what is inside it.
+const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
+
+export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n }) {
+  const count = counts(frames, sweep);
+  const out = ["# Design check", "",
+    `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
+    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`, ""];
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {
@@ -306,23 +487,21 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [] }) {
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
     if (f.fonts.length) out.push(`Fonts not available on the page, so text cannot match: ${f.fonts.join(", ")}.`);
     const shown = f.causes.filter((c) => !c.repeat);
-    if (shown.length) {
-      const say = (c) => `between “${cell(c.after)}” and “${cell(c.before)}” the ${c.axis === "y" ? "vertical" : "horizontal"} offset changes by ${signed(c.step)} px`;
-      out.push(`Start here: ${say(shown[0])}.`);
-      if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(say).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
-    }
+    if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
+    if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
     if (images.length) out.push(`Images: ${images.join(", ")}.`);
     out.push("");
     if (f.issues.length) {
       out.push("| Landmark | Property | Design | Page | Δ | Status |", "|---|---|---:|---:|---:|---|");
-      for (const i of f.issues) out.push(`| ${cell(i.landmark)} | ${i.property} | ${cell(i.expected)} | ${cell(i.actual)} | ${i.delta === undefined ? "" : `${signed(i.delta)}${i.inherited ? " (inherited)" : ""}`} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
+      for (const i of ordered(f.issues)) out.push(`| ${cell(i.landmark)} | ${i.property} | ${cell(i.expected)} | ${cell(i.actual)} | ${i.delta === undefined ? "" : `${signed(i.delta)}${i.inherited ? " (inherited)" : ""}`} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
       out.push("");
     }
   }
   if (sweep) {
-    out.push(`## Sweep ${sweep.from}–${sweep.to} px — ${sweep.pass ? "pass" : "fail"}`, "");
+    out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${sweep.pass ? "pass" : "fail"}`, "");
+    out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
       for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(i.landmark)} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
@@ -334,31 +513,27 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [] }) {
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, ledgerProblems = [] }, { limit = 8, file = "report.md" } = {}) {
-  const out = [];
-  const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
-  const count = (s) => all.filter((i) => i.status === s).length;
-  out.push(`Frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
-    + ` · accepted: ${count("accepted")} · pending: ${count("pending")}`
-    + ` · score: ${round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0))} (lower is better)`);
+export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, best }, { limit = 8, file = "report.md" } = {}) {
+  const count = counts(frames, sweep);
+  const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
+    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`
+    + `${best && best.round !== n ? ` · best so far: round ${best.round}, score ${best.score}${best.diff ? ` (${best.diff})` : ""}` : ""}`];
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
-  const say = (c) => `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(c.step)} px`;
   for (const f of frames) {
-    const failing = f.issues.filter((i) => i.status === "fail");
-    out.push("", `${f.frame}: ${f.pass ? "pass" : `fail, ${failing.length} findings`}`
-      + `${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
+    const failing = ordered(f.issues.filter((i) => i.status === "fail"));
+    out.push("", `${f.frame}: ${f.pass ? "pass" : `fail, ${failing.length} findings`}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
     if (f.fonts.length) out.push(`  fonts not available: ${f.fonts.join(", ")}`);
     const shown = f.causes.filter((c) => !c.repeat);
-    if (shown.length) out.push(`  start here: ${say(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${say(c)}`));
-    const own = failing.filter((i) => !i.inherited);
-    for (const i of own.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(i.delta)})`}`);
-    const rest = failing.length - Math.min(own.length, limit);
-    if (rest > 0) out.push(`  … ${rest} more${failing.some((i) => i.inherited) ? ", of them inherited: " + failing.filter((i) => i.inherited).length : ""}`);
+    if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
+    const mine = failing.filter((i) => !i.inherited);
+    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(i.delta)})`}`);
+    const rest = failing.length - Math.min(mine.length, limit);
+    if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
   }
-  if (sweep && !sweep.pass) {
-    out.push("", `sweep ${sweep.from}–${sweep.to}:`);
+  if (sweep) {
+    out.push("", `sweep ${sweep.from}–${sweep.to}: ${sweep.pass ? "pass" : "fail"}; layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`);
     const failing = sweep.issues.filter((i) => i.status === "fail");
-    for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark} at ${i.ranges}: ${i.actual}`);
+    for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
   }
   out.push("", `Full tables: ${file}`);
@@ -369,24 +544,21 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [] }, { lim
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-// One self-contained page per check: for every frame the design, the page before the work began, the page now and
-// the difference, at the frame's CSS size, with the frame's verdict, where to start and the ledger's entries.
+// One self-contained page for a full check: for every frame the design, the page before the work began, the page
+// now and their difference, at the frame's CSS size, with the frame's verdict and where to start; then the sweep's
+// verdict and every ledger entry with its reason, who decided and the options.
 // images: { design, before, after, diff } as data URLs, any of them absent.
-export function renderGallery({ title = "Design check", frames }) {
+export function renderGallery({ title = "Design check", frames, sweep, ledger = [] }) {
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
-    const lines = [
-      shown.length ? `Start here: between “${esc(shown[0].after)}” and “${esc(shown[0].before)}” the ${shown[0].axis === "y" ? "vertical" : "horizontal"} offset changes by ${shown[0].step > 0 ? "+" : ""}${shown[0].step} px.` : "",
-      f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : "",
-    ].filter(Boolean);
-    const deviations = f.result.issues.filter((i) => i.status !== "fail");
+    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     return `<section><h2>${esc(f.result.frame)} <span class="${f.result.pass ? "pass" : "fail"}">${f.result.pass ? "pass" : "fail"}</span></h2>
 ${lines.map((l) => `<p>${l}</p>`).join("\n")}
 <div class="row">${columns.filter(([k]) => f.images[k]).map(([k, label]) => `<figure><figcaption>${label}</figcaption><img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}"></figure>`).join("")}</div>
-${deviations.length ? `<ul>${deviations.map((i) => `<li>${esc(i.landmark)} · ${i.property}: ${i.status}${i.ledger ? ` — ${esc(i.ledger)}` : ""}</li>`).join("")}</ul>` : ""}
 </section>`;
   });
+  const entry = (e) => `<li><b>${esc(e.status)}</b> · ${esc(e.category)} · ${esc(e.property === "region" ? `region ${e.region.join(", ")}` : `${[].concat(e.landmark).join(", ")} ${e.property}`)}${e.frame ? ` · ${esc([].concat(e.frame).join(", "))}` : ""}: ${esc(e.reason)}${e.decidedBy ? ` (decided by ${esc(e.decidedBy)})` : ""}${e.options ? `<br>Options: ${esc([].concat(e.options).join("; "))}` : ""}</li>`;
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <style>
@@ -398,9 +570,12 @@ h1{font-size:22px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 6px}p{margin:4p
 .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:10px}
 figure{margin:0;max-width:100%}figcaption{font-weight:600;margin-bottom:4px}
 img{display:block;max-width:100%;height:auto;outline:1px solid var(--line);background:#fff}
+li{margin:6px 0}
 </style>
-<h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · design, the page before the work, the page now, and where they differ.</p>
+<h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ.</p>
 ${sections.join("\n")}
+${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${sweep.pass ? "pass" : "fail"}">${sweep.pass ? "pass" : "fail"}</span></h2><p>Layout changes between ${esc(sweep.switches.join(", ") || "no widths")}.</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(i.landmark)} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
+${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>
 `;
 }

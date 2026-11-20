@@ -1,15 +1,17 @@
 # Offer card: design context
 
 What a Figma file with auto layout would give for this card, written out because the case has no Figma file. The
-images in each frame's folder are the design at 2× scale; `spec.json` beside each holds the positions of its texts.
+images in each frame's folder are the design at 2× scale; where a `spec.json` is given beside one, it holds the
+positions and fonts of the frame's texts.
 
 ## Tokens
 
 | Token | Value |
 |---|---|
 | Surface | `#ffffff`, page `#f2f3f5`, outline `0 0 0 1px #e1e3e8` |
-| Text primary / secondary | `#1f2329` / `#7a808c` |
-| Accent | `#2457c5`; badge "New" `#e3edff` on `#2457c5` text; other badges `#eef0f3` |
+| Text primary / secondary | `#1f2329` / `#7a808c`; the unit after each spec value is secondary |
+| Accent | `#2457c5`; badge "New" `#2457c5` text on `#e3edff`; other badges `#eef0f3`; the button `#2457c5` with white text |
+| Media placeholder | a 135° gradient from `#c9d6ff` to `#e2e2e2` |
 | In stock | `#1a8a4a` |
 | Radius | card 12, media 8, badge 6, button 8 |
 | Font | the page's `sans-serif` |

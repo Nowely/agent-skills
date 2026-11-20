@@ -3,11 +3,14 @@
 //
 //   node evals/design-to-code/score.mjs <dir> [--label <text>]
 //
-// Runs the skill's check with the judge's own design.json and design (<dir>.judge/), never the implementer's
-// ledger: a deviation the implementer recorded is counted and listed, not excused. Writes the check's report to
-// <dir>.judge/out/ and appends one JSON line to <dir>.judge/scores.jsonl, which it also prints:
-// frames passed, landmarks within tolerance, the largest offset, sweep problems, the check's score (lower is
-// better) and the implementer's ledger entries.
+// Runs the skill's check with the judge's own design.json, design and ledger (<dir>.judge/), never the
+// implementer's: a deviation the implementer recorded is listed for the owner to read, not excused. Writes the
+// check's report to <dir>.judge/out/ and appends one JSON line to <dir>.judge/scores.jsonl, which it also prints:
+// frames passed, landmarks within tolerance, the largest offset, differing areas, sweep problems, the check's
+// score (lower is better) and the implementer's ledger entries.
+//
+// A private case needs no prepare step: put design.json (pointing at the implementer's page), the design and the
+// answer key as deviations.json in <dir>.judge/, with a run.json naming the case and the arm.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -34,7 +37,7 @@ const frames = result.frames.map((f) => {
   return {
     name: f.frame, pass: f.pass, landmarks: `${total - off.size}/${total}`,
     maxOffset: Math.max(0, ...failing.filter((i) => i.delta !== undefined && i.landmark !== "*").map((i) => Math.abs(i.delta))),
-    font: failing.filter((i) => i.property === "font").length, score: f.score,
+    font: failing.filter((i) => i.property === "font").length, regions: failing.filter((i) => i.property === "region").length, score: f.score,
   };
 });
 const ledgerFile = path.join(dir, "deviations.json");
@@ -45,7 +48,7 @@ const row = {
   time: new Date().toISOString(), case: meta.case, arm: meta.arm, ...(flag === "--label" ? { label } : {}),
   pass: result.pass, score: result.score, framesPassed: `${frames.filter((f) => f.pass).length}/${frames.length}`, frames,
   sweep: result.sweep ? { pass: result.sweep.pass, problems: result.sweep.issues.filter((i) => i.status === "fail").map((i) => `${i.property} ${i.landmark} @ ${i.ranges}`) } : null,
-  ledgerEntries: Array.isArray(ledger) ? ledger.length : 0,
+  ledgerEntries: Array.isArray(ledger) ? ledger.map((e) => (!e || typeof e !== "object" ? String(e) : `${e.status} ${e.category}: ${[].concat(e.landmark ?? "region").join(", ")} ${e.property} — ${e.reason}`)) : ledger,
 };
 fs.appendFileSync(path.join(judge, "scores.jsonl"), `${JSON.stringify(row)}\n`);
 console.log(JSON.stringify(row, null, 2));
