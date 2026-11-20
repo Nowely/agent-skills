@@ -35,6 +35,13 @@ forensics remain in the repository references and release notes.
   centre or a side and ignore the page around the component and pinned bars; journeys count in what a score is
   measured against; and the acceptance list must have lines under its heading.
 
+- Verification without a second agent: a complete check writes `out/handoff.md`, the stamped evidence a handoff quotes
+  (each frame's verdict and what the ledger excused, the widths and stories, the journeys, each ledger entry's use,
+  the acceptance rows with blank ones marked not checked, the pictures to look at). "Pass" is refused without a
+  sweep, with the frames' own page as the dense story, or when a control that opens something has no journey; a
+  journey that expects nothing is refused; `--no-sweep` is a partial check. The skill's page is shorter, and its
+  handoff step asks for a sentence per picture, two extra tries written as journeys, and evidence for every claim.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report

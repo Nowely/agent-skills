@@ -391,3 +391,54 @@ What held only in part, and what round 10b changed:
   All four pilot arms were judged again, with the same verdicts.
 
 `node --test evals/design-to-code.test.mjs`: 65 passed.
+
+## Round 11: verification without a second agent
+
+The owner set extra agents aside as a later mode, and asked for quality from one agent and the script. Round 11
+moves what a critic and a verifier do into the implementer's own steps, and makes the script hold the parts that can
+be held:
+
+- **The evidence file.** A check of every frame writes `out/handoff.md`; the handoff quotes it, and any other claim
+  names its evidence or goes under what was not checked.
+- **Journeys must expect something.** One with no `visible`, `hidden` or `text` step is refused, since it could not
+  fail.
+- **The owner's read of `review.md`** before building, and a verification pass before handoff: pictures before
+  numbers, every claim with its evidence, two tries the list did not name.
+
+**Round 11's critic (Fable)** ran it and found:
+
+- "pass" without a sweep, with `--no-sweep`, or with the frames' own page as the dense story;
+- a journey that only opens counted as checking dismissal;
+- the owner's questions and the look-first step remained paper;
+- `handoff.md` hid excused findings, could go stale, and did not say whether a ledger entry matched anything;
+- the page had grown to 150 lines.
+
+The third pilot, on draft 11, was accepted and showed the same blank Result column
+([10-sonnet-pilots.md](10-sonnet-pilots.md#a-third-run-with-draft-11)).
+
+## Round 11b
+
+**The check refuses "pass" when:**
+- there is no sweep;
+- a story is the frames' own page;
+- a control that opens something (`aria-expanded`, `aria-haspopup`, `popovertarget`) has no journey.
+
+**Partial checks.** `--no-sweep` is now partial, like `--frame`: it writes no `handoff.md` and removes an old one.
+
+**`handoff.md`** is stamped with its time and commit. It adds:
+- what the ledger excused;
+- what each entry excused, or that it matched nothing, flagging wildcards;
+- the acceptance rows, a blank result reading "not checked";
+- the pictures to look at;
+- journeys that check opening only;
+- each first finding with its expected and actual values.
+
+**The page** is cut from 150 to 120 lines:
+- the owner's questions the script now answers are gone; the one the script cannot answer stays (what may never
+  cover what);
+- the look-first step asks for a sentence per listed picture;
+- the two tries become journeys named `probe: …`;
+- frames must render their own data.
+
+`node --test evals/design-to-code.test.mjs`: 68 passed. The page before is
+[drafts/11-v11.md](drafts/11-v11.md); after it, [drafts/12-v12.md](drafts/12-v12.md).

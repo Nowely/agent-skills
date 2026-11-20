@@ -65,6 +65,24 @@ Tokens are the subagent's totals as the harness reports them; cached and uncache
     ran 3 rounds.
   - Its handoff names the open question: clamp long titles, or let the card grow.
 
+## A third run, with draft 11
+
+Draft 11 added the evidence file (`out/handoff.md`), journeys that must expect something, an owner's read of
+`review.md` before building, and a verification pass before handoff. Its skill arm ran on variant B alone:
+
+- **The first submission was accepted** by the same judge, in 4:35 with 122,143 tokens and 27 tool calls.
+- **It ran 3 check rounds.** The acceptance list existed at the first check. It wrote 9 journeys (leaving, tap and
+  Escape for both popovers, the edit action and its absence, a tap at 320 px) and 3 stories.
+- **It tried two things the list did not name:** a resize with a popover open, and the tab order. It did them by
+  hand, not as journeys, and said so.
+- **It left part of the acceptance list's Result column blank,** and said that `handoff.md` was the record.
+
+The critic of draft 11 found the same gaps beforehand, and round 11b answers them:
+
+- `handoff.md` now lists the acceptance rows, a blank one as "not checked";
+- the two tries become journeys named `probe: …`;
+- the look-first step names the pictures and asks for one sentence each.
+
 ## What this shows, and what it does not
 
 - **Shows:**
