@@ -20,7 +20,7 @@ node plugins/entrust/evals/design-to-code.test.mjs
 It plants defects in the offer card one at a time and expects each found where it is: a spacing, a font size, a
 bottom padding, an image's size and a button's colour, the kit's shorter badge with and without its ledger entry,
 columns that stop fitting below one width, a layout change moved to another width. It also checks text found across
-markup and case, the gallery, the saved rounds, and the prepare and score pair. Needs Playwright with Chromium;
+markup and case, the gallery, the round history, and the prepare and score pair. Needs Playwright with Chromium;
 without it the browser cases skip.
 
 ## Tier 1: the check on the owner's card

@@ -6,6 +6,7 @@
 | 1 | [drafts/02-v2.md](drafts/02-v2.md) | an independent critic and a verifier on round 0, then the tooling again | each of the critic's 8 findings changed the check or the pages, one suggestion declined; each of the verifier's 16 corrections applied, some reworded; 25 tests |
 | 2 | [drafts/03-v3.md](drafts/03-v3.md) | real design input, browser regressions, and an independent mixed-list check | self-comparison false positives repaired; the alignment gate did not pass on both controls, so no model comparison was run. [Details](03-calibration.md) |
 | 3 | [drafts/04-v4.md](drafts/04-v4.md) | fixes for the defects round 2 and its review left, the owner's decisions on them, then a critic and a verifier | below |
+| 4 | [drafts/05-v5.md](drafts/05-v5.md) | the corrections round 3's critic and verifier found | below; no model run |
 
 The drafts are byte-identical copies of the skill page; their relative links resolve from the skill's directory.
 
@@ -75,3 +76,48 @@ the configured tolerance, and a group matching fewer than two elements is report
 design context's texts by `data-node-id`; the round diffs are gone and `history.jsonl` keeps each round's score,
 read by the summary as the round before and the lowest. The join was tested on code written like the design
 context, not yet on the owner's real answer.
+
+### Round 3's critic and verifier
+
+Two fresh agents of the coordinator's model read round 3 at `fc4f516`: a critic against the owner's goal and the
+calibration gate, and a verifier of every claim. Their reports are summarized; the round 3 text above stays as it
+was written, and these are its corrections.
+
+- **The alignment rule was wrong for text.** Round 3 rounded each edge to a whole pixel because boxes paint that
+  way. The critic showed text paints at subpixel positions: on the offer card, a true 1.99 px spread passed and a
+  1.01 px spread failed, depending only on where the edges fell within a pixel. The verifier showed a composited
+  ancestor can paint a box 1 px from its rounded edge, and that "control B's 1.015625 px spread is 1 px on screen"
+  does not follow from a synthetic box: two edges 1.015625 px apart can paint 1 or 2 px apart. The round 3 claim
+  about control B is withdrawn. It also changed the measurement after seeing one control, which
+  [04-recommendations.md](04-recommendations.md) warned against.
+- **"Not measured" blocked layouts that hide a column on narrow screens**: a group short of two elements at some
+  widths made the whole check incomplete for good, and the ledger could not excuse it.
+- **The context join could give a wrong text silently**: `{count} cores` became "cores", a template literal "$ GB",
+  some entities stayed raw, and a deeply nested attribute broke the parse.
+- **`max` did not bound findings without a size** (overlap, clipped, resize, switch): an overlap of 40 × 12 px passed
+  under `max: 1`. Only overflow, outside and alignment had gained a size; "sweep findings carry their size" was
+  partly true.
+- **The stop rule left the implementer guessing** ("two or three" rounds, lower than what, where each kind of
+  remainder goes), and a round that only turned failures into proposals lowered the score.
+- **Pages contradicted the owner or the code**: the description and the README row promised "pixel for pixel";
+  exit-code precedence was unstated; the changelog said texts "are checked against the frame's screenshot", which
+  no code does; `protocol.md` and the research README still named the removed round copies; `design.mjs` kept an
+  unused import. Round 2's [03-calibration.md](03-calibration.md) and [04-recommendations.md](04-recommendations.md)
+  describe the Git snapshots of their time; round 3 removed them.
+
+## Round 4: the corrections
+
+Alignment compares the spread as laid out with the configured tolerance, without rounding: 1.015625 px fails a
+tolerance of 1 and passes one of 1.5. Which tolerance is right is the owner's decision, to be taken from evidence
+and frozen before the next control run, as 04-recommendations.md proposes. A group that never has two elements is
+not measured; one short at some widths is reported and aligned where it has two. The context parser takes only
+what the code states and leaves a layer with an expression, an unknown entity or unparsed code without text, to be
+read from the image. A `max` covers only a difference with a size; overlap, clipped and resize findings now carry
+one. The score counts open proposals with failures. The stop rule says two rounds without a new lowest, commit at
+each new lowest, and where each kind of remainder goes. The pages say "every remaining difference explained"
+instead of "pixel for pixel", and state the exit-code order. `node plugins/entrust/evals/design-to-code.test.mjs`:
+34 cases, 34 passed.
+
+The critic's conclusion stands: tool changes alone do not move the gate. It needs the owner's real frame through
+`spec --context`, the screenshot check of its texts, an answer key made before seeing the check's output, and the
+alignment tolerance frozen beforehand.
