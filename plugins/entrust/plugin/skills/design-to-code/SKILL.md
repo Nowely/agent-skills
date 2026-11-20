@@ -7,7 +7,7 @@ description: >-
   the design, before and after for review. Use when given Figma links or frames, or asked to match a mockup or make
   a layout pixel-perfect or responsive. Complements Figma's own design-to-code skill, which fetches the design.
 metadata:
-  version: "0.42.0"
+  version: "0.43.0"
 license: MIT
 ---
 
@@ -23,9 +23,7 @@ Two files carry the work, and anyone can continue from them: the **design pack**
 the owner before committing it.
 
 Reuse what the project has: its UI kit components, typography and tokens. A value the design states that the
-project already names is written with that name; a new raw value is a finding, not a default. Where a kit
-component differs from the drawing, use the component and record the difference as `system`; never restyle or
-wrap the component to imitate the drawing.
+project already names is written with that name; a new raw value is a finding, not a default. Build from the project's existing components and their supported props, tokens and composition points. Where a kit component differs from the design, compare a supported composition or styling with the cost of custom code. A small difference that substantially simplifies the implementation can be proposed to the owner; follow an explicit fidelity requirement and record its resolution.
 
 ## 1. Gather the design into a pack
 
@@ -36,9 +34,7 @@ Follow [pack.md](references/pack.md). In short:
 2. For each frame, write its `spec.json` (every text with its box and font) and its image at 2× as `reference.png`.
    With a Figma token, `node "<skill-dir>/scripts/design.mjs" figma <frame link> --out .design/<task>/frames/<name>`
    writes both and costs no model tokens; without one, build them from the MCP tools as pack.md says.
-3. With the Figma MCP tools, read the design context, the Code Connect map (which code component, with which
-   props) and the variables. Download every asset the frame uses as the file the design holds, SVG for icons;
-   never draw or substitute one. Save to the pack what a tool can write itself; retype a tool's answer into a file
+3. With the Figma MCP tools, read the available design context and variables. Use existing Code Connect mappings when available and useful. Compare design assets with the project's existing icons and supported components; use the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself; retype a tool's answer into a file
    only when another agent will build from it.
 4. Write `design.json`: the page or story that renders the component, the root and host selectors, the frames, and
    the widths to sweep with the widths where the layout should change ([check.md](references/check.md#designjson)).
@@ -48,7 +44,7 @@ When the implementer cannot reach Figma, whoever can builds the pack and hands o
 
 ## 2. Read the design before building
 
-Follow [review.md](references/review.md). Map each element to a UI-kit component (Code Connect first) and each
+Follow [review.md](references/review.md). Map each element to an existing UI-kit component where it fits and each
 value to a token or typographic style; list what maps to nothing. Then list what the design does not say: states
 without a frame, widths between frames, long, empty and localized data, and what looks like an error (a word form, a
 spacing off the system's scale, contrast, a target smaller than 24 px). Where the build has to decide, choose the
@@ -79,13 +75,9 @@ being inherited, then the areas outside text that differ, each with its place. F
 frame again; a fix for one width can move another. Offsets marked *inherited* follow from a cause above them: do not
 fix them separately.
 
-Each check saves the round's diff in `out/rounds/`. The score is lower-better and the summary names the best round:
-when a change raised the score, undo it, unless it is one step of a restructuring the next round completes. After
-three rounds without a lower score, stop and hand off what remains, with the report: more rounds of the same kind
-rarely converge.
+Each check attempts to save a Git diff in `out/rounds/`; on other version-control systems no recoverable snapshot is created. Verify the saved work before relying on it, including existing edits and new files. The lower-better score helps locate changes; assess visual relationships and behavior before deciding whether to undo a change. When a round makes no progress, diagnose the cause and try a different supported approach.
 
-Stop when the check exits 0, or when every remaining difference has a ledger entry: `accepted` by the owner or a
-rule the owner set, or `proposed` and waiting. An accepted change of size or position also excuses what it pushes
+A check passes once observed differences are resolved or accepted by the owner or an applicable owner rule. A `proposed` difference remains pending. Report incomplete measurement separately and continue independent work. An accepted change of size or position also excuses what it pushes
 along. A difference you cannot remove and cannot justify is reported, not hidden. The sweep in the same run narrows
 one mounted page every few pixels and through each frame's width, and reports overflow, clipped and overlapping
 text, columns that drift apart, layout changes at widths the design does not name, and a layout that does not come

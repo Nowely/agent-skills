@@ -8,7 +8,7 @@ decide the rest.
 
 | Design | Project |
 |---|---|
-| each element | the UI-kit component (from Code Connect, else found in the kit) and its props, or "none" |
+| each element | the existing UI-kit composition and its props, using available Code Connect mappings when useful, or "none" |
 | each colour, spacing, radius | the token, or "raw" |
 | each text style | the project's typographic style, or "raw" |
 

@@ -158,7 +158,7 @@ test("an accepted change of size excuses everything it pushes down; a proposed o
   assert.equal(accepted.pass, true, JSON.stringify(accepted.issues));
   assert.deepEqual(accepted.issues.map((i) => [i.landmark, i.property, i.status]), [["New", "height", "accepted"], ["Title", "y", "accepted"], ["root", "height", "accepted"]]);
   const pending = compare(shrunk, { height: 197 }, entry("proposed"));
-  assert.equal(pending.pass, true);
+  assert.equal(pending.pass, false);
   assert.ok(pending.issues.every((i) => i.status === "pending"));
   const capped = compare(shrunk, { height: 197 }, [{ ...entry("accepted")[0], max: 2 }]);
   assert.equal(capped.pass, false, "an entry with max does not cover a larger change");
@@ -289,15 +289,51 @@ test("a smaller font is found even where its line height keeps every position", 
   assert.deepEqual([font.landmark, font.expected, font.actual], ["1 499 €", "size 22", "size 20"]);
 });
 
-test("an accepted deviation passes, a proposed one passes as pending, an unlisted one fails", browser, () => {
+test("an accepted deviation passes, a proposed one remains pending, an unlisted one fails", browser, () => {
   const css = ".card { padding-bottom: 28px; }";
   const entry = { landmark: "root", property: "height", category: "owner", reason: "the owner asked for more space below" };
   const accepted = check(variant(css, [{ ...entry, status: "accepted" }]), "--frame", "720");
   assert.equal(accepted.status, 0, accepted.stdout);
   const pending = check(variant(css, [{ ...entry, status: "proposed" }]), "--frame", "720");
-  assert.equal(pending.status, 0);
+  assert.equal(pending.status, 3);
   assert.match(pending.stdout, /pending: 1/);
   assert.equal(check(variant(css), "--frame", "720").status, 1);
+});
+
+test("a proposed text alternative reports what the page actually contains", browser, () => {
+  const entry = { landmark: "New", property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
+  const original = check(variant("", [entry]), "--frame", "720");
+  assert.equal(original.status, 0, original.stdout + original.stderr);
+  assert.ok(!original.result.frames[0].issues.some((issue) => issue.landmark === "New" && ["presence", "text"].includes(issue.property)));
+  const changed = variant("", [entry]);
+  const file = path.join(changed, "page.html");
+  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(">New<", ">Fresh<"));
+  const pending = check(changed, "--frame", "720");
+  assert.notEqual(pending.status, 0, pending.stdout + pending.stderr);
+  assert.ok(pending.result.frames[0].issues.some((issue) => issue.landmark === "New" && issue.property === "text" && issue.actual === "Fresh" && issue.status === "pending"));
+});
+
+test("a missing reference image makes the visual check incomplete", browser, () => {
+  const dir = variant();
+  fs.rmSync(path.join(dir, "design/720/reference.png"));
+  const result = check(dir, "--frame", "720");
+  assert.equal(result.status, 2, result.stdout + result.stderr);
+  assert.equal(result.result.status, "incomplete");
+  assert.deepEqual(result.result.missingReferences, ["720"]);
+  assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /Reference image not measured: 720/);
+});
+
+test("a page snapshot matches repeated text in document order", browser, () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>article { width: 280px; } p { margin: 12px; }</style><article><p>Disk, GB</p><p>One <span>GB</span> used</p><p>GB</p><p>Two <span>GB</span> free</p></article>`);
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({
+    url: "page.html", root: "article", frames: [{name: "280", width: 280, spec: "spec.json", reference: "reference.png"}]
+  }));
+  const snap = cli("snapshot", path.join(dir, "design.json"), "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const result = check(dir, "--frame", "280");
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(result.result.frames[0].issues, []);
 });
 
 test("what is not text is checked too: an image's size and a background's colour are areas that differ", browser, () => {
@@ -369,12 +405,37 @@ test("each round's work is saved as a diff, and the summary names the best round
   assert.match(second.stdout, /best so far: round 1/);
 });
 
+test("snapshot retains existing tracked and new changes and names files too large to save", browser, () => {
+  const dir = variant();
+  const git = (...args) => spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
+  assert.equal(git("init", "-q").status, 0);
+  assert.equal(git("add", "page.html", "design.json").status, 0);
+  assert.equal(git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base").status, 0);
+  const page = path.join(dir, "page.html");
+  fs.appendFileSync(page, "<!-- existing user edit -->");
+  assert.equal(git("add", "page.html").status, 0);
+  fs.appendFileSync(page, "<!-- additional edit -->");
+  fs.writeFileSync(path.join(dir, "new.txt"), "user-created file");
+  fs.writeFileSync(path.join(dir, "oversized.bin"), Buffer.alloc((1 << 20) + 1));
+  const result = check(dir, "--frame", "720");
+  const history = JSON.parse(fs.readFileSync(path.join(dir, "out/history.jsonl"), "utf8").trim());
+  assert.equal(history.snapshot.status, "partial", result.stdout);
+  assert.ok(history.snapshot.omitted.includes("oversized.bin"));
+  const clean = tmp();
+  const clone = spawnSync("git", ["clone", "-q", dir, clean], { encoding: "utf8" });
+  assert.equal(clone.status, 0, clone.stderr);
+  const apply = spawnSync("git", ["-C", clean, "apply", path.join(dir, "out", history.snapshot.path)], { encoding: "utf8" });
+  assert.equal(apply.status, 0, apply.stderr);
+  assert.match(fs.readFileSync(path.join(clean, "page.html"), "utf8"), /existing user edit.*additional edit/);
+  assert.equal(fs.readFileSync(path.join(clean, "new.txt"), "utf8"), "user-created file");
+});
+
 test("a prepared run scores the unstyled start as failing, the reference as passing, and ignores the implementer's ledger", browser, () => {
   const root = tmp(), dir = path.join(root, "run");
   const prep = spawnSync(process.execPath, [path.join(HERE, "design-to-code/prepare.mjs"), "offer-card", dir, "--arm", "plain"], { encoding: "utf8" });
   assert.equal(prep.status, 0, prep.stderr);
   assert.match(prep.stdout, /Lay out the offer card/);
-  assert.ok(!fs.existsSync(path.join(dir, "design.json")) && !fs.existsSync(path.join(dir, "design/720/spec.json")), "the plain arm gets images only");
+  assert.ok(fs.existsSync(path.join(dir, "design.json")) && fs.existsSync(path.join(dir, "design/720/spec.json")), "both arms get the same design pack");
   assert.ok(fs.existsSync(path.join(dir, "design/720/reference.png")));
   assert.ok(!fs.readdirSync(dir, { recursive: true }).some((f) => /reference\.html$/.test(f)), "the answer stays out");
   const score = () => JSON.parse(spawnSync(process.execPath, [path.join(HERE, "design-to-code/score.mjs"), dir], { encoding: "utf8" }).stdout);
@@ -388,6 +449,8 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
   assert.equal(done.framesPassed, "3/3");
   const skill = path.join(root, "skill");
   assert.equal(spawnSync(process.execPath, [path.join(HERE, "design-to-code/prepare.mjs"), "offer-card", skill], { encoding: "utf8" }).status, 0);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, "design.json"), "utf8")), JSON.parse(fs.readFileSync(path.join(skill, "design.json"), "utf8")));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, "design/720/spec.json"), "utf8")), JSON.parse(fs.readFileSync(path.join(skill, "design/720/spec.json"), "utf8")));
   const given = JSON.parse(fs.readFileSync(path.join(skill, "design/720/spec.json"), "utf8"));
   assert.equal(given.widths, undefined, "the implementer's spec compares no text widths, as Figma's would not");
   assert.equal(JSON.parse(fs.readFileSync(`${skill}.judge/design/720/spec.json`, "utf8")).widths, true);

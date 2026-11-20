@@ -74,3 +74,7 @@ Round 0 built and tested the tooling; round 1 rebuilt it after an independent cr
 [drafts/02-v2.md](drafts/02-v2.md), the one the runs will use. [protocol.md](protocol.md) registers the next runs: the
 check on the owner's real card as a gate, then short runs of the model on two cases with scripted pushes, with a
 full task only when those warrant it.
+
+## Follow-up calibration
+
+The [third draft and calibration](03-calibration.md) exercise the checker on a real design input and preserved public builds. A corrected snapshot matches itself, but one accepted control fails the current alignment threshold. The release comparison gate remains open and no model comparison has been run. The prior experiment protocol remains historical; both proposed arms now receive the same design inputs.

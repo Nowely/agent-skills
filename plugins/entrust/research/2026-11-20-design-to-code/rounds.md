@@ -4,6 +4,7 @@
 |---|---|---|---|
 | 0 | [drafts/01-v1.md](drafts/01-v1.md) | the tooling, no model | 15 tests; the planted defects found |
 | 1 | [drafts/02-v2.md](drafts/02-v2.md) | an independent critic and a verifier on round 0, then the tooling again | each of the critic's 8 findings changed the check or the pages, one suggestion declined; each of the verifier's 16 corrections applied, some reworded; 25 tests |
+| 2 | [drafts/03-v3.md](drafts/03-v3.md) | real design input, browser regressions, and an independent mixed-list check | self-comparison false positives repaired; the alignment gate did not pass on both controls, so no model comparison was run. [Details](03-calibration.md) |
 
 The drafts are byte-identical copies of the skill page; their relative links resolve from the skill's directory.
 

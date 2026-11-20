@@ -1,8 +1,7 @@
 # The check
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
-compares it with the frame's spec and image, runs the sweep, prints a summary and exits 0 when nothing unlisted
-differs, 1 when something does, 2 when it could not measure. Playwright is resolved from the working directory
+compares it with the frame's spec and image, runs the sweep and prints a summary. Exit 0 means the measured comparison passed; 1 means a failure, 2 means the measurement is incomplete, and 3 means an observed deviation is awaiting an owner decision. Playwright is resolved from the working directory
 first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
 skips the sweep; `--before` records the page as it is now as the "before" state.
 
@@ -42,7 +41,7 @@ snapshot does: a Figma text box can be wider than its text. Everything outside t
 | `max` | the largest difference in px the entry covers; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
-| `status` | `accepted`: excused; `proposed`: shown as pending and not failed, until the owner decides. An entry the owner refuses is deleted and the difference fixed |
+| `status` | `accepted`: excused; `proposed`: shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
 | `reason` | why, in a sentence the owner can judge |
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |
 
@@ -84,5 +83,5 @@ In `out/` beside `design.json`, or `--out`:
 | `<frame>/page.png`, `side.png`, `overlay.png`, `diff.png` | the page now; design, page and difference side by side; the two at half opacity; the differing pixels |
 | `before/<frame>.png` | the page at the first check, kept until `--before` |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, and every ledger entry with its reason: the record to hand over |
-| `rounds/<n>.diff` | the project's uncommitted work at round n, outside the pack, when the project is in git; `git apply` it on a clean tree to return to that round |
-| `history.jsonl` | one line per check: round, time, frames, verdict, score, diff |
+| `rounds/<n>.diff` | an attempted Git snapshot outside the pack; verify the reported snapshot status and preserve existing edits before using it |
+| `history.jsonl` | one line per check: round, time, frames, verdict, score and snapshot status; an unavailable or partial snapshot is not a verified restore point |

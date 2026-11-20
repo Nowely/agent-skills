@@ -40,13 +40,17 @@ const frames = result.frames.map((f) => {
     font: failing.filter((i) => i.property === "font").length, regions: failing.filter((i) => i.property === "region").length, score: f.score,
   };
 });
-const ledgerFile = path.join(dir, "deviations.json");
+const workerConfigPath = path.join(dir, "design.json");
 let ledger = [];
-try { ledger = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile, "utf8")) : []; } catch { ledger = ["unreadable"]; }
+try {
+  const workerConfig = fs.existsSync(workerConfigPath) ? JSON.parse(fs.readFileSync(workerConfigPath, "utf8")) : {};
+  const ledgerFile = path.resolve(dir, workerConfig.ledger ?? "deviations.json");
+  ledger = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile, "utf8")) : [];
+} catch { ledger = ["unreadable"]; }
 const meta = JSON.parse(fs.readFileSync(path.join(judge, "run.json"), "utf8"));
 const row = {
   time: new Date().toISOString(), case: meta.case, arm: meta.arm, ...(flag === "--label" ? { label } : {}),
-  pass: result.pass, score: result.score, framesPassed: `${frames.filter((f) => f.pass).length}/${frames.length}`, frames,
+  status: result.status, missingReferences: result.missingReferences ?? [], pass: result.pass, score: result.score, framesPassed: `${frames.filter((f) => f.pass).length}/${frames.length}`, frames,
   sweep: result.sweep ? { pass: result.sweep.pass, problems: result.sweep.issues.filter((i) => i.status === "fail").map((i) => `${i.property} ${i.landmark} @ ${i.ranges}`) } : null,
   ledgerEntries: Array.isArray(ledger) ? ledger.map((e) => (!e || typeof e !== "object" ? String(e) : `${e.status} ${e.category}: ${[].concat(e.landmark ?? "region").join(", ")} ${e.property} — ${e.reason}`)) : ledger,
 };

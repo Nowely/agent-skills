@@ -299,7 +299,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   spec.landmarks.forEach((l, index) => {
     const label = landmarkLabel(l), p = byIndex.get(index);
     if (l.text) {
-      const text = pageText(l, frame, ledger);
+      const text = p?.m?.matchedText ?? (p ? pageText(l, frame, ledger) : l.text);
       if (text !== l.text) add(label, "text", l.text, text);
     }
     if (!p) return add(label, "presence", "present", "missing");
@@ -336,7 +336,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const classified = issues.map((i) => (i.status ? i : classify(i, frame, ledger)));
   const failing = classified.filter((i) => i.status === "fail");
   return {
-    frame, pass: failing.length === 0, issues: classified, causes: steps,
+    frame, pass: failing.length === 0 && !classified.some((i) => i.status === "pending"), issues: classified, causes: steps,
     score: round(failing.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -474,11 +474,13 @@ const counts = (frames, sweep) => {
 // Root first, then in the design's order: the root is fixed before what is inside it.
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
 
-export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n }) {
+export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
   const out = ["# Design check", "",
     `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
     + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`, ""];
+  if (status) out.push(`Verdict: ${status}`, "");
+  if (missingReferences.length) out.push(`Reference image not measured: ${missingReferences.join(", ")}`, "");
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {

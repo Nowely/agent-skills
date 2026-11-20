@@ -3,10 +3,9 @@
 //
 //   node evals/design-to-code/prepare.mjs <case> <dir> [--arm skill|plain]
 //
-// <dir> gets the case's unstyled start.html as index.html and the design: every frame's reference.png (rendered
-// from the case's reference.html at the case's scale) and design/context.md. The skill arm also gets each frame's
-// spec.json, as Figma would give it (texts with boxes and fonts, no exact text widths), and a design.json for the
-// check script; the plain arm gets the images and the context, as a design export usually arrives. <dir>.judge/
+// Both arms get the unstyled start.html as index.html, the same reference images, context and
+// frame specs without exact text widths, plus design.json. Judge-only sweep expectations stay private.
+// <dir>.judge/
 // gets its own design.json and the full specs, pointing at <dir>/index.html, and the case's deviations.json as
 // its ledger when the case has one, for score.mjs; the reference implementation never enters <dir>. Prints the
 // brief to give the implementer.
@@ -52,7 +51,7 @@ try {
       const from = path.join(scratch, "design", f.name, file);
       write(path.join(judge, "design", f.name, file), fs.readFileSync(from));
       if (file === "reference.png") write(path.join(dir, "design", f.name, file), fs.readFileSync(from));
-      else if (arm === "skill") {
+      else {
         // A Figma text box is not the width of its glyphs, so the implementer's spec does not compare widths.
         const { widths, ...spec } = JSON.parse(fs.readFileSync(from, "utf8"));
         write(path.join(dir, "design", f.name, file), { ...spec, source: "design" });
@@ -64,7 +63,13 @@ try {
 }
 fs.copyFileSync(path.join(caseDir, "start.html"), path.join(dir, "index.html"));
 fs.copyFileSync(path.join(caseDir, "context.md"), path.join(dir, "design", "context.md"));
-if (arm === "skill") write(path.join(dir, "design.json"), config("index.html", "design"));
+// Give both arms the same observable design data. Keep judge-only assertions private.
+const workerConfig = config("index.html", "design");
+if (workerConfig.sweep) {
+  const { switches, align, ...publicSweep } = workerConfig.sweep;
+  workerConfig.sweep = publicSweep;
+}
+write(path.join(dir, "design.json"), workerConfig);
 const answers = path.join(caseDir, "deviations.json");
 if (fs.existsSync(answers)) fs.copyFileSync(answers, path.join(judge, "deviations.json"));
 write(path.join(judge, "design.json"), {

@@ -11,8 +11,7 @@
 // measures every frame of design.json in Chromium against its spec and image, applies the ledger of deliberate
 // deviations, runs the sweep when the config has one (not with --frame or --no-sweep), prints a summary, writes
 // report.md, result.json, the images, the round's diff and, for a check of every frame, gallery.html (the design,
-// the page before the work, the page now) to <dir> (default: out/ beside design.json), and exits 0 when nothing
-// unlisted differs, 1 when something does, 2 when it could not measure. `snapshot` writes a spec (and with --images
+// the page before the work, the page now) to <dir> (default: out/ beside design.json), and exits 0 when the comparison passes, 1 on failure, 2 when measurement is incomplete, and 3 when an observed deviation is pending. `snapshot` writes a spec (and with --images
 // a reference PNG) from the page as it renders now: a baseline from an accepted implementation.
 // references/check.md describes design.json, the ledger and the output.
 //
@@ -210,6 +209,16 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
         return { found: true, box: { x: r.left - rr.left, y: r.top - rr.top, width: r.width, height: r.height }, align: "left" };
       }
       const target = key(l.text);
+      if (l.documentOrder) {
+        // A page snapshot contains whole text nodes in document order. Matching
+        // substrings of larger nodes would change the ordinal of repeated text.
+        const node = textNodes().filter((n) => key(norm(n.data)) === target)[l.nth ?? 0];
+        if (node) {
+          const lines = lineBoxes(trimmed(node), node.parentElement);
+          return { found: true, box: boxOf(lines), lines: lines.length, align: alignOf(node.parentElement), font: fontOf(node.parentElement) };
+        }
+        // Markup may split a previously whole node; fall through to range matching.
+      }
       const hits = [];
       for (let i = text.indexOf(target); target && i >= 0; i = text.indexOf(target, i + 1)) {
         if (starts.has(i) && ends.has(i + target.length)) hits.push(i);
@@ -222,7 +231,9 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
         range.setEnd(b.node, b.offset + 1);
         const el = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
         return { range, el: a.node.parentElement, whole: key(el.textContent) === target };
-      }).sort((x, y) => Number(y.whole) - Number(x.whole));
+      });
+      // Prefer a whole element for Figma landmarks; snapshots retain document order.
+      if (!l.documentOrder) ranges.sort((x, y) => Number(y.whole) - Number(x.whole));
       const hit = ranges[l.nth ?? 0];
       if (!hit) return { found: false };
       const lines = lineBoxes(hit.range, hit.el);
@@ -279,7 +290,7 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [] }) {
     const edgeOf = (r) => (g.edge === "right" ? r.right : g.edge === "center" ? (r.left + r.right) / 2 : g.edge === "top" ? r.top : r.left);
     if (rects.length > 1) {
       const values = rects.map(edgeOf), spread = Math.max(...values) - Math.min(...values);
-      if (spread > 1) issues.push({ landmark: g.selector, property: "align", actual: `${g.edge ?? "left"} edges ${Math.round(spread)} px apart` });
+      if (spread > 1) issues.push({ landmark: g.selector, property: "align", actual: `${g.edge ?? "left"} edges ${Math.round(spread * 100) / 100} px apart (limit 1 px)` });
     }
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
@@ -393,9 +404,21 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
     const scale = size ? Math.max(1, Math.round(size.width / spec.frame.width)) : 1;
     const { context, page } = await open(browser, cfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) });
     try {
-      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth } : { text: pageText(l, frame.name, ledger), nth: l.nth }));
+      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth } : { text: l.text, nth: l.nth, documentOrder: spec.source === "page snapshot" }));
       const measured = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
+      // Try an allowed alternate only when the actual design text is absent.
+      for (let i = 0; i < spec.landmarks.length; i++) {
+        const landmark = spec.landmarks[i];
+        if (landmark.selector || measured.landmarks[i]?.found) continue;
+        const alternate = pageText(landmark, frame.name, ledger);
+        if (!alternate || alternate === landmark.text) continue;
+        const found = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: [{ text: alternate, nth: landmark.nth, documentOrder: spec.source === "page snapshot" }] });
+        if (found.landmarks?.[0]?.found) measured.landmarks[i] = { ...found.landmarks[0], matchedText: alternate };
+      }
+      for (let i = 0; i < spec.landmarks.length; i++) {
+        if (measured.landmarks[i]?.found && spec.landmarks[i].text && !measured.landmarks[i].matchedText) measured.landmarks[i].matchedText = spec.landmarks[i].text;
+      }
       const shot = await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, slug(frame.name));
       fs.mkdirSync(dir, { recursive: true });
@@ -470,19 +493,32 @@ function saveRound(cfg, out, n) {
     try { return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 << 20 }); } catch (e) { return typeof e.stdout === "string" ? e.stdout : null; }
   };
   const top = git(["rev-parse", "--show-toplevel"], cfg.dir)?.trim();
-  if (!top) return null;
+  if (!top) return { status: "unavailable", reason: "Git worktree unavailable; preserve changes using the project's version control before relying on a restore" };
   // The pack is not the work, nor its output; a pack at the repository's top keeps only its output out.
-  const rel = (p) => path.relative(top, p).split(path.sep).join("/");
-  const skip = [rel(cfg.dir) || rel(out)].filter(Boolean).map((p) => `:(exclude)${p}`);
-  let diff = git(["diff", "HEAD", "--binary", "--", ".", ...skip], top) ?? "";
-  for (const f of (git(["ls-files", "--others", "--exclude-standard", "--", ".", ...skip], top) ?? "").split("\n").filter(Boolean)) {
-    if (fs.statSync(path.join(top, f)).size <= 1 << 20) diff += git(["diff", "--no-index", "--binary", "--", "/dev/null", f], top) ?? "";
+  const canonicalTop = fs.realpathSync(top);
+  const projectDir = fs.realpathSync(process.cwd());
+  const inside = (p) => p === canonicalTop || p.startsWith(canonicalTop + path.sep);
+  // Limit snapshots to the invoked project, not unrelated work elsewhere in a monorepo.
+  // Tests and callers outside the repository may use a pack at the repository root.
+  const cwd = inside(projectDir) ? projectDir : fs.realpathSync(cfg.dir) === canonicalTop ? canonicalTop : null;
+  if (!cwd) return { status: "unavailable", reason: "Invoke the check from the project inside the Git worktree to snapshot its changes" };
+  const rel = (p) => path.relative(canonicalTop, fs.realpathSync(p)).split(path.sep).join("/");
+  const skip = [rel(cfg.dir) || rel(out)].filter(Boolean).map((p) => `:(top,exclude)${p}`);
+  let diff = git(["diff", "HEAD", "--binary", "--", ".", ...skip], cwd);
+  const untracked = git(["ls-files", "--others", "--exclude-standard", "-z", "--", ".", ...skip], cwd);
+  if (diff === null || untracked === null) return { status: "unavailable", reason: "Git could not enumerate changes" };
+  const omitted = [];
+  for (const f of untracked.split("\0").filter(Boolean)) {
+    if (fs.statSync(path.join(cwd, f)).size > 1 << 20) { omitted.push(f); continue; }
+    const patch = git(["diff", "--no-index", "--binary", "--", "/dev/null", f], cwd);
+    if (patch === null) { omitted.push(f); continue; }
+    diff += patch;
   }
-  if (!diff.trim()) return null;
+  if (!diff.trim()) return omitted.length ? { status: "partial", omitted } : { status: "empty" };
   const file = path.join(out, "rounds", `${n}.diff`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, diff);
-  return path.relative(out, file);
+  return { status: omitted.length ? "partial" : "saved", path: path.relative(out, file), ...(omitted.length ? { omitted } : {}) };
 }
 
 async function check(file, flags) {
@@ -498,27 +534,35 @@ async function check(file, flags) {
   try {
     const results = await measureFrames(browser, cfg, frames, ledger, out, flags);
     const sweepResult = cfg.sweep && full && !flags["no-sweep"] ? await sweep(browser, cfg, ledger) : undefined;
-    const pass = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
+    const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
+    const pending = issues.some((issue) => issue.status === "pending");
+    const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
+    const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
+    const status = failed ? "fail" : missingReferences.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
+    const pass = status === "pass";
     const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;
     fs.mkdirSync(out, { recursive: true });
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
-    const diff = saveRound(cfg, out, n);
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), pass, score, ...(diff ? { diff } : {}) };
+    const snapshot = saveRound(cfg, out, n);
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), pass, score, snapshot, ...(snapshot.path ? { diff: snapshot.path } : {}) };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // The best round is the lowest score among rounds that checked the same frames and sweep as this one.
     const comparable = [...history, record].filter((h) => JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
     const best = comparable.reduce((a, h) => (h.score < a.score ? h : a), record);
-    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, best };
+    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, best, status, missingReferences };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
     if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
+    console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
+    console.log(`Round snapshot: ${snapshot.status}${snapshot.reason ? ` — ${snapshot.reason}` : ""}${snapshot.omitted?.length ? ` — omitted: ${snapshot.omitted.join(", ")}` : ""}`);
     if (full) console.log(`Gallery (design, before, after): ${where}/gallery.html`);
-    return pass ? 0 : 1;
+    return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();
   }
@@ -589,6 +633,8 @@ async function main(argv) {
   if (command === "figma") return figma(file, flags);
   if (command === "spec") {
     const spec = specFromMetadata(fs.readFileSync(file, "utf8"), { frame: flags.frame, coords: flags.coords ?? "auto" });
+    const genericNames = spec.landmarks.filter((landmark) => /^(value|description|text)$/i.test(landmark.text ?? "")).length;
+    if (genericNames) console.error(`Metadata has ${genericNames} generic text-layer names; verify displayed characters against design context and image.`);
     if (flags.out) { writeJson(flags.out, spec); console.log(`${spec.landmarks.length} landmarks, ${spec.source} → ${flags.out}`); } else console.log(JSON.stringify(spec, null, 2));
     return 0;
   }

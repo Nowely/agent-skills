@@ -3,22 +3,13 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## 0.44.0 — 2026-11-20
+## Unreleased
 
 ### Design to code
 
-- Add the experimental `design-to-code` skill: UI built from Figma frames to match them at every frame and adapt
-  between them. The design is gathered once into a pack; with a Figma token, `scripts/design.mjs figma` writes a
-  frame's spec (each text's characters, box, alignment and font) and its 2× image without spending model tokens.
-  `design.mjs check` measures the page in Chromium and prints a short summary: the root first, then where an offset
-  begins rather than where it is inherited, font differences, and the areas outside text whose pixels differ, each
-  with its place. A sweep narrows one mounted page every few pixels and through each frame's width for overflow,
-  clipped and overlapping text, misaligned columns and layout changes at widths the design does not name. A ledger
-  records deliberate deviations (accepted, or proposed with options); an accepted cause also excuses what it
-  carries. Each check keeps the page before the work, saves the round's diff and names the best round, and a full
-  check writes a gallery of design, before and after. It replaces the unreleased `adaptive-frontend` draft, whose
-  record stays in [its research run](research/2026-11-20-adaptive-frontend/); the new skill's reasons, review and
-  test protocol are in [research/2026-11-20-design-to-code](research/2026-11-20-design-to-code/).
+- Add the experimental `design-to-code` skill and visual comparison tool. The tool reports matched frames, the measured layout sweep, accepted differences, pending decisions and missing reference imagery. A recoverable snapshot is attempted for Git; unsupported or partial snapshots are explicit. Both experimental arms receive the same design inputs. The [research](research/2026-11-20-design-to-code/) preserves previous drafts and the real-card calibration. The alignment gate remains open.
+
+## 0.44.0 — 2026-11-20
 
 ### Review report
 

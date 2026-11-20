@@ -43,13 +43,9 @@ model tokens are spent and nothing is retyped.
 
 - **Design context**, `get_design_context` on the frame; when the answer is cut short, on its children, one call
   each. Its code (React and Tailwind by default) is a source of values, not code to paste.
-- **Code Connect**, `get_code_connect_map`: which layers are code components, with which props. Use that component
-  with those props. For a layer with no mapping, look in the UI kit (the project's own components, and
-  `search_design_system` on the remote server) before writing markup; what still has no match goes in `review.md`.
+- **Code Connect**, when available and useful, can identify mapped components and props. Verify a mapping against the design and the consumer. For unmapped layers, inspect the project and its UI kit; record what has no match in `review.md`.
 - **Variables**, `get_variable_defs`. A raw value where the system has a variable is a gap for `review.md`.
-- **Assets.** Download every icon and image the frame uses into `assets/` (`download_assets` on the remote server, or
-  the URLs the design context gives) and use those files; keep an SVG's own `viewBox`, width and height. Never draw,
-  redraw or substitute one from an icon set, and never leave a temporary Figma URL in code.
+- **Assets.** Inspect design assets alongside the project's existing icons and UI components. Preserve the intended appearance and supported component behavior; download a design asset when needed. Keep an SVG's viewBox and do not leave a temporary Figma URL in code.
 - **Comments**, `get_comments` on the remote server: states and behaviour are often written there.
 
 Save to the pack what a tool writes itself. Retyping a tool's answer into a file costs its length in output
