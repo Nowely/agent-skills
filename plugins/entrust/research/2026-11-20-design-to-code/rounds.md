@@ -486,3 +486,44 @@ Where the evidence misled, and what round 11c changed:
 - openers are looked for inside the component, in the frames.
 
 `node --test evals/design-to-code.test.mjs`: 70 passed. The page is frozen as [drafts/13-v13.md](drafts/13-v13.md).
+
+## Round 12: Fable's review against the goal, and a proofread
+
+On the owner's request, a fresh Fable reviewer read the skill at 50a7816 with the goal as stated: the owner accepts
+the first submission, and "done" means checked.
+
+It confirmed by running:
+
+- **"Done means checked" was still passable.** A check passed with every acceptance result blank. One journey that
+  only showed the card cleared two controls that open something. A "dense" story could render the frame's own
+  data. An `accepted` wildcard without `decidedBy` excused everything, though only the owner accepts.
+- **"The handoff" named two things,** the evidence file and the message to the owner. "What I saw" had no place to
+  go.
+- **The pages disagreed with the code** about the gallery's contents and the score's basis, and partial checks were
+  said to leave no gallery.
+- **The order of work did not match the page.** Journeys were written before the review listed the popups, and the
+  baseline check sat inside the building step.
+
+Round 12 changed:
+
+- **In the script:**
+  - a complete check is incomplete while any acceptance row has a blank result, and the summary names those rows;
+  - each control that opens something needs a journey that acts on it and expects something hidden, rather than any
+    journey at all;
+  - an `accepted` entry without `decidedBy` is a ledger fault.
+- **On the page:**
+  - the aim comes first, then an order of work in six steps, with the baseline check as its own step and journeys
+    written after the review;
+  - owner's questions that change behaviour or scope go out before building;
+  - "the evidence file" (`out/handoff.md`) and "your message to the owner" are named apart, and "What I saw" goes
+    in the message;
+  - only the owner accepts;
+  - the dense story names what it adds, and the page says the script cannot judge density;
+  - hover hints without ARIA attributes are listed by hand;
+  - the acceptance table gains rows for the kit map and the consumers;
+  - check.md's opening is split into exit codes, what a complete check needs, and partial checks.
+
+On a copy of the third pilot's arm, the new check reports the two acceptance rows it left blank, and finds its
+popups covered by journeys.
+
+`node --test evals/design-to-code.test.mjs`: 72 passed. The page is frozen as [drafts/14-v14.md](drafts/14-v14.md).

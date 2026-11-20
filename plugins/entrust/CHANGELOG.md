@@ -44,6 +44,9 @@ forensics remain in the repository references and release notes.
   The evidence credits each ledger entry by itself, reads the acceptance list's Result column and list items under
   its heading (Russian included), shows ledger faults, missing fonts and references, and puts the pictures first;
   partial checks write no gallery and say their verdict is partial; journeys gain `width` and `focused` steps.
+  A complete check stays incomplete while an acceptance row has no result, each control that opens something needs
+  a journey that opens and closes it, and only the owner accepts a deviation (`decidedBy`). The skill's page leads
+  with its aim and a six-step order of work, and names the evidence file and the message to the owner apart.
 
 ## 0.44.0 — 2026-11-20
 
