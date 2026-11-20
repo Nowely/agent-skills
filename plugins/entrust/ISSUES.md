@@ -10,6 +10,21 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E143. Multi mode is offered for a diff one reviewer cannot hold, yet its coordinator reads the whole diff
+
+**Evidence, level 1.** `review/SKILL.md:23` offers "a coordinator with four direction helpers, for a diff one reviewer
+cannot hold"; `review/SKILL.md:114` says "In multi mode the coordinator reads the whole diff and owns the analysis, the
+target, the record and the result". Past what can be covered, `review/SKILL.md:110` returns a partial review with "no
+complete record", so no page either. Found by the critic of the next-step analysis on 2026-11-20.
+
+**Check.** Read the three lines together: no mode divides the reading of one diff between agents, so a diff one
+reviewer cannot hold has no path to a record.
+
+**Issue text.** The review skill offers multi mode as the answer to a diff too large for one reviewer, but in multi
+mode the coordinator still reads the whole diff and writes the one record; the helpers only add directions. A diff
+past one agent's reach therefore ends as a partial review with no record and no page in either mode. Either the
+offer should say multi mode is for several risky areas, not for size, or a mode should divide the diff's reading.
+
 ## E142. macOS CI review-eval failed with a missing temporary Git objects directory
 
 **Evidence, level 3 (one observed CI failure).** On commit `fa7856b4759463f5bedaf23da2d5faf42777cdcc`, the
