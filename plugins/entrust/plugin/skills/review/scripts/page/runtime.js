@@ -104,7 +104,7 @@ const REVIEW_ORDER = GROUPS.flatMap((g) => orderChildren(ITEMS.filter(g.test)));
 // ---------------------------------------------------------------- state: the owner's answers and comments (DR), and the view
 let state = DR.empty();
 const S = {
-  field: {}, reasonText: {}, lcEdit: null, pcEdit: null, tab: "summary",
+  field: {}, reasonText: {}, lcEdit: null, pcEdit: null, pcDraft: {}, tab: "summary",
   sel: { summary: null, decisions: null, code: null, details: null }, cur: null, file: null,
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
   code: { mode: "attention", order: "diff", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
@@ -143,12 +143,18 @@ function save() {
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
+// Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing or
+// refused a save, only this page's memory.
+const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
+const kept = (where) => L(KEPT[where][storage === "blocked" || storage === "failed" ? 1 : 0]);
 function showStorage() {
+  for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
+  if (S.rendered?.decisions) updateSubCounts();
   const el = $("#storage"); if (!el) return;
   el.hidden = storage === "saved";
   el.textContent = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
 }
-window.addEventListener("beforeunload", (e) => { if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", (e) => { flushText(); if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------------------------------------------------------------- the owner's options, and each item's status in words
 const OPTION_LABEL = { fix: L("p.option.fix"), leave: L("p.option.leave"), take: L("p.option.take"), skip: L("p.option.skip") };
@@ -281,9 +287,9 @@ function announce(c, snap) {
     setState(next); S.field[c.key] = snap.field; afterChange(c.key, { structural: true }); toast(L("p.toast.undone", c.label));
   });
 }
-function refText(fi, side, num) {
+function refText(fi, side, num, end = num) {
   const rev = side === "-" ? D.passport?.base : D.passport?.head;
-  return `${F[fi].path}:${num}${rev ? ` (${L(side === "-" ? "p.copy.base" : "p.copy.head", rev)})` : ""}`;
+  return `${F[fi].path}:${num}${end !== num ? "-" + end : ""}${rev ? ` (${L(side === "-" ? "p.copy.base" : "p.copy.head", rev)})` : ""}`;
 }
 function blockRef(bid) { const p = firstPos[bid], r = F[p[0]].hunks[p[1]].rows[p[2]]; return refText(p[0], r[0] === 2 ? "-" : "+", r[0] === 2 ? r[1] : r[2]); }
 function copy(text) {
@@ -313,7 +319,7 @@ function exportModel() {
     const row = (text) => ({ text: `${c.label}: ${text}`, go: c.key });
     if (x.status === "decided") sections.decided.push(row(answerWords(c, x) + zones + waiting));
     else if (x.status === "answered") sections.answered.push(row(L("p.export.entered", x.text) + zones + waiting));
-    else if (x.status === "deferred") sections.deferred.push(row(x.reason + draft + zones));
+    else if (x.status === "deferred") sections.deferred.push(row(x.reason + draft + zones + waiting));
     else if (x.status === "not-applicable") sections.na.push(row(L("p.export.na", itemByKey.get(c.parent.key).label) + draft));
     else sections.open.push(row(itemTitle(c) + draft + zones + waiting));
   }
@@ -377,10 +383,10 @@ function renderShell() {
   <main>${TABS.map((t) => `<section class="tabpanel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join("")}</main>
   <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h" tabindex="-1" autofocus>${esc(L("p.keys"))}</h2>
     <div class="keys">${keysHtml()}</div>
-    <p class="muted small">${esc(L("p.keys.memory"))}</p>
+    <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p>
     <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>
   <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h" tabindex="-1" autofocus>${esc(L("p.export"))}</h2>
-    <p class="muted small">${esc(L("p.export.note"))}</p>
+    <p class="muted small" id="export-note">${esc(kept("export"))}</p>
     <div id="export-preview"></div>
     <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
     <p id="export-status" role="status"></p>
@@ -438,7 +444,9 @@ function route(hash) {
   const [, tab, rest] = m;
   // a segment hashPart wrote, read back; one typed by hand that is no such encoding stays as it is
   const dec = (v) => { try { return decodeURIComponent(v); } catch { return v; } };
-  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) { renderDecList(); updateSubCounts(); } return; }
+  // an address that changes the sub-tab reconciles the selection as a click on it does: a card it hides is no longer
+  // selected, in the panel or for the keys
+  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) { renderDecList(); updateSubCounts(); } return syncDecSelection(); }
   if (tab === "decisions" && rest && itemByKey.has(dec(rest))) return goCard(dec(rest));
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
@@ -515,7 +523,7 @@ function placeExcerpt(place, row) {
   const hit = (r) => { const v = place.base ? r[1] : r[2]; return v >= place.line && v <= place.end && r[0] !== (place.base ? 1 : 2); };
   const t = excerptTable(row.fi, ranges, 40, hit), lk = lkOf(row.fi, row.row);
   return `<div class="excerpt"><div class="ex-h"><span class="ex-path">${pathHtml(F[row.fi].path)}<span class="muted">:${place.line}${place.end !== place.line ? "–" + place.end : ""}${place.base ? " " + esc(L("p.place.base")) : ""}</span></span>${row.row[3] ? chip("b", row.row[3]) : ""}</div>${t.html}
-    <div class="ex-more"><button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show-in-code"))}</button><button class="btn sm quiet" data-act="copy-line" data-lk="${lk}">${esc(L("p.copy"))}</button></div></div>`;
+    <div class="ex-more"><button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show-in-code"))}</button><button class="btn sm quiet" data-act="copy-text" data-copy="${esc(refText(row.fi, place.base ? "-" : "+", place.line, place.end))}">${esc(L("p.copy"))}</button></div></div>`;
 }
 function excerptList(ids, key, first = 3) {
   if (!ids.length) return `<p class="muted">${esc(L("p.no-block"))}</p>`;
@@ -535,10 +543,13 @@ function pcWrap(anchor, inner, tag = "div") {
   return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}">${esc(L("p.pc.comment"))}</button></${tag}>`;
 }
 function pcExtra(anchor) {
-  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div><textarea class="answer" id="pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(PC.get(anchor)?.text ?? "")}</textarea>
+  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div><textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
     <div class="field-actions"><button class="btn sm" data-act="pc-save" data-anchor="${esc(anchor)}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="pc-cancel">${esc(L("p.cancel"))}</button><span>${esc(L("p.saves", MOD))}</span></div>`;
   const v = PC.get(anchor);
-  return v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div><div class="pc-t">${esc(v.text)}</div>` : "";
+  const saved = v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div><div class="pc-t">${esc(v.text)}</div>` : "";
+  // text typed in an editor another one closed: kept, not saved, until it is saved or cancelled
+  const draft = S.pcDraft[anchor] !== undefined ? `<div class="pc-h">${esc(L("p.pc.draft"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button></div><div class="pc-t">${esc(S.pcDraft[anchor])}</div>` : "";
+  return saved + draft;
 }
 function refreshPc(anchor) { for (const el of $$(`[data-pcx="${CSS.escape(anchor)}"]`)) el.innerHTML = pcExtra(anchor); }
 function textBlockPc(v, item) {
@@ -836,7 +847,7 @@ function updateSubCounts() {
   for (const t of DEC_TABS) { const el = $(`[data-subcount="${t.id}"]`); if (el) { const k = subCount(t); el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); } }
   const p = progress(), el = $("#dec-note");
   const parts = [P("p.count.open", p.open), P("p.count.decided", p.done - p.answered), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
-  if (el) el.innerHTML = `${esc(parts)}. ${esc(L("p.memory"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
+  if (el) el.innerHTML = `${esc(parts)}. ${esc(kept("hint"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
 }
 function renderDecList() {
   const sub = DEC_TABS.find((t) => t.id === S.sub.decisions);
@@ -1493,7 +1504,7 @@ function renderDetailBody() {
       <dt>${esc(L("passport.record"))}</dt><dd><span class="mono small muted">sha256 ${esc(D.digest.record)}</span></dd>
       <dt>${esc(L("p.report.language"))}</dt><dd>${esc(D.language)}</dd>
       <dt>${esc(L("p.report.size"))}</dt><dd>${esc([P("p.count.files", D.counters.files), P("p.count.blocks", D.counters.blocks), P("p.count.items", ITEMS.length)].join(", "))}</dd>
-      </dl></div><p class="muted small gap-top">${esc(L("p.memory"))}</p>
+      </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>
       <div class="section-h"><h2>${esc(L("p.print"))}</h2></div><div class="box"><p class="print-actions"><button class="btn sm" data-act="print" data-profile="owner">${esc(L("p.print.owner"))}</button><button class="btn sm" data-act="print" data-profile="audit">${esc(L("p.print.audit"))}</button></p><p class="muted small">${esc(L("p.print.note"))}</p></div>`;
   }
   $("#det-body").innerHTML = html;
@@ -1645,7 +1656,12 @@ function setToCode(set) {
 }
 
 // ---------------------------------------------------------------- events
-let textTimer = null, qTimer = null;
+let textTimer = null, qTimer = null, pendingText = null;
+// An own answer is written 120 ms after the last keystroke, and at once when the page is hidden or left, so the latest
+// answer survives a reload; a field left or committed writes it itself and drops what was pending.
+function flushText() { clearTimeout(textTimer); const p = pendingText; pendingText = null; if (p) setText(p.key, p.value); }
+window.addEventListener("pagehide", flushText);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushText(); });
 const typingTarget = (t) => t?.matches?.('textarea, select, input:not([type="radio"]):not([type="checkbox"]):not([type="button"])') || t?.isContentEditable;
 // The actions that take the owner to another place: each leaves a history entry behind.
 const NAVIGATES = new Set(["start", "item-code", "req-code", "unit-code", "set-code", "goline", "goanchor", "gounit", "gomech", "gocheck", "goscen", "gostep", "export-go"]);
@@ -1731,11 +1747,13 @@ document.addEventListener("click", (e) => {
       case "lc-del": { const lk = act.dataset.lk; setState(DR.lineComment(state, anchorOfLk(lk), "")); return commentsChanged(() => refreshLine(lk)); }
       case "goline": return goLine(act.dataset.lk);
       case "copy-block": return copy(blockRef(+act.dataset.b));
+      // a recorded place is copied as it was recorded: its side, its lines and that side's revision
+      case "copy-text": return copy(act.dataset.copy);
       case "copy-line": { const at = rowOfLk(act.dataset.lk); return copy(refText(at.fi, at.row[0] === 2 ? "-" : "+", at.row[0] === 2 ? at.row[1] : at.row[2])); }
       case "copybox-close": $("#copybox")?.remove(); return;
-      case "pc-open": { S.pcEdit = act.dataset.anchor; refreshPc(S.pcEdit); $("#pc-input")?.focus(); return; }
-      case "pc-save": return savePc(act.dataset.anchor);
-      case "pc-cancel": { const an = S.pcEdit; S.pcEdit = null; return refreshPc(an); }
+      case "pc-open": return openPc(act.dataset.anchor, act);
+      case "pc-save": return savePc(act.dataset.anchor, act.closest(".pc-x")?.querySelector(".pc-input"));
+      case "pc-cancel": return closePc();
       case "pc-del": { const an = act.dataset.anchor, [item, field] = an.split("/"); setState(DR.paragraphComment(state, { item, field }, "")); return commentsChanged(() => refreshPc(an)); }
     }
     return;
@@ -1759,7 +1777,8 @@ document.addEventListener("change", (e) => {
 });
 document.addEventListener("input", (e) => {
   const t = e.target, a = t.dataset?.act;
-  if (a === "text") { const key = t.dataset.key; clearTimeout(textTimer); textTimer = setTimeout(() => setText(key, t.value), 120); }
+  if (a === "text") { pendingText = { key: t.dataset.key, value: t.value }; clearTimeout(textTimer); textTimer = setTimeout(flushText, 120); }
+  if (t.classList?.contains("pc-input")) S.pcDraft[t.dataset.anchor] = t.value;
   if (a === "reason") { S.reasonText[t.dataset.key] = t.value; for (const el of $$(`[data-defer-hint="${t.dataset.key}"]`)) el.textContent = ""; }
   if (a === "q") { S.code.q = t.value; clearTimeout(qTimer); qTimer = setTimeout(rerenderCode, 140); }
   if (a === "find-q") { S.find.q = t.value; clearTimeout(qTimer); qTimer = setTimeout(runFind, 160); }
@@ -1768,7 +1787,7 @@ document.addEventListener("input", (e) => {
 document.addEventListener("focusout", (e) => {
   const t = e.target;
   if (t.dataset?.act === "text") {
-    clearTimeout(textTimer);
+    clearTimeout(textTimer); pendingText = null;
     const key = t.dataset.key;
     // The text is written now, so a variant clicked next runs after it and wins, and nothing writes it later; the page
     // shows it once the pointer is released, since a line that appears above the variants would move them under it.
@@ -1797,7 +1816,7 @@ document.addEventListener("focusin", (e) => {
   if (lnb) { const body = lnb.closest(".fb"); $$(".lnb[tabindex='0']", body).forEach((x) => { if (x !== lnb) x.tabIndex = -1; }); lnb.tabIndex = 0; }
 });
 function commitText(t) {
-  const key = t.dataset.key; clearTimeout(textTimer);
+  const key = t.dataset.key; clearTimeout(textTimer); pendingText = null;
   setText(key, t.value);
   if (!t.value.trim()) return false;
   t.blur(); afterChange(key, { structural: true });
@@ -1814,10 +1833,21 @@ function saveLine(lk) {
   commentsChanged(() => refreshLine(lk));
   $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus({ preventScroll: true });
 }
-function savePc(anchor) {
+// One paragraph editor at a time: opening another closes this one and keeps what was typed in it as that paragraph's
+// unsaved draft, shown there until it is saved or cancelled.
+function openPc(anchor, from) {
+  const prev = S.pcEdit;
+  S.pcEdit = anchor;
+  if (prev && prev !== anchor) refreshPc(prev);
+  refreshPc(anchor);
+  (from?.closest(".pc")?.querySelector(".pc-input") ?? $(".pc-input"))?.focus();
+}
+function closePc() { const an = S.pcEdit; S.pcEdit = null; delete S.pcDraft[an]; refreshPc(an); }
+// Saves the text of the editor the save came from, never another one on the page.
+function savePc(anchor, input) {
   const [item, field] = anchor.split("/");
-  setState(DR.paragraphComment(state, { item, field }, $("#pc-input")?.value ?? ""));
-  S.pcEdit = null;
+  setState(DR.paragraphComment(state, { item, field }, input?.value ?? S.pcDraft[anchor] ?? ""));
+  S.pcEdit = null; delete S.pcDraft[anchor];
   commentsChanged(() => refreshPc(anchor));
   $(`[data-anchor="${CSS.escape(anchor)}"] .pc-btn`)?.focus({ preventScroll: true });
 }
@@ -1908,13 +1938,13 @@ document.addEventListener("keydown", (e) => {
     if (t.dataset.act === "text") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : null; const c = itemByKey.get(t.dataset.key); if (commitText(t)) { fieldSnap = null; if (snap) announce(c, snap); step(1, false, { quiet: true }); } return; }
     if (t.dataset.act === "reason") { e.preventDefault(); const snap = fieldSnap?.key === t.dataset.key ? fieldSnap.snap : snapshot(t.dataset.key); const c = itemByKey.get(t.dataset.key); if (confirmDefer(t.dataset.key)) { fieldSnap = null; announce(c, snap); step(1, false, { quiet: true }); } return; }
     if (t.id === "lc-input") { e.preventDefault(); return saveLine(S.lcEdit); }
-    if (t.id === "pc-input") { e.preventDefault(); return savePc(S.pcEdit); }
+    if (t.classList.contains("pc-input")) { e.preventDefault(); return savePc(t.dataset.anchor, t); }
   }
   if (e.key === "Escape") {
     const m = $("#purpose-pop .pop-menu"); if (m && !m.hidden) { m.hidden = true; $("#purpose-btn").focus(); return; }
     if ($("#copybox")) { $("#copybox").remove(); return; }
     if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
-    if (S.pcEdit) { const an = S.pcEdit; S.pcEdit = null; return refreshPc(an); }
+    if (S.pcEdit) return closePc();
     // Esc leaves a field: what was written there stays, an untouched field changes nothing, and focus returns to the
     // note or card, so the next key moves on instead of typing.
     if (typing && t.dataset?.key) {

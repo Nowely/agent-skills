@@ -626,7 +626,8 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 
 /* ---------- print: the runtime builds #print (the owner's or the audit's); without JavaScript the document prints ---------- */
 @media print {
-  body > #app, .toast, .copybox { display: none !important; }
+  /* an open dialog sits in the top layer above the print; it is hidden for print and back as it was after */
+  body > #app, .toast, .copybox, dialog, dialog::backdrop { display: none !important; }
   #print { display: block; }
   .static .scard { break-inside: avoid; }
   #print .sfile, .sfile { break-inside: auto; }

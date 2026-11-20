@@ -37,7 +37,8 @@ drives it in Chromium, locally only.
   «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; the page says when the browser
   keeps nothing for it, cannot read what it kept, or refuses a save.
 - **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
-  fields, a scenario and a challenge; listed in Decisions › Comments and exported.
+  fields, a scenario and a challenge; listed in Decisions › Comments and exported. One paragraph editor is open at a
+  time: opening another keeps the first one's text as that paragraph's unsaved draft.
 - **Export.** «Export answers» opens the preview with «Copy text», which says «Copied» only once the clipboard
   confirms and otherwise selects the text, and «Download JSON».
 - **Without JavaScript, and in print.** The page holds the report as a document: the summary, every card as text,

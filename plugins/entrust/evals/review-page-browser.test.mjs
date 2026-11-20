@@ -402,6 +402,56 @@ test("review 12: the keys help opens at its top, and the sub-tabs at 1024 px sho
     return help.top === 0 && help.focus === "keys-h" && !tabs.clipped && !tabs.outside || JSON.stringify({ help, tabs });
   }));
 
+test("review 14: one paragraph editor at a time — opening another keeps the first one's text as its draft — and Save stores the text of the editor it belongs to",
+  "with two editors open, Save gave the second paragraph the first editor's text and lost the second's",
+  cased(THEMED_URL + "#decisions/f2", {}, async (page) => {
+    await page.locator('#card-f2 [data-anchor="f2/what"] .pc-btn').click({ force: true }); await page.locator(".pc-input").first().fill("on what");
+    await page.locator('#card-f2 [data-anchor="f2/fix"] .pc-btn').click({ force: true }); await settle(page);
+    const open = await page.locator(".pc-input").evaluateAll((els) => [...new Set(els.map((el) => el.dataset.anchor))]);
+    await page.locator('#card-f2 [data-anchor="f2/fix"] .pc-input').fill("on the fix"); await page.locator('#card-f2 [data-anchor="f2/fix"] [data-act="pc-save"]').click(); await settle(page);
+    const saved = Object.fromEntries((await payload(page)).paragraphComments.map((x) => [`${x.item}/${x.field}`, x.text]));
+    await page.locator('#card-f2 [data-anchor="f2/what"] [data-act="pc-open"]').first().click({ force: true }); await settle(page);
+    const draft = await page.locator('#card-f2 [data-anchor="f2/what"] .pc-input').inputValue();
+    return open.join() === "f2/fix" && saved["f2/fix"] === "on the fix" && !("f2/what" in saved) && draft === "on what" || JSON.stringify({ open, saved, draft });
+  }));
+
+test("review 15: an own answer typed just before a reload is the answer after it",
+  "the answer was written 120 ms after the last keystroke, so a reload at once brought back the previous one",
+  cased(THEMED_URL + "#decisions/q2", {}, async (page) => {
+    const field = page.locator('#card-q2 textarea[data-act="text"]');
+    await field.fill("the earlier answer"); await field.blur(); await settle(page);
+    await page.evaluate(() => { const t = document.querySelector('#card-q2 textarea[data-act="text"]'); t.focus(); t.value = "the latest answer"; t.dispatchEvent(new Event("input", { bubbles: true })); location.reload(); });
+    await page.waitForSelector(".tabbar"); await settle(page);
+    const q2 = (await payload(page)).items.find((x) => x.item === "q2");
+    return q2.text === "the latest answer" || JSON.stringify(q2);
+  }));
+
+test("review 16: a recorded place is copied as recorded — its side, its line and that side's revision",
+  "«src/invoices/archive.js:2 (base)» was copied as the head's line 3",
+  cased(BASE_URL + "#decisions/i1", { init: () => { Object.defineProperty(navigator, "clipboard", { value: { writeText: (t) => { window.copied = t; return Promise.resolve(); } } }); } }, async (page) => {
+    await page.locator('#ctx-decisions .excerpt:not([data-ex]) .ex-more button', { hasText: "Copy" }).click(); await settle(page);
+    const copied = await page.evaluate(() => window.copied);
+    return copied === "src/invoices/archive.js:2 (base HEAD~1)" || `copied «${copied}»`;
+  }));
+
+test("review 17: the text export says which parent a deferred child waits for, as the JSON does",
+  "a deferred child's row dropped its parent condition from the text",
+  cased(THEMED_URL + "#decisions/q4", {}, async (page) => {
+    await page.click('#card-q4 [data-act="defer"]'); await page.locator('#card-q4 textarea[data-act="reason"]').fill("after the release"); await page.click('#card-q4 [data-act="defer-save"]'); await settle(page);
+    const q4 = (await payload(page)).items.find((x) => x.item === "q4"), t = await exported(page);
+    return q4.waiting_for_parent === "q3" && /Q4: after the release · conditional on Q3, which is still open/.test(t) || JSON.stringify({ q4, line: t.split("\n").find((l) => l.includes("Q4")) });
+  }));
+
+test("review 18: an address that opens Comments clears the selected card from the panel and the keys, as the sub-tab does",
+  "#decisions/f1 then #decisions/comments kept «Context for F1», and «f» answered it «in view»",
+  cased(THEMED_URL + "#decisions/f1", {}, async (page) => {
+    await page.evaluate(() => { location.hash = "#decisions/comments"; }); await page.waitForTimeout(200); await settle(page);
+    const panel = await text(page, "#ctx-decisions");
+    await page.keyboard.press("f"); await settle(page);
+    const toast = await page.locator("#toast").isVisible() ? await text(page, "#toast") : "", f1 = (await payload(page)).items.find((x) => x.item === "f1");
+    return !/F1/.test(panel) && !/F1/.test(toast) && f1.status === "open" || JSON.stringify({ panel: panel.slice(0, 80), toast, f1: f1.status });
+  }));
+
 test("review 13: Back returns from a cross-entity jump, and j steps leave no history",
   "every place replaced the address, so Back left the page",
   cased(THEMED_URL + "#decisions/f1", {}, async (page) => {
@@ -490,7 +540,7 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
     await page.locator('#card-q3 input[data-opt="extend"]').check();
     await page.locator('#card-q2 textarea[data-act="text"]').fill("the display reads it"); await page.locator('#card-q2 textarea[data-act="text"]').blur();
     await page.click('#card-f1 [data-act="defer"]'); await page.locator('#card-f1 textarea[data-act="reason"]').fill("after the release"); await page.click('#card-f1 [data-act="defer-save"]');
-    await page.locator('#card-f2 [data-anchor="f2/what"] .pc-btn').click({ force: true }); await page.locator("#pc-input").fill("unclear"); await page.click('[data-act="pc-save"]');
+    await page.locator('#card-f2 [data-anchor="f2/what"] .pc-btn').click({ force: true }); await page.locator(".pc-input").fill("unclear"); await page.click('[data-act="pc-save"]');
     await page.click("#theme-btn");
     await page.keyboard.press("g"); await page.keyboard.press("c"); await page.waitForTimeout(300);
     await page.locator('#files [data-act="viewed"]').first().check();
@@ -521,11 +571,21 @@ test("the page shows what is true of its storage: a refused save, a browser that
       || JSON.stringify({ out, errors });
   });
 
+test("where the page says the answers are kept follows the storage: in the keys, the Decisions hint and the export, only this page's memory when the browser keeps nothing",
+  "with the storage refused, the hint and the keys still said the answers were kept in this browser",
+  cased(THEMED_URL + "#decisions", { init: () => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } }); } }, async (page) => {
+    const words = { hint: await text(page, "#dec-note") };
+    await page.keyboard.press("?"); await settle(page); words.keys = await text(page, "#keys-dialog"); await page.keyboard.press("Escape");
+    await page.click('[data-act="export"]'); await settle(page); words.export = await text(page, "#export-dialog .dialog-in > p"); await page.keyboard.press("Escape");
+    const wrong = Object.entries(words).filter(([, w]) => /kept in this browser/.test(w) || !/this page's memory/.test(w));
+    return !wrong.length || JSON.stringify(Object.fromEntries(wrong));
+  }));
+
 test("the export is one schema-6 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
-    await page.locator('#card-q3 [data-anchor="q3/text"] .pc-btn').click({ force: true }); await page.locator("#pc-input").fill("say why"); await page.click('[data-act="pc-save"]');
+    await page.locator('#card-q3 [data-anchor="q3/text"] .pc-btn').click({ force: true }); await page.locator(".pc-input").fill("say why"); await page.click('[data-act="pc-save"]');
     await page.goto(THEMED_URL + "#code/line/0:+4"); await page.waitForSelector(".tabbar"); await page.waitForTimeout(300);
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
@@ -585,6 +645,18 @@ test("the owner's print holds every decision whole with the owner's answer and n
     const audit = await page.evaluate(() => ({ rows: document.querySelectorAll("#print tr.r").length, verdicts: document.querySelectorAll("#print tr.bn").length, details: Boolean(document.querySelector("#print #details")) }));
     return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && audit.rows === 27 && audit.verdicts === 3 && audit.details
       || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), audit });
+  }));
+
+test("printing with the picture viewer open prints the report, not the viewer, and the viewer is still open after",
+  "the open viewer stayed in the top layer over the first printed page",
+  cased(THEMED_URL + "#details/screens", {}, async (page) => {
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page);
+    await page.evaluate(() => window.dispatchEvent(new Event("beforeprint"))); await page.emulateMedia({ media: "print" });
+    const printed = await page.evaluate(() => ({ viewer: getComputedStyle(document.querySelector("#zoom-dialog")).display, backdrop: getComputedStyle(document.querySelector("#zoom-dialog"), "::backdrop").display,
+      report: getComputedStyle(document.querySelector("#print")).display }));
+    await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    const after = await page.evaluate(() => document.querySelector("#zoom-dialog").open);
+    return printed.viewer === "none" && printed.backdrop === "none" && printed.report === "block" && after || JSON.stringify({ printed, after });
   }));
 
 test("the Russian page speaks Russian on every tab, in its toasts, dialogs and export, without JavaScript and in both prints: no English word but the record's own",
