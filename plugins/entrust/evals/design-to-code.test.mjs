@@ -283,6 +283,8 @@ const playwright = (() => {
   return false;
 })();
 const browser = { skip: playwright ? false : "Playwright is not installed where this runs" };
+// Whether a family is installed here, as fontconfig reports it; a stack's fallback depends on it.
+const hasFont = (family) => (spawnSync("fc-list", [":", "family"], { encoding: "utf8" }).stdout ?? "").includes(family);
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "design-test-"));
 const cli = (...args) => spawnSync(process.execPath, [DESIGN, ...args], { encoding: "utf8" });
@@ -400,6 +402,25 @@ test("an image-only reference requires visual text review, including when it mat
   assert.notEqual(changed.status, 0, changed.stdout + changed.stderr);
   assert.equal(changed.result.frames[0].imageOnly, true);
   assert.ok(changed.result.frames[0].pixels.ratio > 0);
+  // Outside the text an image-only difference still fails.
+  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
+  const media = check(dir, "--frame", "720");
+  assert.equal(media.status, 1, media.stdout);
+  assert.ok(media.result.frames[0].issues.some((i) => i.property === "region" && i.status === "fail"));
+});
+
+test("a design font the browser lacks makes the check incomplete until it loads", browser, () => {
+  const dir = variant(".price { font-family: 'Design Font Nobody Has', sans-serif; font-size: 20px; }");
+  const r = check(dir, "--frame", "720");
+  assert.equal(r.status, 2, r.stdout);
+  const frame = r.result.frames[0];
+  assert.deepEqual(frame.fontsMissing, ["Design Font Nobody Has"]);
+  assert.equal(frame.verdict, "incomplete");
+  assert.equal(r.result.status, "incomplete", "a smaller fallback price would otherwise read as a failure");
+  assert.match(r.stdout, /incomplete — fonts not available: Design Font Nobody Has\. Load them and check again/);
+  // A stack whose first family is absent but another named one renders is no fallback.
+  const fallback = check(variant(".price { font-family: 'Design Font Nobody Has', 'DejaVu Sans', sans-serif; }"), "--frame", "720");
+  assert.deepEqual(fallback.result.frames[0].fontsMissing.includes("Design Font Nobody Has"), !hasFont("DejaVu Sans"));
 });
 
 test("a page snapshot matches repeated text in document order", browser, () => {

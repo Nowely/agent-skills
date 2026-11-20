@@ -322,6 +322,9 @@ function classify(issue, frame, ledger) {
 // ------------------------------------------------------------------ one frame
 
 const FONT = { size: 0.5, lineHeight: 0.5, weight: 0 };
+
+// A reference with no text landmark is an image alone: what its texts say and where they sit is not measured.
+export const isImageOnly = (spec) => !spec.landmarks.some((l) => l.text);
 const channels = (c) => String(c).match(/[0-9a-f]{2}/gi)?.slice(0, 3).map((h) => parseInt(h, 16)) ?? [];
 const sameColour = (a, b) => { const x = channels(a), y = channels(b); return x.length === 3 && y.length === 3 && x.every((v, i) => Math.abs(v - y[i]) <= 2); };
 
@@ -445,12 +448,17 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // The score counts what is not settled: a failure, and a proposal still awaiting the owner. Turning a failure into
   // a proposal is no progress.
   const open = classified.filter((i) => i.status !== "accepted");
+  // Without the design's font every text is measured in a fallback: nothing is judged until it loads. An image-only
+  // reference leaves its texts to the eye.
+  const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
+  const verdict = fonts.length ? "incomplete" : failing.length ? "fail" : imageOnly ? "incomplete"
+    : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: failing.length === 0 && !classified.some((i) => i.status === "pending"), issues: classified, causes: steps,
+    frame, pass: verdict === "pass", verdict, imageOnly, fontsMissing: fonts, issues: classified, causes: fonts.length ? [] : steps,
     score: round(open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
-    pixels: measured.pixels, fonts: measured.fonts ?? [], images: measured.images ?? {},
+    pixels: measured.pixels, images: measured.images ?? {},
     moved: regions.filter((x) => x.movedWith).length,
   };
 }
@@ -590,7 +598,7 @@ const counts = (frames, sweep) => {
 };
 // Root first, then in the design's order: the root is fixed before what is inside it.
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
-const frameVerdict = (f) => f.issues.some((i) => i.status === "fail") ? "fail" : f.imageOnly ? "incomplete" : f.pass ? "pass" : "pending";
+const frameVerdict = (f) => f.verdict ?? (f.pass ? "pass" : "fail");
 
 export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
@@ -603,10 +611,11 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {
     out.push(`## ${f.frame} — ${frameVerdict(f)}`, "");
-    if (f.imageOnly) out.push("Image-only reference: text was not measured; inspect the images visually.", "");
+    if (f.imageOnly) out.push("Image-only reference: text was not measured; inspect it in the images.", "");
+    if (f.fontsMissing?.length) out.push(`Fonts not available: ${f.fontsMissing.join(", ")}. Nothing here is judged until they load; load them and check again.`, "");
     const { spec, page } = f.root;
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
-    if (f.fonts.length) out.push(`Fonts not available on the page, so text cannot match: ${f.fonts.join(", ")}.`);
+
     const shown = f.causes.filter((c) => !c.repeat);
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
@@ -645,10 +654,14 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
     const pending = f.issues.filter((i) => i.status === "pending").length;
+    if (f.fontsMissing?.length) {
+      out.push("", `${f.frame}: incomplete — fonts not available: ${f.fontsMissing.join(", ")}. Load them and check again; nothing here is judged.`);
+      continue;
+    }
     const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
-      : f.imageOnly ? "incomplete, image-only reference: inspect text visually" : pending ? `awaiting a decision on ${pending}` : "pass";
+      : f.verdict === "incomplete" ? "incomplete" : pending ? `awaiting a decision on ${pending}` : "pass";
     out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
-    if (f.fonts.length) out.push(`  fonts not available: ${f.fonts.join(", ")}`);
+    if (f.imageOnly) out.push("  image-only reference: inspect text visually");
     const shown = f.causes.filter((c) => !c.repeat);
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
     const mine = failing.filter((i) => !i.inherited);

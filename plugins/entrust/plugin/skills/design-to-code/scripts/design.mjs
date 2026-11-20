@@ -24,7 +24,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
+  compareFrame, isImageOnly, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
   specFromMetadata, specFromRest, sweepIssues, switches,
 } from "./core.mjs";
 
@@ -244,9 +244,11 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     const ctx = document.createElement("canvas").getContext("2d");
     const width = (font) => { ctx.font = font; return ctx.measureText("mmmmmmmmmmlli1WQ@#ЖЯ").width; };
     const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[\w-]+|-apple-system|emoji|math|fangsong|inherit|initial)$/i;
-    const families = new Set(textNodes().map((n) => getComputedStyle(n.parentElement).fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "")));
-    const missing = [...families].filter((f) => f && !generic.test(f)
-      && ["monospace", "serif", "sans-serif"].every((g) => width(`72px "${f}", ${g}`) === width(`72px ${g}`)));
+    // A stack falls back only when none of its named families is there; the first one names it.
+    const available = (f) => ["monospace", "serif", "sans-serif"].some((g) => width(`72px "${f}", ${g}`) !== width(`72px ${g}`));
+    const stacks = new Set(textNodes().map((n) => getComputedStyle(n.parentElement).fontFamily));
+    const missing = [...new Set([...stacks].map((stack) => stack.split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).filter((f) => f && !generic.test(f)))
+      .filter((named) => named.length && !named.some(available)).map((named) => named[0]))];
     return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: missing, textBoxes: textBoxes() };
   }
 
@@ -433,9 +435,10 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
       if (!fs.existsSync(before) || flags.before) { fs.mkdirSync(path.dirname(before), { recursive: true }); fs.writeFileSync(before, shot); }
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
-      const imageOnly = !spec.landmarks.some((l) => l.text);
+      const imageOnly = isImageOnly(spec);
       if (reference) {
-        const ignore = imageOnly ? [] : [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
+        // Text is left out of the pixels: its landmarks measure it, or, for an image-only reference, the eye does.
+        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
         const shifts = spec.landmarks.map((l, i) => measured.landmarks[i]?.found
           && { label: l.text ?? l.selector, box: l.box, dx: measured.landmarks[i].box.x - l.box.x, dy: measured.landmarks[i].box.y - l.box.y }).filter(Boolean);
         const { png, regions: found, ...pixels } = await pixelDiff(scratch, reference, shot, { scale, ignore, shifts });
@@ -447,7 +450,6 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
         regions = nameRegions(found, spec.landmarks);
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions });
-      if (imageOnly) { result.imageOnly = true; result.pass = false; }
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: dataUrl(fs.readFileSync(before)), after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -529,9 +531,11 @@ async function check(file, flags) {
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured ?? [];
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
+    const fontless = results.some((r) => r.fontsMissing.length);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
     const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
-    const status = failed ? "fail" : missingReferences.length || unmeasured.length || imageOnlyFrames.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
+    const status = fontless ? "incomplete" : failed ? "fail"
+      : missingReferences.length || unmeasured.length || imageOnlyFrames.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
     const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;
     fs.mkdirSync(out, { recursive: true });
