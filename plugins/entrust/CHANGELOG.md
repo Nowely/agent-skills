@@ -27,6 +27,8 @@ forensics remain in the repository references and release notes.
   bar says the choices decided, with every part in its title, so it still fits beside the tabs at 1024 px, and shows no
   bar when there is no choice. Done still lists both, and the export's JSON progress is unchanged. The Russian Done
   tab, the message when nothing is left to start and the Code folds name an answered request as answered, not decided.
+  An evidence request's field says that what is not checked yet is deferred with that reason, since an answer there
+  counts as done.
 - The Code tab's open count follows a parent's answer that restores a conditional question with code; it was counted
   before the walk was rebuilt, so it kept the count from before the answer.
 - A review of a new revision of a change already reviewed and answered starts from the previous record, the owner's

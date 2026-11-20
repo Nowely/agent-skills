@@ -649,7 +649,8 @@ function textField(c) {
   const solo = !optionsOf(c).length, entry = entryOf(c.key);
   const label = L(solo ? (isRequest(c) ? "p.text.request" : "p.text.yours") : "p.text.other");
   const id = `text-${c.key}-${S.uid}`;
-  return `<div class="field"><label for="${esc(id)}">${esc(label)}</label><textarea class="answer" id="${esc(id)}" data-act="text" data-key="${esc(c.key)}" placeholder="${esc(L(solo ? "p.text.placeholder" : "p.text.replaces"))}">${esc(entry.deferred ? "" : entry.text ?? "")}</textarea>
+  const deferHint = c.kind === "evidence" ? `<p class="muted small">${esc(L("p.text.not-checked"))}</p>` : "";
+  return `<div class="field"><label for="${esc(id)}">${esc(label)}</label>${deferHint}<textarea class="answer" id="${esc(id)}" data-act="text" data-key="${esc(c.key)}" placeholder="${esc(L(solo ? "p.text.placeholder" : "p.text.replaces"))}">${esc(entry.deferred ? "" : entry.text ?? "")}</textarea>
     <div class="field-actions"><span>${esc(L("p.text.keys", MOD))}</span></div></div>`;
 }
 function choiceInner(c, where) {

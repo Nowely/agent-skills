@@ -704,6 +704,13 @@ test("Enter on a decision whose variants combine opens its answer, as on any car
     return focus[0] === "INPUT" && focus[1] === "checkbox" && focus[2] === "card-q3" || JSON.stringify(focus);
   }));
 
+test("an evidence request says that what is not checked yet is deferred with that reason, since an answer counts as done",
+  "«not checked yet» typed as an evidence answer read as done and folded its blocks",
+  cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
+    const evidence = await text(page, "#card-q1 .choice"), fact = await text(page, "#card-q2 .choice");
+    return /not checked yet/i.test(evidence) && /defer/i.test(evidence) && !/not checked yet/i.test(fact) || JSON.stringify({ evidence: evidence.slice(0, 200), fact: fact.slice(0, 120) });
+  }));
+
 test("without JavaScript a decision whose variants combine says so, and marks each variant recommended together",
   "the document gave no sign that several variants could be taken, nor which the reviewer recommends together",
   async () => {
