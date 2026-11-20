@@ -61,10 +61,12 @@ function loadConfig(file) {
   };
   for (const key of ["url", "root", "frames"]) if (!cfg[key]) throw new Error(`design.json: no "${key}"`);
   if (new Set(cfg.frames.map((f) => f.name)).size !== cfg.frames.length) throw new Error("design.json: frame names must be unique");
-  const stories = cfg.sweep?.stories ?? [];
+  const stories = cfg.sweep?.stories ?? [], journeys = cfg.journeys ?? [];
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
+  if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps))) throw new Error("design.json: each journey needs a name and steps");
   return {
     ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
+    journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
     ...(cfg.sweep ? { sweep: { ...cfg.sweep, stories: stories.map((st) => ({ ...st, url: url(st.url) })) } } : {}),
     frames: cfg.frames.map((f) => {
       if (!f.name || !f.width || !f.spec) throw new Error(`design.json: a frame needs name, width and spec (${JSON.stringify(f)})`);
@@ -126,16 +128,27 @@ async function setWidth(page, cfg, width, viewportHeight) {
 async function runStep(page, step) {
   const [action] = Object.keys(step);
   const arg = step[action];
+  const point = Array.isArray(arg) && arg.length === 2 && arg.every(Number.isFinite);
   if (action === "wait") return page.waitForTimeout(Number(arg));
   if (action === "press") return page.keyboard.press(arg);
   if (action === "fill") return page.locator(arg[0]).first().fill(arg[1]);
-  if (!["click", "hover", "focus"].includes(action)) throw new Error(`unknown setup step ${JSON.stringify(step)}`);
+  if (action === "move") return point ? page.mouse.move(arg[0], arg[1], { steps: 8 }) : page.locator(arg).first().hover();
+  if (action === "tap") return point ? page.touchscreen.tap(arg[0], arg[1]) : page.locator(arg).first().tap();
+  // What a journey expects, given a second to come true.
+  if (action === "visible" || action === "hidden") {
+    return page.locator(arg).first().waitFor({ state: action, timeout: 1000 }).catch(() => { throw new Error(`${arg} is not ${action}`); });
+  }
+  if (action === "text") {
+    return page.waitForFunction(([sel, text]) => [...document.querySelectorAll(sel)].some((e) => e.innerText.includes(text)), arg, { timeout: 1000 })
+      .catch(() => { throw new Error(`no ${arg[0]} shows “${arg[1]}”`); });
+  }
+  if (!["click", "hover", "focus"].includes(action)) throw new Error(`unknown step ${JSON.stringify(step)}`);
   return page.locator(arg).first()[action]();
 }
 
-async function open(browser, cfg, { url, width, setup = [], viewport, height = 900, scale = 1 }) {
+async function open(browser, cfg, { url, width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
   const viewportWidth = viewport ?? (cfg.host ? Math.max(cfg.viewport ?? 1280, width) : width);
-  const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch: touch });
   const page = await context.newPage();
   await page.goto(url, { waitUntil: "load" });
   await page.addStyleTag({ content: STILL });
@@ -401,15 +414,6 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
-  // A control the pointer cannot reach: another element lies over its centre, as an action laid over a help icon.
-  const named = (el) => label(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase());
-  for (const el of root.querySelectorAll("a[href],button,input,select,textarea,summary,[role=button],[role=link],[tabindex]:not([tabindex='-1'])")) {
-    if (!visible(el) || el.disabled) continue;
-    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
-    if (!r.width || !r.height || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
-    const hit = document.elementFromPoint(x, y);
-    if (hit && !el.contains(hit) && !hit.contains(el)) issues.push({ landmark: named(el), property: "covered", actual: `under ${named(hit)}` });
-  }
   // The spread of the group's edges as laid out, against the configured tolerance. A group that matches fewer than
   // two visible elements measures nothing at this width and says so.
   const unmeasured = [];
@@ -425,6 +429,35 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   // wraps keeps its first line's place, so wrapping inside one layout does not count.
   const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
   const rows = tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
+  // A control the pointer cannot fully reach: another element lies over part of it, as an action laid over a help
+  // icon. Its centre and four inner points are tried, the window scrolled to it; a point on the control's own label,
+  // or cut away by a clipping ancestor, does not count.
+  const named = (el) => label(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase());
+  const clips = (el) => {
+    const out = [];
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (/hidden|clip|auto|scroll/.test(cs.overflowX + cs.overflowY)) out.push(p.getBoundingClientRect());
+    }
+    return out;
+  };
+  const [sx, sy] = [scrollX, scrollY];
+  for (const el of root.querySelectorAll("a[href],button,input,select,textarea,summary,[role=button],[role=link],[tabindex]:not([tabindex='-1'])")) {
+    if (!visible(el) || el.disabled || el.getAttribute("aria-disabled") === "true") continue;
+    let r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if (r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth) {
+      scrollTo(scrollX + r.left + r.width / 2 - innerWidth / 2, scrollY + r.top + r.height / 2 - innerHeight / 2);
+      r = el.getBoundingClientRect();
+    }
+    const cut = clips(el);
+    const own = (hit) => el.contains(hit) || hit.contains(el) || [...(el.labels ?? [])].some((l) => l.contains(hit)) || Boolean(hit.closest("label")?.contains(el));
+    const points = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]].map(([fx, fy]) => [r.left + r.width * fx, r.top + r.height * fy])
+      .filter(([x, y]) => x >= 0 && y >= 0 && x < innerWidth && y < innerHeight && cut.every((c) => x >= c.left && x < c.right && y >= c.top && y < c.bottom));
+    const hits = points.map(([x, y]) => document.elementFromPoint(x, y)).filter((hit) => hit && !own(hit));
+    if (hits.length) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0])}` });
+  }
+  scrollTo(sx, sy);
   return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
 }
 
@@ -611,7 +644,10 @@ async function sweep(browser, cfg, ledger) {
         await settle(page, cfg.root);
         const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
-        if (shots && frameWidths.has(width) && !shots.has(width)) shots.set(width, await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" }));
+        // A picture for the gallery only: a root with no size to capture leaves a gap, not a failed check.
+        if (shots && frameWidths.has(width) && !shots.has(width)) {
+          shots.set(width, await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide", timeout: 5000 }).catch(() => null));
+        }
         return { width, ...r };
       };
       const probes = [];
@@ -634,7 +670,7 @@ async function sweep(browser, cfg, ledger) {
     const shots = new Map();
     const r = await run(story.url, story.setup, shots);
     issues.push(...sweepIssues([...r.probes, r.back], ledger).map((i) => ({ ...i, story: story.name })));
-    stories.push({ name: story.name, shots: [...shots].map(([width, png]) => ({ width, image: dataUrl(png) })) });
+    stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
   // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
@@ -658,6 +694,47 @@ async function sweep(browser, cfg, ledger) {
   };
 }
 
+// Each journey on its own fresh page, at the widest frame's width unless it names one: its steps in order, the
+// first that does not hold failing it.
+async function journeys(browser, cfg) {
+  const width = Math.max(...cfg.frames.map((f) => f.width));
+  const results = [];
+  for (const j of cfg.journeys) {
+    let opened, failed;
+    try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
+    catch (e) { if (!e.missingRoot) throw e; failed = e.message; }
+    if (opened) {
+      try {
+        for (const [i, step] of j.steps.entries()) {
+          try { await runStep(opened.page, step); } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
+        }
+      } finally { await opened.context.close(); }
+    }
+    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}) });
+  }
+  return results;
+}
+
+// What a full check expects beyond the frames: review.md with the acceptance list, every reference in the pack's
+// frames/ checked by a frame, and a dense story in the sweep. A gap leaves the check incomplete, so "pass" means the
+// acceptance list was written and its measured part ran.
+const reviewed = (cfg) => {
+  const file = path.join(cfg.dir, "review.md");
+  return fs.existsSync(file) && /acceptance/i.test(fs.readFileSync(file, "utf8"));
+};
+function acceptanceGaps(cfg, flags) {
+  const gaps = [];
+  if (!reviewed(cfg)) gaps.push("review.md has no acceptance list: write it before the first product edit");
+  const dir = path.join(cfg.dir, "frames");
+  const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
+  if (fs.existsSync(dir)) {
+    const unframed = fs.readdirSync(dir).map((d) => path.join(dir, d, "reference.png")).filter((p) => fs.existsSync(p) && !framed.has(p));
+    if (unframed.length) gaps.push(`references no frame checks: ${unframed.map((p) => path.relative(cfg.dir, p)).join(", ")}`);
+  }
+  if (cfg.sweep && !flags["no-sweep"] && !cfg.sweep.stories?.length) gaps.push("no dense story is swept: add one to sweep.stories");
+  return gaps;
+}
+
 async function check(file, flags) {
   const cfg = loadConfig(file);
   const out = path.resolve(flags.out ?? path.join(cfg.dir, "out"));
@@ -679,18 +756,20 @@ async function check(file, flags) {
           reason: e.message, issues: [], switches: [], score: 0 };
       }
     }
+    const journeyResults = full ? await journeys(browser, cfg) : [];
+    const gaps = full ? acceptanceGaps(cfg, flags) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured ?? [];
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
-    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass);
     const status = failed ? "fail"
-      : results.some((r) => r.verdict === "incomplete") || unmeasured.length || sweepResult?.verdict === "incomplete" ? "incomplete"
+      : results.some((r) => r.verdict === "incomplete") || unmeasured.length || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
         : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
-    const score = totalScore(results, sweepResult);
+    const score = totalScore(results, sweepResult, journeyResults);
     fs.mkdirSync(out, { recursive: true });
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
@@ -699,7 +778,7 @@ async function check(file, flags) {
     // series, since its score says nothing about the page against the earlier ones.
     const basis = createHash("sha256").update(JSON.stringify([frames.map((f) => [f.name, fs.readFileSync(f.spec, "utf8")]),
       sweepResult ? cfg.sweep : null])).digest("hex").slice(0, 12);
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, status, score };
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: reviewed(cfg), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
     const comparable = history.filter((h) => h.score != null && h.basis === basis);
@@ -707,11 +786,12 @@ async function check(file, flags) {
     const previous = comparable.at(-1);
     const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
     const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
-    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, stalled, status, missingReferences, imageOnlyFrames };
+    const restarted = history.length > 0 && history.at(-1).basis !== basis;
+    const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
-    if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, ledger }));
+    if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
     console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);

@@ -612,7 +612,8 @@ const cell = (v) => (v === undefined ? "" : String(v).replace(/\|/g, "\\|").repl
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
-export const totalScore = (frames, sweep) => frames.some((f) => f.unmeasured) || sweep?.reason ? null : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0));
+export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason ? null
+  : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0) + journeys.filter((j) => !j.pass).length * 10);
 const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
   return (s) => all.filter((i) => i.status === s).length;
@@ -624,12 +625,15 @@ const listed = (texts, limit = 8) => `${texts.slice(0, limit).map((t) => `“${t
 const notInDesign = (f) => `page text not in the design (${f.unexpected.length}): ${listed(f.unexpected)}`;
 const where = (i) => `${i.landmark}${i.story ? ` (${i.story})` : ""}`;
 
-export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
+const journeyLine = (journeys) => `journeys: ${journeys.length ? `${journeys.filter((j) => j.pass).length} of ${journeys.length} hold` : "none defined"}`;
+
+export function renderReport({ frames = [], sweep, journeys = [], gaps = [], ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
   const out = ["# Design check", "",
     `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
-    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep) ?? "unmeasured"} (lower is better)`, ""];
+    + ` · ${journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`, ""];
   if (status) out.push(`Verdict: ${status}`, "");
+  for (const g of gaps) out.push(`Not checked: ${g}.`, "");
   if (missingReferences.length) out.push(`Reference image not measured: ${missingReferences.join(", ")}`, "");
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
   if (ledgerProblems.length) out.push("");
@@ -655,6 +659,11 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
       out.push("");
     }
   }
+  if (journeys.length) {
+    out.push("## Journeys", "");
+    for (const j of journeys) out.push(`- ${j.pass ? "holds" : "fails"}: ${j.name}${j.failed ? ` (${j.failed})` : ""}`);
+    out.push("");
+  }
   if (sweep) {
     out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${verdictOf(sweep)}`, "");
     if (sweep.reason) out.push(sweep.reason, "");
@@ -673,12 +682,14 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, previous, best, stalled = 0 }, { limit = 8, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
-    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep) ?? "unmeasured"} (lower is better)`
+    + ` · ${journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
     + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
+  if (restarted) out.push("The specs or the sweep changed: scores start a new series here.");
   if (stalled >= 2) out.push(`${stalled} rounds without a new lowest score: stop adjusting. Sort what remains: fix it another way, record it as proposed, or ask.`);
+  for (const g of gaps) out.push(`Not checked: ${g}.`);
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
@@ -706,6 +717,7 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at every width; an alignment needs two or more`);
     for (const u of sweep.partial ?? []) out.push(`  ${u.selector} matched fewer than two at ${u.ranges}: aligned only where it has two or more`);
   }
+  for (const j of journeys.filter((x) => !x.pass)) out.push("", `journey fails: ${j.name}: ${j.failed}`);
   out.push("", `Full tables: ${file}`);
   return out.join("\n");
 }
@@ -718,7 +730,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // now and their difference, at the frame's CSS size, with the frame's verdict and where to start; then the sweep's
 // verdict and every ledger entry with its reason, who decided and the options.
 // images: { design, before, after, diff } as data URLs, any of them absent.
-export function renderGallery({ title = "Design check", frames, sweep, ledger = [] }) {
+export function renderGallery({ title = "Design check", frames, sweep, journeys = [], gaps = [], ledger = [] }) {
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
@@ -749,9 +761,11 @@ img{display:block;max-width:100%;height:auto;outline:1px solid var(--line);backg
 li{margin:6px 0}
 </style>
 <h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ.</p>
+${gaps.length ? `<section><h2>Not checked</h2><ul>${gaps.map((g) => `<li>${esc(g)}</li>`).join("")}</ul></section>` : ""}
 ${sections.join("\n")}
 ${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(where(i))} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
 ${(sweep?.stories ?? []).map((st) => `<section><h2>Story: ${esc(st.name)}</h2><p>At the frames' widths; its findings are in the list above.</p><div class="row">${st.shots.map((sh) => `<figure><figcaption>${sh.width} px</figcaption><img src="${sh.image}" alt="${esc(st.name)} at ${sh.width} px"></figure>`).join("")}</div></section>`).join("\n")}
+${journeys.length ? `<section><h2>Journeys</h2><ul>${journeys.map((j) => `<li><span class="${j.pass ? "pass" : "fail"}">${j.pass ? "holds" : "fails"}</span> ${esc(j.name)}${j.failed ? `: ${esc(j.failed)}` : ""}</li>`).join("")}</ul></section>` : ""}
 ${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>
 `;

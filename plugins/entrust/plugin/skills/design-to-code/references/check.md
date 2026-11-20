@@ -1,11 +1,14 @@
 # The check
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
-compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
+compares it with the frame's spec and image, runs the sweep and the journeys, prints a summary and writes the files
+listed under [Output](#output). It exits 0 when the comparison
 passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
 decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
-left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements; and
-everything, when there is no browser. A
+left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements;
+everything, when there is no browser; and, for a check of every frame, what the acceptance list needs: `review.md`
+beside `design.json` with an acceptance list, a frame for every `frames/<name>/reference.png` in the pack, and a dense
+story in a configured sweep. A
 failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
 project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. The page
 before the work is the one the first check saw. If the root was absent after setup, the gallery records its
@@ -24,10 +27,29 @@ Paths are relative to the file.
 | `tolerance` | how far a position or an alignment may differ, in CSS px; default 1 |
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
+| `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
 | `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: more pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
-`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`,
-`{ "fill": ["<selector>", "<text>"] }`, `{ "press": "Escape" }`, `{ "wait": 200 }`.
+`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap`,
+`{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px), `{ "fill": ["<selector>", "<text>"] }`,
+`{ "press": "Escape" }`, `{ "wait": 200 }`.
+
+## Journeys
+
+Each journey opens the page afresh, at the widest frame's width unless it gives `width`, by touch when it says
+`"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and three that expect,
+each given a second to come true: `{ "visible": "<selector>" }`, `{ "hidden": "<selector>" }` (no match counts as
+hidden), `{ "text": ["<selector>", "<text>"] }`. The first step that does not hold fails the journey, with its number;
+a failing journey fails the check. For a popup:
+
+```json
+{ "name": "help: leaving closes it", "steps": [{ "hover": ".help" }, { "visible": ".popover" },
+  { "move": ".popover" }, { "visible": ".popover" }, { "move": [5, 5] }, { "hidden": ".popover" }] },
+{ "name": "help: a tap toggles it", "touch": true, "steps": [{ "tap": ".help" }, { "visible": ".popover" },
+  { "tap": [5, 5] }, { "hidden": ".popover" }] },
+{ "name": "help: Escape closes it", "steps": [{ "focus": ".help" }, { "visible": ".popover" },
+  { "press": "Escape" }, { "hidden": ".popover" }] }
+```
 
 A spec landmark is a text, found on the page whatever its spaces, letter case and markup, or a CSS `selector`
 for an element without text, with its `box` in the design. Texts are compared by position and line height, and by
@@ -69,8 +91,8 @@ top where an offset begins, between two landmarks the design places one after th
 an edge of the root, or a landmark's own width or height that changed and carried its neighbours ("the width of
 “New” changes by +9 px") (the first 8 px band from the top, its largest step first); the first findings that are not
 inherited; how many are left; and the score, which adds up what is not settled, failures and proposals alike, with
-the round before and the lowest so far. Rounds are compared only when they measured the same specs and sweep; after
-two rounds without a new lowest, the summary says to stop adjusting. `out/report.md` holds every finding in tables.
+the round before and the lowest so far, counted only over rounds measured against the same specs and sweep.
+`out/report.md` holds every finding in tables.
 
 - An offset marked *inherited* equals the one it follows from: it disappears with its cause.
 - A horizontal position is read from the left edge, the right edge or the centre of the root, whichever the landmark
@@ -87,7 +109,8 @@ two rounds without a new lowest, the summary says to stop adjusting. `out/report
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
   `outside` (text past the root), `overlap` (two texts over each other), `covered` (a button, link or field with
-  another element over its centre, so the pointer cannot reach it), `align` (a group's edges further apart than
+  another element over its centre or one of four inner points, the window scrolled to it; its own label, a disabled
+  control and a point a clipping box cuts away do not count), `align` (a group's edges further apart than
   the tolerance, as laid out; a group with fewer than two elements at some widths is aligned where it has two, and
   one that never has two is not measured), `resize`
   (the widest layout not restored), and the widths between which the layout changes; with `switches`, a change
@@ -105,4 +128,4 @@ In `out/` beside `design.json`, or `--out`:
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable. Frame paths include a hash of the original name. Earlier PNGs are reused when their filename identifies exactly one configured frame |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
-| `history.jsonl` | one line per check: round, time, frames, sweep, verdict and score; the summary reads it for the round before and the lowest |
+| `history.jsonl` | one line per check: round, time, frames, sweep, what they were measured against, whether `review.md` had its acceptance list, verdict and score; the summary reads it for the round before and the lowest |
