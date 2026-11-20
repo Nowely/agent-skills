@@ -150,8 +150,8 @@ function save() {
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
-// Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing or
-// refused a save, only this page's memory.
+// Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing,
+// refused a save or holds what the page could not read, only this page's memory.
 const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
 const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
 function showStorage() {
