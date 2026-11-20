@@ -242,7 +242,7 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 answers an item.
 
 The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
-owner's own session; the review applies none of it. A review of the next revision reads it as
+owner's own session or orchestrate's fix round; the review applies none of it. A review of the next revision reads it as
 [the next revision](#the-next-revision) says.
 
 ## The next revision
