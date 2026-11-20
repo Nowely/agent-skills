@@ -307,10 +307,10 @@ adds is itself a change to judge, and the file is read.
   it all.
 - Another generated file: the generator or its input changed to match. Unless it is regenerated, its diff is read as
   any file's; only a lock file's searches stand in for reading.
-- When the plan allows running the generator, regenerate with the project's pinned tool and a mode that runs no
-  install scripts (such as `--lockfile-only` or `--package-lock-only`), compare, and record it in
-  `coverageStructured` as `ran`, with the command and its `revision`. Otherwise record it as `read`, of the manifest
-  change and the searches. Content its source does not explain is never `keep`.
+- When the plan allows running the generator, regenerate with the project's pinned tool, lock file only and with
+  install scripts off — `--ignore-scripts` beside npm's `--package-lock-only` (which alone still runs them) or pnpm's
+  `--lockfile-only` — compare, and record it in `coverageStructured` as `ran`, with the command and its `revision`.
+  Otherwise record it as `read`, of the manifest change and the searches. Content its source does not explain is never `keep`.
 
 ## Visual evidence
 
