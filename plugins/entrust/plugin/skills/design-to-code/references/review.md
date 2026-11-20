@@ -59,8 +59,11 @@ and, at handoff, its result with its evidence:
 | every supplied reference, each state and width | its frame in `design.json` (an image-only frame where no spec fits) | pass, or what remains and why |
 | the dense story | `sweep.stories` and its pictures | no collision, no covered control |
 | every popup, menu and sheet | its journeys in `design.json`: hover, move into it, leave it, `hidden`; tap it open and closed; focus it and press Escape | the result of each |
-| every action | a journey: it works, and the state around it survives a resize | |
+| every action | a journey: it works, and the state around it survives a resize (its `width` step) | |
 | the owner's past returns, when the project keeps them (`.design/returns.md`, or its agent notes) | how each was checked | |
 
 A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked. A
-journey that expects nothing cannot fail: each one ends in a `visible`, `hidden` or `text` step.
+journey that expects nothing cannot fail: each one has at least one `visible`, `hidden`, `text` or `focused` step,
+and a `hidden` step follows the `visible` step that saw the same thing open. The check reads this list as the lines
+under a heading that names it (in English or Russian, subheadings included): table rows past the header, with the
+result from a column named Result, and list items, with the result after a colon.

@@ -17,8 +17,9 @@ license: MIT
 **Done means checked.** Before the first product edit, write the acceptance list in `review.md`: every supplied
 reference, a dense story, every popup and action, and the owner's past returns when the project keeps them. Before
 saying done, run all of it and give each line its evidence. A line that fails is fixed or reported as not done; a line
-not run is reported as not checked. The check refuses "pass" while the list is missing, a reference has no frame, no
-dense story is swept or a control that opens something has no journey. The first submission is the one the owner
+not run is reported as not checked. A complete check (every frame, with the sweep) refuses "pass" while the list is
+missing, a reference has no frame, no dense story is swept or a control that opens something has no journey; only a
+complete check writes the evidence and the gallery. The first submission is the one the owner
 should be able to accept.
 
 Two files carry the work, and anyone can continue from them: the **design pack** (what the design says) and the
@@ -102,13 +103,14 @@ consume, the built package.
 
 Verify the work as if someone else had built it, before saying done:
 
-1. Look first: open each picture `out/handoff.md` lists, and write one sentence per picture on what differs from the
-   design, before reading the check's numbers. A difference only the eye or only the check shows is fixed, recorded
-   or explained.
-2. Try two things the acceptance list did not name, such as a resize with a popup open, the keyboard order, or an
-   empty or extreme value. Write each as a journey named `probe: …`, so it gets a result.
-3. Run the full check. `out/handoff.md` holds each frame's verdict, the widths and stories, each journey, what the
-   ledger excused, the acceptance list's rows (a blank result reads "not checked") and what the script did not check.
+1. Try two things the acceptance list did not name, such as a resize with a popup open (a journey's `width` step),
+   the keyboard order (`press` and `focused`), or an empty or extreme value. Write each as a journey named
+   `probe: …`, so it gets a result.
+2. Fill in the acceptance list's results, then run the complete check last. `out/handoff.md` lists the pictures to
+   look at first, then each frame's verdict, the widths and stories, each journey, what the ledger excused, the
+   acceptance rows (a blank result reads "not checked") and what the script did not check.
+3. Open each picture it lists before reading its numbers, and write one sentence per picture under "What I saw" in
+   the handoff. A difference only the eye or only the check shows is fixed, recorded or explained.
 4. Every claim in the handoff quotes a line of `handoff.md`, a command with its output, or a picture; a claim without
    evidence is removed or moves under what was not checked.
 
