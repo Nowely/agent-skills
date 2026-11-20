@@ -255,17 +255,18 @@ A review of a new revision of a change already reviewed and answered starts from
 previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
 review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
 previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
-and the checking agents can read them, and cite them by `at`, since a `ref` resolves in this record. The export's
+and the checking agents can read them. Cite them by `at` with a quote — the record by file and line, the export by
+its file alone, since it is one line of JSON — because a `ref` resolves in this record. The export's
 keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
 only when its `record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the
 record does not hold is left out, and the response says so. A short review applies the same rules in its response.
 
 - Read what changed since the previous head first — `git diff <previous head>..<head>` when the base stayed,
   `git range-diff <previous base>..<previous head> <base>..<head>` when it moved, the previous saved diff against
-  this one when the old commits are gone — then the whole diff. The record covers the whole diff, as any record
-  does, and the page needs nothing new.
+  this one when the old commits are gone — then the whole diff, and say in `coverage` how the change since was read.
+  The record covers the whole diff, as any record does, and the page needs nothing new.
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
-  by its title, since its key names another item here:
+  by its words — a question by its text, a finding or idea by its title — since its key names another item here:
   - an answer in effect that asks for something — a variant, «Fix it», «Take it» — is a requirement with
     `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
     and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
@@ -274,13 +275,14 @@ record does not hold is left out, and the response says so. A short review appli
     review does not raise that finding or idea again unless the new revision changes its premise, and then the
     finding says what changed;
   - own words are read for what they say: a request for a change is a requirement, an acceptance a tradeoff, and a
-    question is answered in the response. So is a comment;
+    question is answered in the response. A line or paragraph comment is read the same way, a requirement from it
+    naming its place;
   - a question deferred or still open is asked again, its context citing the previous record and its consequences
     read at this revision; a finding or idea left open is raised again where it still holds. An answer marked
     `waiting_for_parent` is asked again with its parent, quoted in its context. A question not applicable stays
-    retired while its parent's answer holds;
+    retired while its parent's answer holds; a conditional question answered in effect is mapped like any other;
   - an answer to a fact request is the owner's statement: a requirement when it binds the change, otherwise a fact
-    the analysis cites from the export, quoted. An answer to an evidence request is a claim to check, never
+    the analysis cites from the export, quoted — one or the other, not both. An answer to an evidence request is a claim to check, never
     evidence: what the review obtains settles it, and until then it stays an evidence question with the owner's
     answer in its context, as does a marked zone.
 
@@ -293,15 +295,16 @@ the file and the project's tooling which tool writes it and from what, and names
 it cannot establish so is read. A mark counts only when the project's own tooling writes the file; a mark the change
 adds is itself a change to judge, and the file is read.
 
-- Its block's `added` and `removed` span the file, such as `1-4210`: unchanged lines in a range are ignored, and
-  `all` is only for a block to remove. Skip its part of the `lines` printout. Its `does` names this section, which
-  answers the check's warning about a large block.
+- Replace the file's scaffolded blocks with one whose `added` and `removed` each span the file, such as `1-4210`:
+  unchanged lines in a range are ignored, and `all` is only for a block to remove. It needs no unit. Skip its part of
+  the `lines` printout. Its `does` names this section, which answers the check's warning about a large block.
 - A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
   outside the project's registries — a host in a field such as `resolved`, `tarball`, `source` or `remote`, a git,
   file or `http:` URL — or a hash (such as `integrity`, `checksum`, `h1:` or `hash`) changed while its version did
-  not, is a finding. A package or
-  version that neither the manifest change nor the task explains is a question, one listing them all. Search the
-  lock file's diff for these rather than read it.
+  not, is a finding. A package or version that neither the manifest change nor the task explains is a question, one
+  listing them all. Search the lock file's diff for these rather than read it. The block is `fix` naming such
+  findings, and names the question too; `question` when only the question stands; `keep` when the manifest explains
+  it all.
 - Another generated file: the generator or its input changed to match. Unless it is regenerated, its diff is read as
   any file's; only a lock file's searches stand in for reading.
 - When the plan allows running the generator, regenerate with the project's pinned tool and a mode that runs no
