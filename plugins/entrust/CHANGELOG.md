@@ -9,6 +9,8 @@ forensics remain in the repository references and release notes.
 
 - Esc closes the purpose menu in Code as a click outside it does, and sets its button's `aria-expanded` back to
   false; one function closes the menu for both.
+- In Decisions › All, a group's heading counts its open items again after an answer changes which items apply; it
+  kept the count from the list's last drawing. Every count of Decisions is now written by one function.
 
 ## 0.43.0 — 2026-11-20
 

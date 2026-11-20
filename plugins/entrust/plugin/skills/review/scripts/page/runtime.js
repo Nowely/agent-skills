@@ -450,7 +450,7 @@ function route(hash) {
   const dec = (v) => { try { return decodeURIComponent(v); } catch { return v; } };
   // an address that changes the sub-tab reconciles the selection as a click on it does: a card it hides is no longer
   // selected, in the panel or for the keys
-  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) { renderDecList(); updateSubCounts(); } return syncDecSelection(); }
+  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) renderDecList(); return syncDecSelection(); }
   if (tab === "decisions" && rest && itemByKey.has(dec(rest))) return goCard(dec(rest));
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
@@ -845,10 +845,15 @@ function renderDecisions() {
     <div id="dec-list"></div></div><aside class="panel" id="ctx-decisions" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderDecList();
   if (!S.sel.decisions) { const first = $$("#dec-list .card").find((el) => isOpen(itemByKey.get(el.dataset.card))); if (first) { S.sel.decisions = "card:" + first.dataset.card; first.classList.add("sel", "open-full"); } }
-  updateSubCounts(); renderPanel("decisions");
+  renderPanel("decisions");
 }
+// Every count of Decisions — the sub-tabs, the group headings of All and the note — is written here, from subCount.
 function updateSubCounts() {
-  for (const t of DEC_TABS) { const el = $(`[data-subcount="${t.id}"]`); if (el) { const k = subCount(t); el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); } }
+  for (const t of DEC_TABS) {
+    const k = subCount(t), el = $(`[data-subcount="${t.id}"]`), heading = $(`[data-groupcount="${t.id}"]`);
+    if (el) { el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); }
+    if (heading) heading.textContent = P("p.count.open", k);
+  }
   const p = progress(), el = $("#dec-note");
   const parts = [P("p.count.open", p.open), P("p.count.decided", p.done - p.answered), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
   if (el) el.innerHTML = `${esc(parts)}. ${esc(kept("hint"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
@@ -859,13 +864,14 @@ function renderDecList() {
   let html = "";
   if (sub.id === "comments") html = commentsListHtml();
   else if (sub.id === "all") {
-    for (const g of GROUPS) { const cards = ITEMS.filter(g.test); if (cards.length) html += `<h2 class="group-h">${esc(g.label)} <span class="muted">${esc(P("p.count.open", cards.filter(isOpen).length))} · ${esc(g.note)}</span></h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>`; }
+    for (const g of GROUPS) { const cards = ITEMS.filter(g.test); if (cards.length) html += `<h2 class="group-h">${esc(g.label)} <span class="muted"><span data-groupcount="${g.id}"></span> · ${esc(g.note)}</span></h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>`; }
   } else {
     const list = ITEMS.filter(sub.test), g = GROUPS.find((x) => x.id === sub.id);
     html = list.length ? `${g ? `<h2 class="group-h">${esc(g.label)} <span class="muted">${esc(g.note)}</span></h2>` : ""}<div class="cards">${orderChildren(list).map(cardHtml).join("")}</div>`
       : `<div class="empty"><strong>${esc(L("p.empty"))}</strong>${esc(L(sub.id === "done" ? "p.empty.done" : sub.id === "deferred" ? "p.empty.deferred" : "p.empty.none"))}</div>`;
   }
   $("#dec-list").innerHTML = html;
+  updateSubCounts();
 }
 // After the list changes, the selection, the panel, the URL and the next key agree with it: a card the list no
 // longer shows is no longer selected.

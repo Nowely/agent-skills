@@ -473,6 +473,18 @@ test("feedback 4: Esc closes the purpose menu and says so to assistive technolog
     return opened === "true" && hidden && after === "false" || JSON.stringify({ opened, hidden, after });
   }));
 
+test("feedback 1: every group heading counts the open cards listed under it, after a parent's answer retires its child",
+  "the heading kept the open count from before the answer, while the sub-tab's count moved",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    const groups = await page.evaluate(() => [...document.querySelectorAll("#dec-list h2.group-h")].map((h) => {
+      const cards = [...h.nextElementSibling.querySelectorAll(".card")];
+      return { heading: h.textContent.replace(/\s+/g, " ").trim(), open: cards.filter((c) => c.querySelector(`[data-status="${c.dataset.card}"]`)?.textContent.trim() === "Open").length };
+    }));
+    const wrong = groups.filter((g) => +(/(\d+) open/.exec(g.heading)?.[1] ?? NaN) !== g.open);
+    return groups.length && !wrong.length || JSON.stringify(groups);
+  }));
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
