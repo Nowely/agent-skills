@@ -33,9 +33,12 @@ Follow [pack.md](references/pack.md). In short:
    state and width, and name each by both (`card-selected-480`).
 2. For each frame, write its `spec.json` (every text with its box and font) and its image at 2× as `reference.png`.
    With a Figma token, `node "<skill-dir>/scripts/design.mjs" figma <frame link> --out .design/<task>/frames/<name>`
-   writes both and costs no model tokens; without one, build them from the MCP tools as pack.md says.
-3. With the Figma MCP tools, read the available design context and variables. Use existing Code Connect mappings when available and useful. Compare design assets with the project's existing icons and supported components; use the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself; retype a tool's answer into a file
-   only when another agent will build from it.
+   writes both and costs no model tokens. Through MCP, `design.mjs spec` reads the outline and takes each text from
+   the design context by node id; check the texts against the frame's screenshot and read the rest from it.
+3. With the Figma MCP tools, read the available design context and variables. Use existing Code Connect mappings
+   when available and useful. Compare design assets with the project's existing icons and supported components; use
+   the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself;
+   retype a tool's answer into a file only when another agent will build from it.
 4. Write `design.json`: the page or story that renders the component, the root and host selectors, the frames, and
    the widths to sweep with the widths where the layout should change ([check.md](references/check.md#designjson)).
 5. Render each frame with the frame's own data. Text the data cannot produce is a gap for step 2.
@@ -75,10 +78,17 @@ being inherited, then the areas outside text that differ, each with its place. F
 frame again; a fix for one width can move another. Offsets marked *inherited* follow from a cause above them: do not
 fix them separately.
 
-Each check attempts to save a Git diff in `out/rounds/`; on other version-control systems no recoverable snapshot is created. Verify the saved work before relying on it, including existing edits and new files. The lower-better score helps locate changes; assess visual relationships and behavior before deciding whether to undo a change. When a round makes no progress, diagnose the cause and try a different supported approach.
+The score is lower-better, and the summary shows the round before and the lowest so far. It locates changes; judge
+visual relationships and behaviour before undoing one. When two or three rounds in a row bring no lower score, stop
+adjusting: sort what remains into what to fix another way, what to record in the ledger with its reason, and what
+to ask the owner, then check everything again. Pixel-perfect is not the goal where the design missed a case, a kit
+component differs, the layout would overlap or the experience would suffer: the goal is that no difference is left
+unexplained.
 
-A check passes once observed differences are resolved or accepted by the owner or an applicable owner rule. A `proposed` difference remains pending. Report incomplete measurement separately and continue independent work. An accepted change of size or position also excuses what it pushes
-along. A difference you cannot remove and cannot justify is reported, not hidden. The sweep in the same run narrows
+A check passes once observed differences are resolved or accepted by the owner or an applicable owner rule. A
+`proposed` difference remains pending. Report what could not be measured separately and continue independent work.
+An accepted change of size or position also excuses what it pushes along. A difference you cannot remove and cannot
+justify is reported, not hidden. The sweep in the same run narrows
 one mounted page every few pixels and through each frame's width, and reports overflow, clipped and overlapping
 text, columns that drift apart, layout changes at widths the design does not name, and a layout that does not come
 back when widened.

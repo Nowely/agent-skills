@@ -12,6 +12,7 @@ further Figma calls and another agent can take over.
   frames/<frame>/
     spec.json             its texts: characters, box, alignment, font
     reference.png         the frame at 2×
+    metadata.xml, context.tsx   the MCP answers the spec was made from, when it was
   out/                    the check's results
 ```
 
@@ -29,15 +30,19 @@ model tokens are spent and nothing is retyped.
 
 **Without one**, from the MCP server:
 
-1. `get_metadata` on the frame: its layers with positions and sizes. Save it as `frames/<frame>/metadata.xml` and run
-   `node "<skill-dir>/scripts/design.mjs" spec frames/<frame>/metadata.xml --out frames/<frame>/spec.json`. It
-   prints which reading of x and y it chose (relative to the parent, or absolute on the canvas); if the landmarks
-   land outside the frame, run it again with the other one as `--coords`. A text layer the designer renamed carries
-   its name, not its text: correct `text` to what the image shows.
-2. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
+1. `get_metadata` on the frame: its layers with positions and sizes, but text layers only by name. Save it as
+   `frames/<frame>/metadata.xml`.
+2. `get_design_context` on the frame: its code, in which every element carries its layer's `data-node-id` and the
+   actual text. Save it as `frames/<frame>/context.tsx`.
+3. `node "<skill-dir>/scripts/design.mjs" spec frames/<frame>/metadata.xml --context frames/<frame>/context.tsx --out frames/<frame>/spec.json`
+   places every text layer by the outline and takes its text from the context by node id. It prints which reading of
+   x and y it chose (relative to the parent, or absolute on the canvas) and which layers got no text; if the
+   landmarks land outside the frame, run it again with the other reading as `--coords`.
+4. Export the frame at 2× as `reference.png` (`get_screenshot`, or `download_assets` on the remote server); the check
+   takes its device scale from the image's width over the frame's. Look at it beside the spec: correct a text that
+   reads differently, and write in the ones the context did not give.
+5. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
    (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only in pixels.
-3. Export the frame at 2× as `reference.png`: `get_screenshot`, or `download_assets` on the remote server. The check
-   takes its device scale from the image's width over the frame's.
 
 ## What else to read
 

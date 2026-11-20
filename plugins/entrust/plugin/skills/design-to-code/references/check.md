@@ -1,8 +1,10 @@
 # The check
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
-compares it with the frame's spec and image, runs the sweep and prints a summary. Exit 0 means the measured comparison passed; 1 means a failure, 2 means the measurement is incomplete, and 3 means an observed deviation is awaiting an owner decision. Playwright is resolved from the working directory
-first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
+compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
+passed, 1 on a failure, 2 when something could not be measured (a frame without its image, an alignment group with
+fewer than two elements, or no browser at all), and 3 when what remains awaits the owner's decision. Playwright is
+resolved from the working directory first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
 skips the sweep; `--before` records the page as it is now as the "before" state.
 
 ## design.json
@@ -15,7 +17,7 @@ Paths are relative to the file.
 | `root` | CSS selector of the component's root; positions are measured from its corners |
 | `host` | CSS selector of the element given each frame's width, when the component is sized by its container; without it the viewport takes the width |
 | `viewport` | the viewport width when `host` is set; default 1280 |
-| `tolerance` | how far a position may differ, in CSS px; default 1 |
+| `tolerance` | how far a position or an alignment may differ, in CSS px; default 1 |
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport` and `setup` |
 | `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup` |
@@ -38,7 +40,7 @@ snapshot does: a Figma text box can be wider than its text. Everything outside t
 | `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `outside`, `align`, `resize`, `switch`, or `*` |
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px; it covers the differing areas inside it |
 | `frame` | a frame's name or a list of names; absent or `*` for all |
-| `max` | the largest difference in px the entry covers; absent, any |
+| `max` | the largest difference in px the entry covers, at each width in the sweep; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
 | `status` | `accepted`: excused; `proposed`: shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
@@ -68,7 +70,8 @@ inherited; how many are left. `out/report.md` holds every finding in tables.
   installed or loaded.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
-  `outside` (text past the root), `overlap` (two texts over each other), `align` (a group's edges apart), `resize`
+  `outside` (text past the root), `overlap` (two texts over each other), `align` (a group's edges further apart than
+  the tolerance, as painted: Chromium paints a box laid out at 11.015625 px at 11), `resize`
   (the widest layout not restored), and the widths between which the layout changes; with `switches`, a change
   elsewhere or none near a named width is a `switch` finding.
 
@@ -83,5 +86,4 @@ In `out/` beside `design.json`, or `--out`:
 | `<frame>/page.png`, `side.png`, `overlay.png`, `diff.png` | the page now; design, page and difference side by side; the two at half opacity; the differing pixels |
 | `before/<frame>.png` | the page at the first check, kept until `--before` |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, and every ledger entry with its reason: the record to hand over |
-| `rounds/<n>.diff` | an attempted Git snapshot outside the pack; verify the reported snapshot status and preserve existing edits before using it |
-| `history.jsonl` | one line per check: round, time, frames, verdict, score and snapshot status; an unavailable or partial snapshot is not a verified restore point |
+| `history.jsonl` | one line per check: round, time, frames, sweep, verdict and score; the summary reads it for the round before and the lowest |
