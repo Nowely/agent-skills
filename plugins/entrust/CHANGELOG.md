@@ -29,10 +29,12 @@ forensics remain in the repository references and release notes.
 - The Code tab's open count follows a parent's answer that restores a conditional question with code; it was counted
   before the walk was rebuilt, so it kept the count from before the answer.
 - A review of a new revision of a change already reviewed and answered starts from the previous record, the owner's
-  export of it and the previous head. It reads what changed since that head first, and puts each answer into the
-  record's own fields: a requirement the new revision meets or breaks, a tradeoff for what the owner left, a question
-  asked again for what stayed open. A finding or idea the owner left is not raised again unless its premise changed.
-  The data contract says who takes the export: whoever makes the change; the review applies none of it.
+  export of it and the previous base and head, copied beside a new record. It reads what changed since the previous
+  head first — a range-diff when the base moved — and puts each answer into the record's own fields: a requirement
+  the new revision meets or breaks, a tradeoff for what the owner left, a question asked again for what stayed open,
+  while a question the owner's choice retired stays retired. A finding or idea the owner left is not raised again
+  unless its premise changed. The export goes, with the record, to whoever makes the change; the review applies none
+  of it.
 - A generated file — a package manager's lock file, or a file the project marks generated — is one block, not read
   line by line: its verdict rests on whether its source explains it. In a lock file, a resolved host outside the
   project's registries or an `integrity` changed for the same version is a finding, and a version change the

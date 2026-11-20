@@ -241,32 +241,44 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 `line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment never
 answers an item.
 
-The export is the owner's word for the next step. It goes, with the record, to whoever makes the change: the owner's
-own session or orchestrate's fix round. The review applies none of it; a review of the next revision reads it as
+The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
+owner's own session; the review applies none of it. A review of the next revision reads it as
 [the next revision](#the-next-revision) says.
 
 ## The next revision
 
 A review of a new revision of a change already reviewed and answered starts from three inputs its plan names: the
-previous record with its saved diff, the owner's export of it, and the previous head. The export's keys are places
-in that record — questions and ideas by number, findings by id — so it is read with it, and only when its
-`record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the record does not hold is left
-out, and the response says so.
+previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
+review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
+previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
+and the checking agents can read them, and cite them by `at`, since a `ref` resolves in this record. The export's
+keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
+only when its `record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the
+record does not hold is left out, and the response says so. A short review applies the same rules in its response.
 
-- Read what changed since the previous head first (`git diff <previous head>..<new head>`), then the whole diff. The
-  record covers the whole diff, as any record does, and the page needs nothing new.
-- Each previous answer goes into this record's own fields; none is carried by number:
-  - an answer in effect that asks for something — a variant, «Fix it», «Take it», or own words asking for a change —
-    is a requirement with `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the
-    new revision does it, and a finding that breaks it when it does not. Summary's requirements then say what the
-    revision did with each decision;
+- Read what changed since the previous head first — `git diff <previous head>..<head>` when the base stayed,
+  `git range-diff <previous base>..<previous head> <base>..<head>` when it moved, the previous saved diff against
+  this one when the old commits are gone — then the whole diff. The record covers the whole diff, as any record
+  does, and the page needs nothing new.
+- Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
+  by its title, since its key names another item here:
+  - an answer in effect that asks for something — a variant, «Fix it», «Take it» — is a requirement with
+    `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
+    and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
+    decision;
   - «Leave it» or «Skip it» is a `tradeoff` with its `consequence`, sourced at the export with the answer quoted. The
     review does not raise that finding or idea again unless the new revision changes its premise, and then the
     finding says what changed;
-  - an item deferred, still open or not applicable is asked again, its context citing the previous record;
-  - an answer to a fact request is the owner's statement, recorded as context or a requirement as it reads. An answer
-    to an evidence request is a claim to check, never evidence: what the review obtains settles it;
-  - a comment is the owner's word: one asking for a change is a requirement, one asking a question gets an answer.
+  - own words are read for what they say: a request for a change is a requirement, an acceptance a tradeoff, and a
+    question is answered in the response. So is a comment;
+  - a question deferred or still open is asked again, its context citing the previous record and its consequences
+    read at this revision; a finding or idea left open is raised again where it still holds. An answer marked
+    `waiting_for_parent` is asked again with its parent, quoted in its context. A question not applicable stays
+    retired while its parent's answer holds;
+  - an answer to a fact request is the owner's statement: a requirement when it binds the change, otherwise a fact
+    the analysis cites from the export, quoted. An answer to an evidence request is a claim to check, never
+    evidence: what the review obtains settles it, and until then it stays an evidence question with the owner's
+    answer in its context, as does a marked zone.
 
 ## Generated files
 

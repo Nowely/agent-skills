@@ -103,7 +103,7 @@ Classify each question as a choice, a fact to settle, or evidence to obtain, and
 
 Fill the record, run `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes and its warnings are answered, read it back as the data contract says, and render the page. A short review skips this and answers from its analysis.
 
-Give the owner the page, `review.html` beside the record: they answer there, and what they export comes back as [the data contract](references/report-data.md#the-page) says.
+Give the owner the page, `review.html` beside the record: they answer there, and what they export goes on as [the data contract](references/report-data.md#the-page) says.
 
 Respond from the record, or a short review's analysis, not from a second set of findings. Lead with the verdict and the recommendation (accept, fix in place, or reshape toward the target), what decides it, and its material limits. Then the ordered steps, each structural one with the burden it removes; the findings by impact, each once, with direction, evidence, place, problem and smallest fix; questions; ideas; open owner tradeoffs and their consequences; the challenges rejected or sent to the owner, each with its reason, and in a line what the accepted ones changed; the checks that did not run; what was not read.
 
