@@ -134,8 +134,9 @@ let storage = "saved", unsaved = false, unreadable = null, unreadableShown = fal
 function load() {
   let raw = null, text;
   try { text = localStorage.getItem(STORE); } catch { storage = "blocked"; return; }
-  try { raw = JSON.parse(text ?? "null"); } catch { storage = "unreadable"; unreadable = text; return; }
-  if (!raw || typeof raw !== "object") return;
+  try { raw = JSON.parse(text ?? "null"); } catch { raw = undefined; }
+  if (raw === null) return;
+  if (typeof raw !== "object" || Array.isArray(raw)) { storage = "unreadable"; unreadable = text; return; }
   state = DR.settle(ITEMS, DR.normalize(raw.decisions));
   for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
   const ui = raw.ui ?? {};
@@ -145,7 +146,7 @@ function load() {
   if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
 }
 function save() {
-  if (storage === "unreadable") { unsaved = true; showStorage(); if (!unreadableShown) openUnreadable(); return; }
+  if (storage === "unreadable") { unsaved = true; showStorage(); return offerUnreadable(); }
   const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
@@ -159,8 +160,17 @@ function showStorage() {
   if (S.rendered?.decisions) updateSubCounts();
   const el = $("#storage"); if (!el) return;
   el.hidden = storage === "saved";
-  el.innerHTML = storage === "saved" ? "" : esc(L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]))
-    + (storage === "unreadable" ? ` <button class="linkbtn" data-act="unreadable-show">${esc(L("p.storage.unreadable.show"))}</button>` : "");
+  const words = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
+  if ($("#storage-text").textContent !== words) $("#storage-text").textContent = words;
+  $("#storage [data-act=\"unreadable-show\"]").hidden = storage !== "unreadable";
+}
+// The first save that would replace what could not be read shows it once the owner's action is complete — after the
+// page has redrawn for it, so closing returns focus where the action left it, and never while a field is being typed in.
+function offerUnreadable() {
+  if (unreadableShown) return;
+  unreadableShown = true;
+  const show = () => typingTarget(document.activeElement) ? document.activeElement.addEventListener("focusout", () => setTimeout(show), { once: true }) : openUnreadable();
+  setTimeout(show);
 }
 function openUnreadable() {
   unreadableShown = true;
@@ -172,6 +182,8 @@ function saveOverUnreadable() {
   storage = "saved"; unreadable = null;
   $("#unreadable-dialog").close();
   save();
+  // the warning it was opened from has gone with it: focus moves to the tab, not to nowhere
+  if ($("#storage").contains(document.activeElement)) $(`#tab-${S.tab}`).focus();
 }
 window.addEventListener("beforeunload", (e) => { flushText(); if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 
@@ -395,7 +407,7 @@ function renderShell() {
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
     <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
-  <p class="storage" id="storage" role="status" hidden></p>
+  <div class="storage" id="storage" hidden><span id="storage-text" role="status"></span> <button class="linkbtn" data-act="unreadable-show" hidden>${esc(L("p.storage.unreadable.show"))}</button></div>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
     <div class="tabs" role="tablist" aria-label="${esc(L("p.tabs"))}">${TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${esc(t.label)}<span class="count" id="badge-${t.id}" hidden></span></button>`).join("")}</div>
     <div class="tb-right"><span class="progress" id="progress"></span>

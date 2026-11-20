@@ -16,8 +16,10 @@ forensics remain in the repository references and release notes.
 - A path or a code span with no space or hyphen in it wraps instead of widening the whole document, without
   JavaScript and in the page's cards alike.
 - Saved answers the page cannot read are no longer replaced by the next answer. The first save that would replace
-  them opens them as they are, to copy, and only «Save this page's answers over it» replaces them; until then the
-  answers live in the page's memory, as when the browser keeps nothing, and leaving asks first.
+  them opens them as they are, to copy — once the owner's action is complete, never while a field is typed in — and
+  only «Save this page's answers over it» replaces them; until then the answers live in the page's memory, as when
+  the browser keeps nothing, and leaving asks first. JSON that is not the page's kind of object counts as unreadable
+  too, and the export no longer says the browser keeps nothing while it holds what the page could not read.
 - «Decided N of M» counts the choices — decisions, findings and ideas. An answer to a fact or evidence request is
   the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
   counted apart, «requests answered N of M, not verified», in the summary, the export's text and the print; the top

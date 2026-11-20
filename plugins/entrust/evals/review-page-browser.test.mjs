@@ -557,6 +557,32 @@ test("feedback 5: saved data the page cannot read is never written over unasked:
       || JSON.stringify({ shown, dialog, raw, afterAnswer, afterClose, status, still, saved, gone });
   }));
 
+test("feedback 5: while saved data cannot be read, typing is never cut off, the page says the answers are only in its memory, the dialog comes once and leaving asks first",
+  "the dialog opened after the first typed letter and swallowed the rest; the wording, the warning on leaving and the single offer were untested",
+  async () => {
+    const o = await open(THEMED_URL + "#decisions/q1", { init: () => {
+      const get = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); };
+    } });
+    try {
+      const page = o.page, isOpen = () => page.locator("#unreadable-dialog").evaluate((d) => d.open);
+      await page.keyboard.press("o");
+      for (const ch of "not checked yet") { await page.keyboard.type(ch); await page.waitForTimeout(150); }
+      const whileTyping = await isOpen();
+      await page.keyboard.press("Control+Enter"); await page.waitForTimeout(200);
+      const afterLeaving = await isOpen(), answer = await text(page, '#card-q1 [data-answer="q1"]');
+      await page.keyboard.press("Escape"); await settle(page);
+      const focus = await page.evaluate(() => document.activeElement?.tagName);
+      await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await page.waitForTimeout(200);
+      const again = await isOpen(), memory = await text(page, "#dec-note");
+      let asked = false;
+      page.on("dialog", async (d) => { asked = d.type() === "beforeunload"; await d.dismiss(); });
+      await page.close({ runBeforeUnload: true }); await new Promise((r) => setTimeout(r, 500));
+      return !whileTyping && afterLeaving && /not checked yet/.test(answer) && focus !== "BODY" && !again && /only in this page's memory/.test(memory) && asked
+        || JSON.stringify({ whileTyping, afterLeaving, answer, focus, again, memory, asked });
+    } finally { await o.close(); }
+  });
+
 test("feedback 6: with JavaScript a long path in a card's text wraps too, and no tab scrolls sideways on a desktop viewport",
   "a long path as code in a finding widened Decisions at 1280 px",
   async () => {
@@ -687,9 +713,11 @@ test("the page shows what is true of its storage: a refused save, a browser that
     await visit("refused", "#decisions/f1", () => { Storage.prototype.setItem = () => { throw new Error("refused"); }; }, true);
     await visit("blocked", "#decisions/f1", () => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } }); }, true);
     await visit("unreadable", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); }; }, true);
+    // JSON that is not this page's kind of object cannot be read either
+    await visit("not an object", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "[1, 2]" : get.call(this, key); }; });
     const shown = (name, words) => out[name]?.visible && words.test(out[name].text);
     return !errors.length && !out.refused.visible && shown("refused then a save", /refused to save/) && shown("blocked", /keeps nothing for this page/)
-      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/)
+      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/) && shown("not an object", /could not be read/)
       || JSON.stringify({ out, errors });
   });
 

@@ -37,8 +37,9 @@ drives it in Chromium, locally only.
   and the answered requests. `decisions.mjs` owns these counts and what Done lists. The answers, comments,
   «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; the page says when the browser
   keeps nothing for it, cannot read what it kept, or refuses a save. What it kept and cannot read is never written
-  over unasked: the first save that would replace it opens it, as it is, to copy, and only «Save this page's answers
-  over it» replaces it; until then the answers live in the page's memory.
+  over unasked: the first save that would replace it opens it, as it is, to copy, once the action is complete and no
+  field is being typed in, and only «Save this page's answers over it» replaces it; until then the answers live in the
+  page's memory.
 - **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
   fields, a scenario and a challenge; listed in Decisions › Comments and exported. One paragraph editor is open at a
   time: opening another keeps the first one's text as that paragraph's unsaved draft.
