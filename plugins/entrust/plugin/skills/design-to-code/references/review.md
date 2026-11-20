@@ -62,4 +62,5 @@ and, at handoff, its result with its evidence:
 | every action | a journey: it works, and the state around it survives a resize | |
 | the owner's past returns, when the project keeps them (`.design/returns.md`, or its agent notes) | how each was checked | |
 
-A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked.
+A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked. A
+journey that expects nothing cannot fail: each one ends in a `visible`, `hidden` or `text` step.

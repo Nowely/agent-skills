@@ -73,6 +73,14 @@ default and write the options with their cost in `review.md`; ask the owner only
 or scope, and keep building the rest. When the default makes the page differ from a frame, that difference goes in
 the ledger as `proposed`. End with the acceptance list ([review.md](references/review.md#the-acceptance-list)).
 
+Then read `review.md` as the owner would, before building, and fix what this turns up:
+
+- Is every state the references draw a frame, a popover or a price detail drawn once included, not only every image?
+- Does the dense story hold the longest legal data and every conditional action at once, and is it named?
+- Does every popup have journeys for leaving it, a tap and Escape, each expecting a result?
+- Does the layout say what may never cover what, and what happens to the longest text?
+- Is each past return a line with how it is checked?
+
 ## 3. Build from the outside in
 
 Run the check once before the first edit: it records the page as it was (`out/before/`) and the starting score. Then
@@ -117,11 +125,21 @@ the built package.
 
 ## 5. Hand off
 
-Run the acceptance list first, as the owner would: the full check with its journeys, the dense story's pictures,
-each past return. Fix what fails; say done only for what passed. Then give the owner:
+Verify the work as if someone else had built it, before saying done:
 
-- the acceptance list with each line's result and evidence;
-- the check's verdict per frame, for the sweep and for the journeys (`out/report.md`);
+1. Look first. Open each frame's design beside the page now in the gallery, and the dense story's pictures, and write
+   down what you see differ before reading the check's summary. Then reconcile the two: a difference only one of them
+   shows is fixed, recorded or explained.
+2. Run the full check. It writes `out/handoff.md`: each frame's verdict, the widths and stories, each journey, the
+   ledger and what the script did not check.
+3. List every claim your handoff will make. Give each one its evidence: a line of `handoff.md`, a command with its
+   output, a picture. A claim without evidence is removed, or moves under what was not checked.
+4. Try two things the acceptance list did not name, such as a resize with a popup open, the keyboard order, or an
+   empty or extreme value. Fix what they turn up, or report it.
+
+Fix what fails; say done only for what passed. Then give the owner:
+
+- `out/handoff.md`, quoted, with the acceptance list's remaining lines and their evidence;
 - `out/gallery.html`: per frame the reference, the page before the work, the page now and their difference, then the
   sweep, the stories, the journeys and every ledger entry; inspect these images yourself;
 - the ledger's entries: accepted with who decided, proposed with the options; and `review.md`'s open questions;
