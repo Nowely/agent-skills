@@ -34,7 +34,7 @@ the internal offset comes from a handful of spacings, each one CSS value; smalle
 | model and vendor logo | 13 | 8 | −5 |
 | frequency and cores | 32 | 24 | −8 |
 | disks, feature row and price | 28, 28 | 25, 25 | −3, −3 |
-| availability and the bottom (padding) | 21 | 38 | +17 |
+| availability and the bottom (padding) | 22 | 38 | +16 |
 
 Rows are ink bands (first and last dark pixel rows), so each value is ±1 px. The skill's check reports the same kind
 of table from the page itself, with the first introduced offset as "Start here", in one pass.
@@ -53,8 +53,8 @@ owner or proposed with options. The same file is where the agent puts what the d
 |---|---|---|
 | Figma's [MCP tools](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/) and its [design-to-code skill](https://github.com/figma/mcp-server-guide) | fetch the outline, context and screenshot; children one by one when large; download every asset, never substitute one | no numeric verification exists there to take |
 | OpenAI's `figma-implement-design` ([openai/skills](https://github.com/openai/skills), deprecated) | tokens before raw values; no new icon packages | its checklist "validate against the screenshot" is what the check replaces |
-| RubSE, [arXiv 2608.24138](https://arxiv.org/abs/2608.24138) | naive self-refinement degrades because one fix moves what was right; one localized fix per round, keep the best round: "Start here", one cause, the score and `history.jsonl` | a model judge with rubrics: the check is a measurement |
-| 1D-Bench, [arXiv 2602.18548](https://arxiv.org/abs/2602.18548); DCGen, [arXiv 2406.16386](https://arxiv.org/abs/2406.16386) | render feedback and a difference image help; smaller units help: per-frame, per-landmark | segmenting screenshots: the outline already has the structure |
+| RubSE, [arXiv 2608.24138](https://arxiv.org/abs/2608.24138) | naive self-refinement degrades because one fix moves what was right; one prioritized repair per round: "start here" and one cause per round. Keeping the best round (`rounds/`, the score) is ours | a model judge with rubrics: the check is a measurement |
+| 1D-Bench, [arXiv 2602.18548](https://arxiv.org/abs/2602.18548); DCGen, [arXiv 2406.16386](https://arxiv.org/abs/2406.16386) | execution feedback helps (1D-Bench); smaller segments help (DCGen): per frame, per landmark | segmenting screenshots: the spec already has the structure |
 | [W3C DTCG 2025.10](https://www.designtokens.org/), [WCAG 2.2](https://www.w3.org/TR/WCAG22/) | the token map; contrast, target size, reflow in the design review | — |
 | The predecessor's v6 | the behaviour checks: a state survives a resize, the built package works | its prose on choosing a "smallest public surface" |
 
@@ -69,6 +69,8 @@ owner or proposed with options. The same file is where the agent puts what the d
 
 ## Status
 
-Round 0 built and tested the tooling without a model ([rounds.md](rounds.md)). The text the runs will use is frozen
-as [drafts/01-v1.md](drafts/01-v1.md). [protocol.md](protocol.md) registers the next runs: the check on the owner's
-real case, then short runs of the model on two cases, with a full task only when those warrant it.
+Round 0 built and tested the tooling; round 1 rebuilt it after an independent critic and a verifier
+([rounds.md](rounds.md)). No model has run it yet. The texts are frozen as [drafts/01-v1.md](drafts/01-v1.md) and
+[drafts/02-v2.md](drafts/02-v2.md), the one the runs will use. [protocol.md](protocol.md) registers the next runs: the
+check on the owner's real card as a gate, then short runs of the model on two cases with scripted pushes, with a
+full task only when those warrant it.
