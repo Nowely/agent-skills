@@ -442,3 +442,47 @@ The third pilot, on draft 11, was accepted and showed the same blank Result colu
 
 `node --test evals/design-to-code.test.mjs`: 68 passed. The page before is
 [drafts/11-v11.md](drafts/11-v11.md); after it, [drafts/12-v12.md](drafts/12-v12.md).
+
+### Round 11b's verifier, and round 11c
+
+A fresh verifier checked round 11b against a frozen copy of f18be28. It confirmed:
+
+- `handoff.md` is written only by a complete check;
+- the refusals hold on `<details>`, `<select>` and `aria-haspopup="false"`;
+- 14 of 20 mutations fail their tests.
+
+Where the evidence misled, and what round 11c changed:
+
+- **Ledger use was credited by reason to the first entry,** so an entry that excused a finding read "matched nothing"
+  and another with the same reason read "excuses 1". A proposed entry read "excuses". Each finding now records the
+  entries that excused it, and a proposal reads "awaits your decision on N".
+- **The acceptance result came from the last column,** a list was "no rows", and subheadings, Russian headings,
+  `+` and `1)` items and code fences were mishandled. The list is now every line under its heading, subheadings
+  included; the result comes from a column named Result, or after a colon in a list item.
+- **`handoff.md` gaps:**
+  - it listed pictures that did not exist;
+  - it showed "no findings" despite ledger faults, unmeasured alignment, missing fonts or a missing reference;
+  - it missed `["*"]` as a wildcard.
+
+  All are now shown, and the pictures come first, before the numbers.
+- **Partial checks.** `--frame` and `--no-sweep` said "pass" and rewrote the gallery. Now their verdict is said to
+  be about what they measured, and they write no gallery. Every check removes an old `handoff.md` first, including
+  one that stops on an unknown frame.
+- **Impossible probes.** The page suggested a resize and the keyboard order as probes that journeys could not
+  express. Journeys now have a `width` step and a `focused` expectation, and names must be unique. A `text` step
+  needs a text. A `hidden` step on what never opened is noted.
+- **Smaller fixes:**
+  - the stamp says when the tree had uncommitted changes;
+  - a story at any frame's own page is refused;
+  - `aria-haspopup` of "False" or empty is not an opener;
+  - option objects print as JSON.
+- **The page:** step 5 now runs the probes, fills in the results, runs the complete check last, and only then looks
+  at the pictures and writes "What I saw".
+
+**Left as known limits, in check.md:**
+
+- a story differing only in its query counts as its own (Storybook's stories do);
+- one journey satisfies the opener rule;
+- openers are looked for inside the component, in the frames.
+
+`node --test evals/design-to-code.test.mjs`: 70 passed. The page is frozen as [drafts/13-v13.md](drafts/13-v13.md).

@@ -41,6 +41,9 @@ forensics remain in the repository references and release notes.
   sweep, with the frames' own page as the dense story, or when a control that opens something has no journey; a
   journey that expects nothing is refused; `--no-sweep` is a partial check. The skill's page is shorter, and its
   handoff step asks for a sentence per picture, two extra tries written as journeys, and evidence for every claim.
+  The evidence credits each ledger entry by itself, reads the acceptance list's Result column and list items under
+  its heading (Russian included), shows ledger faults, missing fonts and references, and puts the pictures first;
+  partial checks write no gallery and say their verdict is partial; journeys gain `width` and `focused` steps.
 
 ## 0.44.0 — 2026-11-20
 
