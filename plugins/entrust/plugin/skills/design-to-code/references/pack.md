@@ -38,12 +38,13 @@ model tokens are spent and nothing is retyped.
    places every text layer by the outline and takes its text from the context by node id. It prints which reading of
    x and y it chose (relative to the parent, or absolute on the canvas) and which layers got no text; if the
    landmarks land outside the frame, run it again with the other reading as `--coords`.
-4. Save a `reference.png` from the available export; prefer 2× when the exporter supports it. Record its actual scale.
-   The check rounds the image-width-to-frame-width ratio to an integer device scale, so a non-integer scale needs a
-   visual comparison at a consistent size rather than being treated as a pixel-exact measurement. Compare every text in the spec with it: correct
-   one that reads differently, and write in the ones the context did not give. A layer whose text the code builds
-   from data (`{count} cores`) is reported as missing, not guessed. Nothing later catches a wrong text in the spec:
-   the check looks for that text on the page and excludes text from the pixel comparison.
+4. Save a `reference.png` from the available export; prefer 2× when the exporter supports it. Record its actual
+   scale. The check rounds the image-width-to-frame-width ratio to an integer device scale, so a non-integer scale
+   needs a visual comparison at a consistent size rather than being treated as a pixel-exact measurement. Compare
+   every text in the spec with it: correct one that reads differently, and write in the ones the context did not
+   give. A layer whose text the code builds from data (`{count} cores`) is reported as missing, not guessed. Nothing
+   later catches a wrong text in the spec: the check looks for that text on the page and excludes text from the pixel
+   comparison.
 5. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
    (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only in pixels.
 
@@ -51,9 +52,13 @@ model tokens are spent and nothing is retyped.
 
 - **Design context**, `get_design_context` on the frame; when the answer is cut short, on its children, one call
   each. Its code (React and Tailwind by default) is a source of values, not code to paste.
-- **Code Connect**, when available and useful, can identify mapped components and props. Verify a mapping against the design and the consumer. For unmapped layers, inspect the project and its UI kit; record what has no match in `review.md`.
+- **Code Connect**, when available and useful, can identify mapped components and props. Verify a mapping against the
+  design and the consumer. For unmapped layers, inspect the project and its UI kit; record what has no match in
+  `review.md`.
 - **Variables**, `get_variable_defs`. A raw value where the system has a variable is a gap for `review.md`.
-- **Assets.** Inspect design assets alongside the project's existing icons and UI components. Preserve the intended appearance and supported component behavior; download a design asset when needed. Keep an SVG's viewBox and do not leave a temporary Figma URL in code.
+- **Assets.** Inspect design assets alongside the project's existing icons and UI components. Preserve the intended
+  appearance and supported component behavior; download a design asset when needed. Keep an SVG's viewBox and do not
+  leave a temporary Figma URL in code.
 - **Comments**, `get_comments` on the remote server: states and behaviour are often written there.
 
 Save to the pack what a tool writes itself. Retyping a tool's answer into a file costs its length in output
@@ -70,10 +75,10 @@ state before it is measured.
 
 Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
 assumption and compare at a consistent size. Make a spec with the reference's frame dimensions and `landmarks: []`.
-The check compares the root and pixel regions, includes text pixels, and reports the frame incomplete because it
-cannot verify the text semantically. Visually inspect text, placement, typography and states against the screenshot;
-report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do not invent
-Figma metadata or imply an assumed scale is measured.
+The check compares the root and the areas outside the page's text, and reports the frame incomplete: what the
+texts say, and the smoothing Figma and Chromium give them differently, are for the eye. Inspect text, placement,
+typography and states against the screenshot; report unobserved widths and interactions. Keep the reference and
+before/after images for the owner. Do not invent Figma metadata or imply an assumed scale is measured.
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares

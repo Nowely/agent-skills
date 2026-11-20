@@ -2,11 +2,13 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
-passed, 1 on a failure, 2 when something could not be measured (a frame without its image, an alignment group that
-never has two elements, or no browser at all), and 3 when what remains awaits the owner's decision. An image-only spec has no measured text and remains incomplete:
-inspect text and layout visually. A failure outranks 2, and 2 outranks 3. Playwright is
-resolved from the working directory first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
-skips the sweep; `--before` records the page as it is now as the "before" state.
+passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
+decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
+left to the eye; an alignment group that never has two elements; and everything, when the page lacks the design's
+font or there is no browser. A missing font outranks everything, since every text is then measured in a fallback;
+otherwise a failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it
+from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep;
+`--before` records the page as it is now as the "before" state.
 
 ## design.json
 
@@ -68,8 +70,8 @@ the round before and the lowest so far. `out/report.md` holds every finding in t
   finding of its own.
 - **Pixels** is the share of all pixels that differ visibly, texts included. Figma and Chromium smooth text
   differently, so a few percent with no finding is usual.
-- **Fonts not available**: the page asks for a family the browser does not have, and no text can match until it is
-  installed or loaded.
+- **Fonts not available**: none of the named families a text asks for is there, so it renders in a fallback; the
+  check is incomplete until the font is installed or loaded.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
   `outside` (text past the root), `overlap` (two texts over each other), `align` (a group's edges further apart than

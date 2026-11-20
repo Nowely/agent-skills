@@ -2,10 +2,11 @@
 name: design-to-code
 description: >-
   Build or change UI from a design or screenshots so it matches each reference and adapts between them, with every
-  remaining difference explained (вёрстка по макету, pixel-perfect, адаптив). Gathers the frames into a design pack, reviews the design's gaps,
-  checks the page against the design in numbers with a script, keeps a ledger of deliberate deviations, and saves
-  the design, before and after for review. Use when given Figma links or frames, or asked to match a mockup or make
-  a layout pixel-perfect or responsive. Complements Figma's own design-to-code skill, which fetches the design.
+  remaining difference explained (вёрстка по макету, pixel-perfect, адаптив). Gathers the frames into a design pack,
+  reviews the design's gaps, checks the page against the design in numbers with a script, keeps a ledger of
+  deliberate deviations, and saves the design, before and after for review. Use when given Figma links, frames or
+  screenshots, or asked to match a mockup or make a layout pixel-perfect or responsive. Complements Figma's own
+  design-to-code skill, which fetches the design.
 metadata:
   version: "0.43.0"
 license: MIT
@@ -13,16 +14,21 @@ license: MIT
 
 # Design to code
 
-Compare the design and the rendered page visually as well as with `scripts/design.mjs`. The script locates measured
-differences; it cannot judge every visual relationship or behaviour. Inspect the reference, before and after images
-at corresponding sizes and states; investigate the script's findings and anything visible that it missed.
+Each round, read the short text summary of `scripts/design.mjs`: it names where an offset starts and which areas
+differ, in a few lines of text instead of a comparison of images. Open the images when the summary
+cannot explain a difference, when the reference is a screenshot alone, and before handing off: the script locates
+measured differences and cannot judge every visual relationship or behaviour.
 
 Two files carry the work, and anyone can continue from them: the **design pack** (what the design says) and the
 **ledger** (where the page differs from it on purpose, and why). Both live in `.design/<task>/` in the project; ask
 the owner before committing it.
 
 Reuse what the project has: its UI kit components, typography and tokens. A value the design states that the
-project already names is written with that name; a new raw value is a finding, not a default. Build from the project's existing components and their supported props, tokens and composition points. Where a kit component differs from the design, compare a supported composition or styling with the cost of custom code. A small difference that substantially simplifies the implementation can be proposed to the owner; follow an explicit fidelity requirement and record its resolution.
+project already names is written with that name; a new raw value is a finding, not a default. Build from the
+project's existing components and their supported props, tokens and composition points. Where a kit component
+differs from the design, compare a supported composition or styling with the cost of custom code. A small
+difference that substantially simplifies the implementation can be proposed to the owner; follow an explicit
+fidelity requirement and record its resolution.
 
 ## 1. Gather the design into a pack
 
@@ -32,13 +38,13 @@ Follow [pack.md](references/pack.md). In short:
    node's parent and related frames; otherwise work from the supplied screenshots. Record unknown dimensions, scale,
    states and behaviour as unknown rather than assuming them.
 2. For each reference, make a `spec.json` and save its image as `reference.png`. Prefer a 2× export when available;
-   retain an image's actual resolution and scale. With Figma, the methods in [pack.md](references/pack.md) can extract
-   text and geometry. Compare extracted text with the image. With only an image, use an empty landmark list and
-   visually inspect text and layout; the check reports that reference as incomplete, not as an automatic pass.
-3. When Figma is available, read its design context and variables with the MCP tools. Use existing Code Connect mappings
-   when available and useful. Compare design assets with the project's existing icons and supported components; use
-   the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself;
-   retype a tool's answer into a file only when another agent will build from it.
+   retain an image's actual resolution and scale. With Figma, the methods in [pack.md](references/pack.md) can
+   extract text and geometry. Compare extracted text with the image. With only an image, use an empty landmark list
+   and visually inspect text and layout; the check reports that reference as incomplete, not as an automatic pass.
+3. When Figma is available, read its design context and variables with the MCP tools. Use existing Code Connect
+   mappings when available and useful. Compare design assets with the project's existing icons and supported
+   components; use the appropriate source and record material fidelity differences. Save to the pack what a tool can
+   write itself; retype a tool's answer into a file only when another agent will build from it.
 4. Write `design.json`: the page or story that renders the component, the root and host selectors, the frames, and
    the widths to sweep with the widths where the layout should change ([check.md](references/check.md#designjson)).
 5. Render each frame with the frame's own data. Text the data cannot produce is a gap for step 2.
@@ -79,23 +85,22 @@ being inherited, then the differing areas, each with its place. Fix that one cau
 frame again; a fix for one width can move another. Offsets marked *inherited* follow from a cause above them: do not
 fix them separately.
 
-The score is lower-better and counts what is not settled, proposals included; the summary shows the round before
-and the lowest so far. It locates changes; judge visual relationships and behaviour before undoing one. Commit when
-a round reaches a new lowest score. When two rounds in a row bring no new lowest, stop adjusting and sort what
-remains: what to fix another way (the next round), what to record (a `proposed` ledger entry with its category and
-reason), what to ask (a question in `review.md` with its options). Then check everything again. Pixel-perfect is not the goal where the design missed a case, a kit
-component differs, the layout would overlap or the experience would suffer: the goal is that no difference is left
-unexplained.
+The score is lower-better and counts what is not settled, proposals included; the summary shows the round before and
+the lowest so far. It locates changes; judge visual relationships and behaviour before undoing one. Commit when a
+round reaches a new lowest score. When two rounds in a row bring no new lowest, stop adjusting and sort what remains:
+what to fix another way (the next round), what to record (a `proposed` ledger entry with its category and reason),
+what to ask (a question in `review.md` with its options). Then check everything again. Pixel-perfect is not the goal
+where the design missed a case, a kit component differs, the layout would overlap or the experience would suffer: the
+goal is that no difference is left unexplained.
 
 A measured check passes once observed differences are resolved or accepted by the owner or an applicable owner rule.
 For image-only references, visually judge text and layout against the reference and explain the check's incomplete
-status; a numerical pass is not the only route to a reviewed result. A
-`proposed` difference remains pending. Report what could not be measured separately and continue independent work.
-An accepted change of size or position also excuses what it pushes along. A difference you cannot remove and cannot
-justify is reported, not hidden. The sweep in the same run narrows
-one mounted page every few pixels and through each frame's width, and reports overflow, clipped and overlapping
-text, columns that drift apart, layout changes at widths the design does not name, and a layout that does not come
-back when widened.
+status; a numerical pass is not the only route to a reviewed result. A `proposed` difference remains pending. Report
+what could not be measured separately and continue independent work. An accepted change of size or position also
+excuses what it pushes along. A difference you cannot remove and cannot justify is reported, not hidden. The sweep in
+the same run narrows one mounted page every few pixels and through each frame's width, and reports overflow, clipped
+and overlapping text, columns that drift apart, layout changes at widths the design does not name, and a layout that
+does not come back when widened.
 
 A layout change must keep behaviour: enter a state (selection, an open menu, typed input), resize through the
 modes, finish the action, and see the same result and the same surrounding state. Run the project's existing tests
@@ -107,7 +112,8 @@ Give the owner:
 
 - the check's verdict per frame and for the sweep (`out/report.md`);
 - `out/gallery.html`: per frame the reference, the page before the work, the page now and their difference, then the
-  sweep and every ledger entry; inspect these images yourself and make the before/after comparison available to the owner;
+  sweep and every ledger entry; inspect these images yourself and make the before/after comparison available to the
+  owner;
 - the ledger's entries: accepted with who decided, proposed with the options; and `review.md`'s open questions;
 - what was not checked: states and widths without a frame, a device, a browser other than Chromium, a real
   consumer.
