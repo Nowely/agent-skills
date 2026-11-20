@@ -29,20 +29,28 @@ The [review guide](references/review.md) covers gaps and the acceptance record.
 
 ## Build and compare
 
-Capture the existing screen before editing when available. Match the reference's data, interaction state, host
-width, scale and theme for comparison. Label mismatches in those conditions. For a page requiring login, use
-the project's browser workflow with an existing authorized persistent profile. An unauthenticated local page
-or Storybook can run in a fresh session.
+Capture the existing screen before editing when available. For a page requiring login, use the project's browser
+workflow with an existing authorized persistent profile. An unauthenticated local page or Storybook can run in a
+fresh session.
 
-Implement the supported states with the existing product patterns. For a layout driven by data, exercise the
-ordinary reference data and a legal combination that stresses the layout. Keep the data fixed while resizing.
-Check the widths between frames where the layout changes and observe whether controls and their state survive
-the transition. A fixed label can be checked directly at its supplied size.
+As soon as the first target state works, open it through the entry point its users actually use. Compare it with
+the reference using the same visible data, interaction state, host width, scale and theme. For a library shipped
+as a package, load the built artifact through its public import in an existing consumer or a minimal local host.
+Render the target there, check that affected assets load and exercise any affected action. For a simple page
+specified by a screenshot alone, a capture at the supplied size paired with the reference is sufficient.
+
+If data or environment access blocks that comparison, record what you tried and the specific blocker. Mark the
+affected condition unverified and continue the checks you can run independently.
+
+Implement the supported states with the existing product patterns. For a layout driven by data, also exercise a
+legal combination that stresses the layout. Keep the data fixed while resizing. Check the widths between frames
+where the layout changes and observe whether controls and their state survive the transition.
 
 Use [the checker](references/check.md) when its frame, sweep or journey measurements answer an acceptance
 question. Trace an offset to its first cause, fix it and compare affected frames again. With screenshots alone,
-inspect the text, alignment and appearance visually and state any uncertainty about scale. Keep deliberate
-differences in the ledger when using the checker. Only the owner accepts a proposed deviation.
+compare the visible content and alignment at the same scale and state any uncertainty about scale. Unless the
+owner specified the CSS values or text line boxes, use them to diagnose differences visible in the pair. Keep
+deliberate differences in the ledger when using the checker. Only the owner accepts a proposed deviation.
 
 ## Verify and hand over
 
@@ -52,9 +60,8 @@ measurement uses. If the change satisfies both and preserves the required behavi
 the affected state. If the difference remains, report the change you tried and what you observed against
 each source. If the trial was blocked, name the blocker and mark the conflict unverified.
 
-After the last relevant change, capture the final result and inspect it side by side with each target reference.
-For a shared component, run the affected consumer through its normal entry point. When other packages consume
-a build, load the built package there and exercise the assets and interactions the change touches.
+After the last change affecting a state or its consumer, repeat its entry-point check. Capture the final result
+and inspect it side by side with each target reference.
 
 Hand over each reference with its final image, labelled by data, width and state. Include comparable before
 images when available. State what the comparison shows, which checks passed, which differences remain, which
