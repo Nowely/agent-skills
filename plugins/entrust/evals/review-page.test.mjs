@@ -15,7 +15,7 @@ import { createSyntax } from "../plugin/skills/review/scripts/highlight.mjs";
 import { decisionRuntime } from "../plugin/skills/review/scripts/decisions.mjs";
 import { CATALOGS } from "../plugin/skills/review/scripts/labels.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { reportFixtures, hostileFixture, HOSTILE_PATH } from "./review/report-fixtures.mjs";
+import { reportFixtures, hostileFixture, hostileThemed, HOSTILE, HOSTILE_PATH } from "./review/report-fixtures.mjs";
 
 const SCRIPTS = new URL("../plugin/skills/review/scripts/", import.meta.url);
 const RUNTIME = fileURLToPath(new URL("page/runtime.js", SCRIPTS)), CSS = fs.readFileSync(new URL("page/page.css", SCRIPTS), "utf8");
@@ -89,6 +89,47 @@ test("texts reach the page as text: markup in a title, a question or a path stay
   assert.equal(island.files[0].path, record.blocks[0].path);
   assert.doesNotMatch(html, /<img src=x|<source>/);
   assert.ok(markupOf(html).includes("<title>Ревью кода: Hostile &lt;source&gt;</title>") && markupOf(html).includes(`<h3>${HOSTILE_PATH}</h3>`));
+});
+
+// Every tag of some markup with its attributes' names, read as a browser reads them: a quoted value is skipped whole,
+// so a quote inside it, escaped or not, decides where the attribute ends.
+function tagsOf(markup) {
+  const tags = [];
+  for (let i = markup.indexOf("<"); i !== -1; i = markup.indexOf("<", i + 1)) {
+    const name = /^<([a-zA-Z][\w-]*)/.exec(markup.slice(i, i + 80))?.[1];
+    if (!name) continue;
+    const attrs = [];
+    let j = i + 1 + name.length;
+    while (j < markup.length && markup[j] !== ">") {
+      const attr = /^[^\s"'>/=]+/.exec(markup.slice(j, j + 200))?.[0];
+      if (!attr) { j++; continue; }
+      attrs.push(attr.toLowerCase()); j += attr.length;
+      while (/\s/.test(markup[j])) j++;
+      if (markup[j] !== "=") continue;
+      j++; while (/\s/.test(markup[j])) j++;
+      if (markup[j] === '"' || markup[j] === "'") j = markup.indexOf(markup[j], j + 1) + 1;
+      else while (j < markup.length && !/[\s>]/.test(markup[j])) j++;
+    }
+    tags.push({ name: name.toLowerCase(), attrs });
+    i = j;
+  }
+  return tags;
+}
+
+// Requirement, scenario and variant ids, unit, mechanism and screen names and an external source carry a quote and
+// markup; an idea, a question and a block carry an id of their own; the hostile fixture's path carries an apostrophe.
+// The page and its document without JavaScript keep each as text: no handler attribute, no element of theirs.
+test("a hostile id or name of any kind stays text in the page and its document without JavaScript", () => {
+  const pages = [draw(hostileThemed(THEMED), diffText).html, (() => { const { diff, record } = hostileFixture(); return draw(record, diff).html; })()];
+  for (const html of pages) {
+    const tags = tagsOf(html.replace(/<script\b[\s\S]*?<\/script>/g, "").replace(/<style>[\s\S]*?<\/style>/g, ""));
+    assert.ok(tags.length > 100, "the markup was not read");
+    assert.deepEqual(tags.filter((t) => t.name === "x-pwn" || t.attrs.some((a) => a.startsWith("on"))), []);
+  }
+  // A finding's id is the one id the check holds to letters, digits, "_" and "-": a hostile one never reaches a page.
+  const record = hostileThemed(THEMED);
+  record.findings[0].id = HOSTILE;
+  assert.ok(check(record, parseDiff(diffText), run).errors.some((e) => e.includes('id is letters, digits, "_" or "-"')));
 });
 
 test("token colours are classes with a rule for each theme, and each holds 4.5:1 on the page's code backgrounds", async () => {

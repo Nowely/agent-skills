@@ -91,3 +91,43 @@ export function hostileFixture() {
   };
   return { diff, record };
 }
+
+// A value that breaks out of an attribute and opens an element wherever it reaches the page unescaped; what follows
+// the handler closes at the attribute's own closing quote, so the element it lands on survives to be seen.
+export const HOSTILE = `h'" onmouseover="alert(1)" data-x="<x-pwn>`;
+// The themed record with every value it names things by made hostile: requirement, scenario and variant ids, unit,
+// mechanism and screen names, an external source; an idea, a question and a block carry an `id` of their own, which the
+// page must not use, since their numbers are their places. Finding ids stay what the check allows (letters, digits,
+// "_" and "-"), and a file path cannot carry a double quote in a supported diff: the hostile fixture's path covers it.
+export function hostileThemed(themed) {
+  const r = structuredClone(themed), H = HOSTILE;
+  const req = new Map(r.requirements.map((x) => [x.id, `${H}${x.id}`])), reqs = (list) => list?.map((id) => req.get(id) ?? id);
+  r.requirements.forEach((x) => { x.id = req.get(x.id); });
+  // four more blocks serve the first requirement, so its panel lists more than it shows
+  r.blocks[2].added = "1-9";
+  r.blocks.push(...["10-11", "12", "13"].map((added) => ({ path: "test/outputs.test.js", added, does: "Tests an output.", serves: [r.requirements[0].id], verdict: "keep" })));
+  r.blocks.forEach((b) => { b.serves = reqs(b.serves); });
+  r.findings.forEach((f) => { f.breaks = reqs(f.breaks); f.untested = reqs(f.untested); });
+  r.checks.forEach((c) => { c.requirements = reqs(c.requirements); });
+  const unit = (name) => `${H}${name}`;
+  for (const list of [r.units, r.target_units]) list.forEach((u) => { u.name = unit(u.name); u.uses = u.uses?.map(unit); });
+  r.blocks.forEach((b) => { if (b.unit) b.unit = unit(b.unit); });
+  r.mechanisms = [{ name: `Normalization ${H}`, change: "reused", units: [r.units[0].name], purpose: `Consistent ${H}.`, basis: "Requirement 1.",
+    benefit: "Readable codes.", cost: "No extra state.", decision: "Keep it.", evidence: "judgment", findings: [1], blocks: [1] }];
+  r.blocks[0].kind = "code";
+  const scen = new Map(r.scenarios.map((x) => [x.id, `${H}s${x.id}`]));
+  r.scenarios.forEach((x) => { x.id = scen.get(x.id); x.requirements = reqs(x.requirements); });
+  r.findings.forEach((f) => { if (f.scenarios) f.scenarios = f.scenarios.map((id) => scen.get(id) ?? id); });
+  r.findings[0].scenarios = [r.scenarios[0].id];
+  for (const q of r.questions) {
+    const variant = new Map((q.variants ?? []).map((v) => [v.id, `${H}${v.id}`]));
+    q.variants?.forEach((v) => { v.id = variant.get(v.id); });
+    if (q.recommendation?.variant) q.recommendation.variant = variant.get(q.recommendation.variant);
+    for (const child of r.questions.filter((x) => x.parent && r.questions[x.parent.question - 1] === q)) child.parent.variants = child.parent.variants.map((id) => variant.get(id));
+  }
+  r.questions[2].context.push({ text: "Read elsewhere.", sources: [{ at: `docs/${H}.md:1`, quote: H }, { ref: "/scenarios/0" }, { ref: "/units/0" }] });
+  r.screens.forEach((x) => { x.name += H; });
+  r.ideas[0].id = H; r.questions[0].id = H; r.blocks[1].id = H;
+  return r;
+}
+

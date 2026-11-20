@@ -16,7 +16,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { reportFixtures } from "./review/report-fixtures.mjs";
+import { reportFixtures, hostileFixture, hostileThemed } from "./review/report-fixtures.mjs";
 
 const { cases: TESTS, test } = registry();
 const SCRIPT = path.join(ROOT, "skills", "review", "scripts", "report.mjs");
@@ -62,6 +62,11 @@ const LONG = "The archive reader converts the currency code while it reads each 
 record.findings[1].what = LONG;
 const THEMED_URL = render("themed", record);
 const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru", RU);
+// Every value the record names things by made hostile, and a hostile file path on a diff of its own.
+const HOSTILE_URL = render("hostile", hostileThemed(record));
+// The themed record with its idea at a line of the base side, which the head numbers otherwise.
+const BASE_URL = render("base-place", { ...structuredClone(record), ideas: [{ ...record.ideas[0], at: "src/invoices/archive.js:2 (base)" }] });
+const HOSTILE_PATH_URL = (() => { const { diff: bytes, record: r } = hostileFixture(); return render("hostile-path", r, bytes, false); })();
 // A large record: 40 files of 180 added lines, seven blocks each, a few of them to fix or to ask about.
 const FILES = 40, LINES = 180, UNIT = "theGeneratedModulesThatExportTheirValuesOneByOne";
 const bigDiff = Array.from({ length: FILES }, (_, f) => [`diff --git a/src/m${f}/part${f}.js b/src/m${f}/part${f}.js`, "new file mode 100644", "--- /dev/null",
@@ -406,6 +411,54 @@ test("review 13: Back returns from a cross-entity jump, and j steps leave no his
     await page.goBack(); await page.waitForTimeout(300);
     return /code\/b2$/.test(there) && /decisions\/f1$/.test(page.url()) && await page.getAttribute("#tab-decisions", "aria-selected") === "true" || `${there} → back → ${page.url()}`;
   }));
+
+// ---- record values as text
+test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
+  "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
+  async () => {
+    const found = [], dialogs = [];
+    const scan = async (page, where) => {
+      const hit = await page.evaluate(() => [...document.querySelectorAll("*")].filter((el) => el.localName === "x-pwn" || [...el.attributes].some((a) => a.name.startsWith("on")))
+        .map((el) => el.outerHTML.slice(0, 160)));
+      if (hit.length) found.push(`${where}: ${hit[0]}`);
+    };
+    // each row and card that opens a panel, one after another
+    const each = async (page, where, selector) => {
+      for (let i = 0, n = await page.locator(selector).count(); i < Math.min(n, 30); i++) {
+        await page.locator(selector).nth(i).click({ force: true }); await settle(page); await scan(page, `${where} ${i}`);
+      }
+    };
+    const leads = {};
+    for (const url of [HOSTILE_URL, HOSTILE_PATH_URL]) {
+      const o = await open(url), page = o.page;
+      page.on("dialog", (d) => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
+      try {
+        await scan(page, "summary");
+        await each(page, "summary", "#panel-summary [data-sel]");
+        await page.click("#tab-decisions"); await settle(page); await each(page, "decisions", "#dec-list .card .card-head");
+        await page.click("#tab-code"); await settle(page); await page.click('[data-act="mode"][data-mode="all"]'); await settle(page); await scan(page, "code");
+        await each(page, "code", "#files .note");
+        await page.click("#tab-details"); await settle(page);
+        for (const sub of await page.locator('#panel-details [data-act="xsub"]').evaluateAll((els) => els.map((el) => el.dataset.sub))) {
+          await page.click(`#panel-details [data-act="xsub"][data-sub="${sub}"]`); await settle(page); await scan(page, `details/${sub}`);
+          await each(page, `details/${sub}`, "#det-body [data-sel]");
+        }
+        if (url === HOSTILE_URL) {
+          // a requirement's chip and a scenario's source lead to them, through the address they build
+          await page.goto(url + "#decisions/f1"); await page.waitForSelector(".tabbar"); await settle(page);
+          await page.locator('#ctx-decisions a.chip[data-go^="r:"]').first().click(); await settle(page);
+          leads.requirement = { hash: new URL(page.url()).hash, selected: await page.locator('#panel-summary [data-sel^="req:"].sel').count() };
+          await page.goto(url + "#decisions/q3"); await page.waitForSelector(".tabbar"); await settle(page);
+          await page.locator('#ctx-decisions a.chip[data-go^="d:scenarios"]').first().click(); await settle(page);
+          leads.scenario = { hash: new URL(page.url()).hash, selected: await page.locator('#det-body [data-sel^="scen:"].sel').count() };
+        }
+        found.push(...o.errors.map((e) => `page error: ${e}`));
+      } finally { await o.close(); }
+    }
+    const plain = await open(HOSTILE_URL, { js: false });
+    try { await scan(plain.page, "without JavaScript"); } finally { await plain.close(); }
+    return !found.length && !dialogs.length && leads.requirement?.selected === 1 && leads.scenario?.selected === 1 || JSON.stringify({ found: found.slice(0, 5), dialogs, leads });
+  });
 
 // ---- parity with the page it replaces
 test("the picture viewer fits or shows a picture at its size and steps between pictures; a screen's revision and sources show",
