@@ -96,12 +96,13 @@ export function hostileFixture() {
 // the handler closes at the attribute's own closing quote, so the element it lands on survives to be seen.
 export const HOSTILE = `h'" onmouseover="alert(1)" data-x="<x-pwn>`;
 // The themed record with every value it names things by made hostile: requirement, scenario and variant ids, unit,
-// mechanism and screen names, an external source; an idea, a question and a block carry an `id` of their own, which the
-// page must not use, since their numbers are their places. Finding ids stay what the check allows (letters, digits,
-// "_" and "-"), and a file path cannot carry a double quote in a supported diff: the hostile fixture's path covers it.
+// mechanism and screen names, an external source; the requirement and scenario ids also hold the separators the page
+// cuts its keys at («:», «/», «.»). An idea, a question and a block carry an `id` of their own, which the page must not
+// use, since their numbers are their places. Finding ids stay what the check allows (letters, digits, "_" and "-"),
+// and a file path cannot carry a double quote in a supported diff: the hostile fixture's path covers it.
 export function hostileThemed(themed) {
   const r = structuredClone(themed), H = HOSTILE;
-  const req = new Map(r.requirements.map((x) => [x.id, `${H}${x.id}`])), reqs = (list) => list?.map((id) => req.get(id) ?? id);
+  const req = new Map(r.requirements.map((x) => [x.id, `${H}r:a/b.${x.id}`])), reqs = (list) => list?.map((id) => req.get(id) ?? id);
   r.requirements.forEach((x) => { x.id = req.get(x.id); });
   // four more blocks serve the first requirement, so its panel lists more than it shows
   r.blocks[2].added = "1-9";
@@ -115,7 +116,7 @@ export function hostileThemed(themed) {
   r.mechanisms = [{ name: `Normalization ${H}`, change: "reused", units: [r.units[0].name], purpose: `Consistent ${H}.`, basis: "Requirement 1.",
     benefit: "Readable codes.", cost: "No extra state.", decision: "Keep it.", evidence: "judgment", findings: [1], blocks: [1] }];
   r.blocks[0].kind = "code";
-  const scen = new Map(r.scenarios.map((x) => [x.id, `${H}s${x.id}`]));
+  const scen = new Map(r.scenarios.map((x) => [x.id, `${H}s:a/b.${x.id}`]));
   r.scenarios.forEach((x) => { x.id = scen.get(x.id); x.requirements = reqs(x.requirements); });
   r.findings.forEach((f) => { if (f.scenarios) f.scenarios = f.scenarios.map((id) => scen.get(id) ?? id); });
   r.findings[0].scenarios = [r.scenarios[0].id];

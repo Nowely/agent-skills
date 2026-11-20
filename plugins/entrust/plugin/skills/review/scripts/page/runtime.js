@@ -18,6 +18,10 @@ const P = (key, count) => L(`${key}.${PLURAL.select(count)}`, n(count));
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 // A record value in an address: percent-encoded, so an id of any characters makes one segment that route reads back.
 const hashPart = (v) => encodeURIComponent(String(v ?? "")).replace(/%3A/g, ":");
+// A key the page builds from a record id, cut at its own separator: the first after a fixed prefix, the last before a
+// fixed field name, since the id between them may hold any character.
+const cut = (s, sep) => { const i = s.indexOf(sep); return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)]; };
+const cutLast = (s, sep) => { const i = s.lastIndexOf(sep); return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)]; };
 const prose = (v) => esc(v).replace(/`([^`]+)`/g, "<code>$1</code>");
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -576,7 +580,7 @@ const FIELD = { text: "p.field.text", what: "p.field.what", fix: "p.field.fix", 
   point: "p.field.point", note: "p.field.note", change: "p.field.change" };
 const PART = { verdict: "p.part.verdict", recommendation: "p.part.recommendation", step: "p.part.step", scenario: "p.part.scenario", challenge: "p.part.challenge" };
 function anchorLabel(anchor) {
-  const [item, field = ""] = anchor.split("/"), [part, number] = field.split("."), [kind, id] = item.split(".");
+  const [item, field] = cutLast(anchor, "/"), [part, number] = field.split("."), [kind, id] = cut(item, ".");
   const fieldText = L(FIELD[part], +number + 1);
   return `${itemByKey.has(item) ? itemByKey.get(item).label : L(PART[kind], id)}, ${fieldText}`;
 }
@@ -1553,7 +1557,7 @@ function detailsPanel(sel) {
     const about = { coverage: "p.about.coverage", report: "p.about.report", screens: "p.about.screens" }[sub];
     return panelWrap(esc(L("p.context")), esc(L(about ? "p.about" : "p.nothing-selected")), `<div class="psec"><p class="muted">${esc(L(about ?? "p.select-row"))}</p></div>`);
   }
-  const [kind, raw] = sel.split(":"), i = +raw;
+  const [kind, raw] = cut(sel, ":"), i = +raw;
   if (kind === "unit") {
     const u = D.units[i]; if (!u) return "";
     return panelWrap(esc(`${L("unit")} · ${u.existing ? L("p.unit.existing") : L("p.unit.verdict-is", verdictWord(u.verdict ?? "keep"))}`), `<span class="unit-name">${esc(u.name)}</span>`, `
@@ -1613,15 +1617,15 @@ function openAnswer(card) {
 }
 function goDetails(sub, sel) { S.sub.details = sub; S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); $(`[data-sel="${CSS.escape(sel)}"]`, $("#panel-details"))?.scrollIntoView({ block: "center" }); }
 function go(spec) {
-  const [kind, id] = spec.split(":");
-  if (kind === "d") { const [sub, sel] = spec.slice(2).split("/"); return goDetails(sub, sel || null); }
+  const [kind, id] = cut(spec, ":");
+  if (kind === "d") { const [sub, sel] = cut(id, "/"); return goDetails(sub, sel || null); }
   if (kind === "b") { const b = blk(+id); const items = blockItems(b); return goBlock(+id, { key: items.length ? (items.find(isOpen) ?? items[0]).key : null }); }
   if (kind === "r") { showTab("summary", { push: false }); return select("summary", "req:" + id, { scroll: true }); }
   if (kind === "m") return goDetails("mechanisms", "mech:" + (+id - 1));
   if (itemByKey.has(kind + id)) return goCard(kind + id);
 }
 function goAnchor(anchor) {
-  const [item] = anchor.split("/"), [part, id] = item.split(".");
+  const [item] = cutLast(anchor, "/"), [part, id] = cut(item, ".");
   const there = (root) => $(`[data-anchor="${CSS.escape(anchor)}"]`, root)?.scrollIntoView({ block: "center" });
   if (["verdict", "recommendation", "step"].includes(part)) { showTab("summary"); return there($("#panel-summary")); }
   if (part === "scenario") return goDetails("scenarios", "scen:" + id);
@@ -1754,7 +1758,7 @@ document.addEventListener("click", (e) => {
       case "pc-open": return openPc(act.dataset.anchor, act);
       case "pc-save": return savePc(act.dataset.anchor, act.closest(".pc-x")?.querySelector(".pc-input"));
       case "pc-cancel": return closePc();
-      case "pc-del": { const an = act.dataset.anchor, [item, field] = an.split("/"); setState(DR.paragraphComment(state, { item, field }, "")); return commentsChanged(() => refreshPc(an)); }
+      case "pc-del": { const an = act.dataset.anchor, [item, field] = cutLast(an, "/"); setState(DR.paragraphComment(state, { item, field }, "")); return commentsChanged(() => refreshPc(an)); }
     }
     return;
   }
@@ -1845,7 +1849,7 @@ function openPc(anchor, from) {
 function closePc() { const an = S.pcEdit; S.pcEdit = null; delete S.pcDraft[an]; refreshPc(an); }
 // Saves the text of the editor the save came from, never another one on the page.
 function savePc(anchor, input) {
-  const [item, field] = anchor.split("/");
+  const [item, field] = cutLast(anchor, "/");
   setState(DR.paragraphComment(state, { item, field }, input?.value ?? S.pcDraft[anchor] ?? ""));
   S.pcEdit = null; delete S.pcDraft[anchor];
   commentsChanged(() => refreshPc(anchor));
