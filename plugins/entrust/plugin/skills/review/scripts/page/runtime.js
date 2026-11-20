@@ -731,7 +731,7 @@ function afterChange(key, { structural, focusText = false, focusReason = false }
   // a parent's answer can retire or restore its conditional questions: every descendant is drawn again
   for (const k of familyOf(c)) syncItem(k, structural || k !== key);
   reconcileDecList(structural);
-  updateChrome(); invalidateWalk(); updatePos();
+  invalidateWalk(); updateChrome(); updatePos();
   if (focusText || focusReason) {
     const scope = S.tab === "code" ? $(`#note-${S.sel.code ?? ""}`) ?? document : $(`#card-${key}`) ?? document;
     const t = $(`[data-choice="${key}"] textarea[data-act="${focusReason ? "reason" : "text"}"]`, scope) ?? $(`[data-choice="${key}"] textarea[data-act="${focusReason ? "reason" : "text"}"]`);

@@ -513,6 +513,20 @@ test("feedback 3: at 1024 px the top bar fits on every tab, in English and in Ru
     return !out.length || JSON.stringify(out);
   });
 
+// The themed record with its conditional question Q4 on a block of its own, so it counts in the Code tab.
+const CHILD_URL = render("child-block", (() => { const r = structuredClone(record); r.blocks[1] = { ...r.blocks[1], questions: [4] }; return r; })());
+test("the Code tab's open count follows a parent's answer that restores a conditional question, as a fresh load counts it",
+  "the badge was counted from the walk before the walk was rebuilt, so it kept the count from before the answer",
+  cased(CHILD_URL + "#decisions", {}, async (page) => {
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    await page.click("#tab-summary"); await settle(page); await page.click("#tab-decisions"); await settle(page);
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const live = await text(page, "#badge-code");
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const fresh = await text(page, "#badge-code");
+    return live === fresh || `live ${live}, after a reload ${fresh}`;
+  }));
+
 test("feedback 4: Esc closes the purpose menu and says so to assistive technology, as a click outside it does",
   "Esc hid the menu and left aria-expanded true",
   cased(THEMED_URL + "#code", {}, async (page) => {
