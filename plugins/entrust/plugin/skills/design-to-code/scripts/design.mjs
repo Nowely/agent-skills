@@ -241,16 +241,20 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
       return { found: true, box: boxOf(lines), lines: lines.length, align: alignOf(hit.el), font: fontOf(hit.el) };
     });
     // A family the page asks for that does not draw the page's own characters renders them in a fallback: a font
-    // that failed to load, a missing subset. Each text is tried in the first family its stack names; a family that
-    // draws them, an icon font included, differs in width from every generic one.
+    // that failed to load, a missing subset. Each text's first family is tried, in the text's own style and weight,
+    // on each of its characters: one that measures as in every generic family is drawn by a fallback. A stack that
+    // starts with a system or generic family asks for nothing to load, and emoji come from an emoji font by design.
     const ctx = document.createElement("canvas").getContext("2d");
-    const width = (font, sample) => { ctx.font = font; return ctx.measureText(sample).width; };
     const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[\w-]+|-apple-system|BlinkMacSystemFont|emoji|math|fangsong|inherit|initial)$/i;
     const missing = new Set();
     for (const n of textNodes()) {
-      const first = getComputedStyle(n.parentElement).fontFamily.split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).find((f) => f && !generic.test(f));
-      const sample = n.data.trim().slice(0, 40);
-      if (first && !missing.has(first) && ["monospace", "serif", "sans-serif"].every((g) => width(`72px "${first}", ${g}`, sample) === width(`72px ${g}`, sample))) missing.add(first);
+      const cs = getComputedStyle(n.parentElement);
+      const first = cs.fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "");
+      if (!first || generic.test(first) || missing.has(first)) continue;
+      const font = (family) => `${cs.fontStyle} ${cs.fontWeight} 72px ${family}`;
+      const width = (family, c) => { ctx.font = font(family); return ctx.measureText(c).width; };
+      const chars = [...new Set(n.data.replace(/[\s\p{Extended_Pictographic}\uFE0F\u200D]/gu, ""))].slice(0, 60);
+      if (chars.some((c) => ["monospace", "serif", "sans-serif"].every((g) => width(`"${first}", ${g}`, c) === width(g, c)))) missing.add(first);
     }
     return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textBoxes() };
   }

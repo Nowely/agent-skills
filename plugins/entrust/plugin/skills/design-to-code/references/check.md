@@ -57,7 +57,8 @@ category or a known status fails the check.
 
 The console shows, per frame: the verdict; the root's size if it differs; **start here**, the first place from the
 top where an offset begins, between two landmarks the design places one after the other or between a landmark and
-an edge of the root (the first 8 px band from the top, its largest step first); the first findings that are not
+an edge of the root, or a landmark's own width or height that changed and carried its neighbours ("the width of
+“New” changes by +9 px") (the first 8 px band from the top, its largest step first); the first findings that are not
 inherited; how many are left; and the score, which adds up what is not settled, failures and proposals alike, with
 the round before and the lowest so far. `out/report.md` holds every finding in tables.
 
@@ -69,8 +70,9 @@ the round before and the lowest so far. `out/report.md` holds every finding in t
   finding of its own.
 - **Pixels** is the share of all pixels that differ visibly, texts included. Figma and Chromium smooth text
   differently, so a few percent with no finding is usual.
-- **Fonts not available**: the first family a text's stack names does not draw that text's characters (it failed to
-  load, or lacks the subset), so the text renders in a fallback. It is a warning, not a verdict: load the font
+- **Fonts not available**: the first family a text's stack names does not draw one of that text's characters in the
+  text's own style and weight (it failed to load, or lacks the subset), so they render in a fallback. A stack that
+  starts with a system or generic family, and emoji, are not checked. It is a warning, not a verdict: load the font
   before trusting the text findings. The check cannot know the design's font; it reads the family the page names.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),

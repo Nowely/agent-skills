@@ -427,8 +427,11 @@ test("a font the page names first but cannot draw its text with is reported, and
   assert.deepEqual(r.result.frames[0].fontsMissing, ["Design Font Nobody Has"]);
   assert.match(r.stdout, /fonts not available: Design Font Nobody Has; their texts render in a fallback/);
   assert.match(r.stdout, /1 499 € font: size 22 → size 20/);
-  const installed = hasFont("DejaVu Sans") ? check(variant(".price { font-family: 'DejaVu Sans', sans-serif; }"), "--frame", "720") : null;
+  const installed = hasFont("DejaVu Sans") ? check(variant(".price { font-family: 'DejaVu Sans', sans-serif; font-weight: 700; }"), "--frame", "720") : null;
   if (installed) assert.deepEqual(installed.result.frames[0].fontsMissing, []);
+  // A stack that starts with a system family asks for nothing to load: no alarm on every round.
+  const system = check(variant(".card { font-family: system-ui, -apple-system, 'Segoe UI', 'Apple Color Emoji', sans-serif; }"), "--frame", "720");
+  assert.deepEqual(system.result.frames[0].fontsMissing, []);
 });
 
 test("a page snapshot matches repeated text in document order", browser, () => {
