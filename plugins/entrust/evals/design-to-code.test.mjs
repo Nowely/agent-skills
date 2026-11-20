@@ -195,6 +195,21 @@ test("a differing area outside the texts is a finding with its place, excused by
   const ok = compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions,
     ledger: [{ property: "region", region: [16, 16, 104, 104], category: "system", status: "accepted", reason: "the kit's image" }] });
   assert.equal(ok.pass, true);
+  const allProperties = { landmark: "New", property: "*", category: "system", status: "accepted", reason: "kit badge" };
+  assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [allProperties] }).pass, false);
+  assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [{ ...allProperties, landmark: "*" }] }).pass, true);
+});
+
+test("image-only root height respects each ledger status and measured limit", () => {
+  const entry = { landmark: "root", property: "height", category: "owner", reason: "bottom padding", max: 8 };
+  const height = (status, delta) => compareFrame({ frame: "f", spec: { frame: { width: 50, height: 40 }, landmarks: [] },
+    measured: { root: { width: 50, height: 40 + delta }, landmarks: [] }, ledger: [{ ...entry, status }] });
+  for (const [status, expected] of [["accepted", "accepted"], ["proposed", "pending"]]) {
+    const r = height(status, 8);
+    assert.equal(r.issues[0].status, expected);
+    assert.equal(r.verdict, "incomplete");
+    assert.equal(height(status, 8.01).verdict, "fail");
+  }
 });
 
 test("layout changes are found between widths and held against the ones the design names", () => {
@@ -326,6 +341,125 @@ const check = (dir, ...flags) => {
   return { ...r, result, dir };
 };
 
+// A fixed-size frame keeps changes to text, pixels and the state that opens the frame independent.
+function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
+  const dir = tmp(), page = path.join(dir, "page.html"), config = path.join(dir, "design.json");
+  const markup = (html) => `<!doctype html><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}</style>${html}`;
+  const write = (html) => fs.writeFileSync(page, markup(html));
+  write(`<main>${body}</main>`);
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json",
+    frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })) }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  return { dir, page, config, write };
+}
+
+test("extra text inside a matched node and text under an invisible parent cannot pass a full spec", browser, () => {
+  const f = smallFrame();
+  f.write("<main><span>Ready now</span></main>");
+  let result = check(f.dir);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.ok(result.result.frames[0].issues.some((i) => i.landmark === "now" && i.expected === "absent" && i.status === "fail"));
+  f.write('<main><div style="opacity:0"><span>Ready</span></div></main>');
+  result = check(f.dir);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.ok(result.result.frames[0].issues.some((i) => i.landmark === "Ready" && i.actual === "missing"));
+  f.write('<main><span style="color:transparent">Ready</span></main>');
+  assert.ok(check(f.dir).result.frames[0].issues.some((i) => i.landmark === "Ready" && i.actual === "missing"));
+  f.write('<main><div style="clip-path:inset(100%)"><span>Ready</span></div></main>');
+  assert.ok(check(f.dir).result.frames[0].issues.some((i) => i.landmark === "Ready" && i.actual === "missing"));
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "presence",
+    category: "owner", status: "accepted", reason: "omit the label" }]));
+  const allowed = check(f.dir);
+  assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr);
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), "[]");
+  f.write('<main><div style="width:30px;overflow:hidden;white-space:nowrap"><span>Ready</span></div></main>');
+  const clipped = check(f.dir);
+  assert.equal(clipped.status, 1, clipped.stdout + clipped.stderr);
+  assert.ok(clipped.result.frames[0].issues.some((i) => i.landmark === "Ready" && i.property === "clipped" && i.delta > 0));
+  f.write('<main><span>Ready&#8203;</span><span style="position:absolute;clip-path:inset(100%)">Hidden</span></main>');
+  const unchanged = check(f.dir);
+  assert.equal(unchanged.status, 0, unchanged.stdout + unchanged.stderr);
+  assert.equal(unchanged.result.frames[0].pixels.ratio, 0);
+});
+
+test("an eleventh independent region still fails when the ledger accepts the ten larger regions", browser, () => {
+  const f = smallFrame(), marks = [], ledger = [];
+  for (let i = 0; i < 11; i++) {
+    const x = 5 + i * 22, side = i === 10 ? 6 : 10;
+    marks.push(`<i style="position:absolute;left:${x}px;top:40px;width:${side}px;height:${side}px;background:black"></i>`);
+    if (i !== 10) ledger.push({ property: "region", region: [x, 40, side, side], category: "owner", status: "accepted", reason: "accepted mark" });
+  }
+  f.write(`<main><span>Ready</span>${marks.join("")}</main>`);
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify(ledger));
+  const r = check(f.dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  const regions = r.result.frames[0].issues.filter((i) => i.property === "region");
+  assert.equal(regions.filter((i) => i.status === "accepted").length, 10);
+  assert.deepEqual(regions.filter((i) => i.status === "fail").map((i) => i.box.x), [225]);
+});
+
+test("combining marks, soft hyphens and bidi controls alone do not implicate an installed font", browser, () => {
+  const f = smallFrame();
+  f.write('<style>@font-face{font-family:Probe;src:local("Arial"),local("Liberation Sans"),local("DejaVu Sans")}</style>'
+    + '<main style="font-family:Probe, sans-serif"><span>Cafe\u0301 co\u00adoperate USD\u200e</span></main>');
+  const r = check(f.dir);
+  assert.deepEqual(r.result.frames[0].fontsMissing, [], r.stdout);
+});
+
+test("setup can create the root and lazy images beyond it do not block measurement", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config));
+  cfg.frames[0].setup = [{ click: "button" }];
+  cfg.frames[0].viewport = 640;
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  f.write(`<style>@media(min-width:400px){main{background:red}}</style>
+<button onclick="this.outerHTML='<main><span>Ready</span></main>'">Open</button>
+<div style="height:18000px"></div><img loading="lazy" src="0.png">`);
+  const run = spawnSync(process.execPath, [DESIGN, "check", f.config], { encoding: "utf8", timeout: 25000 });
+  assert.equal(run.status, 0, run.error?.message ?? run.stdout + run.stderr);
+  cfg.frames[0].setup = [];
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  f.write('<div style="height:18000px"></div><main><span>Ready</span><img loading="lazy" style="position:absolute;width:100px;height:20px;top:40px;left:0" src="0.png"></main>');
+  const inside = spawnSync(process.execPath, [DESIGN, "check", f.config], { encoding: "utf8", timeout: 25000 });
+  assert.equal(inside.status, 1, inside.error?.message ?? inside.stdout + inside.stderr);
+  assert.ok(JSON.parse(fs.readFileSync(path.join(f.dir, "out/result.json"))).frames[0].pixels.ratio > 0);
+});
+
+test("a root absent on the first check stays absent in Before after it is built", browser, () => {
+  const f = smallFrame(), html = fs.readFileSync(f.page);
+  f.write("<aside>Existing page</aside>");
+  const initial = check(f.dir);
+  assert.equal(initial.status, 2, initial.stdout + initial.stderr);
+  assert.match(initial.result.frames[0].beforeUnavailable, /absent/);
+  assert.equal(initial.result.score, null);
+  fs.writeFileSync(f.page, html);
+  const final = check(f.dir);
+  assert.equal(final.status, 0, final.stdout + final.stderr);
+  assert.equal(final.result.best.round, 2);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<figcaption>Before<\/figcaption>Root main was absent[^<]*<\/figure>/);
+});
+
+test("state names keep separate captures and reuse a historical before only when its owner is known", browser, () => {
+  const f = smallFrame("Ready", [{ name: "Оплачен" }, { name: "Отменён" }, { name: "Old frame" }]);
+  const cfg = JSON.parse(fs.readFileSync(f.config));
+  cfg.frames[1].url = "other.html";
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  fs.writeFileSync(path.join(f.dir, "other.html"), fs.readFileSync(f.page, "utf8").replace("background:white", "background:yellow"));
+  const first = check(f.dir), frames = first.result.frames;
+  assert.equal(new Set(frames.map((frame) => frame.images.page)).size, 3);
+  const beforeTags = () => [...fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8")
+    .matchAll(/<figcaption>Before<\/figcaption><img src="([^"]+)"/g)].map((m) => m[1]);
+  assert.notEqual(beforeTags()[0], beforeTags()[1]);
+  const oldBefore = fs.readFileSync(path.join(f.dir, "out", frames[1].images.page)).toString("base64");
+  fs.rmSync(path.join(f.dir, "out/before"), { recursive: true });
+  fs.mkdirSync(path.join(f.dir, "out/before"));
+  for (const slug of ["-", "Old-frame"]) fs.writeFileSync(path.join(f.dir, "out/before", slug + ".png"), Buffer.from(oldBefore, "base64"));
+  const old = check(f.dir);
+  assert.ok(old.result.frames.slice(0, 2).every((frame) => frame.beforeUnavailable.includes("multiple frames")));
+  assert.deepEqual(beforeTags(), [`data:image/png;base64,${oldBefore}`]);
+});
+
 test("the reference passes against its own snapshot, with no pixel different", browser, () => {
   const r = check(variant());
   assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -372,7 +506,7 @@ test("an accepted deviation passes, a proposed one remains pending, an unlisted 
 });
 
 test("a proposed text alternative reports what the page actually contains", browser, () => {
-  const entry = { landmark: "New", property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
+  const entry = { landmark: ["Other label", "New"], property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
   const original = check(variant("", [entry]), "--frame", "720");
   assert.equal(original.status, 0, original.stdout + original.stderr);
   assert.ok(!original.result.frames[0].issues.some((issue) => issue.landmark === "New" && ["presence", "text"].includes(issue.property)));
@@ -387,11 +521,15 @@ test("a proposed text alternative reports what the page actually contains", brow
 test("a missing reference image makes the visual check incomplete", browser, () => {
   const dir = variant();
   fs.rmSync(path.join(dir, "design/720/reference.png"));
-  const result = check(dir, "--frame", "720");
+  const result = check(dir, "--no-sweep");
   assert.equal(result.status, 2, result.stdout + result.stderr);
   assert.equal(result.result.status, "incomplete");
   assert.deepEqual(result.result.missingReferences, ["720"]);
   assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /Reference image not measured: 720/);
+  assert.equal(result.result.frames.find((f) => f.frame === "720").pass, false);
+  assert.match(result.stdout, /720: incomplete/);
+  assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /## 720 — incomplete/);
+  assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="fail">incomplete</);
 });
 
 test("an image-only reference requires visual text review, including when it matches", browser, () => {

@@ -21,11 +21,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, isImageOnly, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
-  specFromMetadata, specFromRest, sweepIssues, switches,
+  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
+  specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -45,7 +46,12 @@ function parseArgs(argv) {
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`); };
 const pngSize = (buf) => (buf.toString("ascii", 1, 4) === "PNG" ? { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) } : null);
-const slug = (s) => String(s).replace(/[^\w.-]+/g, "-");
+const legacySlug = (name) => name.replace(/[^\w.-]+/g, "-");
+function frameKey(name) {
+  // The tilde separates this namespace from every historical slug, also on case-insensitive filesystems.
+  const digest = createHash("sha256").update(name).digest("hex");
+  return `${legacySlug(name).slice(0, 40)}~${digest}`;
+}
 
 function loadConfig(file) {
   const dir = path.dirname(path.resolve(file));
@@ -53,6 +59,7 @@ function loadConfig(file) {
   const at = (p) => (p ? path.resolve(dir, p) : p);
   const url = (u) => (!u || /^[a-z][\w+.-]*:/i.test(u) ? u : pathToFileURL(path.resolve(dir, u)).href);
   for (const key of ["url", "root", "frames"]) if (!cfg[key]) throw new Error(`design.json: no "${key}"`);
+  if (new Set(cfg.frames.map((f) => f.name)).size !== cfg.frames.length) throw new Error("design.json: frame names must be unique");
   return {
     ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
     frames: cfg.frames.map((f) => {
@@ -78,10 +85,23 @@ async function chromium() {
 
 const STILL = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
 
-async function settle(page) {
-  await page.evaluate(async () => {
+async function settle(page, selector) {
+  await page.locator(selector).first().evaluate(async (root) => {
     await document.fonts.ready;
-    await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }))));
+    const images = root.matches("img") ? [root] : root.querySelectorAll("img");
+    const loaded = Promise.all(Array.from(images, async (i) => {
+      if (i.complete) return;
+      const lazy = i.loading === "lazy";
+      if (lazy) i.loading = "eager";
+      try { await i.decode(); } catch { /* a broken image is captured as rendered */ }
+      finally { if (lazy) i.loading = "lazy"; }
+    }));
+    let timer;
+    try {
+      await Promise.race([loaded, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Timed out loading images inside the component")), 15000);
+      })]);
+    } finally { clearTimeout(timer); }
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 }
@@ -96,7 +116,6 @@ async function setWidth(page, cfg, width, viewportHeight) {
   } else {
     await page.setViewportSize({ width, height: viewportHeight });
   }
-  await settle(page);
 }
 
 async function runStep(page, step) {
@@ -115,22 +134,30 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
   const page = await context.newPage();
   await page.goto(url, { waitUntil: "load" });
   await page.addStyleTag({ content: STILL });
-  await page.locator(cfg.root).first().waitFor({ state: "attached", timeout: 15000 });
-  await setWidth(page, cfg, width, height);
-  for (const step of setup) await runStep(page, step);
-  await settle(page);
+  if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
+  try {
+    for (const step of setup) await runStep(page, step);
+    await page.locator(cfg.root).first().waitFor({ state: "attached", timeout: 15000 });
+  } catch (e) {
+    const absent = e.name === "TimeoutError" && !(await page.locator(cfg.root).count());
+    await context.close();
+    if (!absent) throw e;
+    throw Object.assign(new Error(`Root ${cfg.root} was absent at capture time.`), { missingRoot: true, exit: 2 });
+  }
+  if (cfg.host) await setWidth(page, cfg, width, height);
+  await settle(page, cfg.root);
   return { context, page };
 }
 
 // Runs inside the page. One function, so its helpers travel with it: measure the spec's landmarks, snapshot every
 // text as a landmark, or probe the layout at the current width for the sweep.
-function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1 }) {
+async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1 }) {
   const norm = (s) => s.replace(/\s+/g, " ").trim();
-  const key = (s) => s.replace(/\s+/g, "").toLocaleLowerCase();
+  const key = (s) => s.replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
   const root = document.querySelector(rootSelector);
   if (!root) return { error: `the root ${rootSelector} is not on the page` };
   const rr = root.getBoundingClientRect();
-  const visible = (el) => el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+  const visible = (el) => el?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
   const lineHeight = (cs) => {
     if (cs.lineHeight.endsWith("px")) return parseFloat(cs.lineHeight);
     const n = Number(cs.lineHeight);
@@ -171,11 +198,42 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     if (cs.textAlign === "right" || (cs.textAlign === "end" && !rtl) || (cs.textAlign === "start" && rtl)) return "right";
     return "left";
   };
-  const textNodes = () => {
-    const out = [];
+  const clipBounds = new Map();
+  const textNodes = async () => {
+    const out = [], clipped = new Set();
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.data.trim() && visible(n.parentElement)) out.push(n);
-    return out;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const el = n.parentElement;
+      if (!n.data.trim() || !visible(el)) continue;
+      const cs = getComputedStyle(el);
+      const clearFill = /^(?:rgba\(.*,|.*\/)\s*0%?\)$/.test(cs.webkitTextFillColor);
+      if (clearFill && cs.textShadow === "none" && !parseFloat(cs.webkitTextStrokeWidth) && !cs.backgroundClip.includes("text")) continue;
+      if (lineBoxes(trimmed(n), el).length) out.push(n);
+      for (let p = el; p; p = p.parentElement) {
+        const style = getComputedStyle(p);
+        if (style.clipPath !== "none" || style.clip !== "auto" || /hidden|clip/.test(style.overflowX + style.overflowY)) {
+          clipped.add(el);
+          break;
+        }
+      }
+    }
+    if (!clipped.size) return out;
+    // Layout boxes survive CSS clipping. Let Chromium intersect the painted bounds, including ancestor clips.
+    // Include offscreen document content: a component screenshot may scroll that content into view.
+    await new Promise((resolve, reject) => {
+      const doc = document.documentElement;
+      const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) clipBounds.set(entry.target, entry.intersectionRect);
+        if (clipBounds.size === clipped.size) { clearTimeout(timer); observer.disconnect(); resolve(); }
+      }, { rootMargin: `${Math.max(doc.scrollWidth, doc.scrollHeight)}px` });
+      const timer = setTimeout(() => { observer.disconnect(); reject(new Error("Timed out measuring clipped text")); }, 5000);
+      for (const el of clipped) observer.observe(el);
+    });
+    return out.filter((n) => {
+      const r = clipBounds.get(n.parentElement);
+      return !r || (r.width > 0 && r.height > 0 && [...trimmed(n).getClientRects()].some((l) =>
+        l.left < r.right && l.right > r.left && l.top < r.bottom && l.bottom > r.top));
+    });
   };
   const trimmed = (n) => {
     const range = document.createRange();
@@ -184,40 +242,53 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     return range;
   };
   // Every text's line boxes relative to the root: the areas the pixel comparison leaves to the text checks.
-  const textBoxes = () => textNodes().flatMap((n) => lineBoxes(trimmed(n), n.parentElement)
-    .map((l) => ({ x: l.left - rr.left, y: l.top - rr.top, width: l.right - l.left, height: l.bottom - l.top })));
 
   if (command === "measure") {
     // The root's visible text without spaces, lower-cased, each character mapped back to its node and offset, and
     // the places a word may start or end: a node boundary or a space. A landmark is found only between such places,
     // so "16" is not found inside "18626".
+    const nodes = await textNodes(), nodeStarts = new Map();
     const chars = [], starts = new Set([0]), ends = new Set();
     let text = "";
-    for (const n of textNodes()) {
+    for (const n of nodes) {
+      nodeStarts.set(n, text.length);
       if (text.length) { ends.add(text.length); starts.add(text.length); }
       for (let i = 0; i < n.data.length; i++) {
-        if (/\s/.test(n.data[i])) { if (text.length) { ends.add(text.length); starts.add(text.length); } continue; }
-        text += n.data[i].toLocaleLowerCase();
-        chars.push({ node: n, offset: i });
+        if (/[\s\u200b]/.test(n.data[i])) { if (text.length) { ends.add(text.length); starts.add(text.length); } continue; }
+        const lower = n.data[i].toLocaleLowerCase();
+        text += lower;
+        for (let j = 0; j < lower.length; j++) chars.push({ node: n, offset: i });
       }
     }
     ends.add(text.length);
-    const found = landmarks.map((l) => {
-      if (l.selector) {
-        const el = root.querySelectorAll(l.selector)[l.nth ?? 0];
-        if (!el || !visible(el)) return { found: false };
-        const r = el.getBoundingClientRect();
-        return { found: true, box: { x: r.left - rr.left, y: r.top - rr.top, width: r.width, height: r.height }, align: "left" };
+    const covered = new Uint8Array(chars.length);
+    // A landmark may cross styled spans. Compare the part in each clipped span with that span's visible bounds.
+    const clippedBy = (start, end) => {
+      let cut = 0;
+      for (let i = start; clipBounds.size && i < end; i++) {
+        const { node, offset } = chars[i], bounds = clipBounds.get(node.parentElement);
+        while (i + 1 < end && chars[i + 1].node === node) i++;
+        if (!bounds) continue;
+        const range = document.createRange();
+        range.setStart(node, offset);
+        range.setEnd(node, chars[i].offset + 1);
+        for (const r of range.getClientRects()) cut = Math.max(cut, bounds.left - r.left, r.right - bounds.right, bounds.top - r.top, r.bottom - bounds.bottom);
       }
-      const target = key(l.text);
+      return cut;
+    };
+    const measureText = (l, value) => {
+      const target = key(value);
+      const match = (range, el, start) => {
+        const lines = lineBoxes(range, el);
+        if (!lines.length) return { found: false };
+        covered.fill(1, start, start + target.length);
+        return { found: true, matchedText: value, box: boxOf(lines), lines: lines.length, clipped: clippedBy(start, start + target.length), align: alignOf(el), font: fontOf(el) };
+      };
       if (l.documentOrder) {
         // A page snapshot contains whole text nodes in document order. Matching
         // substrings of larger nodes would change the ordinal of repeated text.
-        const node = textNodes().filter((n) => key(norm(n.data)) === target)[l.nth ?? 0];
-        if (node) {
-          const lines = lineBoxes(trimmed(node), node.parentElement);
-          return { found: true, box: boxOf(lines), lines: lines.length, align: alignOf(node.parentElement), font: fontOf(node.parentElement) };
-        }
+        const node = nodes.filter((n) => key(norm(n.data)) === target)[l.nth ?? 0];
+        if (node) return match(trimmed(node), node.parentElement, nodeStarts.get(node));
         // Markup may split a previously whole node; fall through to range matching.
       }
       const hits = [];
@@ -231,15 +302,35 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
         range.setStart(a.node, a.offset);
         range.setEnd(b.node, b.offset + 1);
         const el = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-        return { range, el: a.node.parentElement, whole: key(el.textContent) === target };
+        return { range, el: a.node.parentElement, start: i, whole: key(el.textContent) === target };
       });
       // Prefer a whole element for Figma landmarks; snapshots retain document order.
       if (!l.documentOrder) ranges.sort((x, y) => Number(y.whole) - Number(x.whole));
       const hit = ranges[l.nth ?? 0];
       if (!hit) return { found: false };
-      const lines = lineBoxes(hit.range, hit.el);
-      return { found: true, box: boxOf(lines), lines: lines.length, align: alignOf(hit.el), font: fontOf(hit.el) };
+      return match(hit.range, hit.el, hit.start);
+    };
+    const found = landmarks.map((l) => {
+      if (l.selector) {
+        const el = root.querySelectorAll(l.selector)[l.nth ?? 0];
+        if (!visible(el)) return { found: false };
+        const r = el.getBoundingClientRect();
+        return { found: true, box: { x: r.left - rr.left, y: r.top - rr.top, width: r.width, height: r.height }, align: "left" };
+      }
+      const original = measureText(l, l.text);
+      return !original.found && l.alternate && l.alternate !== l.text ? measureText(l, l.alternate) : original;
     });
+    const unexpected = [];
+    if (landmarks.some((l) => l.text)) {
+      for (let start = 0; start < chars.length; start++) {
+        if (covered[start]) continue;
+        const { node, offset } = chars[start];
+        let end = start;
+        while (end + 1 < chars.length && !covered[end + 1] && chars[end + 1].node === node) end++;
+        unexpected.push(norm(node.data.slice(offset, chars[end].offset + 1)));
+        start = end;
+      }
+    }
     // A family the page asks for that does not draw the page's own characters renders them in a fallback: a font
     // that failed to load, a missing subset. Each text's first family is tried, in the text's own style and weight,
     // on each of its characters: one that measures as in every generic family is drawn by a fallback. A stack that
@@ -247,21 +338,26 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     const ctx = document.createElement("canvas").getContext("2d");
     const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[\w-]+|-apple-system|BlinkMacSystemFont|emoji|math|fangsong|inherit|initial)$/i;
     const missing = new Set();
-    for (const n of textNodes()) {
+    for (const n of nodes) {
       const cs = getComputedStyle(n.parentElement);
       const first = cs.fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "");
       if (!first || generic.test(first) || missing.has(first)) continue;
       const font = (family) => `${cs.fontStyle} ${cs.fontWeight} 72px ${family}`;
       const width = (family, c) => { ctx.font = font(family); return ctx.measureText(c).width; };
-      const chars = [...new Set(n.data.replace(/[\s\p{Extended_Pictographic}\uFE0F\u200D]/gu, ""))].slice(0, 60);
-      if (chars.some((c) => ["monospace", "serif", "sans-serif"].every((g) => width(`"${first}", ${g}`, c) === width(g, c)))) missing.add(first);
+      const probes = [...new Set(n.data.replace(/[\s\p{M}\p{Cf}\p{Cc}\p{Extended_Pictographic}\p{Regional_Indicator}]/gu, ""))].slice(0, 60);
+      if (probes.some((c) => {
+        const fallback = ["monospace", "serif", "sans-serif"];
+        const widths = fallback.map((g) => width(g, c));
+        return new Set(widths).size > 1 && fallback.every((g, i) => width(`"${first}", ${g}`, c) === widths[i]);
+      })) missing.add(first);
     }
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textBoxes() };
+    const textBoxes = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => boxOf([line])));
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected };
   }
 
   if (command === "snapshot") {
     const seen = new Map();
-    const out = textNodes().map((n) => {
+    const out = (await textNodes()).map((n) => {
       const t = norm(n.data), k = key(t), nth = seen.get(k) ?? 0;
       seen.set(k, nth + 1);
       return { text: t, ...(nth ? { nth } : {}), box: boxOf(lineBoxes(trimmed(n), n.parentElement)), font: fontOf(n.parentElement) };
@@ -283,7 +379,7 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     const cut = Math.max(clipX ? el.scrollWidth - el.clientWidth : 0, clipY ? el.scrollHeight - el.clientHeight : 0);
     if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", delta: cut, actual: `${cut} px cut off ${clipX ? "horizontally" : "vertically"}` });
   }
-  const nodes = textNodes();
+  const nodes = await textNodes();
   const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b })));
   for (const { node, b } of lines) {
     const out = Math.max(rr.left - b.left, b.right - rr.right, b.bottom - rr.bottom, rr.top - b.top);
@@ -395,7 +491,7 @@ async function pixelDiff(page, reference, actual, { scale, ignore, shifts = [] }
     return {
       ratio: changed / (W * H), sizeMatch: a.width === b.width && a.height === b.height,
       reference: `${a.width}×${a.height}`, actual: `${b.width}×${b.height}`,
-      regions: [...regions.filter((r) => !r.movedWith).slice(0, 10), ...regions.filter((r) => r.movedWith)],
+      regions,
       png: { side: sc.toDataURL(), diff: dc.toDataURL() },
     };
   }, [`data:image/png;base64,${reference.toString("base64")}`, `data:image/png;base64,${actual.toString("base64")}`, scale, ignore, shifts]);
@@ -406,7 +502,24 @@ const dataUrl = (buf) => buf && `data:image/png;base64,${buf.toString("base64")}
 
 // ------------------------------------------------------------------ commands
 
-async function measureFrames(browser, cfg, frames, ledger, out, flags) {
+function beforeFrame(out, frame, frames, shot, absent) {
+  const dir = path.join(out, "before"), key = frameKey(frame.name);
+  const png = path.join(dir, `${key}.png`), marker = path.join(dir, `${key}.txt`);
+  if (fs.existsSync(png)) return { image: dataUrl(fs.readFileSync(png)) };
+  if (fs.existsSync(marker)) return { reason: fs.readFileSync(marker, "utf8") };
+  const oldName = legacySlug(frame.name), legacy = path.join(dir, `${oldName}.png`);
+  if (fs.existsSync(legacy)) {
+    const owners = frames.filter((f) => legacySlug(f.name).toLowerCase() === oldName.toLowerCase());
+    if (owners.length === 1) shot = fs.readFileSync(legacy);
+    else { shot = null; absent = "The previous check used one filename for multiple frames. The original image cannot be identified."; }
+  }
+  fs.mkdirSync(dir, { recursive: true });
+  if (shot) { fs.writeFileSync(png, shot); return { image: dataUrl(shot) }; }
+  fs.writeFileSync(marker, absent);
+  return { reason: absent };
+}
+
+async function measureFrames(browser, cfg, frames, ledger, out) {
   const scratch = await (await browser.newContext()).newPage();
   const results = [];
   for (const frame of frames) {
@@ -414,33 +527,30 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
     const reference = frame.reference && fs.existsSync(frame.reference) ? fs.readFileSync(frame.reference) : null;
     const size = reference && pngSize(reference);
     const scale = size ? Math.max(1, Math.round(size.width / spec.frame.width)) : 1;
-    const { context, page } = await open(browser, cfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) });
+    let opened;
+    try { opened = await open(browser, cfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) }); }
+    catch (e) {
+      if (!e.missingRoot) throw e;
+      const before = beforeFrame(out, frame, cfg.frames, null, e.message);
+      results.push({ frame: frame.name, pass: false, verdict: "incomplete", unmeasured: e.message, beforeUnavailable: before.reason,
+        score: null, causes: [], issues: [], root: { spec: spec.frame, page: null }, images: {},
+        gallery: { width: spec.frame.width, images: { design: dataUrl(reference), before: before.image } } });
+      continue;
+    }
+    const { context, page } = opened;
     try {
-      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth } : { text: l.text, nth: l.nth, documentOrder: spec.source === "page snapshot" }));
+      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth }
+        : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
       const measured = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
-      // Try an allowed alternate only when the actual design text is absent.
-      for (let i = 0; i < spec.landmarks.length; i++) {
-        const landmark = spec.landmarks[i];
-        if (landmark.selector || measured.landmarks[i]?.found) continue;
-        const alternate = pageText(landmark, frame.name, ledger);
-        if (!alternate || alternate === landmark.text) continue;
-        const found = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: [{ text: alternate, nth: landmark.nth, documentOrder: spec.source === "page snapshot" }] });
-        if (found.landmarks?.[0]?.found) measured.landmarks[i] = { ...found.landmarks[0], matchedText: alternate };
-      }
-      for (let i = 0; i < spec.landmarks.length; i++) {
-        if (measured.landmarks[i]?.found && spec.landmarks[i].text && !measured.landmarks[i].matchedText) measured.landmarks[i].matchedText = spec.landmarks[i].text;
-      }
       const shot = await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" });
-      const dir = path.join(out, slug(frame.name));
+      const dir = path.join(out, frameKey(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
       // The page as the work found it: kept from the first check; delete out/before to take it again.
-      const before = path.join(out, "before", `${slug(frame.name)}.png`);
-      if (!fs.existsSync(before)) { fs.mkdirSync(path.dirname(before), { recursive: true }); fs.writeFileSync(before, shot); }
+      const before = beforeFrame(out, frame, cfg.frames, shot);
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
-      const imageOnly = isImageOnly(spec);
       if (reference) {
         // Text is left out of the pixels: its landmarks measure it, or, for an image-only reference, the eye does.
         const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
@@ -454,9 +564,10 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
         measured.pixels = pixels;
         regions = nameRegions(found, spec.landmarks);
       }
-      const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions });
+      const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
+      if (before.reason) result.beforeUnavailable = before.reason;
       result.gallery = { width: spec.frame.width, images: {
-        design: dataUrl(reference), before: dataUrl(fs.readFileSync(before)), after: dataUrl(shot),
+        design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
       } };
       results.push(result);
@@ -480,6 +591,7 @@ async function sweep(browser, cfg, ledger) {
   try {
     const probe = async (width) => {
       await setWidth(page, cfg, width, 900);
+      await settle(page, cfg.root);
       const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
       if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
       return { width, ...r };
@@ -529,8 +641,16 @@ async function check(file, flags) {
   const full = !flags.frame;
   const browser = await (await chromium()).launch();
   try {
-    const results = await measureFrames(browser, cfg, frames, ledger, out, flags);
-    const sweepResult = cfg.sweep && full && !flags["no-sweep"] ? await sweep(browser, cfg, ledger) : undefined;
+    const results = await measureFrames(browser, cfg, frames, ledger, out);
+    let sweepResult;
+    if (cfg.sweep && full && !flags["no-sweep"]) {
+      try { sweepResult = await sweep(browser, cfg, ledger); }
+      catch (e) {
+        if (!e.missingRoot) throw e;
+        sweepResult = { from: cfg.sweep.from, to: cfg.sweep.to, step: cfg.sweep.step ?? 8, pass: false, verdict: "incomplete",
+          reason: e.message, issues: [], switches: [], score: 0 };
+      }
+    }
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
@@ -539,9 +659,10 @@ async function check(file, flags) {
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
     const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
     const status = failed ? "fail"
-      : missingReferences.length || unmeasured.length || imageOnlyFrames.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
+      : results.some((r) => r.verdict === "incomplete") || unmeasured.length || sweepResult?.verdict === "incomplete" ? "incomplete"
+        : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
-    const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;
+    const score = totalScore(results, sweepResult);
     fs.mkdirSync(out, { recursive: true });
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
@@ -549,9 +670,9 @@ async function check(file, flags) {
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds that checked the same frames and sweep: the one before and the lowest.
-    const comparable = history.filter((h) => JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
+    const comparable = history.filter((h) => h.score != null && JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
     const previous = comparable.at(-1);
-    const best = [...comparable, record].reduce((a, h) => (h.score < a.score ? h : a), record);
+    const best = comparable.reduce((a, h) => (!a || h.score < a.score ? h : a), score === null ? null : record);
     const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });

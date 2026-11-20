@@ -33,10 +33,10 @@ const spec = (f) => JSON.parse(fs.readFileSync(path.join(judge, "design", f.fram
 const geometry = new Set(["x", "y", "height", "width", "presence"]);
 const frames = result.frames.map((f) => {
   const failing = f.issues.filter((i) => i.status === "fail");
-  const off = new Set(failing.filter((i) => geometry.has(i.property) && i.landmark !== "root").map((i) => i.landmark));
+  const off = new Set(failing.filter((i) => geometry.has(i.property) && i.expected !== "absent" && i.landmark !== "root").map((i) => i.landmark));
   const total = spec(f).landmarks.length;
   return {
-    name: f.frame, pass: f.pass, landmarks: `${total - off.size}/${total}`,
+    name: f.frame, pass: f.pass, landmarks: `${f.unmeasured ? 0 : total - off.size}/${total}`,
     maxOffset: Math.max(0, ...failing.filter((i) => i.delta !== undefined && i.landmark !== "*").map((i) => Math.abs(i.delta))),
     font: failing.filter((i) => i.property === "font").length, regions: failing.filter((i) => i.property === "region").length, score: f.score,
   };

@@ -11,7 +11,7 @@ const num = (v) => (v === undefined || v === "" ? NaN : Number(v));
 export const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 // How a text is matched on the page: spaces and letter case do not count, since markup splits and CSS transforms
 // them ("1 499 €" is found in `1 499<span>€</span>`, "NEW" in a `text-transform: uppercase` "New").
-export const key = (s) => String(s).replace(/\s+/g, "").toLocaleLowerCase();
+export const key = (s) => String(s).replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
 
 // ------------------------------------------------------------------ XML
 
@@ -294,20 +294,21 @@ export function ledgerFaults(entries) {
 
 const frameMatches = (entry, frame) => entry.frame === undefined || entry.frame === "*" || entry.frame === frame
   || (Array.isArray(entry.frame) && entry.frame.includes(frame));
+const landmarkMatches = (entry, label) => [entry.landmark].flat().some((v) => v === "*" || v === label);
 const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x + b.width <= r[0] + r[2] + pad && b.y + b.height <= r[1] + r[3] + pad;
 
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
     && (e.property === "*" || e.property === issue.property)
-    && (issue.property === "region" ? (e.property === "*" || (e.region && within(issue.box, e.region)))
-      : (e.landmark === "*" || e.landmark === issue.landmark || (Array.isArray(e.landmark) && e.landmark.includes(issue.landmark))))
+    && (e.property === "region" ? e.region && within(issue.box, e.region)
+      : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
     // An entry bounded by size covers only a difference that has one: never an overlap or a switch of unknown size.
     && (e.max === undefined || (issue.delta !== undefined && Math.abs(issue.delta) <= e.max)));
 }
 
 // The text to look for on the page: the design's own, unless the ledger records that the page says something else.
 export function pageText(landmark, frame, ledger = []) {
-  const e = ledger.find((x) => x.property === "text" && x.landmark === landmark.text && frameMatches(x, frame) && STATUSES.includes(x.status));
+  const e = ledger.find((x) => x.property === "text" && landmarkMatches(x, landmark.text) && frameMatches(x, frame) && STATUSES.includes(x.status));
   return e ? e.actual : landmark.text;
 }
 
@@ -348,7 +349,7 @@ function reading(l, m, sw, pw) {
   return best;
 }
 
-export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = [], regions = [] }) {
+export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = [], regions = [], missingReference = false }) {
   const over = (d) => Math.abs(d) > tolerance;
   const sw = spec.frame.width, pw = measured.root.width;
   const placed = [];
@@ -408,6 +409,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
+  for (const text of measured.unexpected ?? []) add(text, "presence", "absent", "present");
   spec.landmarks.forEach((l, index) => {
     const label = landmarkLabel(l), p = byIndex.get(index);
     if (l.text) {
@@ -416,6 +418,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     }
     if (!p) return add(label, "presence", "present", "missing");
     const { m } = p;
+    if (m.clipped > tolerance) add(label, "clipped", 0, m.clipped);
     if (over(p.dx)) offset(p, "x", p.ex, p.ax, p.dx);
     if (over(p.dy)) offset(p, "y", l.box.y, m.box.y, p.dy);
     if (over(p.dh)) add(label, "height", l.box.height, m.box.height);
@@ -428,7 +431,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   });
   // The root's height is the lowest landmark's offset carried down plus the bottom step: excused as they are.
   const dH = measured.root.height - spec.frame.height;
-  if (over(dH)) {
+  if (over(dH) && !placed.length) add("root", "height", spec.frame.height, measured.root.height);
+  else if (over(dH)) {
     const lowest = placed.find((p) => p.index === steps.lowest);
     const chain = lowest ? excused(lowest, "y") : { amount: 0, status: "accepted", entries: [] };
     const carriedEntry = lowest && excuse(lowest.label, "height", lowest.dh);
@@ -452,7 +456,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const open = classified.filter((i) => i.status !== "accepted");
   // An image-only reference leaves its texts to the eye. A missing font is reported, not used to hide findings.
   const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
-  const verdict = failing.length ? "fail" : imageOnly ? "incomplete" : classified.some((i) => i.status === "pending") ? "pending" : "pass";
+  const verdict = failing.length ? "fail" : imageOnly || missingReference ? "incomplete" : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
     frame, pass: verdict === "pass", verdict, imageOnly, fontsMissing: fonts, issues: classified, causes: steps,
     score: round(open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
@@ -602,29 +606,30 @@ const cell = (v) => (v === undefined ? "" : String(v).replace(/\|/g, "\\|").repl
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
-const total = (frames, sweep) => round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0));
+export const totalScore = (frames, sweep) => frames.some((f) => f.unmeasured) || sweep?.reason ? null : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0));
 const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
   return (s) => all.filter((i) => i.status === s).length;
 };
 // Root first, then in the design's order: the root is fixed before what is inside it.
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
-const frameVerdict = (f) => f.verdict ?? (f.pass ? "pass" : "fail");
+const verdictOf = (f) => f.verdict ?? (f.pass ? "pass" : "fail");
 
 export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
   const out = ["# Design check", "",
-    `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
-    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`, ""];
+    `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
+    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep) ?? "unmeasured"} (lower is better)`, ""];
   if (status) out.push(`Verdict: ${status}`, "");
   if (missingReferences.length) out.push(`Reference image not measured: ${missingReferences.join(", ")}`, "");
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {
-    out.push(`## ${f.frame} — ${frameVerdict(f)}`, "");
+    out.push(`## ${f.frame} — ${verdictOf(f)}`, "");
     if (f.imageOnly) out.push("Image-only reference: text was not measured; inspect it in the images.", "");
     if (f.fontsMissing?.length) out.push(`Fonts not available: ${f.fontsMissing.join(", ")}. Their texts render in a fallback: load them before trusting the text findings.`, "");
     const { spec, page } = f.root;
+    if (!page) { out.push(f.unmeasured, ""); continue; }
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
 
     const shown = f.causes.filter((c) => !c.repeat);
@@ -641,8 +646,9 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
     }
   }
   if (sweep) {
-    out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${sweep.pass ? "pass" : "fail"}`, "");
-    out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
+    out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${verdictOf(sweep)}`, "");
+    if (sweep.reason) out.push(sweep.reason, "");
+    else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at every width; it needs two or more.`, "");
     for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(u.selector)} matched fewer than two at ${u.ranges}; it was measured at the other widths.`, "");
     if (sweep.issues.length) {
@@ -658,8 +664,8 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
 // the full tables stay in report.md. A round reads this, not the tables.
 export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, previous, best }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
-  const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${sweep.pass ? "pass" : "fail"}` : ""}`
-    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${total(frames, sweep)} (lower is better)`
+  const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
+    + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep) ?? "unmeasured"} (lower is better)`
     + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
   for (const f of frames) {
@@ -669,6 +675,7 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
       : f.verdict === "incomplete" ? "incomplete" : pending ? `awaiting a decision on ${pending}` : "pass";
     out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
+    if (f.unmeasured) out.push(`  ${f.unmeasured}`);
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
     if (f.imageOnly) out.push("  image-only reference: inspect text visually");
     const shown = f.causes.filter((c) => !c.repeat);
@@ -679,7 +686,7 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
   }
   if (sweep) {
-    out.push("", `sweep ${sweep.from}–${sweep.to}: ${sweep.pass ? "pass" : "fail"}; layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`);
+    out.push("", `sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}`);
     const failing = sweep.issues.filter((i) => i.status === "fail");
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
@@ -703,10 +710,14 @@ export function renderGallery({ title = "Design check", frames, sweep, ledger = 
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
     const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? "Image-only reference: inspect text visually." : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
-    const verdict = frameVerdict(f.result);
+    const verdict = verdictOf(f.result);
     return `<section><h2>${esc(f.result.frame)} <span class="${verdict === "pass" ? "pass" : "fail"}">${verdict}</span></h2>
 ${lines.map((l) => `<p>${l}</p>`).join("\n")}
-<div class="row">${columns.filter(([k]) => f.images[k]).map(([k, label]) => `<figure><figcaption>${label}</figcaption><img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}"></figure>`).join("")}</div>
+<div class="row">${columns.map(([k, label]) => {
+      const content = f.images[k] ? `<img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}">`
+        : k === "before" ? esc(f.result.beforeUnavailable ?? "") : k === "after" ? esc(f.result.unmeasured ?? "") : "";
+      return content ? `<figure><figcaption>${label}</figcaption>${content}</figure>` : "";
+    }).join("")}</div>
 </section>`;
   });
   const entry = (e) => `<li><b>${esc(e.status)}</b> · ${esc(e.category)} · ${esc(e.property === "region" ? `region ${e.region.join(", ")}` : `${[].concat(e.landmark).join(", ")} ${e.property}`)}${e.frame ? ` · ${esc([].concat(e.frame).join(", "))}` : ""}: ${esc(e.reason)}${e.decidedBy ? ` (decided by ${esc(e.decidedBy)})` : ""}${e.options ? `<br>Options: ${esc([].concat(e.options).join("; "))}` : ""}</li>`;
@@ -725,7 +736,7 @@ li{margin:6px 0}
 </style>
 <h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ.</p>
 ${sections.join("\n")}
-${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${sweep.pass ? "pass" : "fail"}">${sweep.pass ? "pass" : "fail"}</span></h2><p>Layout changes between ${esc(sweep.switches.join(", ") || "no widths")}.</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(i.landmark)} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
+${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(i.landmark)} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
 ${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>
 `;

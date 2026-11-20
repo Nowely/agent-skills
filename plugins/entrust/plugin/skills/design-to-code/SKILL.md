@@ -65,7 +65,8 @@ the ledger as `proposed`.
 ## 3. Build from the outside in
 
 Run the check once before the first edit: it records the page as it was (`out/before/`) and the starting score.
-Then fix in this order, because each level moves everything inside it:
+If a frame’s root is absent, the gallery records that in Before. Then fix in this order, because each level moves
+everything inside it:
 
 1. the root: its width source, padding and the host it sits in (a component sized by its container uses container
    queries, not the viewport);

@@ -7,7 +7,8 @@ decision. Not measured are: a frame without its image; a frame whose reference i
 left to the eye; an alignment group that never has two elements; and everything, when there is no browser. A
 failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
 project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. The page
-before the work is the one the first check saw; delete `out/before/` to take it again.
+before the work is the one the first check saw. If the root was absent after setup, the gallery records its
+absence. Delete `out/before/` to start a new baseline.
 
 ## design.json
 
@@ -30,7 +31,9 @@ Paths are relative to the file.
 A spec landmark is a text, found on the page whatever its spaces, letter case and markup, or a CSS `selector`
 for an element without text, with its `box` in the design. Texts are compared by position and line height, and by
 `font` (size, weight, line height, colour) where the spec gives it; by width only where the spec says `widths`, as a
-snapshot does: a Figma text box can be wider than its text. Everything outside the texts is compared by pixels.
+snapshot does: a Figma text box can be wider than its text. With text landmarks, the check also reports visible
+page text left unmatched, absent design text, and text cut by a clipping boundary. The pixel mask keeps these text
+findings from being counted again as regions. With screenshots alone, inspect text by eye.
 
 ## The ledger
 
@@ -50,7 +53,9 @@ snapshot does: a Figma text box can be wider than its text. Everything outside t
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |
 
 An entry excuses a cause and what it carries: an accepted badge 3 px lower also excuses the 3 px every landmark
-below it moved, and the root's height. Only an accepted entry may use `*`. An entry without a reason, a known
+below it moved, and the root's height. A wildcard property on a named landmark covers its own findings. A pixel
+region needs a matching region box or an accepted wildcard for all landmarks and properties. Only an accepted
+entry may use `*`. An entry without a reason, a known
 category or a known status fails the check.
 
 ## The summary and the report
@@ -72,7 +77,7 @@ the round before and the lowest so far. `out/report.md` holds every finding in t
   differently, so a few percent with no finding is usual.
 - **Fonts not available**: the first family a text's stack names does not draw one of that text's characters in the
   text's own style and weight (it failed to load, or lacks the subset), so they render in a fallback. A stack that
-  starts with a system or generic family, and emoji, are not checked. It is a warning, not a verdict: load the font
+  starts with a system or generic family, emoji, combining marks and control characters are skipped. It is a warning, not a verdict: load the font
   before trusting the text findings. The check cannot know the design's font; it reads the family the page names.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
@@ -91,6 +96,6 @@ In `out/` beside `design.json`, or `--out`:
 | `report.md` | every finding, in tables |
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
-| `before/<frame>.png` | the page at the first check, kept until `out/before/` is deleted |
+| `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable. Frame paths include a hash of the original name. Earlier PNGs are reused when their filename identifies exactly one configured frame |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: round, time, frames, sweep, verdict and score; the summary reads it for the round before and the lowest |

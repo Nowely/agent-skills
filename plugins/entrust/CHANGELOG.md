@@ -9,6 +9,13 @@ forensics remain in the repository references and release notes.
 
 - Add the experimental `design-to-code` skill and visual comparison tool. The tool reports matched frames, the measured layout sweep, accepted differences, pending decisions and missing reference imagery. Screenshot-only references leave text to visual review and are reported incomplete, never a pass; a font the page names first but cannot draw its text with is reported as a warning. Without a Figma token, texts come from the design context by node id, a layer whose text the code builds from data is left for the implementer to read from the frame's screenshot, and the skill has every text checked against it. Alignment is the spread as laid out against the configured tolerance; a bounded ledger entry is applied at each width and only to differences with a size, and an alignment group that never finds two elements is reported as not measured. Rounds are logged by a score that counts failures and open proposals; the project's version control keeps the work, and the skill stops adjusting after two rounds without a new lowest score. Both experimental arms receive the same design inputs. A ledger's `max` is held to the measured size of a finding, not the size rounded for display (E143). The [research](research/2026-11-20-design-to-code/) preserves previous drafts and the real-card calibration. The alignment gate remains open.
 
+- The checker reports unexpected and invisible text, classifies every differing region, scopes wildcard and text
+  deviations to their landmarks and applies root-height bounds to image-only frames. Missing reference images
+  now mark the individual frame incomplete. Font warnings skip combining marks and format controls. Each frame
+  runs its setup before waiting for its root and loads images within that root. Galleries keep separate state
+  captures and show why a before image is unavailable. The [updated pair protocol](research/2026-11-20-design-to-code/08-pair-protocol.md)
+  verifies baseline Git objects and records the worker's filesystem access.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report
