@@ -102,6 +102,19 @@ test("a Figma REST node becomes landmarks with the texts' characters, boxes, ali
   assert.throws(() => parseFigmaUrl("https://www.figma.com/design/AbC123/Shop"), /node-id/);
 });
 
+test("a selected text is its own landmark at the frame origin", () => {
+  for (const coords of ["relative", "absolute"]) {
+    assert.deepEqual(specFromMetadata(RELATIVE, { frame: "1:2", coords }).landmarks,
+      [{ id: "1:2", text: "SKU & code", box: box(0, 0, 100, 16) }]);
+  }
+  assert.deepEqual(specFromRest(REST.children[0]).landmarks, [{
+    id: "1:2", text: "SKU AUR-14P", box: box(0, 0, 100, 16), align: "left",
+    font: { size: 12, weight: 400, lineHeight: 16, color: "#7a808c" },
+  }]);
+  assert.deepEqual(specFromMetadata(RELATIVE, { frame: "1:7" }).landmarks, []);
+  assert.deepEqual(specFromRest(REST.children[3]).landmarks, []);
+});
+
 // ------------------------------------------------------------------ comparison
 
 function box(x, y, width, height) { return { x, y, width, height }; }
@@ -314,7 +327,7 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(CASE, "case.json"), "utf8"))
 // The reference card rendered once as the design: its specs and 2× images, in a directory a test copies.
 let design;
 // What a check expects of every pack before it can pass: the acceptance list in review.md.
-const REVIEW = "# Review\n\n## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| every frame | its frame | pass |\n";
+const REVIEW = "# Review\n\n## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| every frame | its frame | pass — reference captured |\n";
 function designDir() {
   if (design) return design;
   design = tmp();
@@ -695,12 +708,44 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   assert.equal(bounded(11.015625, 1.019).status, "accepted", "1.015625 px is within a max of 1.019, though it rounds to 1.02");
   const one = run(12, [{ selector: ".w", edge: "left" }]);
   assert.equal(one.status, 2, one.stdout);
-  assert.match(one.stdout, /not measured: \.w matched 1 at every width/);
+  assert.match(one.stdout, /not measured: \.w matched at most 1 across the sweep/);
   const bothEdges = run(12, [{ selector: ".w2", edge: "left" }, { selector: ".w2", edge: "right" }]);
   assert.equal(bothEdges.status, 2, "two groups on one selector that never has two elements are not measured");
   const narrow = run(10, v, { hideBelow: 310 });
   assert.equal(narrow.status, 0, narrow.stdout);
-  assert.match(narrow.stdout, /\.v matched fewer than two at 300: aligned only where it has two or more/);
+  assert.match(narrow.stdout, /\.v matched fewer than two at 300: measured where it had two or more/);
+});
+
+test("a story reports the widths where a configured alignment has too few visible elements", browser, () => {
+  const f = smallFrame(`<div class="value">One</div><div class="value second">Two</div>
+    <style>.single .second { display:none } @media(max-width:300px) { .compact .second { display:none } }</style>
+    <script>document.body.className = location.search.slice(1);</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const compact = { name: "compact", url: "page.html?compact" }, single = { name: "one value", url: "page.html?single" };
+  const run = (stories, outcome) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320, step: 20, align: [{ selector: ".value", edge: "left" }], stories } }));
+    fs.writeFileSync(path.join(f.dir, "review.md"), [
+      "## Acceptance", "| Item | Checked by | Result |", "|---|---|---|",
+      "| reference alignment | sweep | pass — reference has two aligned values |",
+      `| other alignments | sweep.stories | ${outcome} |`,
+    ].join("\n"));
+    return check(f.dir);
+  };
+  const partial = run([compact], "pass — aligned where both values show");
+  assert.equal(partial.status, 0, partial.stdout);
+  assert.deepEqual(partial.result.sweep.partial.map((g) => [g.story, g.selector, g.ranges]), [["compact", ".value", "300"]]);
+
+  const missing = run([compact, single], "pass — claimed alignment");
+  assert.equal(missing.status, 2, missing.stdout);
+  assert.deepEqual(missing.result.acceptance.map((r) => r.status), ["pass", "incomplete"]);
+  assert.deepEqual(missing.result.sweep.unmeasured.map((g) => [g.story, g.edge, g.matched]), [["one value", "left", 1]]);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /alignment \.value \(story one value\), left edge: not measured/);
+  assert.match(handoff, /alignment \.value \(story compact\), left edge: fewer than two elements at 300 px/);
+
+  const inapplicable = run([single], "N/A — this story contains one value");
+  assert.equal(inapplicable.status, 0, inapplicable.stdout);
+  assert.equal(inapplicable.result.sweep.unmeasured[0].story, "one value");
 });
 
 test("a prepared run scores the unstyled start as failing, the reference as passing, and ignores the implementer's ledger", browser, () => {
@@ -857,13 +902,13 @@ test("journeys hold or fail step by step, by pointer and by touch", browser, () 
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<h2>Journeys<\/h2>/);
 });
 
-test("a full check is incomplete without review.md's acceptance list, a dense story, or a frame for every reference", browser, () => {
+test("a full check is incomplete without review.md's acceptance list or a frame for every reference", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40 } }));
   let r = check(f.dir);
-  assert.equal(r.status, 2, r.stdout);
-  assert.match(r.stdout, /Not checked: no dense story is swept/);
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.stdout, /No additional stories were swept/);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   assert.equal(check(f.dir).status, 0);
   fs.mkdirSync(path.join(f.dir, "frames/popover"), { recursive: true });
@@ -880,13 +925,27 @@ test("a full check is incomplete without review.md's acceptance list, a dense st
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).review, false);
 });
 
-test("the listing case's judge accepts its reference", browser, () => {
+test("the listing judge measures the actual popup and distinguishes a broken journey from an unmeasured story", browser, () => {
   const LISTING = path.join(HERE, "design-to-code/cases/listing-card"), dir = tmp();
   const arm = path.join(dir, "arm");
   assert.equal(spawnSync(process.execPath, [path.join(LISTING, "make-arm.mjs"), arm], { encoding: "utf8" }).status, 0);
   for (const f of ["listing.js", "listing.css"]) fs.copyFileSync(path.join(LISTING, "reference", f), path.join(arm, f));
-  const r = spawnSync(process.execPath, [path.join(LISTING, "judge/judge.mjs"), arm, path.join(dir, "judge")], { encoding: "utf8" });
-  assert.match(r.stdout, /^ACCEPTED/, r.stdout + r.stderr);
+  const story = path.join(arm, "story.html"), reference = fs.readFileSync(story, "utf8").replace('id="host"', 'id="host" class="popover-wrapper"');
+  const judge = (caseName, script) => {
+    fs.writeFileSync(story, reference + script);
+    const out = path.join(dir, caseName);
+    const run = spawnSync(process.execPath, [path.join(LISTING, "judge/judge.mjs"), arm, out], { encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    return JSON.parse(fs.readFileSync(path.join(out, "judge.json"), "utf8"));
+  };
+  const good = judge("reference", "");
+  assert.equal(good.accepted, true, JSON.stringify(good.verdict));
+  const missing = judge("hidden-story", '<script>if (location.search === "?data=dense") document.getElementById("host").style.visibility = "hidden";</script>');
+  assert.deepEqual([missing.accepted, missing.verdict.dense], [false, null]);
+  assert.match(missing.denseMissing, /not visible/);
+  const escape = judge("broken-escape", '<script>document.addEventListener("keydown", (e) => e.stopImmediatePropagation(), true);</script>');
+  assert.deepEqual(escape.verdict, { visual: true, dense: true, behaviour: false });
+  assert.ok(escape.checks.some((c) => c.name === "help: Escape closes it" && !c.pass));
 });
 
 // ------------------------------------------------------------------ round 10: the verifier's findings
@@ -1007,7 +1066,7 @@ test("the acceptance list is a heading with lines under it, not the word alone",
   const f = smallFrame();
   const review = path.join(f.dir, "review.md");
   for (const [text, status] of [["No acceptance list was written.\n", 2], ["## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n", 2],
-    ["## Acceptance\n\n- every frame: pass\n", 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass |\n", 0], ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 2]]) {
+    ["## Acceptance\n\n- every frame: pass — captured\n", 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n", 0], ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 2]]) {
     fs.writeFileSync(review, text);
     assert.equal(check(f.dir).status, status, text);
   }
@@ -1023,8 +1082,8 @@ test("a full check writes the evidence a handoff quotes, and a journey that expe
   const r = check(f.dir);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows: holds; checks opening only, not closing$/m,
-    /^- every frame: pass$/m, /## Not checked by the script/, /^Round \d+ · verdict: pass · score: 0 \(lower is better\) · 20\d\d-/m]) assert.match(handoff, line);
+  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows \(300 px\): holds; checks opening only, not closing$/m,
+    /^- every frame: pass · reported: pass — reference captured$/m, /## Not checked by the script/, /^Round \d+ · verdict: pass · score: 0 \(lower is better\) · 20\d\d-/m]) assert.match(handoff, line);
   assert.match(r.stdout, /evidence for the handoff: .*handoff\.md/);
   fs.rmSync(path.join(f.dir, "out/handoff.md"));
   check(f.dir, "--frame", "frame");
@@ -1033,13 +1092,19 @@ test("a full check writes the evidence a handoff quotes, and a journey that expe
   assert.match(check(f.dir).stderr, /the journey "clicks" expects nothing/);
 });
 
-test("pass is not given without a sweep, with the frames' page as the story, or with openers no journey checks", browser, () => {
+test("a static pack can omit the sweep and a story can enter its state on the frame's page", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
   const { sweep, ...noSweep } = cfg;
-  assert.match(run(noSweep).stdout, /Not checked: no sweep/);
-  assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is a frame's own page/);
+  const fixed = run(noSweep);
+  assert.equal(fixed.status, 0, fixed.stdout);
+  assert.match(fixed.stdout, /Width sweep and additional stories were not run/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /Width sweep and additional stories were not run/);
+  fs.appendFileSync(f.page, '<button id="dense" onclick="document.querySelector(\'main\').style.width=\'480px\'">Load longer data</button>');
+  const variant = run({ ...cfg, sweep: { ...sweep, stories: [{ name: "wide data", url: "page.html", setup: [{ click: "#dense" }] }] } });
+  assert.equal(variant.status, 1, variant.stdout);
+  assert.ok(variant.result.sweep.issues.some((i) => i.story === "wide data" && i.property === "overflow"), variant.stdout);
   f.write('<main><span>Ready</span><button aria-expanded="false" style="position:absolute;left:200px;top:0">More</button></main>');
   const opener = run(cfg);
   assert.match(opener.stdout, /1 control opens something with no journey that opens and closes it: “More”/);
@@ -1052,16 +1117,16 @@ test("the handoff's evidence counts what the ledger excused, names unused entrie
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([
     { landmark: "Ready", property: "x", category: "system", status: "accepted", reason: "the kit's padding", decidedBy: "owner" },
     { landmark: "Gone", property: "presence", category: "ux", status: "proposed", reason: "drop it", options: ["keep", "drop"] }]));
-  fs.writeFileSync(path.join(f.dir, "review.md"), "## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass |\n| popup | journey |  |\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), "## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n| popup | journey |  |\n");
   const r = check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /^- frame: pass — no findings; 1 excused by the ledger$/m, handoff);
   assert.match(handoff, /accepted: Ready x — the kit's padding \(system · decided by owner · excuses 1\)/);
   assert.match(handoff, /proposed: Gone presence — drop it \(ux · matched nothing\); options: keep; drop/);
-  assert.match(handoff, /^- popup: not checked$/m);
+  assert.match(handoff, /^- popup: incomplete \(not checked\)$/m);
   assert.match(handoff, /^- frame~[0-9a-f]{8}\/side\.png$/m);
   assert.equal(r.status, 2, "a blank result leaves the check incomplete");
-  assert.match(r.stdout, /acceptance: 1 of 2 rows have a result; still blank: “popup”/);
+  assert.match(r.stdout, /acceptance “popup”: not checked/);
 });
 
 // ------------------------------------------------------------------ round 11c: the third verifier's findings
@@ -1073,13 +1138,13 @@ test("the handoff credits each ledger entry by itself, reads the result column a
     { landmark: "Gone", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
     { landmark: "Ready", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
     { landmark: ["*"], property: "font", category: "platform", status: "accepted", decidedBy: "owner", reason: "smoothing" }]));
-  fs.writeFileSync(path.join(f.dir, "review.md"), "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass — captured | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /accepted: Gone x — the kit \(system · decided by owner · matched nothing\)/);
   assert.match(handoff, /accepted: Ready x — the kit \(system · decided by owner · excuses 1\)/);
   assert.match(handoff, /\* font — smoothing \(platform · decided by owner · wildcard · matched nothing\)/);
-  for (const line of [/^- frame: pass$/m, /^- popup: not checked$/m, /^- dense story: swept$/m, /^- probe: not checked$/m]) assert.match(handoff, line);
+  for (const line of [/^- frame: pass · reported: pass — captured$/m, /^- popup: incomplete \(not checked\)$/m, /^- dense story: incomplete \(no recognized result\) · reported: swept$/m, /^- probe: incomplete \(not checked\)$/m]) assert.match(handoff, line);
   assert.ok(handoff.indexOf("## Pictures to look at first") < handoff.indexOf("## Frames"), "pictures come before the numbers");
   for (const p of handoff.match(/^- (\S+\.png)$/gm).map((l) => l.slice(2))) assert.ok(fs.existsSync(path.join(f.dir, "out", p)), p);
 });
@@ -1095,7 +1160,9 @@ test("journeys can change the width and expect the focus; a hidden step on what 
   ] }));
   const r = check(f.dir);
   assert.deepEqual(r.result.journeys.map((j) => j.pass), [true, true, true], JSON.stringify(r.result.journeys));
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /closing what never opened: holds; \.nothing was never seen open/);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /closing what never opened \(300 px\): holds; \.nothing was never seen open/);
+  assert.match(handoff, /survives a resize \(300 → 280 px\): holds/);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "x", steps: [{ visible: "main" }] }, { name: "x", steps: [{ visible: "main" }] }] }));
   assert.match(check(f.dir).stderr, /journey names must be unique/);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], setup: [{ width: 280 }] }] }));
@@ -1109,12 +1176,88 @@ test("only the owner accepts: an accepted entry without decidedBy is a ledger fa
   assert.deepEqual(ledgerFaults([{ ...entry, status: "proposed" }]), []);
 });
 
-test("each control that opens something needs a journey that opens and closes it", browser, () => {
-  const f = smallFrame();
-  f.write('<main><span>Ready</span><button id="a" aria-expanded="false" style="position:absolute;left:150px;top:0">A</button><button id="b" aria-expanded="false" style="position:absolute;left:200px;top:0">B</button></main>');
+test("opener coverage belongs to the control that exposed the observed content", browser, () => {
+  const f = smallFrame(`<button id="a" aria-label="More" popovertarget="one">A</button>
+    <button id="b" aria-label="More" popovertarget="two">B</button>
+    <div popover id="one">First</div><div popover id="two">Second</div>`);
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "a", steps: [{ click: "#a" }, { visible: "main" }, { hidden: ".gone" }] },
-    { name: "b opens only", steps: [{ click: "#b" }, { visible: "main" }] }] }));
-  const r = check(f.dir);
-  assert.match(r.stdout, /^Not checked: 1 control opens something with no journey that opens and closes it: “B”\.$/m, "A is opened and closed, B only opened");
+  const run = (...journeys) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys })); return check(f.dir); };
+  const journey = (name, ...steps) => ({ name, steps });
+  const bogus = journey("unrelated", { click: "#a" }, { visible: "main" }, { hidden: ".gone" });
+  assert.equal(run(bogus).status, 2);
+  const onlyA = journey("A then B", { click: "#a" }, { visible: "#one" }, { click: "#b" }, { hidden: "#one" });
+  const partial = run(onlyA);
+  assert.equal(partial.status, 2, partial.stdout);
+  assert.match(partial.stdout, /1 control opens something with no journey that opens and closes it: “More”/);
+  const both = run(onlyA, journey("B with Escape", { click: "#b" }, { text: ["#two", "Second"] }, { press: "Escape" }, { hidden: "#two" }));
+  assert.equal(both.status, 0, both.stdout);
+});
+
+test("a root opener needs an observed transition on its own content after a gesture", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  f.write(`<button id="trigger" aria-controls="pop" aria-expanded="false">More</button><div id="pop" hidden>Popup</div><div id="other" hidden>Other</div>
+    <script>trigger.onclick = () => { pop.hidden = other.hidden = !pop.hidden; if (location.search.includes("timer")) setTimeout(() => { pop.hidden = true; }, 350); }</script>`);
+  const config = { ...cfg, url: "page.html?timer", root: "#trigger", sweep: undefined };
+  fs.writeFileSync(f.config, JSON.stringify(config));
+  assert.equal(cli("snapshot", f.config, "--images", "--force").status, 0);
+  const run = (...steps) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...config, journeys: [{ name: "root", steps }] }));
+    return check(f.dir);
+  };
+  const hidden = run({ click: "#trigger" }, { hidden: ".missing" });
+  assert.equal(hidden.status, 2, hidden.stdout);
+  assert.match(hidden.stdout, /no journey that opens and closes it: “More”/);
+  const timer = run({ click: "#trigger" }, { visible: "#pop" }, { wait: 450 }, { hidden: "#pop" });
+  assert.equal(timer.status, 2, timer.stdout);
+  const other = run({ click: "#trigger" }, { visible: "#other" }, { click: "#trigger" }, { hidden: "#other" });
+  assert.equal(other.status, 2, other.stdout);
+  const real = run({ click: "#trigger" }, { visible: "#pop" }, { click: "#trigger" }, { hidden: "#pop" });
+  assert.equal(real.status, 0, real.stdout);
+});
+
+test("a journey on another data variant covers the same explicitly linked control", browser, () => {
+  const f = smallFrame('<button id="more" popovertarget="panel">More</button><div id="panel" popover>Details</div>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  function run(target) {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "toggle", url: "page.html?variant", steps: [
+      { click: "#more" }, { visible: target }, { click: "#more" }, { hidden: target },
+    ] }] }));
+    return check(f.dir);
+  }
+  let r = run("#panel");
+  assert.equal(r.status, 0, r.stdout);
+  fs.appendFileSync(f.page, '<script>if (location.search === "?variant") { panel.id = "other"; more.setAttribute("popovertarget", "other"); }</script>');
+  r = run("#other");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+});
+
+test("the acceptance verdict distinguishes evidence, missing measurements, decisions and failures", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined }));
+  const review = path.join(f.dir, "review.md");
+  const run = (...rows) => {
+    fs.writeFileSync(review, ["## Acceptance", "| Item | Checked by | Result |", "|---|---|---|", ...rows].join("\n"));
+    return check(f.dir);
+  };
+  const manual = (result) => `| label | inspection | ${result} |`;
+  const sweep = "| resizes | sweep | PASS — inspected the widths |";
+  for (const [rows, code, status] of [
+    [[manual("looks correct")], 2, "incomplete"], [[manual("pass")], 2, "incomplete"],
+    [[manual("not checked")], 2, "incomplete"], [[manual("N/A")], 2, "incomplete"],
+    [[manual("pending — owner decides")], 3, "pending"], [[manual("FAILED — cut"), manual("not checked")], 1, "fail"],
+    [[manual("pending"), sweep], 2, "incomplete"], [[manual("N/A — no input field"), manual("PASS: read the rendered label")], 0, "pass"],
+  ]) {
+    const r = run(...rows);
+    assert.deepEqual([r.status, r.result.status], [code, status], r.stdout);
+  }
+  assert.match(run(sweep).stdout, /the width sweep was not fully measured/);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 280, to: 300 } }));
+  const overflow = run(sweep);
+  assert.deepEqual([overflow.status, overflow.result.acceptance[0].status], [1, "fail"], overflow.stdout);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320 } }));
+  assert.equal(run(sweep).status, 0, "the requested width measurement ran");
+  assert.equal(run("| data | sweep.stories | pass — measured dense data |").status, 2);
 });

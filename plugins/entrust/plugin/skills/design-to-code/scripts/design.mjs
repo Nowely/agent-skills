@@ -103,6 +103,25 @@ const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-de
 // measurements come from the same element. A popover kept hidden in the page is not the one open.
 const MARK = "data-design-root";
 const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
+// Run on the frame root (inventory) or the target of a gesture (one opener). Equal labels on different
+// controls must stay distinct across the fresh pages used for frames and journeys.
+function openerInfoIn(el, { inventory = false, point, keyboard } = {}) {
+  const selector = "[aria-expanded], [popovertarget], [aria-haspopup]";
+  const label = (o) => (o.getAttribute("aria-label") || o.title || o.textContent || o.localName).replace(/\s+/g, " ").trim();
+  const controls = [...document.querySelectorAll(selector)].filter((o) => o.hasAttribute("aria-expanded") || o.hasAttribute("popovertarget")
+    || !/^(false|)$/i.test((o.getAttribute("aria-haspopup") ?? "").trim()));
+  const target = point ? document.elementFromPoint(...point) : keyboard ? document.activeElement : el;
+  const matches = inventory ? controls.filter((o) => el.contains(o) && o.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
+    : [controls.findLast((o) => o.contains(target))].filter(Boolean);
+  return matches.map((o) => {
+    const name = label(o);
+    const ids = [o.getAttribute("aria-controls"), o.getAttribute("popovertarget")].filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
+    // Across data variants on one page, a named control linked to the same popup has an explicit identity.
+    const page = o.id && ids.length ? location.origin + location.pathname + location.hash : location.href;
+    const key = JSON.stringify([page, name, ...(o.id ? ["id", o.id, ...ids] : ["index", controls.filter((c) => label(c) === name).indexOf(o)])]);
+    return { key, name, ids };
+  });
+}
 async function rootOf(page, selector) {
   const marked = page.locator(`[${MARK}]`);
   return (await marked.count()) ? marked.first() : page.locator(selector).filter({ visible: true }).first();
@@ -164,10 +183,10 @@ const stepFault = (step, journey = false) => {
 
 // Whether any match of a Playwright selector is seen, as a person would: a size, not hidden, not transparent; with a
 // text, one that shows it. A journey's expectation polls this for a second.
-const anySeen = (page, selector, text = null) => page.locator(selector).evaluateAll((els, [t, seen]) => {
+const anySeen = (page, selector, text = null, ids = []) => page.locator(selector).evaluateAll((els, [t, seen, ids]) => {
   const visible = new Function(`return (${seen})`)();
-  return els.some((e) => visible(e) && (t === null || e.innerText.includes(t)));
-}, [text, seenIn.toString()]);
+  return els.some((e) => visible(e) && (t === null || e.innerText.includes(t)) && (!ids.length || ids.some((id) => document.getElementById(id)?.contains(e))));
+}, [text, seenIn.toString(), ids]);
 async function until(page, check, ms = 1000) {
   for (const end = Date.now() + ms; ;) {
     if (await check()) return true;
@@ -441,11 +460,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       })) missing.add(first);
     }
     const textBoxes = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => boxOf([line])));
-    // Controls that open something (a popup, a menu, a sheet): each wants journeys.
-    const opens = (el) => el.hasAttribute("aria-expanded") || el.hasAttribute("popovertarget") || !/^(false|)$/i.test((el.getAttribute("aria-haspopup") ?? "").trim());
-    const openers = [...root.querySelectorAll("[aria-haspopup], [aria-expanded], [popovertarget]")].filter((el) => visible(el) && opens(el))
-      .map((el) => norm(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase()).slice(0, 40));
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected, openers };
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected };
   }
 
   if (command === "snapshot") {
@@ -708,7 +723,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
       if (before.reason) result.beforeUnavailable = before.reason;
-      result.openers = measured.openers;
+      result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true });
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -719,6 +734,21 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
     }
   }
   return results;
+}
+
+// Collect the widths where a configured edge had fewer than two visible elements on this page.
+function alignmentGaps(probes) {
+  const short = new Map();
+  probes.forEach((p, i) => {
+    for (const u of p.unmeasured) {
+      const k = `${u.selector}\u0000${u.edge}`;
+      if (!short.has(k)) short.set(k, { selector: u.selector, edge: u.edge, matched: u.matched, probes: new Set(), widths: [] });
+      const g = short.get(k);
+      g.matched = Math.max(g.matched, u.matched);
+      if (!g.probes.has(i)) { g.probes.add(i); g.widths.push(p.width); }
+    }
+  });
+  return [...short.values()].map(({ widths: at, probes: seen, ...u }) => ({ ...u, ranges: ranges(at), everywhere: seen.size === probes.length }));
 }
 
 async function sweep(browser, cfg, ledger) {
@@ -761,30 +791,19 @@ async function sweep(browser, cfg, ledger) {
   const { probes, back } = await run(cfg.url, s.setup);
   const changes = switches(probes, s.switches ?? [], step);
   const issues = sweepIssues([...probes, back], ledger, changes.issues);
+  const groups = alignmentGaps([...probes, back]);
   const stories = [];
   for (const story of s.stories ?? []) {
     const shots = new Map();
     let r;
     try { r = await run(story.url, story.setup, shots); }
     catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
-    issues.push(...sweepIssues([...r.probes, r.back], ledger).map((i) => ({ ...i, story: story.name })));
+    const storyProbes = [...r.probes, r.back];
+    groups.push(...alignmentGaps(storyProbes).map((g) => ({ ...g, story: story.name })));
+    issues.push(...sweepIssues(storyProbes, ledger).map((i) => ({ ...i, story: story.name })));
     stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
-  // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
-  // hidden on narrow screens does, was measured where it exists, and the widths without it are only reported.
-  // One group is one selector and edge; each probe counts once for it. Stories are measured where they have one.
-  const all = [...probes, back], short = new Map();
-  all.forEach((p, i) => {
-    for (const u of p.unmeasured) {
-      const k = `${u.selector}\u0000${u.edge}`;
-      if (!short.has(k)) short.set(k, { selector: u.selector, edge: u.edge, matched: u.matched, probes: new Set(), widths: [] });
-      const g = short.get(k);
-      g.matched = Math.max(g.matched, u.matched);
-      if (!g.probes.has(i)) { g.probes.add(i); g.widths.push(p.width); }
-    }
-  });
-  const groups = [...short.values()].map(({ widths: at, probes: seen, ...u }) => ({ ...u, ranges: ranges(at), everywhere: seen.size === all.length }));
   return {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
     score: issues.filter((i) => i.status !== "accepted").length * 10,
@@ -801,38 +820,65 @@ async function journeys(browser, cfg) {
     let opened, failed;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
-    const seen = new Set(), notes = [], touched = new Set();
+    const widths = opened ? [j.width ?? width] : [];
+    const seen = new Set(), notes = [], closed = new Set();
+    const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
+      .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
+    const observed = new Map();
+    let trigger, visibleBefore = new Set();
     if (opened) {
+      const { page } = opened;
       try {
         for (const [i, step] of j.steps.entries()) {
           try {
-            if ("width" in step) { await setWidth(opened.page, cfg, step.width, 900); await settle(opened.page, cfg.root); continue; }
-            // Which control that opens something this step acts on, named as the check names openers.
-            const [action] = Object.keys(step);
-            if (["hover", "click", "tap", "focus", "move"].includes(action) && typeof step[action] === "string") {
-              const name = await opened.page.locator(step[action]).first().evaluate((el) => {
-                const o = el.closest("[aria-haspopup], [aria-expanded], [popovertarget]") ?? el;
-                return (o.getAttribute("aria-label") || o.title || o.textContent || o.tagName.toLowerCase()).replace(/\s+/g, " ").trim().slice(0, 40);
-              }, null, { timeout: 2000 }).catch(() => null);
-              if (name) touched.add(name);
+            const [action] = Object.keys(step), arg = step[action];
+            if (targets.length && !EXPECT.includes(action) && action !== "wait") {
+              visibleBefore = new Set();
+              for (const t of targets) if (await anySeen(page, t)) {
+                visibleBefore.add(t);
+                if (observed.has(t)) observed.get(t).acted = true;
+              }
+              trigger = null;
+              if (["hover", "click", "tap", "focus", "move", "press"].includes(action)) {
+                const point = Array.isArray(arg) ? arg : undefined;
+                const locator = page.locator(point || action === "press" ? "html" : arg).first();
+                [trigger] = await locator.evaluate(openerInfoIn, { point, keyboard: action === "press" }, { timeout: 2000 }).catch(() => []);
+              }
             }
-            await runStep(opened.page, step);
-            if ("visible" in step) seen.add(step.visible);
-            // A hidden step on what the journey never saw open proves nothing about closing it.
-            if ("hidden" in step && !seen.has(step.hidden)) notes.push(`${step.hidden} was never seen open before it was expected hidden`);
+            if ("width" in step) {
+              await setWidth(page, cfg, step.width, 900);
+              await settle(page, cfg.root);
+              widths.push(step.width);
+              continue;
+            }
+            await runStep(page, step);
+            const shown = step.visible ?? step.text?.[0];
+            if (shown) {
+              seen.add(shown);
+              if (observed.has(shown)) observed.get(shown).acted = false;
+              if (trigger && targets.includes(shown) && !visibleBefore.has(shown)
+                && (!trigger.ids.length || await anySeen(page, shown, step.text?.[1], trigger.ids))) {
+                observed.set(shown, { key: trigger.key, acted: false });
+              }
+            }
+            if ("hidden" in step) {
+              const open = observed.get(arg);
+              if (open?.acted) closed.add(open.key);
+              else if (!seen.has(arg)) notes.push(`${arg} was never seen open before it was expected hidden`);
+              else if (open) notes.push(`${arg} was not seen open before a closing action`);
+              observed.delete(arg);
+              seen.delete(arg);
+              trigger = null;
+            }
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
       } finally { await opened.context.close(); }
     }
-    results.push({ name: j.name, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}),
-      touched: [...touched], closes: j.steps.some((step) => "hidden" in step) });
+    results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed] });
   }
   return results;
 }
 
-// What a full check expects beyond the frames: review.md with the acceptance list, every reference in the pack's
-// frames/ checked by a frame, and a dense story in the sweep. A gap leaves the check incomplete, so "pass" means the
-// acceptance list was written and its measured part ran.
 // The acceptance list as written in review.md: every line under a heading that names it (in English or Russian),
 // subheadings included, code blocks left out; each table row past the header or each list item is a line, with its
 // result from a column named Result (or Status), else the last column, or after a colon in a list item.
@@ -856,7 +902,8 @@ function acceptanceRows(cfg) {
     const cells = table.filter((l) => !/^\s*\|?[\s|:-]*\|?\s*$/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
     if (cells.length > 1) {
       const result = cells[0].findIndex((c) => /result|status|результат|итог/i.test(c));
-      for (const row of cells.slice(1)) rows.push({ item: row[0], result: row[result >= 0 ? result : row.length - 1] ?? "" });
+      const method = cells[0].findIndex((c) => /^checked by$/i.test(c));
+      for (const row of cells.slice(1)) rows.push({ item: row[0], method: row[method]?.replace(/^`([^`]+)`$/, "$1"), result: row[result >= 0 ? result : row.length - 1] ?? "" });
     }
     table = [];
   };
@@ -870,21 +917,35 @@ function acceptanceRows(cfg) {
   return rows;
 }
 
-// The list exists when its section has at least one line.
-const reviewed = (cfg) => acceptanceRows(cfg).length > 0;
+// A row records a reported outcome. A method that names the checker's sweep also needs that measurement.
+function assessRow(row, sweep) {
+  const mark = row.result.match(/^(passed|pass|failed|fail|pending|incomplete|not checked|n\/a|not applicable)(?:\s*[:—–,-]\s*(.*))?$/i);
+  const status = mark?.[1].toLowerCase(), detail = mark?.[2]?.trim();
+  if (status === "fail" || status === "failed") return { ...row, status: "fail" };
+  if (status === "pending") return { ...row, status };
+  const na = status === "n/a" || status === "not applicable";
+  if (na && detail) return { ...row, status: "n/a" };
+  let reason;
+  if (status === "pass" || status === "passed") {
+    const measured = row.method === "sweep" || row.method === "sweep.stories";
+    const issues = measured ? (sweep?.issues ?? []).filter((i) => Boolean(i.story) === (row.method === "sweep.stories")) : [];
+    if (issues.some((i) => i.status === "fail")) return { ...row, status: "fail", reason: "the measurement failed" };
+    if (!detail) reason = "pass has no evidence";
+    else if (row.method === "sweep" && (!sweep || sweep.reason || sweep.unmeasured?.some((u) => !u.story))) reason = "the width sweep was not fully measured";
+    else if (row.method === "sweep.stories" && (!sweep?.stories?.length || sweep.stories.some((s) => s.unmeasured) || sweep.unmeasured?.some((u) => u.story))) reason = "additional stories were not all measured";
+    else if (issues.some((i) => i.status === "pending")) return { ...row, status: "pending", reason: "the measurement awaits a decision" };
+    else return { ...row, status: "pass" };
+  } else reason = na ? "N/A has no reason" : mark || !row.result ? "not checked" : "no recognized result";
+  return { ...row, status: "incomplete", reason };
+}
 
-function acceptanceGaps(cfg, flags, sweepResult, results, journeyResults) {
+function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   const gaps = [];
-  const rows = acceptanceRows(cfg), blank = rows.filter((r) => !r.result);
   if (!rows.length) gaps.push("review.md has no acceptance list: write it before the first edit to the product's code");
-  else if (blank.length) gaps.push(`acceptance: ${rows.length - blank.length} of ${rows.length} rows have a result; still blank: ${blank.slice(0, 4).map((r) => `“${r.item}”`).join(", ")}${blank.length > 4 ? ", …" : ""}`);
-  if (!cfg.sweep) gaps.push("no sweep: the widths between the frames and a dense story were not checked");
-  const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
-  for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url)) gaps.push(`the story ${st.name} is a frame's own page: a dense story renders data of its own`);
-  // Each control that opens something wants a journey that acts on it and expects something hidden afterwards.
-  const openers = [...new Set(results.flatMap((r) => r.openers ?? []))];
-  const closed = new Set(journeyResults.filter((j) => j.closes).flatMap((j) => j.touched));
-  const unchecked = openers.filter((o) => !closed.has(o));
+  for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
+  const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o.name])));
+  const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
+  const unchecked = [...openers].filter(([key]) => !closed.has(key)).map(([, name]) => name);
   if (unchecked.length) gaps.push(`${unchecked.length} control${unchecked.length === 1 ? "" : "s"} open${unchecked.length === 1 ? "s" : ""} something with no journey that opens and closes ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.slice(0, 4).map((o) => `“${o}”`).join(", ")}${unchecked.length > 4 ? ", …" : ""}`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
@@ -892,7 +953,6 @@ function acceptanceGaps(cfg, flags, sweepResult, results, journeyResults) {
     const unframed = fs.readdirSync(dir).map((d) => path.join(dir, d, "reference.png")).filter((p) => fs.existsSync(p) && !framed.has(p));
     if (unframed.length) gaps.push(`references no frame checks: ${unframed.map((p) => path.relative(cfg.dir, p)).join(", ")}`);
   }
-  if (cfg.sweep && !flags["no-sweep"] && !cfg.sweep.stories?.length) gaps.push("no dense story is swept: add one to sweep.stories");
   for (const st of sweepResult?.stories ?? []) if (st.unmeasured) gaps.push(`the story ${st.name} was not swept: ${st.unmeasured}`);
   return gaps;
 }
@@ -924,16 +984,18 @@ async function check(file, flags) {
     const journeyResults = full ? await journeys(browser, cfg) : [];
     // A complete check (every frame, the sweep) is the evidence for a handoff; --frame and --no-sweep are partial.
     const complete = full && !flags["no-sweep"];
-    const gaps = complete ? acceptanceGaps(cfg, flags, sweepResult, results, journeyResults) : [];
+    const rows = acceptanceRows(cfg);
+    const acceptance = complete ? rows.map((row) => assessRow(row, sweepResult)) : [];
+    const gaps = complete ? acceptanceGaps(cfg, acceptance, sweepResult, results, journeyResults) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
-    const pending = issues.some((issue) => issue.status === "pending");
+    const pending = issues.some((issue) => issue.status === "pending") || acceptance.some((row) => row.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
-    const unmeasured = sweepResult?.unmeasured ?? [];
+    const unmeasured = sweepResult?.unmeasured?.some((u) => !u.story);
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
-    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass);
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass) || acceptance.some((row) => row.status === "fail");
     const status = failed ? "fail"
-      : results.some((r) => r.verdict === "incomplete") || unmeasured.length || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
+      : results.some((r) => r.verdict === "incomplete") || unmeasured || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
         : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
     const score = totalScore(results, sweepResult, journeyResults);
@@ -946,7 +1008,7 @@ async function check(file, flags) {
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
     const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
       frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full ? cfg.journeys : null])).digest("hex").slice(0, 12);
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: reviewed(cfg), status, score };
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
     const comparable = history.filter((h) => h.score != null && h.basis === basis);
@@ -955,14 +1017,14 @@ async function check(file, flags) {
     const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
     const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
     const restarted = history.length > 0 && !comparable.length;
-    const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
+    const data = { frames: results, sweep: sweepResult, journeys: journeyResults, acceptance, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     if (complete) {
       const git = (...args) => spawnSync("git", args, { cwd: cfg.dir, encoding: "utf8" });
       const commit = git("rev-parse", "--short", "HEAD"), dirty = git("status", "--porcelain").stdout?.trim();
       const stamp = `${record.time}${commit.status === 0 ? ` · commit ${commit.stdout.trim()}${dirty ? " with uncommitted changes" : ""}` : ""}`;
       const pictures = [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
-      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, acceptance: acceptanceRows(cfg), stamp, pictures })}\n`);
+      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, stamp, pictures })}\n`);
     }
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a complete check.

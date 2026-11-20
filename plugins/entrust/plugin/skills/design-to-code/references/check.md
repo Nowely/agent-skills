@@ -1,30 +1,33 @@
 # The check
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
-compares it with the frame's spec and image, runs the sweep and the journeys, prints a summary and writes the files
-listed under [Output](#output); [the summary](#the-summary-and-the-report) says what each line means. Playwright is
-resolved from the working directory first: run it from the project that has it.
+compares it with the frame's spec and image, applies [the ledger](#the-ledger) and runs the configured sweep and journeys.
+Read [the summary](#the-summary-and-the-report) for findings and [Output](#output) for the saved evidence. Playwright is
+resolved from the working directory first. Run it from the project that has it. It creates fresh Chromium contexts.
+For an authenticated route, use the project's authorized browser profile to capture and test the real page.
+Record those observations as separate evidence.
 
 **Exit codes**, the first that applies: 1 a failure; 2 something not measured; 3 what remains awaits the owner's
 decision; 0 a pass. Not measured are:
 
 - a frame without its image, a frame whose reference is an image alone (its text is left to the eye), and a frame
   showing text its spec does not have;
-- an alignment group that never has two elements;
+- an alignment group that never has two elements, unless the acceptance record marks that story not applicable with a reason;
 - everything, when there is no browser;
 - in a complete check, what the acceptance list needs (below).
 
-**A complete check** is every frame with the sweep. It writes the evidence file (`handoff.md`) and the gallery, and
-it does not pass without:
+A **complete check** attempts every configured frame, sweep, story and journey without `--frame` or `--no-sweep`.
+It writes `handoff.md` and the gallery. The following evidence contributes to the verdict.
 
-- `review.md` beside `design.json` with an acceptance list whose every row has a result (its lines under a heading
-  that names it; see [review.md](review.md#the-acceptance-list));
-- a frame for every `frames/<name>/reference.png` in the pack;
-- a sweep with a dense story whose URL is no frame's page (a story differing only in its query, as Storybook's do,
-  counts as its own; the script cannot tell whether it is dense);
-- for each control inside the component, in a frame, that opens something (`aria-expanded`, `popovertarget`, or an
-  `aria-haspopup` other than false), a journey that acts on it and expects something hidden. A hover hint without
-  these attributes is not found: list it in the acceptance list yourself.
+- An acceptance list in `review.md` beside `design.json`. The [acceptance record](review.md#the-acceptance-list)
+  defines the outcome markers, evidence, scope of manual claims and optional `Checked by` methods.
+- A frame for each `frames/<name>/reference.png` in the pack.
+- An observed open and close transition for each detected control that opens content, including the component
+  root itself. See [Journeys](#journeys).
+
+Width sweeps and additional stories are optional. Add them when the task requires them, and name them in the
+acceptance record. The summary and handoff identify omitted measurements. A story can set up different data or
+state on the same URL. Verify the combination in its capture.
 
 **Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. They write
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
@@ -46,7 +49,7 @@ Paths are relative to the file.
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
-| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: more pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
+| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
 `setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap` (the
 page is then opened for touch), `{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px),
@@ -58,13 +61,31 @@ outside the page, so nothing is measured hovered unless a step hovers it.
 ## Journeys
 
 Each journey opens the page afresh, at the widest frame's width unless it gives `width`, by touch when it says
-`"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and three that expect,
+`"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and four expectations,
 each given a second to come true, as a person sees (a size, not hidden, not transparent): `{ "visible": "<selector>" }`
 (any match seen), `{ "hidden": "<selector>" }` (none seen, or no match), `{ "text": ["<selector>", "<text>"] }` (a match
 seen that shows the text, which may not be empty), `{ "focused": "<selector>" }` (the focus is in a match). A journey
 may also change its width, `{ "width": 320 }`, to see a state survive a resize. A journey with no expectation is an
-error in `design.json`, since it could not fail, and so are two journeys with one name. A `hidden` step on what the
-journey never saw visible is noted in `handoff.md`: it proves nothing about closing.
+error in `design.json`, since it could not fail, and so are two journeys with one name. A hidden assertion can test
+initial absence. Opener coverage requires the following transition in a passing journey.
+
+1. Act on the control while the expected content is hidden. The checker discovers controls marked with
+   `aria-expanded`, `popovertarget` or a non-false `aria-haspopup`.
+2. Observe the content with `visible` or `text`. If the opener specifies `aria-controls` or `popovertarget`,
+   the visible match must be that target or inside it.
+3. Act while that content is visible, then successfully assert `hidden` using the same selector. A wait alone or
+   a hidden assertion on unrelated content leaves the opener unchecked.
+
+Equal labels can belong to different controls. For a journey running with different query arguments on the same
+page, an explicit control ID, label and controlled target must match the frame. Use the frame URL for controls
+without that linkage. Describe unmarked interactions such as a hover-only hint in the acceptance list and test
+the gestures the product supports.
+
+The handoff names the starting width and any completed resize steps. An opener match identifies a control. The
+journey's observations cover the page, data and widths it exercised. Seeing the content disappear after a gesture
+establishes the sequence. A timer or another event can also dismiss it. When the cause matters, vary the gesture
+with timing and data held constant, or verify the handler in the product's interaction test.
+
 The first step that does not hold fails the journey, with its number; a failing journey fails the check and adds 10
 to the score. For a popup:
 
@@ -148,6 +169,10 @@ frames, specs, images, sweep and journeys.
   elsewhere or none near a named width is a `switch` finding. Each of `stories` is swept the same way (not for
   `switches`): its findings carry its name, and the gallery pictures it at the frames' widths within the sweep. A
   story that cannot be swept (its root absent, a setup step failing) leaves the check incomplete and keeps the rest.
+  Each story records its own alignment coverage. Widths with fewer than two visible matches are reported. A
+  `sweep.stories` claim of success remains incomplete when a configured group could never be measured in one
+  of the stories. For a genuinely inapplicable alignment, record `N/A` with its reason. The report retains the
+  unmeasured group.
 
 ## Output
 
@@ -159,6 +184,6 @@ In `out/` beside `design.json`, or `--out`:
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
-| `handoff.md` | written by a complete check, stamped with its time and, in a Git repository, the commit and whether the tree had uncommitted changes: the evidence a handoff quotes. It lists the pictures to look at first, then each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it sees something visible and never expects anything hidden), each ledger entry with what it excused, awaits or that it matched nothing, ledger faults, the acceptance list's rows (a blank result reads "not checked"), and what the script did not check |
+| `handoff.md` | written by a complete check, stamped with its time and, in a Git repository, the commit and whether the tree had uncommitted changes: the evidence a handoff quotes. It lists the pictures to look at first, then each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it sees something visible and never expects anything hidden), each ledger entry with what it excused, awaits or that it matched nothing, ledger faults, the acceptance rows with their assessed and reported outcomes, and what the script did not check |
 | `gallery.html` | written by a complete check: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, the journeys, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, the root, host and viewport, each frame's settings, spec and image, the sweep and the journeys), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

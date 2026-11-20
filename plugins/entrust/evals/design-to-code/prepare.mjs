@@ -36,8 +36,7 @@ const c = JSON.parse(fs.readFileSync(path.join(caseDir, "case.json"), "utf8"));
 const config = (url, design) => ({
   url, root: c.root, ...(c.host ? { host: c.host } : {}),
   frames: c.frames.map((f) => ({ name: f.name, width: f.width, spec: `${design}/${f.name}/spec.json`, reference: `${design}/${f.name}/reference.png` })),
-  // The case is one static page: it is its own story, as no data drives it.
-  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url: `${url}?story=page` }] } } : {}),
+  ...(c.sweep ? { sweep: c.sweep } : {}),
 });
 const write = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof data === "string" || Buffer.isBuffer(data) ? data : `${JSON.stringify(data, null, 2)}\n`); };
 
@@ -78,6 +77,6 @@ write(path.join(judge, "design.json"), {
   ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}),
 });
 // The judge's own pack needs no review of its own: its acceptance list is the case.
-write(path.join(judge, "review.md"), "# Judge\n\n## Acceptance list\n\n- the case's frames, sweep and answer key: judged by score.mjs\n");
+write(path.join(judge, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge inputs: pass — reference specs and images generated from the case\n");
 write(path.join(judge, "run.json"), { case: name, arm, dir, prepared: new Date().toISOString() });
 console.log(fs.readFileSync(path.join(caseDir, "brief.md"), "utf8").trim());

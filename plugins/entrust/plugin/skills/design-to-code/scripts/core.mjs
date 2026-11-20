@@ -62,10 +62,12 @@ function findFrame(tree, selector) {
   return first;
 }
 
-// Boxes of every visible descendant relative to the frame's top-left corner, reading x/y either as offsets from the
+// Boxes of the frame and its visible descendants relative to its top-left corner, reading x/y either as offsets from the
 // parent's coordinate space ("relative") or as canvas positions ("absolute").
 function place(frame, mode) {
-  const out = [];
+  if (hidden(frame)) return [];
+  const frameBox = { x: 0, y: 0, width: num(frame.attrs.width), height: num(frame.attrs.height) };
+  const out = [{ node: frame, box: frameBox, parentBox: frameBox }];
   const fx = num(frame.attrs.x) || 0, fy = num(frame.attrs.y) || 0;
   const walk = (node, ox, oy, parentBox) => {
     for (const c of node.children) {
@@ -79,7 +81,7 @@ function place(frame, mode) {
       walk(c, space[0], space[1], box);
     }
   };
-  walk(frame, 0, 0, { x: 0, y: 0, width: num(frame.attrs.width), height: num(frame.attrs.height) });
+  walk(frame, 0, 0, frameBox);
   return out;
 }
 
@@ -116,8 +118,8 @@ export function specFromRest(node) {
   const frame = node.absoluteBoundingBox;
   if (!frame) throw new Error(`node ${node.id} has no absoluteBoundingBox`);
   const landmarks = [];
-  const walk = (n) => {
-    for (const c of n.children ?? []) {
+  const walk = (nodes) => {
+    for (const c of nodes) {
       if (c.visible === false) continue;
       if (c.type === "TEXT" && c.absoluteBoundingBox && norm(c.characters ?? "")) {
         const b = c.absoluteBoundingBox, s = c.style ?? {};
@@ -132,10 +134,10 @@ export function specFromRest(node) {
           },
         });
       }
-      walk(c);
+      walk(c.children ?? []);
     }
   };
-  walk(node);
+  walk([node]);
   return {
     frame: { id: node.id, name: node.name, width: round(frame.width), height: round(frame.height) },
     source: "figma-rest",
@@ -628,13 +630,18 @@ const notInDesign = (f) => `page text not in the design (${f.unexpected.length})
 const where = (i) => `${i.landmark}${i.story ? ` (${i.story})` : ""}`;
 
 const journeyLine = (journeys) => `journeys: ${journeys.length ? `${journeys.filter((j) => j.pass).length} of ${journeys.length} hold` : "none defined"}`;
+const alignmentName = (group) => group.story ? `${group.selector} (story ${group.story})` : group.selector;
+const sweepCoverage = (sweep) => !sweep ? "Width sweep and additional stories were not run." : !sweep.stories?.length ? "No additional stories were swept." : "";
+const acceptanceLine = (row) => `${row.item}: ${row.status}${row.reason ? ` (${row.reason})` : ""}${row.result ? ` · reported: ${row.result}` : ""}`;
 
-export function renderReport({ frames = [], sweep, journeys = [], gaps = [], ledgerProblems = [], round: n, status, missingReferences = [] }) {
+export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
   const out = ["# Design check", "",
     `${n ? `Round ${n} · ` : ""}frames: ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
     + ` · ${journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`, ""];
   if (status) out.push(`Verdict: ${status}`, "");
+  if (sweepCoverage(sweep)) out.push(sweepCoverage(sweep), "");
+  for (const row of acceptance.filter((r) => ["fail", "pending"].includes(r.status))) out.push(`Acceptance: ${acceptanceLine(row)}`, "");
   for (const g of gaps) out.push(`Not checked: ${g}.`, "");
   if (missingReferences.length) out.push(`Reference image not measured: ${missingReferences.join(", ")}`, "");
   for (const p of ledgerProblems) out.push(`- Ledger: ${p}`);
@@ -671,8 +678,8 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], led
     if (sweep.reason) out.push(sweep.reason, "");
     else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     if (sweep.stories?.length) out.push(`Stories swept as well: ${sweep.stories.map((st) => st.name).join(", ")}.`, "");
-    for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at every width; it needs two or more.`, "");
-    for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(u.selector)} matched fewer than two at ${u.ranges}; it was measured at the other widths.`, "");
+    for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(alignmentName(u))} matched at most ${u.matched} across the sweep. It needs two or more.`, "");
+    for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(alignmentName(u))} had fewer than two matches at ${u.ranges} px during the sweep. The other samples were measured.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
       for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(where(i))} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
@@ -684,12 +691,14 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], led
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false }, { limit = 8, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
     + ` · ${journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
     + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
   if (restarted) out.push("The specs or the sweep changed: scores start a new series here.");
+  if (sweepCoverage(sweep)) out.push(sweepCoverage(sweep));
+  for (const row of acceptance.filter((r) => ["fail", "pending"].includes(r.status))) out.push(`Acceptance: ${acceptanceLine(row)}`);
   if (stalled >= 2) out.push(`${stalled} rounds without a new lowest score: stop adjusting. Sort what remains: fix it another way, record it as proposed, or ask.`);
   for (const g of gaps) out.push(`Not checked: ${g}.`);
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
@@ -716,8 +725,8 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], le
     const failing = sweep.issues.filter((i) => i.status === "fail");
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
-    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at every width; an alignment needs two or more`);
-    for (const u of sweep.partial ?? []) out.push(`  ${u.selector} matched fewer than two at ${u.ranges}: aligned only where it has two or more`);
+    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${alignmentName(u)} matched at most ${u.matched} across the sweep; an alignment needs two or more`);
+    for (const u of sweep.partial ?? []) out.push(`  ${alignmentName(u)} matched fewer than two at ${u.ranges}: measured where it had two or more`);
   }
   for (const j of journeys.filter((x) => !x.pass)) out.push("", `journey fails: ${j.name}: ${j.failed}`);
   out.push("", `Full tables: ${file}`);
@@ -747,7 +756,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", "## Pictures to look at first", "",
-    "Before reading the lines below, open each and write in the handoff one sentence on what differs from the design.", ""];
+    "Compare the reference and final captures at the same state and width. Record any visible differences.", ""];
   for (const p of pictures) out.push(`- ${p}`);
   out.push("", "## Frames", "");
   for (const f of frames) {
@@ -757,17 +766,21 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
   }
+  out.push("", "## Widths and stories", "");
+  if (sweepCoverage(sweep)) out.push(`- ${sweepCoverage(sweep)}`);
   if (sweep) {
-    out.push("", "## Widths and stories", "");
     out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
-    for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${u.selector}: not measured, it never has two elements`);
+    for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: not measured at ${u.ranges} px (fewer than two elements)`);
+    for (const u of sweep.partial ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: fewer than two elements at ${u.ranges} px, measured in the other samples`);
     for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}`);
   }
   out.push("", "## Journeys", "");
   if (!journeys.length) out.push("- none defined");
+  else out.push("Each journey covers its configured page and the widths listed for that run.");
+  if (journeys.some((j) => j.closed?.length)) out.push("An open–action–hidden sequence records the order observed. A timer or another event can also hide the content.");
   for (const j of journeys) {
     const spec = journeySpecs.find((x) => x.name === j.name) ?? { steps: [] };
-    const how = [spec.touch && "touch", spec.width && `${spec.width} px`].filter(Boolean).join(", ");
+    const how = [spec.touch && "touch", j.widths?.length && `${j.widths.join(" → ")} px`].filter(Boolean).join(", ");
     const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
     const notes = [opensOnly && "checks opening only, not closing", ...(j.notes ?? [])].filter(Boolean);
     out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
@@ -787,7 +800,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   }
   out.push("", "## The acceptance list", "");
   if (!acceptance.length) out.push("- no rows found in review.md");
-  for (const a of acceptance) out.push(`- ${a.item}: ${a.result || "not checked"}`);
+  for (const a of acceptance) out.push(`- ${acceptanceLine(a)}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");

@@ -7,46 +7,17 @@ forensics remain in the repository references and release notes.
 
 ### Design to code
 
-- Add the experimental `design-to-code` skill and visual comparison tool. The tool reports matched frames, the measured layout sweep, accepted differences, pending decisions and missing reference imagery. Screenshot-only references leave text to visual review and are reported incomplete, never a pass; a font the page names first but cannot draw its text with is reported as a warning. Without a Figma token, texts come from the design context by node id, a layer whose text the code builds from data is left for the implementer to read from the frame's screenshot, and the skill has every text checked against it. Alignment is the spread as laid out against the configured tolerance; a bounded ledger entry is applied at each width and only to differences with a size, and an alignment group that never finds two elements is reported as not measured. Rounds are logged by a score that counts failures and open proposals; the project's version control keeps the work, and the skill stops adjusting after two rounds without a new lowest score. Both experimental arms receive the same design inputs. A ledger's `max` is held to the measured size of a finding, not the size rounded for display (E143). The [research](research/2026-11-20-design-to-code/) preserves previous drafts and the real-card calibration. The alignment gate remains open.
-
-- The checker reports unexpected and invisible text, classifies every differing region, scopes wildcard and text
-  deviations to their landmarks and applies root-height bounds to image-only frames. Missing reference images
-  now mark the individual frame incomplete. Font warnings skip combining marks and format controls. Each frame
-  runs its setup before waiting for its root and loads images within that root. Galleries keep separate state
-  captures and show why a before image is unavailable. The [updated pair protocol](research/2026-11-20-design-to-code/08-pair-protocol.md)
-  verifies baseline Git objects and records the worker's filesystem access.
-
-- Done means checked: the skill writes an acceptance list before the first product edit (every supplied reference,
-  a dense story, every popup and action, the owner's past returns) and runs it before handoff, each line with its
-  evidence. The check sweeps dense stories (`sweep.stories`) and pictures them in the gallery, reports a control
-  another element covers, lets a popover frame name its own root, compares scores only between rounds measured
-  against the same specs and says when to stop adjusting. Page text missing from the spec is listed once and leaves
-  the frame incomplete. Content that fades in is captured as it ends, and a text cut with an ellipsis is
-  deliberate truncation, not a finding.
-
-- The check's pass carries evidence: journeys in `design.json` run steps that expect what follows (visible, hidden,
-  a text) by pointer, touch or keyboard, and a check of every frame is incomplete without `review.md`'s acceptance
-  list, a frame for every reference in the pack, or a dense story. The first visible root is measured, a story that
-  cannot be swept is a gap rather than a crash, drawn truncation and clipped text are measured as painted, covered
-  controls leave labels, disabled controls and transparent native overlays alone, and scores are compared only
-  against the same tolerance, frames and images. A story's file path keeps its query. The `listing-card` eval case
-  runs a short controlled pair with a frozen judge. A setup step that fails leaves its frame incomplete in seconds
-  instead of ending the check; journeys and the root are judged as a person sees them; covered controls need the
-  centre or a side and ignore the page around the component and pinned bars; journeys count in what a score is
-  measured against; and the acceptance list must have lines under its heading.
-
-- Verification without a second agent: a complete check writes `out/handoff.md`, the stamped evidence a handoff quotes
-  (each frame's verdict and what the ledger excused, the widths and stories, the journeys, each ledger entry's use,
-  the acceptance rows with blank ones marked not checked, the pictures to look at). "Pass" is refused without a
-  sweep, with the frames' own page as the dense story, or when a control that opens something has no journey; a
-  journey that expects nothing is refused; `--no-sweep` is a partial check. The skill's page is shorter, and its
-  handoff step asks for a sentence per picture, two extra tries written as journeys, and evidence for every claim.
-  The evidence credits each ledger entry by itself, reads the acceptance list's Result column and list items under
-  its heading (Russian included), shows ledger faults, missing fonts and references, and puts the pictures first;
-  partial checks write no gallery and say their verdict is partial; journeys gain `width` and `focused` steps.
-  A complete check stays incomplete while an acceptance row has no result, each control that opens something needs
-  a journey that opens and closes it, and only the owner accepts a deviation (`decidedBy`). The skill's page leads
-  with its aim and a six-step order of work, and names the evidence file and the message to the owner apart.
+- Add an experimental skill for implementing UI from Figma or screenshots. Compare each target with the final capture
+  under the same conditions. Exercise the interactions, responsive layouts, data and built consumer paths affected
+  by the change. When a material difference suggests conflicting requirements, report the reversible change tried
+  and its result against both sources, or the blocker that left the conflict unverified.
+- The optional Chromium checker compares frame landmarks and images and records deviations for the owner's decision.
+  Full checks write a visual gallery and a handoff with the reported acceptance outcomes and supporting measurements.
+  A screenshot-only frame leaves text for visual review. Sweeps and additional stories are optional. A detected opener needs a journey
+  that observes its content opening and closing. Reports name missing measurements and the widths exercised by each journey.
+- The calibrated synthetic listing judge accepted the saved v14 submission and returned v15 and v16 for the same
+  mobile offset. The [iteration 2 report](research/2026-11-20-design-to-code/13-iteration-02.md) includes the
+  reference captures, first submissions, costs and limits of the comparison.
 
 ## 0.44.0 — 2026-11-20
 

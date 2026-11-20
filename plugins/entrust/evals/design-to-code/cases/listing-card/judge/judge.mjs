@@ -27,12 +27,12 @@ if (inside(source, out) || inside(out, source)) { console.error("the out dir mus
 fs.rmSync(out, { recursive: true, force: true });
 fs.cpSync(path.resolve(impl), build, { recursive: true, filter: (p) => !/(^|\/)(\.design|out|node_modules|\.git)(\/|$)/.test(path.relative(path.resolve(impl), p)) });
 fs.copyFileSync(path.join(HERE, "data.js"), path.join(build, "data.js"));
-const POP = '.kit-popover, [role="tooltip"], [role="dialog"], [class*="popover"], .hint';
+const POP = '.kit-popover, [role="tooltip"], [role="dialog"], .hint';
 const frame = (name) => ({ spec: path.join(HERE, "design", name, "spec.json"), reference: path.join(HERE, "../pack", name, "reference.png") });
 const frames = ["wide-760", "medium-520", "narrow-320"].map((name) => ({ name, width: Number(name.split("-")[1]), ...frame(name) }));
 frames.push({ name: "deal-popover", width: 760, root: POP, setup: [{ hover: "text=−12%" }], ...frame("deal-popover") });
 // The judge's own pack: its acceptance list is this file's header.
-fs.writeFileSync(path.join(out, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge.mjs's criteria: judged below\n");
+fs.writeFileSync(path.join(out, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge inputs: pass — frame paths and the dense listing are supplied by judge.mjs\n");
 fs.writeFileSync(path.join(out, "design.json"), JSON.stringify({ url: "build/story.html?data=frame", root: "#host > *", host: "#host", frames,
   sweep: { from: 280, to: 800, step: 8, stories: [{ name: "dense", url: "build/story.html?data=dense" }] } }, null, 1));
 const run = spawnSync(process.execPath, [DESIGN, "check", path.join(out, "design.json")], { encoding: "utf8" });
@@ -139,12 +139,15 @@ for (const kind of ["help", "deal"]) {
   await ctx.close(); }
 await browser.close();
 
-const verdict = { visual: visual.every((v) => !v.material.length), dense: dense.length === 0, behaviour: checks.every((c) => c.pass) };
+const story = result.sweep?.stories?.find((s) => s.name === "dense");
+const denseMissing = result.sweep?.reason || story?.unmeasured || (!story && "the dense story was not measured");
+const verdict = { visual: visual.every((v) => !v.material.length), dense: dense.length ? false : denseMissing ? null : true, behaviour: checks.every((c) => c.pass) };
 const accepted = Object.values(verdict).every(Boolean);
-const report = { accepted, verdict, visual, dense, checks, checkExit: run.status };
+const report = { accepted, verdict, visual, dense, ...(denseMissing ? { denseMissing } : {}), checks, checkExit: run.status };
 fs.writeFileSync(path.join(out, "judge.json"), JSON.stringify(report, null, 2));
-console.log(`${accepted ? "ACCEPTED" : "RETURNED"} · visual ${verdict.visual ? "ok" : "fail"} · dense ${verdict.dense ? "ok" : "fail"} · behaviour ${verdict.behaviour ? "ok" : "fail"}`);
+console.log(`${accepted ? "ACCEPTED" : "RETURNED"} · visual ${verdict.visual ? "ok" : "fail"} · dense ${verdict.dense === null ? "indeterminate" : verdict.dense ? "ok" : "fail"} · behaviour ${verdict.behaviour ? "ok" : "fail"}`);
 for (const v of visual) if (v.material.length) console.log(`  ${v.frame}: ${v.material.slice(0, 6).join("; ")}${v.material.length > 6 ? ` … ${v.material.length - 6} more` : ""}`);
+if (denseMissing) console.log(`  Dense story not measured: ${denseMissing}`);
 for (const d of dense.slice(0, 8)) console.log(`  ${d}`);
 if (dense.length > 8) console.log(`  … ${dense.length - 8} more dense findings`);
 for (const c of checks) if (!c.pass) console.log(`  ✗ ${c.name}${c.detail ? ` (${c.detail})` : ""}`);

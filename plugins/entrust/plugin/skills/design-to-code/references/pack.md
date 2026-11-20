@@ -1,14 +1,16 @@
 # The design pack
 
-Everything the design says about the change, fetched once and kept as files, so that building and checking need no
-further Figma calls and another agent can take over.
+Keep the inputs for comparisons together. Use the existing project location or a local `.design/<task>/` pack.
+For each requested screen or detail, keep its supplied reference, the state and data it shows, and the
+known dimensions and scale. Context images can remain beside the targets. Reserve `frames/` for references
+the checker should measure. For visual comparison alone, a reference and a comparable final capture suffice.
 
 ```text
 .design/<task>/
   design.json             the page, root, host, frames, sweep and journeys: check.md
   deviations.json         the ledger: check.md
-  review.md               step 2: the map to the UI kit, the gaps, the options, the acceptance list
-  assets/                 every icon and image the frames use, as the design holds them
+  review.md               acceptance criteria and the project or design decisions behind them
+  assets/                 design assets needed for the change
   frames/<frame>/
     spec.json             its texts: characters, box, alignment, font
     reference.png         the frame at its available scale
@@ -25,10 +27,10 @@ node "<skill-dir>/scripts/design.mjs" figma "<frame link with node-id>" --out .d
 ```
 
 It reads the frame from Figma's REST API and writes `spec.json`, with every visible text's characters, box relative
-to the frame, alignment, size, weight, line height and colour, and `reference.png` at 2× (`--scale` to change). No
-model tokens are spent and nothing is retyped.
+to the frame, alignment, size, weight, line height and colour, and `reference.png` at 2× (`--scale` to change).
+A selected text layer becomes its own landmark at the frame origin.
 
-**Without one**, from the MCP server:
+**With access to the Figma MCP server**, extract a frame as follows.
 
 1. `get_metadata` on the frame: its layers with positions and sizes, but text layers only by name. Save it as
    `frames/<frame>/metadata.xml`.
@@ -61,9 +63,6 @@ model tokens are spent and nothing is retyped.
   leave a temporary Figma URL in code.
 - **Comments**, `get_comments` on the remote server: states and behaviour are often written there.
 
-Save to the pack what a tool writes itself. Retyping a tool's answer into a file costs its length in output
-tokens: do it only when another agent will build from the pack.
-
 ## The data and the states
 
 A frame's texts are its data. Render each frame with that data (a story per frame, or one story with arguments);
@@ -72,14 +71,15 @@ showing a state (an open menu, a selected row, hover) gets `setup` steps in `des
 state before it is measured; a state drawn outside the component, such as a popover or a sheet, also names its own
 `root`.
 
-Add one **dense story**: the longest legal data the product allows, every badge and every conditional action at
-once. No frame draws it; it is where texts collide and actions cover each other. Sweep it with `sweep.stories`, and
-look at its pictures in the gallery. A full check without one is incomplete.
+When content or actions can collide, use a story with a legal combination of long data and conditional controls.
+Say what the case adds to the reference. Keep those inputs constant while varying the component's width. A story
+may use another URL, arguments, or setup on the original page. Inspect the rendered state to verify that its data
+changed. The checker measures the supplied story and cannot determine whether the case is representative.
 
 ## Screenshots without a spec
 
 Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
-assumption and compare at a consistent size. Make a spec with the reference's frame dimensions and `landmarks: []`.
+assumption and compare at a consistent size. When using the checker with known frame dimensions, make a spec with the reference's frame dimensions and `landmarks: []`.
 The check compares the root and the areas outside the page's text, and reports the frame incomplete at best (a
 differing area outside the text or a differing root fails it): what the texts say, and the smoothing Figma and
 Chromium give them differently, are for the eye. Inspect text, placement, typography and states against the
@@ -89,8 +89,3 @@ not invent Figma metadata or imply an assumed scale is measured.
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
 text widths, which a Figma spec does not.
-
-## Limits
-
-Figma limits MCP calls by seat (its "Rate limits & access" page): View and Collab seats get a few calls a month; Dev
-and Full seats on paid plans a daily and a per-minute allowance. Fetch each frame once and work from the pack.

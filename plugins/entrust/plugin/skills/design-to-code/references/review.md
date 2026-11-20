@@ -1,9 +1,8 @@
 # Reading the design
 
-Before the first product edit, write `review.md` in the pack: what the design maps to in the project, how its parts
-relate across widths, what it leaves unsaid, the options where the build had to decide, and the acceptance list the
-work is checked against before it is called done. A design is a drawing of some states at some widths; the code has
-to decide the rest.
+Before editing the product, identify how to verify the requested change. For a checker pack, keep the acceptance
+list in `review.md` beside `design.json`. Record the relevant kit mappings, layout relationships and decisions
+where they affect the implementation.
 
 ## The map
 
@@ -13,8 +12,8 @@ to decide the rest.
 | each colour, spacing, radius | the token, or "raw" |
 | each text style | the project's typographic style, or "raw" |
 
-An element with no component and a value with no token are the places a build drifts from the design and from the
-rest of the product: name them.
+Start with the nearest working screen, including its existing interaction and composition. Check the available
+component props before adding custom code. Record unmapped elements or raw values when they require a decision.
 
 ## How the parts relate
 
@@ -24,6 +23,9 @@ grows; where each conditional action goes and what it may never cover. Say which
 you inferred. Build the layout from these relationships, not from the frames' coordinates.
 
 ## What the design leaves unsaid
+
+Use the following prompts for gaps that matter to the request. Some apply only to interactive, data-driven or
+responsive components.
 
 - **States:** hover, focus-visible, active, disabled, selected, loading, empty, error; open and closed for menus,
   popovers and hints; what touch does where a pointer hovers.
@@ -40,9 +42,9 @@ you inferred. Build the layout from these relationships, not from the frames' co
 
 ## Options, not silent choices
 
-List a gap only where the build had to decide something. For each, say the default you will build and two or three options
-with what each changes for the user and costs to build. Ask the owner only where the options change behaviour or
-scope; keep building the rest. A design error with an evident fix, such as a wrong word form, is built fixed.
+List gaps that need a product decision. Explain the proposed behaviour, viable alternatives and their concrete
+cost. Ask the owner when a decision changes behaviour or scope. Record a proposed correction to a design error
+alongside the difference it would introduce.
 
 The ledger is for differences the page shows against a frame: a fixed word form, the kit's badge, a default that
 departs from a drawing. Those go there as `proposed`, with the same options. A gap no frame shows, such as a hover
@@ -51,21 +53,37 @@ do not build it.
 
 ## The acceptance list
 
-What the owner would check, written before building and run before saying done. Each line says how it is checked
-and, at handoff, its result with its evidence:
+Write the applicable criteria before implementation, then record an outcome and evidence for each after checking.
+A fixed label might need one comparison with the supplied image. An interactive library component may also need
+its actual open and close gestures, stable data across widths, and an import from the built package in a consumer
+that exercises the shipped styles, images or fonts.
+
+The checker reads table rows and list items under a heading containing `Acceptance`, `приёмк` or `приемк`, including
+subheadings. Use a `Result` or `Status` column. It also recognizes `Результат` and `Итог`, and otherwise reads the
+last column. In a list item put the result after a colon and a space. Leave the result empty until observed.
+
+| Result in the review | How the checker reads it |
+|---|---|
+| `pass — <evidence>` or `passed — <evidence>` | Reported success. Name the observation, command output or comparison. The checker cannot authenticate a manual claim. |
+| `fail` or `failed — <detail>` | A failed criterion makes the full check fail. |
+| `pending — <decision>` | The outcome awaits the owner. |
+| `not checked` or `incomplete — <reason>` | The criterion remains incomplete. |
+| `N/A — <reason>` or `not applicable — <reason>` | The recorded reason explains why this criterion does not apply. |
+
+Markers ignore case. Separate a detail with a dash, colon or comma. A blank, an unrecognized result, a bare
+`pass`, or `N/A` without a reason leaves the criterion incomplete.
+
+In a table the optional `Checked by` column can bind a criterion to a measurement. Use exactly `sweep` for the
+frame page's width sweep, or `sweep.stories` for the configured additional stories. These values may be in inline
+code. A reported pass for one of these requires the corresponding measurement to run. A measured failure,
+unmeasured condition or outstanding proposal remains visible in the assessed outcome. Other methods describe
+manual or project checks. Put a separate required width or data check in its own row so omitting that measurement
+cannot produce a passing handoff.
+
+A responsive menu's completed acceptance record might look like this.
 
 | Item | Checked by | Result |
 |---|---|---|
-| every supplied reference, each state and width | its frame in `design.json` (an image-only frame where no spec fits) | pass, or what remains and why |
-| the dense story: name what it adds (the longest values, every badge, every conditional action) | `sweep.stories` and its pictures | no overlap, no covered control |
-| the map to the kit | each `none` or `raw` in `review.md` is in the ledger or the questions | |
-| every popup, menu and sheet | its journeys in `design.json`: hover, move into it, leave it, `hidden`; tap it open and closed; focus it and press Escape | the result of each |
-| every action | a journey: it works, and the state around it survives a resize (its `width` step) | |
-| the consumers | the project's tests for the component; the built package, for one other packages consume | |
-| the owner's past returns, when the project keeps them (`.design/returns.md`, or its agent notes) | how each was checked | |
-
-A reference no line covers is how a missed state reaches the owner. A line not run is reported as not checked. A
-journey that expects nothing cannot fail: each one has at least one `visible`, `hidden`, `text` or `focused` step,
-and a `hidden` step follows the `visible` step that saw the same thing open. The check reads this list as the lines
-under a heading that names it (in English or Russian, subheadings included): table rows past the header, with the
-result from a column named Result, and list items, with the result after a colon.
+| Title and action match the supplied image | visual comparison | pass — compared the reference and final menu at 480 px with the same title |
+| Long title clears the action across widths | sweep.stories | pass — the long-title story was swept from 320 to 640 px |
+| Escape dismisses the menu | keyboard journey | fail — the menu remained visible after Escape |
