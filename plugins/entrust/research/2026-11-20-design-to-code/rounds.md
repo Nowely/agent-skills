@@ -7,6 +7,8 @@
 | 2 | [drafts/03-v3.md](drafts/03-v3.md) | real design input, browser regressions, and an independent mixed-list check | self-comparison false positives repaired; the alignment gate did not pass on both controls, so no model comparison was run. [Details](03-calibration.md) |
 | 3 | [drafts/04-v4.md](drafts/04-v4.md) | fixes for the defects round 2 and its review left, the owner's decisions on them, then a critic and a verifier | below |
 | 4 | [drafts/05-v5.md](drafts/05-v5.md) | the corrections round 3's critic and verifier found | below; no model run |
+| 5 | [drafts/06-v6.md](drafts/06-v6.md) | the owner's real-frame calibration with a blind review, and image-only references | the column defect found by checker and reviewer alike; one control 1.02 px over the tolerance, unresolved; the gate stays open. [Details](05-calibration-followup.md) |
+| 6 | [drafts/07-v7.md](drafts/07-v7.md) | E143, image-only text and missing fonts made simpler, the summary-first rule back, then a critic and a verifier; the pair protocol | below; no model run. [Protocol](06-pair-protocol.md) |
 
 The drafts are byte-identical copies of the skill page; their relative links resolve from the skill's directory.
 
@@ -139,3 +141,32 @@ proposals, the pages against the code, the draft and the test counts. Partly hol
 
 Not changed: code the parser cannot read (TypeScript generics, fragments, `<br>` without a slash) gives every layer
 as missing, which is loud and sends the implementer to the image. 34 tests pass.
+
+## Round 5: the owner's real-frame calibration
+
+Recorded in [05-calibration-followup.md](05-calibration-followup.md). A blind reviewer and the check both found the
+known column shift (17–44 px) in the defective build at 601 and 624 px; control C passed; control A at 601 was 1.02 px
+over the 1 px tolerance, which the reviewer saw as aligned: an unresolved boundary. Against the real 601 px frame all
+three builds failed with 27–30 findings, with the design font missing in the stand, no ledger and a 1× export. The
+owner's round also added image-only references and recorded E143.
+
+## Round 6: simpler, after the owner's reminder
+
+Reviewing round 5, the coordinator found three things to change before a pair uses the check, and the owner
+reminded that the product is established, with its kit, components and fonts: no spaceship.
+
+- **E143**: a ledger's `max` was held to the spread rounded for display. It is held to the measured one; tests take
+  1.004 px against `max: 1` (fails) and 1.015625 px against `max: 1.019` (passes). Fixed in its own commit.
+- **Image-only references.** Round 5 compared their text pixels too. On the public captures, the owner's accepted
+  release against its design in that mode failed with 10 areas, real differences and smoothing mixed. Text is now
+  left out of the pixels as in every other frame, and the frame is incomplete: the eye judges the text. A first draft
+  of this round added two finding statuses for it; the owner's reminder removed them.
+- **Missing fonts.** The stand of round 5 lacked the design font, and every text measure compared a fallback. A
+  page whose text renders in none of the named families of its stack now makes the check incomplete until the font
+  loads; a stack whose first family is absent but another named one is present is no fallback.
+- **The summary-first rule is back** on the skill page: each round reads the text summary; images when it cannot
+  explain a difference, for a screenshot-only reference, and before handoff. Round 5 had replaced it with "compare
+  visually as well", which brought back the token cost of comparing images every round.
+- The pair on the card task is registered in [06-pair-protocol.md](06-pair-protocol.md).
+
+`node plugins/entrust/evals/design-to-code.test.mjs`: 36 cases, 36 passed.
