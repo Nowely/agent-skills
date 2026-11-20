@@ -93,3 +93,5 @@ Round 6 closed E143, simplified image-only references, brought back the summary-
 the card task; its critic and verifier led round 7 to make missing fonts a warning again, keep sizes unrounded for
 the ledger, name a neighbour's change of size as a cause, remove what nothing used, and register the pair's
 [second protocol](07-pair-protocol.md). Details in [rounds.md](rounds.md).
+
+Before running the pair, use the [third protocol](08-pair-protocol.md) for the product baseline and worker access.
