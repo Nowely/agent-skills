@@ -13,8 +13,8 @@ forensics remain in the repository references and release notes.
   kept the count from the list's last drawing. Every count of Decisions is now written by one function.
 - Under a filter, a question's note in Code says how many blocks one answer covers in all and how many the filter
   shows; it counted only the shown ones, so one answer seemed to cover less than it does.
-- Without JavaScript, a path or a code span with no space or hyphen in it wraps instead of widening the whole
-  document.
+- A path or a code span with no space or hyphen in it wraps instead of widening the whole document, without
+  JavaScript and in the page's cards alike.
 - Saved answers the page cannot read are no longer replaced by the next answer. The first save that would replace
   them opens them as they are, to copy, and only «Save this page's answers over it» replaces them; until then the
   answers live in the page's memory, as when the browser keeps nothing, and leaving asks first.

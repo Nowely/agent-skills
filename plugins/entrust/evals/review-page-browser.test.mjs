@@ -91,12 +91,12 @@ const big = { title: "A large generated change", range: "generated", language: "
   blocks: bigBlocks, challenges: [], coverage: "Generated." };
 const BIG_URL = render("big", big, bigDiff, false);
 // A file whose path runs far past the width of a desktop window, with no space or hyphen to break at, named as the
-// file, as a place and as code in a finding's text.
+// file, as a place and as code in a finding's title, text and fix.
 const LONG_PATH = `src/${"aDirectoryWhoseNameRunsOnAndOn/".repeat(6)}AndAFileWhoseNameIsLongAsWell.js`;
 const LONG_URL = (() => {
   const bytes = `diff --git a/${LONG_PATH} b/${LONG_PATH}\nnew file mode 100644\n--- /dev/null\n+++ b/${LONG_PATH}\n@@ -0,0 +1 @@\n+export const x = 1;\n`;
   const r = { ...structuredClone(big), title: "A long path", diff: { file: "source.diff", sha256: createHash("sha256").update(bytes).digest("hex") }, units: [],
-    findings: [{ ...big.findings[0], at: `${LONG_PATH}:1`, what: `Reads \`${LONG_PATH}\` whole.` }], questions: [{ ...big.questions[0], at: `${LONG_PATH}:1` }],
+    findings: [{ ...big.findings[0], at: `${LONG_PATH}:1`, title: `Reads \`${LONG_PATH}\``, what: `Reads \`${LONG_PATH}\` whole.`, fix: `Read \`${LONG_PATH}\` once.` }], questions: [{ ...big.questions[0], at: `${LONG_PATH}:1` }],
     blocks: [{ path: LONG_PATH, added: "1", does: "Exports x.", serves: [1], verdict: "fix", findings: [1] }] };
   return render("long-path", r, bytes, false);
 })();
@@ -556,6 +556,21 @@ test("feedback 5: saved data the page cannot read is never written over unasked:
     return shown && dialog && raw === "{broken" && afterAnswer === 0 && afterClose === 0 && status === "Decided" && still && /"f1"/.test(saved ?? "") && gone
       || JSON.stringify({ shown, dialog, raw, afterAnswer, afterClose, status, still, saved, gone });
   }));
+
+test("feedback 6: with JavaScript a long path in a card's text wraps too, and no tab scrolls sideways on a desktop viewport",
+  "a long path as code in a finding widened Decisions at 1280 px",
+  async () => {
+    const out = [];
+    for (const width of [1440, 1280, 1024]) {
+      const o = await open(LONG_URL + "#decisions", { viewport: { width, height: 900 } });
+      try { for (const tab of ["summary", "decisions", "code", "details"]) {
+        await o.page.click(`#tab-${tab}`); await settle(o.page);
+        const m = await o.page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        if (m[0] > m[1]) out.push({ width, tab, m });
+      } } finally { await o.close(); }
+    }
+    return !out.length || JSON.stringify(out);
+  });
 
 test("feedback 6: without JavaScript a path longer than the window wraps, and the document does not scroll sideways",
   "a long path widened the whole document on a desktop viewport",
