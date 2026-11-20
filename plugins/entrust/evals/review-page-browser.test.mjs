@@ -810,11 +810,13 @@ test("the page shows what is true of its storage: a refused save, a browser that
     await visit("refused", "#decisions/f1", () => { Storage.prototype.setItem = () => { throw new Error("refused"); }; }, true);
     await visit("blocked", "#decisions/f1", () => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } }); }, true);
     await visit("unreadable", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); }; }, true);
-    // JSON that is not this page's kind of object cannot be read either
+    // JSON that is not this page's kind of object cannot be read either, at any level the page reads, nor a stored null
     await visit("not an object", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "[1, 2]" : get.call(this, key); }; });
+    await visit("nested", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? '{"decisions":"owner note to recover"}' : get.call(this, key); }; });
+    await visit("null", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "null" : get.call(this, key); }; });
     const shown = (name, words) => out[name]?.visible && words.test(out[name].text);
     return !errors.length && !out.refused.visible && shown("refused then a save", /refused to save/) && shown("blocked", /keeps nothing for this page/)
-      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/) && shown("not an object", /could not be read/)
+      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/) && shown("not an object", /could not be read/) && shown("nested", /could not be read/) && shown("null", /could not be read/)
       || JSON.stringify({ out, errors });
   });
 

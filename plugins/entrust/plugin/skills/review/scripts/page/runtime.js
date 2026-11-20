@@ -132,12 +132,17 @@ const entryOf = (key) => state.answers[key] ?? {};
 // page meant, or would need code only to read it; never with the export's number, which concerns the export alone.
 const STORE = `review-report:6:${D.digest.key}`;
 let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
+// What the page stores, at every level it reads: an object of decisions (answers, line and paragraph comments), «Viewed»
+// and view choices. Anything else is not this page's to read, nor to write over.
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const ours = (raw) => isObject(raw) && [raw.decisions, raw.decisions?.answers, raw.ui].every((v) => v === undefined || isObject(v))
+  && [raw.decisions?.lines, raw.decisions?.paragraphs, raw.viewed].every((v) => v === undefined || Array.isArray(v));
 function load() {
-  let raw = null, text;
+  let raw, text;
   try { text = localStorage.getItem(STORE); } catch { storage = "blocked"; return; }
-  try { raw = JSON.parse(text ?? "null"); } catch { raw = undefined; }
-  if (raw === null) return;
-  if (typeof raw !== "object" || Array.isArray(raw)) { storage = "unreadable"; unreadable = text; return; }
+  if (text === null) return;
+  try { raw = JSON.parse(text); } catch { raw = undefined; }
+  if (!ours(raw)) { storage = "unreadable"; unreadable = text; return; }
   state = DR.settle(ITEMS, DR.normalize(raw.decisions));
   for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
   const ui = raw.ui ?? {};
