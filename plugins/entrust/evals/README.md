@@ -12,7 +12,9 @@ cases in a first-written and a clean form with hidden rubrics, the scripts that 
 reference that is its answer, the design context and brief), `prepare.mjs`, which renders the reference into a
 design pack and gives the implementer a directory without the answer, and `score.mjs`, which checks the result with
 the judge's own copy of the design; the run protocol is in
-[its research run](../research/2026-11-20-design-to-code/protocol.md). `design-to-code.test.mjs` checks the skill's
+[its research run](../research/2026-11-20-design-to-code/protocol.md). The `listing-card` case is a short controlled
+pair with its own frozen judge (visual frames, dense data, popup behaviour, the edit contract) and an arm maker:
+[its page](design-to-code/cases/listing-card/README.md). `design-to-code.test.mjs` checks the skill's
 `core.mjs` without a browser and plants defects in the offer card to see the check find them; its browser cases need
 Playwright with Chromium and are reported as skipped without it, as in CI.
 

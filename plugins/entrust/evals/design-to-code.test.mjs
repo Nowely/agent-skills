@@ -868,3 +868,12 @@ test("a full check is incomplete without review.md's acceptance list, a dense st
   assert.equal(r.result.round, 4);
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).review, false);
 });
+
+test("the listing case's judge accepts its reference", browser, () => {
+  const LISTING = path.join(HERE, "design-to-code/cases/listing-card"), dir = tmp();
+  const arm = path.join(dir, "arm");
+  assert.equal(spawnSync(process.execPath, [path.join(LISTING, "make-arm.mjs"), arm], { encoding: "utf8" }).status, 0);
+  for (const f of ["listing.js", "listing.css"]) fs.copyFileSync(path.join(LISTING, "reference", f), path.join(arm, f));
+  const r = spawnSync(process.execPath, [path.join(LISTING, "judge/judge.mjs"), arm, path.join(dir, "judge")], { encoding: "utf8" });
+  assert.match(r.stdout, /^ACCEPTED/, r.stdout + r.stderr);
+});

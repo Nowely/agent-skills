@@ -1,0 +1,32 @@
+/* Homely UI kit: tokens, type styles and components shared by every product page. */
+:root {
+  --c-page: #f3f4f6; --c-surface: #ffffff; --c-line: #e3e5e8;
+  --c-text: #1d2025; --c-muted: #717784;
+  --c-accent: #1f5fd1; --c-accent-soft: #e4edfc;
+  --c-success: #16804a; --c-warn: #8a5a00; --c-warn-soft: #fff3d6; --c-sale: #c2362b; --c-sale-soft: #fdecea;
+  --r-card: 12px; --r-badge: 6px; --r-button: 8px; --r-popover: 8px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --shadow-card: 0 0 0 1px var(--c-line); --shadow-popover: 0 4px 16px rgba(0, 0, 0, .16);
+}
+body { font-family: sans-serif; color: var(--c-text); }
+.t-caption { font-size: 12px; line-height: 16px; color: var(--c-muted); }
+.t-small { font-size: 13px; line-height: 18px; }
+.t-body { font-size: 14px; line-height: 20px; }
+.t-title { font-size: 17px; line-height: 22px; font-weight: 600; }
+.t-price { font-size: 20px; line-height: 26px; font-weight: 700; }
+.t-muted { color: var(--c-muted); }
+.kit-badge { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-badge);
+  font-size: 12px; line-height: 22px; white-space: nowrap; background: #eef0f3; color: var(--c-text); }
+.kit-badge--accent { background: var(--c-accent-soft); color: var(--c-accent); }
+.kit-badge--warn { background: var(--c-warn-soft); color: var(--c-warn); }
+.kit-badge--sale { background: var(--c-sale-soft); color: var(--c-sale); }
+button.kit-badge { border: 0; font-family: inherit; cursor: pointer; }
+.kit-button { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 12px;
+  border: 1px solid var(--c-line); border-radius: var(--r-button); background: var(--c-surface); color: var(--c-text);
+  font: 600 13px/30px sans-serif; white-space: nowrap; cursor: pointer; }
+.kit-help { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 16px; height: 16px;
+  padding: 0; border: 1px solid var(--c-muted); border-radius: 50%; background: none; color: var(--c-muted);
+  font: 600 11px/14px sans-serif; cursor: pointer; }
+.kit-popover { position: absolute; z-index: 10; box-sizing: border-box; width: max-content; max-width: 260px;
+  padding: 10px 12px; border-radius: var(--r-popover); background: var(--c-surface); box-shadow: var(--shadow-popover);
+  font-size: 13px; line-height: 18px; color: var(--c-text); }

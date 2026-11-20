@@ -1,0 +1,85 @@
+{
+ "frame": {
+  "name": "deal-popover",
+  "width": 204,
+  "height": 82
+ },
+ "source": "figma (extracted)",
+ "landmarks": [
+  {
+   "text": "Old price",
+   "box": {
+    "x": 12,
+    "y": 9.5,
+    "width": 52.03,
+    "height": 18
+   },
+   "font": {
+    "size": 13,
+    "weight": 400,
+    "lineHeight": 18,
+    "color": "#717784"
+   }
+  },
+  {
+   "text": "2 100 €",
+   "box": {
+    "x": 148.63,
+    "y": 9.5,
+    "width": 43.38,
+    "height": 18
+   },
+   "font": {
+    "size": 13,
+    "weight": 400,
+    "lineHeight": 18,
+    "color": "#1d2025"
+   }
+  },
+  {
+   "text": "New price",
+   "box": {
+    "x": 12,
+    "y": 31.5,
+    "width": 57.8,
+    "height": 18
+   },
+   "font": {
+    "size": 13,
+    "weight": 400,
+    "lineHeight": 18,
+    "color": "#717784"
+   }
+  },
+  {
+   "text": "1 850 €",
+   "box": {
+    "x": 148.63,
+    "y": 31.5,
+    "width": 43.38,
+    "height": 18
+   },
+   "font": {
+    "size": 13,
+    "weight": 700,
+    "lineHeight": 18,
+    "color": "#1d2025"
+   }
+  },
+  {
+   "text": "Discount until 31 Dec",
+   "box": {
+    "x": 12,
+    "y": 56,
+    "width": 113.39,
+    "height": 16
+   },
+   "font": {
+    "size": 12,
+    "weight": 400,
+    "lineHeight": 16,
+    "color": "#717784"
+   }
+  }
+ ]
+}
