@@ -278,14 +278,14 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
   const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b })));
   for (const { node, b } of lines) {
     const out = Math.max(rr.left - b.left, b.right - rr.right, b.bottom - rr.bottom, rr.top - b.top);
-    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: Math.round(out), actual: `${Math.round(out)} px outside the root` });
+    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: out, actual: `${Math.round(out)} px outside the root` });
   }
   for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
     const a = lines[i], b = lines[j];
     if (a.node === b.node) continue;
     const w = Math.min(a.b.right, b.b.right) - Math.max(a.b.left, b.b.left);
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
-    if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.round(Math.min(w, h)), actual: `${Math.round(w)} × ${Math.round(h)} px` });
+    if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
   // The spread of the group's edges as laid out, against the configured tolerance. A group that matches fewer than
   // two visible elements measures nothing at this width and says so.
@@ -294,8 +294,9 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
     const rects = [...root.querySelectorAll(g.selector)].filter(visible).map((el) => el.getBoundingClientRect());
     const edgeOf = (r) => (g.edge === "right" ? r.right : g.edge === "center" ? (r.left + r.right) / 2 : g.edge === "top" ? r.top : r.left);
     if (rects.length < 2) { unmeasured.push({ selector: g.selector, edge: g.edge ?? "left", matched: rects.length }); continue; }
+    // The size a ledger's max is held to is the measured one; only the text a person reads is rounded.
     const values = rects.map(edgeOf), spread = Math.max(...values) - Math.min(...values), shown = Math.round(spread * 100) / 100;
-    if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: shown, actual: `${g.edge ?? "left"} edges ${shown} px apart` });
+    if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: spread, actual: `${g.edge ?? "left"} edges ${shown} px apart` });
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
   // wraps keeps its first line's place, so wrapping inside one layout does not count.
@@ -481,7 +482,7 @@ async function sweep(browser, cfg, ledger) {
     const back = await probe(order[0]);
     const first = probes[0];
     if (Math.abs(back.root.width - first.root.width) > 1 || Math.abs(back.root.height - first.root.height) > 1) {
-      back.issues.push({ landmark: "root", property: "resize", delta: Math.round(Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height))), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
+      back.issues.push({ landmark: "root", property: "resize", delta: Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height)), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
     }
     const changes = switches(probes, s.switches ?? [], step);
     const issues = sweepIssues([...probes, back], ledger, changes.issues);

@@ -10,18 +10,6 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
-## E143. A rounded alignment spread can cross the ledger's maximum
-
-**Evidence, level 3.** On `188f57b`, `design-to-code/scripts/design.mjs:297-298` compares the unrounded alignment
-spread with the tolerance but puts the spread rounded to 0.01 px in `delta`. `design-to-code/scripts/core.mjs:299-305`
-compares the ledger's `max` with that rounded `delta`. In Chromium, an actual spread of approximately 1.004 px at
-`tolerance: 1` was accepted by `max: 1` after rounding to 1; a spread of 1.015625 was rejected by `max: 1.019` after
-rounding to 1.02. The difference is near the limit; it did not affect the follow-up calibration, which had an empty
-ledger. [Calibration record](research/2026-11-20-design-to-code/05-calibration-followup.md#bounded-exceptions).
-
-**Issue text.** Compare an alignment exception's bound to the measured spread, not the display-rounded value; retain
-rounding for display. Verify both acceptance and rejection on either side of the bound.
-
 ## E142. macOS CI review-eval failed with a missing temporary Git objects directory
 
 **Evidence, level 3 (one observed CI failure).** On commit `fa7856b4759463f5bedaf23da2d5faf42777cdcc`, the

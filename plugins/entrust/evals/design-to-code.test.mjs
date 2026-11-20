@@ -498,9 +498,20 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const v = [{ selector: ".v", edge: "left" }];
   const fraction = run(11.015625, v);
   assert.equal(fraction.status, 1, "1.015625 px is more than a tolerance of 1");
-  assert.deepEqual(fraction.result.sweep.issues.map((i) => [i.property, i.delta]), [["align", 1.02]]);
+  assert.deepEqual(fraction.result.sweep.issues.map((i) => [i.property, i.delta, i.actual]), [["align", 1.015625, "left edges 1.02 px apart"]]);
   assert.equal(run(11.015625, v, { tolerance: 1.5 }).status, 0);
   assert.equal(run(12, v, { tolerance: 1.5 }).status, 1);
+  // E143: an entry's max is held to the measured spread on both sides of the bound, not to the rounded one.
+  const bounded = (second, max) => {
+    fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: ".v", property: "align", max, category: "platform", status: "accepted", reason: "subpixel" }]));
+    fs.writeFileSync(path.join(dir, "page.html"), page(10).replace('left:10px;top:30px"', `left:10px;top:30px;transform:translateX(${second - 10}px)"`));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v } }));
+    const r = check(dir);
+    fs.rmSync(path.join(dir, "deviations.json"));
+    return r.result.sweep.issues.find((i) => i.property === "align");
+  };
+  assert.equal(bounded(11.004, 1).status, "fail", "1.004 px is more than a max of 1, though it rounds to 1");
+  assert.equal(bounded(11.015625, 1.019).status, "accepted", "1.015625 px is within a max of 1.019, though it rounds to 1.02");
   const one = run(12, [{ selector: ".w", edge: "left" }]);
   assert.equal(one.status, 2, one.stdout);
   assert.match(one.stdout, /not measured: \.w matched 1 at every width/);
