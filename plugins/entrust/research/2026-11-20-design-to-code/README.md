@@ -122,3 +122,7 @@ round 8's verifier found. Two Sonnet pairs on the new public
 - the case's popup and dense traps did not separate the arms.
 
 It ends with what to carry into the Terra runs.
+
+## Draft 14: first submissions on the small case and the real card
+
+A single Terra worker used draft 14 on each case, without a new no-skill baseline. The small case met its registered threshold only after diagnosing a faulty judge selector; the real first submission did not meet visual or packaged-consumer acceptance. [The detailed record](11-terra-v14-retest.md) separates observations, checker and judge defects, time and token costs, and proposals; its [visual report](11-first-submission-visual.html) pairs each shown state with its reference and labels different data. No skill changes were made in this research round.

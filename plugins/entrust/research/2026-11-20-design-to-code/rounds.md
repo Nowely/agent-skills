@@ -527,3 +527,9 @@ On a copy of the third pilot's arm, the new check reports the two acceptance row
 popups covered by journeys.
 
 `node --test evals/design-to-code.test.mjs`: 72 passed. The page is frozen as [drafts/14-v14.md](drafts/14-v14.md).
+
+## Draft 14: Terra first-submission retest (observation only)
+
+One small listing case and one real responsive-library case ran with `52fb5dae`. The small case met its pre-registered 4 px materiality rule after a separately documented judge-selector correction, while the worker itself reported pending deviations. The real first submission failed its visual check and a separately built package could not load in the consumer because referenced image files were absent. No no-skill arm was rerun; neither observation estimates the skill’s causal effect. [Detailed findings, cost, visual evidence and proposed next steps](11-terra-v14-retest.md).
+
+No skill or checker edit was made in this observation, so it introduced no implementation regression; checker and judge flaws discovered in review are recorded in the linked report, not counted as new fixes.
