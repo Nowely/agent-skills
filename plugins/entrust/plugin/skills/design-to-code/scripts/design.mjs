@@ -3,7 +3,7 @@
 //
 //   node design.mjs figma <figma link with node-id> --out <frame directory> [--scale 2]
 //   node design.mjs spec <metadata.xml> [--context <design-context>] [--frame <id|name>] [--coords auto|relative|absolute] [--out spec.json]
-//   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--before] [--out <dir>]
+//   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--out <dir>]
 //   node design.mjs snapshot <design.json> [--frame <name>] [--images] [--scale <n>] [--force]
 //
 // `figma` fetches one frame from Figma's REST API (FIGMA_TOKEN): its spec, every text with its characters, box,
@@ -105,7 +105,7 @@ async function runStep(page, step) {
   if (action === "wait") return page.waitForTimeout(Number(arg));
   if (action === "press") return page.keyboard.press(arg);
   if (action === "fill") return page.locator(arg[0]).first().fill(arg[1]);
-  if (!["click", "hover", "focus", "tap"].includes(action)) throw new Error(`unknown setup step ${JSON.stringify(step)}`);
+  if (!["click", "hover", "focus"].includes(action)) throw new Error(`unknown setup step ${JSON.stringify(step)}`);
   return page.locator(arg).first()[action]();
 }
 
@@ -240,16 +240,19 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
       const lines = lineBoxes(hit.range, hit.el);
       return { found: true, box: boxOf(lines), lines: lines.length, align: alignOf(hit.el), font: fontOf(hit.el) };
     });
-    // A family the page asks for but the browser does not have renders in a fallback, and then no text can match.
+    // A family the page asks for that does not draw the page's own characters renders them in a fallback: a font
+    // that failed to load, a missing subset. Each text is tried in the first family its stack names; a family that
+    // draws them, an icon font included, differs in width from every generic one.
     const ctx = document.createElement("canvas").getContext("2d");
-    const width = (font) => { ctx.font = font; return ctx.measureText("mmmmmmmmmmlli1WQ@#ЖЯ").width; };
-    const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[\w-]+|-apple-system|emoji|math|fangsong|inherit|initial)$/i;
-    // A stack falls back only when none of its named families is there; the first one names it.
-    const available = (f) => ["monospace", "serif", "sans-serif"].some((g) => width(`72px "${f}", ${g}`) !== width(`72px ${g}`));
-    const stacks = new Set(textNodes().map((n) => getComputedStyle(n.parentElement).fontFamily));
-    const missing = [...new Set([...stacks].map((stack) => stack.split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).filter((f) => f && !generic.test(f)))
-      .filter((named) => named.length && !named.some(available)).map((named) => named[0]))];
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: missing, textBoxes: textBoxes() };
+    const width = (font, sample) => { ctx.font = font; return ctx.measureText(sample).width; };
+    const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[\w-]+|-apple-system|BlinkMacSystemFont|emoji|math|fangsong|inherit|initial)$/i;
+    const missing = new Set();
+    for (const n of textNodes()) {
+      const first = getComputedStyle(n.parentElement).fontFamily.split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).find((f) => f && !generic.test(f));
+      const sample = n.data.trim().slice(0, 40);
+      if (first && !missing.has(first) && ["monospace", "serif", "sans-serif"].every((g) => width(`72px "${first}", ${g}`, sample) === width(`72px ${g}`, sample))) missing.add(first);
+    }
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textBoxes() };
   }
 
   if (command === "snapshot") {
@@ -383,15 +386,13 @@ async function pixelDiff(page, reference, actual, { scale, ignore, shifts = [] }
     }
     regions.sort((r, s) => s.area - r.area);
     dx.putImageData(diff, 0, 0);
-    const [oc, ox] = canvas(W, H);
-    ox.drawImage(a, 0, 0); ox.globalAlpha = 0.5; ox.drawImage(b, 0, 0);
     const gap = 12, [sc, sx] = canvas(W * 3 + gap * 2, H);
     sx.drawImage(a, 0, 0); sx.drawImage(b, W + gap, 0); sx.drawImage(dc, (W + gap) * 2, 0);
     return {
       ratio: changed / (W * H), sizeMatch: a.width === b.width && a.height === b.height,
       reference: `${a.width}×${a.height}`, actual: `${b.width}×${b.height}`,
       regions: [...regions.filter((r) => !r.movedWith).slice(0, 10), ...regions.filter((r) => r.movedWith)],
-      png: { side: sc.toDataURL(), overlay: oc.toDataURL(), diff: dc.toDataURL() },
+      png: { side: sc.toDataURL(), diff: dc.toDataURL() },
     };
   }, [`data:image/png;base64,${reference.toString("base64")}`, `data:image/png;base64,${actual.toString("base64")}`, scale, ignore, shifts]);
 }
@@ -430,9 +431,9 @@ async function measureFrames(browser, cfg, frames, ledger, out, flags) {
       const dir = path.join(out, slug(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
-      // The page as the work found it: kept from the first check, or replaced on --before.
+      // The page as the work found it: kept from the first check; delete out/before to take it again.
       const before = path.join(out, "before", `${slug(frame.name)}.png`);
-      if (!fs.existsSync(before) || flags.before) { fs.mkdirSync(path.dirname(before), { recursive: true }); fs.writeFileSync(before, shot); }
+      if (!fs.existsSync(before)) { fs.mkdirSync(path.dirname(before), { recursive: true }); fs.writeFileSync(before, shot); }
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
       const imageOnly = isImageOnly(spec);
@@ -471,10 +472,10 @@ async function sweep(browser, cfg, ledger) {
   widths.add(from);
   const order = [...widths].sort((a, b) => b - a);
   // One mounted page for every width, narrowing from the widest, as a user resizes it: state set up once must survive.
-  const { context, page } = await open(browser, cfg, { url: s.url ? new URL(s.url, pathToFileURL(cfg.dir + path.sep)).href : cfg.url, width: order[0], setup: s.setup, height: s.height ?? 900 });
+  const { context, page } = await open(browser, cfg, { url: cfg.url, width: order[0], setup: s.setup });
   try {
     const probe = async (width) => {
-      await setWidth(page, cfg, width, s.height ?? 900);
+      await setWidth(page, cfg, width, 900);
       const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
       if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
       return { width, ...r };
@@ -531,10 +532,9 @@ async function check(file, flags) {
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured ?? [];
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
-    const fontless = results.some((r) => r.fontsMissing.length);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
     const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0;
-    const status = fontless ? "incomplete" : failed ? "fail"
+    const status = failed ? "fail"
       : missingReferences.length || unmeasured.length || imageOnlyFrames.length ? "incomplete" : pending ? "pending" : passed ? "pass" : "fail";
     const pass = status === "pass";
     const score = Math.round((results.reduce((s, r) => s + r.score, 0) + (sweepResult?.score ?? 0)) * 100) / 100;

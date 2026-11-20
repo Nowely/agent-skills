@@ -259,6 +259,12 @@ test("an entry bounded by max covers only differences that have a size", () => {
   assert.equal(sweepIssues(probes, [{ ...ledger[0], max: undefined }])[0].status, "accepted");
 });
 
+test("a frame's size is held to the ledger's max as measured, not as rounded for display", () => {
+  const entry = (max) => [{ landmark: "root", property: "width", max, category: "platform", status: "accepted", reason: "subpixel" }];
+  assert.equal(compare({}, { width: 301.004 }, entry(1)).issues.find((i) => i.property === "width").status, "fail");
+  assert.equal(compare({}, { width: 301.015625 }, entry(1.019)).issues.find((i) => i.property === "width").status, "accepted");
+});
+
 test("a proposal still counts in the score: relabelling a failure is no progress", () => {
   const failing = compare({}, { height: 217 });
   const proposed = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
@@ -341,6 +347,12 @@ test("a changed spacing fails and is traced to the pair it separates, in every f
   assert.match(fs.readFileSync(path.join(r.dir, "out/report.md"), "utf8"), /Start here: between “SKU AUR-14P-512” and “New” vertically \+6 px/);
 });
 
+test("when a neighbour grows, start here names its width, not the texts it pushes along", browser, () => {
+  const r = check(variant(".badge.new { letter-spacing: 3px; }"), "--frame", "720");
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /start here: the width of “New” changes by \+\d+(\.\d+)? px/);
+});
+
 test("a smaller font is found even where its line height keeps every position", browser, () => {
   const r = check(variant(".price { font-size: 20px; }"), "--frame", "720");
   assert.equal(r.status, 1);
@@ -409,18 +421,14 @@ test("an image-only reference requires visual text review, including when it mat
   assert.ok(media.result.frames[0].issues.some((i) => i.property === "region" && i.status === "fail"));
 });
 
-test("a design font the browser lacks makes the check incomplete until it loads", browser, () => {
-  const dir = variant(".price { font-family: 'Design Font Nobody Has', sans-serif; font-size: 20px; }");
-  const r = check(dir, "--frame", "720");
-  assert.equal(r.status, 2, r.stdout);
-  const frame = r.result.frames[0];
-  assert.deepEqual(frame.fontsMissing, ["Design Font Nobody Has"]);
-  assert.equal(frame.verdict, "incomplete");
-  assert.equal(r.result.status, "incomplete", "a smaller fallback price would otherwise read as a failure");
-  assert.match(r.stdout, /incomplete — fonts not available: Design Font Nobody Has\. Load them and check again/);
-  // A stack whose first family is absent but another named one renders is no fallback.
-  const fallback = check(variant(".price { font-family: 'Design Font Nobody Has', 'DejaVu Sans', sans-serif; }"), "--frame", "720");
-  assert.deepEqual(fallback.result.frames[0].fontsMissing.includes("Design Font Nobody Has"), !hasFont("DejaVu Sans"));
+test("a font the page names first but cannot draw its text with is reported, and findings stay visible", browser, () => {
+  const r = check(variant(".price { font-family: 'Design Font Nobody Has', 'DejaVu Sans', sans-serif; font-size: 20px; }"), "--frame", "720");
+  assert.equal(r.status, 1, r.stdout);
+  assert.deepEqual(r.result.frames[0].fontsMissing, ["Design Font Nobody Has"]);
+  assert.match(r.stdout, /fonts not available: Design Font Nobody Has; their texts render in a fallback/);
+  assert.match(r.stdout, /1 499 € font: size 22 → size 20/);
+  const installed = hasFont("DejaVu Sans") ? check(variant(".price { font-family: 'DejaVu Sans', sans-serif; }"), "--frame", "720") : null;
+  if (installed) assert.deepEqual(installed.result.frames[0].fontsMissing, []);
 });
 
 test("a page snapshot matches repeated text in document order", browser, () => {
