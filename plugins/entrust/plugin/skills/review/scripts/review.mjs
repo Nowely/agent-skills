@@ -251,7 +251,7 @@ export function check(review, files, directory) {
       else claims(w, v.consequences, "consequence", self);
     }
     // Variants that combine are marked so; the owner may then take several, and the recommendation may name several.
-    if (q.multiple !== undefined && (q.multiple !== true || q.kind !== "decision")) errors.push(`${who}: multiple is true on a decision whose variants combine, or left out`);
+    if (q.multiple !== undefined && (q.multiple !== true || q.kind !== "decision")) errors.push(`${who}: multiple is only for a decision whose variants combine, and only true`);
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;
       if (!text(q.recommendation?.text)) errors.push(`${w} has no text`);
@@ -259,6 +259,7 @@ export function check(review, files, directory) {
       const several = q.recommendation?.variants;
       if (several !== undefined) {
         if (q.multiple !== true) errors.push(`${w}: variants is for a decision whose variants combine; name one in "variant"`);
+        else if (q.recommendation.variant !== undefined) errors.push(`${w} names one in "variant" and several in "variants": keep one of them`);
         else if (!Array.isArray(several) || !several.length) errors.push(`${w}: variants lists the variant ids it recommends`);
         else for (const id of several) if (!variantIds.has(id)) errors.push(`${w} names variant "${id}", which is not listed`);
       }

@@ -209,23 +209,23 @@ obtain). The required `kind` comes from what the question asks, never from its n
   than two variants or a variant without consequences.
 - `multiple: true`: the variants combine, and the owner may take one or several; without it they exclude each other.
   Set it when one answer could not say the combination the owner may want, which they would otherwise write in their
-  own words, unmatched to the variants. A conditional question then applies while any chosen variant is listed.
+  own words, unmatched to the variants.
 - `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends (or, where the
   variants combine, the `variants` it recommends together), and `sources`.
   Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
-  recommendation» and gives the conditional rule, and no `variant` is named.
+  recommendation» and gives the conditional rule, and no `variant` or `variants` is named.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
 - `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
-  effect (it is open, answered in the owner's words or deferred), and while the parent's variant is one of those
-  listed. Children are derived from `parent`; the parent stores none. A variant outside the list makes the child not
+  effect (it is open, answered in the owner's words or deferred), and while a variant the parent's answer takes is
+  one of those listed. Children are derived from `parent`; the parent stores none. An answer taking none of them makes the child not
   applicable; its answer becomes a draft and does not return silently when the parent changes again.
 - `zones`: for evidence that may be closed in part, the zones to check, each with `sources`. A user's check mark
   on a zone is not evidence; closing it takes a revised record.
 
 Numbering stays positional from 1 (`blocks.questions`, `units.questions`, the check). Decisions have three layers:
 the review's verdicts in the record, the owner's answers on the page (kept in the browser and exported), and
-evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant or the owner's
+evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant — or several, where they combine — or the owner's
 own words, a finding «Fix it», «Leave it» or own words, an idea «Take it», «Skip it» or own words, a fact or evidence
 request the owner's answer; choosing one clears the other. Deferring needs a reason and keeps the answer it replaces
 as a draft, not in effect. An answered fact or evidence request reads «Answered», never «decided» or «verified»: it
@@ -267,7 +267,7 @@ record does not hold is left out, and the response says so. A short review appli
   The record covers the whole diff, as any record does, and the page needs nothing new.
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
   by its words — a question by its text, a finding or idea by its title — since its key names another item here:
-  - an answer in effect that asks for something — a variant, «Fix it», «Take it» — is a requirement with
+  - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with
     `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
     and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
     decision;
