@@ -280,3 +280,73 @@ a memory search (memory off and a clean agent home suffice; otherwise the run is
 prober at handoff is held back as the next lever if a run with this edition still returns.
 
 The page is frozen as [drafts/09-v9.md](drafts/09-v9.md). `node --test evals/design-to-code.test.mjs`: 50 passed.
+
+### Round 8's critic and verifier
+
+A fresh Fable critic read the page as an implementer would. Its findings:
+
+- **"Done means checked" was prose that nothing enforced:**
+  - an empty `sweep.stories` passed;
+  - the acceptance list's "by eye in the gallery" let a reference skip its frame, with no picture in the gallery;
+  - popup behaviour had no way to be shown rather than claimed.
+- **`covered` gave false positives on common patterns:**
+  - a hidden native checkbox in its label;
+  - a floating label over its input;
+  - an `aria-disabled` control;
+  - a tab scrolled out of its strip.
+
+  It missed partial covers and anything below 900 px.
+- **The page said several things twice,** and two of them contradicted each other: asking before committing the
+  pack against committing at each new lowest.
+
+A verifier reran each claim against a frozen copy of 1608fcf. What held:
+
+- fade-in;
+- the stall count;
+- the grouped page text;
+- the ledger's text rule.
+
+It also showed that every new test fails when its fix is undone. What held only in part, and other defects:
+
+- **Deliberate truncation:** an ellipsis still produced sweep overlaps and "outside" findings, and an "ellipsis"
+  that draws none excused a hard cut.
+- **Stories:** a story with an absent root threw the main sweep away; a story's setup failure crashed the check.
+- **Hidden roots:** a root present but hidden made a 30 s timeout and a crash.
+- **`basis`** ignored the tolerance and the frames' settings.
+- **Scripted animations** were not finished.
+- **The pointer** rested at the top-left corner, hovering whatever was there.
+- **`check.md`** still described the removed migration.
+
+The suspected flaky test passed 10 of 10 alone and 16 of 16 in parallel. Its one failure most likely overlapped an
+edit of the working tree.
+
+## Round 9: evidence the check can give
+
+- **Journeys** in `design.json` run steps and expect what follows (`visible`, `hidden`, `text`), by pointer, touch or
+  keyboard. A popup that stays open is now a failing line in the report.
+- **A check of every frame is incomplete** without `review.md`'s acceptance list, a frame for every
+  `frames/<name>/reference.png`, or a dense story. Its "pass" is therefore evidence of the measured part of the
+  list.
+- **`covered`** tries five points with the window scrolled to the control. It no longer counts the control's own
+  label, a disabled control, or a point a clipping box cuts away.
+- **The page:** the "by eye" escape is gone; popups are journeys; the summary-first rule, the stop rule, the dense
+  story and image-only guidance are each stated once; committing the product's code is told apart from the pack.
+- **Also:** a story's file path keeps its query (`story.html?data=dense` had been encoded into the file name).
+- **The [listing-card case](../../evals/design-to-code/cases/listing-card/README.md)** was added for short pairs.
+
+## Round 10: the verifier's findings
+
+- **Truncation:** drawn truncation is an ellipsis on one unwrapped line of a block, or a line clamp on a vertical
+  `-webkit-box` (Chromium reports it as `flow-root`). Overlaps and "outside" are measured on what is painted inside
+  every clipping box, which also settles visually hidden text and horizontal scrollers.
+- **`covered`:** a wrapped inline link is tried on its first line. A transparent native control laid over a button
+  (a file input) and a control in a disabled fieldset do not count.
+- **The root:** the first visible match is measured; a root present but hidden leaves the frame incomplete instead
+  of timing out.
+- **Stories:** a story that cannot be swept is an acceptance gap; the rest of the sweep is kept.
+- **Scores:** `basis` covers the tolerance, the page, each frame's settings, spec and image, and the sweep.
+- **The page in the browser:** scripted animations are finished, and the pointer rests in the far corner.
+
+`node --test evals/design-to-code.test.mjs`: 59 passed. The pilots on the new case are in
+[10-sonnet-pilots.md](10-sonnet-pilots.md). The page is frozen as [drafts/10-v10.md](drafts/10-v10.md); round 10
+changed the script and check.md, not the page.

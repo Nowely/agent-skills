@@ -24,6 +24,14 @@ forensics remain in the repository references and release notes.
   the frame incomplete. Content that fades in is captured as it ends, and a text cut with an ellipsis is
   deliberate truncation, not a finding.
 
+- The check's pass carries evidence: journeys in `design.json` run steps that expect what follows (visible, hidden,
+  a text) by pointer, touch or keyboard, and a check of every frame is incomplete without `review.md`'s acceptance
+  list, a frame for every reference in the pack, or a dense story. The first visible root is measured, a story that
+  cannot be swept is a gap rather than a crash, drawn truncation and clipped text are measured as painted, covered
+  controls leave labels, disabled controls and transparent native overlays alone, and scores are compared only
+  against the same tolerance, frames and images. A story's file path keeps its query. The `listing-card` eval case
+  runs a short controlled pair with a frozen judge.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report

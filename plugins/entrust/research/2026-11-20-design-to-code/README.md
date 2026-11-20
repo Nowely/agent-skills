@@ -108,3 +108,17 @@ before the first edit and run before handoff (every reference, a dense story, ev
 past returns), sweeps dense stories, reports controls another element covers, gives a popover frame its own root,
 keeps scores comparable only within the same specs, and fixes two regressions of b8eb852. Frozen as
 [drafts/09-v9.md](drafts/09-v9.md).
+
+## Rounds 9 and 10, and the first pilots
+
+The check's "pass" now carries evidence: popups are journeys with expected results, and a check of every frame is
+incomplete without the acceptance list, a frame for every reference and a dense story. Round 10 corrected what
+round 8's verifier found. Two Sonnet pairs on the new public
+[listing case](../../evals/design-to-code/cases/listing-card/README.md) are in
+[10-sonnet-pilots.md](10-sonnet-pilots.md):
+
+- both skill arms were accepted on the first submission;
+- one plain arm was accepted and one was returned for column offsets;
+- the case's popup and dense traps did not separate the arms.
+
+It ends with what to carry into the Terra runs.
