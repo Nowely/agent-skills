@@ -46,6 +46,8 @@ forensics remain in the repository references and release notes.
 - The page's storage key carries the number of what the page stores, apart from the export's (0.43.0 tied them): a
   page still reads the answers a 0.43.0 page kept after the export moved to schema 7, and a test seeded with such a
   value says when a change to what the page stores needs a new number.
+- The review skill offers multi mode for a diff with several risky areas, not for its size: the coordinator still reads
+  the whole diff, so multi mode does not raise what one review can hold (E145).
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
