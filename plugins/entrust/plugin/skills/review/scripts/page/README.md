@@ -31,9 +31,10 @@ drives it in Chromium, locally only.
   ones — and the report's details, with the two print profiles.
 - **Answering.** By click or key, in Decisions or in the code's margin, one answer per item as the data contract's
   decision cards say; a key answers only the item in view, and Undo takes its answer back. «Decided N of M» counts
-  every applicable item: an item its parent makes not applicable leaves M, a decided item and an answered request
-  count in N, the answered ones also apart («N of them answered, not verified»), and a deferred item is not decided;
-  `decisions.mjs` owns that count and what the Done sub-tab lists. The answers, comments,
+  the applicable choices — decisions, findings and ideas: an item its parent makes not applicable leaves M, and a
+  deferred item is not decided. An answer to a fact or evidence request is the owner's input, never a decision, so the
+  requests are counted apart («requests answered N of M, not verified»); the Done sub-tab lists the decided choices
+  and the answered requests. `decisions.mjs` owns these counts and what Done lists. The answers, comments,
   «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; the page says when the browser
   keeps nothing for it, cannot read what it kept, or refuses a save. What it kept and cannot read is never written
   over unasked: the first save that would replace it opens it, as it is, to copy, and only «Save this page's answers

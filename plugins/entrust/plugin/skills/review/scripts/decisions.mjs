@@ -108,16 +108,18 @@ export function decisionRuntime() {
   // What counts as done, wherever the page counts or lists done items: a decided item, and an answered request, which
   // keeps its own state, since it is the owner's input, not a verified result.
   const DONE = ["decided", "answered"];
-  // «Decided N of M»: every applicable item; an answered request counts, and is counted apart as well; a deferred item
-  // does not count.
+  // Progress over every applicable item: done as above, open, deferred. Within it the choices — decisions, findings
+  // and ideas — and the requests are counted apart, since an answered request is the owner's input, never a decision:
+  // «Decided N of M» is decided of choices, and the requests read answered of requests, not verified.
   const progress = (items, state) => {
-    const byKey = byKeyOf(items), counts = { total: 0, done: 0, answered: 0, open: 0, deferred: 0 };
+    const byKey = byKeyOf(items), counts = { total: 0, done: 0, open: 0, deferred: 0, choices: 0, decided: 0, requests: 0, answered: 0 };
     for (const i of items) {
       const s = statusIn(i, state, byKey).state;
       if (s === "not-applicable") continue;
       counts.total++;
       if (DONE.includes(s)) counts.done++; else if (s === "open") counts.open++; else counts.deferred++;
-      if (s === "answered") counts.answered++;
+      if (REQUESTS.includes(i.kind)) { counts.requests++; if (s === "answered") counts.answered++; }
+      else { counts.choices++; if (s === "decided") counts.decided++; }
     }
     return counts;
   };
@@ -167,7 +169,7 @@ export function decisionRuntime() {
       ? (item.kind === "decision" ? { variant: { id: a.choice, text: item.variants[a.choice] } } : { option: a.choice }) : has(a.text) ? { text: a.text } : {};
     return {
       schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
-      progress: (({ answered, ...counts }) => counts)(progress(items, state)),
+      progress: (({ total, done, open, deferred }) => ({ total, done, open, deferred }))(progress(items, state)),
       items: items.map((item) => {
         const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = waitingIn(item, state, byKey);
         const zones = Object.keys(entry.zones ?? {}).map(Number).sort((a, b) => a - b);

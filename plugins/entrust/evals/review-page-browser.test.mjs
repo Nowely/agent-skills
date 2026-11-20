@@ -268,14 +268,15 @@ test("Undo says so when the answer it would take back has changed since, and the
     } finally { await o.close(); }
   });
 
-test("Done lists what progress counts as done: an answered evidence request is there, tagged «Answered»",
+test("Done lists what progress counts: the decided choices and the answered requests, an answered evidence request tagged «Answered»",
   "the Done sub-tab left out answered evidence while progress counted it, two rules for one fact",
   cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
     await page.keyboard.press("o"); await page.keyboard.type("seen on a phone"); await page.keyboard.press("Control+Enter"); await settle(page);
     await page.click('[data-sub="done"]'); await settle(page);
     const cards = await page.locator("#dec-list .card").evaluateAll((els) => els.map((el) => el.dataset.card));
     const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await text(page, "#progress");
-    return cards.includes("q1") && tag === "Answered" && new RegExp(`Decided ${cards.length} of 8`).test(progress) || JSON.stringify({ cards, tag, progress });
+    const counted = /Decided (\d+) of/.exec(progress), answered = /requests answered (\d+) of/.exec(progress);
+    return cards.includes("q1") && tag === "Answered" && counted && answered && cards.length === +counted[1] + +answered[1] || JSON.stringify({ cards, tag, progress });
   }));
 
 // ---- the external review of PR #106: thirteen defects the prototype had, each a case that fails on it
@@ -286,7 +287,7 @@ test("review 1: Undo takes back the one keyed answer, and a later answer to anot
     await page.locator('#card-i1 input[data-opt="take"]').check(); await settle(page);
     await page.keyboard.press("u"); await settle(page);
     const f1 = await statusOf(page, "f1"), i1 = await statusOf(page, "i1"), progress = await text(page, "#progress");
-    return f1 === "Open" && i1 === "Decided" && /Decided 1 of 8/.test(progress) || `after Undo: F1 ${f1}, I1 ${i1}, ${progress}`;
+    return f1 === "Open" && i1 === "Decided" && /Decided 1 of 5/.test(progress) || `after Undo: F1 ${f1}, I1 ${i1}, ${progress}`;
   }));
 
 test("review 2: no report key acts while a dialog is open",
@@ -375,7 +376,7 @@ test("review 9: an entered answer stays «Answered», unverified, in its compact
     const tag = await statusOf(page, "q2"), compact = await text(page, '#card-q2 [data-compact-answer="q2"]'), progress = await text(page, "#progress");
     await page.locator('#card-q4 input[data-opt="narrow"]').check(); await settle(page);
     const waiting = await text(page, '#card-q4 [data-waiting="q4"]');
-    return tag === "Answered" && /not verified/.test(compact) && /answered, not verified/.test(progress) && /Depends on Q3, still open/.test(waiting)
+    return tag === "Answered" && /not verified/.test(compact) && /requests answered 1 of 3, not verified/.test(progress) && /Depends on Q3, still open/.test(waiting)
       || `tag ${tag}; compact «${compact}»; progress «${progress}»; waiting «${waiting}»`;
   }));
 
@@ -474,6 +475,17 @@ test("review 13: Back returns from a cross-entity jump, and j steps leave no his
   }));
 
 // ---- the feedback on PR #108: each a case that fails on 0.43.0
+test("feedback 3: an answer to an evidence request is not a decision: «Decided» counts the choices, and the requests are counted apart, unverified, wherever progress is said",
+  "«not checked yet» typed as an evidence answer was counted in «Decided»",
+  cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
+    await page.keyboard.press("o"); await page.keyboard.type("not checked yet"); await page.keyboard.press("Control+Enter"); await settle(page);
+    // the themed record's choices: Q3, Q4 (while Q3 is open), F1, F2 and I1; its requests: Q1, Q2 and Q5
+    const said = { bar: await text(page, "#progress"), export: (await exported(page)).split("\n").find((l) => /Decided/.test(l)) ?? "" };
+    await page.keyboard.press("g"); await page.keyboard.press("s"); await settle(page); said.summary = await text(page, "#sum-progress");
+    const wrong = Object.entries(said).filter(([where, t]) => !(where === "summary" ? /^0 of 5 decided/.test(t) : /Decided 0 of 5/.test(t)) || !/requests answered 1 of 3, not verified/.test(t));
+    return !wrong.length || JSON.stringify(said);
+  }));
+
 test("feedback 4: Esc closes the purpose menu and says so to assistive technology, as a click outside it does",
   "Esc hid the menu and left aria-expanded true",
   cased(THEMED_URL + "#code", {}, async (page) => {

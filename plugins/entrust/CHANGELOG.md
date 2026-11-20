@@ -18,6 +18,10 @@ forensics remain in the repository references and release notes.
 - Saved answers the page cannot read are no longer replaced by the next answer. The first save that would replace
   them opens them as they are, to copy, and only «Save this page's answers over it» replaces them; until then the
   answers live in the page's memory, as when the browser keeps nothing, and leaving asks first.
+- «Decided N of M» counts the choices — decisions, findings and ideas. An answer to a fact or evidence request is
+  the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
+  counted apart, «requests answered N of M, not verified», in the bar, the summary, the export's text and the print.
+  Done still lists both, and the export's JSON progress is unchanged.
 
 ## 0.43.0 — 2026-11-20
 

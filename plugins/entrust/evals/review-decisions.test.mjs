@@ -102,15 +102,17 @@ test("an answer to a fact or evidence request is answered, never decided, and a 
   assert.deepEqual(D.markZone(ITEMS, D.markZone(ITEMS, D.empty(), "q5", "0", true), "q5", "0", false).answers, {});
 });
 
-test("progress counts every applicable item: decided and answered are done, deferred is not, not applicable leaves the total", () => {
-  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, answered: 0, open: 7, deferred: 0 });
+test("progress counts every applicable item: decided and answered are done, deferred is not, not applicable leaves the total; choices and requests apart", () => {
+  // The choices are Q1–Q3, F1 and I1; the requests are the fact Q4 and the evidence Q5.
+  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, open: 7, deferred: 0, choices: 5, decided: 0, requests: 2, answered: 0 });
   let s = D.choose(ITEMS, D.empty(), "q1", "revert");
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, answered: 0, open: 4, deferred: 0 });
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, open: 4, deferred: 0, choices: 3, decided: 1, requests: 2, answered: 0 });
   s = D.write(ITEMS, s, "q4", "yes");
   s = D.defer(ITEMS, D.choose(ITEMS, s, "i1", "take"), "i1", "next quarter");
   s = D.choose(ITEMS, s, "fF1", "leave");
-  // The answered request counts as done, and apart, since it is no verified result; done is one rule for counting and listing.
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, answered: 1, open: 1, deferred: 1 });
+  // The answered request is done but never decided: it counts among the requests, since it is no verified result; done
+  // is one rule for counting and listing.
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, open: 1, deferred: 1, choices: 3, decided: 2, requests: 2, answered: 1 });
   assert.deepEqual(ITEMS.filter((i) => D.done(ITEMS, s, i.key)).map((i) => i.key), ["q1", "q4", "fF1"]);
 });
 

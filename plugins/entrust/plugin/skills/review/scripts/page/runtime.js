@@ -209,6 +209,9 @@ const VERDICT_CLS = { keep: "neutral", fix: "warn", remove: "bad", question: "q"
 const verdictWord = (v) => L("verdict." + v).toLowerCase();
 const verdictTag = (v) => `<span class="tag verdict ${VERDICT_CLS[v] ?? "neutral"}" title="${esc(L("p.verdict.title"))}">${esc(L("p.verdict.reviewer"))} <b>${esc(verdictWord(v))}</b></span>`;
 const progress = () => DR.progress(ITEMS, state);
+// Progress in words, the same wherever the page says it: the choices decided, then the requests answered, never
+// verified; a part with nothing to count is left out.
+const progressWords = (p) => [p.choices && L("p.progress", n(p.decided), n(p.choices)), p.requests && L("p.progress.requests", n(p.answered), n(p.requests))].filter(Boolean);
 
 // ---------------------------------------------------------------- chips and relations: links by id, from explicit record fields only
 const chip = (kind, id) => {
@@ -344,8 +347,8 @@ function exportModel() {
   }
   for (const x of payload.lineComments) sections.comments.push({ text: `${x.path}:${x.side === "base" ? "−" : ""}${x.line}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
   for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
-  const p = payload.progress;
-  return { payload, sections, progress: L("p.progress", n(p.done), n(p.total)) + (p.deferred ? ` · ${P("p.count.deferred", p.deferred)}` : "") };
+  const p = progress();
+  return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
 }
 const EXPORT_SECTIONS = [["decided", "p.export.decided"], ["answered", "p.export.answered"], ["deferred", "p.export.deferred"], ["na", "p.export.not-applicable"],
   ["comments", "p.export.comments"], ["open", "p.export.open"]];
@@ -427,7 +430,7 @@ function updateChrome() {
   const set = (id, v, title) => { const el = $("#badge-" + id); el.hidden = v === null; if (v !== null) { el.textContent = n(v); el.title = title; } };
   set("decisions", p.open, P("p.count.open", p.open)); set("code", codeOpen, P("p.count.open-code", codeOpen)); set("summary", null); set("details", null);
   const viewed = `<span class="sep" aria-hidden="true">·</span><span>${esc(L("p.progress.viewed", n(S.viewed.size), n(F.length)))}</span>`;
-  $("#progress").innerHTML = `<span>${esc(L("p.progress", n(p.done), n(p.total)))}${p.answered ? ` · ${esc(P("p.progress.answered", p.answered))}` : ""}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><span style="width:${p.total ? (100 * p.done / p.total).toFixed(1) : 0}%"></span></span>${viewed}`;
+  $("#progress").innerHTML = `<span>${esc(progressWords(p).join(" · "))}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${p.choices ? (100 * p.decided / p.choices).toFixed(1) : 0}%"></span></span>${viewed}`;
   const so = $("#sum-progress"); if (so) so.innerHTML = summaryProgress();
   const sb = $("#start-btn"); if (sb) sb.textContent = L(p.done || p.deferred ? "p.continue" : "p.start");
   if (S.rendered.decisions) updateSubCounts();
@@ -769,7 +772,7 @@ function reqLine() {
   const parts = Object.entries(c).filter(([, k]) => k).map(([kind, k]) => P(WORD[kind], k));
   return `<b>${esc(P("p.reqline", D.requirements.length))}</b> <span>${esc(parts.join(" · "))}</span><a href="#summary-reqs" data-act="to-reqs" class="small">${esc(L("p.reqline.table"))}</a>`;
 }
-const summaryProgress = () => { const p = progress(); return `<b>${esc(L("p.progress.of", n(p.done), n(p.total)))}</b><span>${esc([L("p.progress.decided"), p.answered && P("p.progress.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
+const summaryProgress = () => { const p = progress(); return `${p.choices ? `<b>${esc(L("p.progress.of", n(p.decided), n(p.choices)))}</b>` : ""}<span>${esc([p.choices && L("p.progress.decided"), p.requests && L("p.progress.requests", n(p.answered), n(p.requests)), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
 function firstOpenItem() { return REVIEW_ORDER.find(isOpen); }
 function startReview() {
   const c = firstOpenItem();
@@ -874,7 +877,7 @@ function updateSubCounts() {
     if (heading) heading.textContent = P("p.count.open", k);
   }
   const p = progress(), el = $("#dec-note");
-  const parts = [P("p.count.open", p.open), P("p.count.decided", p.done - p.answered), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
+  const parts = [P("p.count.open", p.open), P("p.count.decided", p.decided), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
   if (el) el.innerHTML = `${esc(parts)}. ${esc(kept("hint"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
 }
 function renderDecList() {
@@ -2092,7 +2095,7 @@ function buildPrint() {
   el.innerHTML = $("#static-report").textContent + (audit ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "");
   $$(".static-note, .static nav", el).forEach((x) => x.remove());
   if (!audit) $("#code", el).remove();
-  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), L("p.progress", n(p.done), n(p.total)), p.answered && P("p.progress.answered", p.answered)].filter(Boolean).join(" · "))}</p>`);
+  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), ...progressWords(p)].filter(Boolean).join(" · "))}</p>`);
   for (const c of ITEMS) el.querySelector(`[id="decisions/${CSS.escape(c.key)}"]`)?.insertAdjacentHTML("beforeend", `<p class="sanswer"><b>${esc(L("p.print.answer"))}</b> ${esc(printAnswer(c))}</p>`);
   const notes = exportModel().sections.comments;
   if (notes.length) $("#decisions", el).insertAdjacentHTML("beforeend", `<h3>${esc(L("p.sub.comments"))}</h3><ul>${notes.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`);
