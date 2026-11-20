@@ -321,7 +321,7 @@ function designDir() {
   fs.copyFileSync(path.join(CASE, "reference.html"), path.join(design, "page.html"));
   fs.writeFileSync(path.join(design, "design.json"), JSON.stringify({
     url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json",
-    sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html" }] },
+    sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }] },
     frames: CONFIG.frames.map((f) => ({ ...f, spec: `design/${f.name}/spec.json`, reference: `design/${f.name}/reference.png` })),
   }));
   fs.writeFileSync(path.join(design, "review.md"), REVIEW);
@@ -353,7 +353,8 @@ function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json",
-    frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })) }));
+    frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })),
+    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] } }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   return { dir, page, config, write };
@@ -422,12 +423,12 @@ test("setup can create the root and lazy images beyond it do not block measureme
   f.write(`<style>@media(min-width:400px){main{background:red}}</style>
 <button onclick="this.outerHTML='<main><span>Ready</span></main>'">Open</button>
 <div style="height:18000px"></div><img loading="lazy" src="0.png">`);
-  const run = spawnSync(process.execPath, [DESIGN, "check", f.config], { encoding: "utf8", timeout: 25000 });
+  const run = spawnSync(process.execPath, [DESIGN, "check", f.config, "--no-sweep"], { encoding: "utf8", timeout: 25000 });
   assert.equal(run.status, 0, run.error?.message ?? run.stdout + run.stderr);
   cfg.frames[0].setup = [];
   fs.writeFileSync(f.config, JSON.stringify(cfg));
   f.write('<div style="height:18000px"></div><main><span>Ready</span><img loading="lazy" style="position:absolute;width:100px;height:20px;top:40px;left:0" src="0.png"></main>');
-  const inside = spawnSync(process.execPath, [DESIGN, "check", f.config], { encoding: "utf8", timeout: 25000 });
+  const inside = spawnSync(process.execPath, [DESIGN, "check", f.config, "--no-sweep"], { encoding: "utf8", timeout: 25000 });
   assert.equal(inside.status, 1, inside.error?.message ?? inside.stdout + inside.stderr);
   assert.ok(JSON.parse(fs.readFileSync(path.join(f.dir, "out/result.json"))).frames[0].pixels.ratio > 0);
 });
@@ -662,7 +663,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const run = (second, align, { tolerance, hideBelow } = {}) => {
     fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, stories: [{ name: "page", url: "page.html" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, stories: [{ name: "page", url: "page.html?dense" }] } }));
     return check(dir);
   };
   const v = [{ selector: ".v", edge: "left" }];
@@ -676,7 +677,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
     fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: ".v", property: "align", max, category: "platform", status: "accepted", reason: "subpixel" }]));
     fs.writeFileSync(path.join(dir, "page.html"), page(10).replace('left:10px;top:30px"', `left:10px;top:30px;transform:translateX(${second - 10}px)"`));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v, stories: [{ name: "page", url: "page.html" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v, stories: [{ name: "page", url: "page.html?dense" }] } }));
     const r = check(dir);
     fs.rmSync(path.join(dir, "deviations.json"));
     return r.result.sweep.issues.find((i) => i.property === "align");
@@ -738,7 +739,7 @@ test("content that fades in is present, and a text cut with an ellipsis is trunc
   assert.equal(shown.status, 0, shown.stdout + shown.stderr);
   const cut = smallFrame('<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready steady go</div>');
   const cfg = JSON.parse(fs.readFileSync(cut.config, "utf8"));
-  fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }] } }));
+  fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   const own = check(cut.dir);
   assert.equal(own.status, 0, own.stdout + own.stderr);
   assert.deepEqual(own.result.sweep.issues, []);
@@ -785,7 +786,8 @@ test("a frame of a state drawn outside the component names its own root", browse
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
-    { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }] }));
+    { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
+    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens", steps: [{ hover: "#help" }, { visible: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   const same = check(dir);
@@ -798,9 +800,9 @@ test("a frame of a state drawn outside the component names its own root", browse
 
 test("a story's file path keeps its query", browser, () => {
   const f = smallFrame();
-  fs.writeFileSync(path.join(f.dir, "page.html"), fs.readFileSync(path.join(f.dir, "page.html"), "utf8") + '<script>if (location.search !== "?data=x") document.querySelector("main").remove();</script>');
+  fs.writeFileSync(path.join(f.dir, "page.html"), fs.readFileSync(path.join(f.dir, "page.html"), "utf8") + '<script>if (!location.search.includes("data=x")) document.querySelector("main").remove();</script>');
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, url: "page.html?data=x" }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, url: "page.html?data=x", sweep: { ...cfg.sweep, stories: [{ name: "dense", url: "page.html?data=x&dense" }] } }));
   const r = check(f.dir);
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
@@ -853,7 +855,7 @@ test("a full check is incomplete without review.md's acceptance list, a dense st
   let r = check(f.dir);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /Not checked: no dense story is swept/);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }] } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   assert.equal(check(f.dir).status, 0);
   fs.mkdirSync(path.join(f.dir, "frames/popover"), { recursive: true });
   fs.copyFileSync(path.join(f.dir, "0.png"), path.join(f.dir, "frames/popover/reference.png"));
@@ -1007,16 +1009,47 @@ test("the acceptance list is a heading with lines under it, not the word alone",
 test("a full check writes the evidence a handoff quotes, and a journey that expects nothing is refused", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }] },
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] },
     journeys: [{ name: "root shows", steps: [{ visible: "main" }] }] }));
   const r = check(f.dir);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows: holds$/m, /## Not checked by the script/]) assert.match(handoff, line);
+  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows: holds; checks opening only, not closing$/m,
+    /^- every frame: pass$/m, /## Not checked by the script/, /^Round \d+ · verdict: pass · score: 0 \(lower is better\) · 20\d\d-/m]) assert.match(handoff, line);
   assert.match(r.stdout, /evidence for the handoff: .*handoff\.md/);
   fs.rmSync(path.join(f.dir, "out/handoff.md"));
   check(f.dir, "--frame", "frame");
   assert.ok(!fs.existsSync(path.join(f.dir, "out/handoff.md")), "only a check of every frame writes it");
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "clicks", steps: [{ click: "main" }] }] }));
   assert.match(check(f.dir).stderr, /the journey "clicks" expects nothing/);
+});
+
+test("pass is not given without a sweep, with the frames' page as the story, or with openers no journey checks", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
+  const { sweep, ...noSweep } = cfg;
+  assert.match(run(noSweep).stdout, /Not checked: no sweep/);
+  assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is the frames' own page/);
+  f.write('<main><span>Ready</span><button aria-expanded="false" style="position:absolute;left:200px;top:0">More</button></main>');
+  const opener = run(cfg);
+  assert.match(opener.stdout, /1 controls open something \(“More”\) and no journey checks them/);
+  assert.equal(opener.status, 1, "the button is not in the spec either");
+});
+
+test("the handoff's evidence counts what the ledger excused, names unused entries and blank acceptance rows", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span style="margin-left:9px">Ready</span></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([
+    { landmark: "Ready", property: "x", category: "system", status: "accepted", reason: "the kit's padding", decidedBy: "owner" },
+    { landmark: "Gone", property: "presence", category: "ux", status: "proposed", reason: "drop it", options: ["keep", "drop"] }]));
+  fs.writeFileSync(path.join(f.dir, "review.md"), "## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass |\n| popup | journey |  |\n");
+  const r = check(f.dir);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /^- frame: pass — no findings; 1 excused by the ledger$/m, handoff);
+  assert.match(handoff, /accepted: Ready x — the kit's padding \(system · decided by owner · excuses 1\)/);
+  assert.match(handoff, /proposed: Gone presence — drop it \(ux · matched nothing\); options: keep; drop/);
+  assert.match(handoff, /^- popup: not checked$/m);
+  assert.match(handoff, /^- frame~[0-9a-f]{8}\/side\.png$/m);
+  assert.equal(r.status, 0, r.stdout);
 });

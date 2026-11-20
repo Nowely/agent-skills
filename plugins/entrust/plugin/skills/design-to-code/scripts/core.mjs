@@ -730,36 +730,54 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // now and their difference, at the frame's CSS size, with the frame's verdict and where to start; then the sweep's
 // verdict and every ledger entry with its reason, who decided and the options.
 // images: { design, before, after, diff } as data URLs, any of them absent.
-// The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, and
-// what the script did not check is said, so a claim beyond this file has to name its own evidence.
-export function renderHandoff({ frames = [], sweep, journeys = [], gaps = [], ledger = [], round: n, status, score }) {
+// The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
+// the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
+export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], acceptance = [], pictures = [],
+  round: n, status, score, stamp = "" }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
-  const first = (issues) => (issues.length ? `; first: ${where(issues[0])} ${issues[0].property}: ${issues[0].actual}` : "");
-  const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)`, "",
+  const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
+  const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
+  const count = (issues) => {
+    const failing = fails(issues), ok = excused(issues);
+    const head = failing.length ? `${failing.length} finding${failing.length === 1 ? "" : "s"}; first: ${say(ordered(failing)[0])}` : "no findings";
+    return `${head}${ok ? `; ${ok} excused by the ledger` : ""}`;
+  };
+  const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", "## Frames", ""];
   for (const f of frames) {
-    const failing = fails(f.issues), pending = f.issues.filter((i) => i.status === "pending").length;
-    const detail = f.unmeasured ?? (failing.length ? `${failing.length} findings${first(ordered(failing))}` : f.verdict === "incomplete"
-      ? [f.imageOnly && "image-only: text judged by eye", f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ") || "incomplete"
-      : pending ? `${pending} awaiting your decision` : "no findings");
+    const pending = f.issues.filter((i) => i.status === "pending").length;
+    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && "image-only: text judged by eye",
+      f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
   }
   if (sweep) {
     out.push("", "## Widths and stories", "");
-    const main = fails(sweep.issues.filter((i) => !i.story));
-    out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? (main.length ? `${main.length} findings${first(main)}` : "no findings")}`);
-    for (const st of sweep.stories ?? []) {
-      const own = fails(sweep.issues.filter((i) => i.story === st.name));
-      out.push(`- story ${st.name}: ${st.unmeasured ?? (own.length ? `${own.length} findings${first(own)}` : "no findings")}`);
-    }
+    out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
+    for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}`);
   }
   out.push("", "## Journeys", "");
   if (!journeys.length) out.push("- none defined");
-  for (const j of journeys) out.push(`- ${j.name}: ${j.pass ? "holds" : `fails at ${j.failed}`}`);
+  for (const j of journeys) {
+    const spec = journeySpecs.find((x) => x.name === j.name) ?? { steps: [] };
+    const how = [spec.touch && "touch", spec.width && `${spec.width} px`].filter(Boolean).join(", ");
+    const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
+    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `fails at ${j.failed}`}${opensOnly ? "; checks opening only, not closing" : ""}`);
+  }
   out.push("", "## Deviations", "");
-  if (!ledger.length) out.push("- none: every difference the check measured is fixed or listed above");
-  for (const e of ledger) out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason}${e.status === "proposed" && e.options ? ` (options: ${[].concat(e.options).join("; ")})` : ""}`);
+  if (!ledger.length) out.push("- none");
+  const used = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])].map((i) => i.ledger).filter(Boolean);
+  for (const e of ledger) {
+    const uses = used.filter((u) => u === (e.id ?? e.reason)).length;
+    const scope = [e.frame && `frame ${[].concat(e.frame).join(", ")}`, e.category, e.decidedBy && `decided by ${e.decidedBy}`,
+      (e.landmark === "*" || e.property === "*") && "wildcard", uses ? `excuses ${uses}` : "matched nothing"].filter(Boolean).join(" · ");
+    out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${scope})${e.status === "proposed" && e.options ? `; options: ${[].concat(e.options).join("; ")}` : ""}`);
+  }
+  out.push("", "## The acceptance list", "");
+  if (!acceptance.length) out.push("- no rows found in review.md");
+  for (const a of acceptance) out.push(`- ${a.item}: ${a.result || "not checked"}`);
+  out.push("", "## Pictures to look at before saying done", "");
+  for (const p of pictures) out.push(`- ${p}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");

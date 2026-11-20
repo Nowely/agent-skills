@@ -6,11 +6,14 @@ listed under [Output](#output). It exits 0 when the comparison
 passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
 decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
 left to the eye; a frame showing text its spec does not have; an alignment group that never has two elements;
-everything, when there is no browser; and, for a check of every frame, what the acceptance list needs: `review.md`
-beside `design.json` with an acceptance list (a heading that names it, with table rows or list items under it), a frame for every `frames/<name>/reference.png` in the pack, and a dense
-story in a configured sweep. A
+everything, when there is no browser; and, for a complete check (every frame and the sweep), what the acceptance
+list needs: `review.md` beside `design.json` with an acceptance list (a heading that names it, with table rows or list
+items under it), a frame for every `frames/<name>/reference.png` in the pack, a sweep with a dense story whose URL is
+not the frames' own page, and journeys when a control on the page opens something (`aria-expanded`,
+`aria-haspopup`, `popovertarget`). A
 failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
-project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. The page
+project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. Both are partial checks:
+they write no `handoff.md` and remove an earlier one. The page
 before the work is the one the first check saw. If the root was absent after setup, the gallery records its
 absence. Delete `out/before/` to start a new baseline.
 
@@ -138,6 +141,6 @@ In `out/` beside `design.json`, or `--out`:
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
-| `handoff.md` | written by a check of every frame: the evidence a handoff quotes, each frame's verdict, the widths and stories, each journey, the ledger and what the script did not check |
+| `handoff.md` | written by a complete check, stamped with its time and the commit: the evidence a handoff quotes. It holds each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it never expects anything hidden), each ledger entry with what it excused or that it matched nothing, the acceptance list's rows (a blank result reads "not checked"), the pictures to look at, and what the script did not check |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, each frame's settings, spec and image, the sweep), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

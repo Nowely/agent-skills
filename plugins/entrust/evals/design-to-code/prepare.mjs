@@ -37,7 +37,7 @@ const config = (url, design) => ({
   url, root: c.root, ...(c.host ? { host: c.host } : {}),
   frames: c.frames.map((f) => ({ name: f.name, width: f.width, spec: `${design}/${f.name}/spec.json`, reference: `${design}/${f.name}/reference.png` })),
   // The case is one static page: it is its own story, as no data drives it.
-  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url }] } } : {}),
+  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url: `${url}?story=page` }] } } : {}),
 });
 const write = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof data === "string" || Buffer.isBuffer(data) ? data : `${JSON.stringify(data, null, 2)}\n`); };
 

@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -431,7 +432,10 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       })) missing.add(first);
     }
     const textBoxes = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => boxOf([line])));
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected };
+    // Controls that open something (a popup, a menu, a sheet): each wants journeys.
+    const openers = [...root.querySelectorAll("[aria-haspopup]:not([aria-haspopup=false]), [aria-expanded], [popovertarget]")].filter(visible)
+      .map((el) => norm(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase()).slice(0, 40));
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected, openers };
   }
 
   if (command === "snapshot") {
@@ -694,6 +698,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
       if (before.reason) result.beforeUnavailable = before.reason;
+      result.openers = measured.openers;
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -801,6 +806,18 @@ async function journeys(browser, cfg) {
 // What a full check expects beyond the frames: review.md with the acceptance list, every reference in the pack's
 // frames/ checked by a frame, and a dense story in the sweep. A gap leaves the check incomplete, so "pass" means the
 // acceptance list was written and its measured part ran.
+// The acceptance list's rows as written: the item and its result, for the handoff.
+function acceptanceRows(cfg) {
+  const file = path.join(cfg.dir, "review.md");
+  if (!fs.existsSync(file)) return [];
+  const text = fs.readFileSync(file, "utf8"), heading = text.search(/^#+[^\n]*acceptance/im);
+  if (heading < 0) return [];
+  const rows = text.slice(heading).split("\n").slice(1).join("\n").split(/^#+ /m)[0].split("\n")
+    .filter((line) => /^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s|:-]*\|\s*$/.test(line))
+    .map((line) => line.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+  return rows.slice(1).map((cells) => ({ item: cells[0], result: cells.length > 1 ? cells.at(-1) : "" }));
+}
+
 // The list is a heading that names it, with at least one line under it: a table row or a list item.
 const reviewed = (cfg) => {
   const file = path.join(cfg.dir, "review.md");
@@ -812,9 +829,13 @@ const reviewed = (cfg) => {
   const rows = lines.filter((line) => /^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s|:-]*\|\s*$/.test(line));
   return rows.length >= 2 || lines.some((line) => /^\s*([-*]|\d+\.)\s+\S/.test(line));
 };
-function acceptanceGaps(cfg, flags, sweepResult) {
+function acceptanceGaps(cfg, flags, sweepResult, results) {
   const gaps = [];
   if (!reviewed(cfg)) gaps.push("review.md has no acceptance list: write it before the first product edit");
+  if (!cfg.sweep) gaps.push("no sweep: the widths between the frames and a dense story were not checked");
+  for (const st of cfg.sweep?.stories ?? []) if (st.url === cfg.url) gaps.push(`the story ${st.name} is the frames' own page: a dense story renders data of its own`);
+  const openers = [...new Set(results.flatMap((r) => r.openers ?? []))];
+  if (openers.length && !cfg.journeys.length) gaps.push(`${openers.length} controls open something (${openers.slice(0, 4).map((o) => `“${o}”`).join(", ")}${openers.length > 4 ? ", …" : ""}) and no journey checks them`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
   if (fs.existsSync(dir)) {
@@ -848,7 +869,9 @@ async function check(file, flags) {
       }
     }
     const journeyResults = full ? await journeys(browser, cfg) : [];
-    const gaps = full ? acceptanceGaps(cfg, flags, sweepResult) : [];
+    // A complete check (every frame, the sweep) is the evidence for a handoff; --frame and --no-sweep are partial.
+    const complete = full && !flags["no-sweep"];
+    const gaps = complete ? acceptanceGaps(cfg, flags, sweepResult, results) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
@@ -881,14 +904,22 @@ async function check(file, flags) {
     const restarted = history.length > 0 && !comparable.length;
     const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
-    if (full) fs.writeFileSync(path.join(out, "handoff.md"), `${renderHandoff({ ...data, ledger, score })}\n`);
+    // The evidence a handoff quotes comes from a check of every frame; a narrower check removes it, so it is never stale.
+    const handoff = path.join(out, "handoff.md");
+    if (complete) {
+      const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: cfg.dir, encoding: "utf8" });
+      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, acceptance: acceptanceRows(cfg),
+        stamp: `${record.time}${commit.status === 0 ? ` · commit ${commit.stdout.trim()}` : ""}`,
+        pictures: [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter(Boolean), "gallery.html"] })}\n`);
+    } else fs.rmSync(handoff, { force: true });
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
     if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
     console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
-    if (full) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
+    if (complete) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
+    else console.log(`A partial check (${flags.frame ? "--frame" : "--no-sweep"}): it is not the evidence for a handoff.`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();
