@@ -33,6 +33,8 @@ forensics remain in the repository references and release notes.
   owner (the summary and every decision with its answer) or for audit (also every file whole and the details).
   The document, the page and the printout word each derived fact — a requirement's state, a unit's lines, a
   mechanism's weight, a screen's provenance, the variants a child question applies under — from one place.
+- A record's values stay text on the page: an id or a name of any characters is escaped wherever the page puts it,
+  and an id in an address is percent-encoded, so its link still leads to it.
 - The 274-block record's page is 2.9 MB instead of 6.6 MB, opens in about 0.2 s, and keeps its DOM bounded while
   scrolling: files far from the view give their rows back.
 - Token colours are classes, one rule per colour pair and theme, instead of inline styles on every token.
