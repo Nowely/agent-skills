@@ -6,8 +6,10 @@
 // Runs the skill's check with the judge's own design.json, design and ledger (<dir>.judge/), never the
 // implementer's: a deviation the implementer recorded is listed for the owner to read, not excused. Writes the
 // check's report to <dir>.judge/out/ and appends one JSON line to <dir>.judge/scores.jsonl, which it also prints:
-// frames passed, landmarks within tolerance, the largest offset, differing areas, sweep problems, the check's
-// score (lower is better) and the implementer's ledger entries.
+// frames passed, landmarks within tolerance, maxOffset, differing areas, sweep problems, the check's score
+// (lower is better) and the implementer's ledger entries. maxOffset is the largest absolute numeric delta among
+// failing frame findings with a landmark other than "*". It includes differences in position and size, such as
+// the position or height of a text line box.
 //
 // A private case needs no prepare step: put design.json (pointing at the implementer's page), the design and the
 // answer key as deviations.json in <dir>.judge/, with a run.json naming the case and the arm.

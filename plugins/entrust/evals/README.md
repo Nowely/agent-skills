@@ -18,6 +18,11 @@ pair with its own frozen judge (visual frames, dense data, popup behaviour, the 
 `core.mjs` without a browser and plants defects in the offer card to see the check find them; its browser cases need
 Playwright with Chromium and are reported as skipped without it, as in CI.
 
+For a screenshot-only task, compare the submitted render with the supplied reference at the same scale.
+Hidden CSS or typography specs can flag different line boxes even when every rendered RGB pixel matches.
+Include an implementation with identical RGB output and different internal layout in the judge's calibration.
+A visual defect needs a difference visible in the reference comparison.
+
 `review-page-browser.test.mjs` drives the rendered review page in Chromium: tabs and deep links, answering in
 Decisions and in the code's margin, the keys and what they must never do, persistence, the export, reading without
 JavaScript, both print profiles, the Russian page and a large record it generates. It renders public records only.

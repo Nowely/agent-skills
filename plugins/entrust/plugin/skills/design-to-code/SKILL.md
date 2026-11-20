@@ -43,8 +43,10 @@ If data or environment access blocks that comparison, record what you tried and 
 affected condition unverified and continue the checks you can run independently.
 
 Implement the supported states with the existing product patterns. For a layout driven by data, also exercise a
-legal combination that stresses the layout. Keep the data fixed while resizing. Check the widths between frames
-where the layout changes and observe whether controls and their state survive the transition.
+legal combination that stresses the layout. If the layout changes with width, keep those inputs fixed as you
+resize through the transition. At representative widths, inspect the rendered elements together. Check that
+adjacent text meant to be read together stays readable and that controls intended for the current state remain
+visible and usable. Account for intentional overlays and verify that the expected state survives the transition.
 
 Use [the checker](references/check.md) when its frame, sweep or journey measurements answer an acceptance
 question. Trace an offset to its first cause, fix it and compare affected frames again. With screenshots alone,
