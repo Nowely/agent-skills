@@ -124,12 +124,13 @@ function indexComments() {
 const entryOf = (key) => state.answers[key] ?? {};
 
 // ---------------------------------------------------------------- persistence: answers, comments, «Viewed» and view choices, in this browser
-// Kept under the storage key decisions.mjs gives this record, so another record or another export format never reads
-// them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
+// Kept under a key of this record and of the stored format, so another record never reads them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
 // kept could not be read, or that it refused the last save — and leaving with answers it did not save asks first.
 // What it kept and could not read is never written over unasked: the first save that would replace it shows it to
 // copy, and only the owner's choice saves over it.
-const STORE = DR.storageKey(D.digest.key);
+// The stored format's number changes when the page would read a value an earlier page stored differently from what that
+// page meant, or would need code only to read it; never with the export's number, which concerns the export alone.
+const STORE = `review-report:6:${D.digest.key}`;
 let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
 function load() {
   let raw = null, text;

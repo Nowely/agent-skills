@@ -35,7 +35,8 @@ drives it in Chromium, locally only.
   deferred item is not decided. An answer to a fact or evidence request is the owner's input, never a decision, so the
   requests are counted apart («requests answered N of M, not verified»); the Done sub-tab lists the decided choices
   and the answered requests. `decisions.mjs` owns these counts and what Done lists. The answers, comments,
-  «Viewed» and view choices are kept in the browser under `review-report:6:<key>`; the page says when the browser
+  «Viewed» and view choices are kept in the browser under `review-report:6:<key>`, whose number is the stored
+  format's, apart from the export's; the page says when the browser
   keeps nothing for it, cannot read what it kept, or refuses a save. What it kept and cannot read is never written
   over unasked: the first save that would replace it opens it, as it is, to copy, once the action is complete and no
   field is being typed in, and only «Save this page's answers over it» replaces it; until then the answers live in the

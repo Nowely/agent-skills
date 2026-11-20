@@ -184,7 +184,3 @@ test("the export is schema 6 under the record's and the diff's digests: each ite
   assert.doesNotMatch(JSON.stringify(out), /verified|accepted/);
 });
 
-test("the page keeps answers under a key that names the export format and the record", () => {
-  assert.equal(D.schema, 6);
-  assert.equal(D.storageKey("0123456789"), "review-report:6:0123456789");
-});

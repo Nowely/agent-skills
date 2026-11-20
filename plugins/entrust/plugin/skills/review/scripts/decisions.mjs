@@ -9,9 +9,8 @@
 // a conditional question its parent retires, and neither answer returns silently. An answer to a fact or evidence
 // request is the owner's input, never a verified result.
 export function decisionRuntime() {
-  // The export format's number; the page's storage key carries it too, so a new format never reads older answers.
+  // The export format's number: it tells a later reader how to read the export, and changes with the export alone.
   const schema = 6;
-  const storageKey = (key) => `review-report:${schema}:${key}`;
   // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
   // report (an item or part of it, and a field). A comment never answers anything.
   const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
@@ -179,12 +178,12 @@ export function decisionRuntime() {
       lineComments: state.lines, paragraphComments: state.paragraphs,
     };
   };
-  return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
+  return { schema, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
     waitingFor: (items, state, key) => waitingIn(item(items, key), state, byKeyOf(items)),
     done: (items, state, key) => DONE.includes(statusIn(item(items, key), state, byKeyOf(items)).state),
     status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
     applicable: (items, state, key) => applicableIn(item(items, key), state, byKeyOf(items)) };
 }
 
-export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment,
+export const { schema, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment,
   paragraphComment, exportOf, waitingFor, done, status, applicable } = decisionRuntime();

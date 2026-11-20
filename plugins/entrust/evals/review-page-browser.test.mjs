@@ -728,7 +728,7 @@ test("an internal source names its entry as a link that opens it",
 
 // ---- persistence, export, no JavaScript, print
 test("answers, an own answer, a deferral, comments, «Viewed» and the theme survive a reload",
-  "the owner's work must outlive the tab; schema 6 keeps it under a key of its own",
+  "the owner's work must outlive the tab; it is kept under a key of the record and the stored format",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="extend"]').check();
     await page.locator('#card-q2 textarea[data-act="text"]').fill("the display reads it"); await page.locator('#card-q2 textarea[data-act="text"]').blur();
@@ -774,6 +774,24 @@ test("where the page says the answers are kept follows the storage: in the keys,
     await page.click('[data-act="export"]'); await settle(page); words.export = await text(page, "#export-dialog .dialog-in > p"); await page.keyboard.press("Escape");
     const wrong = Object.entries(words).filter(([, w]) => /kept in this browser/.test(w) || !/this page's memory/.test(w));
     return !wrong.length || JSON.stringify(Object.fromEntries(wrong));
+  }));
+
+test("the page reads what a page of the same stored format kept: an answer, a deferral with its draft, an own answer with a marked zone, a line comment, «Viewed» and the view choices",
+  "a change to what the page stores must bump the key's number; this case fails when it does not and an earlier value is misread",
+  cased(THEMED_URL + "#decisions", { init: () => {
+    // as entrust 0.43.0 stored it
+    const kept = { decisions: { answers: { q3: { choice: "status-quo" }, f1: { deferred: true, reason: "after the release", draft: { choice: "fix" } },
+      q1: { zones: { 0: true }, text: "seen on a phone" } }, lines: [{ path: "src/invoices/archive.js", side: "head", line: 2, text: "why here?" }], paragraphs: [] },
+      viewed: ["test/archive.test.js"], ui: { theme: "dark", tree: true, dirsClosed: [], order: "attention" } };
+    const get = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) { return key.startsWith("review-report:6:") ? JSON.stringify(kept) : get.call(this, key); };
+  } }, async (page) => {
+    const r = { q3: await statusOf(page, "q3"), q3answer: await text(page, '#card-q3 [data-answer="q3"]'), f1: await statusOf(page, "f1"),
+      f1draft: await text(page, "#card-f1 .choice"), q1: await statusOf(page, "q1"), zone: await page.locator('#card-q1 input[data-act="zone"]').first().isChecked(),
+      comments: await text(page, '[data-subcount="comments"]'), progress: await page.getAttribute("#progress > span[title]", "title"),
+      viewed: await text(page, "#progress"), theme: await page.evaluate(() => document.documentElement.dataset.theme) };
+    return r.q3 === "Decided" && /Keep the conversion in the reader/.test(r.q3answer) && r.f1 === "Deferred" && /after the release/.test(r.f1draft)
+      && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
   }));
 
 test("the export is one schema-6 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
