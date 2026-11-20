@@ -504,6 +504,25 @@ test("feedback 2: under a filter, a question's note in the code says how many bl
     return shown < all && note.includes(`all ${all} blocks`) && note.includes(`${shown} shown`) || `all ${all}, shown ${shown}: «${note}»`;
   }));
 
+test("feedback 5: saved data the page cannot read is never written over unasked: the first save shows it to copy, and only an explicit choice saves over it",
+  "the next answer replaced the unreadable data and cleared the warning, with no confirmation and no copy",
+  cased(THEMED_URL + "#decisions/f1", { init: () => {
+    const get = Storage.prototype.getItem, set = Storage.prototype.setItem; window.__writes = [];
+    Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") && !window.__writes.length ? "{broken" : get.call(this, key); };
+    Storage.prototype.setItem = function (key, value) { if (key.startsWith("review-report:")) window.__writes.push(value); return set.call(this, key, value); };
+  } }, async (page) => {
+    const writes = () => page.evaluate(() => window.__writes.length);
+    const shown = await page.locator("#storage").isVisible();
+    await page.keyboard.press("f"); await settle(page);
+    const dialog = await page.locator("#unreadable-dialog").evaluate((d) => d.open), raw = await page.locator("#unreadable-text").inputValue(), afterAnswer = await writes();
+    await page.keyboard.press("Escape"); await settle(page);
+    const status = await statusOf(page, "f1"), still = await page.locator("#storage").isVisible(), afterClose = await writes();
+    await page.click('#storage [data-act="unreadable-show"]'); await page.click('[data-act="unreadable-replace"]'); await settle(page);
+    const saved = await page.evaluate(() => window.__writes.at(-1)), gone = await page.locator("#storage").isHidden();
+    return shown && dialog && raw === "{broken" && afterAnswer === 0 && afterClose === 0 && status === "Decided" && still && /"f1"/.test(saved ?? "") && gone
+      || JSON.stringify({ shown, dialog, raw, afterAnswer, afterClose, status, still, saved, gone });
+  }));
+
 test("feedback 6: without JavaScript a path longer than the window wraps, and the document does not scroll sideways",
   "a long path widened the whole document on a desktop viewport",
   async () => {
@@ -606,7 +625,7 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
       && p.paragraphComments[0]?.text === "unclear" || JSON.stringify({ keys, r, comments: p.paragraphComments });
   }));
 
-test("the page shows what is true of its storage: a refused save, a browser that keeps nothing, saved answers it cannot read — and a save that works clears the message",
+test("the page shows what is true of its storage: a refused save, a browser that keeps nothing, saved answers it cannot read — and the message stays while it is true",
   "answers that live only in memory must not look saved, and a warning no longer true must not stay",
   async () => {
     const seen = async (page) => ({ visible: await page.locator("#storage").isVisible(), text: (await page.locator("#storage").textContent()).trim() });
@@ -621,7 +640,7 @@ test("the page shows what is true of its storage: a refused save, a browser that
     await visit("unreadable", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); }; }, true);
     const shown = (name, words) => out[name]?.visible && words.test(out[name].text);
     return !errors.length && !out.refused.visible && shown("refused then a save", /refused to save/) && shown("blocked", /keeps nothing for this page/)
-      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && !out["unreadable then a save"].visible
+      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/)
       || JSON.stringify({ out, errors });
   });
 

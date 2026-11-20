@@ -126,13 +126,15 @@ const entryOf = (key) => state.answers[key] ?? {};
 // ---------------------------------------------------------------- persistence: answers, comments, «Viewed» and view choices, in this browser
 // Kept under the storage key decisions.mjs gives this record, so another record or another export format never reads
 // them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
-// kept could not be read, or that it refused the last save — and leaving after a refused save asks first.
+// kept could not be read, or that it refused the last save — and leaving with answers it did not save asks first.
+// What it kept and could not read is never written over unasked: the first save that would replace it shows it to
+// copy, and only the owner's choice saves over it.
 const STORE = DR.storageKey(D.digest.key);
-let storage = "saved", unsaved = false;
+let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
 function load() {
   let raw = null, text;
   try { text = localStorage.getItem(STORE); } catch { storage = "blocked"; return; }
-  try { raw = JSON.parse(text ?? "null"); } catch { storage = "unreadable"; return; }
+  try { raw = JSON.parse(text ?? "null"); } catch { storage = "unreadable"; unreadable = text; return; }
   if (!raw || typeof raw !== "object") return;
   state = DR.settle(ITEMS, DR.normalize(raw.decisions));
   for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
@@ -143,6 +145,7 @@ function load() {
   if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
 }
 function save() {
+  if (storage === "unreadable") { unsaved = true; showStorage(); if (!unreadableShown) openUnreadable(); return; }
   const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
@@ -150,13 +153,25 @@ function save() {
 // Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing or
 // refused a save, only this page's memory.
 const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
-const kept = (where) => L(KEPT[where][storage === "blocked" || storage === "failed" ? 1 : 0]);
+const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
 function showStorage() {
   for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
   if (S.rendered?.decisions) updateSubCounts();
   const el = $("#storage"); if (!el) return;
   el.hidden = storage === "saved";
-  el.textContent = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
+  el.innerHTML = storage === "saved" ? "" : esc(L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]))
+    + (storage === "unreadable" ? ` <button class="linkbtn" data-act="unreadable-show">${esc(L("p.storage.unreadable.show"))}</button>` : "");
+}
+function openUnreadable() {
+  unreadableShown = true;
+  $("#unreadable-text").value = unreadable; $("#unreadable-status").textContent = "";
+  const d = $("#unreadable-dialog"); if (!d.open) d.showModal();
+}
+// The owner's choice: this page's answers replace what could not be read.
+function saveOverUnreadable() {
+  storage = "saved"; unreadable = null;
+  $("#unreadable-dialog").close();
+  save();
 }
 window.addEventListener("beforeunload", (e) => { flushText(); if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 
@@ -349,8 +364,7 @@ function openExport() {
   if (!dialog.open) dialog.showModal();
 }
 // «Copied» only after the clipboard confirms; on refusal the text is selected for the owner to copy.
-function copyExport() {
-  const box = $("#export-text"), status = $("#export-status");
+function copyText(box, status) {
   const fail = () => { box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
   try { navigator.clipboard.writeText(box.value).then(() => { status.textContent = L("p.export.copied"); }, fail); } catch { fail(); }
 }
@@ -394,7 +408,12 @@ function renderShell() {
     <div id="export-preview"></div>
     <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
     <p id="export-status" role="status"></p>
-    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>`;
+    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>
+  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export"><h2 id="unreadable-h" tabindex="-1" autofocus>${esc(L("p.unreadable"))}</h2>
+    <p class="muted small">${esc(L("p.unreadable.note"))}</p>
+    <label for="unreadable-text">${esc(L("p.unreadable.text"))}</label><textarea id="unreadable-text" readonly rows="10"></textarea>
+    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
+    <p id="unreadable-status" role="status"></p></div></dialog>`;
   applyTheme(); showStorage();
 }
 function applyTheme() {
@@ -1704,7 +1723,10 @@ document.addEventListener("click", (e) => {
       case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
       case "print": printProfile = act.dataset.profile; return window.print();
       case "export-json": return downloadExport();
-      case "export-copy": return copyExport();
+      case "export-copy": return copyText($("#export-text"), $("#export-status"));
+      case "unreadable-show": return openUnreadable();
+      case "unreadable-copy": return copyText($("#unreadable-text"), $("#unreadable-status"));
+      case "unreadable-replace": return saveOverUnreadable();
       case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : goCard(go); }
       case "keys": return $("#keys-dialog").showModal();
       case "start": return startReview();
