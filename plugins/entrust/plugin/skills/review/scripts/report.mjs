@@ -6,7 +6,6 @@
 //   node report.mjs comparisons <review.json> [<base-root> <head-root>]   emit the independent reader's source inventory as JSON
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
-//   node report.mjs labels [en|ru]         print the report's own words, for a review to carry in its reader's language
 //
 // It reads only the files it is given, anywhere; references/report-data.md tells the reviewer what to write.
 // `render` refuses a review whose change map leaves a nonblank changed line out, puts one in two blocks, or names
@@ -18,10 +17,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisons } from "./comparisons.mjs";
-import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
+import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -29,7 +28,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, key, recordSha, purpose }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -47,7 +46,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     if (q.zones?.length) lines.push(`  ${t("question.zones")}:`, ...q.zones.map((z) => `  - ${z.text} (${srcs(z.sources)})`));
     return lines.join("\n");
   };
-  const state = (r) => [r.permission ? t("permission") : r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
+  // the model's state in words; an unchecked one whose unchecked part is named says it once
+  const state = (r) => [{ permission: () => t("permission"), fail: () => `${t("fails")}: ${r.broken.join(", ")}`, met: () => `${t("met")}, ${word("evidence", r.met)}`, unchecked: () => !r.not_checked && t("not-checked") }[r.state](),
     r.not_checked && `${t("not-checked")}: ${r.not_checked}`, r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
   const unit = (u, status) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${capital(status)}.${u.reason ? ` ${t("reason")}: ${u.reason}` : ""}`;
   const side = (s) => s ? `${t("edit")}: ${s.edit.join("; ")}. ${t("read")}: ${(s.read ?? []).join("; ") || t("nothing")}.` : t("as-now");
@@ -67,10 +67,10 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.tradeoffs?.length ? [`## ${t("tradeoffs")}`, ...review.tradeoffs.map((x) => `- ${x.text} ${t("tradeoff.consequence")}: ${x.consequence} (${srcs(x.sources)})`), ""] : []),
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
       `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
-    ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
-      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${s.historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${s.historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
+    ...(screens.length ? [`## ${t("screens")}`, ...screens.flatMap((s) => { const historical = s.provenance.startsWith("historical"); return [
+      `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
-      ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
+      ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]; }), ""] : []),
     ...(review.mechanisms?.length ? [`## ${t("mechanisms")}`, mechanismCounts(review).map(([change, count]) => `${word("change", change)}: ${count}`).join("; "), t("weight.limit"),
       ...(together ? [`${t("weight.together")} (${together.names.join(", ")}): ${weightOverview(together, t, languageOf(review)).map((row) => `${t(`weight.category.${row.kind}`)}: ${row.text}`).join("; ") || t("weight.unchanged")}`] : []),
       ...mechanisms.flatMap((m) => [
@@ -176,10 +176,8 @@ try {
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
     for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
       console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
-    // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked.
-    const kept = model.blocks.filter((b) => b.verdict === "keep"), assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
-    for (const [blocks, what] of [[kept.filter((b) => !b.serves.length), "serve no requirement"], [kept.filter(assumed), "serve only assumed requirements"]])
-      if (blocks.length) console.error(`warning: kept blocks ${blocks.map((b) => b.id).join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
+    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only assumed requirements"]])
+      if (ids.length) console.error(`warning: kept blocks ${ids.join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
     for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
       console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
     if (command === "check") { console.log("Review data matches the diff."); process.exit(0); }
@@ -188,13 +186,8 @@ try {
     const syntax = await createSyntax(files);
     fs.writeFileSync(target, page(review, files, model, { syntax }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
-  } else if (command === "labels") {
-    const code = (argument ?? "en").toLowerCase().split("-")[0];
-    const catalog = Object.hasOwn(CATALOGS, code) ? CATALOGS[code] : null;
-    if (!catalog) throw new Error(`No built-in catalog for "${argument}"; use labels en as the translation template`);
-    console.log(JSON.stringify(catalog, null, 2));
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json> | report.mjs labels [en|ru]");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

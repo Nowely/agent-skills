@@ -1,163 +1,188 @@
-// The user's decisions as data, independent of the page: state, the applicability of child questions, counters
-// and the export. Three layers stay apart: the review's verdicts in the record, these decisions, and evidence
-// obtained in a later revision of the record. The same runtime is embedded in the page's script and imported by
-// the tests; it touches no DOM. A picked variant is the decision, reversible on every screen size; a deferral
-// or an outside parent variant keeps the pick as a draft, never in effect. An answer entered on a fact card is
-// not a checked result. Decisions are never carried between revisions by question number.
+// The owner's answers as data, independent of the page: the state, the applicability of conditional questions, the
+// status of every item and the progress over them. Three layers stay apart: the review's verdicts in the record,
+// these answers, and evidence obtained in a later revision of the record. The same runtime is handed to the page's
+// script and imported by the tests; it touches no DOM, and every change returns a new state.
+//
+// One answer per item: a decision takes a variant or the owner's own words, a finding «fix it», «leave it» or own
+// words, an idea «take it», «skip it» or own words, a fact or evidence request the owner's answer. Choosing one
+// clears the other. Deferring takes a reason and keeps the answer it replaces as a draft, never in effect; so does
+// a conditional question its parent retires, and neither answer returns silently. An answer to a fact or evidence
+// request is the owner's input, never a verified result.
 export function decisionRuntime() {
   // The export format's number; the page's storage key carries it too, so a new format never reads older answers.
-  const schema = 5;
-  // answers: fact answers entered on the surface, exported as factAnswers;
-  // hiddenPurposes/treeHidden/treeWidth/treeMode: the code view's UI state, stored beside the decisions, never exported.
-  const empty = () => ({ findings: {}, questions: {}, notes: {}, passages: [], zones: {}, answers: {}, hiddenPurposes: [], treeHidden: false, treeWidth: 0, treeMode: "folder" });
+  const schema = 6;
+  const storageKey = (key) => `review-report:${schema}:${key}`;
+  // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
+  // report (an item or part of it, and a field). A comment never answers anything.
+  const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
+  const OPTIONS = { finding: ["fix", "leave"], idea: ["take", "skip"] };
+  const REQUESTS = ["fact", "evidence"];
+  // The items of a record, each under the key the page and the export name it by: questions by number, findings by
+  // id, ideas by their place in the list. A question names its parent's key and the variants it applies under.
+  const itemsOf = ({ questions = [], findings = [], ideas = [] }) => [
+    ...questions.map((q) => ({ key: `q${q.id}`, kind: q.kind, options: q.kind === "decision" ? (q.variants ?? []).map((v) => v.id) : [],
+      variants: Object.fromEntries((q.variants ?? []).map((v) => [v.id, v.text])),
+      parent: q.parent ? { key: `q${q.parent.question}`, variants: q.parent.variants } : null })),
+    ...findings.map((f) => ({ key: `f${f.id}`, kind: "finding", options: OPTIONS.finding, parent: null })),
+    ...ideas.map((_, index) => ({ key: `i${index + 1}`, kind: "idea", options: OPTIONS.idea, parent: null })),
+  ];
   const normalize = (raw) => {
-    const state = empty();
-    if (raw && typeof raw === "object" && !Array.isArray(raw))
-      for (const key of Object.keys(state)) if (raw[key] !== undefined && raw[key] !== null) state[key] = raw[key];
-    return state;
+    const object = (v) => v && typeof v === "object" && !Array.isArray(v);
+    const list = (v, ok) => Array.isArray(v) ? v.filter((c) => object(c) && has(c.text) && ok(c)) : [];
+    if (!object(raw)) return empty();
+    return { answers: object(raw.answers) ? { ...raw.answers } : {},
+      lines: list(raw.lines, (c) => typeof c.path === "string" && ["head", "base"].includes(c.side) && Number.isInteger(c.line)),
+      paragraphs: list(raw.paragraphs, (c) => typeof c.item === "string" && typeof c.field === "string") };
   };
-  const entryOf = (state, id) => state.questions[id] || {};
-  const noteOf = (state, id) => state.notes["q" + id] || "";
-  const byIdOf = (questions) => Object.fromEntries(questions.map((q) => [q.id, q]));
-  // A child applies while its parent has no valid acceptance, and while the parent's accepted variant is one the
-  // child listed. A selected radio alone never suppresses a child, and neither does an acceptance without its
-  // variant or comment; a valid acceptance of a variant outside the list does, and a parent that is itself not
-  // applicable takes its children with it.
-  const applicableIn = (q, state, byId, seen = new Set()) => {
-    if (!q.parent) return true;
-    if (seen.has(q.id)) return false;
-    seen.add(q.id);
-    const parent = byId[q.parent.question];
-    if (!parent || !applicableIn(parent, state, byId, seen)) return false;
-    if (!validAccept(parent, state)) return true;
-    return (q.parent.variants || []).includes(entryOf(state, parent.id).variant);
+  const entryOf = (state, key) => state.answers[key] ?? {};
+  const byKeyOf = (items) => new Map(items.map((item) => [item.key, item]));
+  const has = (text) => String(text ?? "").trim() !== "";
+  // A conditional question applies while its parent applies and has no variant in effect, or has one it lists.
+  const applicableIn = (item, state, byKey, seen = new Set()) => {
+    if (!item.parent) return true;
+    if (seen.has(item.key)) return false;
+    seen.add(item.key);
+    const parent = byKey.get(item.parent.key);
+    if (!parent || !applicableIn(parent, state, byKey, seen)) return false;
+    const entry = entryOf(state, parent.key);
+    return entry.deferred || entry.choice === undefined || item.parent.variants.includes(entry.choice);
   };
-  // Settle drops the answers of children that became not applicable, so an old answer never returns silently
-  // when the parent changes again; the picked variant stays as a DRAFT (marked in the export, never shown as
-  // an active choice), and the comment stays. Applicability rests on the parent's accepted variant, not on
-  // the child's own answer, so one pass is stable even down a chain.
-  const settle = (questions, state) => {
-    const byId = byIdOf(questions), next = { ...state, questions: { ...state.questions } };
-    for (const q of questions) {
-      if (!q.parent || applicableIn(q, next, byId)) continue;
-      const entry = next.questions[q.id];
-      if (entry && (entry.choice !== undefined || entry.variant !== undefined)) {
-        const { choice, ...rest } = entry;
-        if (Object.keys(rest).length) next.questions[q.id] = rest; else delete next.questions[q.id];
-      }
+  const statusIn = (item, state, byKey) => {
+    const entry = entryOf(state, item.key), draft = entry.draft ?? null;
+    if (!applicableIn(item, state, byKey)) return { state: "not-applicable", draft };
+    if (entry.deferred) return { state: "deferred", reason: entry.reason, draft };
+    if (entry.choice !== undefined) return { state: "decided", choice: entry.choice, draft };
+    if (has(entry.text)) return { state: REQUESTS.includes(item.kind) ? "answered" : "decided", text: entry.text, draft };
+    return { state: "open", draft };
+  };
+  // A question its parent retires keeps its answer as a draft; one pass is stable, since applicability rests on the
+  // parents' answers, which settling never touches.
+  const settle = (items, state) => {
+    const byKey = byKeyOf(items), answers = { ...state.answers };
+    for (const item of items) {
+      const entry = answers[item.key];
+      if (!item.parent || !entry || entry.deferred || applicableIn(item, { answers }, byKey)) continue;
+      if (entry.choice === undefined && !has(entry.text)) continue;
+      const { choice, text, ...rest } = entry;
+      answers[item.key] = { ...rest, draft: choice !== undefined ? { choice } : { text } };
     }
-    return next;
+    return { ...state, answers };
   };
-  // Accepting a decision takes a chosen variant, or — where there are no variants — a substantive comment;
-  // deferring takes a reason. An evidence question has no accept control at all.
-  const validAccept = (q, state) => {
-    const entry = entryOf(state, q.id);
-    if (entry.choice !== "accepted") return false;
-    return q.variants?.length ? !!entry.variant : noteOf(state, q.id).trim() !== "";
+  const put = (items, state, key, entry) => {
+    const answers = { ...state.answers };
+    // Nothing empty is stored: a blank own answer is no answer.
+    const kept = Object.fromEntries(Object.entries(entry).filter(([field, value]) => value !== undefined && value !== null && value !== false && (field === "text" ? has(value) : value !== "")));
+    if (Object.keys(kept).length) answers[key] = kept; else delete answers[key];
+    return settle(items, { ...state, answers });
   };
-  const validDefer = (q, state) => entryOf(state, q.id).choice === "deferred" && noteOf(state, q.id).trim() !== "";
-  const waitingParentIn = (q, state, byId) => {
-    const seen = new Set();
-    while (q?.parent && !seen.has(q.id)) {
-      seen.add(q.id);
-      const p = byId[q.parent.question];
-      if (!p) return null;
-      if (!validAccept(p, state) && !validDefer(p, state)) return p.id;
-      q = p;
+  const item = (items, key) => {
+    const found = items.find((i) => i.key === key);
+    if (!found) throw new Error(`no item ${key}`);
+    return found;
+  };
+  // Every change answers one item; one that is not applicable keeps what it has until its parent lets it apply.
+  const change = (fn) => (items, state, key, ...args) => {
+    if (statusIn(item(items, key), state, byKeyOf(items)).state === "not-applicable") return state;
+    return fn(items, state, key, entryOf(state, key), ...args);
+  };
+  const choose = change((items, state, key, entry, option) => {
+    if (!item(items, key).options.includes(option)) throw new Error(`${key} has no option ${option}`);
+    return put(items, state, key, { zones: entry.zones, choice: option });
+  });
+  const write = change((items, state, key, entry, text) => put(items, state, key, { zones: entry.zones, text: String(text ?? "") }));
+  // A deferral without a reason is refused: the same state comes back.
+  const defer = change((items, state, key, entry, reason) => {
+    if (!has(reason)) return state;
+    const draft = entry.choice !== undefined ? { choice: entry.choice } : has(entry.text) ? { text: entry.text } : entry.draft;
+    return put(items, state, key, { zones: entry.zones, deferred: true, reason: String(reason).trim(), draft });
+  });
+  const undefer = change((items, state, key, entry) => put(items, state, key, { zones: entry.zones, draft: entry.draft }));
+  const applyDraft = change((items, state, key, entry) => entry.draft ? put(items, state, key, { zones: entry.zones, ...entry.draft }) : state);
+  const clear = change((items, state, key) => put(items, state, key, {}));
+  // A zone mark is the owner's note on an evidence request, never evidence.
+  const markZone = (items, state, key, zone, on) => {
+    const entry = entryOf(state, key), zones = { ...entry.zones };
+    if (on) zones[zone] = true; else delete zones[zone];
+    return put(items, state, key, { ...entry, zones: Object.keys(zones).length ? zones : undefined });
+  };
+  // What counts as done, wherever the page counts or lists done items: a decided item, and an answered request, which
+  // keeps its own state, since it is the owner's input, not a verified result.
+  const DONE = ["decided", "answered"];
+  // «Decided N of M»: every applicable item; an answered request counts, and is counted apart as well; a deferred item
+  // does not count.
+  const progress = (items, state) => {
+    const byKey = byKeyOf(items), counts = { total: 0, done: 0, answered: 0, open: 0, deferred: 0 };
+    for (const i of items) {
+      const s = statusIn(i, state, byKey).state;
+      if (s === "not-applicable") continue;
+      counts.total++;
+      if (DONE.includes(s)) counts.done++; else if (s === "open") counts.open++; else counts.deferred++;
+      if (s === "answered") counts.answered++;
+    }
+    return counts;
+  };
+  // The nearest ancestor still open while the item applies: its answer holds only as long as that ancestor's answer
+  // keeps it applicable.
+  const waitingIn = (item, state, byKey) => {
+    if (statusIn(item, state, byKey).state === "not-applicable") return null;
+    for (let at = item, seen = new Set(); at.parent && !seen.has(at.key); at = byKey.get(at.parent.key)) {
+      seen.add(at.key);
+      if (!byKey.has(at.parent.key)) return null;
+      if (statusIn(byKey.get(at.parent.key), state, byKey).state === "open") return at.parent.key;
     }
     return null;
   };
-  const matchesQuestion = (q, filter, state, questions) => {
-    if (filter === "q") return q.kind === "decision";
-    if (filter === "fact") return q.kind === "fact" || q.kind === "evidence";
-    if (filter === "deferred") return q.kind === "decision" && applicableIn(q, state, byIdOf(questions)) && validDefer(q, state);
-    return false;
-  };
-  const factAnswerStatuses = (questions, state) => {
-    const byId = byIdOf(questions), statuses = {};
-    for (const q of questions) {
-      const id = "q" + q.id;
-      if ((q.kind !== "fact" && q.kind !== "evidence") || !Object.hasOwn(state.answers, id) || !String(state.answers[id] || "").trim()) continue;
-      const parent = waitingParentIn(q, state, byId);
-      statuses[id] = !applicableIn(q, state, byId) ? { status: "not-applicable" }
-        : parent ? { status: "waiting-parent", parent } : { status: "entered" };
+  // Undo of one action on `key`: the entries it changed go back to what they were, each only if nothing changed it
+  // since, so a later answer to another item stays. `before` and `after` map keys to entries (undefined for none). An
+  // action whose own item has changed since is superseded: the same state comes back.
+  const undo = (items, state, key, before, after) => {
+    if (JSON.stringify(state.answers[key]) !== JSON.stringify(after[key])) return state;
+    const answers = { ...state.answers };
+    for (const [key, entry] of Object.entries(before)) {
+      if (JSON.stringify(answers[key]) !== JSON.stringify(after[key])) continue;
+      if (entry === undefined) delete answers[key]; else answers[key] = entry;
     }
-    return statuses;
+    return settle(items, { ...state, answers });
   };
-  // The ONE derivative behind every counter: the subtab badges, the global remainder, the settled rows and the
-  // export's remainder all read this — never a DOM tally, so they cannot disagree after Q2=keep. A main decision
-  // is open until it has a valid decision; its conditional children are actionable under it but never enter the
-  // mandatory count (the parent's accepted variant may retire them), and the parent's unit stays unsettled until
-  // every applicable child is accepted. A reasoned deferral is excluded from the remainder — not done, but not
-  // open work either. Ideas are optional and never enter the
-  // remainder. A fact/evidence request is open until an answer is entered; an entered answer is not a verified
-  // check. `settled` maps the unit ids that move to compact rows (main Q roots, findings, ideas) to done/deferred.
-  const choiceStats = (questions, state, findings, ideas = []) => {
-    const byId = byIdOf(questions);
-    const kidsOf = {};
-    for (const q of questions) if (q.parent) (kidsOf[q.parent.question] ||= []).push(q.id);
-    const kidsDone = (qid) => (kidsOf[qid] || []).every((k) => {
-      const c = byId[k];
-      return !c || !applicableIn(c, state, byId) || ((c.kind !== "decision" || validAccept(c, state)) && kidsDone(k));
-    });
-    const settled = {};
-    let q = 0, dependent = 0, waiting = 0, f = 0, i = 0, fact = 0, deferred = 0, done = 0;
-    for (const question of questions) {
-      if (question.kind === "decision") {
-        if (!applicableIn(question, state, byId)) continue;
-        if (validDefer(question, state)) deferred++;
-        if (question.parent) {
-          if (!validAccept(question, state) && !validDefer(question, state)) { dependent++; if (waitingParentIn(question, state, byId)) waiting++; }
-          continue;
-        }
-        if (validAccept(question, state)) { if (kidsDone(question.id)) { done++; settled["q" + question.id] = "done"; } }
-        else if (validDefer(question, state)) { settled["q" + question.id] = "deferred"; }
-        else q++;
-      } else if (question.kind === "fact" || question.kind === "evidence") {
-        if (applicableIn(question, state, byId) && !String(state.answers["q" + question.id] || "").trim()) { fact++; if (waitingParentIn(question, state, byId)) waiting++; }
-      }
-    }
-    for (const finding of findings) { if (state.findings[finding.id]) { done++; settled[String(finding.id)] = "done"; } else f++; }
-    for (const idea of ideas) { if (state.findings[idea.id]) { done++; settled[idea.id] = "done"; } else i++; }
-    return { q, dependent, waiting, f, i, fact, deferred, done, remaining: q + f, settled };
+  // One comment per anchor: new text replaces it in place, empty text removes it.
+  const comment = (list, anchor, text, same) => {
+    const at = list.findIndex((c) => same(c, anchor)), next = [...list];
+    if (!has(text)) { if (at >= 0) next.splice(at, 1); return next; }
+    const entry = { ...anchor, text: String(text).trim() };
+    if (at >= 0) next[at] = entry; else next.push(entry);
+    return next;
   };
-  const exportOf = (questions, state, meta) => {
-    const byId = byIdOf(questions);
-    const entries = questions.filter((q) => q.kind === "decision").map((q) => {
-      const entry = entryOf(state, q.id), variant = (q.variants ?? []).find((v) => v.id === entry.variant);
-      // The export states the valid decision, never a bare click: an acceptance without its variant or comment
-      // and a deferral without a reason stay "remaining". A variant saved under a deferral, an outside parent
-      // variant or an unconfirmed pick travels as a DRAFT, never as an accepted decision.
-      const status = !applicableIn(q, state, byId) ? "not-applicable"
-        : validAccept(q, state) ? "accepted" : validDefer(q, state) ? "deferred" : "remaining";
-      const parent = status === "accepted" ? waitingParentIn(q, state, byId) : null;
-      return { question: q.id, status,
-        variant: variant ? { id: variant.id, text: variant.text } : null,
-        ...(entry.variant && status !== "accepted" ? { variant_draft: true } : {}),
-        ...(parent ? { waiting_parent: parent } : {}),
-        comment: noteOf(state, q.id) || null };
-    });
+  const lineComment = (state, { path, side, line }, text) =>
+    ({ ...state, lines: comment(state.lines, { path, side, line }, text, (c, a) => c.path === a.path && c.side === a.side && c.line === a.line) });
+  const paragraphComment = (state, { item, field }, text) =>
+    ({ ...state, paragraphs: comment(state.paragraphs, { item, field }, text, (c, a) => c.item === a.item && c.field === a.field) });
+  // The one payload behind the export's preview, its text and its JSON. Each item says its status and the answer in
+  // effect; an answer not in effect travels as a draft; a request's answer is "answered", never verified; a zone mark is
+  // the owner's mark. A conditional item whose parent is still open says so: its answer holds only while the parent
+  // leaves it applicable. A line comment holds for the saved diff the digest names; a paragraph comment names the
+  // item or part of the report and its field.
+  const exportOf = (items, state, meta) => {
+    const byKey = byKeyOf(items);
+    const answerOf = (item, a) => a.choice !== undefined
+      ? (item.kind === "decision" ? { variant: { id: a.choice, text: item.variants[a.choice] } } : { option: a.choice }) : has(a.text) ? { text: a.text } : {};
     return {
       schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
-      findings: state.findings,
-      questions: entries,
-      // A decision accepted by comment alone (no variants to pick): named, so a reader never mistakes it for a
-      // missing variant.
-      applyWithoutVariant: entries.filter((e) => e.status === "accepted" && !e.variant).map((e) => e.question),
-      notes: state.notes, zones: state.zones, passages: state.passages,
-      // An answer entered on a fact card travels apart from the comments: it is the owner's input, not a
-      // verified check, and the export never promotes it to one.
-      factAnswers: state.answers,
-      factAnswerStatuses: factAnswerStatuses(questions, state),
-      waitingForParent: questions.filter((q) => applicableIn(q, state, byId) && waitingParentIn(q, state, byId)
-        && (q.kind === "decision" ? !validAccept(q, state) && !validDefer(q, state) : (q.kind === "fact" || q.kind === "evidence") && !String(state.answers["q" + q.id] || "").trim()))
-        .map((q) => ({ question: q.id, parent: waitingParentIn(q, state, byId), kind: q.kind })),
+      progress: (({ answered, ...counts }) => counts)(progress(items, state)),
+      items: items.map((item) => {
+        const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = waitingIn(item, state, byKey);
+        const zones = Object.keys(entry.zones ?? {}).map(Number).sort((a, b) => a - b);
+        return { item: item.key, kind: item.kind, status: s.state, ...answerOf(item, entry), ...(s.reason ? { reason: s.reason } : {}),
+          ...(s.draft ? { draft: answerOf(item, s.draft) } : {}), ...(zones.length ? { zones } : {}), ...(parent ? { waiting_for_parent: parent } : {}) };
+      }),
+      lineComments: state.lines, paragraphComments: state.paragraphs,
     };
   };
-  return { schema, empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, matchesQuestion, factAnswerStatuses,
-    applicable: (q, state, questions) => applicableIn(q, state, byIdOf(questions)),
-    waitingParent: (q, state, questions) => waitingParentIn(q, state, byIdOf(questions)) };
+  return { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
+    waitingFor: (items, state, key) => waitingIn(item(items, key), state, byKeyOf(items)),
+    done: (items, state, key) => DONE.includes(statusIn(item(items, key), state, byKeyOf(items)).state),
+    status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
+    applicable: (items, state, key) => applicableIn(item(items, key), state, byKeyOf(items)) };
 }
 
-const runtime = decisionRuntime();
-export const { schema, empty, normalize, entryOf, noteOf, settle, validAccept, validDefer, choiceStats, exportOf, applicable, factAnswerStatuses } = runtime;
+export const { schema, storageKey, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment,
+  paragraphComment, exportOf, waitingFor, done, status, applicable } = decisionRuntime();

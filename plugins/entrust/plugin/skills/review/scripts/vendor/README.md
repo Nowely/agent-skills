@@ -46,5 +46,5 @@ Bundle and prepend the two provenance comment lines the current file carries:
 ./node_modules/.bin/esbuild entry.mjs --bundle --format=esm --platform=node --minify --outfile=shiki.mjs
 ```
 
-A version bump is a deliberate change: rebuild, re-run `evals/review-report.test.mjs` and the browser
-acceptance (the token contrast walk), and say so in the changelog.
+A version bump is a deliberate change: rebuild, re-run `evals/review-report.test.mjs` (the sequence-wide
+tokens) and `evals/review-page.test.mjs` (the token contrast walk), and say so in the changelog.

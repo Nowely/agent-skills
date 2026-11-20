@@ -5,7 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
-import { labelFaults } from "./labels.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -19,8 +18,7 @@ export function weightCountsText(counts, t) {
 // The overview counts each attributed block once within a mechanism, including its shared subset.
 export function weightOverview(weight, t, language) {
   if (!weight) return [];
-  let plurals;
-  try { plurals = new Intl.PluralRules(language); } catch { plurals = new Intl.PluralRules("en"); }
+  const plurals = new Intl.PluralRules(language);
   const delta = (counts, shared) => ["added", "removed"].filter(side => counts[side])
     .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])
       + (shared[side] ? ` (${t(`weight.shared-count.${plurals.select(shared[side])}`, shared[side])})` : "")).join(", ");
@@ -72,9 +70,13 @@ export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
 export const SOURCES = ["task", "discussion", "project", "question", "assumption"];
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
+// The one state the model gives each requirement, which every rendering words.
+export const REQUIREMENT_STATES = ["permission", "fail", "met", "unchecked"];
+// What the model says of a screen's pictures' revision: historical with or without one, of this one, or nothing.
+export const PROVENANCES = ["historical", "historical-unknown", "revision", "revision-unknown"];
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
-const SHOTS = ["mockup", "before", "after"];
+export const SHOTS = ["mockup", "before", "after"];
 
 // What a touched file is for, derived from its path alone: the map and the tree group and filter by it.
 // Deterministic rules, disclosed on the page; a block's own kind only redirects a test block of a production
@@ -119,6 +121,9 @@ export function compact(list) {
   return runs.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(", ");
 }
 
+// The page writes the language into <html lang> as Intl canonicalizes it, and Intl takes one well-formed tag.
+const languageTag = (value) => { if (typeof value !== "string") return false; try { Intl.getCanonicalLocales(value); return true; } catch { return false; } };
+
 // Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
 // Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
 // without the optional fields of the decision-first report gets none of them.
@@ -133,7 +138,8 @@ export function check(review, files, directory) {
   if (review.scenarios !== undefined && !Array.isArray(review.scenarios)) errors.push('"scenarios" is not a list');
   for (const field of ["challenges", "questions", "steps", "checks", "ideas", "screens", "units", "target_units"])
     if (review[field] !== undefined && !Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
-  errors.push(...labelFaults(review));
+  if (review.language !== undefined && !languageTag(review.language)) errors.push(`"language" is not a language tag: ${JSON.stringify(review.language)}`);
+  if (review.labels !== undefined) errors.push('"labels" is not a field of the record: the report speaks Russian for a "ru" language and English for any other');
   errors.push(...comparisonFaults(review, directory));
   if (errors.length) return { errors, warnings, owner };
 
@@ -228,21 +234,18 @@ export function check(review, files, directory) {
     claims(who, q.context, "context");
     claims(who, q.zones, "zone");
     const variantIds = new Set();
-    if (q.variants !== undefined) {
-      if (!Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
-      else {
-        if (!q.variants.length && q.kind === "decision") warnings.push(`${who} is a decision with no variants`);
-        for (const v of q.variants) {
-          const w = `${who} variant ${v?.id}`;
-          if (!text(v?.id)) errors.push(`${who}: a variant has no id`);
-          else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
-          else variantIds.add(v.id);
-          if (!text(v?.text)) errors.push(`${w} has no text`);
-          if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
-          else if (!filled(v?.consequences)) warnings.push(`${w} lists no consequences`);
-          else claims(w, v.consequences, "consequence");
-        }
-      }
+    // A decision is a choice between at least two variants, each with what it brings: a choice of one is no choice.
+    if (q.variants !== undefined && !Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
+    else if (q.kind === "decision" && (q.variants?.length ?? 0) < 2) errors.push(`${who} is a decision with ${q.variants?.length ? "one variant" : "no variants"}: give at least two, each with its consequences`);
+    for (const v of Array.isArray(q.variants) ? q.variants : []) {
+      const w = `${who} variant ${v?.id}`;
+      if (!text(v?.id)) errors.push(`${who}: a variant has no id`);
+      else if (variantIds.has(v.id)) errors.push(`${who}: variant id "${v.id}" appears twice`);
+      else variantIds.add(v.id);
+      if (!text(v?.text)) errors.push(`${w} has no text`);
+      if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
+      else if (!filled(v?.consequences)) (q.kind === "decision" ? errors : warnings).push(`${w} lists no consequences`);
+      else claims(w, v.consequences, "consequence");
     }
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;
@@ -461,29 +464,25 @@ export function modelOf(review, files, owner, directory) {
     block.where = [block.added.length && `+${compact(block.added)}`, block.removed.length && `-${compact(block.removed)}`].filter(Boolean).join(" ");
   }
   const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
-  const requirements = review.requirements.map((r) => ({ ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)),
-    broken: naming("breaks", r.id), untested: naming("untested", r.id) }));
-  const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
+  // A requirement's one state, in this order: a permission is never met, a finding that breaks it outweighs the
+  // reviewer's «met», and whatever is left is not checked.
+  const requirements = review.requirements.map((r) => {
+    const broken = naming("breaks", r.id);
+    return { ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)), broken, untested: naming("untested", r.id),
+      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked" };
+  });
+  // The lines of some blocks under each block verdict: what a unit or the whole change holds of each.
+  const linesOf = (list) => Object.fromEntries(VERDICTS.map((v) => [v, list.filter((b) => b.verdict === v).reduce((sum, b) => sum + b.size, 0)]));
+  const unit = (u) => { const own = blocks.filter((b) => b.unit === u.name); return { ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: own, lines: linesOf(own) }; };
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
+    provenance: screen.historical ? (screen.revision ? "historical" : "historical-unknown") : screen.revision ? "revision" : "revision-unknown",
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
-  const { labels, ...content } = review;
   const scenarios = (review.scenarios ?? []).map((s) => ({ ...s, requirements: s.requirements ?? [], findings: naming("scenarios", s.id) }));
   const weighed = weighMechanisms(review.mechanisms ?? [], blocks);
   // Questions keep their place as their number; children are derived from parent, never stored twice.
-  const questions = (review.questions ?? []).map((q, index) => ({ ...q, id: index + 1, children: [], blocks: 0 }));
+  const questions = (review.questions ?? []).map((q, index) => ({ ...q, id: index + 1, children: [] }));
   for (const q of questions) if (q.parent && questions[q.parent.question - 1]) questions[q.parent.question - 1].children.push(q.id);
-  for (const b of blocks) for (const n of new Set(b.questions)) if (questions[n - 1]) questions[n - 1].blocks++;
-  // The shortest suffix that names each file alone among the touched paths; the full path stays beside it.
-  const paths = files.map((f) => f.path);
-  const shortOf = (p) => {
-    const parts = p.split("/");
-    for (let n = 1; n < parts.length; n++) {
-      const suffix = parts.slice(-n).join("/");
-      if (paths.filter((other) => other === suffix || other.endsWith(`/${suffix}`)).length === 1) return suffix;
-    }
-    return p;
-  };
-  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", short: shortOf(f.path), purpose: purposeOfPath(f.path) }));
+  const fileMeta = files.map((f) => ({ path: f.path, status: f.status ?? "M", purpose: purposeOfPath(f.path) }));
   // A block of tests inside a production file is tests; every other block follows its file.
   const blockPurpose = Object.fromEntries(blocks.map((b) => [b.id, b.kind === "test" && fileMeta.find((f) => f.path === b.path)?.purpose === "production" ? "tests" : purposeOfPath(b.path)]));
   const purposeCounts = Object.fromEntries(PURPOSES.map((c) => [c, { files: 0, blocks: 0, lines: 0 }]));
@@ -497,12 +496,17 @@ export function modelOf(review, files, owner, directory) {
     files: files.length, lines,
     addedFiles: fileMeta.filter((f) => f.status === "A").length, removedFiles: fileMeta.filter((f) => f.status === "D").length,
     modifiedFiles: fileMeta.filter((f) => f.status === "M").length,
-    blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])),
+    blocks: blocks.length, verdicts: Object.fromEntries(VERDICTS.map((v) => [v, blocks.filter((b) => b.verdict === v).length])), verdictLines: linesOf(blocks),
     nonblank: { added: blocks.reduce((sum, b) => sum + b.weightLines.added, 0), removed: blocks.reduce((sum, b) => sum + b.weightLines.removed, 0) },
     decisions: questions.filter((q) => q.kind === "decision").length,
   };
+  // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked:
+  // the check warns about both, and the page lists them for the reviewer.
+  const kept = blocks.filter((b) => b.verdict === "keep");
+  const assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
+    unasked: { unlinked: kept.filter((b) => !b.serves.length).map((b) => b.id), assumed: kept.filter(assumed).map((b) => b.id) },
     purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
-    key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
+    key: createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10) };
 }

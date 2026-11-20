@@ -3,44 +3,54 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.43.0 — 2026-11-20
 
 ### Review report
 
+- **Breaking:** a decision question needs at least two variants, each with its consequences: `check` refuses one
+  with fewer, or a variant of a decision without `consequences`. The owner answers with a variant or in their own
+  words.
+- **Breaking:** the page is redesigned. Summary opens it with «Start review»; Decisions holds every question,
+  finding and idea as one card with a side panel of its context; Code is the diff with the open decisions in its
+  margin, kept code folded, j / k through the open decisions, «Viewed» per file and find in every file, drawn or
+  not; Details holds the structure, mechanisms, scenarios, checks, challenges, screens with a picture viewer,
+  coverage with the check's warnings about kept code, and the report's details. Each item takes one answer — a
+  variant or the owner's own words, «Fix it» / «Leave it», «Take it» / «Skip it» — and a deferral needs a reason;
+  «Decided N of M» counts every item, and an answered fact or evidence request reads «Answered», never verified.
+  A key answers only the item in view and can be undone. Every word is in the English and the Russian catalog. The
+  client is `scripts/page/runtime.js` and `scripts/page/page.css`, inlined at render; `decisions.mjs` keeps the
+  owner's answers and builds the export. The page is described in `scripts/page/README.md`, a developer's note the
+  skill does not link: the reviewer reads only that the page is written, that the owner answers there and what the
+  export returns.
+- **Breaking:** the export is schema 6, and the page keeps its answers under `review-report:6:<key>`: each item's
+  status and answer in effect, drafts apart, `waiting_for_parent`, line comments anchored to a path, side and line
+  of the saved diff, and paragraph comments anchored to an item and a field. Answers saved by an earlier page are
+  not read.
+- **Breaking:** comments on any selected text are gone (`annotations.mjs`); comments go on a line of the diff or on
+  a paragraph of the report, listed in Decisions › Comments.
+- Without JavaScript the page is the whole report as a document — the summary, every card as text, each file's
+  whole diff with every block's verdict, and the details — with the diff's code in the page once. It prints for the
+  owner (the summary and every decision with its answer) or for audit (also every file whole and the details).
+  The document, the page and the printout word each derived fact — a requirement's state, a unit's lines, a
+  mechanism's weight, a screen's provenance, the variants a child question applies under — from one place.
+- A record's values stay text on the page: an id or a name of any characters is escaped wherever the page puts it,
+  and an id in an address is percent-encoded, so its link still leads to it.
+- The 274-block record's page is 2.9 MB instead of 6.6 MB, opens in about 0.2 s, and keeps its DOM bounded while
+  scrolling: files far from the view give their rows back.
+- Token colours are classes, one rule per colour pair and theme, instead of inline styles on every token.
+- `evals/review-page-browser.test.mjs` drives the page in Chromium on public records only, and replaces the private
+  and macOS-bound browser suites. It runs locally only: CI installs no Playwright, so there it reports NOT RUN.
+  `review-decisions` and `review-page` replace the fast suites named after page versions.
 - Full `entrust:review` records now support a staged comparison of source contracts, peer implementations and test claims. Single and multi reviews preserve the draft, check the reasons for dismissing differences, and reconcile the reader's evidence with the final report.
-- **Breaking:** custom-language catalogs no longer need `tree.files`, which the page stopped reading; `check`
-  refuses a catalog that still carries it as an unknown label. `report-data.md` now states the current catalog
-  rule alone: built-in `en` and `ru` cover every control, another language translates the catalog
-  `report.mjs labels en` prints, and `check` names every key the record needs that it lacks.
-- **Breaking:** a report rendered by this version stores decisions in the browser under a key that carries the
-  export's format number, so a new format never reads answers saved under another. Answers saved in a page
-  rendered by 0.42.0 stay under that page's old key, and a re-rendered page does not read them.
-- One vocabulary in English and Russian. Blocks are the unit on the page: the cards, the Code tab, the file cards,
-  the filter chip, the evidence banner and the block popover count and name blocks, and the fragment stays only in
-  the audit definition under «Blocks: N». The decisions note names the finding buttons «Fix» / «Do not fix».
-  Statuses and counters say open, deferred or not applicable («Open findings: N»), and only a wait for a parent
-  says waiting; a deferred decision's settled row shows its own status alone. Controls and the status words the page
-  writes start with a capital letter. Counts read «Label: N» wherever «N nouns» was wrong for one in English or
-  for 2–4 and 5+ in Russian. Russian says «Единицы кода», «Ресурсы», «Связи» and «← Назад».
-- Amber marks only a needed change: the fix, split and merge verdicts, the «no test» tag and a requirement's
-  doubt. A draft, an entered answer, the wait for a parent, the evidence and «Not verified:» limits and the
-  historical-revision tag are neutral.
-- **Breaking:** custom-language catalogs owe `export.not-applicable`, the heading of the export's not-applicable
-  section, wherever a record has dependent decisions, and `banner.blocks` (with `{n}`) in place of
-  `banner.await`; `fragment.what`, `question.blocks`, `chip.with-parts` and `banner.await` are gone, and `check`
-  refuses a catalog that still carries them. `check` lists every missing key.
-- Tags on the page (a requirement's status and source, verdicts, purposes, file marks and the like) start with a
-  capital letter through one `.tag` style rule; the catalogs and the text printout keep their words as the
-  printout's sentences need them («task; met»). Russian names a commented passage «отрывок», no longer
-  «фрагмент», which is the code's word.
-- **Breaking:** labels nothing on the page or in the printout read are gone: `annotation.unlocated` (an
-  unlocated passage says `annotation.unverified`, as it already did), `decision.remaining`,
-  `counters.evidence-blocks`, `seg.details`, `seg.details-first`, `apply`, `skip`, `apply-all`, `out.apply` and
-  `out.skip`; custom catalogs no longer owe them, and `check` refuses a catalog that still carries them. The
-  model's `counters.evidenceBlocks`, which only tests read, is gone too.
-- **Breaking:** custom catalogs no longer owe 40 more labels nothing on the page or in the printout reads (`task`,
-  `share`, `copy`, `decided`, the `out.*` and `scope.*` words, `decision.confirm`, `decision.sheet-note`,
-  `export.note` and the rest); `check` refuses a catalog that still carries them.
+- **Breaking:** the report speaks English or Russian, and custom-language catalogs are gone: `language` picks
+  Russian for `ru` and `ru-*` and English for any other tag; `check` refuses a record that carries `labels`, and
+  `report.mjs labels` is removed. The content is still written in the session's language, which `<html lang>`
+  carries.
+- The model's `counters.evidenceBlocks`, which only tests read, is gone, and so are the file's shortest unique
+  path and a question's block count, which only the old page read.
+- A record without `questions`, which `check` accepts, renders as a record with no questions instead of crashing
+  the page.
+- A challenge sent to the owner names the fact, evidence or decision that would settle it and what depends on it.
 
 ## 0.42.0 — 2026-11-18
 

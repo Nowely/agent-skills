@@ -43,16 +43,19 @@ export function highlight(text, path) {
 }
 
 // The render-time Shiki syntax: one highlighter per render, each hunk's old and new line sequences tokenized
-// whole (a multi-line comment or template keeps its coloring across lines), both themes in every span, and
-// every token color pre-adjusted to >=4.5:1 on the three code backgrounds of each theme — the GitHub
-// palettes alone dip below that on the tinted added/removed fields. Returns null when the bundle is absent;
-// the caller falls back to the pattern highlighter above. Nothing here reaches the network.
+// whole (a multi-line comment or template keeps its coloring across lines), and each token's pair of colors as a
+// class: `line` returns the code with class spans, `css` the rules for both themes. Every color is pre-adjusted to
+// >=4.5:1 on the page's three code backgrounds of its theme — the GitHub palettes alone dip below that on the
+// tinted added and removed rows. Returns null when the bundle is absent; the caller falls back to the pattern
+// highlighter above, whose classes page.css colors. Nothing here reaches the network.
 const SH_LANG = { ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx", mjs: "javascript", cjs: "javascript", scss: "scss", css: "css", json: "json", md: "markdown", markdown: "markdown", mdx: "markdown", svg: "xml", xml: "xml", html: "xml", yml: "yaml", yaml: "yaml" };
-// Exactly the page's code backgrounds: light --code/--ins-bg/--del-bg; dark --code with the rgba tints blended over it.
-const LIGHT_BGS = [[244, 243, 239], [230, 255, 236], [255, 235, 233]];
-const DARK_BGS = [[20, 26, 34], [20 + (46 - 20) * .15, 26 + (160 - 26) * .15, 34 + (67 - 34) * .15], [20 + (248 - 20) * .12, 26 + (81 - 26) * .12, 34 + (73 - 34) * .12]];
+// Exactly page/page.css's --code-bg, --add-bg and --del-bg, light and dark.
+const LIGHT_BGS = ["#ffffff", "#e9f6ed", "#fdeeec"].map((h) => hex2rgb(h));
+const DARK_BGS = ["#151920", "#16291e", "#2e1a1d"].map((h) => hex2rgb(h));
+// The code's own text colors in GitHub's light and dark themes: a token of them needs no span, page.css draws it.
+const PLAIN = "#24292e", PLAIN_DARK = "#e1e4e8";
 const TOKEN_TARGET = 4.6; // a margin over the 4.5 requirement
-const hex2rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+function hex2rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
 const rgb2hex = (c) => "#" + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
 const lumOf = (rgb) => { const [r, g, b] = rgb.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
 const ratioOf = (a, b) => { const l1 = lumOf(a), l2 = lumOf(b); return (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05); };
@@ -77,6 +80,13 @@ export async function createSyntax(files) {
     return out;
   };
   const fontOf = (style) => !style ? "" : `${style & 1 ? ";font-style:italic" : ""}${style & 2 ? ";font-weight:bold" : ""}${style & 4 ? ";text-decoration:underline" : ""}`;
+  // One class per pair of theme colors and font style, numbered in the order met: the same diff draws the same page.
+  const classes = new Map();
+  const classOf = (light, dark, font) => {
+    const key = `${light}|${dark}|${font}`;
+    if (!classes.has(key)) classes.set(key, `t${classes.size}`);
+    return classes.get(key);
+  };
   const byLine = new Map();
   for (const f of files) {
     const lang = SH_LANG[f.path.slice(f.path.lastIndexOf(".") + 1).toLowerCase()];
@@ -93,14 +103,21 @@ export async function createSyntax(files) {
         try { tokens = hl.codeToTokens(text, { lang, themes: { light: "github-light", dark: "github-dark" } }).tokens; } catch { continue; }
         seq.forEach((l, i) => {
           const html = (tokens[i] ?? []).map((tok) => {
-            const light = adjustToken(String(tok.htmlStyle?.color ?? tok.color ?? "#24292e").toLowerCase(), LIGHT_BGS, false);
-            const dark = adjustToken(String(tok.htmlStyle?.["--shiki-dark"] ?? light).toLowerCase(), DARK_BGS, true);
-            return `<span style="color:${light};--shiki-dark:${dark}${fontOf(tok.fontStyle)}">${esc(tok.content)}</span>`;
+            const color = String(tok.htmlStyle?.color ?? tok.color ?? PLAIN).toLowerCase(), font = fontOf(tok.fontStyle);
+            const darkColor = String(tok.htmlStyle?.["--shiki-dark"] ?? color).toLowerCase();
+            if (color === PLAIN && darkColor === PLAIN_DARK && !font) return esc(tok.content);
+            const light = adjustToken(color, LIGHT_BGS, false), dark = adjustToken(darkColor, DARK_BGS, true);
+            return `<span class="${classOf(light, dark, font)}">${esc(tok.content)}</span>`;
           }).join("");
           if (html) byLine.set(l, html);
         });
       }
     }
   }
-  return { line: (l) => byLine.get(l) ?? esc(l.text) };
+  const css = [...classes].map(([key, name]) => {
+    const [light, dark, font] = key.split("|");
+    return `.${name}{color:${light}${font}}\n:root[data-theme="dark"] .${name}{color:${dark}}\n`
+      + `@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .${name}{color:${dark}}}`;
+  }).join("\n");
+  return { line: (l) => byLine.get(l) ?? esc(l.text), css };
 }
