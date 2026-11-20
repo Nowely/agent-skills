@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.44.0 — 2026-11-20
 
 ### Review report
 
@@ -41,13 +41,14 @@ forensics remain in the repository references and release notes.
 - A package manager's lock file is one block judged by its manifest, not read line by line: a package fetched from
   outside the project's registries, or a hash changed for the same version, is a finding, and a package or version
   neither the manifest nor the task explains is a question; regenerating one runs no install scripts (npm's
-  `--package-lock-only` alone does). No list names lock files: the reviewer establishes from
-  the file and the project's tooling which tool writes it and from what. A file the project marks generated is one block too, read
+  `--package-lock-only` alone does). No list names lock files: the reviewer establishes from the file and the
+  project's tooling which tool writes it and from what. A file the project marks generated is one block too, read
   unless it is regenerated and compared; a mark the change adds is read like any change.
 - A decision whose variants combine is marked `multiple: true`: the owner takes one or several, as checkboxes on the
-  card and in the code's margin, where the note stays open while they are taken; a conditional question applies while any chosen variant is listed; a recommendation may name
-  several in `variants`; Enter on its card opens its answer, and the printout says so and names the recommended
-  variants. **Breaking:** the export is schema 7, and carries such an answer as `variants`.
+  card and in the code's margin, where the note stays open while they are taken; a conditional question applies
+  while any chosen variant is listed; a recommendation may name several in `variants`; Enter on its card opens its
+  answer, and the printout says so and names the recommended variants. **Breaking:** the export is schema 7, and
+  carries such an answer as `variants`.
 - The page's storage key carries the number of what the page stores, apart from the export's (0.43.0 tied them): a
   page still reads the answers a 0.43.0 page kept after the export moved to schema 7, and a test seeded with such a
   value says when a change to what the page stores needs a new number.
@@ -62,6 +63,11 @@ forensics remain in the repository references and release notes.
 
 - The agent-run case that journals a signal sent to `--run` signals once the launcher has attached: a signal that
   comes before the driver's pid line is kept by design, not forwarded, and failed the case (E144, seen once on CI).
+
+### Known issues
+
+- Open issues E142, E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117, E140 and E141 are
+  described in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
 
 ## 0.43.0 — 2026-11-20
 
