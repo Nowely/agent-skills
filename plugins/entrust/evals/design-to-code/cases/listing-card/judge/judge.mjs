@@ -90,9 +90,10 @@ for (const kind of ["help", "deal"]) {
       ok(`${kind}: leaving the trigger and the popover closes it`, closed);
       if (kind === "deal" && opened) {
         await t.hover(); await settle(p);
-        const text = await p.locator("body").innerText();
+        // Any space counts as a space: a price may be set with no-break spaces, as it should.
+        const text = (await p.locator("body").innerText()).replace(/\s+/g, " ");
         ok("deal: shows the old price, the new price and the date", ["2 100 €", "1 850 €", "31 Dec"].every((s) => text.split("1 850 € / month").join("").includes(s)) && /old/i.test(text) && /new/i.test(text),
-          text.replace(/\s+/g, " ").slice(0, 200));
+          text.slice(0, 200));
       } else if (kind === "deal") ok("deal: shows the old price, the new price and the date", false, "the popover did not open");
     }
     await ctx.close(); }

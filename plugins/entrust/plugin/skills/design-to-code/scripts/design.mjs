@@ -92,9 +92,16 @@ async function chromium() {
 // Animations end at once instead of not running: content that fades in is captured as it ends, not stuck at opacity 0.
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
 
+// The component's root: the first match the user can see. A popover kept hidden in the page is not the one open.
+const rootOf = (page, selector) => page.locator(selector).filter({ visible: true }).first();
+
 async function settle(page, selector) {
-  await page.locator(selector).first().evaluate(async (root) => {
+  await rootOf(page, selector).evaluate(async (root) => {
     await document.fonts.ready;
+    // Animations a script started end too: content it fades in is captured as it ends.
+    for (const a of document.getAnimations()) {
+      try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
+    }
     const images = root.matches("img") ? [root] : root.querySelectorAll("img");
     const loaded = Promise.all(Array.from(images, async (i) => {
       if (i.complete) return;
@@ -151,6 +158,8 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
   const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch: touch });
   const page = await context.newPage();
   await page.goto(url, { waitUntil: "load" });
+  // The pointer rests in the far corner, so nothing at the page's top-left is measured hovered.
+  await page.mouse.move(viewportWidth - 1, height - 1);
   await page.addStyleTag({ content: STILL });
   if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
   try {
@@ -163,6 +172,10 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
     const cause = setup.length ? ` (setup: ${e.message.split("\n")[0]})` : "";
     throw Object.assign(new Error(`Root ${cfg.root} was absent at capture time${cause}.`), { missingRoot: true, exit: 2 });
   }
+  if (!(await rootOf(page, cfg.root).waitFor({ state: "visible", timeout: 3000 }).then(() => true, () => false))) {
+    await context.close();
+    throw Object.assign(new Error(`Root ${cfg.root} was on the page but not visible at capture time.`), { missingRoot: true, exit: 2 });
+  }
   if (cfg.host) await setWidth(page, cfg, width, height);
   await settle(page, cfg.root);
   return { context, page };
@@ -173,7 +186,8 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
 async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1 }) {
   const norm = (s) => s.replace(/\s+/g, " ").trim();
   const key = (s) => s.replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
-  const root = document.querySelector(rootSelector);
+  const seen = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+  const root = [...document.querySelectorAll(rootSelector)].find(seen) ?? document.querySelector(rootSelector);
   if (!root) return { error: `the root ${rootSelector} is not on the page` };
   const rr = root.getBoundingClientRect();
   const visible = (el) => el?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
@@ -217,7 +231,11 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (cs.textAlign === "right" || (cs.textAlign === "end" && !rtl) || (cs.textAlign === "start" && rtl)) return "right";
     return "left";
   };
-  const deliberate = (style) => style.textOverflow === "ellipsis" || (style.webkitLineClamp && style.webkitLineClamp !== "none");
+  // Truncation drawn on purpose: an ellipsis on one unwrapped line of a block, or a line clamp on a vertical -webkit-box
+  // (which Chromium may report as flow-root).
+  const deliberate = (style) => (style.textOverflow === "ellipsis" && !/flex|grid/.test(style.display)
+      && (style.whiteSpace === "nowrap" || style.whiteSpace === "pre" || style.textWrapMode === "nowrap"))
+    || (Boolean(style.webkitLineClamp) && style.webkitLineClamp !== "none" && (/-webkit-(inline-)?box/.test(style.display) || style.webkitBoxOrient === "vertical"));
   const clipBounds = new Map();
   const textNodes = async () => {
     const out = [], clipped = new Set();
@@ -402,7 +420,18 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", delta: cut, actual: `${cut} px cut off ${clipX ? "horizontally" : "vertically"}` });
   }
   const nodes = await textNodes();
-  const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b })));
+  // What of each line is painted: cut to every box that clips it, so a truncated or scrolled text is measured as shown.
+  const painted = (el, b) => {
+    let r = { left: b.left, right: b.right, top: b.top, bottom: b.bottom };
+    for (let p = el; p && p !== document.documentElement; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (!/hidden|clip|auto|scroll/.test(cs.overflowX + cs.overflowY) && cs.clip === "auto") continue;
+      const c = p.getBoundingClientRect();
+      r = { left: Math.max(r.left, c.left), right: Math.min(r.right, c.right), top: Math.max(r.top, c.top), bottom: Math.min(r.bottom, c.bottom) };
+    }
+    return r.right - r.left > 0.5 && r.bottom - r.top > 0.5 ? r : null;
+  };
+  const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b: painted(n.parentElement, b) })).filter((l) => l.b));
   for (const { node, b } of lines) {
     const out = Math.max(rr.left - b.left, b.right - rr.right, b.bottom - rr.bottom, rr.top - b.top);
     if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: out, actual: `${Math.round(out)} px outside the root` });
@@ -443,15 +472,19 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   };
   const [sx, sy] = [scrollX, scrollY];
   for (const el of root.querySelectorAll("a[href],button,input,select,textarea,summary,[role=button],[role=link],[tabindex]:not([tabindex='-1'])")) {
-    if (!visible(el) || el.disabled || el.getAttribute("aria-disabled") === "true") continue;
-    let r = el.getBoundingClientRect();
+    if (!visible(el) || el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") continue;
+    // An inline link that wraps is tried on its first line, not on the box around both.
+    const box = () => (getComputedStyle(el).display === "inline" && el.getClientRects().length ? el.getClientRects()[0] : el.getBoundingClientRect());
+    let r = box();
     if (!r.width || !r.height) continue;
     if (r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth) {
       scrollTo(scrollX + r.left + r.width / 2 - innerWidth / 2, scrollY + r.top + r.height / 2 - innerHeight / 2);
-      r = el.getBoundingClientRect();
+      r = box();
     }
     const cut = clips(el);
-    const own = (hit) => el.contains(hit) || hit.contains(el) || [...(el.labels ?? [])].some((l) => l.contains(hit)) || Boolean(hit.closest("label")?.contains(el));
+    // Not a cover: the control's own label, or a transparent native control laid over it to take the click (a file input).
+    const own = (hit) => el.contains(hit) || hit.contains(el) || [...(el.labels ?? [])].some((l) => l.contains(hit)) || Boolean(hit.closest("label")?.contains(el))
+      || (hit.matches("input, select, textarea") && !visible(hit));
     const points = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]].map(([fx, fy]) => [r.left + r.width * fx, r.top + r.height * fy])
       .filter(([x, y]) => x >= 0 && y >= 0 && x < innerWidth && y < innerHeight && cut.every((c) => x >= c.left && x < c.right && y >= c.top && y < c.bottom));
     const hits = points.map(([x, y]) => document.elementFromPoint(x, y)).filter((hit) => hit && !own(hit));
@@ -591,7 +624,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
         : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
       const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
-      const shot = await page.locator(fcfg.root).first().screenshot({ animations: "disabled", caret: "hide" });
+      const shot = await rootOf(page, fcfg.root).screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, frameKey(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
@@ -646,7 +679,7 @@ async function sweep(browser, cfg, ledger) {
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
         // A picture for the gallery only: a root with no size to capture leaves a gap, not a failed check.
         if (shots && frameWidths.has(width) && !shots.has(width)) {
-          shots.set(width, await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide", timeout: 5000 }).catch(() => null));
+          shots.set(width, await rootOf(page, cfg.root).screenshot({ animations: "disabled", caret: "hide", timeout: 5000 }).catch(() => null));
         }
         return { width, ...r };
       };
@@ -668,7 +701,9 @@ async function sweep(browser, cfg, ledger) {
   const stories = [];
   for (const story of s.stories ?? []) {
     const shots = new Map();
-    const r = await run(story.url, story.setup, shots);
+    let r;
+    try { r = await run(story.url, story.setup, shots); }
+    catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
     issues.push(...sweepIssues([...r.probes, r.back], ledger).map((i) => ({ ...i, story: story.name })));
     stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
@@ -722,7 +757,7 @@ const reviewed = (cfg) => {
   const file = path.join(cfg.dir, "review.md");
   return fs.existsSync(file) && /acceptance/i.test(fs.readFileSync(file, "utf8"));
 };
-function acceptanceGaps(cfg, flags) {
+function acceptanceGaps(cfg, flags, sweepResult) {
   const gaps = [];
   if (!reviewed(cfg)) gaps.push("review.md has no acceptance list: write it before the first product edit");
   const dir = path.join(cfg.dir, "frames");
@@ -732,6 +767,7 @@ function acceptanceGaps(cfg, flags) {
     if (unframed.length) gaps.push(`references no frame checks: ${unframed.map((p) => path.relative(cfg.dir, p)).join(", ")}`);
   }
   if (cfg.sweep && !flags["no-sweep"] && !cfg.sweep.stories?.length) gaps.push("no dense story is swept: add one to sweep.stories");
+  for (const st of sweepResult?.stories ?? []) if (st.unmeasured) gaps.push(`the story ${st.name} was not swept: ${st.unmeasured}`);
   return gaps;
 }
 
@@ -757,7 +793,7 @@ async function check(file, flags) {
       }
     }
     const journeyResults = full ? await journeys(browser, cfg) : [];
-    const gaps = full ? acceptanceGaps(cfg, flags) : [];
+    const gaps = full ? acceptanceGaps(cfg, flags, sweepResult) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
@@ -776,8 +812,9 @@ async function check(file, flags) {
     const n = history.length + 1;
     // What the score was measured against: the frames' specs and the sweep. A round that changed them starts a new
     // series, since its score says nothing about the page against the earlier ones.
-    const basis = createHash("sha256").update(JSON.stringify([frames.map((f) => [f.name, fs.readFileSync(f.spec, "utf8")]),
-      sweepResult ? cfg.sweep : null])).digest("hex").slice(0, 12);
+    const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
+    const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
+      frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null])).digest("hex").slice(0, 12);
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: reviewed(cfg), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
@@ -821,7 +858,7 @@ async function snapshot(file, flags) {
         if (flags.images) {
           if (!frame.reference) throw Object.assign(new Error(`${frame.name}: no "reference" path to write the image to`), { exit: 2 });
           fs.mkdirSync(path.dirname(frame.reference), { recursive: true });
-          fs.writeFileSync(frame.reference, await page.locator(fcfg.root).first().screenshot({ animations: "disabled", caret: "hide" }));
+          fs.writeFileSync(frame.reference, await rootOf(page, fcfg.root).screenshot({ animations: "disabled", caret: "hide" }));
         }
         console.log(`${frame.name}: ${landmarks.length} landmarks → ${path.relative(process.cwd(), frame.spec)}`);
       } finally {

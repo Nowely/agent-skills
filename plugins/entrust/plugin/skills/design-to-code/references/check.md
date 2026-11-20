@@ -21,7 +21,7 @@ Paths are relative to the file.
 | Field | Meaning |
 |---|---|
 | `url` | the page or story that renders the component: `http(s)://…`, or a file path |
-| `root` | CSS selector of the component's root; positions are measured from its corners |
+| `root` | CSS selector of the component's root; positions are measured from its corners. The first match that is visible is taken; a root on the page but hidden leaves the frame incomplete |
 | `host` | CSS selector of the element given each frame's width, when the component is sized by its container; without it the viewport takes the width |
 | `viewport` | the viewport width when `host` is set; default 1280 |
 | `tolerance` | how far a position or an alignment may differ, in CSS px; default 1 |
@@ -57,8 +57,10 @@ for an element without text, with its `box` in the design. Texts are compared by
 snapshot does: a Figma text box can be wider than its text. With text landmarks, the check also reports absent
 design text and text cut by a clipping boundary. Visible page text the spec does not have is listed on one line and
 leaves the frame incomplete: the spec may lack it (an MCP outline without an instance's texts), or the page should
-not show it; an accepted `presence` entry for that text excuses it. A text cut with an ellipsis or a line clamp is
-truncated on purpose and is not a finding: `review.md` says which texts truncate. The pixel mask keeps the text
+not show it; an accepted `presence` entry for that text excuses it. A text cut with a drawn ellipsis (one unwrapped
+line of a block) or a line clamp (a vertical `-webkit-box`) is truncated on purpose and is not a finding: `review.md`
+says which texts truncate. Overlaps and texts outside the root are measured on what is painted, inside every box that
+clips it. The pixel mask keeps the text
 findings from being counted again as regions. With screenshots alone, inspect text by eye.
 
 ## The ledger
@@ -115,7 +117,8 @@ the round before and the lowest so far, counted only over rounds measured agains
   one that never has two is not measured), `resize`
   (the widest layout not restored), and the widths between which the layout changes; with `switches`, a change
   elsewhere or none near a named width is a `switch` finding. Each of `stories` is swept the same way (not for
-  `switches`): its findings carry its name, and the gallery pictures it at the frames' widths.
+  `switches`): its findings carry its name, and the gallery pictures it at the frames' widths within the sweep. A
+  story that cannot be swept (its root absent, a setup step failing) leaves the check incomplete and keeps the rest.
 
 ## Output
 
@@ -126,6 +129,6 @@ In `out/` beside `design.json`, or `--out`:
 | `report.md` | every finding, in tables |
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
-| `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable. Frame paths include a hash of the original name. Earlier PNGs are reused when their filename identifies exactly one configured frame |
+| `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
-| `history.jsonl` | one line per check: round, time, frames, sweep, what they were measured against, whether `review.md` had its acceptance list, verdict and score; the summary reads it for the round before and the lowest |
+| `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, each frame's settings, spec and image, the sweep), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

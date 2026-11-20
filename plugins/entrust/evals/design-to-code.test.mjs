@@ -877,3 +877,51 @@ test("the listing case's judge accepts its reference", browser, () => {
   const r = spawnSync(process.execPath, [path.join(LISTING, "judge/judge.mjs"), arm, path.join(dir, "judge")], { encoding: "utf8" });
   assert.match(r.stdout, /^ACCEPTED/, r.stdout + r.stderr);
 });
+
+// ------------------------------------------------------------------ round 10: the verifier's findings
+
+test("truncation drawn on purpose collides with nothing; one that draws no ellipsis is a cut", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const sweep = (name, body) => {
+    fs.writeFileSync(path.join(f.dir, `${name}.html`), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:60px;background:white;font:16px/20px monospace}</style><main>${body}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === name).map((i) => i.property);
+  };
+  assert.deepEqual(sweep("ellipsis", '<div style="display:flex;gap:8px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title that cannot fit</div><b>€10</b></div>'), []);
+  assert.deepEqual(sweep("clamp", '<p style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0">Line one of a long text that wraps onto line two and three</p><a href="#">Read more</a>'), []);
+  assert.deepEqual(sweep("wrapped", '<div style="width:120px;height:20px;overflow:hidden;text-overflow:ellipsis">A text that wraps and is cut below its first line</div>'), ["clipped"]);
+});
+
+test("covered leaves wrapped links, a transparent file input and a disabled fieldset alone", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "controls.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:60px;background:white;font:16px/20px monospace}</style><main>
+<p style="width:200px;margin:0">I agree to the <a href="#">terms of service</a> and <a href="#">privacy policy of the site</a>.</p>
+<span style="position:relative;display:inline-block"><button style="width:80px;height:24px">Upload</button><input type="file" style="position:absolute;inset:0;opacity:0"></span>
+<fieldset disabled style="position:relative;border:0;padding:0;margin:0"><button style="width:60px;height:20px">Send</button><span style="position:absolute;inset:0"></span></fieldset></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "controls", url: "controls.html" }] } }));
+  const r = check(f.dir);
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "covered"), [], r.stdout);
+});
+
+test("a story that cannot be swept is a gap, and the frames' own sweep is kept", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "empty.html"), "<!doctype html><p>no root here</p>");
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }, { name: "empty", url: "empty.html" }] } }));
+  const r = check(f.dir);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /Not checked: the story empty was not swept: Root main was absent/);
+  assert.notEqual(r.result.score, null);
+});
+
+test("the visible root is measured, a scripted animation is finished, and a change of tolerance starts a new series", browser, () => {
+  const f = smallFrame();
+  f.write('<main style="display:none"><span>Hidden</span></main><main><span id="r">Ready</span></main><script>document.getElementById("r").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 1000, fill: "both" });</script>');
+  const first = check(f.dir);
+  assert.equal(first.status, 0, first.stdout + first.stderr);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, tolerance: 30 }));
+  assert.match(check(f.dir).stdout, /scores start a new series/);
+});
