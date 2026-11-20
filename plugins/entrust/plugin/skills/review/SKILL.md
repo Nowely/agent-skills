@@ -18,7 +18,7 @@ Review only: change no project code and post nothing unless asked; keep to the u
 
 ## Plan
 
-Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size; analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
+Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size, and for a change reviewed and answered before, the [previous record, its export and head](references/report-data.md#the-next-revision); analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
 
 - **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff one reviewer cannot hold (a size not measured; one held 1,085 changed lines) or one with several risky areas. Multi costs two to six times the tokens. Where the size is unmeasured, the plan's reason for going multi is a judgment, not a fact.
 - **Where:** in this session (default), or in a subagent while this session conducts, which keeps the analysis out of the working session.

@@ -28,6 +28,11 @@ forensics remain in the repository references and release notes.
   tab, the message when nothing is left to start and the Code folds name an answered request as answered, not decided.
 - The Code tab's open count follows a parent's answer that restores a conditional question with code; it was counted
   before the walk was rebuilt, so it kept the count from before the answer.
+- A review of a new revision of a change already reviewed and answered starts from the previous record, the owner's
+  export of it and the previous head. It reads what changed since that head first, and puts each answer into the
+  record's own fields: a requirement the new revision meets or breaks, a tradeoff for what the owner left, a question
+  asked again for what stayed open. A finding or idea the owner left is not raised again unless its premise changed.
+  The data contract says who takes the export: whoever makes the change; the review applies none of it.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
