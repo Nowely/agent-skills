@@ -5,6 +5,7 @@
 | 0 | [drafts/01-v1.md](drafts/01-v1.md) | the tooling, no model | 15 tests; the planted defects found |
 | 1 | [drafts/02-v2.md](drafts/02-v2.md) | an independent critic and a verifier on round 0, then the tooling again | each of the critic's 8 findings changed the check or the pages, one suggestion declined; each of the verifier's 16 corrections applied, some reworded; 25 tests |
 | 2 | [drafts/03-v3.md](drafts/03-v3.md) | real design input, browser regressions, and an independent mixed-list check | self-comparison false positives repaired; the alignment gate did not pass on both controls, so no model comparison was run. [Details](03-calibration.md) |
+| 3 | [drafts/04-v4.md](drafts/04-v4.md) | fixes for the defects round 2 and its review left, the owner's decisions on them, then a critic and a verifier | below |
 
 The drafts are byte-identical copies of the skill page; their relative links resolve from the skill's directory.
 
@@ -53,3 +54,24 @@ in its page.
 ## Independent recommendations
 
 After the round 2 calibration, one independent advisor inspected the report and relevant code. The advisor found a bounded-exception aggregation defect and documented concrete successes, limits and [ideas for the next version](04-recommendations.md). No model implementation comparison was run.
+
+## Round 3: what round 2 left
+
+The coordinator re-ran round 2's findings before changing anything. Reproduced: a scorer that stopped at a check
+missing one reference image instead of recording it as incomplete; an accepted entry with `max: 1.02` excusing an
+8 px alignment spread at another width, because sweep findings had no size and widths were grouped before the ledger
+was applied; a frame awaiting one decision summarized as "fail, 0 findings". Measured: Chromium paints boxes laid
+out at 11.015625 px and at 10.5 px at 11 px, at 1× and 2×, so the 1.015625 px spread of round 2's control B is 1 px on
+screen.
+
+The owner decided: no copies of the work per round (the project's commits cover the worst case; the work moves
+forward), a stop to adjusting after two or three rounds without progress, followed by sorting what remains into
+fix, record or ask, since pixel-perfect is not the goal where a design missed a case or a kit component differs;
+texts for MCP specs joined from the design context by node id and checked against the frame's screenshot.
+
+Changes: sweep findings carry their size and are classified per width; alignment is read on painted pixels against
+the configured tolerance, and a group matching fewer than two elements is reported as not measured (exit 2);
+`score.mjs` records an incomplete check; the summary says a frame awaits a decision; `spec --context` joins the
+design context's texts by `data-node-id`; the round diffs are gone and `history.jsonl` keeps each round's score,
+read by the summary as the round before and the lowest. The join was tested on code written like the design
+context, not yet on the owner's real answer.
