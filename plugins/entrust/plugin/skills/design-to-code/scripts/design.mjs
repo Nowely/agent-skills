@@ -13,7 +13,7 @@
 // when the config has one (not with --frame or --no-sweep), prints a summary, writes report.md, result.json, the
 // images and, for a check of every frame, gallery.html (the design, the page before the work, the page now) to <dir>
 // (default: out/ beside design.json), and exits 0 when the comparison passes, 1 on a failure, 2 when it could not
-// measure everything, 3 when what remains awaits the owner's decision. `snapshot` writes a spec (and with
+// measure everything, 3 when what remains awaits the owner's decision; a failure outranks 2, and 2 outranks 3. `snapshot` writes a spec (and with
 // --images a reference PNG) from the page as it renders now: a baseline from an accepted implementation.
 // references/check.md describes design.json, the ledger and the output.
 //
@@ -293,9 +293,9 @@ function inPage({ command, root: rootSelector, landmarks = [], align = [], toler
   for (const g of align) {
     const rects = [...root.querySelectorAll(g.selector)].filter(visible).map((el) => el.getBoundingClientRect());
     const edgeOf = (r) => (g.edge === "right" ? r.right : g.edge === "center" ? (r.left + r.right) / 2 : g.edge === "top" ? r.top : r.left);
-    if (rects.length < 2) { unmeasured.push({ selector: g.selector, matched: rects.length }); continue; }
-    const values = rects.map(edgeOf), spread = Math.round((Math.max(...values) - Math.min(...values)) * 100) / 100;
-    if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: spread, actual: `${g.edge ?? "left"} edges ${spread} px apart` });
+    if (rects.length < 2) { unmeasured.push({ selector: g.selector, edge: g.edge ?? "left", matched: rects.length }); continue; }
+    const values = rects.map(edgeOf), spread = Math.max(...values) - Math.min(...values), shown = Math.round(spread * 100) / 100;
+    if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: shown, actual: `${g.edge ?? "left"} edges ${shown} px apart` });
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
   // wraps keeps its first line's place, so wrapping inside one layout does not count.
@@ -486,12 +486,18 @@ async function sweep(browser, cfg, ledger) {
     const failing = issues.filter((i) => i.status === "fail");
     // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
     // hidden on narrow screens does, was measured where it exists, and the widths without it are only reported.
+    // One group is one selector and edge; each probe counts once for it.
     const all = [...probes, back], short = new Map();
-    for (const p of all) for (const u of p.unmeasured) {
-      if (!short.has(u.selector)) short.set(u.selector, { selector: u.selector, matched: u.matched, widths: [] });
-      short.get(u.selector).widths.push(p.width);
-    }
-    const groups = [...short.values()].map(({ widths, ...u }) => ({ ...u, ranges: ranges(widths), everywhere: widths.length === all.length }));
+    all.forEach((p, i) => {
+      for (const u of p.unmeasured) {
+        const k = `${u.selector}\u0000${u.edge}`;
+        if (!short.has(k)) short.set(k, { selector: u.selector, edge: u.edge, matched: u.matched, probes: new Set(), widths: [] });
+        const g = short.get(k);
+        g.matched = Math.max(g.matched, u.matched);
+        if (!g.probes.has(i)) { g.probes.add(i); g.widths.push(p.width); }
+      }
+    });
+    const groups = [...short.values()].map(({ widths, probes: seen, ...u }) => ({ ...u, ranges: ranges(widths), everywhere: seen.size === all.length }));
     return {
       from, to, step, pass: failing.length === 0, issues, switches: changes.seen,
       score: issues.filter((i) => i.status !== "accepted").length * 10,

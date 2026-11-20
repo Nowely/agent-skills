@@ -191,7 +191,9 @@ export function contextTexts(code) {
     return -1;
   };
   const decode = (raw) => raw.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
-    if (e[0] === "#") return String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+    if (e[0] === "#") {
+      try { return String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)); } catch { doubt(); return m; }
+    }
     if (NAMED[e.toLowerCase()] !== undefined) return NAMED[e.toLowerCase()];
     doubt();
     return m;
@@ -206,7 +208,8 @@ export function contextTexts(code) {
         const end = code.indexOf(">", i), name = code.slice(i + 2, end).trim();
         const el = stack.pop();
         if (!el || el.name !== name) { broken = true; break; }
-        if (el.id) out.set(el.id, el.doubt ? null : norm(el.parts.join(" ")));
+        // An id seen twice cannot say which text is the layer's.
+        if (el.id) out.set(el.id, el.doubt || out.has(el.id) ? null : norm(el.parts.join(" ")));
         i = end + 1;
         continue;
       }
@@ -221,7 +224,7 @@ export function contextTexts(code) {
       }
       if (broken || j >= code.length) { broken = true; break; }
       const attrs = code.slice(i + 1 + name.length, selfClosing ? j - 1 : j);
-      const id = attrs.match(/data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
+      const id = attrs.match(/(?:^|\s)data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
       const el = { name, id: id ? (id[1] ?? id[2] ?? id[3]) : null, parts: [], doubt: false };
       if (!selfClosing) stack.push(el);
       i = j + 1;
@@ -232,11 +235,19 @@ export function contextTexts(code) {
       const end = braced(i);
       if (end < 0) { broken = true; break; }
       const inner = code.slice(i + 1, end).trim();
+      // A string literal is shown as written: no entities to decode, and an escape is not resolved here.
       const lit = inner.match(/^(["'])((?:\\.|(?!\1).)*)\1$/) ?? inner.match(/^`([^`$]*)`$/);
-      if (lit) text(decode(lit[2] ?? lit[1]));
+      if (lit && !/\\/.test(lit[2] ?? lit[1])) text(lit[2] ?? lit[1]);
+      else if (lit) doubt();
       else if (!/^\/\*[\s\S]*\*\/$/.test(inner)) doubt();
       i = end + 1;
       continue;
+    }
+    // Outside JSX: comments and strings are code, not markup, even when they hold something that looks like a tag.
+    if (!stack.length) {
+      if (c === "/" && code[i + 1] === "/") { const n = code.indexOf("\n", i); i = n < 0 ? code.length : n; continue; }
+      if (c === "/" && code[i + 1] === "*") { const n = code.indexOf("*/", i + 2); i = n < 0 ? code.length : n + 2; continue; }
+      if (c === '"' || c === "'" || c === "`") { let j = i + 1; for (; j < code.length && code[j] !== c; j++) if (code[j] === "\\") j++; i = j + 1; continue; }
     }
     if (stack.length) pending += c;
     i++;

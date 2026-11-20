@@ -243,6 +243,13 @@ test("texts come from the design context by node id when the outline carries onl
 <p data-node-id="2:3">&quot;Pro&quot;&#8239;14</p><p data-node-id="2:4">x&weird;</p><p data-node-id="2:5">{\`Доступно 1\`}</p></div>`);
   assert.deepEqual(Object.fromEntries(doubtful), { "2:3": '"Pro" 14', "2:5": "Доступно 1" });
   assert.equal(contextTexts('<div data-node-id="1:1"><p data-node-id="1:2">A</p>').size, 0);
+  // Code around the JSX is not markup; a literal is taken as written; an id seen twice or an escape is not guessed.
+  const tricky = contextTexts(`function A() { return (<div><p data-node-id="3:1">New</p><p data-node-id="3:2">{"14\\" screen"}</p>
+<p data-node-id="3:3">{"R&amp;D"}</p><p data-node-id="3:4">x&#99999999;</p><p title="data-node-id='9:9'" data-node-id="3:5">Five</p>
+<p data-node-id="3:6">A</p><p data-node-id="3:6">B</p></div>); }
+// <p data-node-id="3:1">Old</p>
+const s = "<p data-node-id='3:5'>Str</p>";`);
+  assert.deepEqual(Object.fromEntries(tricky), { "3:1": "New", "3:3": "R&amp;D", "3:5": "Five" });
 });
 
 test("an entry bounded by max covers only differences that have a size", () => {
@@ -311,7 +318,7 @@ const check = (dir, ...flags) => {
   return { ...r, result, dir };
 };
 
-test("the reference passes against its own snapshot, pixel for pixel", browser, () => {
+test("the reference passes against its own snapshot, with no pixel different", browser, () => {
   const r = check(variant());
   assert.equal(r.status, 0, r.stdout + r.stderr);
   for (const f of r.result.frames) {
@@ -475,6 +482,8 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const one = run(12, [{ selector: ".w", edge: "left" }]);
   assert.equal(one.status, 2, one.stdout);
   assert.match(one.stdout, /not measured: \.w matched 1 at every width/);
+  const bothEdges = run(12, [{ selector: ".w2", edge: "left" }, { selector: ".w2", edge: "right" }]);
+  assert.equal(bothEdges.status, 2, "two groups on one selector that never has two elements are not measured");
   const narrow = run(10, v, { hideBelow: 310 });
   assert.equal(narrow.status, 0, narrow.stdout);
   assert.match(narrow.stdout, /\.v matched fewer than two at 300: aligned only where it has two or more/);
