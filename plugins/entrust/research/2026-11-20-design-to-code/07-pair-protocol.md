@@ -39,8 +39,9 @@ worktree would share the branches and objects where the released code and earlie
 plugin directory holds only `skills/design-to-code/`. Before starting, a search in each arm's directory confirms
 that no research file, released code or judge scenario is reachable.
 
-Playwright and Chromium are installed outside the product (the skill's script finds them from its own directory),
-so `package.json` is untouched. The design font is installed in the stand. A dry run of the check, without a model,
+Playwright and Chromium are installed outside the product, in a directory above the arm's clone (the skill's script
+resolves Playwright from where the check runs, walking up the directories) or through `NODE_PATH`, so the product's
+`package.json` is untouched. The design font is installed in the stand. A dry run of the check, without a model,
 on the base commit's story must load the font and produce a verdict; it is not a pass, since the work is not done.
 
 The arms run one after the other on the one Figma seat, baseline first; each start records the Figma file's
