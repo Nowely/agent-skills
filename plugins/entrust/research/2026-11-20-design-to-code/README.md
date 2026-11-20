@@ -126,3 +126,11 @@ It ends with what to carry into the Terra runs.
 ## Draft 14: first submissions on the small case and the real card
 
 A single Terra worker used draft 14 on each case, without a new no-skill baseline. The small case met its registered threshold only after diagnosing a faulty judge selector; the real first submission did not meet visual or packaged-consumer acceptance. [The detailed record](11-terra-v14-retest.md) separates observations, checker and judge defects, time and token costs, and proposals; its [visual report](11-first-submission-visual.html) pairs each shown state with its reference and labels different data. No skill changes were made in this research round.
+
+## Iteration 1: the first revised-skill submission
+
+A same-input listing run with the shortened skill and the corrected judge was returned for one mobile layout mismatch; its worker disclosed the mismatch. [The first iteration record](12-iteration-01.md) includes the reference and both submissions, costs, judge controls, reflection and the next frozen draft.
+
+## Iteration 2: testing the design-conflict instruction
+
+The judge returned v16 for the same 6 px mobile difference as v15. The worker reported it, and a later DOM trial reconciled the written gap with the reference. [Results and visual comparison](13-iteration-02.md).

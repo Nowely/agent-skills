@@ -533,3 +533,13 @@ popups covered by journeys.
 One small listing case and one real responsive-library case ran with `52fb5dae`. The small case met its pre-registered 4 px materiality rule after a separately documented judge-selector correction, while the worker itself reported pending deviations. The real first submission failed its visual check and a separately built package could not load in the consumer because referenced image files were absent. No no-skill arm was rerun; neither observation estimates the skill’s causal effect. [Detailed findings, cost, visual evidence and proposed next steps](11-terra-v14-retest.md).
 
 No skill or checker edit was made in this observation, so it introduced no implementation regression; checker and judge flaws discovered in review are recorded in the linked report, not counted as new fixes.
+
+## Iteration 1: shorter skill, first submitted result
+
+Draft 15 was evaluated on the same small listing input as draft 14. The calibrated judge accepted the saved draft-14 first submission and returned the draft-15 first submission for one six-pixel mobile mismatch; both passed dense and interaction checks. The worker disclosed the mismatch. A separate inspection showed that the apparent mismatch between a contextual spacing and the picture could be resolved without changing either requirement. [Results, costs and visual comparison](12-iteration-01.md).
+
+The checker revision was independently tested before the run; an initially missed unmeasured story alignment was fixed and rechecked. Its remaining width/causality limits are documented. Draft 16 adds a short general check for apparent design-source conflicts, and has not yet been evaluated here. A single run per draft is not a causal estimate; no new no-skill arm was requested.
+
+## Iteration 2: the v16 listing submission
+
+v16 used two checker rounds and retained the 6 px narrow-layout mismatch. Dense data and all 17 interactions passed. The [second iteration](13-iteration-02.md) records the compatibility trial, worker costs and the handoff hypothesis in [v17](drafts/17-v17.md).
