@@ -1979,9 +1979,13 @@ test("a signal that reaches --run is journalled with whether forwarding it was a
     const rpc = path.join(dir, "rpc.log");
     const h = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: { ...env(state, "idle-silence"), FAKE_RPC_LOG: rpc }, killAfterMs: 60000 });
     if (!await turnStarted(rpc)) { h.child.kill("SIGKILL"); stopRun(dir); return "the driver never started its turn"; }
+    // The turn can start before the launcher reads the driver's pid line; a signal before that line is kept, not
+    // forwarded, by design. This case is about forwarding, so it signals once the launcher has attached.
+    const journalled = () => (read(path.join(dir, "lifecycle.jsonl")) ?? "").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } });
+    for (const until = Date.now() + 15000; Date.now() < until && !journalled().some((e) => e?.event === "attach"); await sleep(50));
     h.child.kill("SIGTERM");
     await h.done;
-    const events = (read(path.join(dir, "lifecycle.jsonl")) ?? "").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } });
+    const events = journalled();
     const sig = events.find((e) => e?.event === "signal");
     stopRun(dir);
     return (sig?.signal === "SIGTERM" && sig.forwardAttempted === true && typeof sig.atMs === "number")

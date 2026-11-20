@@ -10,27 +10,6 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
-## E144. The agent-run signal-journal case races the launcher's pid line and fails when the signal comes first
-
-**Evidence, level 3 (one observed CI failure) for the failure, level 2 for its cause.** On `251e420`, the
-[Ubuntu job](https://github.com/Nowely/agent-skills/actions/runs/44733403300/job/136278612877) failed
-`evals/agent-run.test.mjs:1975` («a signal that reaches --run is journalled with whether forwarding it was
-attempted…») with `lifecycle.jsonl` holding `{"event":"signal","signal":"SIGTERM","forwardAttempted":false,"kept":true}`
-and, 30 ms later, `{"event":"attach",…}`. The case sends `SIGTERM` once `turnStarted` (`:55-58`) sees `turn/start` in
-the fake server's log, which can precede the launcher's reading of the driver's pid line. The launcher then keeps the
-signal by design (`orchestrate/scripts/agent-run.mjs:1059-1069`: "One that comes before that line is kept until it
-appears") and journals `forwardAttempted: false, kept: true`, which the case refuses. The same suite passed 73/73
-locally on the same commit, and the PR that met it changed no launcher or case code.
-
-**Check.** Read `agent-run.mjs:1063-1069` beside the case: the case's expectation holds only when the pid line was
-read before the signal.
-
-**Issue text.** The agent-run case that journals a signal sent to `--run` waits only for the fake server's
-`turn/start` before sending `SIGTERM`, so on a slow runner the signal can arrive before the launcher has read the
-driver's pid line. The launcher then keeps the signal until the line appears, as it is meant to, and journals
-`forwardAttempted: false, kept: true`; the case requires `forwardAttempted: true` and fails. The case should wait for
-the launcher's `attach` event before signalling, or accept a kept signal that is forwarded once the pid is known.
-
 ## E143. Multi mode is offered for a diff one reviewer cannot hold, yet its coordinator reads the whole diff
 
 **Evidence, level 1.** `review/SKILL.md:23` offers "a coordinator with four direction helpers, for a diff one reviewer

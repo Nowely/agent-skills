@@ -51,6 +51,11 @@ forensics remain in the repository references and release notes.
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
   revision agree with what the record's text already says of it.
 
+### Fixed
+
+- The agent-run case that journals a signal sent to `--run` signals once the launcher has attached: a signal that
+  comes before the driver's pid line is kept by design, not forwarded, and failed the case (E144, seen once on CI).
+
 ## 0.43.0 — 2026-11-20
 
 ### Review report
