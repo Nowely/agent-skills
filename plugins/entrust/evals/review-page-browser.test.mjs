@@ -615,6 +615,32 @@ test("feedback 6: without JavaScript a path longer than the window wraps, and th
     return Object.values(out).every((m) => m.scroll <= m.client) || JSON.stringify(out);
   });
 
+test("feedback 6: without JavaScript a file's long path wraps in its header, and ordinary words in tables stay whole",
+  "the path was clipped in the file's header, and wrapping anywhere broke words such as «readArchive» in the units table",
+  async () => {
+    const out = {};
+    const o = await open(LONG_URL, { js: false, viewport: { width: 1024, height: 900 } });
+    try { out.header = await o.page.evaluate(() => { const h = document.querySelector(".sfile h3"); return [h.scrollWidth, h.clientWidth]; }); }
+    finally { await o.close(); }
+    for (const [name, url] of [["en", THEMED_URL], ["ru", RU_URL]]) {
+      const p = await open(url, { js: false, viewport: { width: 1024, height: 900 } });
+      try {
+        // every occurrence in a table is one box on one line
+        out[name] = await p.page.evaluate((words) => words.map((word) => {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), boxes = [];
+          for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+            if (!t.parentElement.closest("table")) continue;
+            for (let i = t.data.indexOf(word); i >= 0; i = t.data.indexOf(word, i + 1)) {
+              const r = document.createRange(); r.setStart(t, i); r.setEnd(t, i + word.length); boxes.push(r.getClientRects().length);
+            }
+          }
+          return [word, boxes];
+        }), ["readArchive", name === "ru" ? "Обязанности" : "Jobs"]);
+      } finally { await p.close(); }
+    }
+    return out.header[0] <= out.header[1] && [...out.en, ...out.ru].every(([, boxes]) => boxes.length && boxes.every((k) => k === 1)) || JSON.stringify(out);
+  });
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
