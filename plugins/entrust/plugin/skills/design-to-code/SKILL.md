@@ -19,6 +19,11 @@ differ, in a few lines of text instead of a comparison of images. Open the image
 cannot explain a difference, when the reference is a screenshot alone, and before handing off: the script locates
 measured differences and cannot judge every visual relationship or behaviour.
 
+**Done means checked.** Before the first product edit, write the acceptance list: every supplied reference, a dense
+story, every popup and action, and the owner's past returns when the project keeps them. Before saying done, run all
+of it and give each line its evidence. A line that fails is fixed or reported as not done; a line not run is reported
+as not checked. The first submission is the one the owner should be able to accept.
+
 Two files carry the work, and anyone can continue from them: the **design pack** (what the design says) and the
 **ledger** (where the page differs from it on purpose, and why). Both live in `.design/<task>/` in the project; ask
 the owner before committing it.
@@ -34,9 +39,10 @@ fidelity requirement and record its resolution.
 
 Follow [pack.md](references/pack.md). In short:
 
-1. Gather all supplied references by state and width (`card-selected-480`). If Figma is available, inspect the linked
-   node's parent and related frames; otherwise work from the supplied screenshots. Record unknown dimensions, scale,
-   states and behaviour as unknown rather than assuming them.
+1. Gather all supplied references by state and width (`card-selected-480`), every one of them: a popover or a
+   price detail drawn once is a state to build. If Figma is available, inspect the linked node's parent and related
+   frames; otherwise work from the supplied screenshots. Record unknown dimensions, scale, states and behaviour as
+   unknown rather than assuming them.
 2. For each reference, make a `spec.json` and save its image as `reference.png`. Prefer a 2× export when available;
    retain an image's actual resolution and scale. With Figma, the methods in [pack.md](references/pack.md) can
    extract text and geometry. Compare extracted text with the image. With only an image, use an empty landmark list
@@ -45,22 +51,30 @@ Follow [pack.md](references/pack.md). In short:
    mappings when available and useful. Compare design assets with the project's existing icons and supported
    components; use the appropriate source and record material fidelity differences. Save to the pack what a tool can
    write itself; retype a tool's answer into a file only when another agent will build from it.
-4. Write `design.json`: the page or story that renders the component, the root and host selectors, the frames, and
-   the widths to sweep with the widths where the layout should change ([check.md](references/check.md#designjson)).
+4. Write `design.json`: the page or story that renders the component, the root and host selectors, the frames (a
+   state with its `setup`, one drawn outside the component with its own `root`), and the widths to sweep with the
+   widths where the layout should change ([check.md](references/check.md#designjson)).
 5. Render each frame with the frame's own data. Text the data cannot produce is a gap for step 2.
+6. Add a dense story: the longest legal data, every badge and every conditional action at once. Sweep it with
+   `sweep.stories`: no frame draws it, and it is where texts collide and actions cover each other.
+
+Finish the pack and the stories before the first round: a score is compared only with rounds measured against the
+same specs and sweep.
 
 If Figma was supplied but is inaccessible, use available exports and record what could not be checked. An image-only
 reference is sufficient to continue implementation and visual review; do not infer unseen states or exact sizes.
 
 ## 2. Read the design before building
 
-Follow [review.md](references/review.md). Map each element to an existing UI-kit component where it fits and each
-value to a token or typographic style; list what maps to nothing. Then list what the design does not say: states
+Follow [review.md](references/review.md), and write it before the first product edit. Map each element to an
+existing UI-kit component where it fits and each value to a token or typographic style; list what maps to nothing.
+Write in a few lines how the parts relate across widths: what moves together, what lines up across rows, what wraps,
+truncates or grows when its content grows, and where each conditional action goes. Then list what the design does not say: states
 without a frame, widths between frames, long, empty and localized data, and what looks like an error (a word form, a
 spacing off the system's scale, contrast, a target smaller than 24 px). Where the build has to decide, choose the
 default and write the options with their cost in `review.md`; ask the owner only where the options change behaviour
 or scope, and keep building the rest. When the default makes the page differ from a frame, that difference goes in
-the ledger as `proposed`.
+the ledger as `proposed`. End with the acceptance list ([review.md](references/review.md#the-acceptance-list)).
 
 ## 3. Build from the outside in
 
@@ -100,13 +114,16 @@ the check is incomplete. A `proposed` difference waits for the owner; keep worki
 cannot remove and cannot justify is reported, not hidden.
 
 A layout change must keep behaviour: enter a state (selection, an open menu, typed input), resize through the
-modes, finish the action, and see the same result and the same surrounding state. Run the project's existing tests
-for the component. For a component other packages consume, exercise the built package.
+modes, finish the action, and see the same result and the same surrounding state. For every popup, menu and sheet:
+open it, move the pointer into it, leave it, and see it close; open and close it by touch and by keyboard. Run the
+project's existing tests for the component. For a component other packages consume, exercise the built package.
 
 ## 5. Hand off
 
-Give the owner:
+Run the acceptance list first, as the owner would: the full check, the dense story's pictures, each journey in the
+browser, each past return. Fix what fails; say done only for what passed. Then give the owner:
 
+- the acceptance list with each line's result and evidence, and what was not checked;
 - the check's verdict per frame and for the sweep (`out/report.md`);
 - `out/gallery.html`: per frame the reference, the page before the work, the page now and their difference, then the
   sweep and every ledger entry; inspect these images yourself and make the before/after comparison available to the
@@ -114,3 +131,6 @@ Give the owner:
 - the ledger's entries: accepted with who decided, proposed with the options; and `review.md`'s open questions;
 - what was not checked: states and widths without a frame, a device, a browser other than Chromium, a real
   consumer.
+
+When the owner returns something, add it to `.design/returns.md`, the project's list of past returns, so the next
+task checks it first.

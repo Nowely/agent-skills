@@ -69,7 +69,12 @@ tokens: do it only when another agent will build from the pack.
 A frame's texts are its data. Render each frame with that data (a story per frame, or one story with arguments);
 where the product's data cannot produce a text, the check cannot find it, and the gap goes to `review.md`. A frame
 showing a state (an open menu, a selected row, hover) gets `setup` steps in `design.json` that put the page in that
-state before it is measured.
+state before it is measured; a state drawn outside the component, such as a popover or a sheet, also names its own
+`root`.
+
+Add one **dense story**: the longest legal data the product allows, every badge and every conditional action at
+once. No frame draws it; it is where texts collide and actions cover each other. Sweep it with `sweep.stories`, and
+look at its pictures in the gallery.
 
 ## Screenshots without a spec
 
