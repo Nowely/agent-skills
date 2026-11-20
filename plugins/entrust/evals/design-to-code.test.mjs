@@ -1001,3 +1001,22 @@ test("the acceptance list is a heading with lines under it, not the word alone",
     assert.equal(check(f.dir).status, status, text);
   }
 });
+
+// ------------------------------------------------------------------ round 11: verification without a second agent
+
+test("a full check writes the evidence a handoff quotes, and a journey that expects nothing is refused", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }] },
+    journeys: [{ name: "root shows", steps: [{ visible: "main" }] }] }));
+  const r = check(f.dir);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows: holds$/m, /## Not checked by the script/]) assert.match(handoff, line);
+  assert.match(r.stdout, /evidence for the handoff: .*handoff\.md/);
+  fs.rmSync(path.join(f.dir, "out/handoff.md"));
+  check(f.dir, "--frame", "frame");
+  assert.ok(!fs.existsSync(path.join(f.dir, "out/handoff.md")), "only a check of every frame writes it");
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "clicks", steps: [{ click: "main" }] }] }));
+  assert.match(check(f.dir).stderr, /the journey "clicks" expects nothing/);
+});

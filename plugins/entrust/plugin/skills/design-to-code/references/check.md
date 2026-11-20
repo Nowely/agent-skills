@@ -43,8 +43,9 @@ Each journey opens the page afresh, at the widest frame's width unless it gives 
 `"touch": true`, on its own `url` if it has one, and runs its `steps`: the setup steps above and three that expect,
 each given a second to come true, as a person sees (a size, not hidden, not transparent): `{ "visible": "<selector>" }`
 (any match seen), `{ "hidden": "<selector>" }` (none seen, or no match), `{ "text": ["<selector>", "<text>"] }` (a match
-seen that shows the text). The first step that does not hold fails the journey, with its number; a failing journey
-fails the check and adds 10 to the score. For a popup:
+seen that shows the text). A journey with none of these three is an error in `design.json`, since it could not fail.
+The first step that does not hold fails the journey, with its number; a failing journey fails the check and adds 10
+to the score. For a popup:
 
 ```json
 { "name": "help: leaving closes it", "steps": [{ "hover": ".help" }, { "visible": ".popover" },
@@ -137,5 +138,6 @@ In `out/` beside `design.json`, or `--out`:
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
 | `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
+| `handoff.md` | written by a check of every frame: the evidence a handoff quotes, each frame's verdict, the widths and stories, each journey, the ledger and what the script did not check |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, each frame's settings, spec and image, the sweep), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

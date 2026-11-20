@@ -25,7 +25,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderReport, renderSummary,
+  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -64,6 +64,8 @@ function loadConfig(file) {
   const stories = cfg.sweep?.stories ?? [], journeys = cfg.journeys ?? [];
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
   if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps) || !j.steps.length)) throw new Error("design.json: each journey needs a name and steps");
+  // A journey that expects nothing cannot fail, so its "holds" would prove nothing.
+  for (const j of journeys) if (!j.steps.some((step) => ["visible", "hidden", "text"].some((k) => step && k in step))) throw new Error(`design.json: the journey "${j.name}" expects nothing: add a visible, hidden or text step`);
   const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? []), ...journeys.flatMap((j) => j.steps)];
   for (const step of steps) { const fault = stepFault(step); if (fault) throw new Error(`design.json: ${fault}`); }
   return {
@@ -879,13 +881,14 @@ async function check(file, flags) {
     const restarted = history.length > 0 && !comparable.length;
     const data = { frames: results, sweep: sweepResult, journeys: journeyResults, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
+    if (full) fs.writeFileSync(path.join(out, "handoff.md"), `${renderHandoff({ ...data, ledger, score })}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
     if (full) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
     console.log(`Verdict: ${status}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
-    if (full) console.log(`Gallery (design, before, after): ${where}/gallery.html`);
+    if (full) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();
