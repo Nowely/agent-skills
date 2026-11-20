@@ -86,3 +86,10 @@ An Astra review separates the observed calibration results from next-edition hyp
 ## Real-frame follow-up
 
 The [follow-up calibration](05-calibration-followup.md) records a blind review, the original dense fixture, three builds, a screenshot-only control, the measured ledger boundary and the limits of the checker as an acceptance gate. It also records which requested MCP inputs and costs remain unmeasured.
+
+## Rounds 6 and 7
+
+Round 6 closed E143, simplified image-only references, brought back the summary-first rule and registered a pair on
+the card task; its critic and verifier led round 7 to make missing fonts a warning again, keep sizes unrounded for
+the ledger, name a neighbour's change of size as a cause, remove what nothing used, and register the pair's
+[second protocol](07-pair-protocol.md). Details in [rounds.md](rounds.md).

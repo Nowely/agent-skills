@@ -9,6 +9,7 @@
 | 4 | [drafts/05-v5.md](drafts/05-v5.md) | the corrections round 3's critic and verifier found | below; no model run |
 | 5 | [drafts/06-v6.md](drafts/06-v6.md) | the owner's real-frame calibration with a blind review, and image-only references | the column defect found by checker and reviewer alike; one control 1.02 px over the tolerance, unresolved; the gate stays open. [Details](05-calibration-followup.md) |
 | 6 | [drafts/07-v7.md](drafts/07-v7.md) | E143, image-only text and missing fonts made simpler, the summary-first rule back, then a critic and a verifier; the pair protocol | below; no model run. [Protocol](06-pair-protocol.md) |
+| 7 | [drafts/08-v8.md](drafts/08-v8.md) | the corrections round 6's critic and verifier found; the pair protocol's second version | below; no model run. [Protocol](07-pair-protocol.md) |
 
 The drafts are byte-identical copies of the skill page; their relative links resolve from the skill's directory.
 
@@ -170,3 +171,43 @@ reminded that the product is established, with its kit, components and fonts: no
 - The pair on the card task is registered in [06-pair-protocol.md](06-pair-protocol.md).
 
 `node plugins/entrust/evals/design-to-code.test.mjs`: 36 cases, 36 passed.
+
+### Round 6's critic and verifier
+
+Two fresh agents of the coordinator's model read round 6 at `9e00715`: a critic against the owner's goal and the
+reminder not to over-build, and a verifier of every claim.
+
+- **The font rule did harm.** Round 6 made a missing font switch the whole check to incomplete. The critic loaded an
+  icon font whose glyphs sit in the Private Use Area: availability was tested on a fixed Latin and Cyrillic sample, so
+  the icon font counted as missing and a planted 6 px defect went unreported. A product font that failed to load
+  behind `Arial` went unreported too, since a later named family rendered; its 17 px column offsets then showed as
+  inherited with no place to start. The verifier found the same icon-font case and `BlinkMacSystemFont` counted as a
+  font.
+- **The E143 pattern remained in frame findings:** a root of 301.004 px passed `max: 1`, because frame deltas were
+  rounded before the ledger saw them.
+- **An offset caused by a neighbour's width had no place to start**: the texts it pushed were marked inherited and
+  the neighbour's width, not compared for Figma specs, was named nowhere.
+- **The pair protocol** shared history between worktrees, made the skill arm alone write its pack, scored only one
+  arm on listing its differences, and fixed no primary measure, cap or run order.
+- **Over-building**, by the critic's reading: the `tap` setup step (it always threw), `--before`, `overlay.png`, the
+  undocumented `sweep.url` and `sweep.height`, and the skill page restating check.md's rules.
+- **Wrong in the record**: "1.02 px over the tolerance" was 1.02 px apart, 0.02 px over it; the "10 areas" of the
+  release in image-only mode is the report's cap of 10 (58–86 areas differ), and that run rendered the release as an
+  image with no text, so it says nothing about text on a real page; the changelog still said image-only references
+  compare text pixels; `06-pair-protocol.md` said "under the right heading".
+
+## Round 7: the corrections
+
+- **Fonts warn and never hide findings.** The first family each text's stack names is tried against that text's own
+  characters, so an icon font that draws its glyphs is present and a product font that failed to load, or lacks a
+  subset, is reported even with a fallback after it. The verdict follows the findings.
+- **Sizes reach the ledger as measured**, in frames as in the sweep; only what a person reads is rounded.
+- **A neighbour's change of size is a cause**: "start here: the width of “New” changes by +N px".
+- **Removed**: the `tap` step, `--before` (delete `out/before/` instead), `overlay.png`, `sweep.url` and
+  `sweep.height`, and the skill page's restatement of check.md. Kept against the critic: the design review of
+  `review.md` (the owner asked for design and UX to be judged), the exit code for pending decisions, the `category`
+  field, and both routes to a spec (MCP without a token is the owner's setup; the REST route is a candidate for
+  removal if the pair does not use it).
+- **The pair protocol's second version** is [07-pair-protocol.md](07-pair-protocol.md).
+
+`node plugins/entrust/evals/design-to-code.test.mjs`: 38 cases, 38 passed.
