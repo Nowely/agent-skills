@@ -90,6 +90,16 @@ const big = { title: "A large generated change", range: "generated", language: "
   units: [{ name: UNIT, jobs: ["exports the values of the first ten modules"], uses: [], verdict: "keep", reason: "Generated." }],
   blocks: bigBlocks, challenges: [], coverage: "Generated." };
 const BIG_URL = render("big", big, bigDiff, false);
+// A file whose path runs far past the width of a desktop window, with no space or hyphen to break at, named as the
+// file, as a place and as code in a finding's text.
+const LONG_PATH = `src/${"aDirectoryWhoseNameRunsOnAndOn/".repeat(6)}AndAFileWhoseNameIsLongAsWell.js`;
+const LONG_URL = (() => {
+  const bytes = `diff --git a/${LONG_PATH} b/${LONG_PATH}\nnew file mode 100644\n--- /dev/null\n+++ b/${LONG_PATH}\n@@ -0,0 +1 @@\n+export const x = 1;\n`;
+  const r = { ...structuredClone(big), title: "A long path", diff: { file: "source.diff", sha256: createHash("sha256").update(bytes).digest("hex") }, units: [],
+    findings: [{ ...big.findings[0], at: `${LONG_PATH}:1`, what: `Reads \`${LONG_PATH}\` whole.` }], questions: [{ ...big.questions[0], at: `${LONG_PATH}:1` }],
+    blocks: [{ path: LONG_PATH, added: "1", does: "Exports x.", serves: [1], verdict: "fix", findings: [1] }] };
+  return render("long-path", r, bytes, false);
+})();
 
 // ---- helpers
 const VIEW = { width: 1440, height: 900 };
@@ -493,6 +503,18 @@ test("feedback 2: under a filter, a question's note in the code says how many bl
     const note = await text(page, '.note-item[data-item="q1"] .pills');
     return shown < all && note.includes(`all ${all} blocks`) && note.includes(`${shown} shown`) || `all ${all}, shown ${shown}: «${note}»`;
   }));
+
+test("feedback 6: without JavaScript a path longer than the window wraps, and the document does not scroll sideways",
+  "a long path widened the whole document on a desktop viewport",
+  async () => {
+    const out = {};
+    for (const width of [1440, 1024]) {
+      const o = await open(LONG_URL, { js: false, viewport: { width, height: 900 } });
+      try { out[width] = await o.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth })); }
+      finally { await o.close(); }
+    }
+    return Object.values(out).every((m) => m.scroll <= m.client) || JSON.stringify(out);
+  });
 
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",

@@ -13,6 +13,8 @@ forensics remain in the repository references and release notes.
   kept the count from the list's last drawing. Every count of Decisions is now written by one function.
 - Under a filter, a question's note in Code says how many blocks one answer covers in all and how many the filter
   shows; it counted only the shown ones, so one answer seemed to cover less than it does.
+- Without JavaScript, a path or a code span with no space or hyphen in it wraps instead of widening the whole
+  document.
 
 ## 0.43.0 — 2026-11-20
 
