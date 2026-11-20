@@ -720,3 +720,16 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
   const partial = score();
   assert.deepEqual([partial.status, partial.missingReferences], ["incomplete", ["720"]], "a check that measured part of the run is still scored");
 });
+
+test("content that fades in is present, and a text cut with an ellipsis is truncated on purpose", browser, () => {
+  const fade = smallFrame();
+  fade.write('<style>@keyframes in{from{opacity:0}to{opacity:1}}.pop{opacity:0;animation:in .15s forwards}</style><main><span class="pop">Ready</span></main>');
+  const shown = check(fade.dir);
+  assert.equal(shown.status, 0, shown.stdout + shown.stderr);
+  const cut = smallFrame('<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready steady go</div>');
+  const cfg = JSON.parse(fs.readFileSync(cut.config, "utf8"));
+  fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40 } }));
+  const own = check(cut.dir);
+  assert.equal(own.status, 0, own.stdout + own.stderr);
+  assert.deepEqual(own.result.sweep.issues, []);
+});

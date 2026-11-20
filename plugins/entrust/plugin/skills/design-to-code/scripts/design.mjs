@@ -83,7 +83,8 @@ async function chromium() {
   throw Object.assign(new Error("Playwright is not installed where this runs: run from the project that has it, or `npm i -D playwright && npx playwright install chromium`"), { exit: 2 });
 }
 
-const STILL = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
+// Animations end at once instead of not running: content that fades in is captured as it ends, not stuck at opacity 0.
+const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
 
 async function settle(page, selector) {
   await page.locator(selector).first().evaluate(async (root) => {
@@ -198,6 +199,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (cs.textAlign === "right" || (cs.textAlign === "end" && !rtl) || (cs.textAlign === "start" && rtl)) return "right";
     return "left";
   };
+  const deliberate = (style) => style.textOverflow === "ellipsis" || (style.webkitLineClamp && style.webkitLineClamp !== "none");
   const clipBounds = new Map();
   const textNodes = async () => {
     const out = [], clipped = new Set();
@@ -212,7 +214,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       for (let p = el; p; p = p.parentElement) {
         const style = getComputedStyle(p);
         if (style.clipPath !== "none" || style.clip !== "auto" || /hidden|clip/.test(style.overflowX + style.overflowY)) {
-          clipped.add(el);
+          // A text cut with an ellipsis or a line clamp is truncated on purpose: review.md says which texts truncate.
+          if (!deliberate(style)) clipped.add(el);
           break;
         }
       }
@@ -374,6 +377,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   for (const el of [root, ...root.querySelectorAll("*")]) {
     if (!visible(el) || !el.textContent.trim()) continue;
     const cs = getComputedStyle(el);
+    if (deliberate(cs)) continue;
     const clipX = /hidden|clip/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
     const clipY = /hidden|clip/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
     const cut = Math.max(clipX ? el.scrollWidth - el.clientWidth : 0, clipY ? el.scrollHeight - el.clientHeight : 0);
