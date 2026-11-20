@@ -159,7 +159,7 @@ export function check(review, files, directory) {
       if (s.ref !== undefined) {
         const m = /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(s.ref)), list = m && review[m[1]];
         if (!m || !Array.isArray(list) || +m[2] >= list.length) errors.push(`${who}: source ref "${s.ref}" names nothing in the record`);
-        else if (s.ref === self) errors.push(`${who}: source ref "${s.ref}" is the entry that makes the claim; cite what shows it`);
+        else if (`/${m[1]}/${+m[2]}` === self) errors.push(`${who}: source ref "${s.ref}" is the entry that makes the claim; cite what shows it`);
       } else if (text(s.at)) {
         if (s.revision !== undefined && !text(s.revision)) errors.push(`${who}: a source's revision is empty`);
         if (s.quote !== undefined && !text(s.quote)) errors.push(`${who}: a source's quote is empty`);

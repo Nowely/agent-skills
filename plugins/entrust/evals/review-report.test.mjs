@@ -651,6 +651,7 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
       [(r) => { r.questions[2].variants[0].consequences[0].sources = [{ ref: "/questions/2" }]; }, 'source ref "/questions/2" is the entry that makes the claim'],
       [(r) => { r.questions[2].recommendation.sources.push({ ref: "/questions/2" }); }, 'source ref "/questions/2" is the entry that makes the claim'],
       [(r) => { r.screens[1].sources = [{ ref: "/screens/1" }]; }, 'source ref "/screens/1" is the entry that makes the claim'],
+      [(r) => { r.questions[2].context[0].sources = [{ ref: "/questions/02" }]; }, 'source ref "/questions/02" is the entry that makes the claim'],
     ];
     for (const [change, fault] of faults) {
       const r = structuredClone(THEMED); change(r);
