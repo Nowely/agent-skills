@@ -93,14 +93,10 @@ what to ask (a question in `review.md` with its options). Then check everything 
 where the design missed a case, a kit component differs, the layout would overlap or the experience would suffer: the
 goal is that no difference is left unexplained.
 
-A measured check passes once observed differences are resolved or accepted by the owner or an applicable owner rule.
-For image-only references, visually judge text and layout against the reference and explain the check's incomplete
-status; a numerical pass is not the only route to a reviewed result. A `proposed` difference remains pending. Report
-what could not be measured separately and continue independent work. An accepted change of size or position also
-excuses what it pushes along. A difference you cannot remove and cannot justify is reported, not hidden. The sweep in
-the same run narrows one mounted page every few pixels and through each frame's width, and reports overflow, clipped
-and overlapping text, columns that drift apart, layout changes at widths the design does not name, and a layout that
-does not come back when widened.
+What passes, what a ledger entry excuses and what the sweep between the widths reports are in
+[check.md](references/check.md#the-ledger). For an image-only reference, judge text and layout by eye and say why
+the check is incomplete. A `proposed` difference waits for the owner; keep working on the rest. A difference you
+cannot remove and cannot justify is reported, not hidden.
 
 A layout change must keep behaviour: enter a state (selection, an open menu, typed input), resize through the
 modes, finish the action, and see the same result and the same surrounding state. Run the project's existing tests

@@ -75,10 +75,11 @@ state before it is measured.
 
 Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
 assumption and compare at a consistent size. Make a spec with the reference's frame dimensions and `landmarks: []`.
-The check compares the root and the areas outside the page's text, and reports the frame incomplete: what the
-texts say, and the smoothing Figma and Chromium give them differently, are for the eye. Inspect text, placement,
-typography and states against the screenshot; report unobserved widths and interactions. Keep the reference and
-before/after images for the owner. Do not invent Figma metadata or imply an assumed scale is measured.
+The check compares the root and the areas outside the page's text, and reports the frame incomplete at best (a
+differing area outside the text or a differing root fails it): what the texts say, and the smoothing Figma and
+Chromium give them differently, are for the eye. Inspect text, placement, typography and states against the
+screenshot; report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do
+not invent Figma metadata or imply an assumed scale is measured.
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares

@@ -4,11 +4,10 @@
 compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
 passed, 1 on a failure, 2 when something could not be measured, and 3 when what remains awaits the owner's
 decision. Not measured are: a frame without its image; a frame whose reference is an image alone, whose text is
-left to the eye; an alignment group that never has two elements; and everything, when the page lacks the design's
-font or there is no browser. A missing font outranks everything, since every text is then measured in a fallback;
-otherwise a failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it
-from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep;
-`--before` records the page as it is now as the "before" state.
+left to the eye; an alignment group that never has two elements; and everything, when there is no browser. A
+failure outranks 2, and 2 outranks 3. Playwright is resolved from the working directory first: run it from the
+project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. The page
+before the work is the one the first check saw; delete `out/before/` to take it again.
 
 ## design.json
 
@@ -25,7 +24,7 @@ Paths are relative to the file.
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport` and `setup` |
 | `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup` |
 
-`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap`,
+`setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`,
 `{ "fill": ["<selector>", "<text>"] }`, `{ "press": "Escape" }`, `{ "wait": 200 }`.
 
 A spec landmark is a text, found on the page whatever its spaces, letter case and markup, or a CSS `selector`
@@ -70,8 +69,9 @@ the round before and the lowest so far. `out/report.md` holds every finding in t
   finding of its own.
 - **Pixels** is the share of all pixels that differ visibly, texts included. Figma and Chromium smooth text
   differently, so a few percent with no finding is usual.
-- **Fonts not available**: none of the named families a text asks for is there, so it renders in a fallback; the
-  check is incomplete until the font is installed or loaded.
+- **Fonts not available**: the first family a text's stack names does not draw that text's characters (it failed to
+  load, or lacks the subset), so the text renders in a fallback. It is a warning, not a verdict: load the font
+  before trusting the text findings. The check cannot know the design's font; it reads the family the page names.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
   `outside` (text past the root), `overlap` (two texts over each other), `align` (a group's edges further apart than
@@ -88,7 +88,7 @@ In `out/` beside `design.json`, or `--out`:
 |---|---|
 | `report.md` | every finding, in tables |
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
-| `<frame>/page.png`, `side.png`, `overlay.png`, `diff.png` | the page now; design, page and difference side by side; the two at half opacity; the differing pixels |
-| `before/<frame>.png` | the page at the first check, kept until `--before` |
+| `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
+| `before/<frame>.png` | the page at the first check, kept until `out/before/` is deleted |
 | `gallery.html` | written by a check of every frame: one self-contained page with the design, before, after and difference per frame, the sweep, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: round, time, frames, sweep, verdict and score; the summary reads it for the round before and the lowest |
