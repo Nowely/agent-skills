@@ -223,7 +223,8 @@ const verdictTag = (v) => `<span class="tag verdict ${VERDICT_CLS[v] ?? "neutral
 const progress = () => DR.progress(ITEMS, state);
 // Progress in words, the same wherever the page says it: the choices decided, then the requests answered, never
 // verified; a part with nothing to count is left out.
-const progressWords = (p) => [p.choices && L("p.progress", n(p.decided), n(p.choices)), p.requests && L("p.progress.requests", n(p.answered), n(p.requests))].filter(Boolean);
+const requestWords = (p) => p.requests && L("p.progress.requests", n(p.answered), n(p.requests));
+const progressWords = (p) => [p.choices && L("p.progress", n(p.decided), n(p.choices)), requestWords(p)].filter(Boolean);
 
 // ---------------------------------------------------------------- chips and relations: links by id, from explicit record fields only
 const chip = (kind, id) => {
@@ -444,7 +445,7 @@ function updateChrome() {
   const viewed = `<span class="sep" aria-hidden="true">·</span><span>${esc(L("p.progress.viewed", n(S.viewed.size), n(F.length)))}</span>`;
   // the bar keeps to its first part, the choices decided, so it fits beside the tabs; its title holds every part
   const words = progressWords(p);
-  $("#progress").innerHTML = `<span title="${esc(words.join(" · "))}">${esc(words[0] ?? "")}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${p.choices ? (100 * p.decided / p.choices).toFixed(1) : 0}%"></span></span>${viewed}`;
+  $("#progress").innerHTML = `<span title="${esc(words.join(" · "))}">${esc(words[0] ?? "")}</span>${p.choices ? `<span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${(100 * p.decided / p.choices).toFixed(1)}%"></span></span>` : ""}${viewed}`;
   const so = $("#sum-progress"); if (so) so.innerHTML = summaryProgress();
   const sb = $("#start-btn"); if (sb) sb.textContent = L(p.done || p.deferred ? "p.continue" : "p.start");
   if (S.rendered.decisions) updateSubCounts();
@@ -786,7 +787,7 @@ function reqLine() {
   const parts = Object.entries(c).filter(([, k]) => k).map(([kind, k]) => P(WORD[kind], k));
   return `<b>${esc(P("p.reqline", D.requirements.length))}</b> <span>${esc(parts.join(" · "))}</span><a href="#summary-reqs" data-act="to-reqs" class="small">${esc(L("p.reqline.table"))}</a>`;
 }
-const summaryProgress = () => { const p = progress(); return `${p.choices ? `<b>${esc(L("p.progress.of", n(p.decided), n(p.choices)))}</b>` : ""}<span>${esc([p.choices && L("p.progress.decided"), p.requests && L("p.progress.requests", n(p.answered), n(p.requests)), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
+const summaryProgress = () => { const p = progress(); return `${p.choices ? `<b>${esc(L("p.progress.of", n(p.decided), n(p.choices)))}</b>` : ""}<span>${esc([p.choices && L("p.progress.decided"), requestWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
 function firstOpenItem() { return REVIEW_ORDER.find(isOpen); }
 function startReview() {
   const c = firstOpenItem();

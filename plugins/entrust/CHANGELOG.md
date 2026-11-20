@@ -23,8 +23,9 @@ forensics remain in the repository references and release notes.
 - «Decided N of M» counts the choices — decisions, findings and ideas. An answer to a fact or evidence request is
   the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
   counted apart, «requests answered N of M, not verified», in the summary, the export's text and the print; the top
-  bar says the choices decided, with every part in its title, so it still fits beside the tabs at 1024 px. Done still
-  lists both, and the export's JSON progress is unchanged.
+  bar says the choices decided, with every part in its title, so it still fits beside the tabs at 1024 px, and shows no
+  bar when there is no choice. Done still lists both, and the export's JSON progress is unchanged. The Russian Done
+  tab, the message when nothing is left to start and the Code folds name an answered request as answered, not decided.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and

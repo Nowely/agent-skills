@@ -482,7 +482,12 @@ test("feedback 3: an answer to an evidence request is not a decision: «Decided�
     // the themed record's choices: Q3, Q4 (while Q3 is open), F1, F2 and I1; its requests: Q1, Q2 and Q5
     const said = { bar: await page.getAttribute("#progress > span[title]", "title"), export: (await exported(page)).split("\n").find((l) => /Decided/.test(l)) ?? "" };
     await page.keyboard.press("g"); await page.keyboard.press("s"); await settle(page); said.summary = await text(page, "#sum-progress");
+    await page.evaluate(() => window.dispatchEvent(new Event("beforeprint"))); said.print = await text(page, "#print .static header p:last-child");
+    await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
     const wrong = Object.entries(said).filter(([where, t]) => !(where === "summary" ? /^0 of 5 decided/.test(t) : /Decided 0 of 5/.test(t)) || !/requests answered 1 of 3, not verified/.test(t));
+    await page.keyboard.press("g"); await page.keyboard.press("d"); await settle(page);
+    const note = await text(page, "#dec-note");
+    if (!/0 decided · 1 answered/.test(note)) wrong.push(["note", note]);
     // the bar itself is short: the choices decided, and the rest in its title
     const bar = await text(page, "#progress");
     return !wrong.length && /^Decided 0 of 5 · Files viewed/.test(bar) || JSON.stringify({ ...said, shown: bar });
