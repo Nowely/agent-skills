@@ -350,7 +350,7 @@ function exportPayload() {
 // The payload's rows in words, by section: each row is its text and the place «Show» goes to.
 function exportModel() {
   const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [] };
-  const answerWords = (c, a) => a.variant ? a.variant.text : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
+  const answerWords = (c, a) => a.variant ? a.variant.text : a.variants ? a.variants.map((v) => v.text).join(", ") : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
   for (const x of payload.items) {
     const c = itemByKey.get(x.item), draft = x.draft ? ` · ${L("p.export.draft", answerWords(c, x.draft))}` : "";
     const zones = x.zones ? ` · ${L("p.export.zones", x.zones.map((i) => c.ref.zones[i].text).join("; "))}` : "";
@@ -665,11 +665,12 @@ function choiceInner(c, where) {
   else if (where === "card") {
     const name = `ch-${c.key}-${S.uid}`;
     body = `${several ? `<p class="muted small">${esc(L("p.choose-several"))}</p>` : ""}<div class="opts" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="${type}" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
-      <label class="opt${own ? " on" : ""}"><input type="${type}" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
+      ${several ? `<button type="button" class="opt opt-other${own ? " on" : ""}" aria-pressed="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span></span><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></button>`
+        : `<label class="opt${own ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>`}${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
   } else {
     const vertical = opts.some((o) => o.label.length > 40) || opts.length > 3;
-    body = `<div class="pills${vertical ? " vertical" : ""}" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="${type}" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
-      <button class="pill" role="${type}" aria-checked="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
+    body = `${several ? `<p class="muted small">${esc(L("p.choose-several"))}</p>` : ""}<div class="pills${vertical ? " vertical" : ""}" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="${type}" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
+      <button class="pill" ${several ? `aria-pressed="${own}"` : `role="radio" aria-checked="${own}"`} data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
   }
   return zones + body + draftHtml(c) + deferred + (field === "defer" ? deferField(c) : "") + actions;
 }
@@ -706,6 +707,8 @@ function setState(next) { state = next; indexComments(); save(); }
 function pick(key, opt) {
   const c = itemByKey.get(key);
   if (!applicable(c)) return;
+  // one variant taken is not the end of a choice of several: its block stays open in the code until the owner moves on
+  if (c.multiple && S.tab === "code" && S.cur?.key === key) S.code.doneOpen.add(S.cur.bid);
   if (opt) { setState(DR.choose(ITEMS, state, key, opt)); S.field[key] = null; }
   else S.field[key] = "other";
   afterChange(key, { structural: true, focusText: !opt });
@@ -751,11 +754,11 @@ function syncItem(key, structural) {
   for (const el of $$(`[data-compact-answer="${key}"]`)) el.textContent = compactAnswer(st);
   for (const el of $$(`[data-waiting="${key}"]`)) el.textContent = waitingText(c);
   for (const card of $$(`#card-${key}`)) card.classList.toggle("settled", st.state !== "open");
-  // while the owner types an own answer, the radios already show which answer is in effect
+  // while the owner types an own answer, the controls already show which answer is in effect
   const own = ownInEffect(c), entry = entryOf(key);
   for (const el of $$(`[data-choice="${key}"] [data-act="pick"]`)) {
     const on = el.dataset.opt ? isChosen(c, el.dataset.opt) : own;
-    if (el.tagName === "INPUT") el.checked = on; else el.setAttribute("aria-checked", String(on));
+    if (el.tagName === "INPUT") el.checked = on; else el.setAttribute(el.hasAttribute("aria-pressed") ? "aria-pressed" : "aria-checked", String(on));
   }
   if (!structural) return;
   const active = document.activeElement;
@@ -1735,7 +1738,7 @@ document.addEventListener("click", (e) => {
   if (tabBtn) { pushNext = true; return showTab(tabBtn.dataset.tab); }
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
   if (NAVIGATES.has(a)) pushNext = true;
-  if (a === "pick" && act.tagName === "INPUT") return; // radios act on change
+  if (a === "pick" && act.tagName === "INPUT") return; // radios and checkboxes act on change
   if (!e.target.closest("#purpose-pop")) closePurposeMenu();
   if (a) {
     const key = act.dataset.key;

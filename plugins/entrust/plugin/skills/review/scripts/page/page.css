@@ -270,6 +270,7 @@ ol.steps li.sel { background: var(--accent-bg); }
 .opt .ol { font-weight: 500; }
 .opt .os { grid-column: 2 / 4; font-size: 12.5px; color: var(--text-3); }
 .opt.on { background: var(--accent-bg); }
+button.opt { appearance: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; text-align: left; font: inherit; color: inherit; }
 .opt .rec-mark { font-size: 11.5px; color: var(--text-3); margin-left: 6px; font-weight: 400; }
 .field { margin-top: 8px; }
 .opt-field { padding: 0 12px 10px 40px; background: var(--accent-bg); border-top: 0; }

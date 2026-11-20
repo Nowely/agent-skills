@@ -656,21 +656,28 @@ test("feedback 6: without JavaScript a file's long path wraps in its header, and
   });
 
 // ---- a decision whose variants combine
-// The themed record with Q3's variants combining, on block B3: Q4 applies while «extend» is among those chosen.
-const MULTI = (() => { const r = structuredClone(record); r.questions[2].multiple = true; r.blocks[2].questions = [1, 3, 5]; return r; })();
+// The themed record with Q3's variants combining, recommended together, the only open item of block B3: Q4 applies
+// while «extend» is among those chosen.
+const MULTI = (() => {
+  const r = structuredClone(record); r.questions[2].multiple = true; r.blocks[2].questions = [3];
+  r.questions[2].recommendation = { ...r.questions[2].recommendation, variant: undefined, variants: ["status-quo", "extend"] };
+  return r;
+})();
 const MULTI_URL = render("multiple", MULTI);
 test("a decision whose variants combine takes several: checkboxes on the card and in the code, its child applies while a listed variant is among them, and the export names them all",
   "a decision could take one variant only, so a combination had to be written in the owner's own words",
   cased(MULTI_URL + "#code/b3", {}, async (page) => {
     await settle(page);
     const pills = await page.locator('#panel-code [data-choice="q3"] [data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.getAttribute("role")));
+    const codeHint = await text(page, '#panel-code [data-choice="q3"]');
     // in the code's margin the note stays after the first variant, so a second can be taken there too
     await page.click('#panel-code [data-choice="q3"] [data-opt="status-quo"]'); await settle(page);
-    await page.click('#panel-code [data-choice="q3"] [data-opt="extend"]', { timeout: 3000 }).catch(() => {}); await settle(page);
+    await page.click('#panel-code [data-choice="q3"] [data-opt="extend"]', { timeout: 3000 }); await settle(page);
     const codeAnswer = await page.evaluate(() => [...document.querySelectorAll('[data-answer="q3"]')].map((el) => el.textContent).join("|"));
     await page.evaluate(() => localStorage.clear());
     await page.goto(MULTI_URL + "#decisions/q3"); await page.waitForSelector(".tabbar"); await settle(page);
     const boxes = await page.locator('#card-q3 input[data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.type));
+    const group = await page.getAttribute("#card-q3 .opts", "role"), recs = await page.locator("#card-q3 .opts .rec-mark").count();
     const hint = await text(page, "#card-q3 .choice");
     await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
     await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
@@ -678,14 +685,27 @@ test("a decision whose variants combine takes several: checkboxes on the card an
     await page.locator('#card-q3 input[data-opt="extend"]').uncheck(); await settle(page);
     const one = { q4: await statusOf(page, "q4"), answer: await text(page, '#card-q3 [data-answer="q3"]') };
     await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
-    const data = await payload(page), q3 = data.items.find((x) => x.item === "q3");
-    const ok = boxes.length === 2 && boxes.every((t) => t === "checkbox") && /One or more may be chosen/.test(hint)
+    const data = await payload(page), q3 = data.items.find((x) => x.item === "q3"), said = (await exported(page)).split("\n").find((l) => /^- Q3/.test(l)) ?? "";
+    const ok = boxes.length === 2 && boxes.every((t) => t === "checkbox") && /One or more may be chosen/.test(hint) && group === "group" && recs === 2
+      && /One or more may be chosen/.test(codeHint)
       && both.q3 === "Decided" && /Keep the conversion in the reader, Move it to a display unit/.test(both.answer) && both.q4 === "Open"
       && one.q4 === "Not applicable" && !/Move it/.test(one.answer)
       && JSON.stringify(q3.variants?.map((v) => v.id)) === '["status-quo","extend"]' && q3.variant === undefined
+      && /Keep the conversion in the reader, Move it to a display unit/.test(said)
       && pills.length === 2 && pills.every((role) => role === "checkbox") && /Keep the conversion in the reader, Move it to a display unit/.test(codeAnswer);
-    return ok || JSON.stringify({ pills, codeAnswer, boxes, hint: hint.slice(0, 60), both, one, q3 });
+    return ok || JSON.stringify({ said, pills, codeHint: codeHint.slice(0, 60), codeAnswer, boxes, group, recs, hint: hint.slice(0, 60), both, one, q3 });
   }));
+
+test("without JavaScript a decision whose variants combine says so, and marks each variant recommended together",
+  "the document gave no sign that several variants could be taken, nor which the reviewer recommends together",
+  async () => {
+    const o = await open(MULTI_URL, { js: false });
+    try {
+      const q3 = await o.page.evaluate(() => document.querySelector('[id="decisions/q3"]').innerText);
+      const marks = (q3.match(/the reviewer recommends this/g) ?? []).length;
+      return /One or more may be chosen/.test(q3) && marks === 2 || JSON.stringify({ marks, q3: q3.slice(0, 300) });
+    } finally { await o.close(); }
+  });
 
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",

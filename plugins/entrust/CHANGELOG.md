@@ -41,11 +41,11 @@ forensics remain in the repository references and release notes.
   the file and the project's tooling which tool writes it and from what. A file the project marks generated is one block too, read
   unless it is regenerated and compared; a mark the change adds is read like any change.
 - A decision whose variants combine is marked `multiple: true`: the owner takes one or several, as checkboxes on the
-  card and in the code; a conditional question applies while any chosen variant is listed; a recommendation may name
+  card and in the code's margin, where the note stays open while they are taken; a conditional question applies while any chosen variant is listed; a recommendation may name
   several in `variants`. **Breaking:** the export is schema 7, and carries such an answer as `variants`.
 - The page's storage key carries the number of what the page stores, apart from the export's (0.43.0 tied them): a
-  page of schema 7 still reads the answers a 0.43.0 page kept, and a test seeded with such a value says when a change
-  to what the page stores needs a new number.
+  page still reads the answers a 0.43.0 page kept after the export moved to schema 7, and a test seeded with such a
+  value says when a change to what the page stores needs a new number.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
