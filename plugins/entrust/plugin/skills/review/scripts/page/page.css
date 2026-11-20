@@ -64,7 +64,7 @@ html { background: var(--bg); }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; color: inherit; }
 code, .mono { font-family: var(--mono); font-size: .9em; }
-p code, li code, td code, .prose code, .card code, .note code, dd code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; padding: 0 .25em; }
+p code, li code, td code, .prose code, .card code, .note code, dd code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; padding: 0 .25em; overflow-wrap: break-word; }
 a { color: var(--accent); }
 h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -.005em; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
@@ -270,6 +270,7 @@ ol.steps li.sel { background: var(--accent-bg); }
 .opt .ol { font-weight: 500; }
 .opt .os { grid-column: 2 / 4; font-size: 12.5px; color: var(--text-3); }
 .opt.on { background: var(--accent-bg); }
+button.opt { appearance: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; text-align: left; font: inherit; color: inherit; }
 .opt .rec-mark { font-size: 11.5px; color: var(--text-3); margin-left: 6px; font-weight: 400; }
 .field { margin-top: 8px; }
 .opt-field { padding: 0 12px 10px 40px; background: var(--accent-bg); border-top: 0; }
@@ -593,6 +594,8 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-c { color: #8b949e; } :root:not([data-theme="light"]) .t-s { color: #a5d6ff; } :root:not([data-theme="light"]) .t-n { color: #79c0ff; } :root:not([data-theme="light"]) .t-k { color: #ff7b72; } }
 
 /* ---------- without JavaScript: the report as a document, from its <noscript> elements ---------- */
+/* a path or a code span with no space in it wraps rather than widening the document; the code's own lines already wrap */
+.static, .sfile { overflow-wrap: break-word; }
 .static { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .static header { padding: 20px 0 8px; }
 .static h1 { font-size: 22px; margin: 4px 0 8px; }

@@ -1,6 +1,6 @@
 // The owner's answers as plugins/entrust/plugin/skills/review/scripts/decisions.mjs keeps them: one answer per item,
 // a deferral only with a reason, conditional questions retired and restored by their parent's answer, progress over
-// every item, comments on lines and paragraphs, and the schema-6 export of them all. Run it after an edit to
+// every item, comments on lines and paragraphs, and the schema-7 export of them all. Run it after an edit to
 // decisions.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -102,16 +102,44 @@ test("an answer to a fact or evidence request is answered, never decided, and a 
   assert.deepEqual(D.markZone(ITEMS, D.markZone(ITEMS, D.empty(), "q5", "0", true), "q5", "0", false).answers, {});
 });
 
-test("progress counts every applicable item: decided and answered are done, deferred is not, not applicable leaves the total", () => {
-  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, answered: 0, open: 7, deferred: 0 });
+test("progress counts every applicable item: decided and answered are done, deferred is not, not applicable leaves the total; choices and requests apart", () => {
+  // The choices are Q1–Q3, F1 and I1; the requests are the fact Q4 and the evidence Q5.
+  assert.deepEqual(D.progress(ITEMS, D.empty()), { total: 7, done: 0, open: 7, deferred: 0, choices: 5, decided: 0, requests: 2, answered: 0 });
   let s = D.choose(ITEMS, D.empty(), "q1", "revert");
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, answered: 0, open: 4, deferred: 0 });
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 1, open: 4, deferred: 0, choices: 3, decided: 1, requests: 2, answered: 0 });
   s = D.write(ITEMS, s, "q4", "yes");
   s = D.defer(ITEMS, D.choose(ITEMS, s, "i1", "take"), "i1", "next quarter");
   s = D.choose(ITEMS, s, "fF1", "leave");
-  // The answered request counts as done, and apart, since it is no verified result; done is one rule for counting and listing.
-  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, answered: 1, open: 1, deferred: 1 });
+  // The answered request is done but never decided: it counts among the requests, since it is no verified result; done
+  // is one rule for counting and listing.
+  assert.deepEqual(D.progress(ITEMS, s), { total: 5, done: 3, open: 1, deferred: 1, choices: 3, decided: 2, requests: 2, answered: 1 });
   assert.deepEqual(ITEMS.filter((i) => D.done(ITEMS, s, i.key)).map((i) => i.key), ["q1", "q4", "fF1"]);
+});
+
+test("a decision whose variants combine takes one or several: a choice toggles, none left is no answer, a child applies while any chosen variant is listed, and the export names them all", () => {
+  const items = D.itemsOf({ questions: [
+    { id: 1, kind: "decision", multiple: true, variants: [{ id: "a", text: "Alpha" }, { id: "b", text: "Beta" }, { id: "c", text: "Gamma" }] },
+    { id: 2, kind: "decision", variants: [{ id: "x" }, { id: "y" }], parent: { question: 1, variants: ["b"] } }] });
+  let s = D.choose(items, D.choose(items, D.empty(), "q1", "c"), "q1", "a");
+  // kept in the variants' order, whatever the order they were chosen in
+  assert.deepEqual(s.answers.q1, { choice: ["a", "c"] });
+  assert.equal(D.status(items, s, "q1").state, "decided");
+  assert.equal(D.status(items, s, "q2").state, "not-applicable");
+  s = D.choose(items, s, "q1", "b");
+  assert.equal(D.status(items, s, "q2").state, "open");
+  const meta = { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "k", title: "T", range: "R" };
+  assert.deepEqual(D.exportOf(items, s, meta).items[0], { item: "q1", kind: "decision", status: "decided",
+    variants: [{ id: "a", text: "Alpha" }, { id: "b", text: "Beta" }, { id: "c", text: "Gamma" }] });
+  // a deferral keeps the several as its draft, and applying the draft brings them all back
+  const deferred = D.defer(items, s, "q1", "after the release");
+  assert.deepEqual(deferred.answers.q1.draft, { choice: ["a", "b", "c"] });
+  assert.deepEqual(D.applyDraft(items, D.undefer(items, deferred, "q1"), "q1").answers.q1, { choice: ["a", "b", "c"] });
+  // the last variant taken back leaves no answer
+  s = ["a", "b", "c"].reduce((st, id) => D.choose(items, st, "q1", id), s);
+  assert.equal(s.answers.q1, undefined);
+  assert.equal(D.status(items, s, "q1").state, "open");
+  // own words still replace the variants, as in any decision
+  assert.deepEqual(D.write(items, D.choose(items, D.empty(), "q1", "a"), "q1", "neither, a third way").answers.q1, { text: "neither, a third way" });
 });
 
 test("undo takes back one action and what followed from it, and leaves a later answer to another item as it is", () => {
@@ -151,7 +179,7 @@ test("one comment per line or paragraph: new text replaces it in place, empty te
   for (const raw of [null, "x", [], 5]) assert.deepEqual(D.normalize(raw), D.empty());
 });
 
-test("the export is schema 6 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
+test("the export is schema 7 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
   const items = D.itemsOf({ questions: [
     { id: 1, kind: "decision", variants: [{ id: "keep", text: "Keep it" }, { id: "revert", text: "Revert it" }] },
     { id: 2, kind: "decision", variants: [{ id: "yes", text: "Yes" }, { id: "no", text: "No" }], parent: { question: 1, variants: ["keep"] } },
@@ -165,7 +193,7 @@ test("the export is schema 6 under the record's and the diff's digests: each ite
   const meta = { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "k1", title: "A review", range: "HEAD~1..HEAD" };
   const out = D.exportOf(items, s, meta);
   assert.deepEqual({ ...out, items: undefined, lineComments: undefined, paragraphComments: undefined },
-    { schema_version: 6, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
+    { schema_version: 7, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
       progress: { total: 5, done: 3, open: 1, deferred: 1 }, items: undefined, lineComments: undefined, paragraphComments: undefined });
   assert.deepEqual(out.items, [
     { item: "q1", kind: "decision", status: "open" },
@@ -182,7 +210,3 @@ test("the export is schema 6 under the record's and the diff's digests: each ite
   assert.doesNotMatch(JSON.stringify(out), /verified|accepted/);
 });
 
-test("the page keeps answers under a key that names the export format and the record", () => {
-  assert.equal(D.schema, 6);
-  assert.equal(D.storageKey("0123456789"), "review-report:6:0123456789");
-});

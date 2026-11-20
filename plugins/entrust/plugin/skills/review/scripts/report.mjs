@@ -39,9 +39,9 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     const lines = [`- Q${n} \`${q.at}\`: ${q.text} (${word("question.kind", q.kind)}${q.resolver ? `; ${q.resolver}` : ""})`];
     if (q.parent) lines.push(`  ${t("question.parent")}: Q${q.parent.question} (${q.parent.variants.join(", ")})`);
     if (q.context?.length) lines.push(`  ${t("question.context")}:`, ...q.context.map((c) => `  - ${c.text} (${srcs(c.sources)})`));
-    if (q.variants?.length) lines.push(`  ${t("question.variants")}:`, ...q.variants.flatMap((v) => [`  - ${v.id}: ${v.text}`,
+    if (q.variants?.length) lines.push(`  ${t("question.variants")}:${q.multiple ? ` ${t("p.choose-several")}` : ""}`, ...q.variants.flatMap((v) => [`  - ${v.id}: ${v.text}`,
       ...(v.consequences ?? []).map((c) => `    ${t("question.consequences")}: ${c.text} (${srcs(c.sources)})`)]));
-    if (q.recommendation) lines.push(`  ${t("recommendation")}: ${q.recommendation.text}${q.recommendation.variant ? ` [${q.recommendation.variant}]` : ""} (${srcs(q.recommendation.sources)}) — ${t("question.recommendation-note")}`);
+    if (q.recommendation) lines.push(`  ${t("recommendation")}: ${q.recommendation.text}${q.recommendation.variant ? ` [${q.recommendation.variant}]` : q.recommendation.variants?.length ? ` [${q.recommendation.variants.join(", ")}]` : ""} (${srcs(q.recommendation.sources)}) — ${t("question.recommendation-note")}`);
     if (q.remainingEvidence?.length) lines.push(`  ${t("question.remaining-evidence")}: ${q.remainingEvidence.map((m) => `Q${m}`).join(", ")}`);
     if (q.zones?.length) lines.push(`  ${t("question.zones")}:`, ...q.zones.map((z) => `  - ${z.text} (${srcs(z.sources)})`));
     return lines.join("\n");

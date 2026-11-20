@@ -90,6 +90,16 @@ const big = { title: "A large generated change", range: "generated", language: "
   units: [{ name: UNIT, jobs: ["exports the values of the first ten modules"], uses: [], verdict: "keep", reason: "Generated." }],
   blocks: bigBlocks, challenges: [], coverage: "Generated." };
 const BIG_URL = render("big", big, bigDiff, false);
+// A file whose path runs far past the width of a desktop window, with no space or hyphen to break at, named as the
+// file, as a place and as code in a finding's title, text and fix.
+const LONG_PATH = `src/${"aDirectoryWhoseNameRunsOnAndOn/".repeat(6)}AndAFileWhoseNameIsLongAsWell.js`;
+const LONG_URL = (() => {
+  const bytes = `diff --git a/${LONG_PATH} b/${LONG_PATH}\nnew file mode 100644\n--- /dev/null\n+++ b/${LONG_PATH}\n@@ -0,0 +1 @@\n+export const x = 1;\n`;
+  const r = { ...structuredClone(big), title: "A long path", diff: { file: "source.diff", sha256: createHash("sha256").update(bytes).digest("hex") }, units: [],
+    findings: [{ ...big.findings[0], at: `${LONG_PATH}:1`, title: `Reads \`${LONG_PATH}\``, what: `Reads \`${LONG_PATH}\` whole.`, fix: `Read \`${LONG_PATH}\` once.` }], questions: [{ ...big.questions[0], at: `${LONG_PATH}:1` }],
+    blocks: [{ path: LONG_PATH, added: "1", does: "Exports x.", serves: [1], verdict: "fix", findings: [1] }] };
+  return render("long-path", r, bytes, false);
+})();
 
 // ---- helpers
 const VIEW = { width: 1440, height: 900 };
@@ -258,14 +268,15 @@ test("Undo says so when the answer it would take back has changed since, and the
     } finally { await o.close(); }
   });
 
-test("Done lists what progress counts as done: an answered evidence request is there, tagged «Answered»",
+test("Done lists what progress counts: the decided choices and the answered requests, an answered evidence request tagged «Answered»",
   "the Done sub-tab left out answered evidence while progress counted it, two rules for one fact",
   cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
     await page.keyboard.press("o"); await page.keyboard.type("seen on a phone"); await page.keyboard.press("Control+Enter"); await settle(page);
     await page.click('[data-sub="done"]'); await settle(page);
     const cards = await page.locator("#dec-list .card").evaluateAll((els) => els.map((el) => el.dataset.card));
-    const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await text(page, "#progress");
-    return cards.includes("q1") && tag === "Answered" && new RegExp(`Decided ${cards.length} of 8`).test(progress) || JSON.stringify({ cards, tag, progress });
+    const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await page.getAttribute("#progress > span[title]", "title");
+    const counted = /Decided (\d+) of/.exec(progress), answered = /requests answered (\d+) of/.exec(progress);
+    return cards.includes("q1") && tag === "Answered" && counted && answered && cards.length === +counted[1] + +answered[1] || JSON.stringify({ cards, tag, progress });
   }));
 
 // ---- the external review of PR #106: thirteen defects the prototype had, each a case that fails on it
@@ -276,7 +287,7 @@ test("review 1: Undo takes back the one keyed answer, and a later answer to anot
     await page.locator('#card-i1 input[data-opt="take"]').check(); await settle(page);
     await page.keyboard.press("u"); await settle(page);
     const f1 = await statusOf(page, "f1"), i1 = await statusOf(page, "i1"), progress = await text(page, "#progress");
-    return f1 === "Open" && i1 === "Decided" && /Decided 1 of 8/.test(progress) || `after Undo: F1 ${f1}, I1 ${i1}, ${progress}`;
+    return f1 === "Open" && i1 === "Decided" && /Decided 1 of 5/.test(progress) || `after Undo: F1 ${f1}, I1 ${i1}, ${progress}`;
   }));
 
 test("review 2: no report key acts while a dialog is open",
@@ -362,10 +373,10 @@ test("review 9: an entered answer stays «Answered», unverified, in its compact
   "an evidence answer read «Decided», and the waiting-for-parent indication was gone",
   cased(THEMED_URL + "#decisions/q2", {}, async (page) => {
     await page.keyboard.press("o"); await page.keyboard.type("the display reads it"); await page.keyboard.press("Control+Enter"); await settle(page);
-    const tag = await statusOf(page, "q2"), compact = await text(page, '#card-q2 [data-compact-answer="q2"]'), progress = await text(page, "#progress");
+    const tag = await statusOf(page, "q2"), compact = await text(page, '#card-q2 [data-compact-answer="q2"]'), progress = await page.getAttribute("#progress > span[title]", "title");
     await page.locator('#card-q4 input[data-opt="narrow"]').check(); await settle(page);
     const waiting = await text(page, '#card-q4 [data-waiting="q4"]');
-    return tag === "Answered" && /not verified/.test(compact) && /answered, not verified/.test(progress) && /Depends on Q3, still open/.test(waiting)
+    return tag === "Answered" && /not verified/.test(compact) && /requests answered 1 of 3, not verified/.test(progress) && /Depends on Q3, still open/.test(waiting)
       || `tag ${tag}; compact «${compact}»; progress «${progress}»; waiting «${waiting}»`;
   }));
 
@@ -463,6 +474,254 @@ test("review 13: Back returns from a cross-entity jump, and j steps leave no his
     return /code\/b2$/.test(there) && /decisions\/f1$/.test(page.url()) && await page.getAttribute("#tab-decisions", "aria-selected") === "true" || `${there} → back → ${page.url()}`;
   }));
 
+// ---- the feedback on PR #108: each a case that fails on 0.43.0
+test("feedback 3: an answer to an evidence request is not a decision: «Decided» counts the choices, and the requests are counted apart, unverified, wherever progress is said",
+  "«not checked yet» typed as an evidence answer was counted in «Decided»",
+  cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
+    await page.keyboard.press("o"); await page.keyboard.type("not checked yet"); await page.keyboard.press("Control+Enter"); await settle(page);
+    // the themed record's choices: Q3, Q4 (while Q3 is open), F1, F2 and I1; its requests: Q1, Q2 and Q5
+    const said = { bar: await page.getAttribute("#progress > span[title]", "title"), export: (await exported(page)).split("\n").find((l) => /Decided/.test(l)) ?? "" };
+    await page.keyboard.press("g"); await page.keyboard.press("s"); await settle(page); said.summary = await text(page, "#sum-progress");
+    await page.evaluate(() => window.dispatchEvent(new Event("beforeprint"))); said.print = await text(page, "#print .static header p:last-child");
+    await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    const wrong = Object.entries(said).filter(([where, t]) => !(where === "summary" ? /^0 of 5 decided/.test(t) : /Decided 0 of 5/.test(t)) || !/requests answered 1 of 3, not verified/.test(t));
+    await page.keyboard.press("g"); await page.keyboard.press("d"); await settle(page);
+    const note = await text(page, "#dec-note");
+    if (!/0 decided · 1 answered/.test(note)) wrong.push(["note", note]);
+    // the bar itself is short: the choices decided, and the rest in its title
+    const bar = await text(page, "#progress");
+    return !wrong.length && /^Decided 0 of 5 · Files viewed/.test(bar) || JSON.stringify({ ...said, shown: bar });
+  }));
+
+test("feedback 3: at 1024 px the top bar fits on every tab, in English and in Russian, before and after a request is answered",
+  "the requests' count made the bar's progress so long that the whole page scrolled sideways",
+  async () => {
+    const out = [];
+    for (const url of [THEMED_URL, RU_URL]) {
+      const o = await open(url + "#decisions/q1", { viewport: { width: 1024, height: 800 } });
+      try {
+        const wide = async (when) => { for (const tab of ["summary", "decisions", "code", "details"]) {
+          await o.page.click(`#tab-${tab}`); await settle(o.page);
+          const m = await o.page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+          if (m[0] > m[1]) out.push({ url: url.slice(-20), when, tab, m });
+        } };
+        await wide("unanswered");
+        await o.page.click("#tab-decisions"); await o.page.keyboard.press("o"); await o.page.keyboard.type("seen"); await o.page.keyboard.press("Control+Enter"); await settle(o.page);
+        await wide("answered");
+      } finally { await o.close(); }
+    }
+    return !out.length || JSON.stringify(out);
+  });
+
+// The themed record with its conditional question Q4 on a block of its own, so it counts in the Code tab.
+const CHILD_URL = render("child-block", (() => { const r = structuredClone(record); r.blocks[1] = { ...r.blocks[1], questions: [4] }; return r; })());
+test("the Code tab's open count follows a parent's answer that restores a conditional question, as a fresh load counts it",
+  "the badge was counted from the walk before the walk was rebuilt, so it kept the count from before the answer",
+  cased(CHILD_URL + "#decisions", {}, async (page) => {
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    await page.click("#tab-summary"); await settle(page); await page.click("#tab-decisions"); await settle(page);
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const live = await text(page, "#badge-code");
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const fresh = await text(page, "#badge-code");
+    return live === fresh || `live ${live}, after a reload ${fresh}`;
+  }));
+
+test("feedback 4: Esc closes the purpose menu and says so to assistive technology, as a click outside it does",
+  "Esc hid the menu and left aria-expanded true",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click("#purpose-btn"); const opened = await page.getAttribute("#purpose-btn", "aria-expanded");
+    await page.keyboard.press("Escape");
+    const hidden = await page.locator("#purpose-pop .pop-menu").isHidden(), after = await page.getAttribute("#purpose-btn", "aria-expanded");
+    return opened === "true" && hidden && after === "false" || JSON.stringify({ opened, hidden, after });
+  }));
+
+test("feedback 1: every group heading counts the open cards listed under it, after a parent's answer retires its child",
+  "the heading kept the open count from before the answer, while the sub-tab's count moved",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    const groups = await page.evaluate(() => [...document.querySelectorAll("#dec-list h2.group-h")].map((h) => {
+      const cards = [...h.nextElementSibling.querySelectorAll(".card")];
+      return { heading: h.textContent.replace(/\s+/g, " ").trim(), open: cards.filter((c) => c.querySelector(`[data-status="${c.dataset.card}"]`)?.textContent.trim() === "Open").length };
+    }));
+    const wrong = groups.filter((g) => +(/(\d+) open/.exec(g.heading)?.[1] ?? NaN) !== g.open);
+    return groups.length && !wrong.length || JSON.stringify(groups);
+  }));
+
+test("feedback 2: under a filter, a question's note in the code says how many blocks one answer covers in all and how many the filter shows",
+  "the note counted only the blocks the filter left, so one answer seemed to cover less than it does",
+  cased(BIG_URL + "#code", {}, async (page) => {
+    await page.fill("#file-q", "part7.js"); await page.waitForTimeout(400);
+    const all = big.blocks.filter((b) => b.questions?.includes(1)).length, shown = big.blocks.filter((b) => b.questions?.includes(1) && b.path.endsWith("part7.js")).length;
+    const note = await text(page, '.note-item[data-item="q1"] .pills');
+    return shown < all && note.includes(`all ${all} blocks`) && note.includes(`${shown} shown`) || `all ${all}, shown ${shown}: «${note}»`;
+  }));
+
+test("feedback 5: saved data the page cannot read is never written over unasked: the first save shows it to copy, and only an explicit choice saves over it",
+  "the next answer replaced the unreadable data and cleared the warning, with no confirmation and no copy",
+  cased(THEMED_URL + "#decisions/f1", { init: () => {
+    const get = Storage.prototype.getItem, set = Storage.prototype.setItem; window.__writes = [];
+    Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") && !window.__writes.length ? "{broken" : get.call(this, key); };
+    Storage.prototype.setItem = function (key, value) { if (key.startsWith("review-report:")) window.__writes.push(value); return set.call(this, key, value); };
+  } }, async (page) => {
+    const writes = () => page.evaluate(() => window.__writes.length);
+    const shown = await page.locator("#storage").isVisible();
+    await page.keyboard.press("f"); await settle(page);
+    const dialog = await page.locator("#unreadable-dialog").evaluate((d) => d.open), raw = await page.locator("#unreadable-text").inputValue(), afterAnswer = await writes();
+    await page.keyboard.press("Escape"); await settle(page);
+    const status = await statusOf(page, "f1"), still = await page.locator("#storage").isVisible(), afterClose = await writes();
+    await page.click('#storage [data-act="unreadable-show"]'); await page.click('[data-act="unreadable-replace"]'); await settle(page);
+    const saved = await page.evaluate(() => window.__writes.at(-1)), gone = await page.locator("#storage").isHidden();
+    return shown && dialog && raw === "{broken" && afterAnswer === 0 && afterClose === 0 && status === "Decided" && still && /"f1"/.test(saved ?? "") && gone
+      || JSON.stringify({ shown, dialog, raw, afterAnswer, afterClose, status, still, saved, gone });
+  }));
+
+test("feedback 5: while saved data cannot be read, typing is never cut off, the page says the answers are only in its memory, the dialog comes once and leaving asks first",
+  "the dialog opened after the first typed letter and swallowed the rest; the wording, the warning on leaving and the single offer were untested",
+  async () => {
+    const o = await open(THEMED_URL + "#decisions/q1", { init: () => {
+      const get = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); };
+    } });
+    try {
+      const page = o.page, isOpen = () => page.locator("#unreadable-dialog").evaluate((d) => d.open);
+      await page.keyboard.press("o");
+      for (const ch of "not checked yet") { await page.keyboard.type(ch); await page.waitForTimeout(150); }
+      const whileTyping = await isOpen();
+      await page.keyboard.press("Control+Enter"); await page.waitForTimeout(200);
+      const afterLeaving = await isOpen(), answer = await text(page, '#card-q1 [data-answer="q1"]');
+      await page.keyboard.press("Escape"); await settle(page);
+      const focus = await page.evaluate(() => document.activeElement?.tagName);
+      await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await page.waitForTimeout(200);
+      const again = await isOpen(), memory = await text(page, "#dec-note");
+      let asked = false;
+      page.on("dialog", async (d) => { asked = d.type() === "beforeunload"; await d.dismiss(); });
+      await page.close({ runBeforeUnload: true }); await new Promise((r) => setTimeout(r, 500));
+      return !whileTyping && afterLeaving && /not checked yet/.test(answer) && focus !== "BODY" && !again && /only in this page's memory/.test(memory) && asked
+        || JSON.stringify({ whileTyping, afterLeaving, answer, focus, again, memory, asked });
+    } finally { await o.close(); }
+  });
+
+test("feedback 6: with JavaScript a long path in a card's text wraps too, and no tab scrolls sideways on a desktop viewport",
+  "a long path as code in a finding widened Decisions at 1280 px",
+  async () => {
+    const out = [];
+    for (const width of [1440, 1280, 1024]) {
+      const o = await open(LONG_URL + "#decisions", { viewport: { width, height: 900 } });
+      try { for (const tab of ["summary", "decisions", "code", "details"]) {
+        await o.page.click(`#tab-${tab}`); await settle(o.page);
+        const m = await o.page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        if (m[0] > m[1]) out.push({ width, tab, m });
+      } } finally { await o.close(); }
+    }
+    return !out.length || JSON.stringify(out);
+  });
+
+test("feedback 6: without JavaScript a path longer than the window wraps, and the document does not scroll sideways",
+  "a long path widened the whole document on a desktop viewport",
+  async () => {
+    const out = {};
+    for (const width of [1440, 1024]) {
+      const o = await open(LONG_URL, { js: false, viewport: { width, height: 900 } });
+      try { out[width] = await o.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth })); }
+      finally { await o.close(); }
+    }
+    return Object.values(out).every((m) => m.scroll <= m.client) || JSON.stringify(out);
+  });
+
+test("feedback 6: without JavaScript a file's long path wraps in its header, and ordinary words in tables stay whole",
+  "the path was clipped in the file's header, and wrapping anywhere broke words such as «readArchive» in the units table",
+  async () => {
+    const out = {};
+    const o = await open(LONG_URL, { js: false, viewport: { width: 1024, height: 900 } });
+    try { out.header = await o.page.evaluate(() => { const h = document.querySelector(".sfile h3"); return [h.scrollWidth, h.clientWidth]; }); }
+    finally { await o.close(); }
+    for (const [name, url] of [["en", THEMED_URL], ["ru", RU_URL]]) {
+      const p = await open(url, { js: false, viewport: { width: 1024, height: 900 } });
+      try {
+        // every occurrence in a table is one box on one line
+        out[name] = await p.page.evaluate((words) => words.map((word) => {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), boxes = [];
+          for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+            if (!t.parentElement.closest("table")) continue;
+            for (let i = t.data.indexOf(word); i >= 0; i = t.data.indexOf(word, i + 1)) {
+              const r = document.createRange(); r.setStart(t, i); r.setEnd(t, i + word.length); boxes.push(r.getClientRects().length);
+            }
+          }
+          return [word, boxes];
+        }), ["readArchive", name === "ru" ? "Обязанности" : "Jobs"]);
+      } finally { await p.close(); }
+    }
+    return out.header[0] <= out.header[1] && [...out.en, ...out.ru].every(([, boxes]) => boxes.length && boxes.every((k) => k === 1)) || JSON.stringify(out);
+  });
+
+// ---- a decision whose variants combine
+// The themed record with Q3's variants combining, recommended together, the only open item of block B3: Q4 applies
+// while «extend» is among those chosen.
+const MULTI = (() => {
+  const r = structuredClone(record); r.questions[2].multiple = true; r.blocks[2].questions = [3];
+  r.questions[2].recommendation = { ...r.questions[2].recommendation, variant: undefined, variants: ["status-quo", "extend"] };
+  return r;
+})();
+const MULTI_URL = render("multiple", MULTI);
+test("a decision whose variants combine takes several: checkboxes on the card and in the code, its child applies while a listed variant is among them, and the export names them all",
+  "a decision could take one variant only, so a combination had to be written in the owner's own words",
+  cased(MULTI_URL + "#code/b3", {}, async (page) => {
+    await settle(page);
+    const pills = await page.locator('#panel-code [data-choice="q3"] [data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.getAttribute("role")));
+    const codeHint = await text(page, '#panel-code [data-choice="q3"]');
+    // in the code's margin the note stays after the first variant, so a second can be taken there too
+    await page.click('#panel-code [data-choice="q3"] [data-opt="status-quo"]'); await settle(page);
+    await page.click('#panel-code [data-choice="q3"] [data-opt="extend"]', { timeout: 3000 }); await settle(page);
+    const codeAnswer = await page.evaluate(() => [...document.querySelectorAll('[data-answer="q3"]')].map((el) => el.textContent).join("|"));
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(MULTI_URL + "#decisions/q3"); await page.waitForSelector(".tabbar"); await settle(page);
+    const boxes = await page.locator('#card-q3 input[data-act="pick"]:not([data-opt=""])').evaluateAll((els) => els.map((el) => el.type));
+    const group = await page.getAttribute("#card-q3 .opts", "role"), recs = await page.locator("#card-q3 .opts .rec-mark").count();
+    const hint = await text(page, "#card-q3 .choice");
+    await page.locator('#card-q3 input[data-opt="status-quo"]').check(); await settle(page);
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const both = { q3: await statusOf(page, "q3"), answer: await text(page, '#card-q3 [data-answer="q3"]'), q4: await statusOf(page, "q4") };
+    await page.locator('#card-q3 input[data-opt="extend"]').uncheck(); await settle(page);
+    const one = { q4: await statusOf(page, "q4"), answer: await text(page, '#card-q3 [data-answer="q3"]') };
+    await page.locator('#card-q3 input[data-opt="extend"]').check(); await settle(page);
+    const data = await payload(page), q3 = data.items.find((x) => x.item === "q3"), said = (await exported(page)).split("\n").find((l) => /^- Q3/.test(l)) ?? "";
+    const ok = boxes.length === 2 && boxes.every((t) => t === "checkbox") && /One or more may be chosen/.test(hint) && group === "group" && recs === 2
+      && /One or more may be chosen/.test(codeHint)
+      && both.q3 === "Decided" && /Keep the conversion in the reader, Move it to a display unit/.test(both.answer) && both.q4 === "Open"
+      && one.q4 === "Not applicable" && !/Move it/.test(one.answer)
+      && JSON.stringify(q3.variants?.map((v) => v.id)) === '["status-quo","extend"]' && q3.variant === undefined
+      && /Keep the conversion in the reader, Move it to a display unit/.test(said)
+      && pills.length === 2 && pills.every((role) => role === "checkbox") && /Keep the conversion in the reader, Move it to a display unit/.test(codeAnswer);
+    return ok || JSON.stringify({ said, pills, codeHint: codeHint.slice(0, 60), codeAnswer, boxes, group, recs, hint: hint.slice(0, 60), both, one, q3 });
+  }));
+
+test("Enter on a decision whose variants combine opens its answer, as on any card",
+  "Enter looked for a radio only, so a card of checkboxes kept the focus",
+  cased(MULTI_URL + "#decisions/q3", {}, async (page) => {
+    await page.locator("#card-q3").focus(); await page.keyboard.press("Enter"); await settle(page);
+    const focus = await page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.type, document.activeElement?.closest("article")?.id]);
+    return focus[0] === "INPUT" && focus[1] === "checkbox" && focus[2] === "card-q3" || JSON.stringify(focus);
+  }));
+
+test("an evidence request says that what is not checked yet is deferred with that reason, since an answer counts as done",
+  "«not checked yet» typed as an evidence answer read as done and folded its blocks",
+  cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
+    const evidence = await text(page, "#card-q1 .choice"), fact = await text(page, "#card-q2 .choice");
+    return /not checked yet/i.test(evidence) && /defer/i.test(evidence) && !/not checked yet/i.test(fact) || JSON.stringify({ evidence: evidence.slice(0, 200), fact: fact.slice(0, 120) });
+  }));
+
+test("without JavaScript a decision whose variants combine says so, and marks each variant recommended together",
+  "the document gave no sign that several variants could be taken, nor which the reviewer recommends together",
+  async () => {
+    const o = await open(MULTI_URL, { js: false });
+    try {
+      const q3 = await o.page.evaluate(() => document.querySelector('[id="decisions/q3"]').innerText);
+      const marks = (q3.match(/the reviewer recommends this/g) ?? []).length;
+      return /One or more may be chosen/.test(q3) && marks === 2 || JSON.stringify({ marks, q3: q3.slice(0, 300) });
+    } finally { await o.close(); }
+  });
+
 // ---- record values as text
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
@@ -536,7 +795,7 @@ test("an internal source names its entry as a link that opens it",
 
 // ---- persistence, export, no JavaScript, print
 test("answers, an own answer, a deferral, comments, «Viewed» and the theme survive a reload",
-  "the owner's work must outlive the tab; schema 6 keeps it under a key of its own",
+  "the owner's work must outlive the tab; it is kept under a key of the record and the stored format",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="extend"]').check();
     await page.locator('#card-q2 textarea[data-act="text"]').fill("the display reads it"); await page.locator('#card-q2 textarea[data-act="text"]').blur();
@@ -553,7 +812,7 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
       && p.paragraphComments[0]?.text === "unclear" || JSON.stringify({ keys, r, comments: p.paragraphComments });
   }));
 
-test("the page shows what is true of its storage: a refused save, a browser that keeps nothing, saved answers it cannot read — and a save that works clears the message",
+test("the page shows what is true of its storage: a refused save, a browser that keeps nothing, saved answers it cannot read — and the message stays while it is true",
   "answers that live only in memory must not look saved, and a warning no longer true must not stay",
   async () => {
     const seen = async (page) => ({ visible: await page.locator("#storage").isVisible(), text: (await page.locator("#storage").textContent()).trim() });
@@ -566,9 +825,13 @@ test("the page shows what is true of its storage: a refused save, a browser that
     await visit("refused", "#decisions/f1", () => { Storage.prototype.setItem = () => { throw new Error("refused"); }; }, true);
     await visit("blocked", "#decisions/f1", () => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } }); }, true);
     await visit("unreadable", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "{broken" : get.call(this, key); }; }, true);
+    // JSON that is not this page's kind of object cannot be read either, at any level the page reads, nor a stored null
+    await visit("not an object", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "[1, 2]" : get.call(this, key); }; });
+    await visit("nested", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? '{"decisions":"owner note to recover"}' : get.call(this, key); }; });
+    await visit("null", "#decisions/f1", () => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (key) { return key.startsWith("review-report:") ? "null" : get.call(this, key); }; });
     const shown = (name, words) => out[name]?.visible && words.test(out[name].text);
     return !errors.length && !out.refused.visible && shown("refused then a save", /refused to save/) && shown("blocked", /keeps nothing for this page/)
-      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && !out["unreadable then a save"].visible
+      && shown("blocked then a save", /keeps nothing for this page/) && shown("unreadable", /could not be read/) && shown("unreadable then a save", /could not be read/) && shown("not an object", /could not be read/) && shown("nested", /could not be read/) && shown("null", /could not be read/)
       || JSON.stringify({ out, errors });
   });
 
@@ -582,7 +845,25 @@ test("where the page says the answers are kept follows the storage: in the keys,
     return !wrong.length || JSON.stringify(Object.fromEntries(wrong));
   }));
 
-test("the export is one schema-6 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
+test("the page reads what a page of the same stored format kept: an answer, a deferral with its draft, an own answer with a marked zone, a line comment, «Viewed» and the view choices",
+  "a change to what the page stores must bump the key's number; this case fails when it does not and an earlier value is misread",
+  cased(THEMED_URL + "#decisions", { init: () => {
+    // as entrust 0.43.0 stored it
+    const kept = { decisions: { answers: { q3: { choice: "status-quo" }, f1: { deferred: true, reason: "after the release", draft: { choice: "fix" } },
+      q1: { zones: { 0: true }, text: "seen on a phone" } }, lines: [{ path: "src/invoices/archive.js", side: "head", line: 2, text: "why here?" }], paragraphs: [] },
+      viewed: ["test/archive.test.js"], ui: { theme: "dark", tree: true, dirsClosed: [], order: "attention" } };
+    const get = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) { return key.startsWith("review-report:6:") ? JSON.stringify(kept) : get.call(this, key); };
+  } }, async (page) => {
+    const r = { q3: await statusOf(page, "q3"), q3answer: await text(page, '#card-q3 [data-answer="q3"]'), f1: await statusOf(page, "f1"),
+      f1draft: await text(page, "#card-f1 .choice"), q1: await statusOf(page, "q1"), zone: await page.locator('#card-q1 input[data-act="zone"]').first().isChecked(),
+      comments: await text(page, '[data-subcount="comments"]'), progress: await page.getAttribute("#progress > span[title]", "title"),
+      viewed: await text(page, "#progress"), theme: await page.evaluate(() => document.documentElement.dataset.theme) };
+    return r.q3 === "Decided" && /Keep the conversion in the reader/.test(r.q3answer) && r.f1 === "Deferred" && /after the release/.test(r.f1draft)
+      && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
+  }));
+
+test("the export is one schema-7 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
@@ -591,7 +872,7 @@ test("the export is one schema-6 payload behind the preview, the text and the JS
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
     const q3 = p.items.find((x) => x.item === "q3");
-    return p.schema_version === 6 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
+    return p.schema_version === 7 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
       && p.lineComments[0]?.path === "src/invoices/archive.js" && p.lineComments[0].side === "head" && p.lineComments[0].line === 4
       && p.paragraphComments[0]?.item === "q3" && p.paragraphComments[0].field === "text" && t.includes("Q3: Keep the conversion in the reader") && t.includes("check this")
       || JSON.stringify({ q3, lines: p.lineComments, paragraphs: p.paragraphComments });

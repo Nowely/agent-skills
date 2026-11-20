@@ -2,7 +2,7 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards) and [the page](#the-page).
+See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), [the next revision](#the-next-revision) and [generated files](#generated-files).
 
 ## Making it
 
@@ -19,6 +19,7 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
+   A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
@@ -157,7 +158,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
   their `why` or `finding`, `"match": true` when compared and equal, or what was `missing`. `historical: true` marks
   a picture of another revision, with its `revision` and `sources`; without the mark the picture's revision is
-  unknown, not the current one. A historical picture never establishes the current result.
+  unknown, not the current one. A historical picture never establishes the current result. Where the record's text
+  already says which revision a picture shows, its mark and `revision` say the same.
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
@@ -186,6 +188,9 @@ Every analytical claim added by the fields below carries `sources`, a list in on
   revision is required for a claim about a checked version, and the quote is what makes the claim travel without
   the file. A source named but unreachable, or external without a quote, is a warning, not a fault.
 
+A source shows the claim. A ref to the entry that makes it — a question cited for its own variant's consequence, a
+screen for its own provenance — says only where the claim stands, and the check refuses it.
+
 The check sees that a source is named and resolves; it does not prove that the text matches the source — that is
 the verifier's work.
 
@@ -202,21 +207,25 @@ obtain). The required `kind` comes from what the question asks, never from its n
   and `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
   questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
   than two variants or a variant without consequences.
-- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends, and `sources`.
+- `multiple: true`: the variants combine, and the owner may take one or several; without it they exclude each other.
+  Set it when one answer could not say the combination the owner may want, which they would otherwise write in their
+  own words, unmatched to the variants.
+- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends (or, where the
+  variants combine, the `variants` it recommends together), and `sources`.
   Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
-  recommendation» and gives the conditional rule, and no `variant` is named.
+  recommendation» and gives the conditional rule, and no `variant` or `variants` is named.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
 - `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
-  effect (it is open, answered in the owner's words or deferred), and while the parent's variant is one of those
-  listed. Children are derived from `parent`; the parent stores none. A variant outside the list makes the child not
+  effect (it is open, answered in the owner's words or deferred), and while a variant the parent's answer takes is
+  one of those listed. Children are derived from `parent`; the parent stores none. An answer taking none of them makes the child not
   applicable; its answer becomes a draft and does not return silently when the parent changes again.
 - `zones`: for evidence that may be closed in part, the zones to check, each with `sources`. A user's check mark
   on a zone is not evidence; closing it takes a revised record.
 
 Numbering stays positional from 1 (`blocks.questions`, `units.questions`, the check). Decisions have three layers:
 the review's verdicts in the record, the owner's answers on the page (kept in the browser and exported), and
-evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant or the owner's
+evidence obtained in a later revision of the record. Each item takes one answer: a decision a variant — or several, where they combine — or the owner's
 own words, a finding «Fix it», «Leave it» or own words, an idea «Take it», «Skip it» or own words, a fact or evidence
 request the owner's answer; choosing one clears the other. Deferring needs a reason and keeps the answer it replaces
 as a draft, not in effect. An answered fact or evidence request reads «Answered», never «decided» or «verified»: it
@@ -225,16 +234,83 @@ is the owner's input, not a checked result. Decisions are never carried between 
 ## The page
 
 `report.mjs render` writes the page from the record and the saved diff alone, never a new record field. The owner
-answers each item on it and exports the answers as schema 6: proposals for the next step, not edits to the source.
+answers each item on it and exports the answers as schema 7: proposals for the next step, not edits to the source.
 
 The export is one payload behind the page's preview, its text and its JSON: the record's and the diff's
 digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
-`deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), `option` (`fix`, `leave`,
+`deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), or `variants` where they combine, `option` (`fix`, `leave`,
 `take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
 `zones`, and `waiting_for_parent` while an ancestor whose answer decides whether the item applies is still open.
 `lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,
 `line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment never
 answers an item.
+
+The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
+owner's own session or orchestrate's fix round; the review applies none of it. A review of the next revision reads it as
+[the next revision](#the-next-revision) says.
+
+## The next revision
+
+A review of a new revision of a change already reviewed and answered starts from three inputs its plan names: the
+previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
+review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
+previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
+and the checking agents can read them. Cite them by `at` with a quote — the record by file and line, the export by
+its file alone, since it is one line of JSON — because a `ref` resolves in this record. The export's
+keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
+only when its `record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the
+record does not hold is left out, and the response says so. A short review applies the same rules in its response.
+
+- Read what changed since the previous head first — `git diff <previous head>..<head>` when the base stayed,
+  `git range-diff <previous base>..<previous head> <base>..<head>` when it moved, the previous saved diff against
+  this one when the old commits are gone — then the whole diff, and say in `coverage` how the change since was read.
+  The record covers the whole diff, as any record does, and the page needs nothing new.
+- Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
+  by its words — a question by its text, a finding or idea by its title — since its key names another item here:
+  - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with
+    `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
+    and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
+    decision;
+  - «Leave it» or «Skip it» is a `tradeoff` with its `consequence`, sourced at the export with the answer quoted. The
+    review does not raise that finding or idea again unless the new revision changes its premise, and then the
+    finding says what changed;
+  - own words are read for what they say: a request for a change is a requirement, an acceptance a tradeoff, and a
+    question is answered in the response. A line or paragraph comment is read the same way, a requirement from it
+    naming its place;
+  - a question deferred or still open is asked again, its context citing the previous record and its consequences
+    read at this revision; a finding or idea left open is raised again where it still holds. An answer marked
+    `waiting_for_parent` is asked again with its parent, quoted in its context. A question not applicable stays
+    retired while its parent's answer holds; a conditional question answered in effect is mapped like any other;
+  - an answer to a fact request is the owner's statement: a requirement when it binds the change, otherwise a fact
+    the analysis cites from the export, quoted — one or the other, not both. An answer to an evidence request is a claim to check, never
+    evidence: what the review obtains settles it, and until then it stays an evidence question with the owner's
+    answer in its context, as does a marked zone.
+
+## Generated files
+
+Two kinds of file are one block each, judged by their source rather than line by line: a package manager's lock
+file beside its manifest, and a file the project marks generated — `linguist-generated` in `.gitattributes`, or a
+header such as `@generated` or `Code generated … DO NOT EDIT`. No list names them all: the reviewer establishes from
+the file and the project's tooling which tool writes it and from what, and names both in the block's `does`; a file
+it cannot establish so is read. A mark counts only when the project's own tooling writes the file; a mark the change
+adds is itself a change to judge, and the file is read.
+
+- Replace the file's scaffolded blocks with one whose `added` and `removed` each span the file, such as `1-4210`:
+  unchanged lines in a range are ignored, and `all` is only for a block to remove. It needs no unit. Skip its part of
+  the `lines` printout. Its `does` names this section, which answers the check's warning about a large block.
+- A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
+  outside the project's registries — a host in a field such as `resolved`, `tarball`, `source` or `remote`, a git,
+  file or `http:` URL — or a hash (such as `integrity`, `checksum`, `h1:` or `hash`) changed while its version did
+  not, is a finding. A package or version that neither the manifest change nor the task explains is a question, one
+  listing them all. Search the lock file's diff for these rather than read it. The block is `fix` naming such
+  findings, and names the question too; `question` when only the question stands; `keep` when the manifest explains
+  it all.
+- Another generated file: the generator or its input changed to match. Unless it is regenerated, its diff is read as
+  any file's; only a lock file's searches stand in for reading.
+- When the plan allows running the generator, regenerate with the project's pinned tool, lock file only and with
+  install scripts off — `--ignore-scripts` beside npm's `--package-lock-only` (which alone still runs them) or pnpm's
+  `--lockfile-only` — compare, and record it in `coverageStructured` as `ran`, with the command and its `revision`.
+  Otherwise record it as `read`, of the manifest change and the searches. Content its source does not explain is never `keep`.
 
 ## Visual evidence
 

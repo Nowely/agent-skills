@@ -21,7 +21,8 @@ For a full draft, the conductor runs the approved comparison reader before the c
 
 ## Independent target
 
-The owner's task and discussion, the project instructions and the repository at the base, not the change. The author's
+The owner's task and discussion, the owner's answers to a previous review in their words but not the previous
+record, the project instructions and the repository at the base, not the change. The author's
 description and commit messages, if given at all, are marked as the author's account, not as requirements. Brief:
 
 > Sketch the cleanest solution to this task in this codebase, by the design standard at `<skill-dir>/references/

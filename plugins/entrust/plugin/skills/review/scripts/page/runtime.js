@@ -124,16 +124,25 @@ function indexComments() {
 const entryOf = (key) => state.answers[key] ?? {};
 
 // ---------------------------------------------------------------- persistence: answers, comments, «Viewed» and view choices, in this browser
-// Kept under the storage key decisions.mjs gives this record, so another record or another export format never reads
-// them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
-// kept could not be read, or that it refused the last save — and leaving after a refused save asks first.
-const STORE = DR.storageKey(D.digest.key);
-let storage = "saved", unsaved = false;
+// Kept under a key of this record and of the stored format, so another record never reads them. The page says what is true of the storage now — that the browser keeps no storage for it, that what it
+// kept could not be read, or that it refused the last save — and leaving with answers it did not save asks first.
+// What it kept and could not read is never written over unasked: the first save that would replace it shows it to
+// copy, and only the owner's choice saves over it.
+// The stored format's number changes when the page would read a value an earlier page stored differently from what that
+// page meant, or would need code only to read it; never with the export's number, which concerns the export alone.
+const STORE = `review-report:6:${D.digest.key}`;
+let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
+// What the page stores, at every level it reads: an object of decisions (answers, line and paragraph comments), «Viewed»
+// and view choices. Anything else is not this page's to read, nor to write over.
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const ours = (raw) => isObject(raw) && [raw.decisions, raw.decisions?.answers, raw.ui].every((v) => v === undefined || isObject(v))
+  && [raw.decisions?.lines, raw.decisions?.paragraphs, raw.viewed].every((v) => v === undefined || Array.isArray(v));
 function load() {
-  let raw = null, text;
+  let raw, text;
   try { text = localStorage.getItem(STORE); } catch { storage = "blocked"; return; }
-  try { raw = JSON.parse(text ?? "null"); } catch { storage = "unreadable"; return; }
-  if (!raw || typeof raw !== "object") return;
+  if (text === null) return;
+  try { raw = JSON.parse(text); } catch { raw = undefined; }
+  if (!ours(raw)) { storage = "unreadable"; unreadable = text; return; }
   state = DR.settle(ITEMS, DR.normalize(raw.decisions));
   for (const path of Array.isArray(raw.viewed) ? raw.viewed : []) if (fileByPath.has(path)) { S.viewed.add(fileByPath.get(path)); S.code.collapsed.add(fileByPath.get(path)); }
   const ui = raw.ui ?? {};
@@ -143,32 +152,59 @@ function load() {
   if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
 }
 function save() {
+  if (storage === "unreadable") { unsaved = true; showStorage(); return offerUnreadable(); }
   const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
-// Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing or
-// refused a save, only this page's memory.
+// Where the answers are kept, in the words of each place that says so: this browser, or, when it keeps nothing,
+// refused a save or holds what the page could not read, only this page's memory.
 const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
-const kept = (where) => L(KEPT[where][storage === "blocked" || storage === "failed" ? 1 : 0]);
+const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
 function showStorage() {
   for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
   if (S.rendered?.decisions) updateSubCounts();
   const el = $("#storage"); if (!el) return;
   el.hidden = storage === "saved";
-  el.textContent = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
+  const words = storage === "saved" ? "" : L({ blocked: "p.storage.blocked", unreadable: "p.storage.unreadable", failed: "p.storage.failed" }[storage]);
+  if ($("#storage-text").textContent !== words) $("#storage-text").textContent = words;
+  $("#storage [data-act=\"unreadable-show\"]").hidden = storage !== "unreadable";
+}
+// The first save that would replace what could not be read shows it once the owner's action is complete — after the
+// page has redrawn for it, so closing returns focus where the action left it, and never while a field is being typed in.
+function offerUnreadable() {
+  if (unreadableShown) return;
+  unreadableShown = true;
+  const show = () => typingTarget(document.activeElement) ? document.activeElement.addEventListener("focusout", () => setTimeout(show), { once: true }) : openUnreadable();
+  setTimeout(show);
+}
+function openUnreadable() {
+  unreadableShown = true;
+  $("#unreadable-text").value = unreadable; $("#unreadable-status").textContent = "";
+  const d = $("#unreadable-dialog"); if (!d.open) d.showModal();
+}
+// The owner's choice: this page's answers replace what could not be read.
+function saveOverUnreadable() {
+  storage = "saved"; unreadable = null;
+  $("#unreadable-dialog").close();
+  save();
+  // the warning it was opened from has gone with it: focus moves to the tab, not to nowhere
+  if ($("#storage").contains(document.activeElement)) $(`#tab-${S.tab}`).focus();
 }
 window.addEventListener("beforeunload", (e) => { flushText(); if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------------------------------------------------------------- the owner's options, and each item's status in words
 const OPTION_LABEL = { fix: L("p.option.fix"), leave: L("p.option.leave"), take: L("p.option.take"), skip: L("p.option.skip") };
 function optionsOf(c) {
-  if (c.kind === "decision") return c.ref.variants.map((v) => ({ id: v.id, label: v.text, sub: v.consequences.map((x) => x.text).join(" "), rec: c.ref.recommendation?.variant === v.id }));
+  if (c.kind === "decision") { const rec = c.ref.recommendation ?? {}; return c.ref.variants.map((v) => ({ id: v.id, label: v.text, sub: v.consequences.map((x) => x.text).join(" "), rec: rec.variant === v.id || (rec.variants ?? []).includes(v.id) })); }
   return c.options.map((id, i) => ({ id, label: OPTION_LABEL[id], key: i ? "n" : "f" }));
 }
 const optionLabel = (c, id) => optionsOf(c).find((o) => o.id === id)?.label ?? id;
-const draftText = (c, draft) => draft.choice !== undefined ? optionLabel(c, draft.choice) : draft.text;
+// A choice in words: the variant, or the several a decision whose variants combine took, in their order.
+const choiceLabel = (c, choice) => [].concat(choice).map((id) => optionLabel(c, id)).join(", ");
+const draftText = (c, draft) => draft.choice !== undefined ? choiceLabel(c, draft.choice) : draft.text;
 const isRequest = (c) => c.kind === "fact" || c.kind === "evidence";
+const isChosen = (c, id) => statusOf(c).state === "decided" && [].concat(entryOf(c.key).choice ?? []).includes(id);
 const applicable = (c) => DR.applicable(ITEMS, state, c.key);
 function statusOf(c) {
   const s = DR.status(ITEMS, state, c.key);
@@ -176,7 +212,7 @@ function statusOf(c) {
   if (s.state === "deferred") return { state: "deferred", label: L("p.status.deferred"), cls: "dashed", lbl: L("p.answer.deferred-because"), answer: s.reason, draft: s.draft };
   if (s.state === "answered") return { state: "answered", label: L("p.status.answered"), cls: "neutral", lbl: L("p.answer.entered"), answer: s.text, unverified: true };
   if (s.state === "decided") return { state: "decided", label: L("p.status.decided"), cls: "neutral",
-    lbl: s.choice !== undefined ? L("p.answer.yours") : L("p.answer.own"), answer: s.choice !== undefined ? optionLabel(c, s.choice) : s.text };
+    lbl: s.choice !== undefined ? L("p.answer.yours") : L("p.answer.own"), answer: s.choice !== undefined ? choiceLabel(c, s.choice) : s.text };
   return { state: "open", label: L("p.status.open"), cls: "open", draft: s.draft };
 }
 const isOpen = (c) => statusOf(c).state === "open";
@@ -194,6 +230,10 @@ const VERDICT_CLS = { keep: "neutral", fix: "warn", remove: "bad", question: "q"
 const verdictWord = (v) => L("verdict." + v).toLowerCase();
 const verdictTag = (v) => `<span class="tag verdict ${VERDICT_CLS[v] ?? "neutral"}" title="${esc(L("p.verdict.title"))}">${esc(L("p.verdict.reviewer"))} <b>${esc(verdictWord(v))}</b></span>`;
 const progress = () => DR.progress(ITEMS, state);
+// Progress in words, the same wherever the page says it: the choices decided, then the requests answered, never
+// verified; a part with nothing to count is left out.
+const requestWords = (p) => p.requests && L("p.progress.requests", n(p.answered), n(p.requests));
+const progressWords = (p) => [p.choices && L("p.progress", n(p.decided), n(p.choices)), requestWords(p)].filter(Boolean);
 
 // ---------------------------------------------------------------- chips and relations: links by id, from explicit record fields only
 const chip = (kind, id) => {
@@ -315,7 +355,7 @@ function exportPayload() {
 // The payload's rows in words, by section: each row is its text and the place «Show» goes to.
 function exportModel() {
   const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [] };
-  const answerWords = (c, a) => a.variant ? a.variant.text : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
+  const answerWords = (c, a) => a.variant ? a.variant.text : a.variants ? a.variants.map((v) => v.text).join(", ") : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
   for (const x of payload.items) {
     const c = itemByKey.get(x.item), draft = x.draft ? ` · ${L("p.export.draft", answerWords(c, x.draft))}` : "";
     const zones = x.zones ? ` · ${L("p.export.zones", x.zones.map((i) => c.ref.zones[i].text).join("; "))}` : "";
@@ -329,8 +369,8 @@ function exportModel() {
   }
   for (const x of payload.lineComments) sections.comments.push({ text: `${x.path}:${x.side === "base" ? "−" : ""}${x.line}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
   for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
-  const p = payload.progress;
-  return { payload, sections, progress: L("p.progress", n(p.done), n(p.total)) + (p.deferred ? ` · ${P("p.count.deferred", p.deferred)}` : "") };
+  const p = progress();
+  return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
 }
 const EXPORT_SECTIONS = [["decided", "p.export.decided"], ["answered", "p.export.answered"], ["deferred", "p.export.deferred"], ["na", "p.export.not-applicable"],
   ["comments", "p.export.comments"], ["open", "p.export.open"]];
@@ -349,8 +389,7 @@ function openExport() {
   if (!dialog.open) dialog.showModal();
 }
 // «Copied» only after the clipboard confirms; on refusal the text is selected for the owner to copy.
-function copyExport() {
-  const box = $("#export-text"), status = $("#export-status");
+function copyText(box, status) {
   const fail = () => { box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
   try { navigator.clipboard.writeText(box.value).then(() => { status.textContent = L("p.export.copied"); }, fail); } catch { fail(); }
 }
@@ -378,7 +417,7 @@ function renderShell() {
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
     <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
-  <p class="storage" id="storage" role="status" hidden></p>
+  <div class="storage" id="storage" hidden><span id="storage-text" role="status"></span> <button class="linkbtn" data-act="unreadable-show" hidden>${esc(L("p.storage.unreadable.show"))}</button></div>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
     <div class="tabs" role="tablist" aria-label="${esc(L("p.tabs"))}">${TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${esc(t.label)}<span class="count" id="badge-${t.id}" hidden></span></button>`).join("")}</div>
     <div class="tb-right"><span class="progress" id="progress"></span>
@@ -394,7 +433,12 @@ function renderShell() {
     <div id="export-preview"></div>
     <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
     <p id="export-status" role="status"></p>
-    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>`;
+    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>
+  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export"><h2 id="unreadable-h" tabindex="-1" autofocus>${esc(L("p.unreadable"))}</h2>
+    <p class="muted small">${esc(L("p.unreadable.note"))}</p>
+    <label for="unreadable-text">${esc(L("p.unreadable.text"))}</label><textarea id="unreadable-text" readonly rows="10"></textarea>
+    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
+    <p id="unreadable-status" role="status"></p></div></dialog>`;
   applyTheme(); showStorage();
 }
 function applyTheme() {
@@ -408,7 +452,9 @@ function updateChrome() {
   const set = (id, v, title) => { const el = $("#badge-" + id); el.hidden = v === null; if (v !== null) { el.textContent = n(v); el.title = title; } };
   set("decisions", p.open, P("p.count.open", p.open)); set("code", codeOpen, P("p.count.open-code", codeOpen)); set("summary", null); set("details", null);
   const viewed = `<span class="sep" aria-hidden="true">·</span><span>${esc(L("p.progress.viewed", n(S.viewed.size), n(F.length)))}</span>`;
-  $("#progress").innerHTML = `<span>${esc(L("p.progress", n(p.done), n(p.total)))}${p.answered ? ` · ${esc(P("p.progress.answered", p.answered))}` : ""}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><span style="width:${p.total ? (100 * p.done / p.total).toFixed(1) : 0}%"></span></span>${viewed}`;
+  // the bar keeps to its first part, the choices decided, so it fits beside the tabs; its title holds every part
+  const words = progressWords(p);
+  $("#progress").innerHTML = `<span title="${esc(words.join(" · "))}">${esc(words[0] ?? "")}</span>${p.choices ? `<span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${(100 * p.decided / p.choices).toFixed(1)}%"></span></span>` : ""}${viewed}`;
   const so = $("#sum-progress"); if (so) so.innerHTML = summaryProgress();
   const sb = $("#start-btn"); if (sb) sb.textContent = L(p.done || p.deferred ? "p.continue" : "p.start");
   if (S.rendered.decisions) updateSubCounts();
@@ -450,7 +496,7 @@ function route(hash) {
   const dec = (v) => { try { return decodeURIComponent(v); } catch { return v; } };
   // an address that changes the sub-tab reconciles the selection as a click on it does: a card it hides is no longer
   // selected, in the panel or for the keys
-  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) { renderDecList(); updateSubCounts(); } return syncDecSelection(); }
+  if (tab === "decisions" && rest === "comments") { S.sub.decisions = "comments"; showTab("decisions"); if (S.rendered.decisions) renderDecList(); return syncDecSelection(); }
   if (tab === "decisions" && rest && itemByKey.has(dec(rest))) return goCard(dec(rest));
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
@@ -603,7 +649,8 @@ function textField(c) {
   const solo = !optionsOf(c).length, entry = entryOf(c.key);
   const label = L(solo ? (isRequest(c) ? "p.text.request" : "p.text.yours") : "p.text.other");
   const id = `text-${c.key}-${S.uid}`;
-  return `<div class="field"><label for="${esc(id)}">${esc(label)}</label><textarea class="answer" id="${esc(id)}" data-act="text" data-key="${esc(c.key)}" placeholder="${esc(L(solo ? "p.text.placeholder" : "p.text.replaces"))}">${esc(entry.deferred ? "" : entry.text ?? "")}</textarea>
+  const deferHint = c.kind === "evidence" ? `<p class="muted small">${esc(L("p.text.not-checked"))}</p>` : "";
+  return `<div class="field"><label for="${esc(id)}">${esc(label)}</label>${deferHint}<textarea class="answer" id="${esc(id)}" data-act="text" data-key="${esc(c.key)}" placeholder="${esc(L(solo ? "p.text.placeholder" : "p.text.replaces"))}">${esc(entry.deferred ? "" : entry.text ?? "")}</textarea>
     <div class="field-actions"><span>${esc(L("p.text.keys", MOD))}</span></div></div>`;
 }
 function choiceInner(c, where) {
@@ -615,18 +662,21 @@ function choiceInner(c, where) {
   const deferred = st.state === "deferred" ? `<div class="draft">${esc(L("p.deferred", st.answer))}<button class="btn sm" data-act="undefer" data-key="${esc(c.key)}">${esc(L("p.undefer"))}</button></div>` : "";
   const touched = Object.keys(entry).length;
   const actions = `<div class="choice-actions">${st.state === "deferred" ? "" : `<button class="btn sm" data-act="defer" data-key="${esc(c.key)}" aria-expanded="${field === "defer"}">${esc(L("p.defer.open"))}<span class="key">d</span></button>`}${touched ? `<button class="btn sm quiet" data-act="clear" data-key="${esc(c.key)}">${esc(L("p.clear"))}<span class="key">x</span></button>` : ""}</div>`;
-  // A checked radio is the answer in effect; the own-answer field may be open while an earlier answer still holds.
-  const chosen = (o) => st.state === "decided" && entry.choice === o.id, own = ownInEffect(c);
+  // A checked control is the answer in effect; the own-answer field may be open while an earlier answer still holds.
+  // A decision whose variants combine takes several, as checkboxes; any other takes one, as radios.
+  const chosen = (o) => isChosen(c, o.id), own = ownInEffect(c), several = Boolean(c.multiple);
+  const type = several ? "checkbox" : "radio", group = several ? "group" : "radiogroup";
   let body = "";
   if (!opts.length) body = textField(c);
   else if (where === "card") {
     const name = `ch-${c.key}-${S.uid}`;
-    body = `<div class="opts" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
-      <label class="opt${own ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
+    body = `${several ? `<p class="muted small">${esc(L("p.choose-several"))}</p>` : ""}<div class="opts" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<label class="opt${chosen(o) ? " on" : ""}"><input type="${type}" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"${chosen(o) ? " checked" : ""}><span class="ol">${prose(o.label)}${o.rec ? `<span class="rec-mark">${esc(L("p.recommended"))}</span>` : ""}</span><span class="key">${o.key ?? i + 1}</span>${o.sub ? `<span class="os">${prose(o.sub)}</span>` : ""}</label>`).join("")}
+      ${several ? `<button type="button" class="opt opt-other${own ? " on" : ""}" aria-pressed="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span></span><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></button>`
+        : `<label class="opt${own ? " on" : ""}"><input type="radio" name="${esc(name)}" data-act="pick" data-key="${esc(c.key)}" data-opt=""${own ? " checked" : ""}><span class="ol">${esc(L("p.text.other"))}</span><span class="key">o</span></label>`}${other ? `<div class="opt-field">${textField(c)}</div>` : ""}</div>`;
   } else {
     const vertical = opts.some((o) => o.label.length > 40) || opts.length > 3;
-    body = `<div class="pills${vertical ? " vertical" : ""}" role="radiogroup" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="radio" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
-      <button class="pill" role="radio" aria-checked="${own}" data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
+    body = `${several ? `<p class="muted small">${esc(L("p.choose-several"))}</p>` : ""}<div class="pills${vertical ? " vertical" : ""}" role="${group}" aria-label="${esc(L("p.answer-to", c.label))}">${opts.map((o, i) => `<button class="pill" role="${type}" aria-checked="${chosen(o)}" data-act="pick" data-key="${esc(c.key)}" data-opt="${esc(o.id)}"><span class="key">${o.key ?? i + 1}</span><span class="pt">${prose(o.label)}${vertical && o.sub ? `<span class="ps">${prose(o.sub)}</span>` : ""}</span></button>`).join("")}
+      <button class="pill" ${several ? `aria-pressed="${own}"` : `role="radio" aria-checked="${own}"`} data-act="pick" data-key="${esc(c.key)}" data-opt=""><span class="key">o</span><span class="pt">${esc(L("p.other-short"))}</span></button></div>${other ? textField(c) : ""}`;
   }
   return zones + body + draftHtml(c) + deferred + (field === "defer" ? deferField(c) : "") + actions;
 }
@@ -663,6 +713,8 @@ function setState(next) { state = next; indexComments(); save(); }
 function pick(key, opt) {
   const c = itemByKey.get(key);
   if (!applicable(c)) return;
+  // one variant taken is not the end of a choice of several: its block stays open in the code until the owner moves on
+  if (c.multiple && S.tab === "code" && S.cur?.key === key) S.code.doneOpen.add(S.cur.bid);
   if (opt) { setState(DR.choose(ITEMS, state, key, opt)); S.field[key] = null; }
   else S.field[key] = "other";
   afterChange(key, { structural: true, focusText: !opt });
@@ -694,7 +746,7 @@ function afterChange(key, { structural, focusText = false, focusReason = false }
   // a parent's answer can retire or restore its conditional questions: every descendant is drawn again
   for (const k of familyOf(c)) syncItem(k, structural || k !== key);
   reconcileDecList(structural);
-  updateChrome(); invalidateWalk(); updatePos();
+  invalidateWalk(); updateChrome(); updatePos();
   if (focusText || focusReason) {
     const scope = S.tab === "code" ? $(`#note-${S.sel.code ?? ""}`) ?? document : $(`#card-${key}`) ?? document;
     const t = $(`[data-choice="${key}"] textarea[data-act="${focusReason ? "reason" : "text"}"]`, scope) ?? $(`[data-choice="${key}"] textarea[data-act="${focusReason ? "reason" : "text"}"]`);
@@ -708,11 +760,11 @@ function syncItem(key, structural) {
   for (const el of $$(`[data-compact-answer="${key}"]`)) el.textContent = compactAnswer(st);
   for (const el of $$(`[data-waiting="${key}"]`)) el.textContent = waitingText(c);
   for (const card of $$(`#card-${key}`)) card.classList.toggle("settled", st.state !== "open");
-  // while the owner types an own answer, the radios already show which answer is in effect
+  // while the owner types an own answer, the controls already show which answer is in effect
   const own = ownInEffect(c), entry = entryOf(key);
   for (const el of $$(`[data-choice="${key}"] [data-act="pick"]`)) {
-    const on = el.dataset.opt ? st.state === "decided" && entry.choice === el.dataset.opt : own;
-    if (el.tagName === "INPUT") el.checked = on; else el.setAttribute("aria-checked", String(on));
+    const on = el.dataset.opt ? isChosen(c, el.dataset.opt) : own;
+    if (el.tagName === "INPUT") el.checked = on; else el.setAttribute(el.hasAttribute("aria-pressed") ? "aria-pressed" : "aria-checked", String(on));
   }
   if (!structural) return;
   const active = document.activeElement;
@@ -750,7 +802,7 @@ function reqLine() {
   const parts = Object.entries(c).filter(([, k]) => k).map(([kind, k]) => P(WORD[kind], k));
   return `<b>${esc(P("p.reqline", D.requirements.length))}</b> <span>${esc(parts.join(" · "))}</span><a href="#summary-reqs" data-act="to-reqs" class="small">${esc(L("p.reqline.table"))}</a>`;
 }
-const summaryProgress = () => { const p = progress(); return `<b>${esc(L("p.progress.of", n(p.done), n(p.total)))}</b><span>${esc([L("p.progress.decided"), p.answered && P("p.progress.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
+const summaryProgress = () => { const p = progress(); return `${p.choices ? `<b>${esc(L("p.progress.of", n(p.decided), n(p.choices)))}</b>` : ""}<span>${esc([p.choices && L("p.progress.decided"), requestWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · "))}</span>`; };
 function firstOpenItem() { return REVIEW_ORDER.find(isOpen); }
 function startReview() {
   const c = firstOpenItem();
@@ -845,12 +897,17 @@ function renderDecisions() {
     <div id="dec-list"></div></div><aside class="panel" id="ctx-decisions" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderDecList();
   if (!S.sel.decisions) { const first = $$("#dec-list .card").find((el) => isOpen(itemByKey.get(el.dataset.card))); if (first) { S.sel.decisions = "card:" + first.dataset.card; first.classList.add("sel", "open-full"); } }
-  updateSubCounts(); renderPanel("decisions");
+  renderPanel("decisions");
 }
+// Every count of Decisions — the sub-tabs, the group headings of All and the note — is written here, from subCount.
 function updateSubCounts() {
-  for (const t of DEC_TABS) { const el = $(`[data-subcount="${t.id}"]`); if (el) { const k = subCount(t); el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); } }
+  for (const t of DEC_TABS) {
+    const k = subCount(t), el = $(`[data-subcount="${t.id}"]`), heading = $(`[data-groupcount="${t.id}"]`);
+    if (el) { el.textContent = n(k); el.title = t.id === "comments" ? P("p.count.comments", k) : ["deferred", "done"].includes(t.id) ? P("p.count.items", k) : P("p.count.open", k); }
+    if (heading) heading.textContent = P("p.count.open", k);
+  }
   const p = progress(), el = $("#dec-note");
-  const parts = [P("p.count.open", p.open), P("p.count.decided", p.done - p.answered), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
+  const parts = [P("p.count.open", p.open), P("p.count.decided", p.decided), p.answered && P("p.count.answered", p.answered), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ");
   if (el) el.innerHTML = `${esc(parts)}. ${esc(kept("hint"))} ${kbd("j")} ${kbd("k")} ${esc(L("p.hint.move"))} · ${kbd("1")}–${kbd("9")} ${esc(L("p.hint.choose"))} · ${kbd("o")} ${esc(L("p.hint.other"))} · ${kbd("d")} ${esc(L("p.hint.defer"))} · ${kbd("u")} ${esc(L("p.hint.undo"))} · ${kbd("?")} ${esc(L("p.hint.all"))}`;
 }
 function renderDecList() {
@@ -859,13 +916,14 @@ function renderDecList() {
   let html = "";
   if (sub.id === "comments") html = commentsListHtml();
   else if (sub.id === "all") {
-    for (const g of GROUPS) { const cards = ITEMS.filter(g.test); if (cards.length) html += `<h2 class="group-h">${esc(g.label)} <span class="muted">${esc(P("p.count.open", cards.filter(isOpen).length))} · ${esc(g.note)}</span></h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>`; }
+    for (const g of GROUPS) { const cards = ITEMS.filter(g.test); if (cards.length) html += `<h2 class="group-h">${esc(g.label)} <span class="muted"><span data-groupcount="${g.id}"></span> · ${esc(g.note)}</span></h2><div class="cards">${orderChildren(cards).map(cardHtml).join("")}</div>`; }
   } else {
     const list = ITEMS.filter(sub.test), g = GROUPS.find((x) => x.id === sub.id);
     html = list.length ? `${g ? `<h2 class="group-h">${esc(g.label)} <span class="muted">${esc(g.note)}</span></h2>` : ""}<div class="cards">${orderChildren(list).map(cardHtml).join("")}</div>`
       : `<div class="empty"><strong>${esc(L("p.empty"))}</strong>${esc(L(sub.id === "done" ? "p.empty.done" : sub.id === "deferred" ? "p.empty.deferred" : "p.empty.none"))}</div>`;
   }
   $("#dec-list").innerHTML = html;
+  updateSubCounts();
 }
 // After the list changes, the selection, the panel, the URL and the next key agree with it: a card the list no
 // longer shows is no longer selected.
@@ -1064,11 +1122,13 @@ function moveAnswerTo(key, bid) {
 }
 function noteItem(c, b) {
   const r = c.ref, st = statusOf(c), w = walk().find((x) => x.c === c), pos = w ? w.blocks.indexOf(b.id) : -1;
+  // one answer covers every block of the item; under a filter, how many of them it shows is said apart
+  const all = walkAll().find((x) => x.c === c)?.blocks.length ?? c.blocks.length, shown = w ? w.blocks.length : all;
   const posText = w && w.blocks.length > 1 ? `<span class="muted small nowrap">${esc(L("p.block-of", pos + 1, w.blocks.length))}</span>` : "";
   if (!answersHere(c, b)) {
     const opts = optionsOf(c);
     const hint = `${opts.length ? `${kbd("1")}–${kbd(String(opts.length))} ${esc(L("p.hint.choose"))} · ` : ""}${kbd("o")} ${esc(L(opts.length ? "p.hint.other" : "p.hint.answer"))} · ${kbd("d")} ${esc(L("p.hint.defer"))}`;
-    return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", w ? w.blocks.length : c.blocks.length))}</span><span class="key-hint small muted">${hint}</span></div></div>`;
+    return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", all))}${shown < all ? ` · ${esc(P("p.one-answer.shown", shown))}` : ""}</span><span class="key-hint small muted">${hint}</span></div></div>`;
   }
   const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}` : "";
   if (st.state !== "open") return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
@@ -1353,6 +1413,13 @@ function goFile(fi) {
   fill(fi);
   landOn(() => $(`#file-${fi}`), toolbarBottom() + 6).then(() => $(`#file-${fi} .fold-btn`)?.focus({ preventScroll: true }));
 }
+// The purpose menu closes here alone, whatever closes it, and says so to assistive technology; true when it was open.
+function closePurposeMenu() {
+  const m = $("#purpose-pop .pop-menu");
+  if (!m || m.hidden) return false;
+  m.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false");
+  return true;
+}
 function resetFilters() { S.code.q = ""; S.code.req = ""; S.code.unit = ""; S.code.set = null; S.code.purposes = new Set(D.purposes); }
 function goLine(lk, { hl = "lnsel" } = {}) {
   const at = rowOfLk(lk); if (!at) return Promise.resolve();
@@ -1613,7 +1680,7 @@ function goCard(key, { focus = false } = {}) {
 function openAnswer(card) {
   const key = card.dataset.card, c = itemByKey.get(key);
   if (!optionsOf(c).length) return $(`#card-${key} textarea[data-act="text"]`)?.focus();
-  ($(`#card-${key} .full input[type=radio]:checked`) ?? $(`#card-${key} .full input[type=radio]`))?.focus();
+  ($(`#card-${key} .full input[data-act="pick"]:checked`) ?? $(`#card-${key} .full input[data-act="pick"]`))?.focus();
 }
 function goDetails(sub, sel) { S.sub.details = sub; S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); $(`[data-sel="${CSS.escape(sel)}"]`, $("#panel-details"))?.scrollIntoView({ block: "center" }); }
 function go(spec) {
@@ -1677,9 +1744,8 @@ document.addEventListener("click", (e) => {
   if (tabBtn) { pushNext = true; return showTab(tabBtn.dataset.tab); }
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
   if (NAVIGATES.has(a)) pushNext = true;
-  if (a === "pick" && act.tagName === "INPUT") return; // radios act on change
-  const pop = $("#purpose-pop .pop-menu");
-  if (pop && !pop.hidden && !e.target.closest("#purpose-pop")) { pop.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false"); }
+  if (a === "pick" && act.tagName === "INPUT") return; // radios and checkboxes act on change
+  if (!e.target.closest("#purpose-pop")) closePurposeMenu();
   if (a) {
     const key = act.dataset.key;
     switch (a) {
@@ -1690,7 +1756,10 @@ document.addEventListener("click", (e) => {
       case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
       case "print": printProfile = act.dataset.profile; return window.print();
       case "export-json": return downloadExport();
-      case "export-copy": return copyExport();
+      case "export-copy": return copyText($("#export-text"), $("#export-status"));
+      case "unreadable-show": return openUnreadable();
+      case "unreadable-copy": return copyText($("#unreadable-text"), $("#unreadable-status"));
+      case "unreadable-replace": return saveOverUnreadable();
       case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : goCard(go); }
       case "keys": return $("#keys-dialog").showModal();
       case "start": return startReview();
@@ -1728,7 +1797,7 @@ document.addEventListener("click", (e) => {
       case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
-      case "purpose-menu": { const m = $("#purpose-pop .pop-menu"); m.hidden = !m.hidden; act.setAttribute("aria-expanded", String(!m.hidden)); return; }
+      case "purpose-menu": { if (!closePurposeMenu()) { $("#purpose-pop .pop-menu").hidden = false; act.setAttribute("aria-expanded", "true"); } return; }
       case "unit-clear": S.code.unit = ""; return rerenderCode();
       case "set-clear": S.code.set = null; return rerenderCode();
       case "undo": return runUndo();
@@ -1945,7 +2014,7 @@ document.addEventListener("keydown", (e) => {
     if (t.classList.contains("pc-input")) { e.preventDefault(); return savePc(t.dataset.anchor, t); }
   }
   if (e.key === "Escape") {
-    const m = $("#purpose-pop .pop-menu"); if (m && !m.hidden) { m.hidden = true; $("#purpose-btn").focus(); return; }
+    if (closePurposeMenu()) { $("#purpose-btn").focus(); return; }
     if ($("#copybox")) { $("#copybox").remove(); return; }
     if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) return closePc();
@@ -2056,7 +2125,7 @@ function buildPrint() {
   el.innerHTML = $("#static-report").textContent + (audit ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "");
   $$(".static-note, .static nav", el).forEach((x) => x.remove());
   if (!audit) $("#code", el).remove();
-  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), L("p.progress", n(p.done), n(p.total)), p.answered && P("p.progress.answered", p.answered)].filter(Boolean).join(" · "))}</p>`);
+  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), ...progressWords(p)].filter(Boolean).join(" · "))}</p>`);
   for (const c of ITEMS) el.querySelector(`[id="decisions/${CSS.escape(c.key)}"]`)?.insertAdjacentHTML("beforeend", `<p class="sanswer"><b>${esc(L("p.print.answer"))}</b> ${esc(printAnswer(c))}</p>`);
   const notes = exportModel().sections.comments;
   if (notes.length) $("#decisions", el).insertAdjacentHTML("beforeend", `<h3>${esc(L("p.sub.comments"))}</h3><ul>${notes.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`);

@@ -6,7 +6,7 @@ description: >-
   here or in a subagent.
 disable-model-invocation: true
 metadata:
-  version: "0.43.0"
+  version: "0.44.0"
 license: MIT
 ---
 
@@ -18,9 +18,9 @@ Review only: change no project code and post nothing unless asked; keep to the u
 
 ## Plan
 
-Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size; analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
+Identify the diff (base and head, or uncommitted work), the task, the project instructions and the change's size, and for a change reviewed and answered before, the [previous record, its export and head](references/report-data.md#the-next-revision); analyse nothing yet. If the object cannot be identified, ask for it. If the author's description is the only statement of the task, say so in the plan: approved uncorrected, it is the task. Then show the plan, each choice with its alternative and the one selected:
 
-- **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff one reviewer cannot hold (a size not measured; one held 1,085 changed lines) or one with several risky areas. Multi costs two to six times the tokens. Where the size is unmeasured, the plan's reason for going multi is a judgment, not a fact.
+- **Mode:** one reviewer (default), or a coordinator with four direction helpers, for a diff with several risky areas. The coordinator still reads the whole diff, so multi mode does not raise the size one review can hold (one held 1,085 changed lines). Multi costs two to six times the tokens.
 - **Where:** in this session (default), or in a subagent while this session conducts, which keeps the analysis out of the working session.
 - **Checking agents:** an independent target, a critic and a verifier (default), or none. The plan says in a clause what each does: the target sketches the solution from the task and the base code without seeing the change, the critic challenges the draft, the verifier checks its facts.
 - **Result:** the full record and its page (default), or, for a small change, a short review: the same reading and directions, answered in the response with no record, block map or page; its checking agents get the draft response, and its challenges go in the response. The plan offers the short review only for a small change.
@@ -48,7 +48,7 @@ Read the whole diff, the base version of rewritten logic, the producers of chang
 
 ## Analyse
 
-For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check.
+For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check; a [generated file](references/report-data.md#generated-files) is the exception.
 
 The record's fields are the data contract's. What they mean here:
 
@@ -103,7 +103,7 @@ Classify each question as a choice, a fact to settle, or evidence to obtain, and
 
 Fill the record, run `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes and its warnings are answered, read it back as the data contract says, and render the page. A short review skips this and answers from its analysis.
 
-Give the owner the page, `review.html` beside the record: they answer there, and what they export comes back as [the data contract](references/report-data.md#the-page) says.
+Give the owner the page, `review.html` beside the record: they answer there, and what they export goes on as [the data contract](references/report-data.md#the-page) says.
 
 Respond from the record, or a short review's analysis, not from a second set of findings. Lead with the verdict and the recommendation (accept, fix in place, or reshape toward the target), what decides it, and its material limits. Then the ordered steps, each structural one with the burden it removes; the findings by impact, each once, with direction, evidence, place, problem and smallest fix; questions; ideas; open owner tradeoffs and their consequences; the challenges rejected or sent to the owner, each with its reason, and in a line what the accepted ones changed; the checks that did not run; what was not read.
 

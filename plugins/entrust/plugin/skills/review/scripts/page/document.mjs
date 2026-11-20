@@ -50,11 +50,12 @@ ${data.requirements.map((r) => `<tr><td>R${esc(r.id)}</td><td>${prose(r.text)}<d
   // ---- every decision card, as text
   const card = (key, head, body) => `<article class="scard" id="decisions/${esc(key)}"><h4>${head}</h4>${body}</article>`;
   const question = (q) => {
-    const variant = (v) => `<li><b>${prose(v.text)}</b>${q.recommendation?.variant === v.id ? ` <i>(${esc(t("p.recommended"))})</i>` : ""}${v.consequences.length ? claims(v.consequences) : ""}</li>`;
+    const recommended = (v) => q.recommendation?.variant === v.id || (q.recommendation?.variants ?? []).includes(v.id);
+    const variant = (v) => `<li><b>${prose(v.text)}</b>${recommended(v) ? ` <i>(${esc(t("p.recommended"))})</i>` : ""}${v.consequences.length ? claims(v.consequences) : ""}</li>`;
     return card(`q${q.id}`, `Q${esc(q.id)} · ${esc(t(`p.type.${q.kind}`))}${q.resolver ? ` · ${esc(q.resolver)}` : ""}`, `<p class="stitle">${prose(q.text)}</p><p class="sat">${esc(q.at)}</p>
 ${q.parent ? `<p>${esc(t("p.applies-while"))} Q${esc(q.parent.question)} ${esc(t("p.applies-with"))} ${q.parent.texts.map((v) => `<b>${prose(v)}</b>`).join(` ${esc(t("p.or"))} `)}.</p>` : ""}
 ${q.context.length ? `<h5>${esc(t("question.context"))}</h5>${claims(q.context)}` : ""}
-${q.variants.length ? `<h5>${esc(t("question.variants"))}</h5><ol>${q.variants.map(variant).join("")}</ol>` : ""}
+${q.variants.length ? `<h5>${esc(t("question.variants"))}</h5>${q.multiple ? `<p>${esc(t("p.choose-several"))}</p>` : ""}<ol>${q.variants.map(variant).join("")}</ol>` : ""}
 ${q.recommendation ? `<p><b>${esc(t("p.recommendation"))}</b> ${prose(q.recommendation.text)}${srcs(q.recommendation.sources)}</p>` : ""}
 ${q.zones.length ? `<h5>${esc(t("question.zones"))}</h5>${claims(q.zones)}` : ""}
 ${q.remainingEvidence.length ? `<p>${esc(t("p.rel.evidence-kept"))}: ${ids("Q", q.remainingEvidence)}</p>` : ""}

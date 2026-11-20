@@ -3,6 +3,72 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.44.0 — 2026-11-20
+
+### Review report
+
+- Esc closes the purpose menu in Code as a click outside it does, and sets its button's `aria-expanded` back to
+  false; one function closes the menu for both.
+- In Decisions › All, a group's heading counts its open items again after an answer changes which items apply; it
+  kept the count from the list's last drawing. Every count of Decisions is now written by one function.
+- Under a filter, a question's note in Code says how many blocks one answer covers in all and how many the filter
+  shows; it counted only the shown ones, so one answer seemed to cover less than it does.
+- A path or a code span with no space or hyphen in it wraps instead of widening the whole document, without
+  JavaScript and in the page's cards alike.
+- Saved answers the page cannot read are no longer replaced by the next answer. The first save that would replace
+  them opens them as they are, to copy — once the owner's action is complete, never while a field is typed in — and
+  only «Save this page's answers over it» replaces them; until then the answers live in the page's memory, as when
+  the browser keeps nothing, and leaving asks first. A stored `null`, and JSON whose decisions, comments, «Viewed» or
+  view choices are not of their kind, count as unreadable too; the export no longer says the browser keeps nothing
+  while it holds what the page could not read.
+- «Decided N of M» counts the choices — decisions, findings and ideas. An answer to a fact or evidence request is
+  the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
+  counted apart, «requests answered N of M, not verified», in the summary, the export's text and the print; the top
+  bar says the choices decided, with every part in its title, so it still fits beside the tabs at 1024 px, and shows no
+  bar when there is no choice. Done still lists both, and the export's JSON progress is unchanged. The Russian Done
+  tab, the message when nothing is left to start and the Code folds name an answered request as answered, not decided.
+  An evidence request's field says that what is not checked yet is deferred with that reason, since an answer there
+  counts as done.
+- The Code tab's open count follows a parent's answer that restores a conditional question with code; it was counted
+  before the walk was rebuilt, so it kept the count from before the answer.
+- A review of a new revision of a change already reviewed and answered starts from the previous record, the owner's
+  export of it and the previous base and head, copied beside a new record. It reads what changed since the previous
+  head first — a range-diff when the base moved — and puts each answer into the record's own fields: a requirement
+  the new revision meets or breaks, a tradeoff for what the owner left, a question asked again for what stayed open,
+  while a question the owner's choice retired stays retired. A finding or idea the owner left is not raised again
+  unless its premise changed. The export goes, with the record, to whoever makes the change; the review applies none
+  of it. In orchestrate, the fix round after a cross-review the user answered gets the record and the export.
+- A package manager's lock file is one block judged by its manifest, not read line by line: a package fetched from
+  outside the project's registries, or a hash changed for the same version, is a finding, and a package or version
+  neither the manifest nor the task explains is a question; regenerating one runs no install scripts (npm's
+  `--package-lock-only` alone does). No list names lock files: the reviewer establishes from the file and the
+  project's tooling which tool writes it and from what. A file the project marks generated is one block too, read
+  unless it is regenerated and compared; a mark the change adds is read like any change.
+- A decision whose variants combine is marked `multiple: true`: the owner takes one or several, as checkboxes on the
+  card and in the code's margin, where the note stays open while they are taken; a conditional question applies
+  while any chosen variant is listed; a recommendation may name several in `variants`; Enter on its card opens its
+  answer, and the printout says so and names the recommended variants. **Breaking:** the export is schema 7, and
+  carries such an answer as `variants`.
+- The page's storage key carries the number of what the page stores, apart from the export's (0.43.0 tied them): a
+  page still reads the answers a 0.43.0 page kept after the export moved to schema 7, and a test seeded with such a
+  value says when a change to what the page stores needs a new number.
+- The review skill offers multi mode for a diff with several risky areas, not for its size: the coordinator still reads
+  the whole diff, so multi mode does not raise what one review can hold (E145).
+- **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
+  context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
+  says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and
+  revision agree with what the record's text already says of it.
+
+### Fixed
+
+- The agent-run case that journals a signal sent to `--run` signals once the launcher has attached: a signal that
+  comes before the driver's pid line is kept by design, not forwarded, and failed the case (E144, seen once on CI).
+
+### Known issues
+
+- Open issues E142, E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117, E140 and E141 are
+  described in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.43.0 — 2026-11-20
 
 ### Review report

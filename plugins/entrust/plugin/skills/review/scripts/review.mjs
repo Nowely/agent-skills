@@ -150,14 +150,16 @@ export function check(review, files, directory) {
   };
   const refs = (who, ids, listed, what) => { for (const id of ids ?? []) if (!listed.has(id)) errors.push(`${who} names ${what} ${id}, which is not listed`); };
   // One source format everywhere: an internal ref the check resolves mechanically, or an external place.
-  // An analytical claim without a source is a fault; a source that cannot travel with the record is a warning.
-  const sourceFaults = (who, sources) => {
+  // An analytical claim without a source is a fault; a source that cannot travel with the record is a warning. A
+  // claim cannot cite the entry that makes it (`self`, its ref): that says where the claim stands, not what shows it.
+  const sourceFaults = (who, sources, self) => {
     if (!filled(sources)) { errors.push(`${who} names no source: an analytical claim needs one`); return; }
     for (const s of sources) {
       if (typeof s !== "object" || s === null || Array.isArray(s)) { errors.push(`${who}: a source is {ref} or {at, revision?, quote?}`); continue; }
       if (s.ref !== undefined) {
         const m = /^\/([A-Za-z_]+)\/(\d+)$/.exec(String(s.ref)), list = m && review[m[1]];
         if (!m || !Array.isArray(list) || +m[2] >= list.length) errors.push(`${who}: source ref "${s.ref}" names nothing in the record`);
+        else if (`/${m[1]}/${+m[2]}` === self) errors.push(`${who}: source ref "${s.ref}" is the entry that makes the claim; cite what shows it`);
       } else if (text(s.at)) {
         if (s.revision !== undefined && !text(s.revision)) errors.push(`${who}: a source's revision is empty`);
         if (s.quote !== undefined && !text(s.quote)) errors.push(`${who}: a source's quote is empty`);
@@ -167,10 +169,10 @@ export function check(review, files, directory) {
       } else errors.push(`${who}: a source needs "ref" or "at"`);
     }
   };
-  const claims = (who, list, what) => {
+  const claims = (who, list, what, self) => {
     if (list === undefined) return;
     if (!Array.isArray(list)) { errors.push(`${who}: ${what} is not a list`); return; }
-    list.forEach((c, i) => { const w = `${who} ${what} ${i + 1}`; if (!text(c?.text)) errors.push(`${w} has no text`); sourceFaults(w, c?.sources); });
+    list.forEach((c, i) => { const w = `${who} ${what} ${i + 1}`; if (!text(c?.text)) errors.push(`${w} has no text`); sourceFaults(w, c?.sources, self); });
   };
   const requirements = known(review.requirements, "requirement", "id"), findings = known(review.findings, "finding", "id");
   // A change of the task walked through the code: where it is edited, and what must be read to make it safely.
@@ -231,8 +233,9 @@ export function check(review, files, directory) {
     if (!text(q.at)) errors.push(`${who} has no "at"`);
     if (!text(q.text)) errors.push(`${who} has no "text"`);
     if (q.resolver !== undefined && !text(q.resolver)) errors.push(`${who}: resolver is a role name, or left out`);
-    claims(who, q.context, "context");
-    claims(who, q.zones, "zone");
+    const self = `/questions/${index}`;
+    claims(who, q.context, "context", self);
+    claims(who, q.zones, "zone", self);
     const variantIds = new Set();
     // A decision is a choice between at least two variants, each with what it brings: a choice of one is no choice.
     if (q.variants !== undefined && !Array.isArray(q.variants)) errors.push(`${who}: variants is not a list`);
@@ -245,13 +248,22 @@ export function check(review, files, directory) {
       if (!text(v?.text)) errors.push(`${w} has no text`);
       if (v?.consequences !== undefined && !Array.isArray(v.consequences)) errors.push(`${w}: consequences is not a list`);
       else if (!filled(v?.consequences)) (q.kind === "decision" ? errors : warnings).push(`${w} lists no consequences`);
-      else claims(w, v.consequences, "consequence");
+      else claims(w, v.consequences, "consequence", self);
     }
+    // Variants that combine are marked so; the owner may then take several, and the recommendation may name several.
+    if (q.multiple !== undefined && (q.multiple !== true || q.kind !== "decision")) errors.push(`${who}: multiple is only for a decision whose variants combine, and only true`);
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;
       if (!text(q.recommendation?.text)) errors.push(`${w} has no text`);
       if (q.recommendation?.variant !== undefined && !variantIds.has(q.recommendation.variant)) errors.push(`${w} names variant "${q.recommendation.variant}", which is not listed`);
-      sourceFaults(w, q.recommendation?.sources);
+      const several = q.recommendation?.variants;
+      if (several !== undefined) {
+        if (q.multiple !== true) errors.push(`${w}: variants is for a decision whose variants combine; name one in "variant"`);
+        else if (q.recommendation.variant !== undefined) errors.push(`${w} names one in "variant" and several in "variants": keep one of them`);
+        else if (!Array.isArray(several) || !several.length) errors.push(`${w}: variants lists the variant ids it recommends`);
+        else for (const id of several) if (!variantIds.has(id)) errors.push(`${w} names variant "${id}", which is not listed`);
+      }
+      sourceFaults(w, q.recommendation?.sources, self);
     }
     if (q.remainingEvidence !== undefined) {
       if (!Array.isArray(q.remainingEvidence)) errors.push(`${who}: remainingEvidence is not a list`);
@@ -321,7 +333,7 @@ export function check(review, files, directory) {
       if (typeof screen.historical !== "boolean") errors.push(`${name}: historical is true, or left out`);
       else if (screen.historical) {
         if (!text(screen.revision)) warnings.push(`${name} is historical and names no revision`);
-        sourceFaults(name, screen.sources);
+        sourceFaults(name, screen.sources, `/screens/${index}`);
       }
     }
   });
@@ -332,7 +344,7 @@ export function check(review, files, directory) {
       const who = `tradeoff ${index + 1}`;
       if (!text(x?.text)) errors.push(`${who} has no text`);
       if (!text(x?.consequence)) errors.push(`${who} has no consequence`);
-      sourceFaults(who, x?.sources);
+      sourceFaults(who, x?.sources, `/tradeoffs/${index}`);
     });
   }
   if (review.coverageStructured !== undefined) {
@@ -345,7 +357,7 @@ export function check(review, files, directory) {
       // A run is a claim about a checked version: an external source without a revision cannot travel to it.
       if (c?.kind === "ran" && !text(c.revision) && (Array.isArray(c.sources) ? c.sources : []).some((s) => s && typeof s === "object" && !Array.isArray(s) && s.ref === undefined && text(s.at)))
         warnings.push(`${who} claims a run on an external source without a revision: name the revision it ran at`);
-      sourceFaults(who, c?.sources);
+      sourceFaults(who, c?.sources, `/coverageStructured/${index}`);
     });
   }
   if (review.passport !== undefined) {

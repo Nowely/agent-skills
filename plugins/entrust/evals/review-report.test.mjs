@@ -43,6 +43,16 @@ const render = (change = () => {}) => {
 // The record as the page carries it to its runtime: the JSON island.
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script type="application\/json" id="data">(.*?)<\/script>/s)[1]);
 
+test("the printout says when a decision's variants combine and names every variant its recommendation names",
+  "the critic and verifier read the printout: a recommendation of several variants printed as none of them",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED), { questions: THEMED.questions.map((q, i) => i !== 2 ? q
+      : { ...q, multiple: true, recommendation: { text: q.recommendation.text, variants: ["status-quo", "extend"], sources: q.recommendation.sources } }) }));
+    if (result.status !== 0) return `render refused: ${result.stderr}`;
+    const q3 = result.stdout.split("\n").filter((l) => /status-quo|extend|One or more/.test(l)).join("\n");
+    return /\[status-quo, extend\]/.test(q3) && /One or more may be chosen/.test(q3) || q3;
+  });
+
 test("check and render refuse a question without kind",
   "a question must declare whether it is a decision, fact, or evidence",
   () => {
@@ -647,6 +657,18 @@ test("check refuses broken card references: cycles, self-parent, bad refs, dupli
       [(r) => { r.tradeoffs[0].sources = undefined; }, "names no source"],
       [(r) => { r.passport.links[0].url = "javascript:alert(1)"; }, "url is an http(s) link"],
       [(r) => { r.questions[3].parent.variants = []; }, "parent lists no variants"],
+      // A claim cannot cite the entry that makes it: that says where the claim stands, not what shows it.
+      [(r) => { r.questions[2].variants[0].consequences[0].sources = [{ ref: "/questions/2" }]; }, 'source ref "/questions/2" is the entry that makes the claim'],
+      [(r) => { r.questions[2].recommendation.sources.push({ ref: "/questions/2" }); }, 'source ref "/questions/2" is the entry that makes the claim'],
+      [(r) => { r.screens[1].sources = [{ ref: "/screens/1" }]; }, 'source ref "/screens/1" is the entry that makes the claim'],
+      [(r) => { r.questions[2].context[0].sources = [{ ref: "/questions/02" }]; }, 'source ref "/questions/02" is the entry that makes the claim'],
+      // Variants that combine: only on a decision, only true, and a recommendation of several only there.
+      [(r) => { r.questions[0].multiple = true; }, "multiple is only for a decision whose variants combine"],
+      [(r) => { r.questions[2].multiple = "yes"; }, "multiple is only for a decision whose variants combine"],
+      [(r) => { r.questions[2].recommendation.variants = ["extend"]; }, "variants is for a decision whose variants combine"],
+      [(r) => { r.questions[2].multiple = true; delete r.questions[2].recommendation.variant; r.questions[2].recommendation.variants = ["absent"]; }, 'names variant "absent", which is not listed'],
+      [(r) => { r.questions[2].multiple = true; delete r.questions[2].recommendation.variant; r.questions[2].recommendation.variants = []; }, "variants lists the variant ids it recommends"],
+      [(r) => { r.questions[2].multiple = true; r.questions[2].recommendation.variants = ["extend"]; }, 'names one in "variant" and several in "variants"'],
     ];
     for (const [change, fault] of faults) {
       const r = structuredClone(THEMED); change(r);

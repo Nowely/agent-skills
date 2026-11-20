@@ -5,7 +5,7 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.43.0"
+  version: "0.44.0"
 license: MIT
 ---
 
@@ -182,7 +182,9 @@ its task. That check is not a planning catalog: if it fails, stop and amend the 
 authorization and budget remain separate coordinator decisions.
 
 Fix and cross-review at most two rounds, then use a stronger available reviewer or return the
-remaining blocker to the user. Two rounds repeating the same blocker require a revised plan.
+remaining blocker to the user. When the user answered a cross-review's page, the fix round's brief carries the
+record and the export, and the next cross-review reads them as its
+[next revision](../review/references/report-data.md#the-next-revision) says. Two rounds repeating the same blocker require a revised plan.
 Run checks when their results can change the next decision; verify the final combined tree once
 with the relevant checks, independently of its writers.
 
