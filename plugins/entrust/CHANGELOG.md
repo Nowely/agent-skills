@@ -35,10 +35,10 @@ forensics remain in the repository references and release notes.
   while a question the owner's choice retired stays retired. A finding or idea the owner left is not raised again
   unless its premise changed. The export goes, with the record, to whoever makes the change; the review applies none
   of it.
-- A generated file — a package manager's lock file, or a file the project marks generated — is one block, not read
-  line by line: its verdict rests on whether its source explains it. In a lock file, a resolved host outside the
-  project's registries or an `integrity` changed for the same version is a finding, and a version change the
-  manifest does not explain is a question; with the generator allowed, the file is regenerated and compared.
+- A package manager's lock file is one block judged by its manifest, not read line by line: a package fetched from
+  outside the project's registries, or a hash changed for the same version, is a finding, and a package or version
+  neither the manifest nor the task explains is a question. A file the project marks generated is one block too, read
+  unless it is regenerated and compared; a mark the change adds is read like any change.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and

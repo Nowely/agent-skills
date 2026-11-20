@@ -282,21 +282,27 @@ record does not hold is left out, and the response says so. A short review appli
 
 ## Generated files
 
-A file a tool wrote is not read line by line: a package manager's lock file (`pnpm-lock.yaml`, `package-lock.json`,
-`yarn.lock`, `npm-shrinkwrap.json`, `Cargo.lock`, `go.sum`, `poetry.lock`, `uv.lock`, `Gemfile.lock`,
-`composer.lock` and the like), or a file the project marks generated — `linguist-generated` in `.gitattributes`, or a
-header such as `@generated` or `Code generated … DO NOT EDIT`.
+Two kinds of file are one block each, judged by their source rather than line by line: a package manager's lock
+file (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `bun.lock`, `npm-shrinkwrap.json`, `Cargo.lock`, `go.sum`,
+`poetry.lock`, `uv.lock`, `Pipfile.lock`, `Gemfile.lock`, `composer.lock` and the like), and a file the project marks
+generated — `linguist-generated` in `.gitattributes`, or a header such as `@generated` or `Code generated … DO NOT
+EDIT`. A mark counts only when the project's own tooling writes the file; a mark the change adds is itself a change to
+judge, and the file is read.
 
-- It is one block over its whole ranges, taken from the diff's hunk headers; `lines` is not printed for it. The
-  check's warning about a large block is answered by naming this section.
-- Its verdict rests on whether its source explains it:
-  - a lock file: each dependency the manifest adds, removes or moves to another range is there. A resolved host
-    outside the project's registries, or an `integrity` that changed while its version did not, is a finding; a
-    version change the manifest change does not explain is a question. Search the lock file's diff for them rather
-    than read it;
-  - another generated file: the generator or its input changed to match.
-- When the plan allows running the generator, regenerate and compare: the evidence is `ran`. Otherwise it is `read`,
-  of the source change and the searches. Content its source does not explain is never `keep`.
+- Its block's `added` and `removed` span the file, such as `1-4210`: unchanged lines in a range are ignored, and
+  `all` is only for a block to remove. Skip its part of the `lines` printout. Its `does` names this section, which
+  answers the check's warning about a large block.
+- A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
+  outside the project's registries — a `resolved`, `tarball`, `source` or `remote` host, a git, file or `http:` URL —
+  or a hash (`integrity`, `checksum`, `h1:`, `hash`) changed while its version did not, is a finding. A package or
+  version that neither the manifest change nor the task explains is a question, one listing them all. Search the
+  lock file's diff for these rather than read it.
+- Another generated file: the generator or its input changed to match. Unless it is regenerated, its diff is read as
+  any file's; only a lock file's searches stand in for reading.
+- When the plan allows running the generator, regenerate with the project's pinned tool and a mode that runs no
+  install scripts (such as `--lockfile-only` or `--package-lock-only`), compare, and record it in
+  `coverageStructured` as `ran`, with the command and its `revision`. Otherwise record it as `read`, of the manifest
+  change and the searches. Content its source does not explain is never `keep`.
 
 ## Visual evidence
 
