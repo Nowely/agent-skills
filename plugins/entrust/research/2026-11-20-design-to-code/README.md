@@ -134,3 +134,7 @@ A same-input listing run with the shortened skill and the corrected judge was re
 ## Iteration 2: testing the design-conflict instruction
 
 The judge returned v16 for the same 6 px mobile difference as v15. The worker reported it, and a later DOM trial reconciled the written gap with the reference. [Results and visual comparison](13-iteration-02.md).
+
+## Iterations 3 and 4: real package and screenshot-only
+
+[Iteration 3](14-iteration-03.md) records the returned real-card submission, a failed packaged-consumer load, costs and reference pairs with explicitly different fixture data. [Iteration 4](15-iteration-04.md) records the screenshot-only case, the strict failed result, the independent visual observation and a pixel-identical CSS control that exposed a false rejection by the numeric observer.

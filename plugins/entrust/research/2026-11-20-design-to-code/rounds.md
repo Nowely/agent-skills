@@ -543,3 +543,9 @@ The checker revision was independently tested before the run; an initially misse
 ## Iteration 2: the v16 listing submission
 
 v16 used two checker rounds and retained the 6 px narrow-layout mismatch. Dense data and all 17 interactions passed. The [second iteration](13-iteration-02.md) records the compatibility trial, worker costs and the handoff hypothesis in [v17](drafts/17-v17.md).
+
+## Iterations 3 and 4: actual delivery and screenshot-only evidence
+
+Draft 17 was returned on the real library case: the built public consumer failed to load missing image resources, and the worker could not compare actual ready-card output against matching reference data. [Result, costs and references](14-iteration-03.md). Draft 18 moved an early real-entry and packaged-consumer check into the workflow.
+
+Draft 18 ran on a screenshot-only case. The strict numeric judge failed, but an independently reviewed visible result was close, and a new pixel-identical alternate-CSS control showed that the judge can reject identical pixels. [Result, calibration limits and costs](15-iteration-04.md). Draft 19 distinguishes visible screenshot evidence from unprovided internal line-box metrics. No owner acceptance or causal improvement is inferred.
