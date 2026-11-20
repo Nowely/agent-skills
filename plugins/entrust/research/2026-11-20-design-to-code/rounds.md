@@ -121,3 +121,21 @@ instead of "pixel for pixel", and state the exit-code order. `node plugins/entru
 The critic's conclusion stands: tool changes alone do not move the gate. It needs the owner's real frame through
 `spec --context`, the screenshot check of its texts, an answer key made before seeing the check's output, and the
 alignment tolerance frozen beforehand.
+
+### Round 4's verifier
+
+A fresh verifier checked round 4 at `6194df5` by running each claim. Holding: sizes and `max`, the score with open
+proposals, the pages against the code, the draft and the test counts. Partly holding, and corrected at once:
+- two alignment groups on one selector (its left and right edges) that never had two elements passed, since widths
+  were counted per entry; a group is now one selector and edge, counted once per width;
+- the context parser was silently wrong in three ways: commented-out JSX after the component overrode a real text,
+  a JS escape (`{"14\" screen"}`) was kept raw, and entities were decoded inside JS strings; it also threw on
+  `&#99999999;`. Code outside JSX is now skipped as code, an id seen twice and a literal with an escape give no text,
+  literals are taken as written, an undecodable entity gives no text, and an id inside another attribute's value is
+  ignored;
+- the spread was rounded to 0.01 px before the comparison (1.004 px passed a tolerance of 1); it is compared
+  unrounded and rounded only for display;
+- the script's header did not state the exit-code order.
+
+Not changed: code the parser cannot read (TypeScript generics, fragments, `<br>` without a slash) gives every layer
+as missing, which is loud and sends the implementer to the image. 34 tests pass.
