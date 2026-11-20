@@ -39,8 +39,10 @@ model tokens are spent and nothing is retyped.
    x and y it chose (relative to the parent, or absolute on the canvas) and which layers got no text; if the
    landmarks land outside the frame, run it again with the other reading as `--coords`.
 4. Export the frame at 2× as `reference.png` (`get_screenshot`, or `download_assets` on the remote server); the check
-   takes its device scale from the image's width over the frame's. Look at it beside the spec: correct a text that
-   reads differently, and write in the ones the context did not give.
+   takes its device scale from the image's width over the frame's. Compare every text in the spec with it: correct
+   one that reads differently, and write in the ones the context did not give. A layer whose text the code builds
+   from data (`{count} cores`) is reported as missing, not guessed. Nothing later catches a wrong text in the spec:
+   the check looks for that text on the page and excludes text from the pixel comparison.
 5. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
    (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only in pixels.
 

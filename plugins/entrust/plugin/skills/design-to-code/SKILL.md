@@ -1,8 +1,8 @@
 ---
 name: design-to-code
 description: >-
-  Build or change UI from a Figma design so it matches pixel for pixel at every frame and adapts between them
-  (вёрстка по макету, pixel-perfect, адаптив). Gathers the frames into a design pack, reviews the design's gaps,
+  Build or change UI from a Figma design so it matches the design at every frame and adapts between them, with every
+  remaining difference explained (вёрстка по макету, pixel-perfect, адаптив). Gathers the frames into a design pack, reviews the design's gaps,
   checks the page against the design in numbers with a script, keeps a ledger of deliberate deviations, and saves
   the design, before and after for review. Use when given Figma links or frames, or asked to match a mockup or make
   a layout pixel-perfect or responsive. Complements Figma's own design-to-code skill, which fetches the design.
@@ -34,7 +34,8 @@ Follow [pack.md](references/pack.md). In short:
 2. For each frame, write its `spec.json` (every text with its box and font) and its image at 2× as `reference.png`.
    With a Figma token, `node "<skill-dir>/scripts/design.mjs" figma <frame link> --out .design/<task>/frames/<name>`
    writes both and costs no model tokens. Through MCP, `design.mjs spec` reads the outline and takes each text from
-   the design context by node id; check the texts against the frame's screenshot and read the rest from it.
+   the design context by node id. Then compare every text in `spec.json` with the frame's screenshot and write in
+   those it could not take: nothing later catches a wrong text in the spec.
 3. With the Figma MCP tools, read the available design context and variables. Use existing Code Connect mappings
    when available and useful. Compare design assets with the project's existing icons and supported components; use
    the appropriate source and record material fidelity differences. Save to the pack what a tool can write itself;
@@ -78,10 +79,11 @@ being inherited, then the areas outside text that differ, each with its place. F
 frame again; a fix for one width can move another. Offsets marked *inherited* follow from a cause above them: do not
 fix them separately.
 
-The score is lower-better, and the summary shows the round before and the lowest so far. It locates changes; judge
-visual relationships and behaviour before undoing one. When two or three rounds in a row bring no lower score, stop
-adjusting: sort what remains into what to fix another way, what to record in the ledger with its reason, and what
-to ask the owner, then check everything again. Pixel-perfect is not the goal where the design missed a case, a kit
+The score is lower-better and counts what is not settled, proposals included; the summary shows the round before
+and the lowest so far. It locates changes; judge visual relationships and behaviour before undoing one. Commit when
+a round reaches a new lowest score. When two rounds in a row bring no new lowest, stop adjusting and sort what
+remains: what to fix another way (the next round), what to record (a `proposed` ledger entry with its category and
+reason), what to ask (a question in `review.md` with its options). Then check everything again. Pixel-perfect is not the goal where the design missed a case, a kit
 component differs, the layout would overlap or the experience would suffer: the goal is that no difference is left
 unexplained.
 

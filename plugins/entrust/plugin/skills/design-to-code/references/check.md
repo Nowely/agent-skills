@@ -2,8 +2,9 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, runs the sweep and prints a summary. It exits 0 when the comparison
-passed, 1 on a failure, 2 when something could not be measured (a frame without its image, an alignment group with
-fewer than two elements, or no browser at all), and 3 when what remains awaits the owner's decision. Playwright is
+passed, 1 on a failure, 2 when something could not be measured (a frame without its image, an alignment group that
+never has two elements, or no browser at all), and 3 when what remains awaits the owner's decision. A failure
+outranks 2, and 2 outranks 3. Playwright is
 resolved from the working directory first: run it from the project that has it. `--frame <name>` checks one frame and skips the sweep; `--no-sweep`
 skips the sweep; `--before` records the page as it is now as the "before" state.
 
@@ -40,7 +41,7 @@ snapshot does: a Figma text box can be wider than its text. Everything outside t
 | `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `outside`, `align`, `resize`, `switch`, or `*` |
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px; it covers the differing areas inside it |
 | `frame` | a frame's name or a list of names; absent or `*` for all |
-| `max` | the largest difference in px the entry covers, at each width in the sweep; absent, any |
+| `max` | the largest difference in px the entry covers, at each width in the sweep; only a difference with a size (a position, a size, an overflow, a cut, an overlap, an alignment spread, a resize) can be covered, never a layout switch; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
 | `status` | `accepted`: excused; `proposed`: shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
@@ -56,7 +57,8 @@ category or a known status fails the check.
 The console shows, per frame: the verdict; the root's size if it differs; **start here**, the first place from the
 top where an offset begins, between two landmarks the design places one after the other or between a landmark and
 an edge of the root (the first 8 px band from the top, its largest step first); the first findings that are not
-inherited; how many are left. `out/report.md` holds every finding in tables.
+inherited; how many are left; and the score, which adds up what is not settled, failures and proposals alike, with
+the round before and the lowest so far. `out/report.md` holds every finding in tables.
 
 - An offset marked *inherited* equals the one it follows from: it disappears with its cause.
 - A horizontal position is read from the left edge, the right edge or the centre of the root, whichever the landmark
@@ -71,7 +73,8 @@ inherited; how many are left. `out/report.md` holds every finding in tables.
 - The **sweep** narrows one page from `to` to `from` every `step` px and through each frame's width, then widens back:
   `overflow` (the document or the root wider than its box), `clipped` (text cut by an `overflow: hidden` box),
   `outside` (text past the root), `overlap` (two texts over each other), `align` (a group's edges further apart than
-  the tolerance, as painted: Chromium paints a box laid out at 11.015625 px at 11), `resize`
+  the tolerance, as laid out; a group with fewer than two elements at some widths is aligned where it has two, and
+  one that never has two is not measured), `resize`
   (the widest layout not restored), and the widths between which the layout changes; with `switches`, a change
   elsewhere or none near a named width is a `switch` finding.
 
