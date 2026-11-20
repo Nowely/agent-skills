@@ -2002,11 +2002,14 @@ document.addEventListener("keydown", (e) => {
   if (k === "d") return openField(c.key, "defer");
   if (k === "x") { const snap = snapshot(c.key); clearAnswer(c.key); return announce(c, snap); }
 });
-let spyQueued = false, lastRelease = 0;
+// Each scrolled frame releases the files that moved far away, so what is drawn is always what lies within 6,000 px of
+// the view, however fast or far the owner scrolls; a release only every so often let a quick scroll keep every file
+// it passed until the next one.
+let spyQueued = false;
 window.addEventListener("scroll", () => {
   if (spyQueued || S.tab !== "code") return;
   spyQueued = true;
-  requestAnimationFrame(() => { spyQueued = false; spy(); const now = performance.now(); if (now - lastRelease > 400) { lastRelease = now; releaseFar(); } });
+  requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); });
 }, { passive: true });
 window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
 window.addEventListener("hashchange", () => route(location.hash));

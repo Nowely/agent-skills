@@ -317,7 +317,8 @@ test("review 5: a sub-tab that hides the selected card clears the selection, its
     await page.click('[data-sub="finding"]'); await settle(page);
     await page.keyboard.press("o"); await settle(page);
     const toast = await page.locator("#toast").count() ? await text(page, "#toast") : "";
-    return !/q3/.test(page.url()) && !/Q3/.test(await text(page, "#ctx-decisions")) && !/Q3/.test(toast) || `url ${page.url()}, toast «${toast}»`;
+    const hash = new URL(page.url()).hash;
+    return !/q3/.test(hash) && !/Q3/.test(await text(page, "#ctx-decisions")) && !/Q3/.test(toast) || `address ${hash}, toast «${toast}»`;
   }));
 
 test("review 6: a filtered list drops a card once the action that took it out is done",
@@ -714,9 +715,16 @@ test("the large record opens fast, keeps its DOM bounded while scrolling, lands 
     try {
       const timing = await page.evaluate(() => Math.round(performance.getEntriesByType("navigation")[0].domContentLoadedEventEnd));
       await page.click("#tab-code"); await page.click('[data-act="mode"][data-mode="all"]'); await page.waitForTimeout(300);
-      let peak = 0;
+      // Each scrolled frame gives back the rows of files more than 6,000 px from the view, so once a frame has passed no
+      // drawn file lies beyond that; a file here is about 3,750 px and 2,000 elements, so at most five are drawn at once.
+      let peak = 0, far = 0;
       const height = await page.evaluate(() => document.documentElement.scrollHeight);
-      for (let y = 0; y < height; y += 2500) { await page.evaluate((y) => window.scrollTo(0, y), y); await page.waitForTimeout(40); peak = Math.max(peak, await page.evaluate(() => document.getElementsByTagName("*").length)); }
+      for (let y = 0; y < height; y += 2500) {
+        await page.evaluate((y) => window.scrollTo(0, y), y); await page.waitForTimeout(40); await settle(page);
+        const m = await page.evaluate(() => ({ elements: document.getElementsByTagName("*").length, far: [...document.querySelectorAll("#files .fb:not(.pending)")]
+          .filter((el) => { const r = el.getBoundingClientRect(); return r.bottom < -6000 || r.top > innerHeight + 6000; }).length }));
+        peak = Math.max(peak, m.elements); far = Math.max(far, m.far);
+      }
       const misses = [];
       for (const fi of [3, 17, 39, 8, 25, 1]) {
         await page.click(`#tree [data-act="gofile"][data-f="${fi}"]`); await page.waitForTimeout(700);
@@ -730,9 +738,9 @@ test("the large record opens fast, keeps its DOM bounded while scrolling, lands 
         await page.keyboard.press("Enter"); await page.waitForTimeout(500);
         if (await page.evaluate(() => { const r = document.querySelector("#files tr.findhit")?.getBoundingClientRect(); return Boolean(r) && r.top > 0 && r.bottom < innerHeight; })) landed++;
       }
-      // 40 files of 180 rows drawn at once would be about 7,200 rows and 40,000 elements; files far away give theirs back.
-      return o.errors.length ? o.errors.join("; ") : timing < 2000 && peak < 20000 && !misses.length && /15 matches/.test(count) && landed === 15
-        || JSON.stringify({ timing, peak, misses, count, landed });
+      // All 40 files drawn would be about 80,000 elements; five and the page around them stay under 12,000.
+      return o.errors.length ? o.errors.join("; ") : timing < 2000 && !far && peak < 12000 && !misses.length && /15 matches/.test(count) && landed === 15
+        || JSON.stringify({ timing, peak, far, misses, count, landed });
     } finally { await o.close(); }
   });
 
