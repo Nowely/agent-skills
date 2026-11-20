@@ -20,8 +20,9 @@ forensics remain in the repository references and release notes.
   answers live in the page's memory, as when the browser keeps nothing, and leaving asks first.
 - «Decided N of M» counts the choices — decisions, findings and ideas. An answer to a fact or evidence request is
   the owner's input, not a decision, so «not checked yet» typed as one no longer counts as decided: the requests are
-  counted apart, «requests answered N of M, not verified», in the bar, the summary, the export's text and the print.
-  Done still lists both, and the export's JSON progress is unchanged.
+  counted apart, «requests answered N of M, not verified», in the summary, the export's text and the print; the top
+  bar says the choices decided, with every part in its title, so it still fits beside the tabs at 1024 px. Done still
+  lists both, and the export's JSON progress is unchanged.
 - **Breaking:** `check` refuses a claim whose source is the entry that makes it — a question cited for its own
   context, zone, variant consequence or recommendation, a screen, tradeoff or coverage statement for itself: that
   says where the claim stands, not what shows it. The data contract says so, and that a historical picture's mark and

@@ -274,7 +274,7 @@ test("Done lists what progress counts: the decided choices and the answered requ
     await page.keyboard.press("o"); await page.keyboard.type("seen on a phone"); await page.keyboard.press("Control+Enter"); await settle(page);
     await page.click('[data-sub="done"]'); await settle(page);
     const cards = await page.locator("#dec-list .card").evaluateAll((els) => els.map((el) => el.dataset.card));
-    const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await text(page, "#progress");
+    const tag = await text(page, '#card-q1 .compact [data-status="q1"]'), progress = await page.getAttribute("#progress > span[title]", "title");
     const counted = /Decided (\d+) of/.exec(progress), answered = /requests answered (\d+) of/.exec(progress);
     return cards.includes("q1") && tag === "Answered" && counted && answered && cards.length === +counted[1] + +answered[1] || JSON.stringify({ cards, tag, progress });
   }));
@@ -373,7 +373,7 @@ test("review 9: an entered answer stays «Answered», unverified, in its compact
   "an evidence answer read «Decided», and the waiting-for-parent indication was gone",
   cased(THEMED_URL + "#decisions/q2", {}, async (page) => {
     await page.keyboard.press("o"); await page.keyboard.type("the display reads it"); await page.keyboard.press("Control+Enter"); await settle(page);
-    const tag = await statusOf(page, "q2"), compact = await text(page, '#card-q2 [data-compact-answer="q2"]'), progress = await text(page, "#progress");
+    const tag = await statusOf(page, "q2"), compact = await text(page, '#card-q2 [data-compact-answer="q2"]'), progress = await page.getAttribute("#progress > span[title]", "title");
     await page.locator('#card-q4 input[data-opt="narrow"]').check(); await settle(page);
     const waiting = await text(page, '#card-q4 [data-waiting="q4"]');
     return tag === "Answered" && /not verified/.test(compact) && /requests answered 1 of 3, not verified/.test(progress) && /Depends on Q3, still open/.test(waiting)
@@ -480,11 +480,33 @@ test("feedback 3: an answer to an evidence request is not a decision: «Decided�
   cased(THEMED_URL + "#decisions/q1", {}, async (page) => {
     await page.keyboard.press("o"); await page.keyboard.type("not checked yet"); await page.keyboard.press("Control+Enter"); await settle(page);
     // the themed record's choices: Q3, Q4 (while Q3 is open), F1, F2 and I1; its requests: Q1, Q2 and Q5
-    const said = { bar: await text(page, "#progress"), export: (await exported(page)).split("\n").find((l) => /Decided/.test(l)) ?? "" };
+    const said = { bar: await page.getAttribute("#progress > span[title]", "title"), export: (await exported(page)).split("\n").find((l) => /Decided/.test(l)) ?? "" };
     await page.keyboard.press("g"); await page.keyboard.press("s"); await settle(page); said.summary = await text(page, "#sum-progress");
     const wrong = Object.entries(said).filter(([where, t]) => !(where === "summary" ? /^0 of 5 decided/.test(t) : /Decided 0 of 5/.test(t)) || !/requests answered 1 of 3, not verified/.test(t));
-    return !wrong.length || JSON.stringify(said);
+    // the bar itself is short: the choices decided, and the rest in its title
+    const bar = await text(page, "#progress");
+    return !wrong.length && /^Decided 0 of 5 · Files viewed/.test(bar) || JSON.stringify({ ...said, shown: bar });
   }));
+
+test("feedback 3: at 1024 px the top bar fits on every tab, in English and in Russian, before and after a request is answered",
+  "the requests' count made the bar's progress so long that the whole page scrolled sideways",
+  async () => {
+    const out = [];
+    for (const url of [THEMED_URL, RU_URL]) {
+      const o = await open(url + "#decisions/q1", { viewport: { width: 1024, height: 800 } });
+      try {
+        const wide = async (when) => { for (const tab of ["summary", "decisions", "code", "details"]) {
+          await o.page.click(`#tab-${tab}`); await settle(o.page);
+          const m = await o.page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+          if (m[0] > m[1]) out.push({ url: url.slice(-20), when, tab, m });
+        } };
+        await wide("unanswered");
+        await o.page.click("#tab-decisions"); await o.page.keyboard.press("o"); await o.page.keyboard.type("seen"); await o.page.keyboard.press("Control+Enter"); await settle(o.page);
+        await wide("answered");
+      } finally { await o.close(); }
+    }
+    return !out.length || JSON.stringify(out);
+  });
 
 test("feedback 4: Esc closes the purpose menu and says so to assistive technology, as a click outside it does",
   "Esc hid the menu and left aria-expanded true",

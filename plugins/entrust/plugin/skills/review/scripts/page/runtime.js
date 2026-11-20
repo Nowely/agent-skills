@@ -430,7 +430,9 @@ function updateChrome() {
   const set = (id, v, title) => { const el = $("#badge-" + id); el.hidden = v === null; if (v !== null) { el.textContent = n(v); el.title = title; } };
   set("decisions", p.open, P("p.count.open", p.open)); set("code", codeOpen, P("p.count.open-code", codeOpen)); set("summary", null); set("details", null);
   const viewed = `<span class="sep" aria-hidden="true">·</span><span>${esc(L("p.progress.viewed", n(S.viewed.size), n(F.length)))}</span>`;
-  $("#progress").innerHTML = `<span>${esc(progressWords(p).join(" · "))}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${p.choices ? (100 * p.decided / p.choices).toFixed(1) : 0}%"></span></span>${viewed}`;
+  // the bar keeps to its first part, the choices decided, so it fits beside the tabs; its title holds every part
+  const words = progressWords(p);
+  $("#progress").innerHTML = `<span title="${esc(words.join(" · "))}">${esc(words[0] ?? "")}</span><span class="pbar" role="progressbar" aria-label="${esc(L("p.status.decided"))}" aria-valuemin="0" aria-valuemax="${p.choices}" aria-valuenow="${p.decided}"><span style="width:${p.choices ? (100 * p.decided / p.choices).toFixed(1) : 0}%"></span></span>${viewed}`;
   const so = $("#sum-progress"); if (so) so.innerHTML = summaryProgress();
   const sb = $("#start-btn"); if (sb) sb.textContent = L(p.done || p.deferred ? "p.continue" : "p.start");
   if (S.rendered.decisions) updateSubCounts();
