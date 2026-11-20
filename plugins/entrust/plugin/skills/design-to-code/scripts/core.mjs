@@ -2,7 +2,7 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "outside", "align", "resize", "switch"];
+  "overlap", "covered", "outside", "align", "resize", "switch"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -288,6 +288,7 @@ export function ledgerFaults(entries) {
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
+    if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     return faults;
   });
 }
@@ -449,17 +450,22 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   for (const r of regions.filter((x) => !x.movedWith)) {
     add(`region near “${r.near}”`, "region", "as designed", `${r.box.width}×${r.box.height} px at ${r.box.x}, ${r.box.y} differs`, { box: r.box, area: r.area });
   }
-  const classified = issues.map((i) => (i.status ? i : classify(i, frame, ledger)));
+  const all = issues.map((i) => (i.status ? i : classify(i, frame, ledger)));
+  // Page text the spec does not have: the spec may lack it (an MCP outline without an instance's texts) or the page may
+  // be wrong. Either way the frame was not measured in full: one line lists them, and the frame is incomplete.
+  const extra = (i) => i.expected === "absent" && i.status === "fail";
+  const unexpected = all.filter(extra).map((i) => i.landmark), classified = all.filter((i) => !extra(i));
   const failing = classified.filter((i) => i.status === "fail");
   // The score counts what is not settled: a failure, and a proposal still awaiting the owner. Turning a failure into
   // a proposal is no progress.
   const open = classified.filter((i) => i.status !== "accepted");
   // An image-only reference leaves its texts to the eye. A missing font is reported, not used to hide findings.
   const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
-  const verdict = failing.length ? "fail" : imageOnly || missingReference ? "incomplete" : classified.some((i) => i.status === "pending") ? "pending" : "pass";
+  const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length ? "incomplete"
+    : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, imageOnly, fontsMissing: fonts, issues: classified, causes: steps,
-    score: round(open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
+    frame, pass: verdict === "pass", verdict, imageOnly, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
     pixels: measured.pixels, images: measured.images ?? {},
@@ -614,6 +620,9 @@ const counts = (frames, sweep) => {
 // Root first, then in the design's order: the root is fixed before what is inside it.
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
 const verdictOf = (f) => f.verdict ?? (f.pass ? "pass" : "fail");
+const listed = (texts, limit = 8) => `${texts.slice(0, limit).map((t) => `“${t}”`).join(", ")}${texts.length > limit ? ` and ${texts.length - limit} more` : ""}`;
+const notInDesign = (f) => `page text not in the design (${f.unexpected.length}): ${listed(f.unexpected)}`;
+const where = (i) => `${i.landmark}${i.story ? ` (${i.story})` : ""}`;
 
 export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
@@ -638,6 +647,7 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
     if (images.length) out.push(`Images: ${images.join(", ")}.`);
+    if (f.unexpected?.length) out.push(`${notInDesign(f).replace(/^p/, "P")}: the spec lacks it, or the page should not show it.`);
     out.push("");
     if (f.issues.length) {
       out.push("| Landmark | Property | Design | Page | Δ | Status |", "|---|---|---:|---:|---:|---|");
@@ -649,11 +659,12 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
     out.push(`## Sweep ${sweep.from}–${sweep.to} px, every ${sweep.step} px and each frame's width — ${verdictOf(sweep)}`, "");
     if (sweep.reason) out.push(sweep.reason, "");
     else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
+    if (sweep.stories?.length) out.push(`Stories swept as well: ${sweep.stories.map((st) => st.name).join(", ")}.`, "");
     for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(u.selector)} matched ${u.matched} at every width; it needs two or more.`, "");
     for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(u.selector)} matched fewer than two at ${u.ranges}; it was measured at the other widths.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
-      for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(i.landmark)} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
+      for (const i of sweep.issues) out.push(`| ${i.property} | ${cell(where(i))} | ${i.ranges} | ${cell(i.actual)} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
       out.push("");
     }
   }
@@ -662,11 +673,12 @@ export function renderReport({ frames = [], sweep, ledgerProblems = [], round: n
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, previous, best }, { limit = 8, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: n, previous, best, stalled = 0 }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
     + ` · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep) ?? "unmeasured"} (lower is better)`
     + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
+  if (stalled >= 2) out.push(`${stalled} rounds without a new lowest score: stop adjusting. Sort what remains: fix it another way, record it as proposed, or ask.`);
   for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
@@ -684,11 +696,12 @@ export function renderSummary({ frames = [], sweep, ledgerProblems = [], round: 
     for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`);
     const rest = failing.length - Math.min(mine.length, limit);
     if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
+    if (f.unexpected?.length) out.push(`  ${notInDesign(f)}`);
   }
   if (sweep) {
     out.push("", `sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}`);
     const failing = sweep.issues.filter((i) => i.status === "fail");
-    for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${i.landmark}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
+    for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
     for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${u.selector} matched ${u.matched} at every width; an alignment needs two or more`);
     for (const u of sweep.partial ?? []) out.push(`  ${u.selector} matched fewer than two at ${u.ranges}: aligned only where it has two or more`);
@@ -709,9 +722,10 @@ export function renderGallery({ title = "Design check", frames, sweep, ledger = 
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
-    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? "Image-only reference: inspect text visually." : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
+    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? "Image-only reference: inspect text visually." : "",
+      f.result.unexpected?.length ? esc(notInDesign(f.result)) : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     const verdict = verdictOf(f.result);
-    return `<section><h2>${esc(f.result.frame)} <span class="${verdict === "pass" ? "pass" : "fail"}">${verdict}</span></h2>
+    return `<section><h2>${esc(f.result.frame)} <span class="${verdict}">${verdict}</span></h2>
 ${lines.map((l) => `<p>${l}</p>`).join("\n")}
 <div class="row">${columns.map(([k, label]) => {
       const content = f.images[k] ? `<img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}">`
@@ -728,7 +742,7 @@ ${lines.map((l) => `<p>${l}</p>`).join("\n")}
 @media (prefers-color-scheme:dark){:root{--bg:#16181c;--fg:#e8eaed;--muted:#9aa0a6;--line:#3a3f47;--pass:#5bd08a;--fail:#ff7b6b}}
 body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
 h1{font-size:22px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 6px}p{margin:4px 0;color:var(--muted)}
-.pass{color:var(--pass)}.fail{color:var(--fail)}
+.pass{color:var(--pass)}.fail{color:var(--fail)}.incomplete,.pending{color:var(--muted)}
 .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:10px}
 figure{margin:0;max-width:100%}figcaption{font-weight:600;margin-bottom:4px}
 img{display:block;max-width:100%;height:auto;outline:1px solid var(--line);background:#fff}
@@ -736,7 +750,8 @@ li{margin:6px 0}
 </style>
 <h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ.</p>
 ${sections.join("\n")}
-${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(i.landmark)} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
+${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(where(i))} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
+${(sweep?.stories ?? []).map((st) => `<section><h2>Story: ${esc(st.name)}</h2><p>At the frames' widths; its findings are in the list above.</p><div class="row">${st.shots.map((sh) => `<figure><figcaption>${sh.width} px</figcaption><img src="${sh.image}" alt="${esc(st.name)} at ${sh.width} px"></figure>`).join("")}</div></section>`).join("\n")}
 ${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>
 `;

@@ -358,8 +358,9 @@ test("extra text inside a matched node and text under an invisible parent cannot
   const f = smallFrame();
   f.write("<main><span>Ready now</span></main>");
   let result = check(f.dir);
-  assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.ok(result.result.frames[0].issues.some((i) => i.landmark === "now" && i.expected === "absent" && i.status === "fail"));
+  assert.equal(result.status, 2, result.stdout + result.stderr);
+  assert.deepEqual(result.result.frames[0].unexpected, ["now"]);
+  assert.match(result.stdout, /page text not in the design \(1\): “now”/);
   f.write('<main><div style="opacity:0"><span>Ready</span></div></main>');
   result = check(f.dir);
   assert.equal(result.status, 1, result.stdout + result.stderr);
@@ -440,7 +441,7 @@ test("a root absent on the first check stays absent in Before after it is built"
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<figcaption>Before<\/figcaption>Root main was absent[^<]*<\/figure>/);
 });
 
-test("state names keep separate captures and reuse a historical before only when its owner is known", browser, () => {
+test("state names keep separate captures", browser, () => {
   const f = smallFrame("Ready", [{ name: "Оплачен" }, { name: "Отменён" }, { name: "Old frame" }]);
   const cfg = JSON.parse(fs.readFileSync(f.config));
   cfg.frames[1].url = "other.html";
@@ -451,13 +452,6 @@ test("state names keep separate captures and reuse a historical before only when
   const beforeTags = () => [...fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8")
     .matchAll(/<figcaption>Before<\/figcaption><img src="([^"]+)"/g)].map((m) => m[1]);
   assert.notEqual(beforeTags()[0], beforeTags()[1]);
-  const oldBefore = fs.readFileSync(path.join(f.dir, "out", frames[1].images.page)).toString("base64");
-  fs.rmSync(path.join(f.dir, "out/before"), { recursive: true });
-  fs.mkdirSync(path.join(f.dir, "out/before"));
-  for (const slug of ["-", "Old-frame"]) fs.writeFileSync(path.join(f.dir, "out/before", slug + ".png"), Buffer.from(oldBefore, "base64"));
-  const old = check(f.dir);
-  assert.ok(old.result.frames.slice(0, 2).every((frame) => frame.beforeUnavailable.includes("multiple frames")));
-  assert.deepEqual(beforeTags(), [`data:image/png;base64,${oldBefore}`]);
 });
 
 test("the reference passes against its own snapshot, with no pixel different", browser, () => {
@@ -506,7 +500,7 @@ test("an accepted deviation passes, a proposed one remains pending, an unlisted 
 });
 
 test("a proposed text alternative reports what the page actually contains", browser, () => {
-  const entry = { landmark: ["Other label", "New"], property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
+  const entry = { landmark: "New", property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
   const original = check(variant("", [entry]), "--frame", "720");
   assert.equal(original.status, 0, original.stdout + original.stderr);
   assert.ok(!original.result.frames[0].issues.some((issue) => issue.landmark === "New" && ["presence", "text"].includes(issue.property)));
@@ -529,7 +523,7 @@ test("a missing reference image makes the visual check incomplete", browser, () 
   assert.equal(result.result.frames.find((f) => f.frame === "720").pass, false);
   assert.match(result.stdout, /720: incomplete/);
   assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /## 720 — incomplete/);
-  assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="fail">incomplete</);
+  assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="incomplete">incomplete</);
 });
 
 test("an image-only reference requires visual text review, including when it matches", browser, () => {
@@ -721,6 +715,15 @@ test("a prepared run scores the unstyled start as failing, the reference as pass
   assert.deepEqual([partial.status, partial.missingReferences], ["incomplete", ["720"]], "a check that measured part of the run is still scored");
 });
 
+// ------------------------------------------------------------------ round 8: what the first real submission missed
+
+test("a text deviation names one design text", () => {
+  const base = { property: "text", actual: "Go", category: "owner", status: "accepted", reason: "the owner renamed it" };
+  assert.match(ledgerFaults([{ ...base, landmark: ["Ready", "Steady"] }]).join(), /one design text/);
+  assert.match(ledgerFaults([{ ...base, landmark: "*" }]).join(), /one design text/);
+  assert.deepEqual(ledgerFaults([{ ...base, landmark: "Ready" }]), []);
+});
+
 test("content that fades in is present, and a text cut with an ellipsis is truncated on purpose", browser, () => {
   const fade = smallFrame();
   fade.write('<style>@keyframes in{from{opacity:0}to{opacity:1}}.pop{opacity:0;animation:in .15s forwards}</style><main><span class="pop">Ready</span></main>');
@@ -732,4 +735,55 @@ test("content that fades in is present, and a text cut with an ellipsis is trunc
   const own = check(cut.dir);
   assert.equal(own.status, 0, own.stdout + own.stderr);
   assert.deepEqual(own.result.sweep.issues, []);
+});
+
+test("scores are compared only between rounds measured the same way, and two rounds without a new lowest say stop", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span style="margin-left:20px">Ready</span></main>');
+  check(f.dir);
+  const second = check(f.dir);
+  assert.match(second.stdout, /previous round: /);
+  assert.doesNotMatch(second.stdout, /stop adjusting/);
+  assert.match(check(f.dir).stdout, /2 rounds without a new lowest score: stop adjusting/);
+  const spec = JSON.parse(fs.readFileSync(path.join(f.dir, "0.json"), "utf8"));
+  fs.writeFileSync(path.join(f.dir, "0.json"), JSON.stringify({ ...spec, landmarks: [...spec.landmarks, { ...spec.landmarks[0], text: "Steady" }] }));
+  assert.doesNotMatch(check(f.dir).stdout, /previous round|lowest|stop adjusting/);
+});
+
+test("a dense story is swept too: a text over a text, a control under another element, and its pictures", browser, () => {
+  const f = smallFrame();
+  fs.writeFileSync(path.join(f.dir, "dense.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}</style>
+<main><span>Ready</span><button aria-label="Help" style="position:absolute;left:0;top:30px;width:20px;height:20px"></button>
+<span style="position:absolute;left:0;top:10px;background:white;padding:4px">Ready and waiting for a very long time</span></main>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "dense", url: "dense.html" }] } }));
+  const r = check(f.dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  const story = r.result.sweep.issues.filter((i) => i.story === "dense");
+  assert.ok(story.some((i) => i.property === "covered" && i.landmark === "Help"), JSON.stringify(story));
+  assert.ok(story.some((i) => i.property === "overlap"), JSON.stringify(story));
+  assert.ok(r.result.sweep.issues.every((i) => i.story === "dense"), "the frame's own story is clean");
+  assert.match(r.stdout, /covered Help \(dense\)/);
+  const gallery = fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8");
+  assert.match(gallery, /<h2>Story: dense<\/h2>/);
+  assert.match(gallery, /<figcaption>300 px<\/figcaption><img src="data:image\/png/);
+});
+
+test("a frame of a state drawn outside the component names its own root", browser, () => {
+  const dir = tmp(), config = path.join(dir, "design.json");
+  const page = (pop) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:16px/20px monospace}main{width:300px;height:40px}
+.pop{position:absolute;top:50px;left:0;width:200px;padding:8px;background:#eee}</style>
+<main><button id="help" style="width:40px;height:20px">i</button></main><div class="pop" hidden>${pop}</div>
+<script>help.onmouseenter = () => { document.querySelector(".pop").hidden = false; };</script>`;
+  fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
+    { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }] }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const same = check(dir);
+  assert.equal(same.status, 0, same.stdout + same.stderr);
+  fs.writeFileSync(path.join(dir, "page.html"), page("Now 8"));
+  const changed = check(dir);
+  assert.equal(changed.status, 1, changed.stdout + changed.stderr);
+  assert.ok(changed.result.frames[0].issues.some((i) => i.landmark === "Was 10, now 8" && i.actual === "missing"));
 });

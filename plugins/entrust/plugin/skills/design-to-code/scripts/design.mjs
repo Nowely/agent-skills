@@ -46,12 +46,8 @@ function parseArgs(argv) {
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`); };
 const pngSize = (buf) => (buf.toString("ascii", 1, 4) === "PNG" ? { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) } : null);
-const legacySlug = (name) => name.replace(/[^\w.-]+/g, "-");
-function frameKey(name) {
-  // The tilde separates this namespace from every historical slug, also on case-insensitive filesystems.
-  const digest = createHash("sha256").update(name).digest("hex");
-  return `${legacySlug(name).slice(0, 40)}~${digest}`;
-}
+// A frame's files: its name made safe, and a short hash of the name, so "a b" and "a-b" stay apart.
+const frameKey = (name) => `${name.replace(/[^\w.-]+/g, "-").slice(0, 40)}~${createHash("sha256").update(name).digest("hex").slice(0, 8)}`;
 
 function loadConfig(file) {
   const dir = path.dirname(path.resolve(file));
@@ -60,8 +56,11 @@ function loadConfig(file) {
   const url = (u) => (!u || /^[a-z][\w+.-]*:/i.test(u) ? u : pathToFileURL(path.resolve(dir, u)).href);
   for (const key of ["url", "root", "frames"]) if (!cfg[key]) throw new Error(`design.json: no "${key}"`);
   if (new Set(cfg.frames.map((f) => f.name)).size !== cfg.frames.length) throw new Error("design.json: frame names must be unique");
+  const stories = cfg.sweep?.stories ?? [];
+  if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
   return {
     ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
+    ...(cfg.sweep ? { sweep: { ...cfg.sweep, stories: stories.map((st) => ({ ...st, url: url(st.url) })) } } : {}),
     frames: cfg.frames.map((f) => {
       if (!f.name || !f.width || !f.spec) throw new Error(`design.json: a frame needs name, width and spec (${JSON.stringify(f)})`);
       return { ...f, url: url(f.url) ?? url(cfg.url), spec: at(f.spec), reference: at(f.reference) };
@@ -143,7 +142,8 @@ async function open(browser, cfg, { url, width, setup = [], viewport, height = 9
     const absent = e.name === "TimeoutError" && !(await page.locator(cfg.root).count());
     await context.close();
     if (!absent) throw e;
-    throw Object.assign(new Error(`Root ${cfg.root} was absent at capture time.`), { missingRoot: true, exit: 2 });
+    const cause = setup.length ? ` (setup: ${e.message.split("\n")[0]})` : "";
+    throw Object.assign(new Error(`Root ${cfg.root} was absent at capture time${cause}.`), { missingRoot: true, exit: 2 });
   }
   if (cfg.host) await setWidth(page, cfg, width, height);
   await settle(page, cfg.root);
@@ -396,6 +396,15 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
+  // A control the pointer cannot reach: another element lies over its centre, as an action laid over a help icon.
+  const named = (el) => label(el.getAttribute("aria-label") || el.title || el.textContent || el.tagName.toLowerCase());
+  for (const el of root.querySelectorAll("a[href],button,input,select,textarea,summary,[role=button],[role=link],[tabindex]:not([tabindex='-1'])")) {
+    if (!visible(el) || el.disabled) continue;
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    if (!r.width || !r.height || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+    const hit = document.elementFromPoint(x, y);
+    if (hit && !el.contains(hit) && !hit.contains(el)) issues.push({ landmark: named(el), property: "covered", actual: `under ${named(hit)}` });
+  }
   // The spread of the group's edges as laid out, against the configured tolerance. A group that matches fewer than
   // two visible elements measures nothing at this width and says so.
   const unmeasured = [];
@@ -506,17 +515,12 @@ const dataUrl = (buf) => buf && `data:image/png;base64,${buf.toString("base64")}
 
 // ------------------------------------------------------------------ commands
 
-function beforeFrame(out, frame, frames, shot, absent) {
+// The page as the work found it, kept from the first check (or why there was none); delete out/before to take it again.
+function beforeFrame(out, frame, shot, absent) {
   const dir = path.join(out, "before"), key = frameKey(frame.name);
   const png = path.join(dir, `${key}.png`), marker = path.join(dir, `${key}.txt`);
   if (fs.existsSync(png)) return { image: dataUrl(fs.readFileSync(png)) };
   if (fs.existsSync(marker)) return { reason: fs.readFileSync(marker, "utf8") };
-  const oldName = legacySlug(frame.name), legacy = path.join(dir, `${oldName}.png`);
-  if (fs.existsSync(legacy)) {
-    const owners = frames.filter((f) => legacySlug(f.name).toLowerCase() === oldName.toLowerCase());
-    if (owners.length === 1) shot = fs.readFileSync(legacy);
-    else { shot = null; absent = "The previous check used one filename for multiple frames. The original image cannot be identified."; }
-  }
   fs.mkdirSync(dir, { recursive: true });
   if (shot) { fs.writeFileSync(png, shot); return { image: dataUrl(shot) }; }
   fs.writeFileSync(marker, absent);
@@ -531,11 +535,13 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
     const reference = frame.reference && fs.existsSync(frame.reference) ? fs.readFileSync(frame.reference) : null;
     const size = reference && pngSize(reference);
     const scale = size ? Math.max(1, Math.round(size.width / spec.frame.width)) : 1;
+    // A frame of a state drawn outside the component, a popover or a sheet, names its own root.
+    const fcfg = frame.root ? { ...cfg, root: frame.root } : cfg;
     let opened;
-    try { opened = await open(browser, cfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) }); }
+    try { opened = await open(browser, fcfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) }); }
     catch (e) {
       if (!e.missingRoot) throw e;
-      const before = beforeFrame(out, frame, cfg.frames, null, e.message);
+      const before = beforeFrame(out, frame, null, e.message);
       results.push({ frame: frame.name, pass: false, verdict: "incomplete", unmeasured: e.message, beforeUnavailable: before.reason,
         score: null, causes: [], issues: [], root: { spec: spec.frame, page: null }, images: {},
         gallery: { width: spec.frame.width, images: { design: dataUrl(reference), before: before.image } } });
@@ -545,14 +551,13 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
     try {
       const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth }
         : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
-      const measured = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: targets });
+      const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
-      const shot = await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" });
+      const shot = await page.locator(fcfg.root).first().screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, frameKey(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
-      // The page as the work found it: kept from the first check; delete out/before to take it again.
-      const before = beforeFrame(out, frame, cfg.frames, shot);
+      const before = beforeFrame(out, frame, shot);
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
       if (reference) {
@@ -586,52 +591,66 @@ async function sweep(browser, cfg, ledger) {
   const s = cfg.sweep;
   const from = Number(s.from), to = Number(s.to), step = Number(s.step ?? 8);
   if (!(from > 0 && to >= from && step > 0)) throw Object.assign(new Error("sweep: give from, to and step in design.json"), { exit: 2 });
-  const widths = new Set(cfg.frames.map((f) => f.width).filter((w) => w >= from && w <= to));
+  const frameWidths = new Set(cfg.frames.map((f) => f.width).filter((w) => w >= from && w <= to));
+  const widths = new Set(frameWidths);
   for (let w = to; w >= from; w -= step) widths.add(w);
   widths.add(from);
   const order = [...widths].sort((a, b) => b - a);
   // One mounted page for every width, narrowing from the widest, as a user resizes it: state set up once must survive.
-  const { context, page } = await open(browser, cfg, { url: cfg.url, width: order[0], setup: s.setup });
-  try {
-    const probe = async (width) => {
-      await setWidth(page, cfg, width, 900);
-      await settle(page, cfg.root);
-      const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
-      if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
-      return { width, ...r };
-    };
-    const probes = [];
-    for (const w of order) probes.push(await probe(w));
-    const back = await probe(order[0]);
-    const first = probes[0];
-    if (Math.abs(back.root.width - first.root.width) > 1 || Math.abs(back.root.height - first.root.height) > 1) {
-      back.issues.push({ landmark: "root", property: "resize", delta: Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height)), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
-    }
-    const changes = switches(probes, s.switches ?? [], step);
-    const issues = sweepIssues([...probes, back], ledger, changes.issues);
-    const failing = issues.filter((i) => i.status === "fail");
-    // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
-    // hidden on narrow screens does, was measured where it exists, and the widths without it are only reported.
-    // One group is one selector and edge; each probe counts once for it.
-    const all = [...probes, back], short = new Map();
-    all.forEach((p, i) => {
-      for (const u of p.unmeasured) {
-        const k = `${u.selector}\u0000${u.edge}`;
-        if (!short.has(k)) short.set(k, { selector: u.selector, edge: u.edge, matched: u.matched, probes: new Set(), widths: [] });
-        const g = short.get(k);
-        g.matched = Math.max(g.matched, u.matched);
-        if (!g.probes.has(i)) { g.probes.add(i); g.widths.push(p.width); }
+  // A story (the longest data, every conditional action at once) is swept the same way, and pictured at the frames' widths.
+  const run = async (url, setup, shots) => {
+    const { context, page } = await open(browser, cfg, { url, width: order[0], setup });
+    try {
+      const probe = async (width) => {
+        await setWidth(page, cfg, width, 900);
+        await settle(page, cfg.root);
+        const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
+        if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
+        if (shots && frameWidths.has(width) && !shots.has(width)) shots.set(width, await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" }));
+        return { width, ...r };
+      };
+      const probes = [];
+      for (const w of order) probes.push(await probe(w));
+      const back = await probe(order[0]);
+      const first = probes[0];
+      if (Math.abs(back.root.width - first.root.width) > 1 || Math.abs(back.root.height - first.root.height) > 1) {
+        back.issues.push({ landmark: "root", property: "resize", delta: Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height)), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
       }
-    });
-    const groups = [...short.values()].map(({ widths, probes: seen, ...u }) => ({ ...u, ranges: ranges(widths), everywhere: seen.size === all.length }));
-    return {
-      from, to, step, pass: failing.length === 0, issues, switches: changes.seen,
-      score: issues.filter((i) => i.status !== "accepted").length * 10,
-      unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
-    };
-  } finally {
-    await context.close();
+      return { probes, back };
+    } finally {
+      await context.close();
+    }
+  };
+  const { probes, back } = await run(cfg.url, s.setup);
+  const changes = switches(probes, s.switches ?? [], step);
+  const issues = sweepIssues([...probes, back], ledger, changes.issues);
+  const stories = [];
+  for (const story of s.stories ?? []) {
+    const shots = new Map();
+    const r = await run(story.url, story.setup, shots);
+    issues.push(...sweepIssues([...r.probes, r.back], ledger).map((i) => ({ ...i, story: story.name })));
+    stories.push({ name: story.name, shots: [...shots].map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
+  const failing = issues.filter((i) => i.status === "fail");
+  // A group never measured anywhere is incomplete; one that drops below two elements at some widths, as a column
+  // hidden on narrow screens does, was measured where it exists, and the widths without it are only reported.
+  // One group is one selector and edge; each probe counts once for it. Stories are measured where they have one.
+  const all = [...probes, back], short = new Map();
+  all.forEach((p, i) => {
+    for (const u of p.unmeasured) {
+      const k = `${u.selector}\u0000${u.edge}`;
+      if (!short.has(k)) short.set(k, { selector: u.selector, edge: u.edge, matched: u.matched, probes: new Set(), widths: [] });
+      const g = short.get(k);
+      g.matched = Math.max(g.matched, u.matched);
+      if (!g.probes.has(i)) { g.probes.add(i); g.widths.push(p.width); }
+    }
+  });
+  const groups = [...short.values()].map(({ widths: at, probes: seen, ...u }) => ({ ...u, ranges: ranges(at), everywhere: seen.size === all.length }));
+  return {
+    from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
+    score: issues.filter((i) => i.status !== "accepted").length * 10,
+    unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
+  };
 }
 
 async function check(file, flags) {
@@ -671,13 +690,19 @@ async function check(file, flags) {
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), status, score };
+    // What the score was measured against: the frames' specs and the sweep. A round that changed them starts a new
+    // series, since its score says nothing about the page against the earlier ones.
+    const basis = createHash("sha256").update(JSON.stringify([frames.map((f) => [f.name, fs.readFileSync(f.spec, "utf8")]),
+      sweepResult ? cfg.sweep : null])).digest("hex").slice(0, 12);
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
-    // Progress is read against rounds that checked the same frames and sweep: the one before and the lowest.
-    const comparable = history.filter((h) => h.score != null && JSON.stringify(h.frames) === JSON.stringify(record.frames) && h.sweep === record.sweep);
+    // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
+    const comparable = history.filter((h) => h.score != null && h.basis === basis);
+    const series = score === null ? comparable : [...comparable, record];
     const previous = comparable.at(-1);
-    const best = comparable.reduce((a, h) => (!a || h.score < a.score ? h : a), score === null ? null : record);
-    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, status, missingReferences, imageOnlyFrames };
+    const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
+    const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
+    const data = { frames: results, sweep: sweepResult, ledgerProblems, round: n, previous, best, stalled, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a check of every frame.
@@ -700,9 +725,10 @@ async function snapshot(file, flags) {
   try {
     for (const frame of frames) {
       if (fs.existsSync(frame.spec) && !flags.force) throw Object.assign(new Error(`${frame.spec} exists; pass --force to replace it`), { exit: 2 });
-      const { context, page } = await open(browser, cfg, { ...frame, scale, height: 2000 });
+      const fcfg = frame.root ? { ...cfg, root: frame.root } : cfg;
+      const { context, page } = await open(browser, fcfg, { ...frame, scale, height: 2000 });
       try {
-        const r = await page.evaluate(inPage, { command: "snapshot", root: cfg.root });
+        const r = await page.evaluate(inPage, { command: "snapshot", root: fcfg.root });
         if (r.error) throw Object.assign(new Error(`${frame.name}: ${r.error}`), { exit: 2 });
         const round = (n) => Math.round(n * 100) / 100;
         const landmarks = r.landmarks.map((l) => ({ ...l, box: Object.fromEntries(Object.entries(l.box).map(([k, v]) => [k, round(v)])) }));
@@ -710,7 +736,7 @@ async function snapshot(file, flags) {
         if (flags.images) {
           if (!frame.reference) throw Object.assign(new Error(`${frame.name}: no "reference" path to write the image to`), { exit: 2 });
           fs.mkdirSync(path.dirname(frame.reference), { recursive: true });
-          fs.writeFileSync(frame.reference, await page.locator(cfg.root).first().screenshot({ animations: "disabled", caret: "hide" }));
+          fs.writeFileSync(frame.reference, await page.locator(fcfg.root).first().screenshot({ animations: "disabled", caret: "hide" }));
         }
         console.log(`${frame.name}: ${landmarks.length} landmarks → ${path.relative(process.cwd(), frame.spec)}`);
       } finally {
