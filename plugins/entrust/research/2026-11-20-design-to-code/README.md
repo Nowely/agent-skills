@@ -82,3 +82,7 @@ The [third draft and calibration](03-calibration.md) exercise the checker on a r
 ## Independent recommendations
 
 An Astra review separates the observed calibration results from next-edition hypotheses, including a reproduced bounded-exception failure and the limits of alignment groups. The [recommendations](04-recommendations.md) also record what worked and a proposed stop/go sequence.
+
+## Real-frame follow-up
+
+The [follow-up calibration](05-calibration-followup.md) records a blind review, the original dense fixture, three builds, a screenshot-only control, the measured ledger boundary and the limits of the checker as an acceptance gate. It also records which requested MCP inputs and costs remain unmeasured.
