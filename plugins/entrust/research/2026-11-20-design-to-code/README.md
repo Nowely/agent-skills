@@ -95,3 +95,7 @@ the ledger, name a neighbour's change of size as a cause, remove what nothing us
 [second protocol](07-pair-protocol.md). Details in [rounds.md](rounds.md).
 
 Before running the pair, use the [third protocol](08-pair-protocol.md) for the product baseline and worker access.
+
+## First skill-only submission
+
+The [first-submission study](09-first-submission.md) records the implementation, independent acceptance, token and time accounting, observed gaps, limitations and alternatives for one or two reviewers. The [visual evidence](09-first-submission.md#visual-evidence) includes reference and submitted views.
