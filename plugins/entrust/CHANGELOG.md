@@ -43,7 +43,8 @@ forensics remain in the repository references and release notes.
   unless it is regenerated and compared; a mark the change adds is read like any change.
 - A decision whose variants combine is marked `multiple: true`: the owner takes one or several, as checkboxes on the
   card and in the code's margin, where the note stays open while they are taken; a conditional question applies while any chosen variant is listed; a recommendation may name
-  several in `variants`. **Breaking:** the export is schema 7, and carries such an answer as `variants`.
+  several in `variants`; Enter on its card opens its answer, and the printout says so and names the recommended
+  variants. **Breaking:** the export is schema 7, and carries such an answer as `variants`.
 - The page's storage key carries the number of what the page stores, apart from the export's (0.43.0 tied them): a
   page still reads the answers a 0.43.0 page kept after the export moved to schema 7, and a test seeded with such a
   value says when a change to what the page stores needs a new number.

@@ -696,6 +696,14 @@ test("a decision whose variants combine takes several: checkboxes on the card an
     return ok || JSON.stringify({ said, pills, codeHint: codeHint.slice(0, 60), codeAnswer, boxes, group, recs, hint: hint.slice(0, 60), both, one, q3 });
   }));
 
+test("Enter on a decision whose variants combine opens its answer, as on any card",
+  "Enter looked for a radio only, so a card of checkboxes kept the focus",
+  cased(MULTI_URL + "#decisions/q3", {}, async (page) => {
+    await page.locator("#card-q3").focus(); await page.keyboard.press("Enter"); await settle(page);
+    const focus = await page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.type, document.activeElement?.closest("article")?.id]);
+    return focus[0] === "INPUT" && focus[1] === "checkbox" && focus[2] === "card-q3" || JSON.stringify(focus);
+  }));
+
 test("without JavaScript a decision whose variants combine says so, and marks each variant recommended together",
   "the document gave no sign that several variants could be taken, nor which the reviewer recommends together",
   async () => {

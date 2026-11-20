@@ -1679,7 +1679,7 @@ function goCard(key, { focus = false } = {}) {
 function openAnswer(card) {
   const key = card.dataset.card, c = itemByKey.get(key);
   if (!optionsOf(c).length) return $(`#card-${key} textarea[data-act="text"]`)?.focus();
-  ($(`#card-${key} .full input[type=radio]:checked`) ?? $(`#card-${key} .full input[type=radio]`))?.focus();
+  ($(`#card-${key} .full input[data-act="pick"]:checked`) ?? $(`#card-${key} .full input[data-act="pick"]`))?.focus();
 }
 function goDetails(sub, sel) { S.sub.details = sub; S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); $(`[data-sel="${CSS.escape(sel)}"]`, $("#panel-details"))?.scrollIntoView({ block: "center" }); }
 function go(spec) {

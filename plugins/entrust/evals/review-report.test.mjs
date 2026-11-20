@@ -43,6 +43,16 @@ const render = (change = () => {}) => {
 // The record as the page carries it to its runtime: the JSON island.
 const dataOf = (pageHtml) => JSON.parse(pageHtml.match(/<script type="application\/json" id="data">(.*?)<\/script>/s)[1]);
 
+test("the printout says when a decision's variants combine and names every variant its recommendation names",
+  "the critic and verifier read the printout: a recommendation of several variants printed as none of them",
+  () => {
+    const result = render((r) => Object.assign(r, structuredClone(THEMED), { questions: THEMED.questions.map((q, i) => i !== 2 ? q
+      : { ...q, multiple: true, recommendation: { text: q.recommendation.text, variants: ["status-quo", "extend"], sources: q.recommendation.sources } }) }));
+    if (result.status !== 0) return `render refused: ${result.stderr}`;
+    const q3 = result.stdout.split("\n").filter((l) => /status-quo|extend|One or more/.test(l)).join("\n");
+    return /\[status-quo, extend\]/.test(q3) && /One or more may be chosen/.test(q3) || q3;
+  });
+
 test("check and render refuse a question without kind",
   "a question must declare whether it is a decision, fact, or evidence",
   () => {
