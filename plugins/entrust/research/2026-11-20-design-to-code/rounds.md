@@ -211,3 +211,23 @@ reminder not to over-build, and a verifier of every claim.
 - **The pair protocol's second version** is [07-pair-protocol.md](07-pair-protocol.md).
 
 `node plugins/entrust/evals/design-to-code.test.mjs`: 38 cases, 38 passed.
+
+### Round 7's verifier
+
+A fresh verifier read round 7 at `77682ef`, built test fonts (a Latin-only regular and bold face, an icon font with
+glyphs in the Private Use Area) and served them over HTTP. Holding: missing fonts warn without hiding findings; a
+404 font behind fallbacks is reported; an icon font is not; frame sizes reach the ledger unrounded; a neighbour's
+change of width or height is named, still excused by an accepted entry, without duplicates; the removed options are
+gone; the protocol's Playwright setup works. Partly holding, and the ones that would have misled the skill arm in
+every round of the pair:
+
+- a font used only in its bold face was reported missing, since the test measured at the normal weight;
+- a stack starting with a system family (Tailwind's default, `-apple-system, BlinkMacSystemFont, …`) reported its
+  next named family, such as "Apple Color Emoji";
+- a missing Cyrillic subset went unreported in any text with a space, digit or punctuation the font draws;
+- check.md did not describe the size cause of "start here".
+
+Corrected: the first family of a text's stack is tried only when it is not a system or generic family, in the
+text's own style and weight, character by character, without emoji. On the verifier's fonts, rerun: bold-only, the
+icon font and emoji are not reported; a Cyrillic phrase in the Latin-only font and the 404 font are. check.md
+describes the size cause and the font rule. 38 tests pass.
