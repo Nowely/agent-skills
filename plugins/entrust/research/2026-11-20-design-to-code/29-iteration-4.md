@@ -123,3 +123,12 @@ Asked after the review, with the reviewer's and the critic's readings before the
   the visual differences need looking at, but most likely it needs reworking". The model reviewer accepted this drift;
   the checker blocked it. On this point the checker is closer to the owner than the model reviewer, so the 12 px band
   on the total offset stays, and the small fix proposed before (the kit token's drift not blocking) is not made.
+
+**Then, on the side-by-side picture of 764** (design, draft 27, the control, and an overlay): "on the picture it looks
+OK; the only problem seems to be the font size". So the 15 px column drift is not a return, and the model reviewer was
+right about it; the checker's block on it was a false finding. But draft 27's values are set about 10 % smaller than
+drawn (13 px where about 15 is drawn), which the model reviewer called minor and the checker does not compare on a
+screenshot at all. Measured over every frozen submission, the trimmed mean of page-to-design ink heights is 1.00 on
+the wide frames and 0.92–0.99 at 280 for all others; draft 27 reads 0.90–0.91, and 0.84 at 280; 22.1 at 280,
+returned in iteration 1 for type kept small, reads 0.84. Both readings go to draft 28: a carried drift is a note, and
+a type of another size is a finding.

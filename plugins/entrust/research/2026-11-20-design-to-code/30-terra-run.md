@@ -5,14 +5,51 @@ reviewer with a prompt written here. This run is the owner's: Terra, in the owne
 own case, judged by the owner. One run is little, so nothing in it should be lost to the environment, and the rule for
 reading it is written before it starts.
 
-The version under test: the skill at `2437038` (draft 27), frozen for this run.
+The version under test: the skill at `2437038` (draft 27), frozen for this run. Always pass that hash, never the
+branch's head: the branch moves on with draft 28, and `prepare` takes the skill from the commit it is given.
+
+## Checklist
+
+1. In a checkout of this branch, inside the sandbox Terra will use, run the smoke test (section 1). Chromium must
+   start and the tests pass.
+2. In the case's project, write:
+   - `.design/returns.md`: past returns, one per line, as said;
+   - `.brief.md`: the task as usually given, the longest value of each field (or "unbounded"), the narrowest width
+     the product supports, and the closing sentence in section 3.
+3. Prepare the run:
+
+   ```bash
+   node plugins/entrust/evals/design-to-code/harness/arm.mjs prepare <project> --skill 2437038
+   ```
+
+4. Start Terra in a fresh session on `<project>/.prompt.md`.
+5. When it hands over, freeze the submission:
+
+   ```bash
+   node plugins/entrust/evals/design-to-code/harness/arm.mjs freeze <project>
+   ```
+
+6. Run the review pass in a second session (section 4), give its findings to the builder for one round, and freeze
+   again.
+7. Send back:
+   - the verdict, and each return as said;
+   - the first line of `out/handoff.md`;
+   - the line count of `out/history.jsonl` (check rounds);
+   - `deviations.json`;
+   - wall time and tokens;
+   - the review pass's findings.
+
+If the frames are screenshots only, look at the type sizes by eye: draft 27 does not compare them. Iteration 4's
+submission set its values about 10 % smaller than drawn, and only the owner saw it. Through Figma MCP the spec carries
+the sizes, and the check compares them.
 
 The owner's rulings so far, which the run is read against:
 
 - a price with its period wider than the card may move "/ месяц" to the next line whole; a break while the card has
   room is a return;
-- columns drifting about 15 px from the frame, though order and alignment hold, most likely need reworking: the 12 px
-  band on an offset's total stays.
+- columns drifting about 15 px from the frame, with order and alignment kept, are fine: "on the picture it looks
+  OK";
+- a type size smaller than drawn is a return: "the problem is only the font size".
 
 ## 1. Smoke-test the mechanics first (unscored)
 
