@@ -162,3 +162,17 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Fifth-submission postmortem and sixth-iteration proposal
 
 [The postmortem](21-fifth-submission-postmortem.md) consolidates the observed defects, their causes and limits, prior findings and cost. Its [visual evidence](21-fifth-submission-visual.html) pairs each shown state with a reference and labels different data. [The proposed sixth iteration](22-sixth-iteration-plan.md) is a plan only; the owner has not authorized another implementation run.
+
+## The server card with Sonnet: drafts 21.1 to 27
+
+- [Drafts 21.1 and 22.1 side by side](23-server-card-sonnet.md): both returned by a blind review, after the automatic
+  gates held.
+- [Iteration 1](24-iteration-1.md): draft 23 checks the arrangement and narrows what a font may excuse.
+- [The external landscape](25-external-landscape.md) and [an architectural review](26-architecture-review.md): ink
+  pairing gives way to named boxes, and logic over pixels.
+- [Iteration 2](27-iteration-2.md): draft 25.1's frames clean; returns for a popover at the window's edge and a split
+  price; 85–135 check rounds.
+- [Iteration 3](28-iteration-3.md): draft 26.1 makes moderate offsets notes, cutting the rounds to 27 and the ledger to
+  6, and is returned for a price split its own page allowed.
+- [Iteration 4](29-iteration-4.md): draft 27 treats a value and its period as one group, and drops a strict rule that
+  never caught a real return.

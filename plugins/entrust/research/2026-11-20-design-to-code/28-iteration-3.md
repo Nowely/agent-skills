@@ -136,3 +136,73 @@ Draft 26.1 does what it was made for if all three hold:
 - **accepted** by the blind review, or returned only for a class no earlier submission was returned for;
 - **fewer than about 30 check rounds** (25.1: 85–135);
 - **fewer than about 10 ledger entries** (25.1: 52–61).
+
+## The run: draft 26.1 on the server card
+
+| | Draft 26.1 | 25.1 A | 25.1 B |
+|---|---|---|---|
+| Judge v2, automatic | accepted | accepted | accepted |
+| Evidence status | `fail` (two findings at 601) | `pending` | `pending` |
+| Check rounds | **27** | 135 | 85 |
+| Ledger entries | **6** | 60 | 52–61 |
+| Wall time · tokens · tool calls | 24:07 · 257k · 98 | 63:34 · 318k · 136 | 41:00 · 308k · 126 |
+
+The worker handed over honestly at `fail`: "implemented, with the differences below open". The two findings it
+could not settle, both at 601:
+
+- **the price 21 px wider than the font explains:** the kit's `t-price` is bolder and wider than the drawn price.
+  Only an owner-level cause may excuse that finding, and the worker proposed `platform`;
+- **a "broken relation":** the free space between the power help and the stock icon is 21 px shorter, because the
+  stock text to the icon's right is wider in the page's font. This is a false positive of draft 26.1's relation rule.
+
+The worker used the edge runs as intended. They caught its popover cut at the window's edge, and it rebuilt the
+popover with CSS anchor positioning and flip fallbacks.
+
+## The blind review
+
+Same prompt as iteration 2, three submissions, key revealed after the verdicts:
+
+| Submission | Verdict | Deciding finding |
+|---|---|---|
+| positive control (25.1 A, its popover flipping) | **accepted** | none |
+| 25.1 A | returned | the network popover cut at the window's top, as in iteration 2 |
+| draft 26.1 | returned | on every dense and many capture, "/ месяц" on its own line under the price; at 764 with 430 px of the row free, since the price block is capped at about 182 px |
+
+Draft 26.1's four frames, its popover and its growth had no material finding. The reviewer called the 601 price
+width "the kit's `t-price`, the same in all three" and did not count it. It did not mention the stock icon.
+
+## What this shows
+
+- **The return came from the page, not from the worker.** The critic's first finding warned that a break before "/"
+  still splits the price from its period. I kept that break as allowed, and the page told builders that "/ месяц" may
+  move to the next line whole. The worker did exactly that: `nowrap` on the amount and on the period separately,
+  inside a block that wraps. Its own dense price split at 400 px, which the check then passed by my exemption.
+- **Name the owner's class literally.** "A price separated from its period" is the owner's own example. A
+  typographic compromise on it was a return.
+- **The dense story's values decide what is tested.** The contract says only "an amount can be long". The worker used
+  "1 125 898,00 ₽"; the judge used "1 234 567 890,00 ₽", which split at every width.
+- **The cost problem is solved.** Notes instead of ledger entries cut the rounds by four to five times and the entries
+  by ten, and the worker spent its rounds on findings, not on proposals.
+- **Two strict findings were not the owner's:** the kit's price token and free space before a right-aligned group.
+  Each kept the evidence at `fail`. A strict rule that the owner would not return for costs a handover.
+- **Draft 26.1 does not meet the rule written before the run.** It was not accepted, though it took 27 rounds and 6
+  entries.
+
+## Fable's reflection
+
+- **The pages disagreed.** The builder page allowed a break before "/"; the review prompt listed "a price on one line
+  and its period on the next" as a return. Each agent applied its own sentence. The result shows the disagreement, not
+  what the owner thinks of "1 234 ₽" | "/ месяц".
+- **The reviewer described a capped block,** about 182 px while 430 px of the row stood free: a fixed width around
+  content that grows, the owner's "nailed down" class. The construct list named only fixed heights.
+- **The pattern of three iterations:** the frames stopped producing returns after iteration 2. Every return since
+  sits on an axis the builder did not push to its limit: the window's position, the narrowest width, a value's length.
+- **The checker and the reviewer disagreed both ways:** the checker failed two things the reviewer waved off, and
+  passed the one it returned. The reviewer accepted the control, so it does tell work apart.
+- **A rule as first proposed, nowrap on the whole price, has no legal outcome at narrow widths.** A ten-digit price may
+  not fit 280 px, which leaves the builder only hacks. Its logical form: a group that breaks while the component could
+  hold it unbroken is a finding; wider than the component, a break before "/" is the last resort, for the owner.
+- **A checker rule is worth keeping only once it has caught something real.** Two were added on reasoning alone; one
+  of them ended a run at `fail`.
+- **Still one run per arm,** judged by a Sonnet reviewer with a prompt I wrote. The owner's first verdict on Terra will
+  outweigh it.
