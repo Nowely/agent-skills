@@ -278,7 +278,7 @@ async function open(browser, cfg, target) {
 
 // Runs inside the page. One function, so its helpers travel with it: measure the spec's landmarks, snapshot every
 // text as a landmark, or probe the layout at the current width for the sweep.
-async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1, lines: modelLines = [] }) {
+async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1, lines: modelLines = [], kit = [] }) {
   const norm = (s) => s.replace(/\s+/g, " ").trim();
   const key = (s) => s.replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
   const seen = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
@@ -440,16 +440,31 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       });
       // Prefer a whole element for Figma landmarks; snapshots retain document order.
       if (!l.documentOrder) ranges.sort((x, y) => Number(y.whole) - Number(x.whole));
+      // A named box from an image: repeated texts are paired in reading order on both sides (top to bottom, then left
+      // to right, as drawn), whatever the page's DOM order.
+      if (l.near) {
+        const placed = ranges.map((r) => {
+          const lines = lineBoxes(r.range, r.el);
+          return lines.length ? { r, b: boxOf(lines) } : null;
+        }).filter(Boolean).sort((a, b) => (Math.abs(a.b.y - b.b.y) > Math.min(a.b.height, b.b.height) / 2 ? a.b.y - b.b.y : a.b.x - b.b.x));
+        const pick = placed[l.nth ?? 0];
+        return pick ? match(pick.r.range, pick.r.el, pick.r.start) : { found: false };
+      }
       const hit = ranges[l.nth ?? 0];
       if (!hit) return { found: false };
       return match(hit.range, hit.el, hit.start);
     };
+    const claimed = new Set(), glyphNodes = new Set();
     const found = landmarks.map((l) => {
       if (l.selector) {
-        const el = root.querySelectorAll(l.selector)[l.nth ?? 0];
+        const all = [...root.querySelectorAll(l.selector)].filter(visible);
+        const centre = (e) => { const r = e.getBoundingClientRect(); return Math.hypot(r.left - rr.left - (l.near?.x ?? 0), r.top - rr.top - (l.near?.y ?? 0)); };
+        const el = l.near ? all.filter((e) => !claimed.has(e)).sort((a, b) => centre(a) - centre(b))[0] : root.querySelectorAll(l.selector)[l.nth ?? 0];
         if (!visible(el)) return { found: false };
-        // An icon drawn with a character ("?") is the selector's, not text the design lacks.
-        chars.forEach((c, i) => { if (el.contains(c.node)) covered[i] = 1; });
+        claimed.add(el);
+        // An icon drawn with a character or two ("?", "i") is the selector's: not text the design lacks, and kept in the
+        // pixel comparison, where a changed glyph shows. A selector over more text claims none of it.
+        if (el.textContent.trim().length <= 3) chars.forEach((c, i) => { if (el.contains(c.node)) { covered[i] = 1; glyphNodes.add(c.node); } });
         const r = el.getBoundingClientRect();
         return { found: true, box: { x: r.left - rr.left, y: r.top - rr.top, width: r.width, height: r.height }, align: "left" };
       }
@@ -487,7 +502,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
         return new Set(widths).size > 1 && fallback.every((g, i) => width(`"${first}", ${g}`, c) === widths[i]);
       })) missing.add(first);
     }
-    const textLines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => ({ text: norm(n.data), box: boxOf([line]) })));
+    const textLines = nodes.filter((n) => !glyphNodes.has(n)).flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => ({ text: norm(n.data), box: boxOf([line]) })));
     return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected };
   }
 
@@ -510,7 +525,13 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   for (const el of [root, ...root.querySelectorAll("*")]) {
     if (!visible(el) || !el.textContent.trim()) continue;
     const cs = getComputedStyle(el);
-    if (deliberate(cs)) continue;
+    if (deliberate(cs)) {
+      // Cut on purpose, the full text must still be reachable: a title, an accessible name, or a tooltip on it.
+      const cutNow = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+      if (cutNow && !el.closest("[title], [aria-label], [aria-describedby], [data-tooltip]")) issues.push({ landmark: label(el.textContent), property: "construct", kind: "truncated",
+        actual: "cut with an ellipsis or a clamp, and its full text is nowhere to reach: give it a title, an accessible name or a tooltip" });
+      continue;
+    }
     const own = el.getBoundingClientRect();
     if (own.width <= 2 || own.height <= 2) continue; // kept for screen readers alone
     const clipX = /hidden|clip/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
@@ -541,6 +562,14 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const w = Math.min(a.b.right, b.b.right) - Math.max(a.b.left, b.b.left);
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
+  }
+  // Text over an icon or a small picture: the graphics people read beside text, not a backdrop it is set on.
+  const graphics = [...root.querySelectorAll("svg, img, canvas, [class*=icon]")].filter((g) => visible(g) && !g.textContent.trim())
+    .map((g) => ({ g, r: g.getBoundingClientRect() })).filter(({ r }) => r.width > 2 && r.height > 2 && r.width * r.height <= 64 * 64);
+  for (const { node, b } of lines) for (const { g, r } of graphics) {
+    if (g.contains(node.parentElement)) continue; // a graphic that holds the text, as an SVG's own <text>
+    const w = Math.min(b.right, r.right) - Math.max(b.left, r.left), h = Math.min(b.bottom, r.bottom) - Math.max(b.top, r.top);
+    if (w > 1 && h > 1) issues.push({ landmark: `${label(node.data)} × ${g.getAttribute("aria-label") || g.getAttribute("alt") || g.localName}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px of text over a graphic` });
   }
   // The spread of the group's edges as laid out, against the configured tolerance. A group that matches fewer than
   // two visible elements measures nothing at this width and says so.
@@ -693,12 +722,28 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const cs = getComputedStyle(el);
     // A construct that moves a thing to a drawn place instead of laying it out: a negative margin, a transform that
     // shifts text. It holds for the data it was tuned on and breaks for the next.
-    const pulls = ["Top", "Right", "Bottom", "Left"].map((side) => [side, parseFloat(cs[`margin${side}`])]).filter(([, v]) => v < -2);
-    if (pulls.length) issues.push({ landmark: label(el.textContent), property: "construct", kind: "negative margin",
+    // The kit's own classes (design.json "kit": class prefixes) build with negative gutters and offsets by design.
+    const ofKit = kit.length && [...el.classList].some((c) => kit.some((k) => c.startsWith(k)));
+    const inside = box.right > rr.left && box.left < rr.right && box.bottom > rr.top && box.top < rr.bottom;
+    const m = Object.fromEntries(["Top", "Right", "Bottom", "Left"].map((side) => [side, parseFloat(cs[`margin${side}`])]));
+    const bleed = m.Left < 0 && Math.abs(m.Left - m.Right) <= 1 && m.Top >= -3 && m.Bottom >= -3; // full width, both sides alike
+    const pulls = Object.entries(m).filter(([, v]) => v < -3);
+    if (pulls.length && !ofKit && inside && !bleed) issues.push({ landmark: label(el.textContent), property: "construct", kind: "negative margin",
       actual: `a negative margin (${pulls.map(([side, v]) => `${side.toLowerCase()} ${Math.round(v)} px`).join(", ")}) pulls it into place: lay it out instead` });
-    const t = cs.transform.match(/^matrix\(([^)]+)\)$/)?.[1].split(",").map(Number);
-    if (t && (Math.abs(t[4]) > 0.5 || Math.abs(t[5]) > 0.5) && !/translate|transform/.test(cs.transitionProperty) && cs.animationName === "none") {
-      issues.push({ landmark: label(el.textContent), property: "construct", kind: "transform", actual: `a transform moves it ${Math.round(t[4])}, ${Math.round(t[5])} px: lay it out instead` });
+    // A small shift by transform, the translate property or a relative offset: a nudge to a drawn place. Centring
+    // (half its own size) and sliding (more than its size) are layouts, not nudges.
+    const nums = cs.transform.match(/^matrix(3d)?\(([^)]+)\)$/);
+    const mt = nums ? nums[2].split(",").map(Number) : null;
+    const [tx, ty] = mt ? (nums[1] ? [mt[12], mt[13]] : [mt[4], mt[5]]) : [0, 0];
+    const tr = cs.translate && cs.translate !== "none" ? cs.translate.split(/\s+/).map((v) => parseFloat(v) || 0) : [0, 0];
+    // A relative box reports both sides (top 3 px, bottom -3 px): the set one is the shift.
+    const rel = cs.position === "relative" ? [["left", "right"], ["top", "bottom"]].map(([a, b]) => (el.style[a] || !el.style[b] ? parseFloat(cs[a]) || 0 : -(parseFloat(cs[b]) || 0))) : [0, 0];
+    const nudge = (dx, dy) => [dx, dy].some((d, i) => {
+      const size = i ? box.height : box.width;
+      return Math.abs(d) >= 2 && Math.abs(Math.abs(d) - size / 2) > 1.5 && Math.abs(d) <= size;
+    });
+    if (!ofKit && cs.animationName === "none") for (const [how, dx, dy] of [["a transform", tx, ty], ["the translate property", tr[0], tr[1] ?? 0], ["a relative offset", rel[0], rel[1]]]) {
+      if (nudge(dx, dy)) issues.push({ landmark: label(el.textContent), property: "construct", kind: "nudge", actual: `${how} moves it ${Math.round(dx)}, ${Math.round(dy)} px: lay it out instead` });
     }
     let outer = true;
     for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (positioned(p)) { outer = false; break; }
@@ -849,27 +894,43 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
   for (const frame of frames) {
     const spec = readJson(frame.spec);
     const reference = frame.reference && fs.existsSync(frame.reference) ? fs.readFileSync(frame.reference) : null;
-    // Named boxes: each landmark's box is the union of its pieces. Measured once every landmark has a text or a
-    // selector and its pieces exist.
+    // Named boxes: each landmark's box is the union of its pieces, or the box it gives where a piece holds two things
+    // (an icon joined to its label). Measured once every landmark has a text or a selector, every piece is named once or
+    // skipped with a reason, and no landmark's box takes in another landmark's piece.
     let unnamed = [];
     if (spec.source === "image boxes") {
       const byN = new Map((spec.pieces ?? []).map((p) => [p.n, p.box]));
-      for (const l of spec.landmarks) {
+      const owner = new Map();
+      const centreIn = (p, b) => { const cx = p.x + p.width / 2, cy = p.y + p.height / 2; return cx >= b.x && cx <= b.x + b.width && cy >= b.y && cy <= b.y + b.height; };
+      spec.landmarks.forEach((l, i) => {
+        const name = `landmark ${i + 1} (“${l.text || l.selector || "?"}”)`;
+        for (const n of l.pieces ?? []) {
+          if (!byN.has(n)) unnamed.push(`${name} names piece ${n}, which does not exist`);
+          else if (owner.has(n)) unnamed.push(`piece ${n} is in ${owner.get(n)} and ${name}`);
+          else owner.set(n, name);
+        }
         const boxes = (l.pieces ?? []).map((n) => byN.get(n)).filter(Boolean);
         if (!l.box && boxes.length) {
           const x = Math.min(...boxes.map((b) => b.x)), y = Math.min(...boxes.map((b) => b.y));
           l.box = { x, y, width: Math.max(...boxes.map((b) => b.x + b.width)) - x, height: Math.max(...boxes.map((b) => b.y + b.height)) - y };
         }
-      }
-      // A text named twice is matched in reading order, top to bottom, then left to right.
+      });
+      for (const [k] of Object.entries(spec.skip ?? {})) if (owner.has(Number(k))) unnamed.push(`piece ${k} is skipped and in ${owner.get(Number(k))}`);
+      // A box that takes in someone else's piece would hide it from the check and from the pixels.
+      spec.landmarks.forEach((l, i) => {
+        if (!l.box) return;
+        const theirs = (spec.pieces ?? []).filter((p) => !(l.pieces ?? []).includes(p.n) && centreIn(p.box, l.box));
+        if (theirs.length && !l.selector) unnamed.push(`landmark ${i + 1} (“${l.text}”) takes in piece${theirs.length > 1 ? "s" : ""} ${theirs.map((p) => p.n).join(", ")} of another`);
+      });
+      // A text named twice is matched by place; the order is kept for the report.
       const seen = new Map();
       for (const l of [...spec.landmarks].filter((x) => x.box && x.text).sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x)) {
         const k = String(l.text).replace(/\s+/g, "").toLowerCase(), n = seen.get(k) ?? 0;
         seen.set(k, n + 1);
         if (n) l.nth = n;
       }
-      unnamed = spec.landmarks.map((l, i) => (!String(l.text ?? "").trim() && !String(l.selector ?? "").trim() ? `landmark ${i + 1} has no text or selector`
-        : !l.box ? `landmark ${i + 1} (“${l.text || l.selector}”) names no piece that exists` : null)).filter(Boolean);
+      unnamed.push(...spec.landmarks.map((l, i) => (!String(l.text ?? "").trim() && !String(l.selector ?? "").trim() ? `landmark ${i + 1} has no text or selector`
+        : !l.box ? `landmark ${i + 1} (“${l.text || l.selector}”) names no piece that exists and gives no box` : null)).filter(Boolean));
       if (!spec.landmarks.length) unnamed.push("no landmark is named yet");
     }
     if (unnamed.length) {
@@ -905,8 +966,9 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (key) setupTargets.push({ selector: st[act], key });
     }
     try {
-      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth }
-        : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
+      const near = (l) => (spec.source === "image boxes" && l.box ? { x: l.box.x, y: l.box.y } : undefined);
+      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth, near: near(l) }
+        : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot", near: near(l) }));
       const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
       const shot = await (await rootOf(page, fcfg.root)).screenshot({ animations: "disabled", caret: "hide" });
@@ -920,10 +982,19 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       // made tight to its ink too before they compare, and the design's ink must all be named.
       if (reference && spec.source === "image boxes") {
         const pageInk = await luminance(scratch, shot);
-        for (const m of measured.landmarks) if (m?.found) m.box = tightBox(pageInk, m.box, scale);
+        const hist = new Uint32Array(256);
+        for (const v of pageInk.lum) hist[v]++;
+        const paper = hist.indexOf(Math.max(...hist));
+        const lumOf = (hex) => { const c = String(hex).match(/[0-9a-f]{2}/gi)?.map((h) => parseInt(h, 16)); return c?.length >= 3 ? Math.round(c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) : undefined; };
+        // A text is tight to the pixels of its own colour; an icon or a shape to what differs from the page's paper.
+        measured.landmarks.forEach((m, i) => {
+          if (!m?.found) return;
+          m.box = spec.landmarks[i].selector ? tightBox(pageInk, m.box, scale, { against: paper }) : tightBox(pageInk, m.box, scale, { colour: lumOf(m.font?.color) });
+        });
         const skipped = Object.keys(spec.skip ?? {}).map(Number);
         measured.uncovered = uncovered(inkRuns(await luminance(scratch, reference), { scale, join: 0.45 }),
           [...spec.landmarks, ...(spec.pieces ?? []).filter((p) => skipped.includes(p.n))]);
+        measured.skipped = Object.entries(spec.skip ?? {}).map(([n, why]) => `piece ${n}: ${why}`);
       }
       if (reference) {
         // Text is left out of the pixels: its landmarks measure it.
@@ -991,7 +1062,7 @@ async function sweep(browser, cfg, ledger) {
         await setWidth(page, cfg, width, 900);
         await settle(page, cfg.root);
         const lines = (s.lines ?? []).filter((l) => (l.from ?? 0) <= width && width <= (l.to ?? Infinity));
-        const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance, lines });
+        const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance, lines, kit: cfg.kit ?? [] });
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
         // A picture for the gallery only: a root with no size to capture leaves a gap, not a failed check.
         if (shots && frameWidths.has(width) && !shots.has(width)) {

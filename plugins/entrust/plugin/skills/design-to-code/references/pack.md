@@ -87,7 +87,8 @@ node "<skill-dir>/scripts/design.mjs" boxes frames/<frame>/reference.png --width
 
 It writes `frames/<frame>/spec.json` with the numbered pieces of ink and `boxes.png` to read them from. Fill
 `landmarks` once, each from its pieces: the text as the frame shows it (`"5587 × 4"`, not the format you would
-prefer), or a page selector for an icon, a shape or a photo; an icon and its label are two landmarks. The check
+prefer), or a page selector for an icon, a shape or a photo; an icon and its label are two landmarks, and where
+one piece holds both, the landmark gives its own `box` instead. The check
 then measures the frame as it measures a Figma frame: each landmark by place and its text exactly
 ([check.md](check.md#frames)). Inspect typography and states against the screenshot, and report unobserved widths
 and interactions. Do not invent Figma metadata or imply an assumed scale is measured.

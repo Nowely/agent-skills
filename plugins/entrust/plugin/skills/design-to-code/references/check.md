@@ -151,26 +151,58 @@ fills `landmarks`, each from its pieces:
   "skip": { "31": "the page's shadow, not the component" } }
 ```
 
-A text reads as the frame shows it; a selector names the page's own element for an icon, a shape or a photo, and
-the characters inside it (a "?" in a help icon) are its own. A text named twice is matched in reading order. Each
-landmark's box is the union of its pieces. A frame is not measured while a landmark has neither a text nor a selector,
-or names no piece; the design's ink in no landmark and not skipped keeps it `incomplete`.
+A text reads as the frame shows it; a selector names the page's own element for an icon, a shape or a photo. An
+element of three characters or fewer (a "?" in a help icon) owns them, and they stay in the pixel comparison, where a
+changed glyph shows; a selector over more text owns none of it. A text or a selector named twice is matched in reading
+order on both sides, whatever the DOM order. Each landmark's box is the union of its pieces, or the `box` it gives
+(`{ "x", "y", "width", "height" }` in frame px) where one piece holds two things, as an icon joined to its label.
 
-The page's box for each landmark is made tight to its ink, as the design's is, and the two are compared as a Figma
-spec is: by place, read by the edge that moved least, with each offset traced to its first cause, and by the exact
-text. A text wider than the page's font explains (over 8 px and 15 % beyond the typical ratio) is a `width` finding:
-a larger size or more text. Heights and narrower widths are not compared, since a font changes them and a design's
-piece may hold an icon beside its text. Positions are held to 4 px, or the tolerance if larger.
+A frame is not measured while:
+
+- a landmark has neither a text nor a selector;
+- a landmark names a piece that does not exist, or no piece and no box;
+- a piece is in two landmarks, or skipped and named;
+- a text landmark's box takes in another landmark's piece.
+
+The design's ink in no landmark and not skipped keeps it `incomplete`; skipped pieces are listed in the evidence file.
+
+The page's box for each landmark is made tight to its ink, as the design's is: a text to the pixels of its own
+colour, an icon or a shape to what differs from the page's paper. The two are compared as a Figma spec is: by place,
+read by the edge that moved least, with each offset traced to its first cause, and by the exact text.
+
+- **Another font:** a text before it that is wider or narrower moves the next piece, and that is the font's, not a
+  finding; a changed gap stays one.
+- **A larger size:** a text wider than the page's font explains (over 8 px and 15 % beyond the typical ratio, with
+  three texts or more) is a `width` finding, for a larger size or more text.
+- **Columns:** texts the design stacks on one left edge, a line or so apart, stay on one edge (`align`).
+- **Not compared:** heights and narrower widths, since a font changes them and a design's piece may hold an icon
+  beside its text.
+- **Tolerance:** positions are held to 4 px, or the tolerance if larger.
 
 ## Constructs and the moderate offset
 
-The sweep reports as `construct` findings what moves a thing to a drawn place instead of laying it out: a negative
-margin over 2 px, and a transform that shifts text (not one that animates). A strong reason for one goes in the
-ledger, for the owner.
+The sweep reports as `construct` findings:
 
-An `x` or `y` offset of 12 px or less may be proposed as the system's (a token gap, a kit component): `system`
-covers it. Past 12 px, and for a text wider than the font explains, only a `design-error`, `missing-state`, `owner`
-or `ux` entry can.
+- **A negative margin** over 3 px that pulls a text into place. Not when both sides bleed alike, the element is off
+  the root, or its class starts with a prefix in `design.json`'s `"kit"` (`["Mui", "ant-", "row"]`): a kit builds
+  with negative gutters by design.
+- **A nudge,** by a transform, the `translate` property or a relative offset: 2 px or more, up to its own size. Half
+  its own size is centring and more than its size a slide, both layouts.
+- **A text cut on purpose** (an ellipsis, a line clamp) whose full text is nowhere to reach: no `title`, accessible
+  name or tooltip on it.
+
+The sweep also reports text over an icon or a small picture (64 × 64 px at most) as an `overlap`: the collision people
+see first.
+
+**What may be proposed, and by whom:**
+
+- **The system's:** an `x` or `y` offset of 12 px or less may be proposed as the system's (a token gap, a kit
+  component), and `system` covers it. It costs nothing in the score, so a literal number is not a better answer than
+  the token.
+- **Only owner-level causes:** past 12 px in total, however the steps add up; a text wider than the font explains;
+  a presence, a text, a line, a construct, a broken column. Only a `design-error`, `missing-state` or `ux` proposal,
+  or an entry the owner accepted, covers these.
+- **`owner`** is the owner's own call: an entry of it is accepted, with `decidedBy`.
 
 ## The ledger
 

@@ -167,8 +167,8 @@ decisions await the owner and which conditions you could not verify.
 The skill also reviews UI that already matches its design: at what cost, and how to put the inside in order without
 changing what users see.
 
-1. Take the current look as the baseline: `design.mjs snapshot <design.json> --images` on every frame, with the dense
-   and many-entries stories.
+1. Take the current look as the baseline: a copy of `design.json` whose frames point at `baseline/<frame>/spec.json`
+   and `reference.png`, with each story added as a frame, and `design.mjs snapshot <baseline design.json> --images`.
 2. Run the complete check and read its cost: the constructs, the "fragile under other data" warnings, the lines that
    do not hold, and fixed heights the many-entries story overflows.
 3. Rewrite the inside from tokens, flow and grid.

@@ -565,14 +565,15 @@ test("an accepted deviation passes, a proposed one remains pending, an unlisted 
   const entry = { landmark: "root", property: "height", category: "owner", reason: "the owner asked for more space below" };
   const accepted = check(variant(css, [{ ...entry, status: "accepted", decidedBy: "owner" }]), "--frame", "720");
   assert.equal(accepted.status, 0, accepted.stdout);
-  const pending = check(variant(css, [{ ...entry, status: "proposed" }]), "--frame", "720");
+  // "owner" is the owner's own call: the implementer proposes under the cause it has.
+  const pending = check(variant(css, [{ ...entry, category: "design-error", status: "proposed" }]), "--frame", "720");
   assert.equal(pending.status, 3);
   assert.match(pending.stdout, /pending: 1/);
   assert.equal(check(variant(css), "--frame", "720").status, 1);
 });
 
 test("a proposed text alternative reports what the page actually contains", browser, () => {
-  const entry = { landmark: "New", property: "text", actual: "Fresh", category: "owner", status: "proposed", reason: "consider a different label" };
+  const entry = { landmark: "New", property: "text", actual: "Fresh", category: "design-error", status: "proposed", reason: "consider a different label" };
   const original = check(variant("", [entry]), "--frame", "720");
   assert.equal(original.status, 0, original.stdout + original.stderr);
   assert.ok(!original.result.frames[0].issues.some((issue) => issue.landmark === "New" && ["presence", "text"].includes(issue.property)));
@@ -812,7 +813,7 @@ test("content that fades in is present, and a text cut with an ellipsis is trunc
   fade.write('<style>@keyframes in{from{opacity:0}to{opacity:1}}.pop{opacity:0;animation:in .15s forwards}</style><main><span class="pop">Ready</span></main>');
   const shown = check(fade.dir);
   assert.equal(shown.status, 0, shown.stdout + shown.stderr);
-  const cut = smallFrame('<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready steady go</div>');
+  const cut = smallFrame('<div title="Ready steady go" style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready steady go</div>');
   const cfg = JSON.parse(fs.readFileSync(cut.config, "utf8"));
   fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   const own = check(cut.dir);
@@ -980,8 +981,10 @@ test("truncation drawn on purpose collides with nothing; one that draws no ellip
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === name).map((i) => i.property);
   };
-  assert.deepEqual(sweep("ellipsis", '<div style="display:flex;gap:8px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title that cannot fit</div><b>€10</b></div>'), []);
-  assert.deepEqual(sweep("clamp", '<p style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0">Line one of a long text that wraps onto line two and three</p><a href="#">Read more</a>'), []);
+  assert.deepEqual(sweep("ellipsis", '<div style="display:flex;gap:8px"><div title="A very long apartment title that cannot fit" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title that cannot fit</div><b>€10</b></div>'), []);
+  assert.deepEqual(sweep("clamp", '<p aria-label="Line one of a long text that wraps onto line two and three" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0">Line one of a long text that wraps onto line two and three</p><a href="#">Read more</a>'), []);
+  // Cut on purpose with the full text nowhere to reach is a construct.
+  assert.deepEqual(sweep("unreachable", '<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title</div>'), ["construct"]);
   assert.deepEqual(sweep("wrapped", '<div style="width:120px;height:20px;overflow:hidden;text-overflow:ellipsis">A text that wraps and is cut below its first line</div>'), ["clipped"]);
 });
 
@@ -1562,4 +1565,46 @@ test("v25: a negative margin or a transform that moves text is a construct to la
   assert.ok(constructs.some((i) => i.landmark === "Gamma" && /a transform moves it 0, 3 px/.test(i.actual)), JSON.stringify(constructs));
   assert.ok(!constructs.some((i) => i.landmark === "Delta"), "a hairline is not a construct");
   assert.equal(r.status, 1);
+});
+
+// ------------------------------------------------------------------ draft 25.1: the critic's and verifier's cases
+
+test("v25.1: a relative nudge is a construct; centring, a slide and the kit's own classes are not; text over an icon is an overlap", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "c.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{display:flex;gap:12px;padding:8px;position:relative;height:70px}</style>
+<main><span style="position:relative;top:3px">Nudged</span><span style="position:absolute;left:50%;top:40px;transform:translate(-50%,0)">Centred</span>
+<span class="kit-row" style="margin-left:-12px">Gutter</span><span>Label<svg style="margin-left:-20px" width="16" height="16"><rect width="16" height="16"/></svg></span></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, kit: ["kit-"], sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "c", url: "c.html" }] } }));
+  const issues = check(f.dir).result.sweep.issues.filter((i) => i.story === "c");
+  const say = JSON.stringify(issues.map((i) => [i.property, i.landmark, i.actual]));
+  assert.ok(issues.some((i) => i.property === "construct" && i.landmark === "Nudged" && /a relative offset moves it 0, 3 px/.test(i.actual)), say);
+  assert.ok(!issues.some((i) => i.landmark === "Centred" || i.landmark === "Gutter"), say);
+  assert.ok(issues.some((i) => i.property === "overlap" && /^Label × svg$/.test(i.landmark)), say);
+});
+
+test("v25.1: named boxes take each piece once, refuse a box that swallows another's, and pair repeated texts by place", browser, () => {
+  const row = (order) => `<main style="position:relative;width:420px;height:60px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:12px;display:flex;gap:40px;flex-direction:${order}"><span>HDD</span><span>4 TB</span><span>HDD</span></div></main>`;
+  let r = boxCase(row("row"), row("row-reverse"), 420);
+  // The same texts in another DOM order, drawn by row-reverse: paired by place, not by the DOM's order.
+  assert.ok(!r.frame.issues.some((i) => i.landmark === "HDD" && i.status === "fail"), r.stdout);
+  const spec = path.join(r.dir, "spec.json"), s = JSON.parse(fs.readFileSync(spec, "utf8"));
+  const twice = { ...s, landmarks: [...s.landmarks, { text: "4 TB", pieces: s.landmarks[1].pieces }] };
+  fs.writeFileSync(spec, JSON.stringify(twice));
+  assert.match(check(r.dir, "--frame", "frame").stdout, /piece \d+ is in landmark 2 .* and landmark 4/);
+  const swallow = { ...s, landmarks: [{ text: "HDD", pieces: [...s.landmarks[0].pieces, ...s.landmarks[2].pieces] }, s.landmarks[1]] };
+  fs.writeFileSync(spec, JSON.stringify(swallow));
+  assert.match(check(r.dir, "--frame", "frame").stdout, /landmark 1 \(“HDD”\) takes in piece/);
+});
+
+test("v25.1: grey text on a dark card is its own piece, and a flex row in another font moves nothing of its own", browser, () => {
+  const dark = `<main style="position:relative;width:320px;height:80px;background:#fff;font:14px/18px sans-serif"><div style="position:absolute;left:16px;top:16px;right:16px;height:48px;background:#1e1e2e;border-radius:8px"><span style="position:absolute;left:12px;top:15px;color:#adb5bd">без НДС</span></div></main>`;
+  const r = boxCase(dark, dark, 320);
+  assert.ok(r.spec.landmarks.some((l) => l.text === "без НДС"), JSON.stringify(r.spec.landmarks));
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  const flex = (family) => `<main style="position:relative;width:520px;height:60px;font:14px/18px ${family};color:#111">
+<div style="position:absolute;left:16px;top:20px;display:flex;gap:20px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>2 × 1 TB NVMe</span><span>10 Gbit/s</span><span>Frankfurt</span></div></main>`;
+  const font = boxCase(flex("DejaVu Sans"), flex("Liberation Sans"), 520);
+  assert.deepEqual(font.frame.issues.filter((i) => i.status === "fail" && ["x", "y", "width"].includes(i.property)).map((i) => `${i.landmark} ${i.property} ${Math.round(i.delta ?? 0)}`), [], font.stdout);
 });

@@ -293,6 +293,7 @@ export function ledgerFaults(entries) {
     if (e.status === "accepted" && !String(e.decidedBy ?? "").trim()) faults.push(`${at}: an accepted entry names who decided it in "decidedBy": only the owner accepts; write "proposed"`);
     // A proposal covers one difference: a wildcard waiting for a decision would silence everything it matches.
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
+    if (e.category === "owner" && e.status !== "accepted") faults.push(`${at}: "owner" is the owner's own call: an entry of it is accepted, with decidedBy; propose under the cause it has`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
     if (e.category === "platform" && PLATFORM_CANNOT.includes(e.property)) faults.push(`${at}: a platform difference (a font, a renderer) changes glyphs and their sizes, not ${e.property === "*" ? "every property" : e.property}: name the properties it changes, fix the rest, or give their cause`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
@@ -311,10 +312,13 @@ const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x 
 // call can excuse it.
 const OWNER_CAUSES = ["design-error", "missing-state", "owner", "ux"];
 export const MODERATE = 12;
-const strict = (issue) => issue.strict || (["x", "y"].includes(issue.property) && Math.abs(issue.delta ?? 0) > MODERATE);
+// What only the owner can let stand: what moved past a moderate offset, a size the font does not explain, a text or a
+// piece that is not the design's, a broken line or column, a construct.
+const STRICT = ["presence", "text", "line", "construct", "align"];
+const strict = (issue) => issue.strict || STRICT.includes(issue.property) || (["x", "y"].includes(issue.property) && Math.abs(issue.delta ?? 0) > MODERATE);
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
-    && (!strict(issue) || OWNER_CAUSES.includes(e.category))
+    && (!strict(issue) || e.status === "accepted" || OWNER_CAUSES.includes(e.category))
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
       : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
@@ -376,6 +380,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     placed.push({ index, label: landmarkLabel(l), l, m, align, ex, ax, dx: ax - ex, dy: m.box.y - l.box.y, dh: m.box.height - l.box.height,
       dw: m.box.width - l.box.width });
   });
+  // Named boxes from an image: the page's font makes every text about as much wider (the typical ratio).
+  const boxesSpec = spec.source === "image boxes";
+  const widthRatios = placed.filter((p) => p.l.text && p.l.box.width > 0).map((p) => p.m.box.width / p.l.box.width).sort((a, b) => a - b);
+  const fontRatio = widthRatios.length >= 3 ? widthRatios[Math.floor(widthRatios.length / 2)] : null;
   const steps = causes(placed, spec, measured, tolerance);
   const own = new Map(steps.map((c) => [`${c.axis}\u0000${c.index}`, c]));
   const excuse = (label, property, delta) => ledgerEntryFor({ landmark: label, property, delta }, frame, ledger);
@@ -392,7 +400,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     const from = link && byIndex.get(link.index);
     let result = from ? { ...excused(from, axis) } : { amount: 0, status: "accepted", entries: [] };
     result = { ...result, entries: [...result.entries] };
-    if (from && link.term) {
+    // Named boxes from an image: a text before it that is wider or narrower in the page's font moves it, and that is the
+    // font's; its own size is held by the "wider than the font explains" finding, and a changed gap stays a step.
+    if (from && link.term === "width" && boxesSpec && from.l.text) result.amount += (link.sign ?? 1) * from.dw;
+    else if (from && link.term) {
       const change = link.term === "height" ? from.dh : (link.sign ?? 1) * from.dw;
       const e = excuse(from.label, link.term, change);
       if (e) { result.amount += change; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); }
@@ -414,7 +425,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     ...(typeof expected === "number" && typeof actual === "number" ? { delta: actual - expected } : {}), ...extra,
   });
   const offset = (p, axis, expected, actual, delta) => {
-    const e = excused(p, axis), left = delta - e.amount;
+    let e = excused(p, axis);
+    // Past a moderate offset only an owner-level cause excuses any of it, however it was split into steps.
+    if (Math.abs(delta) > MODERATE && e.entries.some((x) => x.status !== "accepted" && !OWNER_CAUSES.includes(x.category))) e = { amount: 0, status: "accepted", entries: [] };
+    const left = delta - e.amount;
     const inherited = !own.has(`${axis}\u0000${p.index}`);
     const base = { expected: shown(expected), actual: shown(actual), delta, inherited };
     if (!over(left)) {
@@ -448,14 +462,28 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   });
   // Named boxes from an image: the page's texts are as much wider as its font is. One wider beyond that is a larger
   // size or more text: a finding a font cannot excuse.
-  if (spec.source === "image boxes") {
-    const texts = placed.filter((p) => p.l.text && p.l.box.width > 0);
-    const r = texts.map((p) => p.m.box.width / p.l.box.width).sort((a, b) => a - b);
-    const ratio = r.length >= 3 ? r[Math.floor(r.length / 2)] : 1;
+  if (boxesSpec && fontRatio) {
+    const texts = placed.filter((p) => p.l.text && p.l.box.width > 0), ratio = fontRatio;
     for (const p of texts) {
       // Only wider: a design piece can hold an icon beside its text that the page's text box does not.
       const extra = p.m.box.width / ratio - p.l.box.width;
       if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text`, { strict: true });
+    }
+  }
+  // What the design stacks on one left edge (a column's lines, a value under its label) stays on one edge.
+  if (boxesSpec) {
+    const texts = placed.filter((p) => p.l.text);
+    const seenPair = new Set();
+    for (const p of texts) for (const q of texts) {
+      if (p === q || seenPair.has(`${q.index}:${p.index}`)) continue;
+      // One directly under the other, a line or so apart: a column's lines, not two texts that happen to share an x.
+      const [hi, lo] = p.l.box.y <= q.l.box.y ? [p, q] : [q, p];
+      const gap = lo.l.box.y - (hi.l.box.y + hi.l.box.height);
+      const stacked = Math.abs(p.l.box.x - q.l.box.x) <= 1 && gap >= -1 && gap <= 1.5 * Math.max(p.l.box.height, q.l.box.height);
+      if (!stacked) continue;
+      seenPair.add(`${p.index}:${q.index}`);
+      const apart = Math.abs(p.m.box.x - q.m.box.x);
+      if (apart > tolerance) add(`${q.label} under ${p.label}`, "align", 0, apart, { actual: `left edges ${Math.round(apart)} px apart; the design stacks them on one` });
     }
   }
   // The root's height is the lowest landmark's offset carried down plus the bottom step: excused as they are.
@@ -498,8 +526,9 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length || notNamed.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
-    score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    score: round(unexpected.length * 10 + open.filter((i) => !(i.status === "pending" && ["x", "y"].includes(i.property) && Math.abs(i.delta ?? 0) <= MODERATE
+      && i.entries?.every((n) => ledger[n]?.category === "system"))).reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
     pixels: measured.pixels, images: measured.images ?? {},
@@ -634,15 +663,16 @@ export function inkRuns(img, { scale = 1, contrast = 56, join = 1 } = {}) {
         const xx = x + dx, yy = y + dy;
         if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
         const q = yy * W + xx;
-        if (label[q] === -1 && test(q)) { label[q] = id; stack[top++] = q; }
+        if (label[q] === -1 && test(q, p)) { label[q] = id; stack[top++] = q; }
       }
     }
     return { x0, y0, x1: x1 + 1, y1: y1 + 1, n, mean: sum / n, sd: Math.sqrt(Math.max(0, sum2 / n - (sum / n) ** 2)) };
   };
+  // A component is one kind of ink of like luminance: grey text on a dark card is not part of the card.
   for (let s = 0; s < W * H; s++) {
     if (!kind[s] || label[s] !== -1) continue;
     const k = kind[s], id = comps.length;
-    comps.push({ ...flood(s, (q) => kind[q] === k, id), kind: k, id });
+    comps.push({ ...flood(s, (q, p) => kind[q] === k && Math.abs(lum[q] - lum[p]) < 64, id), kind: k, id });
   }
   const boxes = [], parts = [];
   const encloses = (a, b) => a !== b && b.x0 >= a.x0 && b.y0 >= a.y0 && b.x1 <= a.x1 && b.y1 <= a.y1;
@@ -707,7 +737,7 @@ export function inkRuns(img, { scale = 1, contrast = 56, join = 1 } = {}) {
 // The ink inside a box of a capture: the glyph-tight box of what is drawn there, against the box's own background
 // (its commonest luminance). A box from the DOM is a line box; a named box from an image is tight to its ink; this
 // makes the page's comparable.
-export function tightBox(img, box, scale = 1, contrast = 40) {
+export function tightBox(img, box, scale = 1, { contrast = 40, against, colour } = {}) {
   const { lum, W, H } = img;
   const x0 = Math.max(0, Math.floor(box.x * scale)), y0 = Math.max(0, Math.floor(box.y * scale));
   const x1 = Math.min(W, Math.ceil((box.x + box.width) * scale)), y1 = Math.min(H, Math.ceil((box.y + box.height) * scale));
@@ -716,8 +746,11 @@ export function tightBox(img, box, scale = 1, contrast = 40) {
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) hist[lum[y * W + x]]++;
   let bg = 0;
   for (let v = 1; v < 256; v++) if (hist[v] > hist[bg]) bg = v;
+  if (against !== undefined) bg = against;
+  // A text's ink is near its own colour, so a shape's corner or the paper around a pill is not taken for it.
+  const ink = (v) => Math.abs(v - bg) > contrast && (colour === undefined || Math.abs(v - colour) <= 64);
   let a = x1, b = y1, c = x0 - 1, d = y0 - 1;
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (Math.abs(lum[y * W + x] - bg) > contrast) {
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (ink(lum[y * W + x])) {
     if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y;
   }
   return c < a ? box : { x: a / scale, y: b / scale, width: (c - a + 1) / scale, height: (d - b + 1) / scale };
@@ -726,7 +759,8 @@ export function tightBox(img, box, scale = 1, contrast = 40) {
 // Ink of a reference that no named box covers: what the transcription left out.
 export function uncovered(ink, landmarks) {
   const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-  return [...ink.runs, ...ink.boxes].filter((r) => !landmarks.some((l) => l.box && overlap(r, l.box) >= 0.5 * r.width * r.height));
+  const centreIn = (r, b) => { const cx = r.x + r.width / 2, cy = r.y + r.height / 2; return cx >= b.x - 1 && cx <= b.x + b.width + 1 && cy >= b.y - 1 && cy <= b.y + b.height + 1; };
+  return [...ink.runs, ...ink.boxes].filter((r) => !landmarks.some((l) => l.box && (centreIn(r, l.box) || overlap(r, l.box) >= 0.5 * r.width * r.height)));
 }
 
 export function sweepIssues(probes, ledger = [], extra = []) {
@@ -957,7 +991,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   out.push("", "## Frames", "");
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
-    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f),
+    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.skipped && `skipped pieces: ${f.skipped.join("; ")}`,
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
