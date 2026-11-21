@@ -567,3 +567,7 @@ A targeted check reproduced a Before image from one width and URL being shown wi
 ## Post-series: account for coordination overhead
 
 A read-only audit of the same five-iteration turn found 23 linked local usage journals. It records coordinator, worker and helper token counters separately, plus the number of wait calls without attributing a token cost to each. [Method, anonymized counts and limits](20-coordinator-accounting.md). No new implementation, skill revision or acceptance result is implied.
+
+## Post-series: fifth-submission postmortem and iteration 6 proposal
+
+A new [postmortem](21-fifth-submission-postmortem.md) consolidates the fifth submission’s overlap, test-expectation, state coverage and interaction evidence, alongside positive package and honest-handoff observations. A separate [iteration 6 plan](22-sixth-iteration-plan.md) proposes a completion boundary and independent first-submission assessment, compares an optional early prober, and records the limits of the earlier prober pilot. This record makes no skill edit, sixth implementation, new verdict or claim of causal effectiveness.

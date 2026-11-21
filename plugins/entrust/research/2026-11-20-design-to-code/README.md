@@ -158,3 +158,7 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Post-series: coordination accounting
 
 [The coordination audit](20-coordinator-accounting.md) adds recorded token use for the coordinator, five workers and other linked roles during the five-iteration turn. It separates cached, uncached and output tokens and names unmeasured costs; it is not another implementation iteration.
+
+## Fifth-submission postmortem and sixth-iteration proposal
+
+[The postmortem](21-fifth-submission-postmortem.md) consolidates the observed defects, their causes and limits, prior findings and cost. Its [visual evidence](21-fifth-submission-visual.html) pairs each shown state with a reference and labels different data. [The proposed sixth iteration](22-sixth-iteration-plan.md) is a plan only; the owner has not authorized another implementation run.
