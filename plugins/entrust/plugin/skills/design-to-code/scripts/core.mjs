@@ -2,7 +2,7 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "type", "wrap"];
+  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "type", "wrap", "journey"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -157,14 +157,14 @@ export function parseFigmaUrl(url) {
 // (`data-node-id`). For each text landmark whose id the context has, take the context's text. Returns the spec, the
 // ids joined, and the ids the context did not give a text for: read those from the frame's image.
 export function joinContext(spec, context) {
-  const texts = contextTexts(context);
+  const fonts = new Map(), texts = contextTexts(context, fonts);
   const joined = [], missing = [];
   const landmarks = spec.landmarks.map((l) => {
     if (!l.text || !l.id) return l;
-    const t = texts.get(l.id);
-    if (!t) { missing.push(l.id); return l; }
+    const t = texts.get(l.id), font = fonts.get(l.id), sized = font ? { ...l, font: { ...l.font, ...font } } : l;
+    if (!t) { missing.push(l.id); return sized; }
     joined.push(l.id);
-    return { ...l, text: t };
+    return { ...sized, text: t };
   });
   return { spec: { ...spec, landmarks: numberDuplicates(landmarks.map(({ nth, ...l }) => l)) }, joined, missing };
 }
@@ -173,9 +173,11 @@ export function joinContext(spec, context) {
 // included: one Figma text layer can be rendered as a paragraph with styled spans. Only what the code states is
 // taken: literal text, string literals in braces, and entities it can decode. An element whose text depends on an
 // expression (`{count} cores`) or an entity it cannot decode gets no text, so that the layer is reported as missing
-// rather than given a wrong one; code it cannot parse to the end gives no texts at all.
+// rather than given a wrong one; code it cannot parse to the end gives no texts at all. Given a map, it also takes
+// each layer's size and line height from its Tailwind classes (`text-[14px]`, `leading-[20px]`): its own, else the
+// first inside it, else for the size an ancestor's, as Figma's code nests them.
 const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-export function contextTexts(code) {
+export function contextTexts(code, fonts = null) {
   const out = new Map(), stack = [];
   let i = 0, broken = false;
   const text = (t, el = stack) => { for (const e of el) e.parts.push(t); };
@@ -212,6 +214,12 @@ export function contextTexts(code) {
         if (!el || el.name !== name) { broken = true; break; }
         // An id seen twice cannot say which text is the layer's.
         if (el.id) out.set(el.id, el.doubt || out.has(el.id) ? null : norm(el.parts.join(" ")));
+        const size = el.size ?? el.inner.size, lead = el.lead ?? el.inner.lead, parent = stack.at(-1);
+        if (fonts && el.id) {
+          const inherited = size ?? [...stack].reverse().find((a) => a.size)?.size;
+          if (inherited) fonts.set(el.id, { size: inherited, ...(lead ? { lineHeight: lead } : {}) });
+        }
+        if (parent) { parent.inner.size ??= size; parent.inner.lead ??= lead; }
         i = end + 1;
         continue;
       }
@@ -227,7 +235,9 @@ export function contextTexts(code) {
       if (broken || j >= code.length) { broken = true; break; }
       const attrs = code.slice(i + 1 + name.length, selfClosing ? j - 1 : j);
       const id = attrs.match(/(?:^|\s)data-node-id\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/);
-      const el = { name, id: id ? (id[1] ?? id[2] ?? id[3]) : null, parts: [], doubt: false };
+      const px = (re) => { const v = Number(attrs.match(re)?.[1]); return v > 0 ? v : null; };
+      const el = { name, id: id ? (id[1] ?? id[2] ?? id[3]) : null, parts: [], doubt: false,
+        size: px(/(?:^|[\s"'`{(])text-\[(\d+(?:\.\d+)?)px\]/), lead: px(/(?:^|[\s"'`{(])leading-\[(\d+(?:\.\d+)?)px\]/), inner: { size: null, lead: null } };
       if (!selfClosing) stack.push(el);
       i = j + 1;
       continue;
@@ -284,7 +294,8 @@ export function ledgerFaults(entries) {
       if (!Array.isArray(e.region) || e.region.length !== 4 || !e.region.every(Number.isFinite)) faults.push(`${at}: a region entry gives "region": [x, y, width, height]`);
     } else if (!e.landmark || (Array.isArray(e.landmark) && !e.landmark.length)) faults.push(`${at}: no landmark (a design text or a list of them, a selector, "root" or "*")`);
     if (!PROPERTIES.includes(e.property) && e.property !== "*") faults.push(`${at}: property must be one of ${PROPERTIES.join(", ")} or *`);
-    if (!CATEGORIES.includes(e.category)) faults.push(`${at}: category must be one of ${CATEGORIES.join(", ")}`);
+    // The cause is optional; given, it is one the owner knows.
+    if (e.category !== undefined && !CATEGORIES.includes(e.category)) faults.push(`${at}: category, when given, is one of ${CATEGORIES.join(", ")}`);
     if (!STATUSES.includes(e.status)) faults.push(`${at}: status must be accepted or proposed`);
     // The implementer proposes; only the owner accepts, and the entry says who.
     if (e.status === "accepted" && !String(e.decidedBy ?? "").trim()) faults.push(`${at}: an accepted entry names who decided it in "decidedBy": only the owner accepts; write "proposed"`);
@@ -292,6 +303,9 @@ export function ledgerFaults(entries) {
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (e.category === "owner" && e.status !== "accepted") faults.push(`${at}: "owner" is the owner's own call: an entry of it is accepted, with decidedBy; propose under the cause it has`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
+    // A finding the check itself causes is disputed with the check, shown by a minimal reproduction in review.md.
+    if (e.cause !== undefined && e.cause !== "checker") faults.push(`${at}: "cause", when given, is "checker": a finding the check itself causes, with its reproduction in review.md`);
+    if (e.property === "journey" && e.cause !== "checker") faults.push(`${at}: a journey entry disputes a journey the check itself breaks: it gives "cause": "checker"`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     return faults;
@@ -453,13 +467,21 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // changes a cap height by a few per cent; a size of another class changes it by more. Recorded for every frame.
   // The mean of the middle sixty per cent: a box that holds an icon beside its text, or a line the font draws taller,
   // falls at the ends.
-  const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height }));
+  const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height, ...(p.l.joined ? { joined: true } : {}) }));
   const middle = heights.map((h) => h.ratio).sort((a, b) => a - b).slice(Math.floor(heights.length * 0.2), heights.length - Math.floor(heights.length * 0.2));
   const typeRatio = heights.length >= 5 ? middle.reduce((a, b) => a + b, 0) / middle.length : null;
+  const sized = (r) => `${Math.round(Math.abs(r - 1) * 100)} % ${r < 1 ? "smaller" : "larger"} than drawn`;
   // Read from a screenshot's ink: a spec from Figma states its sizes, which are compared exactly.
   if (boxesSpec && typeRatio && Math.abs(typeRatio - 1) >= 0.1) {
-    add("the type", "type", "as drawn", `${Math.round(Math.abs(typeRatio - 1) * 100)} % ${typeRatio < 1 ? "smaller" : "larger"} than drawn, by the ink heights of ${heights.length} texts: a size of another class; set the sizes the frame draws, or propose the kit's type token for the owner`, { delta: Math.round((typeRatio - 1) * 100) });
+    add("the type", "type", "as drawn", `${sized(typeRatio)}, by the ink heights of ${heights.length} texts: a size of another class; set the sizes the frame draws`, { delta: Math.round((typeRatio - 1) * 100) });
   }
+  // One text set in another size, a price larger than drawn, whatever the rest do: a fifth or more off by its own ink.
+  // A box the spec gives itself holds more than its text (an icon joined to its label), so its ink says nothing.
+  if (boxesSpec) for (const h of heights) if (!h.joined && Math.abs(h.ratio - 1) >= 0.2) {
+    add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws`, { delta: Math.round((h.ratio - 1) * 100) });
+  }
+  // A spec that states no font size (an MCP outline without its design context) leaves the type's size unchecked.
+  const typeUnchecked = !boxesSpec && spec.landmarks.some((l) => l.text) && !spec.landmarks.some((l) => Number.isFinite(Number(l.font?.size)));
   // Named boxes from an image: the page's texts are as much wider as its font is. One wider beyond that is a larger
   // size or more text: a finding a font cannot excuse.
   if (boxesSpec && fontRatio) {
@@ -472,8 +494,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   }
   // A gap the design sets between two neighbours, side by side or one above the other, that closes up: the pieces
   // nearly touch, whatever their edges keep. A piece already past the band names its own cause.
+  // A drift carried from the pieces before is a note, not a cause: it does not hide a gap that closes after it.
   for (const [axis, pos, size, cross, crossSize, word] of [["x", "x", "width", "y", "height", "after"], ["y", "y", "height", "x", "width", "below"]]) {
-    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && Math.abs(i.delta ?? 0) > band);
+    const drift = (i) => Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band;
+    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && Math.abs(i.delta ?? 0) > band && !drift(i));
     for (const p of placed) {
       const next = placed.filter((q) => q !== p && q.l.box[pos] >= p.l.box[pos] + p.l.box[size] - 1
         && Math.min(p.l.box[cross] + p.l.box[crossSize], q.l.box[cross] + q.l.box[crossSize]) - Math.max(p.l.box[cross], q.l.box[cross]) >= 0.5 * Math.min(p.l.box[crossSize], q.l.box[crossSize]))
@@ -553,7 +577,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length || notNamed.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(typeUnchecked ? { typeUnchecked } : {}), ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
     ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map((h) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
     // A region has no size of its own to give, only its place.
     ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.delta) }), ...(i.box ? { box: i.box } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
@@ -851,7 +875,7 @@ const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
 export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason || sweep?.stories?.some((st) => st.unmeasured) ? null
-  : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0) + journeys.filter((j) => !j.pass).length * 10);
+  : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0) + journeys.filter((j) => !j.pass && j.status !== "accepted").length * 10);
 const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
   return (s) => all.filter((i) => i.status === s).length;
@@ -873,6 +897,11 @@ const acceptanceLine = (row) => `${row.item}: ${row.status}${row.reason ? ` (${r
 
 // The sweep's notes (a construct, a switch), in a line: for the owner's eye, so they are said where findings are.
 const sweepNotes = (noted) => `${noted.length} note${noted.length === 1 ? "" : "s"}, not findings: ${noted.slice(0, 4).map((i) => `${i.property} “${i.landmark}”${i.story ? ` (${i.story})` : ""}`).join(", ")}${noted.length > 4 ? `, and ${noted.length - 4} more` : ""}`;
+// What a generated condition found: a candidate, not a finding, until legal data reproduces it or review.md names the
+// contract's bound that rules it out.
+const candidates = (sweep, answered = false) => (sweep?.issues ?? []).filter((i) => i.status === "candidate" && Boolean(i.answer) === answered);
+const candidateLine = (open) => `${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story}${i.ranges ? `, ${i.ranges}` : ""})`).join(", ")}${open.length > 4 ? `, and ${open.length - 4} more` : ""}; reproduce each with legal data (a story with a real long value, a supported locale), or name in review.md, under Candidates, the contract's bound that rules it out`;
+const typeNote = "type sizes not compared: the spec gives no font sizes (`design.mjs spec … --context` reads them from the design context)";
 // The notes a frame keeps, in a line: offsets and drifts with the largest, then what else, by kind.
 const noteLine = (f) => {
   const offsets = f.notes.filter((n) => ["x", "y"].includes(n.property)), rest = f.notes.filter((n) => !["x", "y"].includes(n.property));
@@ -906,6 +935,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
+    if (f.typeUnchecked) out.push(`${typeNote[0].toUpperCase()}${typeNote.slice(1)}.`);
     if (f.notes) out.push(`Notes, the system's and not findings: ${noteLine(f)}. ${f.notes.filter((n) => n.delta !== undefined).map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
@@ -929,11 +959,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     if (sweep.stories?.length) out.push(`Stories swept as well: ${sweep.stories.map((st) => st.name).join(", ")}.`, "");
     for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(alignmentName(u))} matched at most ${u.matched} across the sweep. It needs two or more.`, "");
-    if (sweep.fragile?.length) {
-      out.push("Fragile under other data (a forecast: change the construct, or say in review.md why it holds):", "");
-      for (const f of sweep.fragile) out.push(`- ${cell(f.landmark)}${f.story ? ` (${f.story})` : ""}: ${f.actual}, at ${f.ranges}`);
-      out.push("");
-    }
+    if (sweep.generate === false) out.push("Generated conditions: not run (sweep.generate is false).", "");
     for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(alignmentName(u))} had fewer than two matches at ${u.ranges} px during the sweep. The other samples were measured.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
@@ -944,56 +970,78 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
   return out.join("\n");
 }
 
-// What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
-// the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false, quick = false }, { limit = 8, file = "report.md" } = {}) {
+// Each finding by what it is about, not by its size: a frame's landmark and property, a sweep's story, landmark and
+// property, a failing journey, a failing acceptance row. Two rounds that share a key share that finding; the first key
+// is the finding a round would be fixed from first.
+export function findingKeys({ frames = [], sweep, journeys = [], acceptance = [] }) {
+  const keys = new Map();
+  for (const f of frames) for (const i of ordered(f.issues.filter((x) => x.status === "fail"))) keys.set(`${f.frame}\u0000${i.landmark}\u0000${i.property}`, `${f.frame}: ${i.landmark} ${i.property}`);
+  for (const i of (sweep?.issues ?? []).filter((x) => x.status === "fail")) keys.set(`sweep\u0000${i.story ?? ""}\u0000${i.landmark}\u0000${i.property}\u0000${i.kind ?? ""}`, `${i.property} ${where(i)}`);
+  for (const j of journeys.filter((x) => !x.pass && !x.status)) keys.set(`journey\u0000${j.name}`, `journey ${j.name}`);
+  for (const r of acceptance.filter((x) => x.status === "fail")) keys.set(`acceptance\u0000${r.item}`, `acceptance “${r.item}”`);
+  return keys;
+}
+
+// What the console shows: a digest of at most `limit` lines. First what changed since the last round measured the same
+// way, then each frame's verdict with where to start and its new findings first (the rest as a count), the sweep, the
+// journeys and what was not checked; the full tables stay in report.md, whose path ends it.
+export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, restarted = false, quick = false }, { limit = 15, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
-  const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
+  const head = `${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
     + ` · ${quick ? "journeys: not run (--quick)" : journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
-    + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
-  if (restarted) out.push("The specs or the sweep changed: scores start a new series here.");
-  if (sweepCoverage(sweep)) out.push(sweepCoverage(sweep));
-  for (const row of acceptance.filter((r) => ["fail", "pending"].includes(r.status))) out.push(`Acceptance: ${acceptanceLine(row)}`);
-  if (stalled >= 2) out.push(`${stalled} rounds without a new lowest score: stop adjusting. Sort what remains: fix it another way, record it as proposed, or ask.`);
-  for (const g of gaps) out.push(`Not checked: ${g}.`);
-  for (const p of ledgerProblems) out.push(`Ledger: ${p}`);
+    + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`;
+  const now = findingKeys({ frames, sweep, journeys, acceptance });
+  const before = Array.isArray(previous?.findings) ? new Set(previous.findings) : null;
+  const fresh = (k) => !before || !before.has(k);
+  const body = [];
+  if (restarted) body.push("The specs or the sweep changed: scores start a new series here.");
+  if (before) {
+    const fixed = previous.findings.filter((k) => !now.has(k)), added = [...now.keys()].filter((k) => !before.has(k));
+    // A finding by its key: "frame: landmark property", "property landmark (story)", "journey name", "acceptance “item”".
+    const nameOf = (k) => { const [a, b, c, d] = k.split("\u0000"); return a === "sweep" ? `${d} ${c}${b ? ` (${b})` : ""}` : a === "journey" ? `journey ${b}` : a === "acceptance" ? `acceptance “${b}”` : `${a}: ${b} ${c}`; };
+    const names = (list) => list.slice(0, 3).map(nameOf).join("; ") + (list.length > 3 ? "; …" : "");
+    body.push(`Since round ${previous.round}: ${fixed.length} fixed${fixed.length ? ` (${names(fixed)})` : ""}, ${added.length} new${added.length ? ` (${names(added)})` : ""}, ${now.size - added.length} unchanged.`);
+  }
+  if (sweepCoverage(sweep)) body.push(sweepCoverage(sweep));
+  for (const row of acceptance.filter((r) => ["fail", "pending"].includes(r.status))) body.push(`Acceptance: ${acceptanceLine(row)}`);
+  for (const g of gaps) body.push(`Not checked: ${g}.`);
+  if (ledgerProblems.length) body.push(`Ledger: ${ledgerProblems.join("; ")}`);
+  const say = (i) => `${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`;
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
     const pending = f.issues.filter((i) => i.status === "pending").length;
-
     const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
       : f.verdict === "incomplete" ? "incomplete" : pending ? `awaiting a decision on ${pending}` : "pass";
-    out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
-    if (f.unmeasured) out.push(`  ${f.unmeasured}`);
-    if (f.otherData) out.push(`  ${f.otherData}`);
-    if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
-    if (f.imageOnly) out.push(`  ${imageOnlyNote(f)}`);
-    if (f.uncovered) out.push(`  ${uncoveredNote(f)}`);
-    if (f.notes) out.push(`  notes, the system's and not findings: ${noteLine(f)}`);
-    // Where to start fixing: only for a frame with a finding, never for notes alone.
-    const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
-    if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
-    const mine = failing.filter((i) => !i.inherited);
-    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`);
-    const rest = failing.length - Math.min(mine.length, limit);
-    if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
-    if (f.unexpected?.length) out.push(`  ${notInDesign(f)}`);
+    // Where to start, then the findings of its own (not inherited), the new ones first; the unchanged as a count.
+    const shown = failing.length ? f.causes.filter((c) => !c.repeat) : [];
+    const mine = failing.filter((i) => !i.inherited), key = (i) => `${f.frame}\u0000${i.landmark}\u0000${i.property}`;
+    const listed = [...mine.filter((i) => fresh(key(i))), ...(before && !mine.some((i) => fresh(key(i))) ? mine.slice(0, 1) : [])].slice(0, 3);
+    const unchanged = failing.filter((i) => !fresh(key(i)) && !listed.includes(i)).length;
+    const more = failing.length - listed.length - unchanged;
+    const parts = [f.unmeasured, f.otherData, shown.length && `start here: ${sayCause(shown[0])}`, ...listed.map(say),
+      more > 0 && `… ${more} more`, unchanged && `${unchanged} unchanged`,
+      f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`,
+      f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.typeUnchecked && typeNote,
+      f.notes && `notes, the system's and not findings: ${noteLine(f)}`, f.unexpected?.length && notInDesign(f)].filter(Boolean);
+    body.push(`${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}${parts.length ? `; ${parts.join("; ")}` : ""}`);
   }
   if (sweep) {
-    out.push("", `sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}`);
-    const failing = sweep.issues.filter((i) => i.status === "fail"), noted = sweep.issues.filter((i) => i.status === "note");
-    for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
-    if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
-    if (noted.length) out.push(`  ${sweepNotes(noted)}`);
-    for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${alignmentName(u)} matched at most ${u.matched} across the sweep; an alignment needs two or more`);
-    const frail = sweep.fragile ?? [];
-    for (const f of frail.slice(0, 5)) out.push(`  fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual} (at ${f.ranges})`);
-    if (frail.length > 5) out.push(`  … ${frail.length - 5} more fragile constructs`);
-    for (const u of sweep.partial ?? []) out.push(`  ${alignmentName(u)} matched fewer than two at ${u.ranges}: measured where it had two or more`);
+    const failing = sweep.issues.filter((i) => i.status === "fail"), noted = sweep.issues.filter((i) => i.status === "note"), open = candidates(sweep);
+    const skey = (i) => `sweep\u0000${i.story ?? ""}\u0000${i.landmark}\u0000${i.property}\u0000${i.kind ?? ""}`;
+    const listed = [...failing.filter((i) => fresh(skey(i))), ...(before && !failing.some((i) => fresh(skey(i))) ? failing.slice(0, 1) : [])].slice(0, 3);
+    const unchanged = failing.filter((i) => !fresh(skey(i)) && !listed.includes(i)).length, more = failing.length - listed.length - unchanged;
+    const parts = [...listed.map((i) => `${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`), more > 0 && `… ${more} more`,
+      unchanged && `${unchanged} unchanged`, noted.length && sweepNotes(noted), open.length && candidateLine(open),
+      ...(sweep.unmeasured ?? []).map((u) => `not measured: ${alignmentName(u)} matched at most ${u.matched} across the sweep; an alignment needs two or more`),
+      ...(sweep.partial ?? []).map((u) => `${alignmentName(u)} matched fewer than two at ${u.ranges}: measured where it had two or more`)].filter(Boolean);
+    body.push(`sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}${parts.length ? `; ${parts.join("; ")}` : ""}`);
   }
-  for (const j of journeys.filter((x) => !x.pass)) out.push("", `journey fails: ${j.name}: ${j.failed}`);
-  out.push("", `Full tables: ${file}`);
-  return out.join("\n");
+  const broken = journeys.filter((x) => !x.pass);
+  if (broken.length) body.push(broken.map((j) => `journey ${j.status ? `disputed with the check (${j.status})` : "fails"}: ${j.name}: ${j.failed}`).join("; "));
+  // At most `limit` lines with the head and the path: what does not fit is in the report.
+  const room = Math.max(1, limit - 2);
+  const kept = body.length > room ? [...body.slice(0, room - 1), `… ${body.length - room + 1} more lines in ${file}`] : body;
+  return [head, ...kept, `Full tables: ${file}`].join("\n");
 }
 
 // ------------------------------------------------------------------ gallery
@@ -1013,8 +1061,9 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
   const count = (issues) => {
     const failing = fails(issues), ok = excused(issues), noted = issues.filter((i) => i.status === "note");
+    const cand = issues.filter((i) => i.status === "candidate"), open = cand.filter((i) => !i.answer);
     const head = failing.length ? `${failing.length} finding${failing.length === 1 ? "" : "s"}; first: ${say(ordered(failing)[0])}` : "no findings";
-    return `${head}${ok ? `; ${ok} excused by the ledger` : ""}${noted.length ? `; ${sweepNotes(noted)}` : ""}`;
+    return `${head}${ok ? `; ${ok} excused by the ledger` : ""}${noted.length ? `; ${sweepNotes(noted)}` : ""}${cand.length ? `; ${cand.length} candidate${cand.length === 1 ? "" : "s"}, ${open.length} unanswered` : ""}`;
   };
   const handoverState = { pass: "done", pending: "only after two rounds without a new lowest score, each remaining difference proposed in the ledger",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
@@ -1031,7 +1080,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)]).filter(([, , found]) => found.length > 3)
     .map(([e, entries, found]) => {
       const gaps = found.filter((i) => i.gap || i.box).length;
-      return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${e.category}, ${e.status}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;
+      return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${[e.category, e.status].filter(Boolean).join(", ")}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;
     });
   const out = [`Status: ${status} — ${handoverState}`, "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
@@ -1042,7 +1091,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.skipped && `skipped pieces: ${f.skipped.join("; ")}`,
-      f.notes && `notes, the system's and not findings: ${noteLine(f)}`,
+      f.notes && `notes, the system's and not findings: ${noteLine(f)}`, f.typeUnchecked && typeNote,
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
@@ -1053,7 +1102,6 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   if (sweep) {
     out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
     for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: not measured at ${u.ranges} px (fewer than two elements)`);
-    for (const f of sweep.fragile ?? []) out.push(`- fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual}, at ${f.ranges}`);
     for (const l of sweep.lines ?? []) out.push(`- line ${l.name}: ${l.widths ? `measured at ${l.widths} widths over the page and its stories` : "never measured"}`);
     if (model) {
       out.push(`- layout model: ${model.rows ? `${model.rows} ${model.rows === 1 ? "row" : "rows"} in review.md, first seen in round ${model.firstRound ?? "?"} (round 1 is the baseline check, before the first edit)` : "none in review.md"}`);
@@ -1061,6 +1109,12 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     }
     for (const u of sweep.partial ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: fewer than two elements at ${u.ranges} px, measured in the other samples`);
     for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}${st.longest?.length ? `; its longest texts: ${st.longest.map((t) => `“${t}”`).join(", ")}` : ""}`);
+  }
+  const generated = (sweep?.issues ?? []).filter((i) => i.status === "candidate");
+  if (generated.length) {
+    out.push("", "## Candidates from the generated conditions", "",
+      "A collision found only under longer texts or doubled entries is not a finding until legal data reproduces it (then the story's own finding counts); until then it is answered in review.md, under Candidates, by the contract's bound that rules it out.", "");
+    for (const i of generated) out.push(`- ${i.answer ? "answered" : "unanswered"}: ${say(i)}${i.answer ? ` — ${i.answer}` : ""}`);
   }
   out.push("", "## Journeys", "");
   if (!journeys.length) out.push("- none defined");
@@ -1071,12 +1125,12 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     const how = [spec.touch && "touch", j.widths?.length && `${j.widths.join(" → ")} px`].filter(Boolean).join(", ");
     const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
     const notes = [opensOnly && "checks opening only, not closing", ...(j.notes ?? [])].filter(Boolean);
-    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
+    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `${j.status ? `disputed with the check (${j.status}), ` : ""}fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
   }
   out.push("", "## Deviations", "");
   for (const p of ledgerProblems) out.push(`- the ledger is invalid: ${p}`);
   if (!ledger.length) out.push("- none");
-  const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
+  const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? []), ...journeys.filter((j) => j.entries)];
   const text = (v) => (v && typeof v === "object" ? JSON.stringify(v) : String(v));
   for (const [index, e] of ledger.entries()) {
     const uses = all.filter((i) => i.entries?.includes(index)).length;
@@ -1086,11 +1140,23 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       .filter(Boolean).join(" · ");
     out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${scope})${e.status === "proposed" && e.options ? `; options: ${[].concat(e.options).map(text).join("; ")}` : ""}`);
   }
+  // What the builder showed the check itself causes: the owner decides each, with its reproduction in review.md.
+  const disputed = ledger.map((e, index) => [e, index]).filter(([e]) => e.cause === "checker");
+  if (disputed.length) {
+    out.push("", "## Disputed with the check", "");
+    for (const [e, index] of disputed) {
+      const hit = all.filter((i) => i.entries?.includes(index)).map((i) => i.name ?? where(i));
+      out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason}${hit.length ? ` (matches ${hit.join(", ")})` : " (matched nothing)"}`);
+    }
+  }
   out.push("", "## The acceptance list", "");
   if (!acceptance.length) out.push("- no rows found in review.md");
   for (const a of acceptance) out.push(`- ${acceptanceLine(a)}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
+  if (sweep?.generate === false) out.push("- the generated conditions (sweep.generate is false): texts longer and entries more numerous than the stories carry");
+  const unsized = frames.filter((f) => f.typeUnchecked).map((f) => f.frame);
+  if (unsized.length) out.push(`- type sizes in ${unsized.join(", ")}: the spec gives no font sizes`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");
   return out.join("\n");
 }
@@ -1112,7 +1178,7 @@ ${lines.map((l) => `<p>${l}</p>`).join("\n")}
     }).join("")}</div>
 </section>`;
   });
-  const entry = (e) => `<li><b>${esc(e.status)}</b> · ${esc(e.category)} · ${esc(e.property === "region" ? `region ${e.region.join(", ")}` : `${[].concat(e.landmark).join(", ")} ${e.property}`)}${e.frame ? ` · ${esc([].concat(e.frame).join(", "))}` : ""}: ${esc(e.reason)}${e.decidedBy ? ` (decided by ${esc(e.decidedBy)})` : ""}${e.options ? `<br>Options: ${esc([].concat(e.options).join("; "))}` : ""}</li>`;
+  const entry = (e) => `<li><b>${esc(e.status)}</b>${e.category ? ` · ${esc(e.category)}` : ""} · ${esc(e.property === "region" ? `region ${e.region.join(", ")}` : `${[].concat(e.landmark).join(", ")} ${e.property}`)}${e.frame ? ` · ${esc([].concat(e.frame).join(", "))}` : ""}: ${esc(e.reason)}${e.decidedBy ? ` (decided by ${esc(e.decidedBy)})` : ""}${e.options ? `<br>Options: ${esc([].concat(e.options).join("; "))}` : ""}</li>`;
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <style>

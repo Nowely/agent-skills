@@ -16,7 +16,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  causes, compareFrame, contextTexts, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderReport,
+  causes, compareFrame, contextTexts, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
   renderSummary, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
@@ -860,11 +860,19 @@ test("scores are compared only between rounds measured the same way, and two rou
   check(f.dir);
   const second = check(f.dir);
   assert.match(second.stdout, /previous round: /);
-  assert.doesNotMatch(second.stdout, /stop adjusting/);
-  assert.match(check(f.dir).stdout, /2 rounds without a new lowest score: stop adjusting/);
+  assert.doesNotMatch(second.stdout, /stop/);
+  // Draft 28.2: the verdict line itself says to stop, and each round records what it cost.
+  const third = check(f.dir);
+  assert.match(third.stdout, /^Verdict: fail — stop re-running: fix it, propose it with a reason, or report the check as blocked$/m);
+  const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(history.map((h) => h.quick), [false, false, false]);
+  assert.ok(history.every((h) => h.seconds > 0), JSON.stringify(history));
+  assert.equal(history[2].bytes, Buffer.byteLength(third.stdout));
+  check(f.dir, "--quick");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).quick, true);
   const spec = JSON.parse(fs.readFileSync(path.join(f.dir, "0.json"), "utf8"));
   fs.writeFileSync(path.join(f.dir, "0.json"), JSON.stringify({ ...spec, landmarks: [...spec.landmarks, { ...spec.landmarks[0], text: "Steady" }] }));
-  assert.doesNotMatch(check(f.dir).stdout, /previous round|lowest|stop adjusting/);
+  assert.doesNotMatch(check(f.dir).stdout, /previous round|lowest|stop/);
 });
 
 test("a dense story is swept too: a text over a text, a control under another element, and its pictures", browser, () => {
@@ -1392,32 +1400,24 @@ test("v21: the evidence file starts with the handover status, a fail says to kee
 
 // ------------------------------------------------------------------ v22: predicting where the layout breaks
 
-test("v22: the sweep forecasts fragile constructs once across stories and measures the predicted switch widths exactly", browser, () => {
+test("v22, draft 28.2: the sweep measures the predicted switch widths exactly, and forecasts nothing: the generated conditions test other data", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(path.join(f.dir, "frail.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style>
 <main><span>Ready</span><span class="price" style="position:absolute;right:0;top:0">€ 1 250</span>
-<div style="height:20px;width:120px">A label long enough to wrap onto lines</div>
-<div style="position:relative;width:100px;height:40px"><img alt="" style="width:100px;height:40px;background:#ccc"><span style="position:absolute;left:4px;top:4px">-20%</span></div>
-<div role="tooltip" style="position:absolute;left:0;top:60px">Help</div></main>`);
-  const stories = [{ name: "frail", url: "frail.html" }, { name: "again", url: "frail.html?again" }];
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, switches: [320], stories } }));
+<div style="height:20px;width:120px">A label long enough to wrap onto lines</div><span style="display:inline-block;margin-left:-8px">Pulled</span></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, switches: [320], stories: [{ name: "frail", url: "frail.html" }] } }));
   const r = check(f.dir);
-  const frail = r.result.sweep.fragile;
-  const price = frail.filter((x) => x.landmark === "€ 1 250");
-  assert.equal(price.length, 1, `one line for both stories: ${JSON.stringify(frail)}`);
-  assert.equal(price[0].kind, "positioned");
-  assert.equal(price[0].story, "frail, again");
-  assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
-  assert.ok(!frail.some((x) => x.landmark === "Help"), "an overlay is not fragile");
-  assert.ok(!frail.some((x) => x.landmark === "-20%"), `a badge over an image is not fragile: ${JSON.stringify(frail)}`);
-  assert.match(r.stdout, /fragile under other data: € 1 250 \(frail, again\) takes no space in the layout/);
+  assert.equal(r.result.sweep.fragile, undefined);
+  assert.doesNotMatch(r.stdout, /fragile/);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  assert.match(handoff, /fragile under other data: € 1 250/);
+  assert.doesNotMatch(handoff, /fragile/);
   assert.match(handoff, /^- layout model: 1 row in review\.md, first seen in round 1 /m, handoff);
   assert.match(handoff, /^- predicted switches: 320; measured layout changes: /m, handoff);
-  assert.match(price[0].ranges, /319/, `measured a pixel either side of the predicted 320: ${price[0].ranges}`);
-  assert.match(price[0].ranges, /321/, price[0].ranges);
+  const pulled = r.result.sweep.issues.find((i) => i.property === "construct" && i.landmark === "Pulled");
+  assert.ok(pulled, JSON.stringify(r.result.sweep.issues));
+  assert.match(pulled.ranges, /319/, `measured a pixel either side of the predicted 320: ${pulled.ranges}`);
+  assert.match(pulled.ranges, /321/, pulled.ranges);
 });
 
 test("v22, draft 28: the layout model is an aid, not a gate; the evidence counts its rows, and a header alone is none", browser, () => {
@@ -1761,7 +1761,7 @@ test("v26: --quick sweeps every story at the frames' widths only, and is a parti
   check(f.dir, "--quick");
   check(f.dir, "--quick");
   check(f.dir, "--quick");
-  assert.doesNotMatch(check(f.dir).stdout, /rounds without a new lowest score/);
+  assert.doesNotMatch(check(f.dir).stdout, /stop re-running/);
 });
 
 test("v26: an acceptance row that names its story answers for that story, and says what failed", browser, () => {
@@ -1860,23 +1860,24 @@ test("draft 28: a screenshot's type set at 13 px where 15 is drawn is a type fin
 
 test("draft 28: the generated conditions find an overlap only longer texts cause and a fixed height only doubled entries overflow; a layout that grows passes them", browser, () => {
   // 20 px monospace is 12 px a letter: "Ready" ends at 60 and "Go" starts at 84; two fifths longer, "Ready Re" ends at 96.
+  // What they find is a candidate: it leaves the check incomplete until answered, and fails nothing (draft 28.2).
   let r = check(smallFrame('<span style="position:absolute;left:0;top:0">Ready</span><span style="position:absolute;left:84px;top:0">Go</span>').dir);
-  assert.equal(r.status, 1, r.stdout);
+  assert.equal(r.status, 2, r.stdout);
   assert.deepEqual(r.result.frames[0].issues, [], "the frame as drawn is clean");
   const overlaps = r.result.sweep.issues.filter((i) => i.property === "overlap");
-  assert.deepEqual(overlaps.map((i) => i.story).sort(), ["dense, texts stretched", "the frames' page, texts stretched"], JSON.stringify(r.result.sweep.issues));
-  assert.match(r.stdout, /overlap Ready Re × Go G \(the frames' page, texts stretched\)/);
+  assert.deepEqual(overlaps.map((i) => [i.story, i.status]), [["the frames' page, texts stretched", "candidate"]], JSON.stringify(r.result.sweep.issues));
+  assert.match(r.stdout, /unanswered: overlap “Ready Re × Go G” \(the frames' page, texts stretched, 300\)/);
   // Two entries fit a fixed height; doubled, they are cut. Only the entries are doubled: the total placed beside them
   // is not, or its copy would lie on it.
   const list = (css) => `<div style="${css}"><div class="entry">One</div><div class="entry">Two</div><b style="position:absolute;right:0;top:0">Total</b></div>`;
   r = check(smallFrame(list("height:56px;overflow:hidden")).dir);
-  assert.equal(r.status, 1, r.stdout);
-  assert.ok(r.result.sweep.issues.length && r.result.sweep.issues.every((i) => i.property === "clipped" && i.story === "the frames' page, entries doubled"), JSON.stringify(r.result.sweep.issues));
+  assert.equal(r.status, 2, r.stdout);
+  assert.ok(r.result.sweep.issues.length && r.result.sweep.issues.every((i) => i.property === "clipped" && i.story === "the frames' page, entries doubled" && i.status === "candidate"), JSON.stringify(r.result.sweep.issues));
   // The same list in a root that grows passes every condition.
   r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style>${list("")}`).dir);
   assert.equal(r.status, 0, r.stdout);
   assert.deepEqual(r.result.sweep.issues, []);
-  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "dense, texts stretched"]);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
 });
 
 test("draft 28: a block as narrow as its longest word and a row of chips wrap as drawn; a block of a width of its own and a chip's own text wrap with room", browser, () => {
@@ -1898,13 +1899,12 @@ test("draft 28: a block as narrow as its longest word and a row of chips wrap as
     const issues = run(html);
     assert.ok(room(issues, "DDR3 ECC"), `${html}: ${JSON.stringify(issues)}`);
   }
-  // Badges, each a box with its own background, wrap onto rows; the same words without their boxes wrap with room, and
-  // so does a chip's own text.
+  // Badges wrap onto rows: the items of a flex row are held one by one (draft 28.2), with their boxes or without, and a
+  // chip's own text still wraps with room.
   const row = (chip, third = `<span class="${chip}">IPMI</span>`) => `<div style="display:flex;flex-wrap:wrap;gap:4px;width:100px"><span class="${chip}">New</span><span class="${chip}">Hot swap</span>${third}</div>`;
   assert.deepEqual(run(row("chip")), []);
-  let issues = run(row(""));
-  assert.ok(room(issues, "New Hot swap IPMI"), JSON.stringify(issues));
-  issues = run(row("chip", '<span class="chip" style="max-width:80px">Hot swap bays</span>'));
+  assert.deepEqual(run(row("")), []);
+  let issues = run(row("chip", '<span class="chip" style="max-width:80px">Hot swap bays</span>'));
   assert.ok(room(issues, "Hot swap bays") && !room(issues, "New Hot swap Hot swap bays"), JSON.stringify(issues));
 });
 
@@ -1913,7 +1913,7 @@ test("draft 28: a layout a script picks from its content chooses again when the 
   // 336. The script stacks them when the row overflows, on a resize, as a card that picks its layout from its content.
   const run = (adapts) => {
     const f = smallFrame();
-    f.write(`<div id="host"><main style="width:auto"><div id="row" style="display:flex;column-gap:12px;white-space:nowrap"><span>Ready</span><span>Steady</span><span>Going</span></div></main></div>
+    f.write(`<div id="host"><main style="width:auto"><div id="row" style="display:flex;column-gap:12px"><span style="flex:none">Ready</span><span style="flex:none">Steady</span><span style="flex:none">Going</span></div></main></div>
 ${adapts ? `<script>const row = document.getElementById("row");
 const lay = () => { row.style.flexDirection = "row"; if (row.scrollWidth > row.clientWidth + 1) row.style.flexDirection = "column"; };
 new ResizeObserver(lay).observe(row); lay();</script>` : ""}`);
@@ -1924,7 +1924,262 @@ new ResizeObserver(lay).observe(row); lay();</script>` : ""}`);
     return check(f.dir).result.sweep.issues;
   };
   const adapts = run(true);
-  assert.deepEqual(adapts.filter((i) => i.status === "fail"), [], JSON.stringify(adapts));
+  assert.deepEqual(adapts.filter((i) => ["fail", "candidate"].includes(i.status)), [], JSON.stringify(adapts));
   const fixed = run(false);
-  assert.ok(fixed.some((i) => i.property === "outside" && i.story === "the frames' page, texts stretched" && i.status === "fail"), JSON.stringify(fixed));
+  assert.ok(fixed.some((i) => i.property === "outside" && i.story === "the frames' page, texts stretched" && i.status === "candidate"), JSON.stringify(fixed));
+});
+
+// ------------------------------------------------------------------ draft 28.2, measurement: the critic's and the review's cases
+
+// Three 10 px pieces in a row, as the design draws them and as the page puts them.
+const row3 = (to, source) => compareFrame({ frame: "f",
+  spec: { frame: { width: 100, height: 20 }, ...(source ? { source } : {}), landmarks: ["a", "b", "c"].map((text, i) => ({ text, box: box([0, 30, 48][i], 0, 10, 20) })) },
+  measured: { root: { width: 100, height: 20 }, landmarks: to.map((x) => ({ found: true, box: box(x, 0, 10, 20), align: "left" })) } });
+
+test("draft 28.2: a gap that closes up is a finding though each offset alone is a drift; a gap kept while everything moves is not", () => {
+  // x 0, 30, 48 move to 10, 49, 60: each step is within the band, but the 8 px gap before "c" closes to 1.
+  for (const source of [undefined, "image boxes", "page snapshot"]) {
+    const collapsed = row3([10, 49, 60], source);
+    assert.equal(collapsed.verdict, "fail", `${source}: ${JSON.stringify(collapsed.issues)}`);
+    assert.ok(collapsed.issues.some((i) => i.gap && i.landmark === "c" && i.status === "fail" && /nearly touch/.test(i.actual)), JSON.stringify(collapsed.issues));
+    const kept = row3([10, 40, 58], source);
+    assert.equal(kept.verdict, "pass", `${source}: ${JSON.stringify(kept.issues)}`);
+  }
+});
+
+// Six texts of a screenshot's spec, each with its ink height in the design and the page.
+const inked = (heights, joined = []) => {
+  const texts = ["Server", "32 cores", "128 GB", "2 × 838", "Frankfurt", "1 234 € / month"];
+  const spec = { frame: { width: 420, height: 120 }, source: "image boxes",
+    landmarks: texts.map((text, i) => ({ text, box: box(16, 12 + i * 16, 60, 10), ...(joined.includes(text) ? { joined: true } : {}) })) };
+  const measured = { root: { width: 420, height: 120 }, landmarks: texts.map((text, i) => ({ found: true, box: box(16, 12 + i * 16, 60, heights[text] ?? 10), align: "left" })) };
+  return compareFrame({ frame: "f", spec, measured });
+};
+
+test("draft 28.2: one text a fifth or more off its drawn ink height is a type finding, beside the frame's mean; a box joined to an icon is not", () => {
+  const price = inked({ "1 234 € / month": 12.5 });
+  assert.ok(price.type && Math.abs(price.type.ratio - 1) < 0.1, "the frame's mean holds");
+  const type = price.issues.filter((i) => i.property === "type");
+  assert.deepEqual(type.map((i) => [i.landmark, i.status, i.delta]), [["1 234 € / month", "fail", 25]], JSON.stringify(price.issues));
+  assert.match(type[0].actual, /^25 % larger than drawn, by its ink height: a size of another class; set the size the frame draws$/);
+  assert.deepEqual(inked({ "1 234 € / month": 11.5 }).issues.filter((i) => i.property === "type"), [], "15 % is another font's");
+  assert.deepEqual(inked({ Frankfurt: 7.5 }, ["Frankfurt"]).issues.filter((i) => i.property === "type"), [], "a box given with an icon in it");
+  // The frame's own finding names no token to propose.
+  const small = inked(Object.fromEntries(["Server", "32 cores", "128 GB", "2 × 838", "Frankfurt", "1 234 € / month"].map((t) => [t, 8.5])));
+  assert.ok(small.issues.some((i) => i.landmark === "the type" && /smaller than drawn/.test(i.actual) && !/token|propose/.test(i.actual)), JSON.stringify(small.issues));
+});
+
+test("draft 28.2: a spec with no font sizes says the type's size was not compared; the design context gives them by node id", () => {
+  const spec = specFromMetadata(RELATIVE);
+  const measuredHere = { root: { width: 280, height: 200 }, landmarks: spec.landmarks.map((l) => ({ found: true, box: l.box, align: "left", font: { size: 14 } })) };
+  const r = compareFrame({ frame: "card", spec, measured: measuredHere });
+  assert.equal(r.typeUnchecked, true);
+  assert.match(renderSummary({ frames: [r] }), /type sizes not compared: the spec gives no font sizes/);
+  assert.match(renderHandoff({ frames: [r], status: "pass" }), /^- type sizes in card: the spec gives no font sizes$/m);
+  assert.equal(compareFrame({ frame: "card", spec: specFromRest(REST), measured: { root: { width: 280, height: 200 }, landmarks: [] } }).typeUnchecked, undefined);
+  // Figma's code: the size on the layer, the line height on its paragraph; or both on one element; or the size inherited.
+  const code = `<div data-node-id="1:1" className="text-[16px]">
+  <div className="font-['Inter'] leading-[0] text-[#1f2329] text-[13px]" data-node-id="1:2"><p className="leading-[18px]">SKU & code</p></div>
+  <p className="text-[22px] leading-[28px] font-bold" data-node-id="1:6">1 499 €</p>
+  <p data-node-id="1:8">New</p>
+</div>`;
+  const fonts = new Map();
+  contextTexts(code, fonts);
+  assert.deepEqual(Object.fromEntries(fonts), { "1:2": { size: 13, lineHeight: 18 }, "1:6": { size: 22, lineHeight: 28 }, "1:8": { size: 16 }, "1:1": { size: 16, lineHeight: 18 } });
+  const joined = joinContext(spec, code).spec;
+  assert.deepEqual(joined.landmarks.map((l) => [l.text, l.font]), [["SKU & code", { size: 13, lineHeight: 18 }], ["New", undefined], ["1 499 €", { size: 22, lineHeight: 28 }], ["New", { size: 16 }]]);
+  assert.equal(compareFrame({ frame: "card", spec: joined, measured: measuredHere }).typeUnchecked, undefined);
+});
+
+test("draft 28.2: a ledger entry's category is optional, and checked when given", () => {
+  assert.deepEqual(ledgerFaults([{ landmark: "New", property: "y", status: "proposed", reason: "the frame's spacing is off the scale" }]), []);
+  assert.match(ledgerFaults([{ landmark: "New", property: "y", category: "taste", status: "proposed", reason: "x" }]).join(), /category, when given, is one of/);
+});
+
+test("draft 28.2: a generated condition's collision is a candidate: no finding, no score, shown in the console and the evidence until answered", () => {
+  const sweep = { from: 300, to: 300, step: 8, pass: true, switches: [], stories: [], score: 0, generate: true, issues: [
+    { landmark: "Ready Re × Go G", property: "overlap", status: "candidate", story: "the frames' page, texts stretched", ranges: "300", actual: "12 × 24 px" },
+    { landmark: "One", property: "clipped", status: "candidate", story: "the frames' page, entries doubled", ranges: "300", actual: "24 px cut off vertically", answer: "two entries at most (the contract)" },
+  ] };
+  const summary = renderSummary({ frames: [], sweep });
+  assert.match(summary, /1 candidate from the generated conditions, unanswered: overlap “Ready Re × Go G” \(the frames' page, texts stretched, 300\)/);
+  const handoff = renderHandoff({ frames: [], sweep, status: "incomplete" });
+  assert.match(handoff, /^- unanswered: Ready Re × Go G \(the frames' page, texts stretched\) overlap: 12 × 24 px at 300$/m);
+  assert.match(handoff, /^- answered: One .* — two entries at most \(the contract\)$/m);
+  assert.doesNotMatch(renderHandoff({ frames: [], sweep: { ...sweep, issues: [], generate: false }, status: "pass" }), /fragile/);
+  assert.match(renderHandoff({ frames: [], sweep: { ...sweep, issues: [], generate: false }, status: "pass" }), /^- the generated conditions \(sweep\.generate is false\)/m);
+});
+
+test("draft 28.2: a finding the check itself causes is proposed with cause checker, a journey too, and the evidence lists it as disputed with the check", () => {
+  const entry = { landmark: "the sheet", property: "journey", cause: "checker", status: "proposed", reason: "the check's own style keeps the sheet from closing: review.md, Checker reproduction" };
+  assert.deepEqual(ledgerFaults([entry]), []);
+  assert.match(ledgerFaults([{ ...entry, cause: "font" }]).join(), /"cause", when given, is "checker"/);
+  assert.match(ledgerFaults([{ ...entry, cause: undefined }]).join(), /a journey entry disputes a journey the check itself breaks/);
+  const handoff = renderHandoff({ frames: [], journeys: [{ name: "the sheet", pass: false, failed: "step 4", status: "pending", entries: [0] }], ledger: [entry], status: "pending" });
+  assert.match(handoff, /^## Disputed with the check$/m);
+  assert.match(handoff, /^- proposed: the sheet journey — the check's own style .* \(matches the sheet\)$/m);
+  assert.match(handoff, /^- the sheet: disputed with the check \(pending\), fails at step 4$/m);
+  assert.match(handoff, /^- proposed: the sheet journey — .* \(awaits your decision on 1\)$/m);
+});
+
+// A story page of its own in a small frame's pack, swept at 300 px: what "wraps with room" says of it.
+function roomCase() {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  return (html, main = "padding:8px") => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{${main}}</style><main>${html}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, generate: false, stories: [{ name: "w", url: "w.html" }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.kind === "wraps with room");
+  };
+}
+const capped = (cap) => `<div style="max-width:${cap}px"><span style="white-space:nowrap">12 345 ₽</span> <span style="white-space:nowrap">/ месяц</span></div>`;
+
+test("draft 28.2: wraps with room holds each flex item on its own, counts a group of digits as one word, and reads a line whose context is the root", browser, () => {
+  const run = roomCase();
+  const says = (issues, text) => issues.some((i) => i.landmark === text && i.status === "fail");
+  // A title and a price capped at 90 px, flex items of one row: the price on its own wraps with room.
+  let issues = run(`<div style="display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0">Server BA-i201</div>${capped(90)}</div>`);
+  assert.ok(says(issues, "12 345 ₽ / месяц"), JSON.stringify(issues));
+  // "1 234 567 890,00 ₽ / месяц" is four words, not seven.
+  issues = run('<div style="display:grid;grid-template-columns:1fr auto;gap:8px"><div>Server</div><div style="max-width:150px"><span style="white-space:nowrap">1 234 567 890,00 ₽</span> <span style="white-space:nowrap">/ месяц</span></div></div>');
+  assert.ok(says(issues, "1 234 567 890,00 ₽ / месяц"), JSON.stringify(issues));
+  // The root itself a flex row of a title and a capped price; a capped inline block straight in the root.
+  issues = run(`<b>Server</b><span style="max-width:90px">12 345 ₽ / месяц</span>`, "padding:8px;display:flex;gap:8px");
+  assert.ok(says(issues, "12 345 ₽ / месяц"), JSON.stringify(issues));
+  issues = run('<span style="display:inline-block;max-width:90px">12 345 ₽ / месяц</span>');
+  assert.ok(says(issues, "12 345 ₽ / месяц"), JSON.stringify(issues));
+});
+
+test("draft 28.2: wraps with room needs the text on one line once lifted, inside the content box, clear of icons and controls", browser, () => {
+  const run = roomCase();
+  // A line break, and an item a flex row puts on its own row, stay where they are drawn.
+  assert.deepEqual(run('<div><span style="font-weight:700">1 499 €</span><br><span>In stock</span></div>'), []);
+  assert.deepEqual(run('<div style="display:flex;flex-wrap:wrap;column-gap:8px;align-items:baseline"><span style="font-weight:700">1 499 €</span><span style="flex-basis:100%">In stock: 12</span></div>'), []);
+  // A title beside its icon: on one line it pushes the icon out of a card of 200 px.
+  assert.deepEqual(run('<div style="display:grid;grid-template-columns:1fr 24px;gap:8px;align-items:start"><h3 style="margin:0;font-size:16px">Dedicated server BA-i201</h3><svg width="24" height="24"><circle cx="12" cy="12" r="10"/></svg></div>', "padding:8px;width:200px;box-sizing:border-box"), []);
+  // 182 px of title in a card of 196 with 8 px of padding: inside the border, past the content box.
+  assert.deepEqual(run('<h3 style="margin:0;font-size:16px;max-width:150px">Dedicated server BA-i201</h3>', "padding:8px;width:196px;box-sizing:border-box"), []);
+  // On one line it would run under an icon placed beside it, or push a button out of the card.
+  assert.deepEqual(run('<div style="position:relative"><div style="max-width:100px">Dedicated server BA-i201</div><svg style="position:absolute;left:140px;top:0" width="20" height="18"><rect width="20" height="18"/></svg></div>'), []);
+  assert.deepEqual(run('<div style="display:grid;grid-template-columns:minmax(0,max-content) auto;gap:8px"><div style="max-width:120px">Dedicated server with eight drives</div><button style="white-space:nowrap">Order now</button></div>'), []);
+  // With nothing in the way, the same title wraps with room.
+  assert.ok(run('<div style="max-width:100px">Dedicated server BA-i201</div>').some((i) => i.landmark === "Dedicated server BA-i201"));
+});
+
+test("draft 28.2: journeys keep the page's transitions: a sheet that hides itself when its closing transition ends closes; one that never closes fails", browser, () => {
+  let f;
+  const run = (closes, ledger = []) => {
+    f = smallFrame(`<button id="open" aria-expanded="false" aria-controls="sheet">Menu</button><div id="sheet" hidden style="position:fixed;left:0;right:0;bottom:0;height:120px;background:#eee;transition:transform .3s"><button id="close">Close</button></div>
+<script>const sheet = document.getElementById("sheet"), open = document.getElementById("open");
+open.onclick = () => { sheet.hidden = false; sheet.style.transform = "none"; open.setAttribute("aria-expanded", "true"); };
+document.getElementById("close").onclick = () => { ${closes ? 'sheet.addEventListener("transitionend", () => { sheet.hidden = true; open.setAttribute("aria-expanded", "false"); }, { once: true }); sheet.style.transform = "translateY(100%)";' : ""} };</script>`);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "the sheet", steps: [{ click: "#open" }, { visible: "#sheet" }, { click: "#close" }, { hidden: "#sheet" }] }] }));
+    fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify(ledger));
+    return check(f.dir);
+  };
+  const closing = run(true).result.journeys;
+  assert.ok(closing.length && closing.every((j) => j.pass), JSON.stringify(closing));
+  let r = run(false);
+  assert.ok(r.result.journeys.some((j) => j.name === "the sheet" && !j.pass && /#sheet is still visible/.test(j.failed)), JSON.stringify(r.result.journeys));
+  assert.equal(r.status, 1);
+  // Shown by a reproduction to be the check's own doing, it is proposed with cause checker: pending, not failed.
+  r = run(false, [{ landmark: "the sheet", property: "journey", cause: "checker", status: "proposed", reason: "reproduced in review.md: the check's own style keeps the sheet open" }]);
+  assert.ok(r.result.journeys.some((j) => j.name === "the sheet" && j.status === "pending"), JSON.stringify(r.result.journeys));
+  assert.notEqual(r.status, 1, r.stdout);
+  assert.match(r.stdout, /journey disputed with the check \(pending\): the sheet/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^## Disputed with the check\n\n- proposed: the sheet journey — reproduced in review\.md/m);
+});
+
+test("draft 28.2: the generated conditions double a list's rows, nested ones too, not buttons side by side; stretch the frames' page only; a text set not to wrap is no cut; each collision is a candidate until review.md answers it", browser, () => {
+  // Buttons side by side are not a list: doubled, they would run out of the card.
+  let r = check(smallFrame('<div style="display:flex;gap:8px"><button class="btn" style="white-space:nowrap">Configure</button><button class="btn" style="white-space:nowrap">Order</button></div>').dir);
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.story === "the frames' page, entries doubled"), [], JSON.stringify(r.result.sweep.issues));
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
+  // Rows of a list, each with its disks in a box of two lines: doubled, each row's disks are doubled too, and cut.
+  const disks = '<div style="height:48px;overflow:hidden"><div class="disk">A</div><div class="disk">B</div></div>';
+  r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style><div class="row">${disks}</div><div class="row">${disks}</div>`).dir);
+  assert.ok(r.result.sweep.issues.some((i) => i.property === "clipped" && i.story === "the frames' page, entries doubled" && i.status === "candidate"), JSON.stringify(r.result.sweep.issues));
+  // Under longer texts, a text that may not wrap runs out by design; one that cannot shrink is a candidate, not a finding.
+  const f = smallFrame('<div style="display:flex"><span style="flex:none">Ready steady go now</span></div><div style="white-space:nowrap">Alpha beta gamma go</div>');
+  r = check(f.dir);
+  const cand = r.result.sweep.issues.filter((i) => i.status === "candidate");
+  assert.ok(cand.some((i) => i.property === "outside" && /^Ready steady go now/.test(i.landmark)), JSON.stringify(r.result.sweep.issues));
+  assert.ok(!r.result.sweep.issues.some((i) => /^Alpha/.test(i.landmark)), JSON.stringify(r.result.sweep.issues));
+  assert.equal(r.status, 2, `an unanswered candidate leaves the check incomplete: ${r.stdout}`);
+  assert.equal(r.result.sweep.score, 0);
+  assert.match(r.stdout, /candidates? from the generated conditions, unanswered: outside “Ready steady go now/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- unanswered: Ready steady go now/m);
+  // Answered in review.md by the contract's bound, it no longer holds the check.
+  fs.appendFileSync(path.join(f.dir, "review.md"), `\n## Candidates\n\n- ${cand[0].landmark}: the label is 19 characters at most (the contract's type)\n`);
+  r = check(f.dir);
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- answered: Ready steady go now.* — the label is 19 characters at most/m);
+  // Without the generated conditions, the evidence says they were not checked.
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, generate: false } }));
+  check(f.dir);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- the generated conditions \(sweep\.generate is false\)/m);
+});
+
+test("draft 28.2: with no ledger named, deviations.json beside design.json is the ledger", browser, () => {
+  const f = smallFrame('<span style="margin-left:30px">Ready</span>');
+  const { ledger, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  assert.equal(ledger, "ledger.json");
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  f.write('<main><span style="margin-left:60px">Ready</span></main>');
+  fs.writeFileSync(path.join(f.dir, "deviations.json"), JSON.stringify([{ landmark: "Ready", property: "x", status: "accepted", decidedBy: "owner", reason: "more air before the label" }]));
+  const r = check(f.dir, "--frame", "frame");
+  assert.deepEqual(r.result.frames[0].issues.map((i) => [i.landmark, i.property, i.status]), [["Ready", "x", "accepted"]], r.stdout);
+});
+
+test("draft 28.2: a journey with sameAsFresh ends as a fresh load draws the component; an observer left on removed elements does not", browser, () => {
+  // A row that stacks below 400 px by a ResizeObserver; emptied and restored, it is observed again, or not.
+  const run = (rewatch) => {
+    const f = smallFrame(`<div id="host"></div><button id="toggle">Toggle</button>
+<style>.row{display:flex;gap:8px}.row[data-mode=stack]{flex-direction:column}</style>
+<script>const host = document.getElementById("host"); let shown = true;
+const render = () => { host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
+const watch = () => { const row = host.querySelector(".row"); if (row) new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row); };
+render(); watch();
+document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${rewatch ? "watch();" : ""} };</script>`);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "emptied and restored", sameAsFresh: true, steps: [{ click: "#toggle" }, { visible: "main p" }, { click: "#toggle" }, { visible: ".row" }] }] }));
+    return check(f.dir).result.journeys.filter((j) => j.name === "emptied and restored");
+  };
+  const kept = run(true);
+  assert.ok(kept.length === 1 && kept[0].pass, JSON.stringify(kept));
+  const stale = run(false);
+  assert.ok(!stale[0].pass && /^after its steps, the component differs from a fresh load at 300 px: .*height/.test(stale[0].failed), JSON.stringify(stale));
+});
+
+test("draft 28.2: the console is a digest of fifteen lines at most: what changed since the round before, each frame's new findings first, the rest as a count", () => {
+  const r = compare({ New: { dy: 30 } }, { height: 230 });
+  const frames = Array.from({ length: 20 }, (_, i) => ({ ...r, frame: `f${i}` }));
+  const digest = renderSummary({ frames, gaps: ["one", "two"], round: 2 }, { file: "out/report.md" }).split("\n");
+  assert.ok(digest.length <= 15, digest.join("\n"));
+  assert.match(digest.at(-2), /^… \d+ more lines in out\/report\.md$/);
+  assert.equal(digest.at(-1), "Full tables: out/report.md");
+  // Against the round before: what was fixed and what is new; a finding seen before is counted, not listed.
+  const before = { round: 1, score: 50, findings: ["f\u0000root\u0000height", "f\u0000Title\u0000y"] };
+  const one = renderSummary({ frames: [r], round: 2, previous: before });
+  assert.match(one, /^Since round 1: 1 fixed \(f: Title y\), 1 new \(f: New y\), 1 unchanged\.$/m);
+  assert.match(one, /^f: fail, 2 findings; start here: between “SKU” and “New” vertically \+30 px; New y: 42 → 72 \(\+30\); 1 unchanged;/m);
+});
+
+test("draft 28.2: a first finding that stays first over two complete rounds stops the loop, though the score falls", browser, () => {
+  // "Ready" stays 40, 30 and 20 px off: each round has a new lowest score, and the same first finding.
+  const f = smallFrame('<span style="position:absolute;left:0;top:0">Ready</span><span style="position:absolute;left:0;top:40px">Go</span>');
+  const round = (ready, go) => { f.write(`<main><span style="position:absolute;left:${ready}px;top:0">Ready</span><span style="position:absolute;left:${go}px;top:40px">Go</span></main>`); return check(f.dir); };
+  round(40, 0);
+  const second = round(30, 14);
+  assert.match(second.stdout, /^Since round 1: 0 fixed, 1 new \(frame: Go x\), \d+ unchanged\.$/m);
+  assert.doesNotMatch(second.stdout, /stop re-running/);
+  const third = round(20, 0);
+  assert.match(third.stdout, /^Since round 2: 1 fixed \(frame: Go x\), 0 new, \d+ unchanged\.$/m);
+  assert.match(third.stdout, /^Verdict: fail — stop re-running: fix it, propose it with a reason, or report the check as blocked$/m);
+  assert.ok(third.stdout.trimEnd().split("\n").length <= 15, third.stdout);
+  const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(history.map((h) => h.first), ["frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x"]);
+  assert.ok(history[1].score < history[0].score && history[2].score < history[1].score, `each round a new lowest: ${history.map((h) => h.score)}`);
 });

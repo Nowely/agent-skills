@@ -27,7 +27,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, inkRuns, joinContext, tightBox, uncovered, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  compareFrame, findingKeys, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -83,7 +83,8 @@ function loadConfig(file) {
     throw new Error('design.json: each sweep line needs a name and at least two pieces: selectors, or { "selector": "…", "wraps": true } for a piece that may take several lines');
   if (new Set(lines.map((l) => l.name)).size !== lines.length) throw new Error("design.json: sweep line names must be unique");
   return {
-    ...cfg, dir, returnsFile: returns, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
+    // The ledger is deviations.json beside design.json unless it names another.
+    ...cfg, dir, returnsFile: returns, url: url(cfg.url), ledger: at(cfg.ledger ?? "deviations.json"), tolerance: cfg.tolerance ?? 1,
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
     ...(cfg.sweep ? { sweep: { ...cfg.sweep, stories: stories.map((st) => ({ ...st, url: url(st.url) })) } } : {}),
     frames: cfg.frames.map((f) => {
@@ -108,7 +109,16 @@ async function chromium() {
 }
 
 // Animations end at once instead of not running: content that fades in is captured as it ends, not stuck at opacity 0.
+// Frames and the sweep only: a journey keeps the page's transitions, since a control may finish its work on one (a sheet
+// that hides itself when its closing transition ends).
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
+// What runs is brought to its end before a journey looks: its end events fire, as they would a moment later.
+const finishMotion = (page) => page.evaluate(async () => {
+  for (const a of document.getAnimations()) {
+    try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
+  }
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}).catch(() => {});
 
 // The component's root: the first match the user can see, opacity included; open() marks it, so the picture and the
 // measurements come from the same element. A popover kept hidden in the page is not the one open.
@@ -245,7 +255,7 @@ function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale 
 }
 
 async function open(browser, cfg, target) {
-  const { url, width, setup = [], height = 900 } = target;
+  const { url, width, setup = [], height = 900, still = true } = target;
   const context = await browser.newContext(contextOptions(cfg, target));
   const page = await context.newPage();
   // A step on something that never appears fails in seconds, not in Playwright's default half minute.
@@ -253,7 +263,7 @@ async function open(browser, cfg, target) {
   await page.goto(url, { waitUntil: "load", timeout: 30000 });
   // The pointer rests outside the page, so nothing is measured hovered.
   await page.mouse.move(-5, -5);
-  await page.addStyleTag({ content: STILL });
+  if (still) await page.addStyleTag({ content: STILL });
   if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
   try {
     for (const step of setup) await runStep(page, step);
@@ -518,6 +528,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
 
   // probe
   const label = (s) => { const t = norm(s); return t.length > 40 ? `${t.slice(0, 39)}…` : t; };
+  // A text set not to wrap: under texts stretched past any legal value it runs out by design, not by a fault.
+  const unwrapped = (el) => { const cs = getComputedStyle(el); return cs.textWrapMode === "nowrap" || /^(nowrap|pre)$/.test(cs.whiteSpace); };
   const issues = [];
   const de = document.documentElement;
   if (de.scrollWidth > de.clientWidth + 1) issues.push({ landmark: "document", property: "overflow", delta: de.scrollWidth - de.clientWidth, actual: `${de.scrollWidth - de.clientWidth} px wider than the viewport` });
@@ -537,7 +549,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const clipX = /hidden|clip/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
     const clipY = /hidden|clip/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
     const cut = Math.max(clipX ? el.scrollWidth - el.clientWidth : 0, clipY ? el.scrollHeight - el.clientHeight : 0);
-    if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", delta: cut, actual: `${cut} px cut off ${clipX ? "horizontally" : "vertically"}` });
+    if (clipX || clipY) issues.push({ landmark: label(el.textContent), property: "clipped", delta: cut, actual: `${cut} px cut off ${clipX ? "horizontally" : "vertically"}`, ...(unwrapped(el) ? { nowrap: true } : {}) });
   }
   const nodes = await textNodes();
   // What of each line is painted: cut to every box that clips it, so a truncated or scrolled text is measured as shown.
@@ -554,7 +566,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   const lines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((b) => ({ node: n, b: painted(n.parentElement, b) })).filter((l) => l.b));
   for (const { node, b } of lines) {
     const out = Math.max(rr.left - b.left, b.right - rr.right, b.bottom - rr.bottom, rr.top - b.top);
-    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: out, actual: `${Math.round(out)} px outside the root` });
+    if (out > 1) issues.push({ landmark: label(node.data), property: "outside", delta: out, actual: `${Math.round(out)} px outside the root`, ...(unwrapped(node.parentElement) ? { nowrap: true } : {}) });
   }
   for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
     const a = lines[i], b = lines[j];
@@ -605,24 +617,18 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       else if ((a === "×" && number(t)) || (t === "×" && number(a))) say(from, `“×” split from its numbers: “${a}” | “${t}”: keep them on one line`);
     });
   }
-  // A short text that wraps though the component could hold it: its line's own limits lifted and set on one line, it
-  // fits the component and runs into no other text. A price and its period, a value and its unit, a label: whatever
-  // wraps with room. A clamp or an ellipsis is a choice, not a wrap. So are two wraps a design draws: a block as narrow
-  // as its own longest word (width: min-content) stacks its words on purpose, and a row of chips (each word in a box
-  // with a background or a border of its own) wraps between them, though each chip's own text is still held to this.
+  // A short text that wraps though the component could hold it: its line's own limits lifted, it sits on one line,
+  // inside the component's content box, and runs into nothing and pushes nothing out: no other text, icon or control.
+  // A price and its period, a value and its unit, a label: whatever wraps with room. A clamp or an ellipsis is a choice,
+  // not a wrap, and so is a block as narrow as its own longest word (width: min-content), which stacks its words on
+  // purpose. A line that joins several flex items (a title and a price, a row of chips) is held item by item: each
+  // item's text on its own. A group of digits ("1 234 567,00") counts as one word.
   const lift = document.createElement("style");
-  lift.textContent = "[data-dtc-lift], [data-dtc-lift] * { white-space: nowrap !important; } [data-dtc-lift] { max-width: none !important; min-width: max-content !important; flex-shrink: 0 !important; }";
+  lift.textContent = "[data-dtc-lift], [data-dtc-lift] * { white-space: nowrap !important; } [data-dtc-lift] { max-width: none !important; min-width: max-content !important; flex-shrink: 0 !important; } [data-dtc-wrap] { white-space: nowrap !important; }";
   document.head.append(lift);
   const rectsOf = (n) => { const g = document.createRange(); g.selectNodeContents(n); return [...g.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5); };
+  const wordRects = (w) => { const g = document.createRange(); g.setStart(w.node, w.at); g.setEnd(w.node, w.at + w.t.length); return [...g.getClientRects()].filter((x) => x.width > 0.5); };
   const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
-  const clear = (c) => c === "transparent" || /(,|\/)\s*0\)$/.test(c);
-  const boxed = (el) => {
-    const cs = getComputedStyle(el);
-    return cs.backgroundImage !== "none" || !clear(cs.backgroundColor)
-      || ["Top", "Right", "Bottom", "Left"].some((s) => parseFloat(cs[`border${s}Width`]) > 0 && !/none|hidden/.test(cs[`border${s}Style`]) && !clear(cs[`border${s}Color`]));
-  };
-  // A word's chip: the outermost box of its own between the word and its line's context.
-  const chipOf = (node, ctx) => { let chip = null; for (let el = node.parentElement; el && el !== ctx; el = el.parentElement) if (boxed(el)) chip = el; return chip; };
   // Whether a box is as wide as its own min-content width: set to that width, with nothing else holding it, it keeps
   // its width. One narrower than its longest word is capped, not stacked.
   const atMinContent = (el) => {
@@ -644,27 +650,55 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     }
     return false;
   };
-  // A run made of two or more chips is held chip by chip.
-  const held = [];
+  const flexRow = (el) => { const cs = el && getComputedStyle(el); return Boolean(cs && /flex/.test(cs.display) && !cs.flexDirection.startsWith("column")); };
+  // A word's flex item: the outermost item of a flex row between the word and its line's context; a text straight in a
+  // flex row is an item of its own.
+  const itemOf = (node, ctx) => {
+    let item = flexRow(node.parentElement) ? node : null;
+    for (let el = node.parentElement; el && el !== ctx; el = el.parentElement) if (flexRow(el.parentElement)) item = el;
+    return item;
+  };
+  const words = (run) => run.filter((w, k) => !(k && /^\d{3}(?:[.,]\d+)?$/.test(w.t) && /^\d{1,3}$/.test(run[k - 1].t))).length;
+  // The component's content box, where its text belongs.
+  const content = () => {
+    const r = root.getBoundingClientRect(), cs = getComputedStyle(root);
+    const side = (x) => parseFloat(cs[`padding${x}`]) + parseFloat(cs[`border${x}Width`]);
+    return { left: r.left + side("Left"), right: r.right - side("Right"), width: r.width };
+  };
+  const outBy = (rects, box) => Math.max(0, ...rects.map((r) => Math.max(box.left - r.left, r.right - box.right)));
+  const things = [...root.querySelectorAll("svg, img, canvas, video, [role=img], [class*=icon], a[href], button, input, select, textarea, [role=button], [role=link]")]
+    .filter((g) => visible(g) && !g.parentElement?.closest("svg"));
+  const groups = [];
   for (const [ctx, run] of runs) {
-    if (ctx === root) continue;
-    const chips = new Map();
-    for (const w of run) { const c = chipOf(w.node, ctx); chips.set(c, [...(chips.get(c) ?? []), w]); }
-    held.push(...(!chips.has(null) && chips.size >= 2 ? chips : [[ctx, run]]));
+    const items = new Map();
+    for (const w of run) { const it = itemOf(w.node, ctx); items.set(it, [...(items.get(it) ?? []), w]); }
+    if (!items.has(null) && items.size >= 2) for (const [it, list] of items) groups.push({ ctx, el: it.nodeType === 3 ? it.parentElement : it, run: list });
+    else groups.push({ ctx, el: ctx, run });
   }
-  for (const [ctx, run] of held) {
-    if (run.length < 2 || run.length > 6) continue;
+  for (const { ctx, el, run } of groups) {
+    const n = words(run);
+    if (n < 2 || n > 6) continue;
     const tops = run.map((x) => x.rects[0].top), h = Math.min(...run.map((x) => x.rects[0].height));
     if (Math.max(...tops) - Math.min(...tops) <= h / 2) continue;
-    const cs = getComputedStyle(ctx);
-    if ((cs.webkitLineClamp && cs.webkitLineClamp !== "none") || cs.textOverflow === "ellipsis") continue;
-    if (stacked(ctx)) continue;
-    ctx.setAttribute("data-dtc-lift", "");
-    const box = ctx.getBoundingClientRect(), now = root.getBoundingClientRect();
-    const fits = box.left >= now.left - 1 && box.right <= now.right + 1 && now.width <= rr.width + 1;
-    const mine = nodes.filter((n) => ctx.contains(n)).flatMap(rectsOf);
-    const clash = fits && nodes.some((n) => !ctx.contains(n) && visible(n.parentElement) && rectsOf(n).some((a) => mine.some((b) => meets(a, b))));
-    ctx.removeAttribute("data-dtc-lift");
+    if ([ctx, el].some((x) => { const cs = getComputedStyle(x); return (cs.webkitLineClamp && cs.webkitLineClamp !== "none") || cs.textOverflow === "ellipsis"; })) continue;
+    if (stacked(el)) continue;
+    // What it may not run into or push out of the component: every other text, icon, picture and control.
+    const mine = new Set(run.map((w) => w.node));
+    const obstacles = [...nodes.filter((o) => !mine.has(o) && !el.contains(o)).map((o) => () => rectsOf(o)),
+      ...things.filter((g) => !el.contains(g) && !g.contains(el)).map((g) => () => [g.getBoundingClientRect()].filter((r) => r.width > 2 && r.height > 2))];
+    const was = content(), before = obstacles.map((o) => outBy(o(), was));
+    // The root keeps its size: only its own lines are set unwrapped, and every other line keeps how it wraps.
+    const pins = el === root ? [...runs.keys()].filter((c) => c !== root).map((c) => [c, c.getAttribute("style"), getComputedStyle(c).whiteSpace]) : [];
+    for (const [c, , ws] of pins) c.style.setProperty("white-space", ws, "important");
+    el.setAttribute(el === root ? "data-dtc-wrap" : "data-dtc-lift", "");
+    const box = content(), mineNow = run.map(wordRects), all = mineNow.flat();
+    const firsts = mineNow.map((r) => r[0]).filter(Boolean);
+    const oneLine = firsts.length === run.length && all.every((r) => Math.abs(r.top - firsts[0].top) <= Math.min(...firsts.map((x) => x.height)) / 2);
+    const fits = oneLine && box.width <= rr.width + 1 && all.every((r) => r.left >= box.left - 1 && r.right <= box.right + 1);
+    const clash = fits && obstacles.some((o, i) => { const rs = o(); return rs.some((a) => all.some((b) => meets(a, b))) || outBy(rs, box) > before[i] + 1; });
+    el.removeAttribute("data-dtc-lift");
+    el.removeAttribute("data-dtc-wrap");
+    for (const [c, style] of pins) { if (style === null) c.removeAttribute("style"); else c.setAttribute("style", style); }
     if (fits && !clash) {
       const text = run.map((x) => x.t).join(" ");
       issues.push({ landmark: label(text), property: "wrap", kind: "wraps with room", actual: `“${text}” wraps, though on one line it fits the component and runs into nothing: keep it whole (white-space: nowrap on it), and let its block take its width` });
@@ -809,20 +843,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (hits.some(({ i }) => i === 0) || hits.length >= 2) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0].hit)}` });
   }
   scrollTo(sx, sy);
-  // What longer data could break, read from the layout itself: text that takes no space in it (positioned outside the
-  // flow, other than an overlay), and a box whose content already spills out of it without being clipped.
-  const fragile = [];
-  const positioned = (el) => /absolute|fixed/.test(getComputedStyle(el).position);
+  // Constructs, outside overlays: what moves a thing to a drawn place instead of laying it out.
   const overlay = (el) => el.closest('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog, [aria-hidden="true"]');
-  // A positioned label over a box with no text of its own (a badge on an image) has nothing to run into.
-  const overImage = (el) => {
-    const host = el.offsetParent;
-    if (!host || host === root) return false;
-    return ![...host.childNodes].some((n) => n !== el && !n.contains?.(el) && (n.textContent ?? "").trim());
-  };
-  // The text an element lays out itself: positioned descendants take theirs out of its flow.
-  const flowText = (el) => [...el.childNodes].map((n) => n.nodeType === 3 ? n.textContent
-    : n.nodeType === 1 && !positioned(n) ? flowText(n) : "").join("").trim();
   for (const el of root.querySelectorAll("*")) {
     if (!visible(el) || !el.textContent.trim() || overlay(el)) continue;
     const box = el.getBoundingClientRect();
@@ -853,17 +875,10 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (!ofKit && cs.animationName === "none") for (const [how, dx, dy] of [["a transform", tx, ty], ["the translate property", tr[0], tr[1] ?? 0], ["a relative offset", rel[0], rel[1]]]) {
       if (nudge(dx, dy)) issues.push({ landmark: label(el.textContent), property: "construct", kind: "nudge", actual: `${how} moves it ${Math.round(dx)}, ${Math.round(dy)} px: lay it out instead` });
     }
-    let outer = true;
-    for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (positioned(p)) { outer = false; break; }
-    if (outer && positioned(el) && !overImage(el)) fragile.push({ landmark: label(el.textContent), kind: "positioned", actual: "takes no space in the layout, so longer data can run into its neighbours" });
-    const spill = el.scrollHeight - el.clientHeight;
-    if (cs.overflowY === "visible" && el.clientHeight > 0 && spill > 2 && !/inline/.test(cs.display) && flowText(el).length > 1) {
-      fragile.push({ landmark: label(el.textContent), kind: "spills", actual: `its content runs ${spill} px past its own height` });
-    }
   }
   // The longest texts shown: what a story tested, for the owner to see in the evidence.
   const longest = [...new Set(nodes.map((n) => n.data.trim().replace(/\s+/g, " ")))].sort((a, b) => b.length - a.length).slice(0, 4);
-  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile, lineMeasured, lineErrors, longest };
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, lineMeasured, lineErrors, longest };
 }
 
 // Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
@@ -1020,6 +1035,8 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
           else owner.set(n, name);
         }
         const boxes = (l.pieces ?? []).map((n) => byN.get(n)).filter(Boolean);
+        // A box given beside its pieces holds more than its text: an icon joined to its label.
+        if (l.box && l.text) l.joined = true;
         if (!l.box && boxes.length) {
           const x = Math.min(...boxes.map((b) => b.x)), y = Math.min(...boxes.map((b) => b.y));
           l.box = { x, y, width: Math.max(...boxes.map((b) => b.x + b.width)) - x, height: Math.max(...boxes.map((b) => b.y + b.height)) - y };
@@ -1171,18 +1188,19 @@ const STRESS = {
   },
   double: (root) => {
     if (root.dtcDoubled) return 0;
-    // Each parent with its repeated entries: only those are doubled, after the last of them, not their neighbours.
+    // Each parent with its repeated entries: only those are doubled, after the last of them, not their neighbours. Only
+    // rows of a list, each below the one before it: buttons or columns side by side are a layout, not a count that
+    // grows. A set inside an entry is doubled first, so that the entry's copies carry it doubled too.
     const sets = new Map();
     for (const el of root.querySelectorAll("*")) {
       const p = el.parentElement;
       if (!p || sets.has(p) || typeof el.className !== "string" || !el.className.trim()) continue;
       const entries = [...p.children].filter((k) => k.className === el.className);
-      if (p.children.length <= 12 && entries.length >= 2) sets.set(p, entries);
+      if (p.children.length > 12 || entries.length < 2) continue;
+      const boxes = entries.map((k) => k.getBoundingClientRect());
+      if (boxes.every((b, i) => !i || b.top >= boxes[i - 1].bottom - 1)) sets.set(p, entries);
     }
-    for (const [p, entries] of sets) {
-      if ([...sets.keys()].some((q) => q !== p && q.contains(p))) continue;
-      entries.at(-1).after(...entries.map((k) => k.cloneNode(true)));
-    }
+    for (const [, entries] of [...sets].reverse()) entries.at(-1).after(...entries.map((k) => k.cloneNode(true)));
     root.dtcDoubled = true;
     return sets.size;
   },
@@ -1263,19 +1281,22 @@ async function sweep(browser, cfg, ledger) {
     stories.push({ name: story.name, longest: these.find((p) => p.longest)?.longest ?? [], shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   // Conditions the check makes itself, so that no one has to think of them: every text longer by two fifths, every
-  // repeated entry doubled, on the frames' page and every story, at the frames' widths and the sweep's ends. Their texts
-  // are not the product's, so only what collides or is cut counts on them.
+  // list's rows doubled, on the frames' page, at the frames' widths and the sweep's ends. Their texts are not the
+  // product's, so only what collides or is cut counts on them.
   const stressWidths = [...new Set([...frameWidths, from, to, ...(s.switches ?? [])])].filter((w) => w >= from && w <= to).sort((a, b) => b - a);
+  // The stories already carry the longest values the contract allows, so only the frames' page is stretched. What these
+  // conditions find is a candidate, not a finding: legal data reproduces it, or the contract's bound rules it out.
   const generated = s.generate === false ? [] : [
     { name: "the frames' page, texts stretched", url: cfg.url, setup: s.setup, stress: "stretch" },
     { name: "the frames' page, entries doubled", url: cfg.url, setup: s.setup, stress: "double" },
-    ...(s.stories ?? []).map((st) => ({ ...st, name: `${st.name}, texts stretched`, stress: "stretch" })),
   ];
   for (const story of generated) {
     let r;
     try { r = await run(story.url, story.setup, null, story.stress, stressWidths); }
     catch (e) { stories.push({ name: story.name, generated: true, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
-    issues.push(...sweepIssues([...r.probes, r.back], ledger).filter((i) => STRESSED.includes(i.property)).map((i) => ({ ...i, story: story.name })));
+    const counts = (i) => STRESSED.includes(i.property) && !(story.stress === "stretch" && i.nowrap);
+    const these = [...r.probes, r.back].map((p) => ({ ...p, issues: p.issues.filter(counts) }));
+    issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name, ...(i.status === "accepted" ? {} : { status: "candidate" }) })));
     stories.push({ name: story.name, generated: true, shots: [] });
   }
   // The second tier: a construct (a negative margin, a nudge) and a layout switch where the model did not say are notes
@@ -1289,26 +1310,40 @@ async function sweep(browser, cfg, ledger) {
     for (const n of p.lineMeasured ?? []) measuredLines.set(n, measuredLines.get(n) + 1);
     for (const e of p.lineErrors ?? []) lineErrors.add(e);
   }
-  // Fragile constructs, by element and kind, with the widths they were seen at: a forecast, not a verdict.
-  const fragile = new Map();
-  const collect = (list, story) => {
-    for (const p of list) for (const f of p.fragile ?? []) {
-      const k = `${f.kind}\u0000${f.landmark}`;
-      if (!fragile.has(k)) fragile.set(k, { ...f, stories: new Set(), widths: [] });
-      const g = fragile.get(k);
-      g.widths.push(p.width);
-      g.stories.add(story ?? "the frames' page");
-    }
-  };
-  collect([...probes, back]);
-  for (const [i, story] of (s.stories ?? []).entries()) collect(storyProbes[i] ?? [], story.name);
   return {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
     lines: [...measuredLines].map(([name, widths]) => ({ name, widths })), lineErrors: [...lineErrors],
-    fragile: [...fragile.values()].map(({ widths: at, stories: where, ...f }) => ({ ...f, story: [...where].join(", "), ranges: ranges([...new Set(at)]) })),
-    score: issues.filter((i) => !["accepted", "note"].includes(i.status)).length * 10,
+    generate: s.generate !== false,
+    score: issues.filter((i) => !["accepted", "note", "candidate"].includes(i.status)).length * 10,
     unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
   };
+}
+
+// The component's geometry as a person sees it: the root's place on the page, its size and scrolled width, and each
+// visible child's box within it.
+const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
+  const visible = new Function(`return (${seen})`)();
+  const root = [...document.querySelectorAll(sel)].find(visible);
+  if (!root) return null;
+  const r = root.getBoundingClientRect();
+  const kids = [...root.children].filter(visible).map((c) => {
+    const b = c.getBoundingClientRect();
+    return { name: c.className && typeof c.className === "string" ? `.${c.className.trim().split(/\s+/)[0]}` : c.localName, x: b.left - r.left, y: b.top - r.top, width: b.width, height: b.height };
+  });
+  return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height, scrollWidth: root.scrollWidth, kids };
+}, [selector, seenIn.toString()]);
+// What differs between two such geometries, beyond the tolerance.
+function layoutDiff(a, b, tolerance = 1) {
+  if (!a || !b) return [a ? "the fresh load shows no root" : "the root is not shown"];
+  const out = [];
+  const px = (v) => Math.round(v * 10) / 10;
+  for (const k of ["x", "y", "width", "height", "scrollWidth"]) if (Math.abs(a[k] - b[k]) > tolerance) out.push(`the root's ${k} ${px(a[k])} px, fresh ${px(b[k])}`);
+  if (a.kids.length !== b.kids.length) out.push(`${a.kids.length} children shown, fresh ${b.kids.length}`);
+  else a.kids.forEach((c, i) => {
+    const f = b.kids[i], moved = ["x", "y", "width", "height"].filter((k) => Math.abs(c[k] - f[k]) > tolerance);
+    if (moved.length) out.push(`${c.name} ${moved.map((k) => `${k} ${px(c[k])}, fresh ${px(f[k])}`).join(", ")}`);
+  });
+  return out;
 }
 
 // Each journey on its own fresh page, at the widest frame's width unless it names one: its steps in order, the
@@ -1333,7 +1368,7 @@ async function journeys(browser, cfg) {
   for (const { j: base, edge, opener, at } of edged) {
     const j = edge ? { ...base, width: at, name: `${base.name} (at the window's ${edge} edge${at !== (base.width ?? width) ? `, ${at} px` : ""})` } : base;
     let opened, failed, overlaySeen = false, openerDone = false;
-    try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
+    try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch), still: false }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
     if (opened && edge) {
       // Room to scroll at both ends, then the opener against the edge, found as the journey's own steps find it. An
@@ -1393,6 +1428,7 @@ async function journeys(browser, cfg) {
               widths.push(step.width);
               continue;
             }
+            if (EXPECT.includes(action)) await finishMotion(page);
             await runStep(page, step);
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             if (step.visible) {
@@ -1449,6 +1485,20 @@ async function journeys(browser, cfg) {
             }
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
+        // A state the steps went through and back must leave no trace: the component as a fresh load of the same page
+        // draws it at the same width (an observer left on removed elements, a layout not chosen again).
+        if (j.sameAsFresh && !edge && !failed) {
+          const at = widths.at(-1);
+          await finishMotion(page);
+          const after = await layoutOf(page, cfg.root);
+          let fresh;
+          try {
+            fresh = await open(browser, cfg, { url: j.url, width: at, touch: Boolean(j.touch), still: false });
+            const differs = layoutDiff(after, await layoutOf(fresh.page, cfg.root), cfg.tolerance);
+            if (differs.length) failed = `after its steps, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}`;
+          } catch (e) { failed = `a fresh load at ${at} px to compare with: ${e.message.split("\n")[0]}`; }
+          finally { await fresh?.context.close(); }
+        }
       } finally { await opened.context.close(); }
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
@@ -1494,6 +1544,36 @@ function acceptanceRows(cfg) {
   }
   flush();
   return rows;
+}
+
+// The answers to the generated conditions' candidates: list items under a heading that names candidates, each naming a
+// candidate as the check prints it, then after a colon the contract's bound that rules it out or the story that
+// reproduces it.
+function candidateAnswers(cfg) {
+  const file = path.join(cfg.dir, "review.md");
+  if (!fs.existsSync(file)) return [];
+  const out = [];
+  let level = 0;
+  for (const line of fs.readFileSync(file, "utf8").replace(/^(```|~~~)[\s\S]*?^\1[^\n]*$/gm, "").split("\n")) {
+    const h = line.match(/^(#+)\s+(.*)$/);
+    if (h) {
+      if (level && h[1].length <= level) level = 0;
+      if (!level && /candidate|кандидат/i.test(h[2])) level = h[1].length;
+      continue;
+    }
+    const item = level && line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*\S)/);
+    if (item) out.push(item[1]);
+  }
+  return out;
+}
+const plain = (t) => String(t).toLowerCase().replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim();
+function answerCandidates(cfg, sweepResult) {
+  const answers = candidateAnswers(cfg).map((a) => ({ text: plain(a), raw: a }));
+  for (const i of sweepResult?.issues ?? []) {
+    if (i.status !== "candidate") continue;
+    const name = plain(i.landmark), hit = answers.find((a) => a.text.includes(name) && a.text.slice(a.text.indexOf(name) + name.length).replace(/^[^:]*:/, "").trim());
+    if (hit) i.answer = hit.raw.slice(hit.raw.indexOf(":") + 1).trim();
+  }
 }
 
 // A row records a reported outcome. A method that names the checker's sweep also needs that measurement.
@@ -1583,6 +1663,9 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
       if (!closing.includes(t.key)) gaps.push(`the overlay frame ${r.frame} opens “${t.selector}”, and no journey acts on it, sees it open and expects it closed`);
     }
   }
+  // A candidate of the generated conditions stays open until review.md answers it.
+  const open = (sweepResult?.issues ?? []).filter((i) => i.status === "candidate" && !i.answer);
+  if (open.length) gaps.push(`${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story})`).join(", ")}${open.length > 4 ? ", …" : ""}: reproduce each with legal data (a story with a real long value, a supported locale), or name in review.md, under Candidates, the contract's bound that rules it out`);
   // Each past return the owner recorded is a line of the acceptance list.
   if (fs.existsSync(cfg.returnsFile)) {
     const norm = (t) => t.toLowerCase().replace(/\\\|/g, "|").replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim().replace(/[.!?;:,]+$/, "");
@@ -1595,6 +1678,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
 }
 
 async function check(file, flags) {
+  const started = Date.now();
   const cfg = loadConfig(file);
   const out = path.resolve(flags.out ?? path.join(cfg.dir, "out"));
   // The evidence a handoff quotes is only ever the last complete check's: any other run removes it first.
@@ -1621,18 +1705,25 @@ async function check(file, flags) {
       }
     }
     const journeyResults = full && !flags.quick ? await journeys(browser, cfg) : [];
+    answerCandidates(cfg, sweepResult);
+    // A journey the builder shows the check itself breaks, proposed with "cause": "checker", waits for the owner.
+    for (const j of journeyResults) {
+      if (j.pass) continue;
+      const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", ledger)).find(Boolean);
+      if (e) Object.assign(j, { status: e.status === "accepted" ? "accepted" : "pending", ledger: e.reason, entries: [ledger.indexOf(e)] });
+    }
     // A complete check (every frame, the sweep) is the evidence for a handoff; --frame, --no-sweep and --quick are partial.
     const complete = full && !flags["no-sweep"] && !flags.quick;
     const rows = acceptanceRows(cfg);
     const acceptance = complete ? rows.map((row) => assessRow(row, sweepResult)) : [];
     const gaps = complete ? acceptanceGaps(cfg, acceptance, sweepResult, results, journeyResults) : [];
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
-    const pending = issues.some((issue) => issue.status === "pending") || acceptance.some((row) => row.status === "pending");
+    const pending = issues.some((issue) => issue.status === "pending") || acceptance.some((row) => row.status === "pending") || journeyResults.some((j) => j.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured?.some((u) => !u.story);
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
-    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass) || acceptance.some((row) => row.status === "fail");
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass && !j.status) || acceptance.some((row) => row.status === "fail");
     const status = failed ? "fail"
       : results.some((r) => r.verdict === "incomplete") || unmeasured || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
         : pending ? "pending" : passed ? "pass" : "fail";
@@ -1647,8 +1738,11 @@ async function check(file, flags) {
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
     const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
       frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full && !flags.quick ? cfg.journeys : null, Boolean(flags.quick)])).digest("hex").slice(0, 12);
-    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, model: layoutModelRows(cfg), status, score };
-    fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
+    // Each round also records what it cost (quick or complete, its duration and what it printed) and what it found, so
+    // that the next round says what changed and sees a first finding that does not move.
+    const keys = findingKeys({ frames: results, sweep: sweepResult, journeys: journeyResults, acceptance });
+    const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, model: layoutModelRows(cfg), status, score, quick: Boolean(flags.quick),
+      findings: [...keys.keys()], first: [...keys.keys()][0] ?? null };
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
     const comparable = history.filter((h) => h.score != null && h.basis === basis);
     const series = score === null ? comparable : [...comparable, record];
@@ -1671,11 +1765,18 @@ async function check(file, flags) {
     // The gallery is the record to hand over: written only by a complete check.
     if (complete) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
-    console.log(renderSummary(data, { file: `${where}/report.md` }));
-    console.log(`Verdict: ${status}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
-    if (status === "fail") console.log("A fail is not a state to hand over in: fix the first cause and check again.");
-    if (complete) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
-    else console.log(`A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`);
+    // Two complete rounds without a new lowest score, or with the same first finding: the verdict itself says to stop.
+    const same = record.first && comparable.length >= 2 && comparable.slice(-2).every((h) => h.first === record.first);
+    const stop = complete && status !== "pass" && (stalled >= 2 || same) ? " — stop re-running: fix it, propose it with a reason, or report the check as blocked" : "";
+    // The console is a digest of fifteen lines at most, the verdict's included.
+    const tail = 2 + (status === "fail" && !stop ? 1 : 0);
+    const printed = [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
+      `Verdict: ${status}${stop}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
+      ...(status === "fail" && !stop ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
+      complete ? `Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`
+        : `A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`].join("\n");
+    fs.appendFileSync(historyFile, `${JSON.stringify({ ...record, seconds: Math.round((Date.now() - started) / 100) / 10, bytes: Buffer.byteLength(`${printed}\n`) })}\n`);
+    console.log(printed);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();
