@@ -5,7 +5,14 @@ reviewer with a prompt written here. This run is the owner's: Terra, in the owne
 own case, judged by the owner. One run is little, so nothing in it should be lost to the environment, and the rule for
 reading it is written before it starts.
 
-The version under test: the skill at `VERSION` (draft 27 or the draft after iteration 4, whichever the PR names last).
+The version under test: the skill at `2437038` (draft 27), frozen for this run.
+
+The owner's rulings so far, which the run is read against:
+
+- a price with its period wider than the card may move "/ месяц" to the next line whole; a break while the card has
+  room is a return;
+- columns drifting about 15 px from the frame, though order and alignment hold, most likely need reworking: the 12 px
+  band on an offset's total stays.
 
 ## 1. Smoke-test the mechanics first (unscored)
 
@@ -37,7 +44,7 @@ In the project, before the run:
 ## 3. Start the run
 
 ```bash
-node plugins/entrust/evals/design-to-code/harness/arm.mjs prepare <project> --skill VERSION
+node plugins/entrust/evals/design-to-code/harness/arm.mjs prepare <project> --skill 2437038
 ```
 
 Put the task's brief, as the owner would give it, in `<project>/.brief.md` before preparing. End it with "Work on

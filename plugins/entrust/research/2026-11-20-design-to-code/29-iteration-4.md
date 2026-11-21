@@ -110,3 +110,16 @@ A fresh critic read the skill, the checker and the records, without my hypothesi
   4. seed the extremes into the start project;
   5. run Terra;
   6. only then generate the conditions from a contract, two tiers of checks, and a one-page builder skill.
+
+## The owner's decisions
+
+Asked after the review, with the reviewer's and the critic's readings before them:
+
+- **Direction: Terra now.** Draft 27 is frozen for Terra, as is. A new draft only for a bug in the mechanics, and the
+  rebuild the critic proposes only after Terra's result.
+- **A price with its period wider than the card itself:** "/ месяц" moving to the next line whole is acceptable, as the
+  last resort. A break while the card has room stays a return. This is what draft 27 checks.
+- **The columns at 764 about 15 px right** (the kit's font and price token, order and alignment kept): "hard to say,
+  the visual differences need looking at, but most likely it needs reworking". The model reviewer accepted this drift;
+  the checker blocked it. On this point the checker is closer to the owner than the model reviewer, so the 12 px band
+  on the total offset stays, and the small fix proposed before (the kit token's drift not blocking) is not made.
