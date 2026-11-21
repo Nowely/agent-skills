@@ -158,6 +158,11 @@ Run the complete check last. Its evidence file, `out/handoff.md`, opens with the
 with a named blocker and the attempt you made. A `fail` is not a state to hand over in: fix the first cause and check
 again.
 
+Where a second agent can be started, run [the review pass](references/review-pass.md) before handing over: an agent
+that did not build the work reads the references, the captures and the findings, never your reasons, and says what
+the owner would return. Fix what it returns, run the complete check again, and say in the handover what you did about
+each of its findings.
+
 Hand over each reference with its final image, labelled by data, width and state. Include comparable before
 images when available. State what the comparison shows, which checks passed, which differences remain, which
 decisions await the owner and which conditions you could not verify.
