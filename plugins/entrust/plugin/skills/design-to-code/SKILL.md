@@ -40,16 +40,19 @@ grid and flex with consistent gaps, and the relations the design shows: what lin
 what grows. A hundred per cent match is not reachable and is not the goal. A moderate, systematic difference the
 system explains (a 16 px token gap where the frame measures 14 and 18, the kit's chip height) is fine: the check
 reports an offset of 12 px or less as a note, not a finding, from Figma or a screenshot. A broken relation is not
-fine: a misaligned column, two neighbours moved apart past the band, a wrong order or format, a piece that moved a
+fine: a misaligned column, a gap closed until two pieces nearly touch, a wrong order or format, a piece that moved a
 row, an overlap.
 
 What belongs together stays together at every width: a price with its period, a value with its unit, an icon with
-its count. Keep each such group on one line (a no-break space, `white-space: nowrap` on the group) and let the groups
-wrap between them: where the longest price does not fit beside its period, "/ месяц" moves to the next line whole. An open popover stays in the window, wherever the component sits: place it with the kit's popover
-or CSS anchor positioning with a fallback, not hand-written offsets.
+its count. Keep each whole group on one line (`white-space: nowrap` on the group, not on its parts), let its block
+take the group's width, and let the groups wrap between them. Only a group wider than the component itself may break,
+before its "/": the last resort, which the check names for the owner. An open popover stays in the window, wherever
+the component sits: place it with the kit's popover or CSS anchor positioning with a fallback, not hand-written
+offsets.
 
 Do not nail things in place without a strong reason: a negative margin, a transform that moves text, text positioned
-out of the flow, a fixed height around content that can grow, a different magic number per mode. They match the frame
+out of the flow, a fixed height or a fixed or maximum width around content that can grow, a different magic number
+per mode. They match the frame
 for the data they were tuned on and break for the next. The check reports a negative margin and a moving transform as
 constructs; a strong reason goes in the ledger for the owner to accept.
 
@@ -59,7 +62,9 @@ You have the code: predict where the layout will break instead of waiting to fin
 [layout model](references/review.md#the-layout-model) for each layout mode:
 
 - **What shares each line,** and the longest legal value of each piece with its source: the data contract or its
-  types, the fixtures, the backend's limits, the owner. The frames are samples, not the limits.
+  types, the fixtures, the backend's limits, the owner. The frames are samples, not the limits. Where nothing bounds
+  a piece ("an amount can be long"), take a value that does not fit its line at the narrowest width, so the fallback
+  shows, and ask the owner for the bound in `review.md`.
 - **The width that line needs:** the pieces' content widths plus gaps and padding, from the kit's sizes and the code,
   then measured once it renders. Below that container width it no longer fits: a critical width.
 - **What happens below it,** following the design's intent: wrap, move to its own row, truncate with the full text
@@ -132,11 +137,12 @@ milestones; batch the fixes a check names before checking again. When two rounds
 
 - **Notes need nothing:** an offset of 12 px or less is a note in the evidence. Pixel residue (a stand-in icon, a
   rendering) may be proposed with its reason.
-- **The rest is fixed:** a gap changed past the band, an offset past it, a text or format, an order, a missing or
-  extra piece, a text wider than the font explains, a wrap that splits what belongs together, a popover outside the
+- **The rest is fixed:** an offset past the band, a gap closed up, a text or format, an order, a missing or extra
+  piece, a text wider than the font explains, a wrap that splits what belongs together, a popover outside the
   window, a construct. Only the design's error, a state it lacks or the owner's call can excuse them.
-- **A kit component drawn another size:** its entry gives the kit's measured size against the drawn one, and the
-  rows around it keep the drawn pitch, so the difference does not add up down the card.
+- **A kit component or type token drawn another size:** one `system` entry for it, with no frame, gives the kit's
+  measured size against the drawn one; the rows around it keep the drawn pitch, so the difference does not add up
+  down the card.
 
 `pending` means owner decisions wait, not differences you stopped on. A font or renderer explains glyphs and their
 sizes, never where something sits or whether it shows. A deviation proposed because the design cannot be built names,

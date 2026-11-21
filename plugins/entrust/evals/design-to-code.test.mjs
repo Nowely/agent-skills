@@ -1618,7 +1618,7 @@ test("v25.1: grey text on a dark card is its own piece, and a flex row in anothe
 
 // ------------------------------------------------------------------ draft 26: notes, gaps, what stays together, the window's edge
 
-test("v26: a moderate offset is a note; two moving apart past the band is a broken relation; free space and a moved piece are not", browser, () => {
+test("v26: a moderate offset is a note, also two of them the other way round; a piece past the band is the finding", browser, () => {
   let r = boxCase(CARD(), CARD({ col: 158 }), 420);
   assert.equal(r.frame.verdict, "pass", r.stdout);
   assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), JSON.stringify(r.frame.notes));
@@ -1626,9 +1626,9 @@ test("v26: a moderate offset is a note; two moving apart past the band is a brok
   // A proposal for it changes nothing: it needs no decision, and holds nothing pending.
   r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
   assert.equal(r.frame.verdict, "pass", r.stdout);
-  // Each 8 px, the other way round: no edge keeps its distance.
+  // Each 8 px, the other way round: two notes (draft 27 dropped the relation rule, which only ever misfired).
   r = boxCase(CARD(), CARD({ sku: 8, col: 158 }), 420);
-  assert.ok(r.frame.issues.some((i) => i.gap && i.status === "fail" && /gap after “BA-i201-B”/.test(i.expected)), r.stdout);
+  assert.equal(r.frame.verdict, "pass", r.stdout);
   // One piece past the band is the finding; the gap it changes is not a second one.
   r = boxCase(CARD(), CARD({ col: 166 }), 420);
   assert.ok(r.frame.issues.some((i) => i.property === "x" && !i.gap && i.landmark === "32 ядер" && i.status === "fail"), r.stdout);
@@ -1639,12 +1639,10 @@ test("v26: a moderate offset is a note; two moving apart past the band is a brok
   // Past the band, a system proposal excuses nothing, and the finding says so.
   r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", category: "system", reason: "the kit's gap token", status: "proposed" }] });
   assert.match(r.stdout, /32 ядер x: .* — past 12 px a system proposal excuses nothing/);
-  // One above the other, each 8 px the other way round: a broken relation too.
+  // One above the other, a gap that closes up is a finding.
   const STACK = (a, b) => `<main style="position:relative;width:420px;height:120px;font:14px/18px sans-serif;color:#111"><div style="position:absolute;left:16px;top:${a}px">Title text</div><div style="position:absolute;left:16px;top:${b}px">Below text</div></main>`;
-  r = boxCase(STACK(12, 52), STACK(4, 60), 420);
-  assert.ok(r.frame.issues.some((i) => i.gap && i.property === "y" && /gap below “Title text”/.test(i.expected)), r.stdout);
-  r = boxCase(STACK(12, 52), STACK(4, 44), 420);
-  assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
+  r = boxCase(STACK(12, 40), STACK(20, 32), 420);
+  assert.ok(r.frame.issues.some((i) => i.gap && i.property === "y" && /nearly touch/.test(i.actual)), r.stdout);
 });
 
 test("v26: a price split from its period, a number from its unit and a word between its letters are wraps", browser, () => {
@@ -1655,7 +1653,7 @@ test("v26: a price split from its period, a number from its unit and a word betw
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
   };
-  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a line ends on “\/”, split from “месяц” below/);
+  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
   assert.match(run('<div style="width:40px">12 345 ГБ</div>').join(), /a number (broken across lines|split from its unit)/);
   assert.match(run('<div style="width:30px;overflow-wrap:anywhere">потока</div>').join(), /a word broken between its letters: “потока”/);
   assert.deepEqual(run('<div style="width:200px">1 234 567,00 ₽ / месяц</div>'), []);
@@ -1665,10 +1663,10 @@ test("v26: a price split from its period, a number from its unit and a word betw
   assert.deepEqual(run('<p style="width:120px;margin:0">4 ядра · 16 ГБ · 512 ГБ</p>'), []);
   assert.match(run('<div style="width:50px">12 345 ₽</div>').join(), /a number split from its unit: “345” \| “₽”/);
   // Across elements and text nodes, as a component renders it: "{amount} ₽ / {period}".
-  assert.match(run('<div style="width:118px"><span>1 234 567,00</span> <span>₽</span> <span>/</span> <span>месяц</span></div>').join(), /a line ends on “\/”, split from “месяц” below/);
-  assert.match(run('<div id="p" style="width:118px"></div><script>document.getElementById("p").append("1 234 567,00 ₽", " / ", "месяц")</script>').join(), /a line ends on “\/”, split from “месяц” below/);
-  // The period moved whole is not a split.
-  assert.deepEqual(run('<div style="width:96px">1 234 567,00 ₽ /&nbsp;месяц</div>'), []);
+  assert.match(run('<div style="width:118px"><span>1 234 567,00</span> <span>₽</span> <span>/</span> <span>месяц</span></div>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
+  assert.match(run('<div id="p" style="width:118px"></div><script>document.getElementById("p").append("1 234 567,00 ₽", " / ", "месяц")</script>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
+  // The period moved whole, while the component could hold the price on one line, is a split too.
+  assert.match(run('<div style="width:96px">1 234 567,00 ₽ /&nbsp;месяц</div>').join(), /a value split from its period: “₽” \| “\/ месяц”, though “1 234 567,00 ₽ \/ месяц” \(\d+ px\) fits the component/);
   assert.match(run('<div style="width:40px">5587 × 4</div>').join(), /“×” split from its numbers/);
   assert.match(run('<div style="width:40px">126,5 m²</div>').join(), /a number split from its unit: “126,5” \| “m²”/);
 });
@@ -1735,6 +1733,10 @@ test("v26.1: prose, dates, breadcrumbs and Chinese labels wrap freely; a word wi
   for (const html of ['<p style="width:120px;margin:0">Founded in 2020 and growing</p>', '<p style="width:110px;margin:0">On November 21, 2026</p>',
     '<p style="width:110px;margin:0">Home / Servers / Dedicated</p>', '<div lang="ja" style="width:5em">専用サーバー構成管理画面</div>']) assert.deepEqual(wraps(run(html)), [], html);
   assert.match(wraps(run('<div style="width:60px;overflow-wrap:anywhere">Serverkonfiguration,</div>')).join(), /a word broken between its letters: “Serverkonfiguration”/);
+  // Wider than the component itself, the period moving whole is the last resort, for the owner to decide.
+  const wide = run('<div style="font-size:24px;line-height:30px">1&nbsp;234&nbsp;567&nbsp;890,00&nbsp;₽ /&nbsp;месяц</div>');
+  assert.deepEqual(wraps(wide), []);
+  assert.ok(wide.fragile.some((x) => x.kind === "last resort" && /the owner decides/.test(x.actual)), JSON.stringify(wide.fragile));
   const fits = run('<div style="width:300px">1 234 ₽ / месяц</div>');
   assert.deepEqual(wraps(fits), []);
   assert.ok(fits.fragile.some((x) => x.kind === "may split" && /a no-break space keeps it/.test(x.actual)), JSON.stringify(fits.fragile));
@@ -1774,4 +1776,16 @@ test("v26.1: --quick with no frame inside the sweep still measures, and a row na
   const row = check(f.dir).result.acceptance.find((r) => /dnese/.test(r.item));
   assert.equal(row.status, "incomplete");
   assert.match(row.reason, /names no configured story \(`dnese`\); the stories are `dense`/);
+});
+
+// ------------------------------------------------------------------ draft 27: what iteration 3's run and review showed
+
+test("v27: the kit's type token may be proposed as system, once for every frame; the evidence lists what each story tested", browser, () => {
+  const token = { landmark: "1 234 €", property: "width", category: "system", status: "proposed", reason: "the kit's t-price: 20 px bold against the drawn 14 px" };
+  const r = boxCase(CARD(), CARD({ price: "font-size:20px;font-weight:700" }), 420, { ledger: [token] });
+  assert.equal(r.frame.issues.find((i) => i.property === "width" && i.landmark === "1 234 €")?.status, "pending", r.stdout);
+  assert.match(ledgerFaults([{ ...token, frame: "frame" }]).join(), /a kit token's size is the same on every frame: give no frame/);
+  const f = smallFrame();
+  check(f.dir);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /- story dense: .*; its longest texts: “Ready”/);
 });

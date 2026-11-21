@@ -32,9 +32,10 @@ The owner's criteria:
 - Return for these classes (one example each; find the class, not only the example):
   - a broken relation: a column that no longer lines up, an order or a row that changed;
   - a text or format that reads differently from its frame: "4 × 5587" where the frame draws "5587 × 4";
-  - a type or component size of another class: a price set larger than the frame's;
-  - what belongs together split apart: a price on one line and its period on the next ("₽ /" | "месяц"), a value and
-    its unit;
+  - a type or component size of another class: a price set larger than the frame's, unless the kit's own price
+    token sets it (one ledger entry for every frame);
+  - what belongs together split apart: a price on one line and its period on the next, on either side of "/", while
+    the card has room for both ("₽ /" | "месяц", "₽" | "/ месяц"); a value and its unit;
   - an overlap, cut or covered text, data silently dropped;
   - an overlay cut by the window: a popover that opens above a card near the page's top and does not flip;
   - an interaction that does not work;

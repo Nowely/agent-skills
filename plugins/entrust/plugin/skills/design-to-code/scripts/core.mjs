@@ -296,6 +296,8 @@ export function ledgerFaults(entries) {
     if (e.category === "owner" && e.status !== "accepted") faults.push(`${at}: "owner" is the owner's own call: an entry of it is accepted, with decidedBy; propose under the cause it has`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
     if (e.category === "platform" && PLATFORM_CANNOT.includes(e.property)) faults.push(`${at}: a platform difference (a font, a renderer) changes glyphs and their sizes, not ${e.property === "*" ? "every property" : e.property}: name the properties it changes, fix the rest, or give their cause`);
+    // The kit's type or component size is the same wherever it is used: one entry for it, on every frame.
+    if (e.category === "system" && e.property === "width" && e.frame !== undefined && e.frame !== "*") faults.push(`${at}: a kit token's size is the same on every frame: give no frame, one entry per token, with its measured size against the drawn one`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     return faults;
@@ -318,7 +320,7 @@ const STRICT = ["presence", "text", "line", "construct", "align", "wrap"];
 const strict = (issue) => issue.strict || STRICT.includes(issue.property) || (["x", "y"].includes(issue.property) && Math.abs(issue.delta ?? 0) > MODERATE);
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
-    && (!strict(issue) || e.status === "accepted" || OWNER_CAUSES.includes(e.category))
+    && (!strict(issue) || e.status === "accepted" || OWNER_CAUSES.includes(e.category) || (issue.strict === "system" && e.category === "system"))
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
       : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
@@ -475,36 +477,20 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     for (const p of texts) {
       // Only wider: a design piece can hold an icon beside its text that the page's text box does not.
       const extra = p.m.box.width / ratio - p.l.box.width;
-      if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text`, { strict: true });
+      if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text (the kit's type token may be proposed as system, once for every frame)`, { strict: "system" });
     }
   }
-  // Two neighbours keep a relation, side by side or one above the other: the gap between them (a flow), their start
-  // edges (fixed tracks), their end edges, their outer edges (free space between two groups) or their centres (a
-  // centred piece in another font). When none of the five holds within the band, two moderate offsets the other way
-  // round are a broken relation, not two notes. A pair with a piece already past the band is left to that piece.
+  // A gap the design sets between two neighbours, side by side or one above the other, that closes up: the pieces
+  // nearly touch, whatever their edges keep. A piece already past the band names its own cause.
   for (const [axis, pos, size, cross, crossSize, word] of [["x", "x", "width", "y", "height", "after"], ["y", "y", "height", "x", "width", "below"]]) {
-    const edges = (b) => [b[pos], b[pos] + b[size], b[pos] + b[size] / 2];
-    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && !i.gap && Math.abs(i.delta ?? 0) > band);
+    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && Math.abs(i.delta ?? 0) > band);
     for (const p of placed) {
       const next = placed.filter((q) => q !== p && q.l.box[pos] >= p.l.box[pos] + p.l.box[size] - 1
         && Math.min(p.l.box[cross] + p.l.box[crossSize], q.l.box[cross] + q.l.box[crossSize]) - Math.max(p.l.box[cross], q.l.box[cross]) >= 0.5 * Math.min(p.l.box[crossSize], q.l.box[crossSize]))
         .sort((a, b) => a.l.box[pos] - b.l.box[pos])[0];
       if (!next || past(p) || past(next)) continue;
-      // A gap the design sets that closes up: the pieces nearly touch, whatever their edges keep.
       const dGap = next.l.box[pos] - (p.l.box[pos] + p.l.box[size]), mGap = next.m.box[pos] - (p.m.box[pos] + p.m.box[size]);
-      if (dGap >= 8 && mGap < Math.min(4, dGap / 2)) {
-        add(next.label, axis, `a ${Math.round(dGap)} px gap ${word} “${p.label}”`, `${Math.round(mGap)} px: they nearly touch; keep the design's gap`, { delta: mGap - dGap, gap: true, strict: true });
-        continue;
-      }
-      // Neither moved on its own: what moved them (the root, a piece before them, a wider text) is its own finding or
-      // excuse. A piece's own step is what the cause chain leaves it after what it follows.
-      const ownStep = (q) => own.get(`${axis}\u0000${q.index}`)?.step ?? 0;
-      if (!over(ownStep(p)) && !over(ownStep(next))) continue;
-      const [ds, de, dc] = edges(p.l.box), [ms, me, mc] = edges(p.m.box), [ds2, de2, dc2] = edges(next.l.box), [ms2, me2, mc2] = edges(next.m.box);
-      const changes = [[de, ds2, me, ms2], [ds, ds2, ms, ms2], [de, de2, me, me2], [ds, de2, ms, me2], [dc, dc2, mc, mc2]].map(([a, b, c, d]) => (d - c) - (b - a));
-      if (changes.every((c) => Math.abs(c) > band)) {
-        add(next.label, axis, `a ${Math.round(ds2 - de)} px gap ${word} “${p.label}”`, `${Math.round(ms2 - me)} px, and neither edge nor centre keeps its distance (if a piece holds an icon beside its text, give the landmark its own box)`, { delta: changes[0], gap: true, strict: true });
-      }
+      if (dGap >= 8 && mGap < Math.min(4, dGap / 2)) add(next.label, axis, `a ${Math.round(dGap)} px gap ${word} “${p.label}”`, `${Math.round(mGap)} px: they nearly touch; keep the design's gap`, { delta: mGap - dGap, gap: true, strict: true });
     }
   }
   // What the design stacks on one left edge (a column's lines, a value under its label) stays on one edge.
@@ -1056,7 +1042,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       out.push(`- predicted switches: ${model.predicted.length ? model.predicted.join(", ") : "none"}; measured layout changes: ${model.measured.length ? model.measured.join(", ") : "none"}`);
     }
     for (const u of sweep.partial ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: fewer than two elements at ${u.ranges} px, measured in the other samples`);
-    for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}`);
+    for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}${st.longest?.length ? `; its longest texts: ${st.longest.map((t) => `“${t}”`).join(", ")}` : ""}`);
   }
   out.push("", "## Journeys", "");
   if (!journeys.length) out.push("- none defined");

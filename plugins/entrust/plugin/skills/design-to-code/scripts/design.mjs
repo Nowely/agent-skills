@@ -587,8 +587,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     for (const m of node.data.matchAll(/\S+/g)) {
       const r = document.createRange(); r.setStart(node, m.index); r.setEnd(node, m.index + m[0].length);
       const rects = [...r.getClientRects()].filter((x) => x.width > 0.5);
-      // What follows the token in its own text: a breakable space, or the text ends there.
-      if (rects.length) run.push({ t: m[0], node, rects, space: /^[ \t\n]/.test(node.data.slice(m.index + m[0].length)) });
+      if (rects.length) run.push({ t: m[0], node, rects, at: m.index });
     }
   }
   const keepTogether = [];
@@ -606,15 +605,33 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       const { t: a, node: from, rects: before } = run[k - 1], prev = before.at(-1), next = rects[0];
       const pair = [run[k - 2]?.t, a, t];
       // A short text (a price, a value, a label) whose pair may split at another width: a forecast, not a finding.
-      const pairs = (x, y, z) => (y === "/" && value(x ?? "")) || (y === "×" && number(z)) || (z === "×" && number(y))
+      const pairs = (x, y, z) => (y === "/" && value(x ?? "")) || (z === "/" && value(y)) || (y === "×" && number(z)) || (z === "×" && number(y))
         || (number(y) && (unit(z) || number(z))) || (/^[₽€$£¥]$/.test(y) && number(z));
+      // Whether a line may break between the two: an ordinary space between them, in text that wraps.
+      const breakable = () => {
+        const g = document.createRange(); g.setStart(from, run[k - 1].at + a.length); g.setEnd(node, run[k].at);
+        const host = g.commonAncestorContainer.nodeType === 3 ? g.commonAncestorContainer.parentElement : g.commonAncestorContainer;
+        return /[ \t\n]/.test(g.toString()) && !/nowrap|^pre$/.test(getComputedStyle(host).whiteSpace);
+      };
       if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) { // the same line
-        if (run.length <= 6 && run[k - 1].space && pairs(...pair)) keepTogether.push({ landmark: label(from.data), kind: "may split", actual: `“${a} ${t}” is joined by a breakable space: at another width it can split; a no-break space keeps it` });
+        if (run.length <= 6 && pairs(...pair) && breakable()) keepTogether.push({ landmark: label(from.data), kind: "may split", actual: `“${a} ${t}” is joined by a breakable space: at another width it can split; a no-break space keeps it` });
         return;
       }
-      // "/" after a value left at a line's end ("₽ /" | "месяц"), "×" split from a number, a number broken, or split
-      // from its unit or currency. A breadcrumb's "/" and a list's "·" may end a line.
-      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a line ends on “/”, split from “${t}” below: keep “/ ${t}” together (a no-break space), and the whole group on one line where it fits`);
+      // A price split from its period, on either side of "/" ("₽ /" | "месяц", "₽" | "/ месяц"), "×" split from a
+      // number, a number broken, or split from its unit or currency. A breadcrumb's "/" and a list's "·" may end a line.
+      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a value split from its period: “${run[k - 2].t} /” | “${t}”: keep the whole group on one line (white-space: nowrap on it), and give its block the group's width`);
+      else if (t === "/" && value(a)) {
+        // Before "/" the period moves whole: the last resort when the group is wider than the component itself, and a
+        // finding while the component could hold it on one line (a block capped narrower than its content).
+        let first = k - 1;
+        while (first > 0 && value(run[first - 1].t)) first--;
+        const group = run.slice(first, k + 2), em = parseFloat(getComputedStyle(node.parentElement).fontSize);
+        const unbroken = group.reduce((w, g) => w + g.rects.reduce((x, r) => x + r.width, 0), 0) + (group.length - 1) * 0.28 * em;
+        const cs = getComputedStyle(root), room = rr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const text = group.map((g) => g.t).join(" ");
+        if (unbroken <= room) say(from, `a value split from its period: “${a}” | “/ ${run[k + 1]?.t ?? ""}”, though “${text}” (${Math.round(unbroken)} px) fits the component (${Math.round(room)} px): keep it on one line (white-space: nowrap on the whole group), and let its block take the group's width`);
+        else keepTogether.push({ landmark: label(from.data), kind: "last resort", actual: `“${text}” (${Math.round(unbroken)} px) is wider than the component (${Math.round(room)} px): its period goes to the next line whole; the owner decides whether that is acceptable` });
+      }
       else if ((a === "×" && number(t)) || (t === "×" && number(a))) say(from, `“×” split from its numbers: “${a}” | “${t}”: keep them on one line`);
       else if (/^[₽€$£¥]$/.test(a) && number(t)) say(from, `a currency sign split from its number: “${a}” | “${t}”`);
       // Two numbers in one element are one number grouped; in two cells of a row they are two values.
@@ -812,7 +829,9 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       fragile.push({ landmark: label(el.textContent), kind: "spills", actual: `its content runs ${spill} px past its own height` });
     }
   }
-  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile, lineMeasured, lineErrors };
+  // The longest texts shown: what a story tested, for the owner to see in the evidence.
+  const longest = [...new Set(nodes.map((n) => n.data.trim().replace(/\s+/g, " ")))].sort((a, b) => b.length - a.length).slice(0, 4);
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile, lineMeasured, lineErrors, longest };
 }
 
 // Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
@@ -1156,7 +1175,7 @@ async function sweep(browser, cfg, ledger) {
     const these = storyProbes.at(-1);
     groups.push(...alignmentGaps(these).map((g) => ({ ...g, story: story.name })));
     issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name })));
-    stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
+    stories.push({ name: story.name, longest: these.find((p) => p.longest)?.longest ?? [], shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
   // How often each line of the model was measured, over the frames' page and every story.

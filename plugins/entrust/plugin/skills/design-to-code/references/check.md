@@ -187,12 +187,9 @@ Two rules hold for every frame, from Figma or a screenshot:
 - **The moderate band:** an `x` or `y` offset of 12 px or less is a note in the console and the evidence file, not a
   finding: the system's (a token gap, a kit component, another font). It needs nothing, and a ledger entry for it
   changes nothing. Past the band, only the design's error, a state it lacks or the owner's call excuses an offset.
-- **Relations:** two neighbours, side by side or one above the other, keep one of five distances: the gap between
-  them (a flow), their start edges (fixed tracks), their end edges, their outer edges (free space between two groups)
-  or their centres (a centred piece). When none holds within the band, the pair is a finding: two moderate offsets
-  the other way round. A pair with a piece already past the band is left to that piece's finding, and a pair neither
-  of which moved on its own to what moved them both (the root, a piece before them). A gap of 8 px or more that
-  closes to under 4 px (or half of it) is a finding whatever the edges keep: the pieces nearly touch.
+- **A gap that closes up:** between two neighbours, side by side or one above the other, a gap of 8 px or more that
+  closes to under 4 px (or half of it) is a finding: the pieces nearly touch. Two moderate offsets the other way
+  round are two notes.
 
 ## Constructs and the moderate offset
 
@@ -210,8 +207,9 @@ The sweep also reports text over an icon or a small picture (64 × 64 px at most
 see first. It reads where every text breaks, with nothing to declare, and reports as a `wrap`. It reads a line's text
 across elements (a price written as `{amount} ₽ / {period}` reads as one), and reports:
 
-- "/" after a value left at a line's end, its period below ("₽ /" | "месяц"): keep "/ месяц" together, and the whole
-  price on one line where it fits. A break before "/" moves the period as a unit, and is not a finding;
+- a value split from its period, on either side of "/" ("₽ /" | "месяц", "₽" | "/ месяц"): keep the whole group on
+  one line and let its block take the group's width. Only a group wider than the component itself may break before
+  its "/": the last resort, reported as a warning for the owner to decide, not a finding;
 - "×" split from either of its numbers ("5587 ×" | "4");
 - a number broken across lines in one element, or split from its unit or currency ("12 345" | "₽", "$" | "120").
   Units are a list: currency signs, %, ГБ, ТБ, GB, ГГц, GHz, Гбит/с, шт., мес., м², °C, px and the like, not any
@@ -220,8 +218,11 @@ across elements (a price written as `{amount} ₽ / {period}` reads as one), and
   the page sets `hyphens: auto`.
 
 Prose wraps where it wraps: a line may end on "5%", "Note:", "·", a breadcrumb's "/" or a date's "21,", and Chinese or
-Japanese breaks between any two characters. In a short text (six words or fewer), such a pair joined by an ordinary
-space is a "may split" forecast, a warning: the sweep may step over the width where it splits.
+Japanese breaks between any two characters. In a short text (six words or fewer), such a pair with a break
+opportunity between them (an ordinary space, also between two elements, in text that wraps) is a "may split"
+forecast, a warning: the sweep may step over the width where it splits.
+
+The evidence file lists each story's longest texts, so the owner sees what the dense story tested.
 
 Each journey that opens something from an opener also runs with the opener at the window's top edge and at its bottom
 edge, at the widest and the narrowest frame's width. On any `visible` step, an overlay (positioned out of the flow, or
@@ -235,9 +236,13 @@ edge, or one covered there is not tried, and the journey's notes say so; so does
 
 - **Nothing within the band:** an offset of 12 px or less is a note (above).
 - **Only owner-level causes:** an offset past 12 px in total, however the steps add up; a text wider than the font
-  explains; a presence, a text, a line, a wrap, a construct, a broken column or relation. Only a `design-error`,
+  explains (but see below); a presence, a text, a line, a wrap, a construct, a broken column or a gap closed up.
+  Only a `design-error`,
   `missing-state` or `ux` proposal, or an entry the owner accepted, covers these. A `system` or `platform` proposal for
   one is named in the finding as excusing nothing.
+- **The kit's size:** a text wider than the font explains may be proposed as `system` when the kit's type token or
+  component sets it, in one entry with no frame (the same size on every frame), giving the token's measured size
+  against the drawn one.
 - **`owner`** is the owner's own call: an entry of it is accepted, with `decidedBy`.
 
 ## The ledger
