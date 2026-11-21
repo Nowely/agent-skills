@@ -45,7 +45,9 @@ You have the code: predict where the layout will break instead of waiting to fin
 - **What happens below it,** following the design's intent: wrap, move to its own row, truncate with the full text
   reachable, or switch layout. Put a switch where the content stops fitting, not at a frame's width.
 - **What changes in each mode:** a narrower frame is often a different design, not the wide one squeezed. Read
-  each frame for the sizes, order and spacing it changes.
+  each frame for the sizes, order, spacing and text formats it changes. Where frames differ, build each as drawn and
+  propose a unification with what it would cost: if the owner wants it, it is a small follow-up; if a unification is
+  built and the owner does not, it is a return.
 - **Constructs that cannot overlap:** normal flow, grid areas with `minmax(0, 1fr)` and content-sized tracks,
   `flex-wrap` with `gap`, `overflow-wrap` for long tokens. Text positioned out of the flow, or a fixed height around
   text, needs a reason in `review.md`.
@@ -95,8 +97,18 @@ needs a frame per target state on the frame's own data (targets in `frames/`, co
 with one dense story (a legal combination of the longest values and every conditional action), and a journey that
 opens and closes each overlay or opener (a popup's frame names the popup as its root). A page with one layout at one
 width says why in `design.json` (`"static"`) instead of sweeping; frames at several widths are always swept, whether
-they come from Figma or screenshots. Trace an offset to its first cause, fix it and check every frame again; when two
-rounds in a row bring no new lowest score, record each remaining difference as `proposed` with its reason, or ask.
+they come from Figma or screenshots. Trace an offset to its first cause, fix it and check every frame again.
+
+When two rounds in a row bring no new lowest score:
+
+- **Residue may be proposed:** pixel regions and what a font does to glyphs, with their reason.
+- **Named findings are fixed:** a gap, a box's size, an order, a missing or extra piece. The check reads a gap as
+  the layout's own, since a font or a kit component changes the pieces, not the gaps between them, and only the
+  design's error, a state it lacks or the owner's call can excuse one.
+- **A kit component drawn another size:** its entry gives the kit's measured size against the drawn one, and the
+  rows around it keep the drawn pitch, so the difference does not add up down the card.
+
+`pending` means owner decisions wait, not differences you stopped on.
 With screenshots alone, the check compares their ink by place, so a shifted column, a moved icon, a missing badge or
 a moved row is a finding whatever the font. What the words say is for the eye: read each frame's `words.png`, and
 state any uncertainty about scale. A font or renderer explains glyphs and their sizes, never where something sits or whether it shows. A

@@ -153,7 +153,9 @@ findings from being counted again as regions.
 
 What is reported:
 
-- **An offset** over 4 px (or the tolerance, if larger) is an `x` or `y` finding.
+- **An offset** over 4 px (or the tolerance, if larger) is an `x` or `y` finding. When the gap to the piece before it
+  reads it, the finding says so ("a 14 px gap after “×2” → 22 px"), and only a `design-error`, `missing-state`,
+  `owner` or `ux` entry can excuse it: a font or a kit component changes the pieces, not the gaps between them.
 - **A width beyond the font's ratio** (over 8 px and 15 %) is a `presence` finding: a part added or missing.
 - **A box of another size** is a `width` or `height` finding.
 - **Ink without a pair** is a `presence` finding: moved more than about 40 px, missing, or added.
@@ -182,7 +184,7 @@ matters only between fonts of very different width.
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one. A `text` entry names one design text |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so: it changes glyphs and their sizes, so it may cover `font`, `width`, `height`, `region` or `overflow`, never where a thing sits, whether it shows, what it says or what it runs into), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
 | `status` | `accepted`: excused, set only by the owner, with `decidedBy`; `proposed`: written by you, shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
-| `reason` | why, in a sentence the owner can judge; for "cannot be built", the construct tried and what the check measured |
+| `reason` | why, in a sentence the owner can judge; for "cannot be built", the construct tried and what the check measured; for a kit component drawn another size, the kit's measured size against the drawn one |
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |
 
 An entry excuses a cause and what it carries: an accepted badge 3 px lower also excuses the 3 px every landmark

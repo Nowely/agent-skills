@@ -1511,7 +1511,7 @@ function inkCase(design, page, width = 320) {
   fs.writeFileSync(spec, JSON.stringify({ ...JSON.parse(fs.readFileSync(spec, "utf8")), landmarks: [] }));
   fs.writeFileSync(file, wrap(page));
   const r = check(dir, "--frame", "frame");
-  return { ...r, frame: r.result.frames[0], ink: r.result.frames[0].issues.filter((i) => i.via === "ink") };
+  return { ...r, dir, frame: r.result.frames[0], ink: r.result.frames[0].issues.filter((i) => i.via === "ink") };
 }
 
 test("v23.1: ink sees what sits on a filled box, what is missing beside a title, and not a whole row a wider font pushes along", browser, () => {
@@ -1556,4 +1556,21 @@ test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading th
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined, static: "screenshots only", frames: [...cfg.frames, { ...cfg.frames[0], name: "narrow", width: 200 }] }));
   assert.match(check(f.dir).stdout, /"static" is for a page at one width; these frames have 2 widths/);
   assert.match(ledgerFaults([{ landmark: "*", property: "*", category: "platform", status: "accepted", decidedBy: "owner", reason: "font" }]).join(), /not every property/);
+});
+
+// ------------------------------------------------------------------ draft 24: an excuse is tested against what it claims
+
+test("v24: a changed gap names itself, and only an owner-level cause can excuse it", browser, () => {
+  const row = (gap) => `<main style="position:relative;width:420px;height:50px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:16px;display:flex;gap:${gap}px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>Frankfurt</span></div></main>`;
+  let r = inkCase(row(16), row(28), 420);
+  const gap = r.ink.find((i) => i.gap);
+  assert.ok(gap && /a 1\d px gap after “4 cores” → 2\d px \(a font changes widths, not gaps\)/.test(`${gap.expected} → ${gap.actual}`), JSON.stringify(r.ink));
+  // The same finding, proposed as the kit's font, still fails; as the design's error it waits for the owner.
+  for (const [category, status] of [["system", "fail"], ["platform", "fail"], ["design-error", "pending"]]) {
+    fs.writeFileSync(path.join(r.dir, "ledger.json"), JSON.stringify([{ landmark: gap.landmark, property: "x", category, status: "proposed", reason: "the kit font is wider" }]));
+    const again = check(r.dir, "--frame", "frame");
+    const f = again.result.frames[0].issues.find((i) => i.landmark === gap.landmark && i.gap);
+    assert.equal(f.status, status, `${category}: ${JSON.stringify(f)}`);
+  }
 });

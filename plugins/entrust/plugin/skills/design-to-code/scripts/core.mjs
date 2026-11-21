@@ -306,8 +306,12 @@ const frameMatches = (entry, frame) => entry.frame === undefined || entry.frame 
 const landmarkMatches = (entry, label) => [entry.landmark].flat().some((v) => v === "*" || v === label);
 const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x + b.width <= r[0] + r[2] + pad && b.y + b.height <= r[1] + r[3] + pad;
 
+// A changed gap between two pieces is the layout's own: a font or a kit component changes the pieces, not the gap.
+// Only the design's error, a state it lacks, or the owner's call can excuse it.
+const GAP_CAUSES = ["design-error", "missing-state", "owner", "ux"];
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
+    && (!issue.gap || GAP_CAUSES.includes(e.category))
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
       : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
@@ -748,22 +752,36 @@ export function compareInk(design, page, { designWidth, pageWidth, tolerance = 4
   }
   pairs.push(...pairUp(design.runs, page.runs, ratio, usedA, usedB));
   // Each pair's offset, read the way that moved least: against the root, or as the gap to the pair before it in its
-  // row, or above it.
+  // row, or above it. A gap is named, since a font changes widths, not gaps.
+  const name = (b, a) => labelOf(b) ?? `ink at ${at(a)}`;
   const offsets = (list) => list.map((p) => {
     const { a, b } = p;
     const left = list.filter((q) => q !== p && band(a, q.a) && q.a.x + q.a.width <= a.x + 2).sort((q, r) => (r.a.x + r.a.width) - (q.a.x + q.a.width))[0];
     const above = list.filter((q) => q !== p && q.a.y + q.a.height <= a.y + 1)
       .sort((q, r) => (r.a.y + r.a.height) - (q.a.y + q.a.height) || Math.abs(q.a.x - a.x) - Math.abs(r.a.x - a.x))[0];
-    const gapX = left && (b.x - (left.b.x + left.b.width)) - (a.x - (left.a.x + left.a.width));
-    const gapY = above && (b.y - (above.b.y + above.b.height)) - (a.y - (above.a.y + above.a.height));
-    return { ...p, dx: least([...edges(a, b), gapX]), dy: least([b.y - a.y, gapY]) };
+    const [l, r, c] = edges(a, b);
+    const xs = [{ d: l, expected: Math.round(a.x), actual: Math.round(b.x) }, { d: r, expected: "the right edge as designed", actual: `${Math.round(Math.abs(r))} px ${r > 0 ? "right" : "left"} of it` },
+      { d: c, expected: "centred as designed", actual: `${Math.round(Math.abs(c))} px ${c > 0 ? "right" : "left"} of it` }];
+    if (left) {
+      const dg = a.x - (left.a.x + left.a.width), pg = b.x - (left.b.x + left.b.width);
+      xs.push({ d: pg - dg, gap: true, expected: `a ${Math.round(dg)} px gap after “${name(left.b, left.a)}”`, actual: `${Math.round(pg)} px (a font changes widths, not gaps)` });
+    }
+    const ys = [{ d: b.y - a.y, expected: Math.round(a.y), actual: Math.round(b.y) }];
+    if (above) {
+      const dg = a.y - (above.a.y + above.a.height), pg = b.y - (above.b.y + above.b.height);
+      ys.push({ d: pg - dg, gap: true, expected: `a ${Math.round(dg)} px gap below “${name(above.b, above.a)}”`, actual: `${Math.round(pg)} px` });
+    }
+    // On a tie the gap tells more: it names the piece the offset starts after.
+    const pick = (list) => list.filter((x) => Number.isFinite(x.d)).sort((u, v) => Math.abs(u.d) - Math.abs(v.d) || (v.gap ? 1 : 0) - (u.gap ? 1 : 0))[0];
+    return { ...p, x: pick(xs), y: pick(ys) };
   });
   const place = (p, label) => {
-    if (Math.abs(p.dx) > tolerance) issues.push({ landmark: label, property: "x", delta: p.dx, expected: Math.round(p.a.x), actual: Math.round(p.b.x), via: "ink" });
-    if (Math.abs(p.dy) > tolerance) issues.push({ landmark: label, property: "y", delta: p.dy, expected: Math.round(p.a.y), actual: Math.round(p.b.y), via: "ink" });
+    for (const [axis, o] of [["x", p.x], ["y", p.y]]) if (Math.abs(o.d) > tolerance) {
+      issues.push({ landmark: label, property: axis, delta: o.d, expected: o.expected, actual: o.actual, via: "ink", ...(o.gap ? { gap: true } : {}) });
+    }
   };
   for (const p of offsets(pairs)) {
-    const label = labelOf(p.b) ?? `ink at ${at(p.a)}`;
+    const label = name(p.b, p.a);
     place(p, label);
     const extra = p.b.width / ratio - p.a.width;
     if (Math.abs(extra) > Math.max(8, 0.15 * p.a.width)) issues.push({ landmark: label, property: "presence", expected: `${Math.round(p.a.width)} px wide`, actual: `${Math.round(Math.abs(extra))} px ${extra > 0 ? "wider" : "narrower"} than the font explains: a part added or missing`, via: "ink" });
@@ -776,8 +794,8 @@ export function compareInk(design, page, { designWidth, pageWidth, tolerance = 4
   for (const p of offsets(pairUp(design.boxes, page.boxes, 1, boxA, boxB))) {
     const label = labelOf(p.b) ?? `${p.b.kind} at ${at(p.a)}`;
     place(p, label);
-    if (Math.abs(p.b.width - p.a.width) > tolerance) issues.push({ landmark: label, property: "width", delta: p.b.width - p.a.width, expected: Math.round(p.a.width), actual: Math.round(p.b.width), via: "ink" });
-    if (Math.abs(p.b.height - p.a.height) > tolerance) issues.push({ landmark: label, property: "height", delta: p.b.height - p.a.height, expected: Math.round(p.a.height), actual: Math.round(p.b.height), via: "ink" });
+    if (Math.abs(p.b.width - p.a.width) > tolerance) issues.push({ landmark: label, property: "width", delta: p.b.width - p.a.width, expected: Math.round(p.a.width), actual: Math.round(p.b.width), via: "ink", box: true });
+    if (Math.abs(p.b.height - p.a.height) > tolerance) issues.push({ landmark: label, property: "height", delta: p.b.height - p.a.height, expected: Math.round(p.a.height), actual: Math.round(p.b.height), via: "ink", box: true });
   }
   design.boxes.forEach((a, i) => { if (!boxA.has(i)) issues.push({ landmark: `design ${a.kind} at ${at(a)}`, property: "presence", expected: "present", actual: "no box like it on the page", via: "ink" }); });
   page.boxes.forEach((b, j) => { if (!boxB.has(j)) issues.push({ landmark: `page ${b.kind} at ${at(b)}`, property: "presence", expected: "not in the design", actual: `at ${at(b)}`, via: "ink" }); });
@@ -1001,8 +1019,12 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     if (!causesOf.has(k)) causesOf.set(k, { e, entries: [] });
     causesOf.get(k).entries.push(index);
   });
-  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, covered.filter((i) => i.entries?.some((x) => entries.includes(x))).length]).filter(([, , uses]) => uses > 3)
-    .map(([e, entries, uses]) => `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${uses} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${e.category}, ${e.status}). Check that each finding it covers has that cause.`);
+  const coveredBy = (entries) => covered.filter((i) => i.entries?.some((x) => entries.includes(x)));
+  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)]).filter(([, , found]) => found.length > 3)
+    .map(([e, entries, found]) => {
+      const gaps = found.filter((i) => i.gap || i.box).length;
+      return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${e.category}, ${e.status}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;
+    });
   const out = [`Status: ${status} — ${handoverState}`, "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", ...(broad.length ? ["## Broad excuses", "", ...broad, ""] : []), "## Pictures to look at first", "",
