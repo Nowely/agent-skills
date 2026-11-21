@@ -29,11 +29,19 @@ Read only these:
 - the page itself, to open at any width: <page URL>
 
 The owner's criteria:
-- Return for: a broken relation (a column that no longer lines up, an order or a row that changed, a piece beside
-  what it should be under), a text or format that reads differently from its frame, a type or component size of
-  another class, an overlap, cut or covered text, a layout that does not read logically on dense or many-entries data,
-  data silently dropped, an interaction that does not work, and a construct that nails a thing in place without a
-  strong reason (a negative margin, a transform moving text, a fixed height around content that grows).
+- Return for these classes (one example each; find the class, not only the example):
+  - a broken relation: a column that no longer lines up, an order or a row that changed;
+  - a text or format that reads differently from its frame: "4 × 5587" where the frame draws "5587 × 4";
+  - a type or component size of another class: a price set larger than the frame's;
+  - what belongs together split apart: a price on one line and its period on the next ("₽ /" | "месяц"), a value and
+    its unit;
+  - an overlap, cut or covered text, data silently dropped;
+  - an overlay cut by the window: a popover that opens above a card near the page's top and does not flip;
+  - an interaction that does not work;
+  - a construct that nails a thing in place without a strong reason: a negative margin, a transform moving text, a
+    fixed height around content that grows.
+- Look where returns hide: open the dense and many-entries stories at the narrowest width, and each overlay with its
+  opener near the window's top and bottom edges.
 - Do not return for: a moderate, systematic difference the system explains (a consistent token gap where the frame
   measures a few pixels more or less, the kit's own component size, another font's widths), a stand-in icon.
 

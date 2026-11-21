@@ -100,7 +100,8 @@ Markers ignore case. Separate a detail with a dash, colon or comma. A blank, an 
 
 In a table the optional `Checked by` column can bind a criterion to a measurement. Use exactly `sweep` for the
 frame page's width sweep, or `sweep.stories` for the configured additional stories. These values may be in inline
-code. A reported pass for one of these requires the corresponding measurement to run. A measured failure,
+code. A `sweep.stories` row that names stories in inline code (`` `dense` ``) answers for those; one that names none,
+for all of them. A reported pass for one of these requires the corresponding measurement to run. A measured failure,
 unmeasured condition or outstanding proposal remains visible in the assessed outcome. Other methods describe
 manual or project checks. Put a separate required width or data check in its own row so omitting that measurement
 cannot produce a passing handoff.

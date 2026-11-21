@@ -51,7 +51,8 @@ next, under "Broad excuses": an excuse should be narrower than what it excuses. 
 design's texts are missing is named as rendering other data than its frame. A `fail` is reported as not a state to
 hand over in.
 
-**Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. They write
+**Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep; `--quick`
+checks every frame and sweeps every story at the frames' widths only, without journeys: for tuning. They write
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
 about what they measured. Every check first removes an earlier `handoff.md`, so the one that exists is the last
 complete check's. The page before the work is the one the first check saw. If the root was absent after setup, the
@@ -178,6 +179,13 @@ read by the edge that moved least, with each offset traced to its first cause, a
 - **Not compared:** heights and narrower widths, since a font changes them and a design's piece may hold an icon
   beside its text.
 - **Tolerance:** positions are held to 4 px, or the tolerance if larger.
+- **The moderate band:** an `x` or `y` offset of 12 px or less (8 px on a frame 400 px wide or narrower) is a note
+  in the report and the evidence file, not a finding: the system's. Past the band, only the design's error, a state
+  it lacks or the owner's call excuses it.
+- **Relations:** two pieces the design sets side by side keep one of four distances: the gap between them (a flow),
+  their left edges (fixed tracks), their right edges, or their outer edges (free space between a left and a right
+  group). When none holds within the band, the pair is a finding: two moderate offsets the other way round. A pair
+  with a piece already past the band is left to that piece's finding.
 
 ## Constructs and the moderate offset
 
@@ -192,7 +200,17 @@ The sweep reports as `construct` findings:
   name or tooltip on it.
 
 The sweep also reports text over an icon or a small picture (64 × 64 px at most) as an `overlap`: the collision people
-see first.
+see first. It reads where every text breaks, with nothing to declare, and reports as a `wrap`:
+
+- a separator left alone at a line's end, its value below ("₽ /" | "месяц");
+- a number broken across lines, or split from its unit or currency after it ("12 345" | "₽");
+- a word of letters broken between them, unless the page sets `hyphens: auto`.
+
+Prose wraps where it wraps: a line may end on "5%" or "Note:".
+
+Each journey that opens something from an opener also runs with the opener at the window's top edge and at its bottom
+edge. On any `visible` step, an overlay (positioned out of the flow, or with a popup's role) must be whole in the
+window, or the journey fails: a popover flips or shifts to stay in view.
 
 **What may be proposed, and by whom:**
 

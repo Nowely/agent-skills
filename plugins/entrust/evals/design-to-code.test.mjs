@@ -856,7 +856,7 @@ test("a dense story is swept too: a text over a text, a control under another el
 test("a frame of a state drawn outside the component names its own root", browser, () => {
   const dir = tmp(), config = path.join(dir, "design.json");
   const page = (pop) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:16px/20px monospace}main{width:300px;height:40px}
-.pop{position:absolute;top:50px;left:0;width:200px;padding:8px;background:#eee}</style>
+.pop{position:fixed;top:50px;left:0;width:200px;padding:8px;background:#eee}</style>
 <main>${MARKERS}<button id="help" style="width:40px;height:20px">i</button></main><div class="pop" hidden>${pop}</div>
 <script>help.onmouseenter = () => { document.querySelector(".pop").hidden = false; };
 help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
@@ -904,7 +904,7 @@ test("a covered control: part of it, below the fold, but not its own label or a 
 
 test("journeys hold or fail step by step, by pointer and by touch", browser, () => {
   const f = smallFrame();
-  fs.appendFileSync(f.page, `<button id="t" style="width:40px;height:20px">?</button><div id="pop" hidden style="position:absolute;top:120px;left:0;width:120px;height:40px;background:#eee">Help text</div>
+  fs.appendFileSync(f.page, `<button id="t" style="width:40px;height:20px">?</button><div id="pop" hidden style="position:fixed;top:120px;left:0;width:120px;height:40px;background:#eee">Help text</div>
 <script>
   const t = document.getElementById("t"), pop = document.getElementById("pop");
   t.onpointerenter = (e) => { if (e.pointerType !== "touch") pop.hidden = false; };
@@ -918,9 +918,12 @@ test("journeys hold or fail step by step, by pointer and by touch", browser, () 
   ] }));
   const r = check(f.dir);
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.deepEqual(r.result.journeys.map((j) => [j.name, j.pass]), [["hover opens and shows the text", true], ["leaving closes it", false], ["a tap toggles it", true]]);
-  assert.match(r.result.journeys[1].failed, /step 5.*#pop is still visible/);
-  assert.match(r.stdout, /journeys: 2 of 3 hold/);
+  // Each opener's journey also runs at the window's top and bottom edges; the popover, fixed in the window, holds.
+  const own = r.result.journeys.filter((j) => !/at the window's/.test(j.name));
+  assert.deepEqual(own.map((j) => [j.name, j.pass]), [["hover opens and shows the text", true], ["leaving closes it", false], ["a tap toggles it", true]]);
+  assert.ok(r.result.journeys.filter((j) => /at the window's/.test(j.name)).every((j) => j.pass), JSON.stringify(r.result.journeys));
+  assert.match(own[1].failed, /step 5.*#pop is still visible/);
+  assert.match(r.stdout, /journeys: 6 of 7 hold/);
   assert.match(r.stdout, /journey fails: leaving closes it/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<h2>Journeys<\/h2>/);
 });
@@ -1306,7 +1309,7 @@ test("v21: no sweep needs a stated reason, and a story is its own data", browser
 test("v21: an overlay frame needs a journey that acts on its opener, sees it open and then closed", browser, () => {
   const f = smallFrame();
   f.write(`<main><span>Ready</span><button class="help" style="position:absolute;left:200px;top:0">Help</button></main>
-<div class="tip" hidden style="position:absolute;left:0;top:100px;width:120px;height:30px;background:#eee">Tip</div>
+<div class="tip" hidden style="position:fixed;left:0;top:100px;width:120px;height:30px;background:#eee">Tip</div>
 <script>const b = document.querySelector(".help"), t = document.querySelector(".tip");
 b.onmouseenter = () => { t.hidden = false; }; b.onmouseleave = () => { t.hidden = true; };</script>`);
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
@@ -1512,11 +1515,11 @@ test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading th
 
 // ------------------------------------------------------------------ draft 25: named boxes, and logic over hacks
 
-const CARD = ({ family = "sans-serif", col = 150, disk = "2 × 838", price = "font-size:14px" } = {}) => `<main style="position:relative;width:420px;height:90px;font:14px/18px ${family};color:#111">
-<div style="position:absolute;left:16px;top:12px;font-weight:600">BA-i201-B</div>
+const CARD = ({ family = "sans-serif", sku = 16, col = 150, disk = "2 × 838", price = "font-size:14px", top = 52 } = {}) => `<main style="position:relative;width:420px;height:90px;font:14px/18px ${family};color:#111">
+<div style="position:absolute;left:${sku}px;top:12px;font-weight:600">BA-i201-B</div>
 <div style="position:absolute;left:${col}px;top:12px">32 ядер</div>
 <div style="position:absolute;left:260px;top:12px">${disk}</div>
-<div style="position:absolute;right:16px;top:52px;${price}">1 234 €</div></main>`;
+<div style="position:absolute;right:16px;top:${top}px;${price}">1 234 €</div></main>`;
 
 test("v25: boxes proposes pieces to name; unnamed, the frame is not measured; named, it compares by place and its text exactly", browser, () => {
   let r = boxCase(CARD(), CARD(), 420);
@@ -1545,8 +1548,9 @@ test("v25: boxes proposes pieces to name; unnamed, the frame is not measured; na
 
 test("v25: a moderate offset may be the system's; a large one, or a size the font does not explain, only the owner's", browser, () => {
   const entry = (landmark, property, category) => [{ landmark, property, category, status: "proposed", reason: "the kit's spacing token" }];
+  // Within the band it is a note since draft 26, proposed or not.
   let r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: entry("32 ядер", "x", "system") });
-  assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "pending", r.stdout);
+  assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), r.stdout);
   r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "system") });
   assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "fail", r.stdout);
   r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "design-error") });
@@ -1607,4 +1611,88 @@ test("v25.1: grey text on a dark card is its own piece, and a flex row in anothe
 <div style="position:absolute;left:16px;top:20px;display:flex;gap:20px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>2 × 1 TB NVMe</span><span>10 Gbit/s</span><span>Frankfurt</span></div></main>`;
   const font = boxCase(flex("DejaVu Sans"), flex("Liberation Sans"), 520);
   assert.deepEqual(font.frame.issues.filter((i) => i.status === "fail" && ["x", "y", "width"].includes(i.property)).map((i) => `${i.landmark} ${i.property} ${Math.round(i.delta ?? 0)}`), [], font.stdout);
+});
+
+// ------------------------------------------------------------------ draft 26: notes, gaps, what stays together, the window's edge
+
+test("v26: a moderate offset is a note; two moving apart past the band is a broken relation; free space and a moved piece are not", browser, () => {
+  let r = boxCase(CARD(), CARD({ col: 158 }), 420);
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), JSON.stringify(r.frame.notes));
+  assert.match(r.stdout, /moderate offsets \(12 px or less, the system's, not findings\): \d+/);
+  // A proposal for it changes nothing: it needs no decision, and holds nothing pending.
+  r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  // Each 8 px, the other way round: no edge keeps its distance.
+  r = boxCase(CARD(), CARD({ sku: 8, col: 158 }), 420);
+  assert.ok(r.frame.issues.some((i) => i.gap && i.status === "fail" && /gap after “BA-i201-B”/.test(i.expected)), r.stdout);
+  // One piece past the band is the finding; the gap it changes is not a second one.
+  r = boxCase(CARD(), CARD({ col: 166 }), 420);
+  assert.ok(r.frame.issues.some((i) => i.property === "x" && !i.gap && i.landmark === "32 ядер" && i.status === "fail"), r.stdout);
+  assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
+  // A right-aligned piece that grows keeps its right edge: the free space before it changes, no relation breaks.
+  r = boxCase(CARD({ top: 12 }), CARD({ top: 12, price: "letter-spacing:2px" }), 420);
+  assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
+  // On a narrow frame the band is 8 px: 10 px is past it, and the system cannot excuse it.
+  r = boxCase(CARD(), CARD({ col: 160 }), 360, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
+  assert.ok(r.frame.issues.some((i) => i.property === "x" && i.landmark === "32 ядер" && i.status === "fail"), r.stdout);
+});
+
+test("v26: a price split from its period, a number from its unit and a word between its letters are wraps", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html) => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}</style><main>${html}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
+  };
+  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a line ends on “\/”, split from “месяц” below: keep them together/);
+  assert.match(run('<div style="width:40px">12 345 ГБ</div>').join(), /a number (broken across lines|split from its unit)/);
+  assert.match(run('<div style="width:30px;overflow-wrap:anywhere">потока</div>').join(), /a word broken between its letters: “потока”/);
+  assert.deepEqual(run('<div style="width:200px">1 234 567,00 ₽ / месяц</div>'), []);
+  // Prose wraps where it wraps: a line may end on "5%" or "Note:".
+  assert.deepEqual(run('<p style="width:90px;margin:0">Growth was 5% this year. Note: prices change.</p>'), []);
+  assert.match(run('<div style="width:50px">12 345 ₽</div>').join(), /a number split from its unit: “345” \| “₽”/);
+});
+
+test("v26: a popover that opens above without flipping is cut at the window's top edge; one that flips holds", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const page = (flip) => `<button id="t" style="margin-top:100px;width:40px;height:20px">?</button><div id="pop" hidden style="position:absolute;left:0;width:120px;height:40px;background:#eee">Help</div>
+<script>const t = document.getElementById("t"), pop = document.getElementById("pop");
+t.onmouseenter = () => { pop.hidden = false; const r = t.getBoundingClientRect(); const above = ${flip ? "r.top > 50" : "true"};
+  pop.style.top = (scrollY + (above ? r.top - 44 : r.bottom + 4)) + "px"; };
+t.onmouseleave = () => { pop.hidden = true; };</script>`;
+  const run = (flip) => {
+    fs.writeFileSync(f.page, fs.readFileSync(f.page, "utf8").replace(/<button id="t"[\s\S]*$/, "") + page(flip));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "help opens", steps: [{ hover: "#t" }, { visible: "#pop" }, { move: [290, 890] }, { hidden: "#pop" }] }] }));
+    return check(f.dir).result.journeys;
+  };
+  const stuck = run(false);
+  assert.ok(stuck.some((j) => /top edge/.test(j.name) && !j.pass && /outside the window: flip or shift it/.test(j.failed)), JSON.stringify(stuck));
+  const flips = run(true);
+  assert.ok(flips.every((j) => j.pass), JSON.stringify(flips));
+});
+
+test("v26: --quick sweeps every story at the frames' widths only, and is a partial check", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 240, to: 400, step: 8, lines: LINES, stories: [{ name: "dense", url: "page.html?dense" }] } }));
+  const r = check(f.dir, "--quick");
+  assert.match(r.stdout, /partial check/i);
+  assert.ok(!fs.existsSync(path.join(f.dir, "out/handoff.md")), "a partial check writes no evidence file");
+  assert.equal(r.result.journeys.length, 0);
+});
+
+test("v26: an acceptance row that names its story answers for that story, and says what failed", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "split.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}</style><main><div style="width:118px">1 234 567,00 ₽ / месяц</div></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, stories: [...cfg.sweep.stories, { name: "split", url: "split.html" }] } }));
+  fs.writeFileSync(path.join(f.dir, "review.md"), `${MODEL}## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n| \`dense\` keeps every line | sweep.stories | pass — clean |\n| \`split\` keeps the price whole | sweep.stories | pass — clean |\n`);
+  const rows = check(f.dir).result.acceptance;
+  assert.equal(rows.find((r) => /dense/.test(r.item)).status, "pass", JSON.stringify(rows));
+  const split = rows.find((r) => /split/.test(r.item));
+  assert.equal(split.status, "fail");
+  assert.match(split.reason, /the sweep fails: wrap “.*” \(split\) at \d+/);
 });

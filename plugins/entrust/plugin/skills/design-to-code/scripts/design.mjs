@@ -3,7 +3,7 @@
 //
 //   node design.mjs figma <figma link with node-id> --out <frame directory> [--scale 2]
 //   node design.mjs spec <metadata.xml> [--context <design-context>] [--frame <id|name>] [--coords auto|relative|absolute] [--out spec.json]
-//   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--out <dir>]
+//   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--quick] [--out <dir>]
 //   node design.mjs snapshot <design.json> [--frame <name>] [--images] [--scale <n>] [--force]
 //   node design.mjs boxes <reference.png> --width <css px> [--out spec.json] [--force]
 //
@@ -563,6 +563,29 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
+  // What must stay together, read from where every text breaks, with nothing to declare: a line that ends on a
+  // separator or a currency sign while its value goes on below ("₽ /" | "месяц"), a number broken across lines or
+  // split from its unit, and a word broken between its letters.
+  for (const node of nodes) {
+    if (!visible(node.parentElement)) continue;
+    const tokens = [...node.data.matchAll(/\S+/g)].map((m) => ({ t: m[0], i: m.index }));
+    const rectsOf = (from, to) => { const r = document.createRange(); r.setStart(node, from); r.setEnd(node, to); return [...r.getClientRects()].filter((x) => x.width > 0.5); };
+    const tops = tokens.map(({ t, i }) => rectsOf(i, i + t.length));
+    const say = (msg) => issues.push({ landmark: label(node.data), property: "wrap", kind: msg.split(":")[0], actual: msg });
+    tops.forEach((rects, k) => {
+      const { t } = tokens[k];
+      const rows = new Set(rects.map((r) => Math.round(r.top)));
+      if (rows.size > 1 && Math.max(...rects.map((r) => r.top)) - Math.min(...rects.map((r) => r.top)) > Math.min(...rects.map((r) => r.height)) / 2
+        && /^\p{L}{4,}$/u.test(t) && getComputedStyle(node.parentElement).hyphens !== "auto") say(`a word broken between its letters: “${t}”`);
+      if (k === 0 || !rects.length || !tops[k - 1].length) return;
+      const a = tokens[k - 1].t, prev = tops[k - 1].at(-1), next = rects[0];
+      if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) return; // the same line
+      // A separator left alone at a line's end ("₽ /" | "месяц"), a number broken, or split from its unit or currency.
+      if (/^[\/×·•|]$/.test(a)) say(`a line ends on “${a}”, split from “${t}” below: keep them together`);
+      else if (/^\d[\d.,]*$/.test(a) && /^\d[\d.,]*$/.test(t)) say(`a number broken across lines: “${a}” | “${t}”`);
+      else if (/^\d[\d.,]*$/.test(a) && /^(\p{L}{1,3}\.?|[₽€$£¥%])$/u.test(t)) say(`a number split from its unit: “${a}” | “${t}”`);
+    });
+  }
   // Text over an icon or a small picture: the graphics people read beside text, not a backdrop it is set on.
   const graphics = [...root.querySelectorAll("svg, img, canvas, [class*=icon]")].filter((g) => visible(g) && !g.textContent.trim())
     .map((g) => ({ g, r: g.getBoundingClientRect() })).filter(({ r }) => r.width > 2 && r.height > 2 && r.width * r.height <= 64 * 64);
@@ -1048,8 +1071,8 @@ async function sweep(browser, cfg, ledger) {
   if (!(from > 0 && to >= from && step > 0)) throw Object.assign(new Error("sweep: give from, to and step in design.json"), { exit: 2 });
   const frameWidths = new Set(cfg.frames.map((f) => f.width).filter((w) => w >= from && w <= to));
   const widths = new Set(frameWidths);
-  for (let w = to; w >= from; w -= step) widths.add(w);
-  widths.add(from);
+  // A quick check, while tuning, sweeps the frames' widths only: the same stories and checks, far fewer widths.
+  if (!cfg.quick) { for (let w = to; w >= from; w -= step) widths.add(w); widths.add(from); }
   // The widths the layout model predicts a switch at are measured exactly, a pixel either side.
   for (const w of s.switches ?? []) for (const x of [w - 1, w, w + 1]) if (x >= from && x <= to) widths.add(x);
   const order = [...widths].sort((a, b) => b - a);
@@ -1133,10 +1156,30 @@ async function sweep(browser, cfg, ledger) {
 async function journeys(browser, cfg) {
   const width = Math.max(...cfg.frames.map((f) => f.width));
   const results = [];
+  // Each journey that opens something from an opener runs again with the opener at the window's top edge and at its
+  // bottom edge: an open popover must flip or shift to stay in the window, wherever the component sits on the page.
+  const edged = [];
+  const openers = new Set();
   for (const j of cfg.journeys) {
+    edged.push({ j });
+    const first = j.steps.find((st) => ["hover", "focus", "tap", "click"].some((k) => typeof st[k] === "string"));
+    const opener = first && (first.hover ?? first.focus ?? first.tap ?? first.click);
+    if (!opener || !j.steps.some((st) => st.visible) || openers.has(`${opener}\u0000${Boolean(j.touch)}`)) continue;
+    openers.add(`${opener}\u0000${Boolean(j.touch)}`);
+    for (const edge of ["top", "bottom"]) edged.push({ j, edge, opener });
+  }
+  for (const { j: base, edge, opener } of edged) {
+    const j = edge ? { ...base, name: `${base.name} (at the window's ${edge} edge)` } : base;
     let opened, failed;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
+    if (opened && edge) {
+      // Room to scroll, then the opener against the edge.
+      await opened.page.evaluate(([sel, edge]) => {
+        document.body.style[edge === "top" ? "paddingBottom" : "paddingTop"] = "3000px";
+        document.querySelector(sel)?.scrollIntoView({ block: edge === "top" ? "start" : "end" });
+      }, [opener, edge]).catch(() => {});
+    }
     const widths = opened ? [j.width ?? width] : [];
     const seen = new Set(), notes = [], closed = new Set();
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
@@ -1176,7 +1219,19 @@ async function journeys(browser, cfg) {
               continue;
             }
             await runStep(page, step);
-            if (step.visible) openSeen.add(step.visible);
+            if (step.visible) {
+              // What opens must be in the window, whole: a popover cut by the window's edge is a failure.
+              // An overlay only (positioned out of the flow, or a popup's role): the page's own content may scroll.
+              const cut = await page.locator(step.visible).filter({ visible: true }).first().evaluate((el) => {
+                const overlay = /absolute|fixed/.test(getComputedStyle(el).position) || el.matches('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog');
+                if (!overlay) return 0;
+                const r = el.getBoundingClientRect();
+                return Math.max(0, -r.top, r.bottom - innerHeight, -r.left, r.right - innerWidth);
+              }, null, { timeout: 2000 }).catch(() => 0);
+              if (cut > 1) throw new Error(`${step.visible} is open but ${Math.round(cut)} px of it is outside the window: flip or shift it to stay in view`);
+              if (edge) break;
+              openSeen.add(step.visible);
+            }
             if ("hidden" in step) {
               if (actedOn.has(step.hidden)) closes = true;
               openSeen.delete(step.hidden);
@@ -1259,8 +1314,11 @@ function assessRow(row, sweep) {
   let reason;
   if (status === "pass" || status === "passed") {
     const measured = row.method === "sweep" || row.method === "sweep.stories";
-    const issues = measured ? (sweep?.issues ?? []).filter((i) => Boolean(i.story) === (row.method === "sweep.stories")) : [];
-    if (issues.some((i) => i.status === "fail")) return { ...row, status: "fail", reason: "the measurement failed" };
+    // A row that names stories answers for those; one that names none, for all of them.
+    const names = (sweep?.stories ?? []).map((s) => s.name ?? s).filter((n) => `${row.item} ${row.result}`.includes(`\`${n}\``));
+    const issues = measured ? (sweep?.issues ?? []).filter((i) => Boolean(i.story) === (row.method === "sweep.stories") && (!i.story || !names.length || names.includes(i.story))) : [];
+    const failed = issues.find((i) => i.status === "fail");
+    if (failed) return { ...row, status: "fail", reason: `the sweep fails: ${failed.property} “${failed.landmark}”${failed.story ? ` (${failed.story})` : ""}${failed.ranges ? ` at ${failed.ranges}` : ""}` };
     if (!detail) reason = "pass has no evidence";
     else if (row.method === "sweep" && (!sweep || sweep.reason || sweep.unmeasured?.some((u) => !u.story))) reason = "the width sweep was not fully measured";
     else if (row.method === "sweep.stories" && (!sweep?.stories?.length || sweep.stories.some((s) => s.unmeasured) || sweep.unmeasured?.some((u) => u.story))) reason = "additional stories were not all measured";
@@ -1353,6 +1411,8 @@ async function check(file, flags) {
   const frames = cfg.frames.filter((f) => !flags.frame || f.name === flags.frame);
   if (flags.frame && !frames.length) throw Object.assign(new Error(`no frame named ${flags.frame}`), { exit: 2 });
   const full = !flags.frame;
+  // --quick: every frame and story, swept at the frames' widths only, without journeys: for tuning, not for handover.
+  if (flags.quick) cfg.quick = true;
   const browser = await (await chromium()).launch();
   try {
     const results = await measureFrames(browser, cfg, frames, ledger, out);
@@ -1365,9 +1425,9 @@ async function check(file, flags) {
           reason: e.message, issues: [], switches: [], score: 0 };
       }
     }
-    const journeyResults = full ? await journeys(browser, cfg) : [];
-    // A complete check (every frame, the sweep) is the evidence for a handoff; --frame and --no-sweep are partial.
-    const complete = full && !flags["no-sweep"];
+    const journeyResults = full && !flags.quick ? await journeys(browser, cfg) : [];
+    // A complete check (every frame, the sweep) is the evidence for a handoff; --frame, --no-sweep and --quick are partial.
+    const complete = full && !flags["no-sweep"] && !flags.quick;
     const rows = acceptanceRows(cfg);
     const acceptance = complete ? rows.map((row) => assessRow(row, sweepResult)) : [];
     const gaps = complete ? acceptanceGaps(cfg, acceptance, sweepResult, results, journeyResults) : [];

@@ -38,9 +38,14 @@ requirement or the reference, and the row names its source; never from the code 
 The design is the intent; the code is a system. Build the layout from the kit's tokens and components, normal flow,
 grid and flex with consistent gaps, and the relations the design shows: what lines up, what shares a row, what wraps,
 what grows. A hundred per cent match is not reachable and is not the goal. A moderate, systematic difference the
-system explains (a 16 px token gap where the frame measures 14 and 18, the kit's chip height) is fine: record it once,
-naming the token. A broken relation is not: a misaligned column, a wrong order or format, a piece that moved a row,
-an overlap.
+system explains (a 16 px token gap where the frame measures 14 and 18, the kit's chip height) is fine: the check
+reports it as a note, not a finding. A broken relation is not fine: a misaligned column, a gap that changed past the
+moderate band, a wrong order or format, a piece that moved a row, an overlap.
+
+What belongs together stays together at every width: a price with its period, a value with its unit, an icon with
+its count. Keep each such group on one line (a no-break space, `white-space: nowrap` on the group) and let the groups
+wrap between them. An open popover stays in the window, wherever the component sits: place it with the kit's popover
+or CSS anchor positioning with a fallback, not hand-written offsets.
 
 Do not nail things in place without a strong reason: a negative margin, a transform that moves text, text positioned
 out of the flow, a fixed height around content that can grow, a different magic number per mode. They match the frame
@@ -119,12 +124,14 @@ opens and closes each overlay or opener (a popup's frame names the popup as its 
 width says why in `design.json` (`"static"`) instead of sweeping; frames at several widths are always swept, whether
 they come from Figma or screenshots. Trace an offset to its first cause, fix it and check every frame again.
 
-When two rounds in a row bring no new lowest score:
+Tune with `--quick` (every frame and story at the frames' widths, no journeys) and run the complete check at
+milestones; batch the fixes a check names before checking again. When two rounds in a row bring no new lowest score:
 
-- **What the system explains may be proposed:** pixel residue, and an offset of 12 px or less that a consistent
-  token or a kit component explains, named once.
-- **The rest is fixed:** an offset over 12 px, a text or format, an order, a missing or extra piece, a text wider
-  than the font explains, a construct. Only the design's error, a state it lacks or the owner's call can excuse them.
+- **Notes need nothing:** an offset of 12 px or less (8 on a frame 400 px wide or narrower) that the system explains
+  is a note in the evidence. Pixel residue may be proposed with its reason.
+- **The rest is fixed:** a gap changed past the band, an offset past it, a text or format, an order, a missing or
+  extra piece, a text wider than the font explains, a wrap that splits what belongs together, a popover outside the
+  window, a construct. Only the design's error, a state it lacks or the owner's call can excuse them.
 - **A kit component drawn another size:** its entry gives the kit's measured size against the drawn one, and the
   rows around it keep the drawn pitch, so the difference does not add up down the card.
 
