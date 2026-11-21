@@ -21,13 +21,20 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
 
 - An acceptance list in `review.md` beside `design.json`. The [acceptance record](review.md#the-acceptance-list)
   defines the outcome markers, evidence, scope of manual claims and optional `Checked by` methods.
-- A frame for each `frames/<name>/reference.png` in the pack.
+- A frame for each `frames/<name>/reference.png` in the pack: put target states there, and context images in
+  `context/`.
 - An observed open and close transition for each detected control that opens content, including the component
-  root itself. See [Journeys](#journeys).
+  root itself, and for each frame of an overlay: one with its own `root`, or one its setup opens by hovering. See
+  [Journeys](#journeys).
+- A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason (a fixed page,
+  a screenshot-only task). A story on a frame's own URL needs a `setup` that brings its other data or state; verify
+  the combination in its capture. The script cannot tell whether a story is dense: the acceptance record names what
+  it adds.
+- Each line of the owner's past returns, `.design/returns.md` beside the task's folder (or `"returns"` in
+  `design.json`), quoted in an acceptance row.
 
-Width sweeps and additional stories are optional. Add them when the task requires them, and name them in the
-acceptance record. The summary and handoff identify omitted measurements. A story can set up different data or
-state on the same URL. Verify the combination in its capture.
+The evidence file opens with the handover status. A frame on which most of the design's texts are missing is named
+as rendering other data than its frame. A `fail` is reported as not a state to hand over in.
 
 **Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. They write
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be

@@ -36,7 +36,8 @@ const c = JSON.parse(fs.readFileSync(path.join(caseDir, "case.json"), "utf8"));
 const config = (url, design) => ({
   url, root: c.root, ...(c.host ? { host: c.host } : {}),
   frames: c.frames.map((f) => ({ name: f.name, width: f.width, spec: `${design}/${f.name}/spec.json`, reference: `${design}/${f.name}/reference.png` })),
-  ...(c.sweep ? { sweep: c.sweep } : {}),
+  // The case is one static page: it is its own dense story, entered by a query that changes nothing.
+  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url: `${url}?story=page` }] } } : {}),
 });
 const write = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof data === "string" || Buffer.isBuffer(data) ? data : `${JSON.stringify(data, null, 2)}\n`); };
 

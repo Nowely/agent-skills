@@ -71,8 +71,11 @@ function loadConfig(file) {
   for (const step of steps) { const fault = stepFault(step); if (fault) throw new Error(`design.json: ${fault}`); }
   for (const step of journeys.flatMap((j) => j.steps)) { const fault = stepFault(step, true); if (fault) throw new Error(`design.json: ${fault}`); }
   if (new Set(journeys.map((j) => j.name)).size !== journeys.length) throw new Error("design.json: journey names must be unique");
+  // The owner's past returns, one per line: .design/returns.md beside the task's folder unless design.json names one.
+  const returns = cfg.returns ? at(cfg.returns) : path.join(dir, "..", "returns.md");
+  if (cfg.static !== undefined && !(typeof cfg.static === "string" && cfg.static.trim())) throw new Error('design.json: "static" gives the reason no sweep or dense story applies');
   return {
-    ...cfg, dir, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
+    ...cfg, dir, returnsFile: returns, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
     ...(cfg.sweep ? { sweep: { ...cfg.sweep, stories: stories.map((st) => ({ ...st, url: url(st.url) })) } } : {}),
     frames: cfg.frames.map((f) => {
@@ -973,6 +976,35 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     if (unframed.length) gaps.push(`references no frame checks: ${unframed.map((p) => path.relative(cfg.dir, p)).join(", ")}`);
   }
   for (const st of sweepResult?.stories ?? []) if (st.unmeasured) gaps.push(`the story ${st.name} was not swept: ${st.unmeasured}`);
+  // UI built from frames is swept with a dense story of its own, unless design.json says why it is static.
+  if (!cfg.static) {
+    if (!cfg.sweep) gaps.push('no sweep: the widths between the frames and a dense story were not checked (or give "static" with the reason in design.json)');
+    else if (!cfg.sweep.stories?.length) gaps.push("no dense story is swept: add one to sweep.stories");
+    const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
+    // A story on a frame's page brings data of its own by its setup; without one it is the frame again.
+    for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.length) gaps.push(`the story ${st.name} is a frame's own page: a dense story renders data of its own`);
+  }
+  // A frame of an overlay its setup opens (its own root, as a popover, menu or sheet has, or a hover) wants a passing
+  // journey that opens the same thing and expects something hidden, whatever the product's markup.
+  const acts = ["hover", "click", "tap", "focus"];
+  const closing = cfg.journeys.filter((j) => journeyResults.find((r) => r.name === j.name)?.pass && j.steps.some((st) => "hidden" in st));
+  for (const f of cfg.frames) {
+    const overlay = (f.root && f.root !== cfg.root) || (f.setup ?? []).some((st) => typeof st.hover === "string");
+    for (const st of overlay ? f.setup ?? [] : []) {
+      const [act] = Object.keys(st);
+      if (!acts.includes(act) || typeof st[act] !== "string") continue;
+      const sel = st[act];
+      if (!closing.some((j) => j.steps.some((x) => [...acts, "move"].some((k) => x[k] === sel)))) gaps.push(`the state frame ${f.name} opens “${sel}”, and no journey opens it and expects it closed`);
+    }
+  }
+  // Each past return the owner recorded is a line of the acceptance list.
+  if (fs.existsSync(cfg.returnsFile)) {
+    const norm = (t) => t.toLowerCase().replace(/\s+/g, " ").trim();
+    const items = fs.readFileSync(cfg.returnsFile, "utf8").split("\n").map((l) => l.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*\S)/)?.[1]).filter(Boolean);
+    const listed = rows.map((r) => norm(r.item));
+    const missing = items.filter((t) => !listed.some((l) => l.includes(norm(t))));
+    if (missing.length) gaps.push(`past returns not in the acceptance list: ${missing.slice(0, 4).map((t) => `“${t}”`).join(", ")}${missing.length > 4 ? ", …" : ""}`);
+  }
   return gaps;
 }
 
@@ -1051,6 +1083,7 @@ async function check(file, flags) {
     const where = path.relative(process.cwd(), out) || ".";
     console.log(renderSummary(data, { file: `${where}/report.md` }));
     console.log(`Verdict: ${status}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
+    if (status === "fail") console.log("A fail is not a state to hand over in: fix the first cause and check again.");
     if (complete) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
     else console.log(`A partial check (${flags.frame ? "--frame" : "--no-sweep"}): it is not the evidence for a handoff.`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;

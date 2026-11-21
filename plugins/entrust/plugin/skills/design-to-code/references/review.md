@@ -54,6 +54,10 @@ do not build it.
 ## The acceptance list
 
 Write the applicable criteria before implementation, then record an outcome and evidence for each after checking.
+Quote each line of the owner's past returns (`.design/returns.md`) as a row. Name where each expected value comes
+from (the task, a reference, the owner's decision, the data contract); a value taken from the code you wrote proves
+only that the code agrees with itself. The dense story's row names what it adds: the longest legal values and the
+conditional actions it shows together.
 A fixed label might need one comparison with the supplied image. An interactive library component may also need
 its actual open and close gestures, stable data across widths, and an import from the built package in a consumer
 that exercises the shipped styles, images or fonts.

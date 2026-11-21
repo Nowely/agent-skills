@@ -465,10 +465,14 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const open = classified.filter((i) => i.status !== "accepted");
   // An image-only reference leaves its texts to the eye. A missing font is reported, not used to hide findings.
   const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
+  // When most of the design's texts are missing, the page renders other data than the frame: its offsets mean nothing.
+  const texts = spec.landmarks.filter((l) => l.text).length;
+  const missing = classified.filter((i) => i.property === "presence" && i.actual === "missing" && i.status === "fail").length;
+  const otherData = texts >= 3 && missing * 2 > texts ? `${missing} of ${texts} design texts are missing: the page likely renders other data than this frame; render the frame's own data` : undefined;
   const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, imageOnly, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -710,6 +714,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
       : f.verdict === "incomplete" ? "incomplete" : pending ? `awaiting a decision on ${pending}` : "pass";
     out.push("", `${f.frame}: ${verdict}${f.pixels ? `, ${round(f.pixels.ratio * 100)} % pixels differ` : ""}`);
     if (f.unmeasured) out.push(`  ${f.unmeasured}`);
+    if (f.otherData) out.push(`  ${f.otherData}`);
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
     if (f.imageOnly) out.push("  image-only reference: inspect text visually");
     const shown = f.causes.filter((c) => !c.repeat);
@@ -753,7 +758,9 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     const head = failing.length ? `${failing.length} finding${failing.length === 1 ? "" : "s"}; first: ${say(ordered(failing)[0])}` : "no findings";
     return `${head}${ok ? `; ${ok} excused by the ledger` : ""}`;
   };
-  const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
+  const handoverState = { pass: "done", pending: "only after two rounds without a new lowest score, each remaining difference proposed in the ledger",
+    incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
+  const out = [`Status: ${status} — ${handoverState}`, "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", "## Pictures to look at first", "",
     "Compare the reference and final captures at the same state and width. Record any visible differences. For Before/After, confirm the rendered data and theme even when capture settings match.", ""];
@@ -762,7 +769,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && "image-only: text judged by eye",
-      f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
+      f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
     if (f.beforeComparison) out.push(`  Before: ${f.beforeComparison}.`);

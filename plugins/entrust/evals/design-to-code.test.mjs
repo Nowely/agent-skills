@@ -877,12 +877,13 @@ test("a frame of a state drawn outside the component names its own root", browse
   const page = (pop) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:16px/20px monospace}main{width:300px;height:40px}
 .pop{position:absolute;top:50px;left:0;width:200px;padding:8px;background:#eee}</style>
 <main><button id="help" style="width:40px;height:20px">i</button></main><div class="pop" hidden>${pop}</div>
-<script>help.onmouseenter = () => { document.querySelector(".pop").hidden = false; };</script>`;
+<script>help.onmouseenter = () => { document.querySelector(".pop").hidden = false; };
+help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
     { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
-    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens", steps: [{ hover: "#help" }, { visible: ".pop" }] }] }));
+    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   const same = check(dir);
@@ -948,8 +949,8 @@ test("a full check is incomplete without review.md's acceptance list or a frame 
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40 } }));
   let r = check(f.dir);
-  assert.equal(r.status, 0, r.stdout);
-  assert.match(r.stdout, /No additional stories were swept/);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /Not checked: no dense story is swept/);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   assert.equal(check(f.dir).status, 0);
   fs.mkdirSync(path.join(f.dir, "frames/popover"), { recursive: true });
@@ -1138,7 +1139,8 @@ test("a static pack can omit the sweep and a story can enter its state on the fr
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
   const { sweep, ...noSweep } = cfg;
-  const fixed = run(noSweep);
+  assert.match(run(noSweep).stdout, /Not checked: no sweep/, "without a reason, no sweep is a gap");
+  const fixed = run({ ...noSweep, static: "a fixed frame, no data to stress" });
   assert.equal(fixed.status, 0, fixed.stdout);
   assert.match(fixed.stdout, /Width sweep and additional stories were not run/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /Width sweep and additional stories were not run/);
@@ -1239,7 +1241,7 @@ test("a root opener needs an observed transition on its own content after a gest
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   f.write(`<button id="trigger" aria-controls="pop" aria-expanded="false">More</button><div id="pop" hidden>Popup</div><div id="other" hidden>Other</div>
     <script>trigger.onclick = () => { pop.hidden = other.hidden = !pop.hidden; if (location.search.includes("timer")) setTimeout(() => { pop.hidden = true; }, 350); }</script>`);
-  const config = { ...cfg, url: "page.html?timer", root: "#trigger", sweep: undefined };
+  const config = { ...cfg, url: "page.html?timer", root: "#trigger", sweep: undefined, static: "a single trigger, no data to stress" };
   fs.writeFileSync(f.config, JSON.stringify(config));
   assert.equal(cli("snapshot", f.config, "--images", "--force").status, 0);
   const run = (...steps) => {
@@ -1277,6 +1279,7 @@ test("a journey on another data variant covers the same explicitly linked contro
 test("the acceptance verdict distinguishes evidence, missing measurements, decisions and failures", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  cfg.static = "a fixed label, no data to stress";
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined }));
   const review = path.join(f.dir, "review.md");
   const run = (...rows) => {
@@ -1301,4 +1304,42 @@ test("the acceptance verdict distinguishes evidence, missing measurements, decis
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320 } }));
   assert.equal(run(sweep).status, 0, "the requested width measurement ran");
   assert.equal(run("| data | sweep.stories | pass — measured dense data |").status, 2);
+});
+
+// ------------------------------------------------------------------ v21: what the five Terra iterations missed
+
+test("v21: no sweep needs a stated reason, and a story is its own data", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
+  const { sweep, ...noSweep } = cfg;
+  assert.equal(run(noSweep).status, 2);
+  assert.match(cli("check", (fs.writeFileSync(f.config, JSON.stringify({ ...noSweep, static: "" })), f.config)).stderr, /"static" gives the reason/);
+  assert.equal(run({ ...noSweep, static: "a fixed label" }).status, 0);
+  assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is a frame's own page/);
+  assert.doesNotMatch(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html", setup: [{ wait: 10 }] }] } }).stdout, /frame's own page/);
+});
+
+test("v21: an overlay frame needs a journey that opens and closes it; the owner's past returns are acceptance rows", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span>Ready</span><button id="t" style="position:absolute;left:200px;top:0">?</button></main>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [...cfg.frames, { ...cfg.frames[0], name: "hovered", setup: [{ hover: "#t" }] }] }));
+  fs.writeFileSync(path.join(f.dir, "..", "returns.md"), "# Past returns\n\n- long price beside several disks\n- popover closes when the pointer leaves\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), `${REVIEW}| long price beside several disks: dense story | sweep.stories | pass — no overlap |\n`);
+  const r = check(f.dir);
+  assert.match(r.stdout, /the state frame hovered opens “#t”, and no journey opens it and expects it closed/);
+  assert.match(r.stdout, /past returns not in the acceptance list: “popover closes when the pointer leaves”/);
+  assert.doesNotMatch(r.stdout, /past returns not in the acceptance list: .*long price/);
+  fs.rmSync(path.join(f.dir, "..", "returns.md"));
+});
+
+test("v21: the evidence file starts with the handover status, a fail says to keep working, and other data is named", browser, () => {
+  const f = smallFrame('<span>Ready</span> <b>Steady</b> <i>Go</i>');
+  f.write('<main><span>Alpha</span> <b>Beta</b> <i>Gamma</i></main>');
+  const r = check(f.dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /A fail is not a state to hand over in: fix the first cause and check again/);
+  assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
 });
