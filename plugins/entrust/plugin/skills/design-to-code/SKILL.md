@@ -44,6 +44,8 @@ You have the code: predict where the layout will break instead of waiting to fin
   then measured once it renders. Below that container width it no longer fits: a critical width.
 - **What happens below it,** following the design's intent: wrap, move to its own row, truncate with the full text
   reachable, or switch layout. Put a switch where the content stops fitting, not at a frame's width.
+- **What changes in each mode:** a narrower frame is often a different design, not the wide one squeezed. Read
+  each frame for the sizes, order and spacing it changes.
 - **Constructs that cannot overlap:** normal flow, grid areas with `minmax(0, 1fr)` and content-sized tracks,
   `flex-wrap` with `gap`, `overflow-wrap` for long tokens. Text positioned out of the flow, or a fixed height around
   text, needs a reason in `review.md`.
@@ -53,10 +55,17 @@ A component with one line needs one row. The complete check needs the model unle
 Ask before building: what shares this line, what is its longest legal value and who says so, what appears only
 sometimes, what must line up, what happens one step narrower, and what the user does here that must survive a resize.
 
-Write the predicted switch widths in `sweep.switches`, which the check measures a pixel either side, and give the
-dense story the longest values the model names. The sweep then confirms the model or refutes it: a switch
-elsewhere, an overlap or a "fragile under other data" warning means the model was wrong. Correct the model and the
-layout, not only the pixel.
+Put the model in `design.json`. Its switch widths go in `sweep.switches`, which the check measures a pixel either
+side. Each line goes in `sweep.lines`, with its pieces in order and where the line holds. Give the dense story the
+longest values the model names. The sweep then checks the arrangement on the frames' page and every story, not only
+collisions. Any of these means the model was wrong:
+
+- a piece that leaves its row, changes order or wraps;
+- a switch elsewhere;
+- an overlap;
+- a "fragile under other data" warning.
+
+Correct the model and the layout, not only the pixel.
 
 ## Build and compare
 
@@ -87,9 +96,11 @@ with one dense story (a legal combination of the longest values and every condit
 opens and closes each overlay or opener (a popup's frame names the popup as its root). A static page or a screenshot-only task says why in `design.json`
 (`"static"`) instead of sweeping. Trace an offset to its first cause, fix it and check every frame again; when two
 rounds in a row bring no new lowest score, record each remaining difference as `proposed` with its reason, or ask.
-With screenshots alone, compare the visible content and alignment at the same scale and state any uncertainty about
-scale. Unless the owner specified the CSS values or text line boxes, use them to diagnose differences visible in the
-pair. Only the owner accepts a proposed deviation.
+With screenshots alone, the check compares their ink by place, so a shifted column, a swapped icon or a moved row is
+a finding whatever the font. In another font, compare what the words say by eye, and state any uncertainty about
+scale. A font or renderer explains glyphs and their sizes, never where something sits or whether it shows. A
+deviation proposed because the design cannot be built names the construct tried and what the check measured. Only
+the owner accepts a proposed deviation.
 
 ## Verify and hand over
 

@@ -2,7 +2,10 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "covered", "outside", "align", "resize", "switch"];
+  "overlap", "covered", "outside", "align", "resize", "switch", "line"];
+// What another font or renderer can change: the glyphs and the sizes they take. Never where a thing sits, whether
+// it shows, what it says, or what it runs into.
+const PLATFORM_CANNOT = ["x", "y", "presence", "text", "overlap", "covered", "outside", "clipped", "switch", "line", "align"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -291,6 +294,7 @@ export function ledgerFaults(entries) {
     // A proposal covers one difference: a wildcard waiting for a decision would silence everything it matches.
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
+    if (e.category === "platform" && PLATFORM_CANNOT.includes(e.property)) faults.push(`${at}: a platform difference (a font, a renderer) changes glyphs and their sizes, not ${e.property}: fix it, or give the cause it has`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     return faults;
@@ -414,6 +418,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
+  // An image-only reference's ink, paired and compared by place (compareInk).
+  for (const i of measured.ink?.issues ?? []) issues.push({ ...i, expected: shown(i.expected), actual: shown(i.actual) });
   for (const text of measured.unexpected ?? []) add(text, "presence", "absent", "present");
   spec.landmarks.forEach((l, index) => {
     const label = landmarkLabel(l), p = byIndex.get(index);
@@ -465,14 +471,16 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const open = classified.filter((i) => i.status !== "accepted");
   // An image-only reference leaves its texts to the eye. A missing font is reported, not used to hide findings.
   const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
+  const ink = measured.ink && { pairs: measured.ink.pairs, design: measured.ink.design, page: measured.ink.page, ratio: measured.ink.ratio, glyphs: measured.ink.glyphs };
   // When most of the design's texts are missing, the page renders other data than the frame: its offsets mean nothing.
   const texts = spec.landmarks.filter((l) => l.text).length;
   const missing = classified.filter((i) => i.property === "presence" && i.actual === "missing" && i.status === "fail").length;
   const otherData = texts >= 3 && missing * 2 > texts ? `${missing} of ${texts} design texts are missing: the page likely renders other data than this frame; render the frame's own data` : undefined;
-  const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length ? "incomplete"
+  // With its ink compared, an image-only frame is measured in place; what its words say is still for the eye.
+  const verdict = failing.length ? "fail" : (imageOnly && !ink) || missingReference || unexpected.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, otherData, imageOnly, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ink, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -573,6 +581,156 @@ export function nameRegions(regions, landmarks) {
 // no single width, such as a missing layout change.
 // Each width's issue is classified with its own size before widths are grouped, so an entry bounded by `max` excuses
 // the widths it covers and not a larger difference at another width. A group keeps its largest difference.
+// ------------------------------------------------------------------ ink, for a reference that is an image alone
+
+// What a capture shows, as runs of ink: pixels far from the paper (the commonest luminance), joined into glyphs,
+// words and the pieces a person reads as one (a value, a label, an icon with its text). A run joins what is closer
+// than the taller one's height side by side, a dot or accent just above or below, or a piece a pixel away. A thin line across most
+// of the capture is a rule and a box over most of it a container, not ink. `lum` is one byte per pixel; boxes come
+// back in CSS px.
+export function inkRuns(lum, W, H, { scale = 1, contrast = 56 } = {}) {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < W * H; i++) hist[lum[i]]++;
+  let paper = 0;
+  for (let v = 1; v < 256; v++) if (hist[v] > hist[paper]) paper = v;
+  const ink = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) ink[i] = Math.abs(lum[i] - paper) > contrast ? 1 : 0;
+  const parts = [], stack = new Int32Array(W * H);
+  for (let s = 0; s < W * H; s++) {
+    if (!ink[s]) continue;
+    let top = 0, x0 = W, y0 = H, x1 = 0, y1 = 0;
+    stack[top++] = s; ink[s] = 0;
+    while (top) {
+      const p = stack[--top], x = p % W, y = (p - x) / W;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        const q = yy * W + xx;
+        if (ink[q]) { ink[q] = 0; stack[top++] = q; }
+      }
+    }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    if (w > W * 0.4 && h <= 3 * scale) continue; // a rule
+    if (w > W * 0.8 && h > H * 0.5) continue; // a container's outline or fill
+    parts.push({ x0, y0, x1: x1 + 1, y1: y1 + 1 });
+  }
+  const parent = parts.map((_, i) => i);
+  const find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
+  for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+    const a = parts[i], b = parts[j];
+    const ha = a.y1 - a.y0, hb = b.y1 - b.y0, h = Math.max(ha, hb);
+    const gx = Math.max(0, b.x0 - a.x1, a.x0 - b.x1), gy = Math.max(0, b.y0 - a.y1, a.y0 - b.y1);
+    const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0), ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+    const side = oy >= 0.3 * Math.min(ha, hb) && gx <= Math.max(2 * scale, h);
+    const accent = ox > 0 && gy <= 0.35 * h && Math.min(ha, hb) <= 0.5 * h;
+    // Antialiasing breaks a thin ring or stroke into pieces a pixel apart.
+    const touching = gx <= scale && gy <= scale;
+    if (side || accent || touching) parent[find(i)] = find(j);
+  }
+  const runs = new Map();
+  parts.forEach((b, i) => {
+    const r = find(i), cur = runs.get(r);
+    runs.set(r, cur ? { x0: Math.min(cur.x0, b.x0), y0: Math.min(cur.y0, b.y0), x1: Math.max(cur.x1, b.x1), y1: Math.max(cur.y1, b.y1) } : { ...b });
+  });
+  return [...runs.values()]
+    .map((b) => ({ x: b.x0 / scale, y: b.y0 / scale, width: (b.x1 - b.x0) / scale, height: (b.y1 - b.y0) / scale }))
+    // A speck, or a pixel-wide sliver of a box's edge or shadow, is not a piece anyone reads.
+    .filter((b) => b.width * b.height >= 4 && !(b.width <= 1.5 && b.height <= 12))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+// Pairs the design's ink runs with the page's: each with the run nearest in place and shape, one to one, after the
+// page's widths are scaled by the typical width ratio (another font is wider or narrower throughout). Its horizontal
+// place is read by the edge that moved least, as for text (a right-aligned price keeps its right edge in a wider
+// font). A pair further apart than the tolerance is an offset; a run without a pair is missing or extra.
+export function compareInk(design, page, { designWidth, pageWidth, tolerance = 4, labelOf = () => null, glyphs } = {}) {
+  const readings = (a, b) => [
+    b.x - a.x,
+    (b.x + b.width - pageWidth) - (a.x + a.width - designWidth),
+    (b.x + b.width / 2 - pageWidth / 2) - (a.x + a.width / 2 - designWidth / 2),
+  ].sort((u, v) => Math.abs(u) - Math.abs(v))[0];
+  const pairs = (ratio) => {
+    const all = [];
+    design.forEach((a, i) => page.forEach((b, j) => {
+      const rw = b.width / ratio / a.width, rh = b.height / a.height;
+      if (rw < 0.6 || rw > 1.6 || rh < 0.6 || rh > 1.7) return;
+      const dx = readings(a, b), dy = b.y - a.y;
+      // Shape weighs as much as place: a shifted column must not pair with its narrower neighbour.
+      const cost = Math.abs(dx) + Math.abs(dy) + 40 * Math.abs(Math.log(rw)) + 24 * Math.abs(Math.log(rh));
+      if (cost <= 48) all.push({ i, j, dx, dy, cost });
+    }));
+    all.sort((u, v) => u.cost - v.cost);
+    const usedA = new Set(), usedB = new Set(), out = [];
+    for (const p of all) if (!usedA.has(p.i) && !usedB.has(p.j)) { usedA.add(p.i); usedB.add(p.j); out.push(p); }
+    return out;
+  };
+  const first = pairs(1);
+  const ratios = first.map((p) => page[p.j].width / design[p.i].width).sort((u, v) => u - v);
+  const ratio = ratios.length >= 3 ? Math.min(1.5, Math.max(0.67, ratios[Math.floor(ratios.length / 2)])) : 1;
+  const matched = pairs(ratio);
+  const at = (b) => `${Math.round(b.x)}, ${Math.round(b.y)} (${Math.round(b.width)}×${Math.round(b.height)})`;
+  const name = (j, i) => labelOf(page[j]) ?? `ink at ${at(design[i])}`;
+  const issues = [];
+  // In the same font (the widths agree) the glyphs themselves compare: a changed word in its place is a finding. In
+  // another font they cannot, and what the words say stays for the eye.
+  const sameFont = Math.abs(ratio - 1) <= 0.02 && ratios.length >= 3;
+  const glyphsDiffer = (a, b) => {
+    const { d, p: q, scale = 1 } = glyphs;
+    let n = 0, differ = 0;
+    const ox = Math.round((b.x - a.x) * scale), oy = Math.round((b.y - a.y) * scale);
+    for (let y = Math.round(a.y * scale); y < Math.round((a.y + a.height) * scale); y++) for (let x = Math.round(a.x * scale); x < Math.round((a.x + a.width) * scale); x++) {
+      const u = d.lum[y * d.W + x], vx = x + ox, vy = y + oy;
+      const v = vx >= 0 && vy >= 0 && vx < q.W && vy < q.H ? q.lum[vy * q.W + vx] : 255;
+      n++;
+      if (Math.abs(u - v) > 96) differ++;
+    }
+    return n > 0 && differ / n > 0.12;
+  };
+  for (const p of matched) {
+    if (sameFont && glyphs && glyphsDiffer(design[p.i], page[p.j])) issues.push({ landmark: name(p.j, p.i), property: "text", expected: "as drawn", actual: "other glyphs in its place", via: "ink" });
+    if (Math.abs(p.dx) > tolerance) issues.push({ landmark: name(p.j, p.i), property: "x", delta: p.dx, expected: Math.round(design[p.i].x), actual: Math.round(page[p.j].x), via: "ink" });
+    if (Math.abs(p.dy) > tolerance) issues.push({ landmark: name(p.j, p.i), property: "y", delta: p.dy, expected: Math.round(design[p.i].y), actual: Math.round(page[p.j].y), via: "ink" });
+  }
+  const pairedA = new Set(matched.map((p) => p.i)), pairedB = new Set(matched.map((p) => p.j));
+  // One side may join what the other draws apart: a unit after its value, an icon after its label, a gap a pixel
+  // narrower. The runs one run spans on the other side are compared as one, by their joint box.
+  const band = (u, v) => Math.min(u.y + u.height, v.y + v.height) - Math.max(u.y, v.y) >= 0.5 * Math.min(u.height, v.height);
+  const spans = (u, v) => v.x >= u.x - tolerance - 2 && v.x + v.width <= u.x + u.width + tolerance + 2;
+  const joint = (list) => {
+    const x = Math.min(...list.map((b) => b.x)), y = Math.min(...list.map((b) => b.y));
+    return { x, y, width: Math.max(...list.map((b) => b.x + b.width)) - x, height: Math.max(...list.map((b) => b.y + b.height)) - y };
+  };
+  const joined = (from, fromPaired, to, toPaired, pageSide) => from.forEach((u, k) => {
+    if (fromPaired.has(k)) return;
+    const parts = to.map((v, m) => [v, m]).filter(([v, m]) => !toPaired.has(m) && band(u, v) && spans(u, v));
+    if (!parts.length) {
+      // Drawn inside a run the other side has paired already, or beside a run of its own side whose pair is wider by
+      // about this one (a word the other font set closer): its part, measured with it.
+      const host = to.findIndex((v, m) => toPaired.has(m) && band(u, v) && spans(v, u));
+      const mates = pageSide ? matched.map((q) => [page[q.j], design[q.i]]) : matched.map((q) => [design[q.i], page[q.j]]);
+      const scaleTo = pageSide ? 1 / ratio : ratio;
+      const beside = mates.some(([own, pair]) => band(u, own)
+        && Math.max(0, own.x - (u.x + u.width), u.x - (own.x + own.width)) <= 1.5 * Math.max(u.height, own.height)
+        && pair.width * scaleTo >= own.width + 0.5 * u.width);
+      if (host >= 0 || beside) fromPaired.add(k);
+      return;
+    }
+    fromPaired.add(k);
+    for (const [, m] of parts) toPaired.add(m);
+    const other = joint(parts.map(([v]) => v));
+    const [a, b] = pageSide ? [other, u] : [u, other];
+    const dx = readings(a, b), dy = b.y - a.y, label = labelOf(pageSide ? u : other) ?? `ink at ${at(a)}`;
+    if (Math.abs(dx) > tolerance) issues.push({ landmark: label, property: "x", delta: dx, expected: Math.round(a.x), actual: Math.round(b.x), via: "ink" });
+    if (Math.abs(dy) > tolerance) issues.push({ landmark: label, property: "y", delta: dy, expected: Math.round(a.y), actual: Math.round(b.y), via: "ink" });
+  });
+  joined(page, pairedB, design, pairedA, true);
+  joined(design, pairedA, page, pairedB, false);
+  design.forEach((a, i) => { if (!pairedA.has(i)) issues.push({ landmark: `design ink at ${at(a)}`, property: "presence", expected: "present", actual: "nothing near it on the page", via: "ink" }); });
+  page.forEach((b, j) => { if (!pairedB.has(j)) issues.push({ landmark: labelOf(b) ?? `page ink at ${at(b)}`, property: "presence", expected: "not in the design", actual: `at ${at(b)}`, via: "ink" }); });
+  return { issues, pairs: matched.length, design: design.length, page: page.length, ratio: round(ratio), glyphs: Boolean(sameFont && glyphs) };
+}
+
 export function sweepIssues(probes, ledger = [], extra = []) {
   const byKey = new Map();
   for (const p of probes) for (const raw of p.issues) {
@@ -657,7 +815,8 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
   if (ledgerProblems.length) out.push("");
   for (const f of frames) {
     out.push(`## ${f.frame} — ${verdictOf(f)}`, "");
-    if (f.imageOnly) out.push("Image-only reference: text was not measured; inspect it in the images.", "");
+    if (f.imageOnly) out.push(f.ink ? `Image-only reference: ink compared by place (${f.ink.pairs} of ${f.ink.design} design runs paired, page text ${f.ink.ratio}× as wide)${f.ink.glyphs ? ", and glyphs, in the same font" : "; in another font, what the words say is for the eye: inspect them in the images"}.`
+      : "Image-only reference: text was not measured; inspect it in the images.", "");
     if (f.fontsMissing?.length) out.push(`Fonts not available: ${f.fontsMissing.join(", ")}. Their texts render in a fallback: load them before trusting the text findings.`, "");
     const { spec, page } = f.root;
     if (!page) { out.push(f.unmeasured, ""); continue; }
@@ -726,7 +885,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     if (f.unmeasured) out.push(`  ${f.unmeasured}`);
     if (f.otherData) out.push(`  ${f.otherData}`);
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
-    if (f.imageOnly) out.push("  image-only reference: inspect text visually");
+    if (f.imageOnly) out.push(f.ink ? `  image-only reference: ink compared by place, ${f.ink.pairs} of ${f.ink.design} design runs paired${f.ink.glyphs ? ", glyphs too" : "; the words, by eye"}` : "  image-only reference: inspect text visually");
     const shown = f.causes.filter((c) => !c.repeat);
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
     const mine = failing.filter((i) => !i.inherited);
@@ -773,15 +932,19 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   };
   const handoverState = { pass: "done", pending: "only after two rounds without a new lowest score, each remaining difference proposed in the ledger",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
+  // An excuse should be narrower than what it excuses: an entry that covers many findings is named first.
+  const covered = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
+  const broad = ledger.map((e, index) => [e, covered.filter((i) => i.entries?.includes(index)).length]).filter(([, uses]) => uses > 3)
+    .map(([e, uses]) => `- one entry covers ${uses} findings: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${e.category}, ${e.status}). Check that each finding it covers has that cause.`);
   const out = [`Status: ${status} — ${handoverState}`, "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
-    "or goes under what was not checked.", "", "## Pictures to look at first", "",
+    "or goes under what was not checked.", "", ...(broad.length ? ["## Broad excuses", "", ...broad, ""] : []), "## Pictures to look at first", "",
     "Compare the reference and final captures at the same state and width. Record any visible differences. For Before/After, confirm the rendered data and theme even when capture settings match.", ""];
   for (const p of pictures) out.push(`- ${p}`);
   out.push("", "## Frames", "");
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
-    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && "image-only: text judged by eye",
+    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && (f.ink ? (f.ink.glyphs ? "image-only: positions and glyphs by ink" : "image-only: positions by ink, words by eye") : "image-only: text judged by eye"),
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
@@ -793,6 +956,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
     for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: not measured at ${u.ranges} px (fewer than two elements)`);
     for (const f of sweep.fragile ?? []) out.push(`- fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual}, at ${f.ranges}`);
+    for (const l of sweep.lines ?? []) out.push(`- line ${l.name}: ${l.widths ? `measured at ${l.widths} widths over the page and its stories` : "never measured"}`);
     if (model) {
       out.push(`- layout model: ${model.rows ? `${model.rows} ${model.rows === 1 ? "row" : "rows"} in review.md, first seen in round ${model.firstRound ?? "?"} (round 1 is the baseline check, before the first edit)` : "none in review.md"}`);
       out.push(`- predicted switches: ${model.predicted.length ? model.predicted.join(", ") : "none"}; measured layout changes: ${model.measured.length ? model.measured.join(", ") : "none"}`);
@@ -829,6 +993,8 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const a of acceptance) out.push(`- ${acceptanceLine(a)}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
+  const byEye = frames.filter((f) => f.imageOnly && !f.ink?.glyphs).map((f) => f.frame);
+  if (byEye.length) out.push(`- what the words say in ${byEye.join(", ")}: an image-only reference in another font; compare them in the pictures`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");
   return out.join("\n");
 }
@@ -837,7 +1003,7 @@ export function renderGallery({ title = "Design check", frames, sweep, journeys 
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
-    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? "Image-only reference: inspect text visually." : "",
+    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? (f.result.ink ? "Image-only reference: positions compared by ink; inspect the words visually." : "Image-only reference: inspect text visually.") : "",
       f.result.unexpected?.length ? esc(notInDesign(f.result)) : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     const verdict = verdictOf(f.result);
     return `<section><h2>${esc(f.result.frame)} <span class="${verdict}">${verdict}</span></h2>

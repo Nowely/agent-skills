@@ -2,7 +2,7 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, applies [the ledger](#the-ledger) and runs the configured sweep and journeys.
-Read [the summary](#the-summary-and-the-report) for findings and [Output](#output) for the saved evidence. Playwright is
+Read [Frames](#frames) for how a frame is compared, [the summary](#the-summary-and-the-report) for findings and [Output](#output) for the saved evidence. Playwright is
 resolved from the working directory first. Run it from the project that has it. It creates fresh Chromium contexts.
 For an authenticated route, use the project's authorized browser profile to capture and test the real page.
 Record those observations as separate evidence.
@@ -10,8 +10,8 @@ Record those observations as separate evidence.
 **Exit codes**, the first that applies: 1 a failure; 2 something not measured; 3 what remains awaits the owner's
 decision; 0 a pass. Not measured are:
 
-- a frame without its image, a frame whose reference is an image alone (its text is left to the eye), and a frame
-  showing text its spec does not have;
+- a frame without its image, and a frame showing text its spec does not have;
+- a line of `sweep.lines` that never shows two of its pieces;
 - an alignment group that never has two elements, unless the acceptance record marks that story not applicable with a reason;
 - everything, when there is no browser;
 - in a complete check, what the acceptance list needs (below).
@@ -30,6 +30,7 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
 - A [layout model](review.md#the-layout-model) in `review.md`, unless `design.json` gives `"static"`: a heading that
   names it (`Layout model`, `Модель раскладки`) with at least one table row below the header, or one list item. A
   component with one line needs one row.
+- The model's lines in `sweep.lines`, unless the page is static: at least one, each shown somewhere.
 - A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason (a fixed page,
   a screenshot-only task). A story on a frame's own URL needs a `setup` with a step other than `wait` that brings its other data or state; verify
   the combination in its capture. The script cannot tell whether a story is dense: the acceptance record names what
@@ -45,8 +46,10 @@ runs past its height. Each is named once, with the stories that show it. Change 
 why it holds. The evidence file gives the model's row count and the round it first appeared, and the predicted
 switches beside the measured ones.
 
-The evidence file opens with the handover status. A frame on which most of the design's texts are missing is named
-as rendering other data than its frame. A `fail` is reported as not a state to hand over in.
+The evidence file opens with the handover status. A ledger entry that covers more than three findings is named
+next, under "Broad excuses": an excuse should be narrower than what it excuses. A frame on which most of the
+design's texts are missing is named as rendering other data than its frame. A `fail` is reported as not a state to
+hand over in.
 
 **Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep. They write
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
@@ -72,7 +75,7 @@ Paths are relative to the file.
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
-| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the layout switches, by the design or your layout model, e.g. `[640, 420]`, each measured a pixel either side; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
+| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the layout switches, by the design or your layout model, e.g. `[640, 420]`, each measured a pixel either side; `lines`: the layout model's lines, `[{ "name": "top row, wide", "pieces": [".sku", ".specs", { "selector": ".ram", "wraps": true }, ".price"], "from": 700, "when": "[data-mode=wide]" }]`: at each width in `from`–`to` (both optional), while `when` (optional) matches a visible element, the pieces shown (every visible match of each selector, two different elements at least) share a row (their first lines overlap), stand left to right in the order listed, and each takes one line unless it `wraps`; a break is a `line` finding on the frames' page and every story; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
 `setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap` (the
 page is then opened for touch), `{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px),
@@ -121,6 +124,8 @@ to the score. For a popup:
   { "press": "Escape" }, { "hidden": ".popover" }] }
 ```
 
+## Frames
+
 A spec landmark is a text, found on the page whatever its spaces, letter case and markup, or a CSS `selector`
 for an element without text, with its `box` in the design. Texts are compared by position and line height, and by
 `font` (size, weight, line height, colour) where the spec gives it; by width only where the spec says `widths`, as a
@@ -131,7 +136,20 @@ not show it; an accepted `presence` entry for that text excuses it. A text cut w
 line of a block) or a line clamp (a vertical `-webkit-box`) is truncated on purpose and is not a finding: `review.md`
 says which texts truncate. Overlaps and texts outside the root are measured on what is painted, inside every box that
 clips it. The pixel mask keeps the text
-findings from being counted again as regions. With screenshots alone, inspect text by eye.
+findings from being counted again as regions.
+
+**A reference that is an image alone** (a spec with no text landmarks) is read as ink. The pixels far from the
+paper are grouped into runs: a value, a label, an icon with its text. Each run in the design is paired with the
+nearest run of like shape on the page, after the page's widths are scaled by the typical width ratio, since another
+font is wider or narrower throughout. Each pair is compared by place, by the edge that moved least: a right-aligned
+price keeps its right edge in a wider font. An offset over 4 px (or the tolerance, if larger) is an `x` or `y`
+finding named by the page's text there. A run without a pair is a `presence` finding. Where one side joins what the
+other draws apart (a unit after its value, a closer word space), the runs are compared by their joint box. In the
+same font (the widths agree) the glyphs inside each pair compare too, so a changed word is a `text` finding. In
+another font, what the words say is listed under what the script did not check. The runs are left out of the pixel
+comparison, so a region there is something other than text: a background, a border, an image. A frame compared
+this way can pass. Limit: a left-aligned text shifted by exactly its change of width keeps its right edge and reads
+as aligned. In practice this matters only between fonts of very different width.
 
 ## The ledger
 
@@ -145,7 +163,7 @@ findings from being counted again as regions. With screenshots alone, inspect te
 | `frame` | a frame's name or a list of names; absent or `*` for all |
 | `max` | the largest difference in px the entry covers, at each width in the sweep; only a difference with a size (a position, a size, an overflow, a cut, an overlap, an alignment spread, a resize) can be covered, never a layout switch or a covered control; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one. A `text` entry names one design text |
-| `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
+| `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so: it changes glyphs and their sizes, so it may cover `font`, `width`, `height`, `region` or `overflow`, never where a thing sits, whether it shows, what it says or what it runs into), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
 | `status` | `accepted`: excused, set only by the owner, with `decidedBy`; `proposed`: written by you, shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
 | `reason` | why, in a sentence the owner can judge |
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |

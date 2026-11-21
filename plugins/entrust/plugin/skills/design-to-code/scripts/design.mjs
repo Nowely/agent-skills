@@ -26,7 +26,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  compareFrame, compareInk, inkRuns, isImageOnly, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -74,6 +74,13 @@ function loadConfig(file) {
   // The owner's past returns, one per line: .design/returns.md beside the task's folder unless design.json names one.
   const returns = cfg.returns ? at(cfg.returns) : path.join(dir, "..", "returns.md");
   if (cfg.static !== undefined && !(typeof cfg.static === "string" && cfg.static.trim())) throw new Error('design.json: "static" gives the reason no sweep or dense story applies');
+  // The layout model's lines: pieces that share a row, in order, where the line holds (a width range, or a selector
+  // the page shows in that layout mode).
+  const lines = cfg.sweep?.lines ?? [];
+  const piece = (p) => (typeof p === "string" && p.trim()) || (p && typeof p.selector === "string" && p.selector.trim());
+  if (!Array.isArray(lines) || lines.some((l) => !l?.name || !Array.isArray(l.pieces) || l.pieces.length < 2 || !l.pieces.every(piece)))
+    throw new Error('design.json: each sweep line needs a name and at least two pieces: selectors, or { "selector": "…", "wraps": true } for a piece that may take several lines');
+  if (new Set(lines.map((l) => l.name)).size !== lines.length) throw new Error("design.json: sweep line names must be unique");
   return {
     ...cfg, dir, returnsFile: returns, url: url(cfg.url), ledger: at(cfg.ledger), tolerance: cfg.tolerance ?? 1,
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
@@ -270,7 +277,7 @@ async function open(browser, cfg, target) {
 
 // Runs inside the page. One function, so its helpers travel with it: measure the spec's landmarks, snapshot every
 // text as a landmark, or probe the layout at the current width for the sweep.
-async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1 }) {
+async function inPage({ command, root: rootSelector, landmarks = [], align = [], tolerance = 1, lines: modelLines = [] }) {
   const norm = (s) => s.replace(/\s+/g, " ").trim();
   const key = (s) => s.replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
   const seen = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
@@ -477,8 +484,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
         return new Set(widths).size > 1 && fallback.every((g, i) => width(`"${first}", ${g}`, c) === widths[i]);
       })) missing.add(first);
     }
-    const textBoxes = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => boxOf([line])));
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes, unexpected };
+    const textLines = nodes.flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => ({ text: norm(n.data), box: boxOf([line]) })));
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected };
   }
 
   if (command === "snapshot") {
@@ -542,6 +549,45 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     // The size a ledger's max is held to is the measured one; only the text a person reads is rounded.
     const values = rects.map(edgeOf), spread = Math.max(...values) - Math.min(...values), shown = Math.round(spread * 100) / 100;
     if (spread > tolerance) issues.push({ landmark: g.selector, property: "align", delta: spread, actual: `${g.edge ?? "left"} edges ${shown} px apart` });
+  }
+  // The layout model's lines at this width: the pieces shown share a row (their first lines overlap), stand in the
+  // order listed, and each takes one line unless it may wrap. A line with fewer than two pieces shown measures nothing.
+  const lineMeasured = [];
+  const firstLine = (el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const rects = [...range.getClientRects()].filter((r) => r.width > 0.5 && r.height > 0.5).sort((a, b) => a.top - b.top);
+    if (!rects.length) { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, count: 1 }; }
+    const rowsOf = [];
+    for (const r of rects) if (!rowsOf.some((t) => r.top < t.bottom - Math.min(r.height, t.bottom - t.top) / 2)) rowsOf.push({ top: r.top, bottom: r.bottom });
+    const first = rects.filter((r) => r.top < rowsOf[0].bottom - Math.min(r.height, rowsOf[0].bottom - rowsOf[0].top) / 2);
+    return { left: Math.min(...first.map((r) => r.left)), right: Math.max(...first.map((r) => r.right)),
+      top: Math.min(...first.map((r) => r.top)), bottom: Math.max(...first.map((r) => r.bottom)), count: rowsOf.length };
+  };
+  for (const line of modelLines) {
+    if (line.when && ![...document.querySelectorAll(line.when)].some(visible)) continue;
+    const pieces = line.pieces.flatMap((p, order) => {
+      const selector = typeof p === "string" ? p : p.selector, wraps = typeof p === "object" && Boolean(p.wraps);
+      return [...root.querySelectorAll(selector)].filter((el) => visible(el) && el.getBoundingClientRect().width > 0)
+        .map((el) => ({ selector, wraps, order, el, box: firstLine(el) }));
+    });
+    // Two different elements make a line; one element named twice measures nothing.
+    if (new Set(pieces.map((p) => p.el)).size < 2) continue;
+    lineMeasured.push(line.name);
+    const say = (p) => `“${p.selector}”`;
+    const wrapped = pieces.find((p) => !p.wraps && p.box.count > 1);
+    if (wrapped) issues.push({ landmark: line.name, property: "line", actual: `${say(wrapped)} wraps onto ${wrapped.box.count} lines` });
+    const top = Math.max(...pieces.map((p) => p.box.top)), bottom = Math.min(...pieces.map((p) => p.box.bottom));
+    const shortest = Math.min(...pieces.map((p) => p.box.bottom - p.box.top));
+    if (bottom - top <= Math.min(1, shortest / 4)) {
+      const low = pieces.reduce((a, b) => (b.box.top > a.box.top ? b : a)), high = pieces.reduce((a, b) => (b.box.top < a.box.top ? b : a));
+      issues.push({ landmark: line.name, property: "line", actual: `${say(low)} leaves the row: it starts ${Math.round(low.box.top - high.box.bottom)} px below the end of ${say(high)}` });
+    } else {
+      for (let i = 1; i < pieces.length; i++) if (pieces[i].box.left < pieces[i - 1].box.left - 1) {
+        issues.push({ landmark: line.name, property: "line", actual: `${say(pieces[i])} stands before ${say(pieces[i - 1])}` });
+        break;
+      }
+    }
   }
   // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
   // wraps keeps its first line's place, so wrapping inside one layout does not count.
@@ -613,7 +659,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       fragile.push({ landmark: label(el.textContent), kind: "spills", actual: `its content runs ${spill} px past its own height` });
     }
   }
-  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile };
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile, lineMeasured };
 }
 
 // Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
@@ -703,6 +749,21 @@ async function pixelDiff(page, reference, actual, { scale, ignore, shifts = [] }
   }, [`data:image/png;base64,${reference.toString("base64")}`, `data:image/png;base64,${actual.toString("base64")}`, scale, ignore, shifts]);
 }
 
+// One byte of luminance per pixel of a PNG, read in the browser: the ink runs are found from it.
+async function luminance(page, png) {
+  const { W, H, data } = await page.evaluate(async (src) => {
+    const i = new Image();
+    await new Promise((resolve, reject) => { i.onload = resolve; i.onerror = () => reject(new Error("image does not load")); i.src = src; });
+    const c = document.createElement("canvas"); c.width = i.width; c.height = i.height;
+    const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(i, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    let s = "";
+    for (let p = 0; p < d.length; p += 4) s += String.fromCharCode(Math.round(d[p] * 0.299 + d[p + 1] * 0.587 + d[p + 2] * 0.114));
+    return { W: c.width, H: c.height, data: btoa(s) };
+  }, `data:image/png;base64,${png.toString("base64")}`);
+  return { W, H, lum: Uint8Array.from(Buffer.from(data, "base64")) };
+}
+
 const writeDataUrl = (file, url) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(url.split(",")[1], "base64")); };
 const dataUrl = (buf) => buf && `data:image/png;base64,${buf.toString("base64")}`;
 
@@ -774,9 +835,24 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       const before = beforeFrame(out, frame, settings, shot);
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
+      // A reference that is an image alone is read as ink: each run of text or icon in the design paired with the
+      // page's and compared by place, so a shifted column or a swapped icon is an offset, whatever the font does to
+      // the glyphs. The runs are then left out of the pixels: what is left there is not text.
+      let inkBoxes = [];
+      if (reference && isImageOnly(spec)) {
+        const d = await luminance(scratch, reference), p = await luminance(scratch, shot);
+        const designRuns = inkRuns(d.lum, d.W, d.H, { scale }), pageRuns = inkRuns(p.lum, p.W, p.H, { scale });
+        const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+        const labelOf = (run) => {
+          const best = measured.textLines.map((l) => [l, overlap(l.box, run)]).filter(([, o]) => o > 0).sort((a, b) => b[1] - a[1])[0];
+          return best ? (best[0].text.length > 40 ? `${best[0].text.slice(0, 39)}…` : best[0].text) : null;
+        };
+        measured.ink = compareInk(designRuns, pageRuns, { designWidth: spec.frame.width, pageWidth: measured.root.width, tolerance: Math.max(4, cfg.tolerance ?? 1), labelOf, glyphs: { d, p, scale } });
+        inkBoxes = [...designRuns, ...pageRuns];
+      }
       if (reference) {
-        // Text is left out of the pixels: its landmarks measure it, or, for an image-only reference, the eye does.
-        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
+        // Text is left out of the pixels: its landmarks measure it, or, for an image-only reference, its ink does.
+        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box), ...inkBoxes];
         const shifts = spec.landmarks.map((l, i) => measured.landmarks[i]?.found
           && { label: l.text ?? l.selector, box: l.box, dx: measured.landmarks[i].box.x - l.box.x, dy: measured.landmarks[i].box.y - l.box.y }).filter(Boolean);
         const { png, regions: found, ...pixels } = await pixelDiff(scratch, reference, shot, { scale, ignore, shifts });
@@ -838,7 +914,8 @@ async function sweep(browser, cfg, ledger) {
       const probe = async (width) => {
         await setWidth(page, cfg, width, 900);
         await settle(page, cfg.root);
-        const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance });
+        const lines = (s.lines ?? []).filter((l) => (l.from ?? 0) <= width && width <= (l.to ?? Infinity));
+        const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance, lines });
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
         // A picture for the gallery only: a root with no size to capture leaves a gap, not a failed check.
         if (shots && frameWidths.has(width) && !shots.has(width)) {
@@ -875,6 +952,9 @@ async function sweep(browser, cfg, ledger) {
     stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
+  // How often each line of the model was measured, over the frames' page and every story.
+  const measuredLines = new Map((s.lines ?? []).map((l) => [l.name, 0]));
+  for (const p of [...probes, back, ...storyProbes.flat()]) for (const n of p.lineMeasured ?? []) measuredLines.set(n, measuredLines.get(n) + 1);
   // Fragile constructs, by element and kind, with the widths they were seen at: a forecast, not a verdict.
   const fragile = new Map();
   const collect = (list, story) => {
@@ -890,6 +970,7 @@ async function sweep(browser, cfg, ledger) {
   for (const [i, story] of (s.stories ?? []).entries()) collect(storyProbes[i] ?? [], story.name);
   return {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
+    lines: [...measuredLines].map(([name, widths]) => ({ name, widths })),
     fragile: [...fragile.values()].map(({ widths: at, stories: where, ...f }) => ({ ...f, story: [...where].join(", "), ranges: ranges([...new Set(at)]) })),
     score: issues.filter((i) => i.status !== "accepted").length * 10,
     unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
@@ -1075,6 +1156,9 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   for (const st of sweepResult?.stories ?? []) if (st.unmeasured) gaps.push(`the story ${st.name} was not swept: ${st.unmeasured}`);
   // The layout model comes first: a table's header does not count. One row is enough for a component with one line.
   if (!cfg.static && layoutModelRows(cfg) < 1) gaps.push("review.md has no layout model: write it before building (a header and one row are enough for a component with one line)");
+  // The model's lines are checked across the sweep: at least one, and each measured somewhere.
+  if (!cfg.static && cfg.sweep && !(cfg.sweep.lines ?? []).length) gaps.push("sweep.lines is empty: put the layout model's lines there (the pieces that share a row, in order), so the sweep checks the arrangement, not only collisions");
+  for (const l of sweepResult?.lines ?? []) if (!l.widths) gaps.push(`the line “${l.name}” never showed two of its pieces: its selectors, range or “when” match nothing`);
   // UI built from frames is swept with a dense story of its own, unless design.json says why it is static.
   if (!cfg.static) {
     if (!cfg.sweep) gaps.push('no sweep: the widths between the frames and a dense story were not checked (or give "static" with the reason in design.json)');

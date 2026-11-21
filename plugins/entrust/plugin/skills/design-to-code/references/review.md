@@ -58,12 +58,18 @@ Put it under a heading that names it (`Layout model`, `Модель раскла
 unless the page is static. One row per line that holds several pieces, in each layout mode; a component with one line
 needs one row:
 
-| Line and mode | What shares it: longest legal value, source | Width it needs | Below that width | Construct |
-|---|---|---|---|---|
-| top row, wide | title (120 characters, API limit), six specs ("126.5 m²", fixtures), price ("12 345 678 € / month", owner) | about 690 px | the specs take their own row | grid areas, `minmax(0, 1fr)` |
-| footer, any | availability (60 characters, data contract), help icon, edit action (owner's listings only) | about 380 px | the action wraps under the text | `flex-wrap` with `gap` |
+| Line and mode | What shares it: longest legal value, source | Width it needs | Below that width | What changes in this mode | Construct |
+|---|---|---|---|---|---|
+| top row, wide | title (120 characters, API limit), six specs ("126.5 m²", fixtures), price ("12 345 678 € / month", owner) | about 690 px | the specs take their own row | — | grid areas, `minmax(0, 1fr)` |
+| footer, any | availability (60 characters, data contract), help icon, edit action (owner's listings only) | about 380 px | the action wraps under the text | — | `flex-wrap` with `gap` |
+| all, narrow | one column | — | — | body 17 px, badges 26 px tall, the stock icon after its count | a block per group |
 
-The widths where the table says the layout switches go in `sweep.switches`. Each risk the table implies (a line
+A narrower frame is often a different design, not the wide one squeezed: read each frame for the sizes, order and
+spacing that change, and write them in the table.
+
+The table goes into `design.json` twice. Its switch widths go in `sweep.switches`, and each line with several pieces
+goes in `sweep.lines` (the pieces as selectors in their order, where the line holds as `from`/`to` or the mode's
+`when`), so the sweep checks the arrangement on every story, not only collisions. Each risk the table implies (a line
 near its limit, a conditional action, an empty value) is a row of the acceptance list, tried at its critical width.
 
 ## The acceptance list

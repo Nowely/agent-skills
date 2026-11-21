@@ -37,7 +37,7 @@ const config = (url, design) => ({
   url, root: c.root, ...(c.host ? { host: c.host } : {}),
   frames: c.frames.map((f) => ({ name: f.name, width: f.width, spec: `${design}/${f.name}/spec.json`, reference: `${design}/${f.name}/reference.png` })),
   // The case is one static page: it is its own dense story, entered by a query that changes nothing.
-  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url: `${url}?story=page` }] } } : {}),
+  ...(c.sweep ? { sweep: { ...c.sweep, stories: [{ name: "page", url: `${url}?story=page` }], lines: c.sweep.lines ?? [{ name: "badges", pieces: [".badge.new", ".badge:not(.new)"], from: 600 }] } } : {}),
 });
 const write = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof data === "string" || Buffer.isBuffer(data) ? data : `${JSON.stringify(data, null, 2)}\n`); };
 
@@ -67,7 +67,7 @@ fs.copyFileSync(path.join(caseDir, "context.md"), path.join(dir, "design", "cont
 // Give both arms the same observable design data. Keep judge-only assertions private.
 const workerConfig = config("index.html", "design");
 if (workerConfig.sweep) {
-  const { switches, align, ...publicSweep } = workerConfig.sweep;
+  const { switches, align, lines, ...publicSweep } = workerConfig.sweep;
   workerConfig.sweep = publicSweep;
 }
 write(path.join(dir, "design.json"), workerConfig);

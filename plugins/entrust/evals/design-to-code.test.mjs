@@ -336,7 +336,7 @@ function designDir() {
   fs.copyFileSync(path.join(CASE, "reference.html"), path.join(design, "page.html"));
   fs.writeFileSync(path.join(design, "design.json"), JSON.stringify({
     url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json",
-    sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }] },
+    sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }], lines: [{ name: "badges", pieces: [".badge.new", ".badge:not(.new)"], from: 600 }] },
     frames: CONFIG.frames.map((f) => ({ ...f, spec: `design/${f.name}/spec.json`, reference: `design/${f.name}/reference.png` })),
   }));
   fs.writeFileSync(path.join(design, "review.md"), REVIEW);
@@ -367,15 +367,19 @@ const check = (dir, ...flags) => {
 };
 
 // A fixed-size frame keeps changes to text, pixels and the state that opens the frame independent.
+// Two transparent markers in every small page's root, so the fixture's sweep has a line of the model to measure.
+const LINES = [{ name: "markers", pieces: [".row-a", ".row-b"] }];
+const MARKERS = '<b class="row-a" style="position:absolute;top:0;left:0;width:1px;height:1px"></b><b class="row-b" style="position:absolute;top:0;left:2px;width:1px;height:1px"></b>';
 function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   const dir = tmp(), page = path.join(dir, "page.html"), config = path.join(dir, "design.json");
-  const markup = (html) => `<!doctype html><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}</style>${html}`;
+  const markers = "<b class=row-a></b><b class=row-b></b>"; // no quotes: a test may put <main> inside an attribute
+  const markup = (html) => `<!doctype html><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}.row-a,.row-b{position:absolute;top:0;width:1px;height:1px}.row-a{left:0}.row-b{left:2px}</style>${html.replace(/<main([^>]*)>/g, `<main$1>${markers}`)}`;
   const write = (html) => fs.writeFileSync(page, markup(html));
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json",
     frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })),
-    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] } }));
+    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES } }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   return { dir, page, config, write };
@@ -594,31 +598,28 @@ test("a missing reference image makes the visual check incomplete", browser, () 
   assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="incomplete">incomplete</);
 });
 
-test("an image-only reference requires visual text review, including when it matches", browser, () => {
+test("an image-only reference is compared by its ink: in place, and glyph by glyph in the same font", browser, () => {
   const dir = variant();
   const specFile = path.join(dir, "design/720/spec.json");
   const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
   fs.writeFileSync(specFile, JSON.stringify({ ...spec, landmarks: [] }));
   const same = check(dir, "--frame", "720");
-  assert.equal(same.status, 2, same.stdout + same.stderr);
-  assert.equal(same.result.status, "incomplete");
-  assert.deepEqual(same.result.imageOnlyFrames, ["720"]);
-  assert.match(same.stdout, /image-only reference: inspect text visually/);
-  assert.match(fs.readFileSync(path.join(dir, "out/report.md"), "utf8"), /text was not measured/);
-  const full = check(quick(dir));
-  assert.equal(full.status, 2, full.stdout + full.stderr);
-  assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /Image-only reference: inspect text visually/);
+  const frame = same.result.frames[0];
+  assert.equal(frame.imageOnly, true);
+  assert.equal(frame.verdict, "pass", same.stdout);
+  assert.equal(frame.ink.pairs, frame.ink.design, JSON.stringify(frame.ink));
+  assert.equal(frame.ink.glyphs, true, "the same font: glyphs compared too");
+  assert.match(same.stdout, /image-only reference: ink compared by place, \d+ of \d+ design runs paired, glyphs too/);
   const page = path.join(dir, "page.html");
   fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">New<", ">Old<"));
   const changed = check(dir, "--frame", "720");
-  assert.notEqual(changed.status, 0, changed.stdout + changed.stderr);
-  assert.equal(changed.result.frames[0].imageOnly, true);
-  assert.ok(changed.result.frames[0].pixels.ratio > 0);
+  assert.equal(changed.status, 1, changed.stdout + changed.stderr);
+  assert.ok(changed.result.frames[0].issues.some((i) => i.property === "text" && i.via === "ink" && /Old/.test(i.landmark)), JSON.stringify(changed.result.frames[0].issues));
   // Outside the text an image-only difference still fails.
-  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
+  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">Old<", ">New<").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
   const media = check(dir, "--frame", "720");
   assert.equal(media.status, 1, media.stdout);
-  assert.ok(media.result.frames[0].issues.some((i) => i.property === "region" && i.status === "fail"));
+  assert.ok(media.result.frames[0].issues.some((i) => i.status === "fail"));
 });
 
 test("a font the page names first but cannot draw its text with is reported, and findings stay visible", browser, () => {
@@ -724,11 +725,11 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const dir = tmp();
   const page = (second, hideBelow = 0) => `<!doctype html><style>body{margin:0} #root{position:relative;width:100%;height:90px} .v{position:absolute;width:40px;height:12px;background:#000}
 @media (max-width: ${hideBelow}px) { .v + .v { display: none } }</style>
-<div id="root"><div class="v" style="left:10px;top:0"></div><div class="v" style="left:${second}px;top:30px"></div><div class="w" style="position:absolute;top:60px">x</div></div>`;
+<div id="root">${MARKERS}<div class="v" style="left:10px;top:0"></div><div class="v" style="left:${second}px;top:30px"></div><div class="w" style="position:absolute;top:60px">x</div></div>`;
   const run = (second, align, { tolerance, hideBelow } = {}) => {
     fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, stories: [{ name: "page", url: "page.html?dense" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
     return check(dir);
   };
   const v = [{ selector: ".v", edge: "left" }];
@@ -742,7 +743,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
     fs.writeFileSync(path.join(dir, "deviations.json"), JSON.stringify([{ landmark: ".v", property: "align", max, category: "platform", status: "accepted", decidedBy: "owner", reason: "subpixel" }]));
     fs.writeFileSync(path.join(dir, "page.html"), page(10).replace('left:10px;top:30px"', `left:10px;top:30px;transform:translateX(${second - 10}px)"`));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v, stories: [{ name: "page", url: "page.html?dense" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", ledger: "deviations.json", frames: [], sweep: { from: 300, to: 340, step: 20, align: v, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
     const r = check(dir);
     fs.rmSync(path.join(dir, "deviations.json"));
     return r.result.sweep.issues.find((i) => i.property === "align");
@@ -766,7 +767,7 @@ test("a story reports the widths where a configured alignment has too few visibl
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const compact = { name: "compact", url: "page.html?compact" }, single = { name: "one value", url: "page.html?single" };
   const run = (stories, outcome) => {
-    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320, step: 20, align: [{ selector: ".value", edge: "left" }], stories } }));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 320, step: 20, align: [{ selector: ".value", edge: "left" }], stories } }));
     fs.writeFileSync(path.join(f.dir, "review.md"), MODEL + [
       "## Acceptance", "| Item | Checked by | Result |", "|---|---|---|",
       "| reference alignment | sweep | pass — reference has two aligned values |",
@@ -836,7 +837,7 @@ test("content that fades in is present, and a text cut with an ellipsis is trunc
   assert.equal(shown.status, 0, shown.stdout + shown.stderr);
   const cut = smallFrame('<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready steady go</div>');
   const cfg = JSON.parse(fs.readFileSync(cut.config, "utf8"));
-  fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
+  fs.writeFileSync(cut.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   const own = check(cut.dir);
   assert.equal(own.status, 0, own.stdout + own.stderr);
   assert.deepEqual(own.result.sweep.issues, []);
@@ -861,7 +862,7 @@ test("a dense story is swept too: a text over a text, a control under another el
 <main><span>Ready</span><button aria-label="Help" style="position:absolute;left:0;top:30px;width:20px;height:20px"></button>
 <span style="position:absolute;left:0;top:10px;background:white;padding:4px">Ready and waiting for a very long time</span></main>`);
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "dense", url: "dense.html" }] } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "dense", url: "dense.html" }] } }));
   const r = check(f.dir);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   const story = r.result.sweep.issues.filter((i) => i.story === "dense");
@@ -878,14 +879,14 @@ test("a frame of a state drawn outside the component names its own root", browse
   const dir = tmp(), config = path.join(dir, "design.json");
   const page = (pop) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:16px/20px monospace}main{width:300px;height:40px}
 .pop{position:absolute;top:50px;left:0;width:200px;padding:8px;background:#eee}</style>
-<main><button id="help" style="width:40px;height:20px">i</button></main><div class="pop" hidden>${pop}</div>
+<main>${MARKERS}<button id="help" style="width:40px;height:20px">i</button></main><div class="pop" hidden>${pop}</div>
 <script>help.onmouseenter = () => { document.querySelector(".pop").hidden = false; };
 help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
     { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
-    sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
+    sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   const same = check(dir);
@@ -914,7 +915,7 @@ test("a covered control: part of it, below the fold, but not its own label or a 
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const sweep = (name, body) => {
     fs.writeFileSync(path.join(f.dir, `${name}.html`), story(body));
-    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === name && i.property === "covered").map((i) => i.landmark);
   };
   assert.deepEqual(sweep("partial", '<button aria-label="Help" style="position:absolute;left:0;top:0;width:40px;height:40px"></button><div class="box" style="left:22px;top:0;width:60px;height:40px"></div>'), ["Help"]);
@@ -949,11 +950,11 @@ test("journeys hold or fail step by step, by pointer and by touch", browser, () 
 test("a full check is incomplete without review.md's acceptance list or a frame for every reference", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40 } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40 } }));
   let r = check(f.dir);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /Not checked: no dense story is swept/);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] } }));
   assert.equal(check(f.dir).status, 0);
   fs.mkdirSync(path.join(f.dir, "frames/popover"), { recursive: true });
   fs.copyFileSync(path.join(f.dir, "0.png"), path.join(f.dir, "frames/popover/reference.png"));
@@ -999,7 +1000,7 @@ test("truncation drawn on purpose collides with nothing; one that draws no ellip
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const sweep = (name, body) => {
     fs.writeFileSync(path.join(f.dir, `${name}.html`), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:60px;background:white;font:16px/20px monospace}</style><main>${body}</main>`);
-    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === name).map((i) => i.property);
   };
   assert.deepEqual(sweep("ellipsis", '<div style="display:flex;gap:8px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title that cannot fit</div><b>€10</b></div>'), []);
@@ -1014,7 +1015,7 @@ test("covered leaves wrapped links, a transparent file input and a disabled fiel
 <p style="width:200px;margin:0">I agree to the <a href="#">terms of service</a> and <a href="#">privacy policy of the site</a>.</p>
 <span style="position:relative;display:inline-block"><button style="width:80px;height:24px">Upload</button><input type="file" style="position:absolute;inset:0;opacity:0"></span>
 <fieldset disabled style="position:relative;border:0;padding:0;margin:0"><button style="width:60px;height:20px">Send</button><span style="position:absolute;inset:0"></span></fieldset></main>`);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "controls", url: "controls.html" }] } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "controls", url: "controls.html" }] } }));
   const r = check(f.dir);
   assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "covered"), [], r.stdout);
 });
@@ -1023,7 +1024,7 @@ test("a story that cannot be swept is a gap, and the frames' own sweep is kept",
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(path.join(f.dir, "empty.html"), "<!doctype html><p>no root here</p>");
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }, { name: "empty", url: "empty.html" }] } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html" }, { name: "empty", url: "empty.html" }] } }));
   const r = check(f.dir);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /Not checked: the story empty was not swept: Root main was absent/);
@@ -1078,7 +1079,7 @@ test("covered: the centre or most of a control, inside the component, not a badg
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const sweep = (name, body) => {
     fs.writeFileSync(path.join(f.dir, `${name}.html`), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style><main>${body}</main>`);
-    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name, url: `${name}.html` }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === name && i.property === "covered").map((i) => i.landmark);
   };
   assert.deepEqual(sweep("badge", '<span style="position:relative;display:inline-block"><button aria-label="Inbox" style="width:32px;height:32px"></button><span style="position:absolute;right:-6px;top:-6px;width:16px;height:16px;background:red;border-radius:8px">3</span></span>'), []);
@@ -1121,7 +1122,7 @@ test("the acceptance list is a heading with lines under it, not the word alone",
 test("a full check writes the evidence a handoff quotes, and a journey that expects nothing is refused", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] },
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "page", url: "page.html?dense" }] },
     journeys: [{ name: "root shows", steps: [{ visible: "main" }] }] }));
   const r = check(f.dir);
   assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -1300,10 +1301,10 @@ test("the acceptance verdict distinguishes evidence, missing measurements, decis
     assert.deepEqual([r.status, r.result.status], [code, status], r.stdout);
   }
   assert.match(run(sweep).stdout, /the width sweep was not fully measured/);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 280, to: 300 } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 280, to: 300 } }));
   const overflow = run(sweep);
   assert.deepEqual([overflow.status, overflow.result.acceptance[0].status], [1, "fail"], overflow.stdout);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320 } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 320 } }));
   assert.equal(run(sweep).status, 0, "the requested width measurement ran");
   assert.equal(run("| data | sweep.stories | pass — measured dense data |").status, 2);
 });
@@ -1380,7 +1381,7 @@ test("v22: the sweep forecasts fragile constructs once across stories and measur
 <div style="position:relative;width:100px;height:40px"><img alt="" style="width:100px;height:40px;background:#ccc"><span style="position:absolute;left:4px;top:4px">-20%</span></div>
 <div role="tooltip" style="position:absolute;left:0;top:60px">Help</div></main>`);
   const stories = [{ name: "frail", url: "frail.html" }, { name: "again", url: "frail.html?again" }];
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, switches: [320], stories } }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, switches: [320], stories } }));
   const r = check(f.dir);
   const frail = r.result.sweep.fragile;
   const price = frail.filter((x) => x.landmark === "€ 1 250");
@@ -1417,4 +1418,80 @@ test("v22: a swept page needs a layout model in review.md; a header alone is not
   r = run("# Review\n\n");
   assert.doesNotMatch(r.stdout, /layout model/);
   assert.equal(r.status, 0, r.stdout);
+});
+
+// ------------------------------------------------------------------ draft 23: ink, lines, and a narrower ledger
+
+test("v23: in another font an image-only frame matches by place, a shifted column is an offset, and the words are left to the eye", browser, () => {
+  // Two fonts of about the same width, as the design's and the kit's are. A shift that equals a text's change of width
+  // would keep its far edge in place, and read as alignment: the limit of reading place by the edge that moved least.
+  const body = (col, family) => `<div style="font-family:${family}"><span style="position:absolute;left:10px;top:10px">Ready</span><span style="position:absolute;right:10px;top:10px">1 250 €</span><span style="position:absolute;left:${col}px;top:44px">Col 7</span></div>`;
+  const f = smallFrame(body(150, "sans-serif"));
+  const spec = path.join(f.dir, "0.json");
+  fs.writeFileSync(spec, JSON.stringify({ ...JSON.parse(fs.readFileSync(spec, "utf8")), landmarks: [] }));
+  f.write(`<main>${body(150, "serif")}</main>`);
+  let r = check(f.dir, "--frame", "frame");
+  let frame = r.result.frames[0];
+  assert.equal(frame.ink.glyphs, false, JSON.stringify(frame.ink));
+  assert.deepEqual(frame.issues.filter((i) => i.via === "ink"), [], "another font alone moves nothing");
+  f.write(`<main>${body(165, "serif")}</main>`);
+  r = check(f.dir, "--frame", "frame");
+  frame = r.result.frames[0];
+  const moved = frame.issues.find((i) => i.via === "ink" && i.property === "x");
+  // Read by the edge that moved least, the 15 px shift shows as a little less in a narrower font.
+  assert.ok(moved && /Col 7/.test(moved.landmark) && moved.delta >= 10, JSON.stringify({ ink: frame.ink, issues: frame.issues }));
+  check(f.dir);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /what the words say in frame: an image-only reference in another font/);
+});
+
+test("v23: a line of the model holds its pieces in one row, in order, unwrapped, where its range and mode say", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const card = (extra = "") => `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}
+main{width:100%;display:flex;flex-wrap:wrap;gap:8px}.sku{white-space:nowrap}.price{white-space:nowrap}${extra}</style>
+<main data-mode="wide"><span class="sku">BA-EDGE-2026-TRIPLE</span><span class="disks">2 × 838 SSD</span><span class="price">1 234 € / month</span></main>`;
+  fs.writeFileSync(path.join(f.dir, "wrap.html"), card());
+  const run = (lines, extra) => {
+    fs.writeFileSync(path.join(f.dir, "wrap.html"), card(extra));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 200, to: 500, step: 100, lines: [...LINES, ...lines], stories: [{ name: "wrap", url: "wrap.html" }] } }));
+    return check(f.dir);
+  };
+  const row = { name: "top row", pieces: [".sku", ".disks", ".price"] };
+  // Below its width the row wraps: the line says where it holds, and is held to it only there.
+  let r = run([row]);
+  const broke = r.result.sweep.issues.filter((i) => i.property === "line" && i.story === "wrap");
+  assert.ok(broke.some((i) => /leaves the row/.test(i.actual) && /200|300/.test(i.ranges)), JSON.stringify(broke));
+  assert.equal(r.status, 1);
+  r = run([{ ...row, from: 400 }]);
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "line"), [], r.stdout);
+  // A mode the page names: the line holds while the page says it is wide.
+  r = run([{ ...row, when: "[data-mode=narrow]" }]);
+  assert.match(r.stdout, /the line “top row” never showed two of its pieces/);
+  // Order: the price before the disks.
+  r = run([{ ...row, from: 400 }], ".disks{order:3}");
+  assert.ok(r.result.sweep.issues.some((i) => i.property === "line" && /“\.price” stands before “\.disks”/.test(i.actual)), r.stdout);
+  // A piece that wraps inside itself, unless it may.
+  r = run([{ ...row, from: 400 }], ".disks{width:40px}");
+  assert.ok(r.result.sweep.issues.some((i) => i.property === "line" && /“\.disks” wraps onto \d lines/.test(i.actual)), JSON.stringify(r.result.sweep.issues.filter((i) => i.property === "line")));
+  r = run([{ ...row, from: 400, pieces: [".sku", { selector: ".disks", wraps: true }, ".price"] }], ".disks{width:40px}");
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "line"), [], r.stdout);
+  // One element named twice is not a line.
+  r = run([{ name: "twice", pieces: [".sku", "main > .sku"] }]);
+  assert.match(r.stdout, /the line “twice” never showed two of its pieces/);
+  // A complete check needs a line.
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, stories: [{ name: "wrap", url: "wrap.html" }] } }));
+  assert.match(check(f.dir).stdout, /sweep\.lines is empty/);
+});
+
+test("v23: a platform entry cannot excuse where a thing sits or whether it shows, and a broad excuse is named first", browser, () => {
+  const faults = (e) => ledgerFaults([e]).join("\n");
+  for (const property of ["x", "y", "presence", "line"]) assert.match(faults({ landmark: "Price", property, category: "platform", status: "proposed", reason: "the font" }), /a platform difference/, property);
+  assert.equal(faults({ landmark: "Price", property: "width", category: "platform", status: "proposed", reason: "the font" }), "");
+  const f = smallFrame('<span style="margin-left:9px">A</span> <span>B</span> <span>C</span> <span>D</span>');
+  f.write('<main><span style="margin-left:19px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["A", "B", "C", "D"], property: "x", category: "system", status: "proposed", reason: "the kit's padding" }]));
+  check(f.dir);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /## Broad excuses\n\n- one entry covers 4 findings: A, B, C, D x — the kit's padding \(system, proposed\)/, handoff);
+  assert.ok(handoff.indexOf("## Broad excuses") < handoff.indexOf("## Pictures to look at first"));
 });
