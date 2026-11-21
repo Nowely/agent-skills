@@ -120,6 +120,20 @@ Also record wall time, the host's token counts (uncached, cached, output) and to
 - **The frozen archives' hashes** and the status line each opens with.
 - **The review pass's findings,** and what the builder did about each.
 
+## The record every run keeps
+
+One line per run, so that a comparison needs no transcript archaeology:
+
+1. The skill's revision, the case and a hash of its inputs, the model and the effort asked for.
+2. The verdict on the first checkpoint. If it was returned: the class (frame, data limit, interaction, lifecycle,
+   transient) and who found it (the checker, the reviewer, the owner).
+3. The status at handover, and how many failures the checker itself caused.
+4. Calls, wall time and peak context for each phase: environment, preparation, build, check loop, handover.
+5. Check rounds, quick and complete, and the rounds after the lowest score.
+6. Totals: uncached input, cached input, output and calls, and cached input per call.
+7. The coordinator's interventions, and what helpers cost.
+8. The ledger entries proposed.
+
 ## What to watch
 
 - Does Terra read `SKILL.md` first and run the check itself, or claim it?
