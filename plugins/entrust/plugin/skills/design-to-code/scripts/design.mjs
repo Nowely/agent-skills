@@ -607,18 +607,58 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   }
   // A short text that wraps though the component could hold it: its line's own limits lifted and set on one line, it
   // fits the component and runs into no other text. A price and its period, a value and its unit, a label: whatever
-  // wraps with room. A clamp or an ellipsis is a choice, not a wrap.
+  // wraps with room. A clamp or an ellipsis is a choice, not a wrap. So are two wraps a design draws: a block as narrow
+  // as its own longest word (width: min-content) stacks its words on purpose, and a row of chips (each word in a box
+  // with a background or a border of its own) wraps between them, though each chip's own text is still held to this.
   const lift = document.createElement("style");
   lift.textContent = "[data-dtc-lift], [data-dtc-lift] * { white-space: nowrap !important; } [data-dtc-lift] { max-width: none !important; min-width: max-content !important; flex-shrink: 0 !important; }";
   document.head.append(lift);
   const rectsOf = (n) => { const g = document.createRange(); g.selectNodeContents(n); return [...g.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5); };
   const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+  const clear = (c) => c === "transparent" || /(,|\/)\s*0\)$/.test(c);
+  const boxed = (el) => {
+    const cs = getComputedStyle(el);
+    return cs.backgroundImage !== "none" || !clear(cs.backgroundColor)
+      || ["Top", "Right", "Bottom", "Left"].some((s) => parseFloat(cs[`border${s}Width`]) > 0 && !/none|hidden/.test(cs[`border${s}Style`]) && !clear(cs[`border${s}Color`]));
+  };
+  // A word's chip: the outermost box of its own between the word and its line's context.
+  const chipOf = (node, ctx) => { let chip = null; for (let el = node.parentElement; el && el !== ctx; el = el.parentElement) if (boxed(el)) chip = el; return chip; };
+  // Whether a box is as wide as its own min-content width: set to that width, with nothing else holding it, it keeps
+  // its width. One narrower than its longest word is capped, not stacked.
+  const atMinContent = (el) => {
+    const style = el.getAttribute("style"), width = el.getBoundingClientRect().width;
+    for (const [p, v] of [["width", "min-content"], ["min-width", "0"], ["max-width", "none"], ["flex", "none"]]) el.style.setProperty(p, v, "important");
+    const min = el.getBoundingClientRect().width;
+    if (style === null) el.removeAttribute("style"); else el.setAttribute("style", style);
+    return Math.abs(width - min) <= 1;
+  };
+  // A stack drawn on purpose: the text's block, or a box it fills out to the root, is as narrow as its min-content.
+  const stacked = (ctx) => {
+    for (let el = ctx; el && el !== root; el = el.parentElement) {
+      if (/^(inline|contents)$/.test(getComputedStyle(el).display)) return false;
+      if (atMinContent(el)) return true;
+      const p = el.parentElement;
+      if (!p || p === root) return false;
+      const pcs = getComputedStyle(p), sides = ["Left", "Right"].reduce((s, x) => s + parseFloat(pcs[`padding${x}`]) + parseFloat(pcs[`border${x}Width`]), 0);
+      if (Math.abs(el.getBoundingClientRect().width - (p.getBoundingClientRect().width - sides)) > 1) return false;
+    }
+    return false;
+  };
+  // A run made of two or more chips is held chip by chip.
+  const held = [];
   for (const [ctx, run] of runs) {
-    if (run.length < 2 || run.length > 6 || ctx === root) continue;
+    if (ctx === root) continue;
+    const chips = new Map();
+    for (const w of run) { const c = chipOf(w.node, ctx); chips.set(c, [...(chips.get(c) ?? []), w]); }
+    held.push(...(!chips.has(null) && chips.size >= 2 ? chips : [[ctx, run]]));
+  }
+  for (const [ctx, run] of held) {
+    if (run.length < 2 || run.length > 6) continue;
     const tops = run.map((x) => x.rects[0].top), h = Math.min(...run.map((x) => x.rects[0].height));
     if (Math.max(...tops) - Math.min(...tops) <= h / 2) continue;
     const cs = getComputedStyle(ctx);
     if ((cs.webkitLineClamp && cs.webkitLineClamp !== "none") || cs.textOverflow === "ellipsis") continue;
+    if (stacked(ctx)) continue;
     ctx.setAttribute("data-dtc-lift", "");
     const box = ctx.getBoundingClientRect(), now = root.getBoundingClientRect();
     const fits = box.left >= now.left - 1 && box.right <= now.right + 1 && now.width <= rr.width + 1;
@@ -1113,20 +1153,24 @@ function alignmentGaps(probes) {
 }
 
 // The conditions the sweep makes itself, run in the page on the root: texts longer by two fifths (as pseudo-localization
-// does), and each set of repeated entries (siblings of one class) doubled. Each is applied once to what it has not seen.
+// does), and each set of repeated entries (siblings of one class) doubled. Each is applied once to what it has not seen,
+// and says how much it changed.
 const STRESS = {
   stretch: (root) => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), texts = [];
     for (let n = walker.nextNode(); n; n = walker.nextNode()) texts.push(n);
+    let changed = 0;
     for (const n of texts) {
       const t = n.data.trim();
       if (!t || n.dtcStretched) continue;
       n.data = n.data.replace(t, `${t} ${t.slice(0, Math.ceil(t.length * 0.4))}`);
       n.dtcStretched = true;
+      changed++;
     }
+    return changed;
   },
   double: (root) => {
-    if (root.dtcDoubled) return;
+    if (root.dtcDoubled) return 0;
     // Each parent with its repeated entries: only those are doubled, after the last of them, not their neighbours.
     const sets = new Map();
     for (const el of root.querySelectorAll("*")) {
@@ -1140,6 +1184,7 @@ const STRESS = {
       entries.at(-1).after(...entries.map((k) => k.cloneNode(true)));
     }
     root.dtcDoubled = true;
+    return sets.size;
   },
 };
 // What counts on a generated condition: a collision or a cut, not a wrap or a line of texts that are not the product's.
@@ -1165,8 +1210,21 @@ async function sweep(browser, cfg, ledger) {
       const probe = async (width) => {
         await setWidth(page, cfg, width, 900);
         await settle(page, cfg.root);
-        // A generated condition is applied again after each width: a component that renders anew keeps it.
-        if (stress) { await (await rootOf(page, cfg.root)).evaluate(STRESS[stress]); await settle(page, cfg.root); }
+        // A generated condition is applied again after each width: a component that renders anew keeps it. One that picks
+        // its layout from its content on a resize is then resized as a person would, a pixel narrower and back with a
+        // resize event, so that it chooses with the condition; what it renders anew takes the condition in turn.
+        if (stress) {
+          const apply = async () => { const n = await (await rootOf(page, cfg.root)).evaluate(STRESS[stress]); await settle(page, cfg.root); return n; };
+          await apply();
+          for (let round = 0; round < 3; round++) {
+            await setWidth(page, cfg, width > 1 ? width - 1 : width + 1, 900);
+            await settle(page, cfg.root);
+            await setWidth(page, cfg, width, 900);
+            await page.evaluate(() => window.dispatchEvent(new Event("resize")));
+            await settle(page, cfg.root);
+            if (!(await apply())) break;
+          }
+        }
         const lines = (s.lines ?? []).filter((l) => (l.from ?? 0) <= width && width <= (l.to ?? Infinity));
         const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance, lines, kit: cfg.kit ?? [] });
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });

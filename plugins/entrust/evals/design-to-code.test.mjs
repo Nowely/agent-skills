@@ -1878,3 +1878,53 @@ test("draft 28: the generated conditions find an overlap only longer texts cause
   assert.deepEqual(r.result.sweep.issues, []);
   assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "dense, texts stretched"]);
 });
+
+test("draft 28: a block as narrow as its longest word and a row of chips wrap as drawn; a block of a width of its own and a chip's own text wrap with room", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html) => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}.chip{padding:0 4px;background:#eee}</style><main>${html}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, stories: [{ name: "w", url: "w.html" }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap");
+  };
+  const room = (issues, text) => issues.some((i) => i.kind === "wraps with room" && i.landmark === text && i.status === "fail");
+  // "DDR3" over "ECC": the block narrowed to its longest word (width: min-content), alone or under its size, as the
+  // control card draws it. Narrowed to a width of its own instead, wider or narrower than its longest word, it wraps
+  // with room.
+  const ram = (width) => `<div style="width:${width}"><span style="white-space:nowrap">256 ГБ</span> <span style="display:block">DDR3 ECC</span></div>`;
+  assert.deepEqual(run('<div style="width:min-content">DDR3 ECC</div>'), []);
+  assert.deepEqual(run(ram("min-content")), []);
+  for (const html of ['<div style="width:56px">DDR3 ECC</div>', '<div style="width:30px">DDR3 ECC</div>', ram("60px")]) {
+    const issues = run(html);
+    assert.ok(room(issues, "DDR3 ECC"), `${html}: ${JSON.stringify(issues)}`);
+  }
+  // Badges, each a box with its own background, wrap onto rows; the same words without their boxes wrap with room, and
+  // so does a chip's own text.
+  const row = (chip, third = `<span class="${chip}">IPMI</span>`) => `<div style="display:flex;flex-wrap:wrap;gap:4px;width:100px"><span class="${chip}">New</span><span class="${chip}">Hot swap</span>${third}</div>`;
+  assert.deepEqual(run(row("chip")), []);
+  let issues = run(row(""));
+  assert.ok(room(issues, "New Hot swap IPMI"), JSON.stringify(issues));
+  issues = run(row("chip", '<span class="chip" style="max-width:80px">Hot swap bays</span>'));
+  assert.ok(room(issues, "Hot swap bays") && !room(issues, "New Hot swap Hot swap bays"), JSON.stringify(issues));
+});
+
+test("draft 28: a layout a script picks from its content chooses again when the texts are stretched; one that does not adapt still runs out", browser, () => {
+  // 20 px monospace is 12 px a letter: "Ready", "Steady" and "Going" take 216 px of the row's 300; two fifths longer,
+  // 336. The script stacks them when the row overflows, on a resize, as a card that picks its layout from its content.
+  const run = (adapts) => {
+    const f = smallFrame();
+    f.write(`<div id="host"><main style="width:auto"><div id="row" style="display:flex;column-gap:12px;white-space:nowrap"><span>Ready</span><span>Steady</span><span>Going</span></div></main></div>
+${adapts ? `<script>const row = document.getElementById("row");
+const lay = () => { row.style.flexDirection = "row"; if (row.scrollWidth > row.clientWidth + 1) row.style.flexDirection = "column"; };
+new ResizeObserver(lay).observe(row); lay();</script>` : ""}`);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, host: "#host" }));
+    const snap = cli("snapshot", f.config, "--images", "--force");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(f.dir).result.sweep.issues;
+  };
+  const adapts = run(true);
+  assert.deepEqual(adapts.filter((i) => i.status === "fail"), [], JSON.stringify(adapts));
+  const fixed = run(false);
+  assert.ok(fixed.some((i) => i.property === "outside" && i.story === "the frames' page, texts stretched" && i.status === "fail"), JSON.stringify(fixed));
+});

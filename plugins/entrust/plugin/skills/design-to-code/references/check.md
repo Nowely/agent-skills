@@ -120,7 +120,10 @@ back; each story and generated condition the same way. At each width:
   - a word broken between its letters, unless `hyphens: auto`;
   - **wraps with room**: a text of two to six words that wraps, though with its own limits lifted (no wrapping, no
     maximum width, no shrinking) it fits the component on one line and runs into no other text: a price and its
-    period, a value and its unit, a label. A line clamp or an ellipsis is a choice, not a wrap;
+    period, a value and its unit, a label. A line clamp or an ellipsis is a choice, not a wrap, and so are two wraps a
+    design draws: a block as narrow as its own min-content width (its words stacked, as `width: min-content` does),
+    and a row of chips (each word in a box with its own background or border) wrapping between them, though each
+    chip's own text is still held to it;
 - `construct`: a negative margin over 3 px (not a bleed, nor the kit's), a nudge of 2 px or more by a transform,
   `translate` or a relative offset (not centring or a slide), a text cut on purpose with no title or accessible name.
 
@@ -154,8 +157,10 @@ Unless `sweep.generate` is `false`, the sweep makes its own extremes:
 - the frames' page with every set of repeated entries (siblings that share a class) doubled ("entries doubled");
 - each story with its texts stretched.
 
-They run at the frames' widths, the sweep's ends and the switches. Their texts are not the product's, so only
-`overlap`, `clipped`, `outside` and `covered` count, under the condition's name. A layout that grows with its content
+They run at the frames' widths, the sweep's ends and the switches. Once a condition is applied, the component is
+resized a pixel and back with a resize event, so that one that picks its layout from its content chooses again, and
+what it renders anew takes the condition too. Their texts are not the product's, so only `overlap`, `clipped`,
+`outside` and `covered` count, under the condition's name. A layout that grows with its content, or chooses again,
 passes them; a fixed height around repeated entries, or text out of the flow, does not.
 
 ## The ledger
