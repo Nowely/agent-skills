@@ -1111,7 +1111,7 @@ test("a full check writes the evidence a handoff quotes, and a journey that expe
   const r = check(f.dir);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings$/m, /^- root shows \(300 px\): holds; checks opening only, not closing$/m,
+  for (const line of [/^- frame: pass — no findings$/m, /^- story page: no findings; its longest texts: “.*”$/m, /^- root shows \(300 px\): holds; checks opening only, not closing$/m,
     /^- every frame: pass · reported: pass — reference captured$/m, /## Not checked by the script/, /^Round \d+ · verdict: pass · score: 0 \(lower is better\) · 20\d\d-/m]) assert.match(handoff, line);
   assert.match(r.stdout, /evidence for the handoff: .*handoff\.md/);
   fs.rmSync(path.join(f.dir, "out/handoff.md"));
