@@ -150,3 +150,7 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Post-series checker calibration
 
 [The frozen dense-data check](18-frozen-dense-calibration.md) compares the fifth submission and a released control with the same consumer, data and widths. The checker detected the known overlap and reported a passing sweep for the control. This is not another implementation iteration or a test of draft 20.
+
+## Post-series: Before image provenance
+
+[The Before-image audit](19-before-conditions.md) reproduces an unlabelled change of capture conditions, preserves the original image and records the corrected gallery, checks and costs. It does not constitute a sixth frontend implementation.

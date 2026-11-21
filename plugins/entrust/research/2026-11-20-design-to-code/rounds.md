@@ -559,3 +559,7 @@ Draft 20 makes the existing stress-check instruction name readability and usable
 ## Post-series: verify the known overlap on frozen artifacts
 
 Without launching a sixth implementation, the current checker was run on the frozen fifth submission and a released control through the same consumer and dense-data fixture at 601 and 624 px. It reported the known overlap in the submission and a passing sweep for the control; independent DOM measurements corroborated both. The control’s full verdict remained incomplete because the deliberately narrow configuration omitted an acceptance list. [Results, costs and paired images](18-frozen-dense-calibration.md). This does not show that a future worker will select the fixture or complete the task.
+
+## Post-series: mark changed Before capture settings
+
+A targeted check reproduced a Before image from one width and URL being shown without a warning after both changed. The checker now preserves the original and marks recorded changes or unknown capture settings in the gallery and handoff. The same URL still does not prove unchanged data or theme. [Reproduction, visual evidence, checks and costs](19-before-conditions.md). This is not a new frontend implementation iteration and does not validate draft 20 on a first submission.
