@@ -599,3 +599,28 @@ On the page:
 `evals/design-to-code/harness/arm.mjs` prepares an arm from a skill commit and freezes it after the first handoff,
 recording the status the worker handed over on. `node --test evals/design-to-code.test.mjs`: 81 passed. The page is
 frozen as [drafts/21-v21.md](drafts/21-v21.md).
+
+## Draft 22: predict where the layout breaks
+
+The owner's aim, restated: the implementer has the code, so it should predict under what data and widths the layout
+will break, and build it so it cannot, rather than execute the frames like a train and catch edge cases afterwards.
+The review skill offered the pattern: sketch the target from the task before reading the work, run concrete
+boundary values through each branch, check a group's invariant under the same transition, and refute before
+handing over. Draft 22 is draft 21 plus:
+
+- **A layout model in `review.md`, before building.** For each line in each mode, it records:
+  - what shares the line, with each piece's longest legal value and its source;
+  - the width the line needs;
+  - what happens below that width;
+  - the construct that cannot overlap.
+
+  Switches go where content stops fitting, not at frame widths. Predicted switch widths go in `sweep.switches`,
+  which the check now measures a pixel either side.
+- **A forecast in the sweep, "fragile under other data".** It names text positioned out of the flow (other than an
+  overlay) and boxes whose content already runs past their height. It does not change the verdict: the construct
+  is changed, or `review.md` says why it holds.
+- **"Try to break it" before handoff.** One input per risk the model names, at its critical width.
+
+On the listing reference and on the third pilot's arm, the forecast raised no warning. `node --test
+evals/design-to-code.test.mjs`: 82 passed. The page is frozen as [drafts/22-v22.md](drafts/22-v22.md). Drafts 21
+and 22 are meant to be run side by side.
