@@ -1450,7 +1450,8 @@ test("v23: a platform entry cannot excuse where a thing sits or whether it shows
   for (const property of ["x", "y", "presence", "line"]) assert.match(faults({ landmark: "Price", property, category: "platform", status: "proposed", reason: "the font" }), /a platform difference/, property);
   assert.equal(faults({ landmark: "Price", property: "width", category: "platform", status: "proposed", reason: "the font" }), "");
   const f = smallFrame('<span style="margin-left:9px">A</span> <span>B</span> <span>C</span> <span>D</span>');
-  f.write('<main><span style="margin-left:19px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
+  // 6 px: within the band of a 300 px frame (8 px), where the system may explain an offset.
+  f.write('<main><span style="margin-left:15px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["A", "B", "C", "D"], property: "x", category: "system", status: "proposed", reason: "the kit's padding" }]));
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
