@@ -1,7 +1,35 @@
 # Five more iterations: the plan, written before them
 
 The owner gave a quota of five more iterations. This plan is written before them, so that the results are read
-against it and not fitted to it.
+against it and not fitted to it. It was revised once, before the first of them ended, after Fable's review of the
+goal, the measures and the critic's timing.
+
+## The goal
+
+**The owner accepts the first submission, as seen and as read, without having to find the defect himself.**
+
+The implementer is Terra, in the owner's Codex or OpenCode, with Figma MCP or only screenshots, building or changing a
+responsive component. "Done" means checked, not claimed. The owner's stance:
+
+- the layout is built on logic, not hacks, and a moderate mismatch is fine;
+- text over text is the main real failure;
+- the container limits the width, and the component grows downward with N entries;
+- what belongs together stays together, as a price with its period;
+- no type of another size, and no popover cut by the window;
+- the component works in the real consumer: a remount, a parent's width, a transition.
+
+Review and tidying of internals as separate uses are left out of these five iterations: they cannot be tested in them.
+
+**"As read":** the blind reviewer who already runs at handover also reads the diff, and answers five questions yes or
+no, each with a file and line:
+
+1. One rendering path for each thing shown: is there no duplicated price view?
+2. Do observers and listeners follow the mounted element, and are they cleaned up?
+3. Does it use the kit's public surface, not its internals?
+4. Is there no later rule overriding an earlier one for the same mode, and no selector reaching outside the component?
+5. Is what the layout hides still available to a screen reader?
+
+A "no" is a note for the owner, not an automatic return. This is a reviewer's brief, not a detector.
 
 ## Where things stand
 
@@ -9,7 +37,7 @@ against it and not fitted to it.
   - the builds looked close to the references;
   - the first checkpoint was returned for a consumer-path defect, an observer left on a removed element;
   - the checker's own `transition:none` broke four sheet journeys;
-  - the run cost about four times the earlier v19 run.
+  - the run cost about four times the earlier v19 run, whose inputs differed.
 - **The measured cost** ([32-efficiency-forensics.md](32-efficiency-forensics.md)):
   - the loop after the first full check took 85 % of the cached input, and the same first finding came back in 18 of
     31 rounds;
@@ -38,19 +66,38 @@ No new detectors. Three things, in this order:
 
 Separate roles are a hypothesis, tested only if rules are not enough.
 
+## The measures
+
+Each run records the eight fields in [30-terra-run.md](30-terra-run.md#the-record-every-run-keeps), and with them:
+
+- **the first-submission verdict, as seen and as read:** each code question with its answer;
+- **what the owner had to do:** minutes of review, and the number of decisions handed to him (proposals in the
+  ledger, open questions);
+- **the full cost:** the builder's, plus every role's (reviewer, coordinator, helpers);
+- **the spread across runs:** an effect is shown only if the arms' ranges do not overlap.
+
 ## The iterations
 
 | # | The question | The work | Read as done when |
 |---|---|---|---|
 | 5 (in progress) | Can the measurement be trusted? | Draft 28.2, mechanics first, then text (see below) | Both benches: the clean builds pass and every known class is caught; the full suite passes |
-| 6 | Do the rules cut the cost? | Sonnet A/B, 28.2 against 28.1, on the server card and the listing, two runs each; a blind review | Responses and tokens per round down by at least 30 %, quality no worse, no failure the checker itself causes |
-| 7 | Does the consumer-path check work? | Sonnet on the stateful case: the consumer rule and the comparison with a fresh load | The builder finds the stale observer itself before handing over |
-| 8 | Does it hold on the real task? | The owner's one pinned Terra run through a real consumer, registered before: a budget, the criteria, the record's eight fields ([30-terra-run.md](30-terra-run.md)), the environment and permissions set up beforehand | The owner's verdict on the first checkpoint, and its cost |
-| 9 | Reserve | Fix what Terra shows, or stop | — |
+| 6 | Do the rules cut the cost? | Sonnet A/B, 28.2 against 28.1, on the server card and the listing, three runs each; a blind review that also reads the code | Responses and tokens per round down by at least 30 %, the ranges not overlapping; quality, as seen and as read, no worse; no failure the checker itself causes |
+| — | The architecture critic | Once, after iteration 6, before choosing iteration 7 | Its reading decides between more rules and a change of approach |
+| 7 | Does the consumer-path check work? | Sonnet on the stateful case, with one lifecycle or parent-width mutant it has not seen before | The builder finds both defects itself before handing over |
+| 8 | Does it hold on the real task? | The owner's one pinned Terra run through a real consumer, registered before: the budget, the criteria, the record, the environment and permissions set up beforehand | The owner's verdict on the first checkpoint, as seen and as read, and its full cost |
+| 9 | Reserve | A second Terra run if the first was accepted; otherwise fix what Terra showed, or stop | — |
 
-**If iteration 6 shows that the loop still dominates the cost,** iteration 7 instead tests the next hypothesis:
+**If iteration 6 shows that the loop still dominates the cost,** and the critic agrees, iteration 7 instead tests
 restarting the builder in a fresh context at the first full check with a short handover, or a check-runner role. That
 would be draft 29. Draft 28.2 holds only fixes to draft 28.
+
+**The critic out of schedule,** on any of these:
+- a second failure that the checker itself causes;
+- the same return class coming back after a fix aimed at it;
+- a mechanics fix that needs a third special case;
+- the code read and the visual check disagreeing about the same build.
+
+It does not run after iteration 8: by then there is no room left to act on it.
 
 **Draft 28.2:**
 - **Mechanics:**
@@ -69,15 +116,21 @@ would be draft 29. Draft 28.2 holds only fixes to draft 28.
   - waiting in the foreground;
   - crops, not whole pages;
   - probes as one script on disk;
-  - a handover note at the first full check.
+  - a handover note at the first full check;
+  - the reviewer's five code questions.
 
 Each mechanics fix comes with a failing bench control first.
 
 ## When to stop
 
-- **Success:** Terra's first checkpoint on the real task is accepted by the owner. It is handed over at `pass` or
-  `pending`, with no failure the checker itself caused, at about v19's cost (in the order of 200 calls and 40
-  minutes, against 527 and 1:39).
+- **Success:** Terra's first checkpoint on the real task is accepted by the owner. It is:
+  - accepted as seen and as read, with no unanswered "no" among the code questions;
+  - handed over at `pass`, or at `pending` with at most three decisions handed to the owner;
+  - free of any failure the checker itself caused;
+  - within a budget in the order of 200 calls and 40 minutes for the builder, with every role's cost counted beside it.
+    The budget is not a baseline: v19's inputs differed.
+
+  One accepted run is "accepted once". A second run in the reserve iteration says whether it holds.
 - **An honest stop:** if by iteration 8 the rules have not cut the cost and consumer paths still slip through, the
   skill is frozen as experimental. It keeps what proved useful (the frame check, the bench, the independent review),
   and the reasons not to go further are written down.
