@@ -71,8 +71,11 @@ Separate roles are a hypothesis, tested only if rules are not enough.
 Each run records the eight fields in [30-terra-run.md](30-terra-run.md#the-record-every-run-keeps), and with them:
 
 - **the first-submission verdict, as seen and as read:** each code question with its answer;
-- **what the owner had to do:** minutes of review, and the number of decisions handed to him (proposals in the
-  ledger, open questions);
+- **what the owner had to do:** minutes of review, and each decision handed to him, marked by the owner as one of
+  two kinds:
+  - a fair question: the design or the contract is silent or contradicts itself (a missing state, an unbounded value,
+    frames that disagree, the kit against the drawing);
+  - unfinished work presented as a question: the builder could have fixed it;
 - **the full cost:** the builder's, plus every role's (reviewer, coordinator, helpers);
 - **the spread across runs:** an effect is shown only if the arms' ranges do not overlap.
 
@@ -125,7 +128,9 @@ Each mechanics fix comes with a failing bench control first.
 
 - **Success:** Terra's first checkpoint on the real task is accepted by the owner. It is:
   - accepted as seen and as read, with no unanswered "no" among the code questions;
-  - handed over at `pass`, or at `pending` with at most three decisions handed to the owner;
+  - handed over at `pass`, or at `pending` with no unfinished work presented as a question. Fair questions are not
+    capped, since designs have gaps: they come as one list, each with its options and their cost, and none repeats a
+    ruling the owner already gave;
   - free of any failure the checker itself caused;
   - within a budget in the order of 200 calls and 40 minutes for the builder, with every role's cost counted beside it.
     The budget is not a baseline: v19's inputs differed.
