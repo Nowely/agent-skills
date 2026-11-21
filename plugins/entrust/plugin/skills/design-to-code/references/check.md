@@ -33,6 +33,12 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
 - Each line of the owner's past returns, `.design/returns.md` beside the task's folder (or `"returns"` in
   `design.json`), quoted in an acceptance row.
 
+The sweep measures each width in `sweep.switches` a pixel either side, so a layout model's predicted switches are
+checked exactly. It also forecasts what longer data could break, as warnings that do not change the verdict:
+"fragile under other data" names text positioned out of the flow (other than an overlay: a tooltip, dialog, menu,
+listbox or popover) and a box whose content already runs past its own height. Change the construct, or say in
+`review.md` why it holds.
+
 The evidence file opens with the handover status. A frame on which most of the design's texts are missing is named
 as rendering other data than its frame. A `fail` is reported as not a state to hand over in.
 

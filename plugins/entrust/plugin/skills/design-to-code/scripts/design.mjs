@@ -576,7 +576,23 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (hits.some(({ i }) => i === 0) || hits.length >= 2) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0].hit)}` });
   }
   scrollTo(sx, sy);
-  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
+  // What longer data could break, read from the layout itself: text that takes no space in it (positioned outside the
+  // flow, other than an overlay), and a box whose content already spills out of it without being clipped.
+  const fragile = [];
+  const positioned = (el) => /absolute|fixed/.test(getComputedStyle(el).position);
+  const overlay = (el) => el.closest('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog, [aria-hidden="true"]');
+  for (const el of root.querySelectorAll("*")) {
+    if (!visible(el) || !el.textContent.trim() || overlay(el)) continue;
+    const cs = getComputedStyle(el);
+    let outer = true;
+    for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (positioned(p)) { outer = false; break; }
+    if (outer && positioned(el)) fragile.push({ landmark: label(el.textContent), kind: "positioned", actual: "takes no space in the layout, so longer data can run into its neighbours" });
+    const spill = el.scrollHeight - el.clientHeight;
+    if (cs.overflowY === "visible" && el.clientHeight > 0 && spill > 2 && !/inline/.test(cs.display) && el.textContent.trim().length > 1) {
+      fragile.push({ landmark: label(el.textContent), kind: "spills", actual: `its content runs ${spill} px past its own height` });
+    }
+  }
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile };
 }
 
 // Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
@@ -781,6 +797,8 @@ async function sweep(browser, cfg, ledger) {
   const widths = new Set(frameWidths);
   for (let w = to; w >= from; w -= step) widths.add(w);
   widths.add(from);
+  // The widths the layout model predicts a switch at are measured exactly, a pixel either side.
+  for (const w of s.switches ?? []) for (const x of [w - 1, w, w + 1]) if (x >= from && x <= to) widths.add(x);
   const order = [...widths].sort((a, b) => b - a);
   // One mounted page for every width, narrowing from the widest, as a user resizes it: state set up once must survive.
   // A story (the longest data, every conditional action at once) is swept the same way, and pictured at the frames' widths.
@@ -814,20 +832,33 @@ async function sweep(browser, cfg, ledger) {
   const changes = switches(probes, s.switches ?? [], step);
   const issues = sweepIssues([...probes, back], ledger, changes.issues);
   const groups = alignmentGaps([...probes, back]);
-  const stories = [];
+  const stories = [], storyProbes = [];
   for (const story of s.stories ?? []) {
     const shots = new Map();
     let r;
     try { r = await run(story.url, story.setup, shots); }
-    catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
-    const storyProbes = [...r.probes, r.back];
-    groups.push(...alignmentGaps(storyProbes).map((g) => ({ ...g, story: story.name })));
-    issues.push(...sweepIssues(storyProbes, ledger).map((i) => ({ ...i, story: story.name })));
+    catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); storyProbes.push([]); continue; }
+    storyProbes.push([...r.probes, r.back]);
+    const these = storyProbes.at(-1);
+    groups.push(...alignmentGaps(these).map((g) => ({ ...g, story: story.name })));
+    issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name })));
     stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
+  // Fragile constructs, by element and kind, with the widths they were seen at: a forecast, not a verdict.
+  const fragile = new Map();
+  const collect = (list, story) => {
+    for (const p of list) for (const f of p.fragile ?? []) {
+      const k = `${story ?? ""}\u0000${f.kind}\u0000${f.landmark}`;
+      if (!fragile.has(k)) fragile.set(k, { ...f, ...(story ? { story } : {}), widths: [] });
+      fragile.get(k).widths.push(p.width);
+    }
+  };
+  collect([...probes, back]);
+  for (const [i, story] of (s.stories ?? []).entries()) collect(storyProbes[i] ?? [], story.name);
   return {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
+    fragile: [...fragile.values()].map(({ widths: at, ...f }) => ({ ...f, ranges: ranges([...new Set(at)]) })),
     score: issues.filter((i) => i.status !== "accepted").length * 10,
     unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
   };

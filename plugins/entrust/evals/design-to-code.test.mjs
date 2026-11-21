@@ -1343,3 +1343,25 @@ test("v21: the evidence file starts with the handover status, a fail says to kee
   assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
 });
+
+// ------------------------------------------------------------------ v22: predicting where the layout breaks
+
+test("v22: the sweep forecasts fragile constructs and measures the predicted switch widths exactly", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "frail.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style>
+<main><span>Ready</span><span class="price" style="position:absolute;right:0;top:0">€ 1 250</span>
+<div style="height:20px;width:120px">A label long enough to wrap onto lines</div>
+<div role="tooltip" style="position:absolute;left:0;top:60px">Help</div></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, switches: [320], stories: [{ name: "frail", url: "frail.html" }] } }));
+  const r = check(f.dir);
+  const frail = r.result.sweep.fragile.filter((x) => x.story === "frail");
+  assert.ok(frail.some((x) => x.kind === "positioned" && x.landmark === "€ 1 250"), JSON.stringify(frail));
+  assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
+  assert.ok(!frail.some((x) => x.landmark === "Help"), "an overlay is not fragile");
+  assert.match(r.stdout, /fragile under other data: € 1 250 \(frail\) takes no space in the layout/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /fragile under other data: € 1 250/);
+  const seen = frail.find((x) => x.kind === "positioned").ranges;
+  assert.match(seen, /319/, `measured a pixel either side of the predicted 320: ${seen}`);
+  assert.match(seen, /321/, seen);
+});
