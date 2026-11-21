@@ -80,4 +80,59 @@ The four server-card frames, named by hand, replayed on every frozen submission 
 - **Draft 26's first wrap rule flagged prose:** a line ending on "5%" or "Note:". It now flags only a separator left
   alone, a split number, and a word broken between letters.
 
-The draft's own tests (v25 and v26): 11 passed. The full suite is rerun with the critic's and verifier's fixes.
+## The critic and the verifier: draft 26.1
+
+A critic read draft 26 against the owner's stance and ran the checker on its own small cases. A verifier built about
+40 cases of its own. Between them:
+
+- **The wrap rule missed the return it was written for.** It read one text node at a time, so a price rendered as
+  `{amount} ₽ / {period}`, as a component writes it, split unseen. Its message also led to a fix it could not check.
+- **It flagged prose:** "2020" | "and" as a number and its unit, "21," | "2026" as a broken number, Chinese and
+  Japanese labels as broken words, a breadcrumb's "/" and a list's "·".
+- **Notes held only for screenshots.** A Figma frame still made every 6 px offset a finding, the cost the owner had
+  objected to, while the page promised notes for every frame.
+- **Quick rounds shared the score series** with complete checks, so the two-round rule fired on the first complete
+  check after tuning, pushing proposals instead of fixes.
+- **A passing frame printed "start here"** for its notes, and the page told builders to fix it.
+- **Relations:** a centred title in another font and a narrower root were read as broken relations. Vertical
+  neighbours and a gap that closed up while the edges held were not read at all.
+- **Overlays at the edges:** an opener named with a Playwright selector was never moved. A `visible` precondition, a
+  child selector, an invisible tooltip in another row, a sticky header and a fixed bottom bar each gave a false pass,
+  a false failure or a timeout. A popover cut by a scrolling box was not seen.
+- **A `--quick` crash** when no frame width lay inside the sweep, and acceptance rows that passed on a misspelled story.
+- **The 8 px band on narrow frames** had no evidence behind it: a 390 px and a 414 px frame got different rules.
+
+**Draft 26.1:**
+
+- **Wrap** reads a line's text across elements. "/" counts only after a value. Units come from a list. Words count
+  only in space-delimited scripts, and long digit runs count as words. A short pair joined by an ordinary space is a
+  "may split" forecast, since the sweep can step over the width where it splits.
+- **Notes** hold for every frame, from Figma or a screenshot, within one 12 px band. The relation and column rules
+  apply to every frame too. A proposal past the band is named in its finding as excusing nothing.
+- **Relations** add centres, and vertical neighbours. They skip a pair neither of which moved on its own. A gap of
+  8 px or more that closes to under 4 px is a finding.
+- **Overlays:** the opener is found through Playwright, at the widest and the narrowest frame's width. The first
+  overlay after the opener's step is measured: the first match a person sees, or its nearest overlay ancestor. The
+  window and every box that clips it count. An opener in a fixed or sticky bar, or one that is covered or not
+  scrolled to the edge, is noted as not tried.
+- **Quick rounds** score in their own series; the summary says journeys were not run.
+- **"Start here"** only for a frame with a finding. The report lists the notes.
+- **Acceptance rows:** unmeasured stories count only for the rows that name them, and a row naming no configured
+  story is incomplete.
+- **The pages:** sweep from the narrowest width the product supports, not below. A break before "/" moves the period
+  whole. The review pass states the band.
+
+**Not taken:** an en dash in a price range; `text` steps at the window's edges; a dropdown inside a modal at the edges;
+two landmarks with the same text in the relation rule.
+
+## The run: written down before it starts
+
+One Sonnet run of draft 26.1 on the server card, with the same brief, kit, start project and contract as 25.1 A, and
+no review pass. Judged by judge v2 (automatic) and a blind review against 25.1 A and the positive control, under the
+owner's criteria, with the key revealed after the verdicts.
+
+Draft 26.1 does what it was made for if all three hold:
+
+- **accepted** by the blind review, or returned only for a class no earlier submission was returned for;
+- **fewer than about 30 check rounds** (25.1: 85–135);
+- **fewer than about 10 ledger entries** (25.1: 52–61).
