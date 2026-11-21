@@ -555,3 +555,7 @@ Draft 18 ran on a screenshot-only case. The strict numeric judge failed, but an 
 Draft 19 ran on the real library task. The built public consumer smoke passed, unlike iteration 3, but the frozen submission was returned: a dense fixture visibly overlaps price with hardware values at multiple widths, and state behaviour remains incomplete. A resize PASS in the existing evaluator asserts width and text presence, not readability. [The result, costs and paired evidence](16-iteration-05.md) preserve that distinction.
 
 Draft 20 makes the existing stress-check instruction name readability and usable controls at representative widths. It was not exercised by a sixth implementation worker; the owner limited this series to five. This observation does not establish that the user’s first-submission goal has been achieved.
+
+## Post-series: verify the known overlap on frozen artifacts
+
+Without launching a sixth implementation, the current checker was run on the frozen fifth submission and a released control through the same consumer and dense-data fixture at 601 and 624 px. It reported the known overlap in the submission and a passing sweep for the control; independent DOM measurements corroborated both. The control’s full verdict remained incomplete because the deliberately narrow configuration omitted an acceptance list. [Results, costs and paired images](18-frozen-dense-calibration.md). This does not show that a future worker will select the fixture or complete the task.

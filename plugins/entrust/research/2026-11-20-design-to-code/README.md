@@ -146,3 +146,7 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Five-iteration summary
 
 [The comparison and available accounting](17-iteration-summary.md) records first-submission outcomes, frozen versions, available role costs, visual references and remaining uncertainty. The five-run cap was reached; the final revision has not had another implementation trial.
+
+## Post-series checker calibration
+
+[The frozen dense-data check](18-frozen-dense-calibration.md) compares the fifth submission and a released control with the same consumer, data and widths. The checker detected the known overlap and reported a passing sweep for the control. This is not another implementation iteration or a test of draft 20.
