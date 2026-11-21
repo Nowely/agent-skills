@@ -13,8 +13,12 @@ forensics remain in the repository references and release notes.
   and its result against both sources, or the blocker that left the conflict unverified.
 - The optional Chromium checker compares frame landmarks and images and records deviations for the owner's decision.
   Full checks write a visual gallery and a handoff with the reported acceptance outcomes and supporting measurements.
-  A screenshot-only frame leaves text for visual review. Sweeps and additional stories are optional. A detected opener needs a journey
+  A screenshot-only frame leaves text for visual review. A detected opener needs a journey
   that observes its content opening and closing. Reports name missing measurements and the widths exercised by each journey.
+- A complete check of UI built from frames needs a width sweep with a dense story, a layout model in `review.md`
+  written before building, and a journey that opens and closes each overlay frame from its own opener, unless
+  `design.json` says why the page is static. Past returns are quoted in the acceptance list. The sweep measures
+  predicted switch widths a pixel either side and warns about constructs fragile under other data.
 - Preserve the first Before capture and mark it as not comparable when recorded capture settings change, or unknown
   when its original settings are unavailable. Matching settings do not prove that page data or theme stayed the same.
 - The calibrated synthetic listing judge accepted the saved v14 submission and returned v15 and v16 for the same

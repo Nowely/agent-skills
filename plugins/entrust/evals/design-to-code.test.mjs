@@ -327,7 +327,9 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(CASE, "case.json"), "utf8"))
 // The reference card rendered once as the design: its specs and 2× images, in a directory a test copies.
 let design;
 // What a check expects of every pack before it can pass: the acceptance list in review.md.
-const REVIEW = "# Review\n\n## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| every frame | its frame | pass — reference captured |\n";
+// The layout model a complete check of a swept page requires, before the acceptance list as the page asks.
+const MODEL = "## The layout model\n\n| Line | What shares it | Width | Below | Construct |\n|---|---|---|---|---|\n| top row | title, price | 400 px | price wraps | grid |\n\n";
+const REVIEW = `# Review\n\n${MODEL}## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| every frame | its frame | pass — reference captured |\n`;
 function designDir() {
   if (design) return design;
   design = tmp();
@@ -765,7 +767,7 @@ test("a story reports the widths where a configured alignment has too few visibl
   const compact = { name: "compact", url: "page.html?compact" }, single = { name: "one value", url: "page.html?single" };
   const run = (stories, outcome) => {
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 320, step: 20, align: [{ selector: ".value", edge: "left" }], stories } }));
-    fs.writeFileSync(path.join(f.dir, "review.md"), [
+    fs.writeFileSync(path.join(f.dir, "review.md"), MODEL + [
       "## Acceptance", "| Item | Checked by | Result |", "|---|---|---|",
       "| reference alignment | sweep | pass — reference has two aligned values |",
       `| other alignments | sweep.stories | ${outcome} |`,
@@ -1109,7 +1111,7 @@ test("the acceptance list is a heading with lines under it, not the word alone",
   const review = path.join(f.dir, "review.md");
   for (const [text, status] of [["No acceptance list was written.\n", 2], ["## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n", 2],
     ["## Acceptance\n\n- every frame: pass — captured\n", 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n", 0], ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 2]]) {
-    fs.writeFileSync(review, text);
+    fs.writeFileSync(review, MODEL + text);
     assert.equal(check(f.dir).status, status, text);
   }
 });
@@ -1160,7 +1162,7 @@ test("the handoff's evidence counts what the ledger excused, names unused entrie
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([
     { landmark: "Ready", property: "x", category: "system", status: "accepted", reason: "the kit's padding", decidedBy: "owner" },
     { landmark: "Gone", property: "presence", category: "ux", status: "proposed", reason: "drop it", options: ["keep", "drop"] }]));
-  fs.writeFileSync(path.join(f.dir, "review.md"), "## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n| popup | journey |  |\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), `${MODEL}## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n| popup | journey |  |\n`);
   const r = check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /^- frame: pass — no findings; 1 excused by the ledger$/m, handoff);
@@ -1181,7 +1183,7 @@ test("the handoff credits each ledger entry by itself, reads the result column a
     { landmark: "Gone", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
     { landmark: "Ready", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
     { landmark: ["*"], property: "font", category: "platform", status: "accepted", decidedBy: "owner", reason: "smoothing" }]));
-  fs.writeFileSync(path.join(f.dir, "review.md"), "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass — captured | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), MODEL + "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass — captured | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /accepted: Gone x — the kit \(system · decided by owner · matched nothing\)/);
@@ -1365,4 +1367,54 @@ test("v21: the evidence file starts with the handover status, a fail says to kee
   assert.match(r.stdout, /A fail is not a state to hand over in: fix the first cause and check again/);
   assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
+});
+
+// ------------------------------------------------------------------ v22: predicting where the layout breaks
+
+test("v22: the sweep forecasts fragile constructs once across stories and measures the predicted switch widths exactly", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "frail.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style>
+<main><span>Ready</span><span class="price" style="position:absolute;right:0;top:0">€ 1 250</span>
+<div style="height:20px;width:120px">A label long enough to wrap onto lines</div>
+<div style="position:relative;width:100px;height:40px"><img alt="" style="width:100px;height:40px;background:#ccc"><span style="position:absolute;left:4px;top:4px">-20%</span></div>
+<div role="tooltip" style="position:absolute;left:0;top:60px">Help</div></main>`);
+  const stories = [{ name: "frail", url: "frail.html" }, { name: "again", url: "frail.html?again" }];
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, switches: [320], stories } }));
+  const r = check(f.dir);
+  const frail = r.result.sweep.fragile;
+  const price = frail.filter((x) => x.landmark === "€ 1 250");
+  assert.equal(price.length, 1, `one line for both stories: ${JSON.stringify(frail)}`);
+  assert.equal(price[0].kind, "positioned");
+  assert.equal(price[0].story, "frail, again");
+  assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
+  assert.ok(!frail.some((x) => x.landmark === "Help"), "an overlay is not fragile");
+  assert.ok(!frail.some((x) => x.landmark === "-20%"), `a badge over an image is not fragile: ${JSON.stringify(frail)}`);
+  assert.match(r.stdout, /fragile under other data: € 1 250 \(frail, again\) takes no space in the layout/);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /fragile under other data: € 1 250/);
+  assert.match(handoff, /^- layout model: 1 row in review\.md, first seen in round 1 /m, handoff);
+  assert.match(handoff, /^- predicted switches: 320; measured layout changes: /m, handoff);
+  assert.match(price[0].ranges, /319/, `measured a pixel either side of the predicted 320: ${price[0].ranges}`);
+  assert.match(price[0].ranges, /321/, price[0].ranges);
+});
+
+test("v22: a swept page needs a layout model in review.md; a header alone is not one, and a static page needs none", browser, () => {
+  const f = smallFrame();
+  const review = path.join(f.dir, "review.md");
+  const acceptance = REVIEW.slice(REVIEW.indexOf("## The acceptance list"));
+  const run = (text) => { fs.writeFileSync(review, text + acceptance); return check(f.dir); };
+  let r = run("# Review\n\n");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /review\.md has no layout model/);
+  assert.equal(r.result.history ?? JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).model, 0);
+  r = run("## Layout model\n\n| Line | Shares | Width | Below | Construct |\n|---|---|---|---|---|\n\n");
+  assert.match(r.stdout, /review\.md has no layout model/, "a header alone is not a model");
+  r = run("## Модель раскладки\n\n- одна строка: метка, 12 символов по контракту; 140 px; ниже переносится; flex-wrap\n\n");
+  assert.equal(r.status, 0, r.stdout);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined, static: "a fixed label, no data to stress" }));
+  r = run("# Review\n\n");
+  assert.doesNotMatch(r.stdout, /layout model/);
+  assert.equal(r.status, 0, r.stdout);
 });

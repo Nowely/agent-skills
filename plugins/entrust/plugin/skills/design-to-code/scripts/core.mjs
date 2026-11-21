@@ -596,7 +596,12 @@ export function switches(probes, expected = [], step = 8) {
   for (let i = 1; i < probes.length; i++) {
     if (probes[i].rows !== probes[i - 1].rows) seen.push([probes[i].width, probes[i - 1].width]);
   }
-  const near = (s, [lo, hi]) => s > lo - step && s <= hi + step;
+  // A width measured a pixel either side (a predicted switch) is held to two pixels; another to one step.
+  const probed = new Set(probes.map((p) => p.width));
+  const near = (s, [lo, hi]) => {
+    const tol = probed.has(s - 1) && probed.has(s + 1) ? 2 : step;
+    return s >= lo - tol && s <= hi + tol;
+  };
   const issues = [
     ...expected.filter((s) => !seen.some((c) => near(s, c))).map((s) => ({ landmark: `at ${s}`, property: "switch", actual: "no layout change near this width" })),
     ...(expected.length ? seen.filter((c) => !expected.some((s) => near(s, c))).map(([lo, hi]) => ({ landmark: `${lo}–${hi}`, property: "switch", actual: "a layout change the design does not name" })) : []),
@@ -683,6 +688,11 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     if (sweep.stories?.length) out.push(`Stories swept as well: ${sweep.stories.map((st) => st.name).join(", ")}.`, "");
     for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(alignmentName(u))} matched at most ${u.matched} across the sweep. It needs two or more.`, "");
+    if (sweep.fragile?.length) {
+      out.push("Fragile under other data (a forecast: change the construct, or say in review.md why it holds):", "");
+      for (const f of sweep.fragile) out.push(`- ${cell(f.landmark)}${f.story ? ` (${f.story})` : ""}: ${f.actual}, at ${f.ranges}`);
+      out.push("");
+    }
     for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(alignmentName(u))} had fewer than two matches at ${u.ranges} px during the sweep. The other samples were measured.`, "");
     if (sweep.issues.length) {
       out.push("| Problem | Where | Widths | Detail | Status |", "|---|---|---|---|---|");
@@ -731,6 +741,9 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
     for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${alignmentName(u)} matched at most ${u.matched} across the sweep; an alignment needs two or more`);
+    const frail = sweep.fragile ?? [];
+    for (const f of frail.slice(0, 5)) out.push(`  fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual} (at ${f.ranges})`);
+    if (frail.length > 5) out.push(`  … ${frail.length - 5} more fragile constructs`);
     for (const u of sweep.partial ?? []) out.push(`  ${alignmentName(u)} matched fewer than two at ${u.ranges}: measured where it had two or more`);
   }
   for (const j of journeys.filter((x) => !x.pass)) out.push("", `journey fails: ${j.name}: ${j.failed}`);
@@ -749,7 +762,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
 // the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
 export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], ledgerProblems = [], acceptance = [],
-  pictures = [], round: n, status, score, stamp = "" }) {
+  pictures = [], round: n, status, score, stamp = "", model }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
@@ -779,6 +792,11 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   if (sweep) {
     out.push(`- the frames' page, ${sweep.from}–${sweep.to} px: ${sweep.reason ?? count(sweep.issues.filter((i) => !i.story))}`);
     for (const u of sweep.unmeasured ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: not measured at ${u.ranges} px (fewer than two elements)`);
+    for (const f of sweep.fragile ?? []) out.push(`- fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual}, at ${f.ranges}`);
+    if (model) {
+      out.push(`- layout model: ${model.rows ? `${model.rows} ${model.rows === 1 ? "row" : "rows"} in review.md, first seen in round ${model.firstRound ?? "?"} (round 1 is the baseline check, before the first edit)` : "none in review.md"}`);
+      out.push(`- predicted switches: ${model.predicted.length ? model.predicted.join(", ") : "none"}; measured layout changes: ${model.measured.length ? model.measured.join(", ") : "none"}`);
+    }
     for (const u of sweep.partial ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: fewer than two elements at ${u.ranges} px, measured in the other samples`);
     for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}`);
   }

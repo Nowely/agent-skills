@@ -624,3 +624,38 @@ handing over. Draft 22 is draft 21 plus:
 On the listing reference and on the third pilot's arm, the forecast raised no warning. `node --test
 evals/design-to-code.test.mjs`: 82 passed. The page is frozen as [drafts/22-v22.md](drafts/22-v22.md). Drafts 21
 and 22 are meant to be run side by side.
+
+## Drafts 21.1 and 22.1: the critic's findings, before the side-by-side run
+
+A critic read drafts 21 and 22 against the five iterations' misses, looking for ways to pass a gate without doing
+what it stands for, and for warnings that would bury the real ones. Both drafts get the shared fixes; 22.1 also
+gets the fixes to what 22 added.
+
+**Shared, in 21.1 and 22.1:**
+
+- **An overlay's journey must act on the overlay's opener.** Any passing journey that hid something used to count,
+  and a click on a tab counted as an overlay. Now only a frame with its own root is an overlay. Its journey must act
+  on the same element the frame's setup opened it from (matched by element, not by selector text), see something
+  visible, and after an action expect it hidden.
+- **A story on a frame's own page needs a setup step other than `wait`,** so the frame's own data cannot pass as a
+  dense story.
+- **Past returns match without letter case, emphasis, quotes or a final full stop,** and an escaped pipe stays
+  inside its table cell. Before this, a faithful quote could miss on a trailing full stop.
+- **The dense story comes with the target frames,** not after the states: it decides the layout.
+
+**In 22.1:**
+
+- **The layout model is a gate.** A complete check needs, unless the page is static, a heading that names the
+  model with at least one table row below the header or one list item. `history.jsonl` records the row count per
+  round. The evidence file says in which round the model first appeared, so a model written after the code shows.
+- **Predicted against measured.** The evidence file puts `sweep.switches` beside the widths where the layout changed.
+  A switch predicted at 320 and probed at 319 and 321 is matched within 2 px instead of the sweep's step.
+- **Less noise in the forecast:**
+  - boxes of 2 px or less (text kept for screen readers) are skipped;
+  - a badge over a box with no text of its own, such as an image, is not fragile;
+  - a box counts as spilling only by its own in-flow text, not by an inline image's baseline gap under an absolute
+    badge (the new test found this);
+  - each warning is named once, with every story that shows it.
+
+`node --test evals/design-to-code.test.mjs`: 85 passed; the skill checks: 8 of 8. The pages are frozen as
+[drafts/21.1-v21.1.md](drafts/21.1-v21.1.md) (commit `d70839e`) and [drafts/22.1-v22.1.md](drafts/22.1-v22.1.md).

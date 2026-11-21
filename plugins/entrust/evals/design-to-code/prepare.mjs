@@ -77,7 +77,7 @@ write(path.join(judge, "design.json"), {
   ...config(path.relative(judge, path.join(dir, "index.html")).split(path.sep).join("/"), "design"),
   ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}),
 });
-// The judge's own pack needs no review of its own: its acceptance list is the case.
-write(path.join(judge, "review.md"), "# Judge\n\n## Acceptance list\n\n- judge inputs: pass — reference specs and images generated from the case\n");
+// The judge's own pack needs no review of its own: its layout model and acceptance list are the case.
+write(path.join(judge, "review.md"), "# Judge\n\n## Layout model\n\n- the case's own: the reference is the layout\n\n## Acceptance list\n\n- judge inputs: pass — reference specs and images generated from the case\n");
 write(path.join(judge, "run.json"), { case: name, arm, dir, prepared: new Date().toISOString() });
 console.log(fs.readFileSync(path.join(caseDir, "brief.md"), "utf8").trim());

@@ -27,12 +27,23 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
   root itself, and for each frame of an overlay (one that names its own `root`, as a popup's frame does): a passing
   journey that acts on the same element its setup opened it from, sees something visible and, after an action,
   expects the same thing hidden. See [Journeys](#journeys).
+- A [layout model](review.md#the-layout-model) in `review.md`, unless `design.json` gives `"static"`: a heading that
+  names it (`Layout model`, `Модель раскладки`) with at least one table row below the header, or one list item. A
+  component with one line needs one row.
 - A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason (a fixed page,
   a screenshot-only task). A story on a frame's own URL needs a `setup` with a step other than `wait` that brings its other data or state; verify
   the combination in its capture. The script cannot tell whether a story is dense: the acceptance record names what
   it adds.
 - Each line of the owner's past returns, `.design/returns.md` beside the task's folder (or `"returns"` in
   `design.json`), quoted in an acceptance row; letter case, emphasis, quotes and a final full stop do not matter.
+
+The sweep measures each width in `sweep.switches` a pixel either side, so a layout model's predicted switches are
+checked exactly. It also forecasts what longer data could break, as warnings that do not change the verdict:
+"fragile under other data" names text positioned out of the flow (other than an overlay: a tooltip, dialog, menu,
+listbox or popover; or a badge over a box with no text of its own, such as an image) and a box whose own text already
+runs past its height. Each is named once, with the stories that show it. Change the construct, or say in `review.md`
+why it holds. The evidence file gives the model's row count and the round it first appeared, and the predicted
+switches beside the measured ones.
 
 The evidence file opens with the handover status. A frame on which most of the design's texts are missing is named
 as rendering other data than its frame. A `fail` is reported as not a state to hand over in.
@@ -61,7 +72,7 @@ Paths are relative to the file.
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
-| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the design changes layout, e.g. `[640, 420]`; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
+| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the layout switches, by the design or your layout model, e.g. `[640, 420]`, each measured a pixel either side; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
 `setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap` (the
 page is then opened for touch), `{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px),
