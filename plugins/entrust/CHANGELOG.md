@@ -15,6 +15,8 @@ forensics remain in the repository references and release notes.
   Full checks write a visual gallery and a handoff with the reported acceptance outcomes and supporting measurements.
   A screenshot-only frame leaves text for visual review. Sweeps and additional stories are optional. A detected opener needs a journey
   that observes its content opening and closing. Reports name missing measurements and the widths exercised by each journey.
+- Preserve the first Before capture and mark it as not comparable when recorded capture settings change, or unknown
+  when its original settings are unavailable. Matching settings do not prove that page data or theme stayed the same.
 - The calibrated synthetic listing judge accepted the saved v14 submission and returned v15 and v16 for the same
   mobile offset. The [iteration 2 report](research/2026-11-20-design-to-code/13-iteration-02.md) includes the
   reference captures, first submissions, costs and limits of the comparison.

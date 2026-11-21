@@ -756,7 +756,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const out = ["# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", "## Pictures to look at first", "",
-    "Compare the reference and final captures at the same state and width. Record any visible differences.", ""];
+    "Compare the reference and final captures at the same state and width. Record any visible differences. For Before/After, confirm the rendered data and theme even when capture settings match.", ""];
   for (const p of pictures) out.push(`- ${p}`);
   out.push("", "## Frames", "");
   for (const f of frames) {
@@ -765,6 +765,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
+    if (f.beforeComparison) out.push(`  Before: ${f.beforeComparison}.`);
   }
   out.push("", "## Widths and stories", "");
   if (sweepCoverage(sweep)) out.push(`- ${sweepCoverage(sweep)}`);
@@ -817,9 +818,10 @@ export function renderGallery({ title = "Design check", frames, sweep, journeys 
     return `<section><h2>${esc(f.result.frame)} <span class="${verdict}">${verdict}</span></h2>
 ${lines.map((l) => `<p>${l}</p>`).join("\n")}
 <div class="row">${columns.map(([k, label]) => {
-      const content = f.images[k] ? `<img src="${f.images[k]}" width="${f.width}" alt="${label}, ${esc(f.result.frame)}">`
+      const comparison = k === "before" && f.result.beforeComparison;
+      const content = f.images[k] ? `<img src="${f.images[k]}"${comparison ? "" : ` width="${f.width}"`} alt="${label}, ${esc(f.result.frame)}">`
         : k === "before" ? esc(f.result.beforeUnavailable ?? "") : k === "after" ? esc(f.result.unmeasured ?? "") : "";
-      return content ? `<figure><figcaption>${label}</figcaption>${content}</figure>` : "";
+      return content ? `<figure><figcaption>${label}${comparison ? ` — ${esc(comparison)}` : ""}</figcaption>${content}</figure>` : "";
     }).join("")}</div>
 </section>`;
   });
@@ -837,7 +839,7 @@ figure{margin:0;max-width:100%}figcaption{font-weight:600;margin-bottom:4px}
 img{display:block;max-width:100%;height:auto;outline:1px solid var(--line);background:#fff}
 li{margin:6px 0}
 </style>
-<h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ.</p>
+<h1>${esc(title)}</h1><p>${esc(new Date().toISOString().slice(0, 16).replace("T", " "))} UTC · the design, the page before the work, the page now, and where they differ. Confirm the rendered data and theme when comparing Before with After.</p>
 ${gaps.length ? `<section><h2>Not checked</h2><ul>${gaps.map((g) => `<li>${esc(g)}</li>`).join("")}</ul></section>` : ""}
 ${sections.join("\n")}
 ${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(where(i))} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}

@@ -33,7 +33,11 @@ state on the same URL. Verify the combination in its capture.
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
 about what they measured. Every check first removes an earlier `handoff.md`, so the one that exists is the last
 complete check's. The page before the work is the one the first check saw. If the root was absent after setup, the
-gallery records its absence. Delete `out/before/` to start a new baseline.
+gallery records its absence. Before stays the first capture for that frame name. The gallery and handoff mark it
+as incomparable if the configured URL, target width, browser viewport, host or root selector, setup steps, touch
+mode or device scale changes. A first capture without a matching settings record is labelled unknown. The checker cannot establish
+that the rendered data, theme or application state stayed the same at the same URL. Compare those in the images.
+Delete `out/before/` to start a new baseline.
 
 ## design.json
 
@@ -183,7 +187,7 @@ In `out/` beside `design.json`, or `--out`:
 | `report.md` | every finding, in tables |
 | `result.json` | the same as data: every finding with its offset, the causes, the sweep |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
-| `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable; a frame's files are named by its name and a short hash of it |
+| `before/<frame>.png` or `.txt` | first capture or the reason it is unavailable. The adjacent `.sha256` records fingerprints of that file and the capture settings |
 | `handoff.md` | written by a complete check, stamped with its time and, in a Git repository, the commit and whether the tree had uncommitted changes: the evidence a handoff quotes. It lists the pictures to look at first, then each frame's verdict with what the ledger excused, the widths and stories, each journey (with "checks opening only" when it sees something visible and never expects anything hidden), each ledger entry with what it excused, awaits or that it matched nothing, ledger faults, the acceptance rows with their assessed and reported outcomes, and what the script did not check |
 | `gallery.html` | written by a complete check: one self-contained page with the design, before, after and difference per frame, the sweep, each story at the frames' widths, the journeys, and every ledger entry with its reason: the record to hand over |
 | `history.jsonl` | one line per check: `round`, `time`, `frames`, `sweep`, `basis` (a hash of what the score was measured against: the tolerance, the page, the root, host and viewport, each frame's settings, spec and image, the sweep and the journeys), `review` (whether `review.md` had its acceptance list), `status` and `score`; the summary reads it for the round before and the lowest |

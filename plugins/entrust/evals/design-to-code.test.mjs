@@ -466,6 +466,47 @@ test("a root absent on the first check stays absent in Before after it is built"
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<figcaption>Before<\/figcaption>Root main was absent[^<]*<\/figure>/);
 });
 
+test("Before retains the first image and labels changed or unrecorded capture settings", browser, () => {
+  const f = smallFrame(), cfg = JSON.parse(fs.readFileSync(f.config));
+  fs.appendFileSync(f.page, `<button id="other">Change state</button><script>
+    const root = document.querySelector("main");
+    if (location.search) root.textContent = "Other data";
+    document.querySelector("#other").onclick = () => root.textContent = "Selected";
+  </script>`);
+  const out = path.join(f.dir, "out"), baseline = path.join(out, "before");
+  const capture = (frame) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], ...frame }] }));
+    const snap = cli("snapshot", f.config, "--images", "--force");
+    assert.equal(snap.status, 0, snap.stderr);
+    const checked = check(f.dir);
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+    return { frame: checked.result.frames[0], html: fs.readFileSync(path.join(out, "gallery.html"), "utf8"),
+      handoff: fs.readFileSync(path.join(out, "handoff.md"), "utf8") };
+  };
+  capture({});
+  const png = path.join(baseline, fs.readdirSync(baseline).find((file) => file.endsWith(".png")));
+  const first = fs.readFileSync(png);
+  for (const settings of [{ width: 460 }, { url: "page.html?other" }, { setup: [{ click: "#other" }] }]) {
+    const changed = capture(settings);
+    assert.match(changed.frame.beforeComparison, /different capture settings/);
+    assert.match(changed.html, /<figcaption>Before — different capture settings, not comparable<\/figcaption>/);
+    assert.match(changed.handoff, /Before: different capture settings, not comparable/);
+    assert.ok(changed.html.includes(first.toString("base64")));
+    assert.deepEqual(fs.readFileSync(png), first);
+  }
+  f.write("<main>Updated at the same URL</main>");
+  const same = capture({});
+  assert.equal(same.frame.beforeComparison, undefined);
+  assert.match(same.html, /<figcaption>Before<\/figcaption>/);
+  assert.match(same.handoff, /confirm the rendered data and theme/);
+  assert.notDeepEqual(fs.readFileSync(path.join(out, same.frame.images.page)), first);
+  fs.unlinkSync(png.replace(/\.png$/, ".sha256")); // A capture written by an older checker.
+  const old = capture({});
+  assert.match(old.html, /Before — capture settings unknown/);
+  assert.match(old.handoff, /Before: capture settings unknown/);
+  assert.deepEqual(fs.readFileSync(png), first);
+});
+
 test("state names keep separate captures", browser, () => {
   const f = smallFrame("Ready", [{ name: "Оплачен" }, { name: "Отменён" }, { name: "Old frame" }]);
   const cfg = JSON.parse(fs.readFileSync(f.config));

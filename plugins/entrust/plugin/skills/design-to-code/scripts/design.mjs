@@ -217,10 +217,15 @@ async function runStep(page, step) {
 // A page that could not be put in its state: the frame, story or journey is reported, the rest of the check goes on.
 const unmeasured = (message) => Object.assign(new Error(message), { unmeasured: true, exit: 2 });
 
-async function open(browser, cfg, { url, width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
+function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
   const viewportWidth = viewport ?? (cfg.host ? Math.max(cfg.viewport ?? 1280, width) : width);
   const hasTouch = touch || setup.some((step) => "tap" in step);
-  const context = await browser.newContext({ viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch });
+  return { viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch };
+}
+
+async function open(browser, cfg, target) {
+  const { url, width, setup = [], height = 900 } = target;
+  const context = await browser.newContext(contextOptions(cfg, target));
   const page = await context.newPage();
   // A step on something that never appears fails in seconds, not in Playwright's default half minute.
   page.setDefaultTimeout(5000);
@@ -664,15 +669,25 @@ const dataUrl = (buf) => buf && `data:image/png;base64,${buf.toString("base64")}
 // ------------------------------------------------------------------ commands
 
 // The page as the work found it, kept from the first check (or why there was none); delete out/before to take it again.
-function beforeFrame(out, frame, shot, absent) {
+function beforeFrame(out, frame, settings, shot, absent) {
   const dir = path.join(out, "before"), key = frameKey(frame.name);
-  const png = path.join(dir, `${key}.png`), marker = path.join(dir, `${key}.txt`);
-  if (fs.existsSync(png)) return { image: dataUrl(fs.readFileSync(png)) };
-  if (fs.existsSync(marker)) return { reason: fs.readFileSync(marker, "utf8") };
-  fs.mkdirSync(dir, { recursive: true });
-  if (shot) { fs.writeFileSync(png, shot); return { image: dataUrl(shot) }; }
-  fs.writeFileSync(marker, absent);
-  return { reason: absent };
+  const png = path.join(dir, `${key}.png`), marker = path.join(dir, `${key}.txt`), stamp = path.join(dir, `${key}.sha256`);
+  const digest = (data) => createHash("sha256").update(data).digest("hex");
+  const settingsHash = digest(JSON.stringify(settings));
+  if (!fs.existsSync(png) && !fs.existsSync(marker)) {
+    fs.mkdirSync(dir, { recursive: true });
+    const first = shot ?? absent;
+    try {
+      fs.writeFileSync(shot ? png : marker, first, { flag: "wx" });
+      fs.writeFileSync(stamp, `${digest(first)} ${settingsHash}\n`);
+    } catch (e) { if (e.code !== "EEXIST") throw e; }
+  }
+  const hasImage = fs.existsSync(png), first = fs.readFileSync(hasImage ? png : marker);
+  const recorded = fs.existsSync(stamp) && fs.readFileSync(stamp, "utf8").trim().match(/^([a-f0-9]{64}) ([a-f0-9]{64})$/);
+  let comparison;
+  if (!recorded || recorded[1] !== digest(first)) comparison = "capture settings unknown";
+  else if (recorded[2] !== settingsHash) comparison = "different capture settings, not comparable";
+  return { ...(hasImage ? { image: dataUrl(first) } : { reason: first.toString("utf8") }), comparison };
 }
 
 async function measureFrames(browser, cfg, frames, ledger, out) {
@@ -685,12 +700,15 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
     const scale = size ? Math.max(1, Math.round(size.width / spec.frame.width)) : 1;
     // A frame of a state drawn outside the component, a popover or a sheet, names its own root.
     const fcfg = frame.root ? { ...cfg, root: frame.root } : cfg;
+    const target = { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) };
+    const settings = { url: frame.url, width: frame.width, host: fcfg.host ?? null, root: fcfg.root,
+      setup: frame.setup ?? [], browser: contextOptions(fcfg, target) };
     let opened;
-    try { opened = await open(browser, fcfg, { ...frame, scale, height: Math.max(900, Math.ceil(spec.frame.height + 200)) }); }
+    try { opened = await open(browser, fcfg, target); }
     catch (e) {
       if (!e.unmeasured) throw e;
-      const before = beforeFrame(out, frame, null, e.message);
-      results.push({ frame: frame.name, pass: false, verdict: "incomplete", unmeasured: e.message, beforeUnavailable: before.reason,
+      const before = beforeFrame(out, frame, settings, null, e.message);
+      results.push({ frame: frame.name, pass: false, verdict: "incomplete", unmeasured: e.message, beforeUnavailable: before.reason, beforeComparison: before.comparison,
         score: null, causes: [], issues: [], root: { spec: spec.frame, page: null }, images: {},
         gallery: { width: spec.frame.width, images: { design: dataUrl(reference), before: before.image } } });
       continue;
@@ -705,7 +723,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       const dir = path.join(out, frameKey(frame.name));
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "page.png"), shot);
-      const before = beforeFrame(out, frame, shot);
+      const before = beforeFrame(out, frame, settings, shot);
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
       if (reference) {
@@ -723,6 +741,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
       if (before.reason) result.beforeUnavailable = before.reason;
+      if (before.comparison) result.beforeComparison = before.comparison;
       result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true });
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
