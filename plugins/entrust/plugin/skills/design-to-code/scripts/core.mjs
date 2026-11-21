@@ -2,10 +2,7 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "wrap"];
-// What another font or renderer can change: the glyphs and the sizes they take. Never where a thing sits, whether
-// it shows, what it says, or what it runs into.
-const PLATFORM_CANNOT = ["x", "y", "presence", "text", "overlap", "covered", "outside", "clipped", "switch", "line", "align", "resize", "construct", "wrap", "*"];
+  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "type", "wrap"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -295,9 +292,6 @@ export function ledgerFaults(entries) {
     if (e.status !== "accepted" && (e.landmark === "*" || e.property === "*" || (Array.isArray(e.landmark) && e.landmark.includes("*")))) faults.push(`${at}: only an accepted entry may use *`);
     if (e.category === "owner" && e.status !== "accepted") faults.push(`${at}: "owner" is the owner's own call: an entry of it is accepted, with decidedBy; propose under the cause it has`);
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
-    if (e.category === "platform" && PLATFORM_CANNOT.includes(e.property)) faults.push(`${at}: a platform difference (a font, a renderer) changes glyphs and their sizes, not ${e.property === "*" ? "every property" : e.property}: name the properties it changes, fix the rest, or give their cause`);
-    // The kit's type or component size is the same wherever it is used: one entry for it, on every frame.
-    if (e.category === "system" && e.property === "width" && e.frame !== undefined && e.frame !== "*") faults.push(`${at}: a kit token's size is the same on every frame: give no frame, one entry per token, with its measured size against the drawn one`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     return faults;
@@ -309,18 +303,11 @@ const frameMatches = (entry, frame) => entry.frame === undefined || entry.frame 
 const landmarkMatches = (entry, label) => [entry.landmark].flat().some((v) => v === "*" || v === label);
 const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x + b.width <= r[0] + r[2] + pad && b.y + b.height <= r[1] + r[3] + pad;
 
-// A moderate offset that a consistent system explains (the kit's spacing, its components) may be proposed as
-// such; past `moderate`, or a size the font does not explain, only the design's error, a state it lacks or the owner's
-// call can excuse it.
-const OWNER_CAUSES = ["design-error", "missing-state", "owner", "ux"];
+// The band a moderate offset may sit in: what a token or another font explains. Within it, an offset is a note.
 export const MODERATE = 12;
-// What only the owner can let stand: what moved past a moderate offset, a size the font does not explain, a text or a
-// piece that is not the design's, a broken line or column, a construct.
-const STRICT = ["presence", "text", "line", "construct", "align", "wrap"];
-const strict = (issue) => issue.strict || STRICT.includes(issue.property) || (["x", "y"].includes(issue.property) && Math.abs(issue.delta ?? 0) > MODERATE);
+// An entry covers a finding it names; a proposed one leaves it pending, for the owner to accept or refuse.
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
-    && (!strict(issue) || e.status === "accepted" || OWNER_CAUSES.includes(e.category) || (issue.strict === "system" && e.category === "system"))
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
       : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
@@ -429,15 +416,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     ...(typeof expected === "number" && typeof actual === "number" ? { delta: actual - expected } : {}), ...extra,
   });
   const offset = (p, axis, expected, actual, delta) => {
-    let e = excused(p, axis), why;
-    // Past a moderate offset only an owner-level cause excuses any of it, however it was split into steps; a lesser
-    // proposal for it is named, so it is not proposed again.
-    const lesser = (x) => x.status !== "accepted" && !OWNER_CAUSES.includes(x.category);
-    if (Math.abs(delta) > band) {
-      if (e.entries.some(lesser)) e = { amount: 0, status: "accepted", entries: [] };
-      const named = ledger.find((x) => lesser(x) && frameMatches(x, frame) && [axis, "*"].includes(x.property) && landmarkMatches(x, p.label));
-      if (named && !e.entries.length) why = `past ${band} px a ${named.category} proposal excuses nothing: only the design's error, a state it lacks or the owner's call`;
-    }
+    const e = excused(p, axis);
     const left = delta - e.amount;
     const inherited = !own.has(`${axis}\u0000${p.index}`);
     const base = { expected: shown(expected), actual: shown(actual), delta, inherited, own: own.get(`${axis}\u0000${p.index}`)?.step ?? 0 };
@@ -445,7 +424,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
       if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)) });
       return;
     }
-    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), ...(Math.abs(delta) > band ? { strict: true } : {}), ...(why ? { why } : {}), status: "fail" });
+    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), status: "fail" });
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
@@ -472,8 +451,15 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   });
   // The type's size, read from ink heights: the page's text against the design's, the same string. Another font
   // changes a cap height by a few per cent; a size of another class changes it by more. Recorded for every frame.
+  // The mean of the middle sixty per cent: a box that holds an icon beside its text, or a line the font draws taller,
+  // falls at the ends.
   const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height }));
-  const typeRatio = heights.length >= 3 ? heights.map((h) => h.ratio).sort((a, b) => a - b)[Math.floor(heights.length / 2)] : null;
+  const middle = heights.map((h) => h.ratio).sort((a, b) => a - b).slice(Math.floor(heights.length * 0.2), heights.length - Math.floor(heights.length * 0.2));
+  const typeRatio = heights.length >= 5 ? middle.reduce((a, b) => a + b, 0) / middle.length : null;
+  // Read from a screenshot's ink: a spec from Figma states its sizes, which are compared exactly.
+  if (boxesSpec && typeRatio && Math.abs(typeRatio - 1) >= 0.1) {
+    add("the type", "type", "as drawn", `${Math.round(Math.abs(typeRatio - 1) * 100)} % ${typeRatio < 1 ? "smaller" : "larger"} than drawn, by the ink heights of ${heights.length} texts: a size of another class; set the sizes the frame draws, or propose the kit's type token for the owner`, { delta: Math.round((typeRatio - 1) * 100) });
+  }
   // Named boxes from an image: the page's texts are as much wider as its font is. One wider beyond that is a larger
   // size or more text: a finding a font cannot excuse.
   if (boxesSpec && fontRatio) {
@@ -481,7 +467,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     for (const p of texts) {
       // Only wider: a design piece can hold an icon beside its text that the page's text box does not.
       const extra = p.m.box.width / ratio - p.l.box.width;
-      if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text (the kit's type token may be proposed as system, once for every frame)`, { strict: "system" });
+      if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text`);
     }
   }
   // A gap the design sets between two neighbours, side by side or one above the other, that closes up: the pieces
@@ -494,7 +480,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
         .sort((a, b) => a.l.box[pos] - b.l.box[pos])[0];
       if (!next || past(p) || past(next)) continue;
       const dGap = next.l.box[pos] - (p.l.box[pos] + p.l.box[size]), mGap = next.m.box[pos] - (p.m.box[pos] + p.m.box[size]);
-      if (dGap >= 8 && mGap < Math.min(4, dGap / 2)) add(next.label, axis, `a ${Math.round(dGap)} px gap ${word} “${p.label}”`, `${Math.round(mGap)} px: they nearly touch; keep the design's gap`, { delta: mGap - dGap, gap: true, strict: true });
+      if (dGap >= 8 && mGap < Math.min(4, dGap / 2)) add(next.label, axis, `a ${Math.round(dGap)} px gap ${word} “${p.label}”`, `${Math.round(mGap)} px: they nearly touch; keep the design's gap`, { delta: mGap - dGap, gap: true });
     }
   }
   // What the design stacks on one left edge (a column's lines, a value under its label) stays on one edge.
@@ -542,8 +528,14 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // Within the band an offset is a note, whether or not the ledger proposes it: it needs no decision.
   // A drift is a note too: carried from the pieces before it (a wider font, the kit's token) up to twice the band,
   // while its own step stays within it. A piece that moves by itself past the band, or a drift past twice it, is not.
-  const note = (i) => ["x", "y"].includes(i.property) && !i.gap && ["fail", "pending"].includes(i.status)
-    && (Math.abs(i.delta ?? 0) <= band || (Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band));
+  // The second tier: what the system or a font explains, or pixels alone, is a note, never a finding: an offset within
+  // the band or a drift within twice it; a pixel region (a stand-in icon, a rendering); a text wider or narrower than
+  // drawn (the type's size is its own finding); a height within twice the band; a column's lines within the band.
+  const note = (i) => ["fail", "pending"].includes(i.status) && !i.gap && (
+    (["x", "y"].includes(i.property) && (Math.abs(i.delta ?? 0) <= band || (Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band)))
+    || i.property === "region" || (i.property === "width" && i.landmark !== "root")
+    || (i.property === "height" && Math.abs(i.delta ?? 0) <= 2 * band)
+    || (i.property === "align" && Math.abs(i.delta ?? 0) <= band));
   const notes = all.filter((i) => !extra(i) && note(i));
   const classified = all.filter((i) => !extra(i) && !note(i));
   const failing = classified.filter((i) => i.status === "fail");
@@ -563,7 +555,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   return {
     frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
     ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map((h) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
-    ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, delta: round(i.delta) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    // A region has no size of its own to give, only its place.
+    ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.delta) }), ...(i.box ? { box: i.box } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -878,6 +871,16 @@ const alignmentName = (group) => group.story ? `${group.selector} (story ${group
 const sweepCoverage = (sweep) => !sweep ? "Width sweep and additional stories were not run." : !sweep.stories?.length ? "No additional stories were swept." : "";
 const acceptanceLine = (row) => `${row.item}: ${row.status}${row.reason ? ` (${row.reason})` : ""}${row.result ? ` · reported: ${row.result}` : ""}`;
 
+// The sweep's notes (a construct, a switch), in a line: for the owner's eye, so they are said where findings are.
+const sweepNotes = (noted) => `${noted.length} note${noted.length === 1 ? "" : "s"}, not findings: ${noted.slice(0, 4).map((i) => `${i.property} “${i.landmark}”${i.story ? ` (${i.story})` : ""}`).join(", ")}${noted.length > 4 ? `, and ${noted.length - 4} more` : ""}`;
+// The notes a frame keeps, in a line: offsets and drifts with the largest, then what else, by kind.
+const noteLine = (f) => {
+  const offsets = f.notes.filter((n) => ["x", "y"].includes(n.property)), rest = f.notes.filter((n) => !["x", "y"].includes(n.property));
+  const kinds = { region: "pixel regions", width: "texts wider or narrower than drawn", height: "heights", align: "column edges" };
+  const counted = Object.entries(rest.reduce((c, n) => ({ ...c, [n.property]: (c[n.property] ?? 0) + 1 }), {})).map(([k, v]) => `${v} ${kinds[k] ?? k}`);
+  return [offsets.length && `${offsets.length} offsets of ${f.band} px or less, or drifts to ${2 * f.band} carried from the pieces before, at most ${Math.max(...offsets.map((n) => Math.abs(n.delta)))} px`, ...counted].filter(Boolean).join("; ");
+};
+
 export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, status, missingReferences = [] }) {
   const count = counts(frames, sweep);
   const out = ["# Design check", "",
@@ -903,7 +906,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
-    if (f.notes) out.push(`Moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before; the system's, not findings): ${f.notes.map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
+    if (f.notes) out.push(`Notes, the system's and not findings: ${noteLine(f)}. ${f.notes.filter((n) => n.delta !== undefined).map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
     if (images.length) out.push(`Images: ${images.join(", ")}.`);
@@ -966,21 +969,22 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
     if (f.imageOnly) out.push(`  ${imageOnlyNote(f)}`);
     if (f.uncovered) out.push(`  ${uncoveredNote(f)}`);
-    if (f.notes) out.push(`  moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before; the system's, not findings): ${f.notes.length}, at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px`);
+    if (f.notes) out.push(`  notes, the system's and not findings: ${noteLine(f)}`);
     // Where to start fixing: only for a frame with a finding, never for notes alone.
     const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
     const mine = failing.filter((i) => !i.inherited);
-    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.why ? ` — ${i.why}` : ""}`);
+    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`);
     const rest = failing.length - Math.min(mine.length, limit);
     if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
     if (f.unexpected?.length) out.push(`  ${notInDesign(f)}`);
   }
   if (sweep) {
     out.push("", `sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}`);
-    const failing = sweep.issues.filter((i) => i.status === "fail");
+    const failing = sweep.issues.filter((i) => i.status === "fail"), noted = sweep.issues.filter((i) => i.status === "note");
     for (const i of failing.slice(0, limit)) out.push(`  ${i.property} ${where(i)}${i.ranges ? ` at ${i.ranges}` : ""}: ${i.actual}`);
     if (failing.length > limit) out.push(`  … ${failing.length - limit} more`);
+    if (noted.length) out.push(`  ${sweepNotes(noted)}`);
     for (const u of sweep.unmeasured ?? []) out.push(`  not measured: ${alignmentName(u)} matched at most ${u.matched} across the sweep; an alignment needs two or more`);
     const frail = sweep.fragile ?? [];
     for (const f of frail.slice(0, 5)) out.push(`  fragile under other data: ${f.landmark}${f.story ? ` (${f.story})` : ""} ${f.actual} (at ${f.ranges})`);
@@ -1008,9 +1012,9 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
   const count = (issues) => {
-    const failing = fails(issues), ok = excused(issues);
+    const failing = fails(issues), ok = excused(issues), noted = issues.filter((i) => i.status === "note");
     const head = failing.length ? `${failing.length} finding${failing.length === 1 ? "" : "s"}; first: ${say(ordered(failing)[0])}` : "no findings";
-    return `${head}${ok ? `; ${ok} excused by the ledger` : ""}`;
+    return `${head}${ok ? `; ${ok} excused by the ledger` : ""}${noted.length ? `; ${sweepNotes(noted)}` : ""}`;
   };
   const handoverState = { pass: "done", pending: "only after two rounds without a new lowest score, each remaining difference proposed in the ledger",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
@@ -1038,7 +1042,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.skipped && `skipped pieces: ${f.skipped.join("; ")}`,
-      f.notes && `${f.notes.length} moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before), at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px (${f.notes.slice(0, 4).map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}${f.notes.length > 4 ? ", …" : ""})`,
+      f.notes && `notes, the system's and not findings: ${noteLine(f)}`,
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
@@ -1126,7 +1130,7 @@ li{margin:6px 0}
 ${gaps.length ? `<section><h2>Not checked</h2><ul>${gaps.map((g) => `<li>${esc(g)}</li>`).join("")}</ul></section>` : ""}
 ${sections.join("\n")}
 ${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(where(i))} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
-${(sweep?.stories ?? []).map((st) => `<section><h2>Story: ${esc(st.name)}</h2><p>${esc(st.unmeasured ?? "At the frames' widths; its findings are in the list above.")}</p><div class="row">${st.shots.map((sh) => `<figure><figcaption>${sh.width} px</figcaption><img src="${sh.image}" alt="${esc(st.name)} at ${sh.width} px"></figure>`).join("")}</div></section>`).join("\n")}
+${(sweep?.stories ?? []).filter((st) => !st.generated).map((st) => `<section><h2>Story: ${esc(st.name)}</h2><p>${esc(st.unmeasured ?? "At the frames' widths; its findings are in the list above.")}</p><div class="row">${st.shots.map((sh) => `<figure><figcaption>${sh.width} px</figcaption><img src="${sh.image}" alt="${esc(st.name)} at ${sh.width} px"></figure>`).join("")}</div></section>`).join("\n")}
 ${journeys.length ? `<section><h2>Journeys</h2><ul>${journeys.map((j) => `<li><span class="${j.pass ? "pass" : "fail"}">${j.pass ? "holds" : "fails"}</span> ${esc(j.name)}${j.failed ? `: ${esc(j.failed)}` : ""}</li>`).join("")}</ul></section>` : ""}
 ${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>

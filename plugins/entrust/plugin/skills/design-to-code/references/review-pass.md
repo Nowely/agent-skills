@@ -25,17 +25,17 @@ Read only these:
 - the design's references: <pack>/frames/*/reference.png (and the dense and many-entries stories have no reference)
 - the page's captures from the last complete check: <pack>/out/*/page.png, <pack>/out/*/side.png, the gallery's
   story pictures in <pack>/out/gallery.html
-- the check's findings: <pack>/out/report.md (findings only; ignore any reasons written beside them)
+- the check's findings and notes: <pack>/out/report.md (ignore any reasons written beside them)
 - the page itself, to open at any width: <page URL>
 
 The owner's criteria:
 - Return for these classes (one example each; find the class, not only the example):
   - a broken relation: a column that no longer lines up, an order or a row that changed;
   - a text or format that reads differently from its frame: "4 × 5587" where the frame draws "5587 × 4";
-  - a type or component size of another class: a price set larger than the frame's, unless the kit's own price
-    token sets it (one ledger entry for every frame);
-  - what belongs together split apart: a price on one line and its period on the next, on either side of "/", while
-    the card has room for both ("₽ /" | "месяц", "₽" | "/ месяц"); a value and its unit;
+  - a type of another size: the page's type 10 % or more off the frame's (the check's `type` finding), a price set
+    larger than drawn;
+  - a short text that wraps while the card has room for it on one line ("wraps with room"): a price on one line and
+    its period on the next ("₽ /" | "месяц", "₽" | "/ месяц"), a value and its unit, a label;
   - an overlap, cut or covered text, data silently dropped;
   - an overlay cut by the window: a popover that opens above a card near the page's top and does not flip;
   - an interaction that does not work;
@@ -43,9 +43,9 @@ The owner's criteria:
     fixed height around content that grows.
 - Look where returns hide: open the dense and many-entries stories at the narrowest width the product supports (the
   sweep's `from` in design.json), and each overlay with its opener near the window's top and bottom edges.
-- Do not return for: a moderate, systematic difference the system explains, 12 px or less (a consistent token gap
-  where the frame measures a few pixels more or less, the kit's own component size, another font's widths), a
-  stand-in icon.
+- Do not return for: a moderate, systematic difference the system explains: an offset of 12 px or less, or a drift
+  up to 24 px carried from the pieces before (a token gap where the frame measures a few pixels more or less, the
+  kit's own component size, another font's widths); a stand-in icon.
 
 For each finding: the frame or story and width, what you see, by how much, and "fix" or "acceptable". Be concrete;
 do not invent what you cannot see. End with RETURN or ACCEPT.

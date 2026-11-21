@@ -566,13 +566,9 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   // What must stay together, read from where every text breaks, with nothing to declare. Text is read by its line
   // context: inline elements, inline blocks and the items of a flex row join their parent's, so a price written as
   // three text nodes ("1 234 ₽", " / ", "месяц") reads as one.
-  const UNITS = new Set(["₽", "€", "$", "£", "¥", "%", "‰", "ГБ", "ТБ", "МБ", "КБ", "Гб", "Мб", "GB", "TB", "MB", "KB",
-    "ГГц", "МГц", "GHz", "MHz", "Гбит/с", "Мбит/с", "Gbps", "Mbps", "шт", "шт.", "руб", "руб.", "мес", "мес.", "м²", "m²",
-    "м", "m", "см", "cm", "мм", "mm", "км", "km", "км/ч", "km/h", "кг", "kg", "px", "°", "°C", "°С", "°F", "ч", "мин",
-    "мин.", "сек", "мс", "ms", "Вт", "W", "кВт", "kW"]);
+  // A value: a number, or a currency or per-cent sign beside one.
   const number = (t) => /^\d(?:[\d.,]*\d)?$/.test(t);
-  const unit = (t) => UNITS.has(t.replace(/[,;)]+$/, ""));
-  const value = (t) => number(t) || unit(t);
+  const value = (t) => number(t) || /^[\p{Sc}%‰]$/u.test(t);
   const joins = (el) => {
     if (/^(inline|contents)/.test(getComputedStyle(el).display)) return true;
     const p = el.parentElement && getComputedStyle(el.parentElement);
@@ -590,7 +586,6 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       if (rects.length) run.push({ t: m[0], node, rects, at: m.index });
     }
   }
-  const keepTogether = [];
   for (const run of runs.values()) {
     const say = (node, msg) => issues.push({ landmark: label(node.data), property: "wrap", kind: msg.split(":")[0], actual: msg });
     run.forEach(({ t, node, rects }, k) => {
@@ -603,42 +598,39 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
         && getComputedStyle(node.parentElement).hyphens !== "auto") say(node, `a word broken between its letters: “${word}”`);
       if (k === 0) return;
       const { t: a, node: from, rects: before } = run[k - 1], prev = before.at(-1), next = rects[0];
-      const pair = [run[k - 2]?.t, a, t];
-      // A short text (a price, a value, a label) whose pair may split at another width: a forecast, not a finding.
-      const pairs = (x, y, z) => (y === "/" && value(x ?? "")) || (z === "/" && value(y)) || (y === "×" && number(z)) || (z === "×" && number(y))
-        || (number(y) && (unit(z) || number(z))) || (/^[₽€$£¥]$/.test(y) && number(z));
-      // Whether a line may break between the two: an ordinary space between them, in text that wraps.
-      const breakable = () => {
-        const g = document.createRange(); g.setStart(from, run[k - 1].at + a.length); g.setEnd(node, run[k].at);
-        const host = g.commonAncestorContainer.nodeType === 3 ? g.commonAncestorContainer.parentElement : g.commonAncestorContainer;
-        return /[ \t\n]/.test(g.toString()) && !/nowrap|^pre$/.test(getComputedStyle(host).whiteSpace);
-      };
-      if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) { // the same line
-        if (run.length <= 6 && pairs(...pair) && breakable()) keepTogether.push({ landmark: label(from.data), kind: "may split", actual: `“${a} ${t}” is joined by a breakable space: at another width it can split; a no-break space keeps it` });
-        return;
-      }
-      // A price split from its period, on either side of "/" ("₽ /" | "месяц", "₽" | "/ месяц"), "×" split from a
-      // number, a number broken, or split from its unit or currency. A breadcrumb's "/" and a list's "·" may end a line.
-      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a value split from its period: “${run[k - 2].t} /” | “${t}”: keep the whole group on one line (white-space: nowrap on it), and give its block the group's width`);
-      else if (t === "/" && value(a)) {
-        // Before "/" the period moves whole: the last resort when the group is wider than the component itself, and a
-        // finding while the component could hold it on one line (a block capped narrower than its content).
-        let first = k - 1;
-        while (first > 0 && value(run[first - 1].t)) first--;
-        const group = run.slice(first, k + 2), em = parseFloat(getComputedStyle(node.parentElement).fontSize);
-        const unbroken = group.reduce((w, g) => w + g.rects.reduce((x, r) => x + r.width, 0), 0) + (group.length - 1) * 0.28 * em;
-        const cs = getComputedStyle(root), room = rr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-        const text = group.map((g) => g.t).join(" ");
-        if (unbroken <= room) say(from, `a value split from its period: “${a}” | “/ ${run[k + 1]?.t ?? ""}”, though “${text}” (${Math.round(unbroken)} px) fits the component (${Math.round(room)} px): keep it on one line (white-space: nowrap on the whole group), and let its block take the group's width`);
-        else keepTogether.push({ landmark: label(from.data), kind: "last resort", actual: `“${text}” (${Math.round(unbroken)} px) is wider than the component (${Math.round(room)} px): its period goes to the next line whole; the owner decides whether that is acceptable` });
-      }
+      if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) return; // the same line
+      // Wherever there is no room, two breaks still split what belongs together: "/" after a value left at a line's
+      // end ("₽ /" | "месяц"), and "×" split from its numbers.
+      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a value split from its period: “${run[k - 2].t} /” | “${t}”: keep the whole group on one line (white-space: nowrap on it), and let its block take the group's width`);
       else if ((a === "×" && number(t)) || (t === "×" && number(a))) say(from, `“×” split from its numbers: “${a}” | “${t}”: keep them on one line`);
-      else if (/^[₽€$£¥]$/.test(a) && number(t)) say(from, `a currency sign split from its number: “${a}” | “${t}”`);
-      // Two numbers in one element are one number grouped; in two cells of a row they are two values.
-      else if (number(a) && number(t) && from.parentElement === node.parentElement) say(from, `a number broken across lines: “${a}” | “${t}”`);
-      else if (number(a) && unit(t)) say(from, `a number split from its unit: “${a}” | “${t}”: a no-break space between them`);
     });
   }
+  // A short text that wraps though the component could hold it: its line's own limits lifted and set on one line, it
+  // fits the component and runs into no other text. A price and its period, a value and its unit, a label: whatever
+  // wraps with room. A clamp or an ellipsis is a choice, not a wrap.
+  const lift = document.createElement("style");
+  lift.textContent = "[data-dtc-lift], [data-dtc-lift] * { white-space: nowrap !important; } [data-dtc-lift] { max-width: none !important; min-width: max-content !important; flex-shrink: 0 !important; }";
+  document.head.append(lift);
+  const rectsOf = (n) => { const g = document.createRange(); g.selectNodeContents(n); return [...g.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5); };
+  const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+  for (const [ctx, run] of runs) {
+    if (run.length < 2 || run.length > 6 || ctx === root) continue;
+    const tops = run.map((x) => x.rects[0].top), h = Math.min(...run.map((x) => x.rects[0].height));
+    if (Math.max(...tops) - Math.min(...tops) <= h / 2) continue;
+    const cs = getComputedStyle(ctx);
+    if ((cs.webkitLineClamp && cs.webkitLineClamp !== "none") || cs.textOverflow === "ellipsis") continue;
+    ctx.setAttribute("data-dtc-lift", "");
+    const box = ctx.getBoundingClientRect(), now = root.getBoundingClientRect();
+    const fits = box.left >= now.left - 1 && box.right <= now.right + 1 && now.width <= rr.width + 1;
+    const mine = nodes.filter((n) => ctx.contains(n)).flatMap(rectsOf);
+    const clash = fits && nodes.some((n) => !ctx.contains(n) && visible(n.parentElement) && rectsOf(n).some((a) => mine.some((b) => meets(a, b))));
+    ctx.removeAttribute("data-dtc-lift");
+    if (fits && !clash) {
+      const text = run.map((x) => x.t).join(" ");
+      issues.push({ landmark: label(text), property: "wrap", kind: "wraps with room", actual: `“${text}” wraps, though on one line it fits the component and runs into nothing: keep it whole (white-space: nowrap on it), and let its block take its width` });
+    }
+  }
+  lift.remove();
   // Text over an icon or a small picture: the graphics people read beside text, not a backdrop it is set on.
   const graphics = [...root.querySelectorAll("svg, img, canvas, [class*=icon]")].filter((g) => visible(g) && !g.textContent.trim())
     .map((g) => ({ g, r: g.getBoundingClientRect() })).filter(({ r }) => r.width > 2 && r.height > 2 && r.width * r.height <= 64 * 64);
@@ -779,7 +771,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   scrollTo(sx, sy);
   // What longer data could break, read from the layout itself: text that takes no space in it (positioned outside the
   // flow, other than an overlay), and a box whose content already spills out of it without being clipped.
-  const fragile = [...keepTogether];
+  const fragile = [];
   const positioned = (el) => /absolute|fixed/.test(getComputedStyle(el).position);
   const overlay = (el) => el.closest('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog, [aria-hidden="true"]');
   // A positioned label over a box with no text of its own (a badge on an image) has nothing to run into.
@@ -1120,6 +1112,39 @@ function alignmentGaps(probes) {
   return [...short.values()].map(({ widths: at, probes: seen, ...u }) => ({ ...u, ranges: ranges(at), everywhere: seen.size === probes.length }));
 }
 
+// The conditions the sweep makes itself, run in the page on the root: texts longer by two fifths (as pseudo-localization
+// does), and each set of repeated entries (siblings of one class) doubled. Each is applied once to what it has not seen.
+const STRESS = {
+  stretch: (root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), texts = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) texts.push(n);
+    for (const n of texts) {
+      const t = n.data.trim();
+      if (!t || n.dtcStretched) continue;
+      n.data = n.data.replace(t, `${t} ${t.slice(0, Math.ceil(t.length * 0.4))}`);
+      n.dtcStretched = true;
+    }
+  },
+  double: (root) => {
+    if (root.dtcDoubled) return;
+    // Each parent with its repeated entries: only those are doubled, after the last of them, not their neighbours.
+    const sets = new Map();
+    for (const el of root.querySelectorAll("*")) {
+      const p = el.parentElement;
+      if (!p || sets.has(p) || typeof el.className !== "string" || !el.className.trim()) continue;
+      const entries = [...p.children].filter((k) => k.className === el.className);
+      if (p.children.length <= 12 && entries.length >= 2) sets.set(p, entries);
+    }
+    for (const [p, entries] of sets) {
+      if ([...sets.keys()].some((q) => q !== p && q.contains(p))) continue;
+      entries.at(-1).after(...entries.map((k) => k.cloneNode(true)));
+    }
+    root.dtcDoubled = true;
+  },
+};
+// What counts on a generated condition: a collision or a cut, not a wrap or a line of texts that are not the product's.
+const STRESSED = ["overlap", "clipped", "outside", "covered"];
+
 async function sweep(browser, cfg, ledger) {
   const s = cfg.sweep;
   const from = Number(s.from), to = Number(s.to), step = Number(s.step ?? 8);
@@ -1134,12 +1159,14 @@ async function sweep(browser, cfg, ledger) {
   const order = [...widths].sort((a, b) => b - a);
   // One mounted page for every width, narrowing from the widest, as a user resizes it: state set up once must survive.
   // A story (the longest data, every conditional action at once) is swept the same way, and pictured at the frames' widths.
-  const run = async (url, setup, shots) => {
-    const { context, page } = await open(browser, cfg, { url, width: order[0], setup });
+  const run = async (url, setup, shots, stress, widthsHere = order) => {
+    const { context, page } = await open(browser, cfg, { url, width: widthsHere[0], setup });
     try {
       const probe = async (width) => {
         await setWidth(page, cfg, width, 900);
         await settle(page, cfg.root);
+        // A generated condition is applied again after each width: a component that renders anew keeps it.
+        if (stress) { await (await rootOf(page, cfg.root)).evaluate(STRESS[stress]); await settle(page, cfg.root); }
         const lines = (s.lines ?? []).filter((l) => (l.from ?? 0) <= width && width <= (l.to ?? Infinity));
         const r = await page.evaluate(inPage, { command: "probe", root: cfg.root, align: s.align ?? [], tolerance: cfg.tolerance, lines, kit: cfg.kit ?? [] });
         if (r.error) throw Object.assign(new Error(`sweep at ${width}: ${r.error}`), { exit: 2 });
@@ -1150,8 +1177,8 @@ async function sweep(browser, cfg, ledger) {
         return { width, ...r };
       };
       const probes = [];
-      for (const w of order) probes.push(await probe(w));
-      const back = await probe(order[0]);
+      for (const w of widthsHere) probes.push(await probe(w));
+      const back = await probe(widthsHere[0]);
       const first = probes[0];
       if (Math.abs(back.root.width - first.root.width) > 1 || Math.abs(back.root.height - first.root.height) > 1) {
         back.issues.push({ landmark: "root", property: "resize", delta: Math.max(Math.abs(back.root.width - first.root.width), Math.abs(back.root.height - first.root.height)), actual: `${Math.round(first.root.width)}×${Math.round(first.root.height)} before narrowing, ${Math.round(back.root.width)}×${Math.round(back.root.height)} after widening back` });
@@ -1177,6 +1204,25 @@ async function sweep(browser, cfg, ledger) {
     issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name })));
     stories.push({ name: story.name, longest: these.find((p) => p.longest)?.longest ?? [], shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
+  // Conditions the check makes itself, so that no one has to think of them: every text longer by two fifths, every
+  // repeated entry doubled, on the frames' page and every story, at the frames' widths and the sweep's ends. Their texts
+  // are not the product's, so only what collides or is cut counts on them.
+  const stressWidths = [...new Set([...frameWidths, from, to, ...(s.switches ?? [])])].filter((w) => w >= from && w <= to).sort((a, b) => b - a);
+  const generated = s.generate === false ? [] : [
+    { name: "the frames' page, texts stretched", url: cfg.url, setup: s.setup, stress: "stretch" },
+    { name: "the frames' page, entries doubled", url: cfg.url, setup: s.setup, stress: "double" },
+    ...(s.stories ?? []).map((st) => ({ ...st, name: `${st.name}, texts stretched`, stress: "stretch" })),
+  ];
+  for (const story of generated) {
+    let r;
+    try { r = await run(story.url, story.setup, null, story.stress, stressWidths); }
+    catch (e) { stories.push({ name: story.name, generated: true, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
+    issues.push(...sweepIssues([...r.probes, r.back], ledger).filter((i) => STRESSED.includes(i.property)).map((i) => ({ ...i, story: story.name })));
+    stories.push({ name: story.name, generated: true, shots: [] });
+  }
+  // The second tier: a construct (a negative margin, a nudge) and a layout switch where the model did not say are notes
+  // for the owner's eye, not findings. What collides, is cut, wraps with room or leaves its line is.
+  for (const i of issues) if (["construct", "switch"].includes(i.property) && i.status === "fail") i.status = "note";
   const failing = issues.filter((i) => i.status === "fail");
   // How often each line of the model was measured, over the frames' page and every story.
   const measuredLines = new Map((s.lines ?? []).map((l) => [l.name, 0]));
@@ -1202,7 +1248,7 @@ async function sweep(browser, cfg, ledger) {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
     lines: [...measuredLines].map(([name, widths]) => ({ name, widths })), lineErrors: [...lineErrors],
     fragile: [...fragile.values()].map(({ widths: at, stories: where, ...f }) => ({ ...f, story: [...where].join(", "), ranges: ranges([...new Set(at)]) })),
-    score: issues.filter((i) => i.status !== "accepted").length * 10,
+    score: issues.filter((i) => !["accepted", "note"].includes(i.status)).length * 10,
     unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
   };
 }
@@ -1405,7 +1451,8 @@ function assessRow(row, sweep) {
     const measured = row.method === "sweep" || row.method === "sweep.stories";
     // A row that names stories in inline code answers for those; one that names none, for all of them. Inline code
     // that names no configured story is a misspelling or a story never swept.
-    const all = (sweep?.stories ?? []).map((s) => s.name ?? s);
+    // The configured stories: the generated conditions are the check's own, not stories a row can claim.
+    const configured = (sweep?.stories ?? []).filter((s) => !s.generated), all = configured.map((s) => s.name ?? s);
     const codes = [...`${row.item} ${row.result}`.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
     const names = all.filter((n) => codes.includes(n));
     const mine = (story) => !names.length || names.includes(story);
@@ -1415,7 +1462,7 @@ function assessRow(row, sweep) {
     if (!detail) reason = "pass has no evidence";
     else if (row.method === "sweep.stories" && codes.length && !names.length) reason = `it names no configured story (${codes.map((c) => `\`${c}\``).join(", ")}); the stories are ${all.map((n) => `\`${n}\``).join(", ") || "none"}`;
     else if (row.method === "sweep" && (!sweep || sweep.reason || sweep.unmeasured?.some((u) => !u.story))) reason = "the width sweep was not fully measured";
-    else if (row.method === "sweep.stories" && (!sweep?.stories?.length || sweep.stories.some((s) => s.unmeasured && mine(s.name ?? s)) || sweep.unmeasured?.some((u) => u.story && mine(u.story)))) reason = "additional stories were not all measured";
+    else if (row.method === "sweep.stories" && (!configured.length || configured.some((s) => s.unmeasured && mine(s.name ?? s)) || sweep.unmeasured?.some((u) => u.story && mine(u.story)))) reason = "additional stories were not all measured";
     else if (issues.some((i) => i.status === "pending")) return { ...row, status: "pending", reason: "the measurement awaits a decision" };
     else return { ...row, status: "pass" };
   } else reason = na ? "N/A has no reason" : mark || !row.result ? "not checked" : "no recognized result";
@@ -1444,7 +1491,6 @@ function layoutModelRows(cfg) {
 
 function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   const gaps = [];
-  if (!rows.length) gaps.push("review.md has no acceptance list: write it before the first edit to the product's code");
   for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
   const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o.name])));
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
@@ -1457,10 +1503,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     if (unframed.length) gaps.push(`references no frame checks: ${unframed.map((p) => path.relative(cfg.dir, p)).join(", ")}`);
   }
   for (const st of sweepResult?.stories ?? []) if (st.unmeasured) gaps.push(`the story ${st.name} was not swept: ${st.unmeasured}`);
-  // The layout model comes first: a table's header does not count. One row is enough for a component with one line.
-  if (!cfg.static && layoutModelRows(cfg) < 1) gaps.push("review.md has no layout model: write it before building (a header and one row are enough for a component with one line)");
-  // The model's lines are checked across the sweep: at least one, and each measured somewhere.
-  if (!cfg.static && cfg.sweep && !(cfg.sweep.lines ?? []).length) gaps.push("sweep.lines is empty: put the layout model's lines there (the pieces that share a row, in order), so the sweep checks the arrangement, not only collisions");
+  // Lines the builder declares are measured somewhere, or say why not.
   for (const e of sweepResult?.lineErrors ?? []) gaps.push(`the line ${e}: use a CSS selector`);
   for (const l of sweepResult?.lines ?? []) if (!l.widths && !(sweepResult.lineErrors ?? []).some((e) => e.startsWith(`${l.name}:`))) gaps.push(`the line “${l.name}” never showed two of its pieces: its selectors, range or “when” match nothing in the flow`);
   // "static" is for a page with one layout: frames at several widths are a responsive component to sweep.

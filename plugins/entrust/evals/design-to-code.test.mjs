@@ -160,23 +160,26 @@ test("the root's bottom is read against the lowest landmark, so a changed bottom
   assert.deepEqual(r.causes.map((c) => [c.before, c.step]), [["the bottom of the root", 17]]);
 });
 
-test("a text box drawn taller than its line moves nothing below it, and no cause is invented for that", () => {
+test("a text box drawn taller than its line moves nothing below it, and a height within 24 px is a note", () => {
   const r = compare({ New: { dh: -4 } });
   assert.equal(r.causes.length, 0, JSON.stringify(r.causes));
-  assert.deepEqual(r.issues.map((i) => [i.landmark, i.property]), [["New", "height"]]);
+  assert.deepEqual(r.issues, []);
+  assert.deepEqual(r.notes.map((n) => [n.landmark, n.property]), [["New", "height"]]);
+  assert.ok(compare({ New: { dh: 26 } }).issues.some((i) => i.landmark === "New" && i.property === "height" && i.status === "fail"), "past 24 px it is a finding");
 });
 
 test("an accepted change of size excuses everything it pushes down; a proposed one leaves it pending", () => {
-  const entry = (status) => [{ landmark: ["New"], property: "height", category: "system", status, reason: "the kit's badge is 3 px lower" }];
-  const shrunk = { New: { dh: -3 }, Title: { dy: -3 } };
-  assert.equal(compare(shrunk, { height: 197 }).pass, false);
-  const accepted = compare(shrunk, { height: 197 }, entry("accepted"));
+  const entry = (status) => [{ landmark: ["New"], property: "height", category: "system", status, reason: "the kit's badge is 30 px taller" }];
+  // Past 24 px, a height and the drift it carries are findings.
+  const grown = { New: { dh: 30 }, Title: { dy: 30 } };
+  assert.equal(compare(grown, { height: 230 }).pass, false);
+  const accepted = compare(grown, { height: 230 }, entry("accepted"));
   assert.equal(accepted.pass, true, JSON.stringify(accepted.issues));
   assert.deepEqual(accepted.issues.map((i) => [i.landmark, i.property, i.status]), [["New", "height", "accepted"], ["Title", "y", "accepted"], ["root", "height", "accepted"]]);
-  const pending = compare(shrunk, { height: 197 }, entry("proposed"));
+  const pending = compare(grown, { height: 230 }, entry("proposed"));
   assert.equal(pending.pass, false);
   assert.ok(pending.issues.every((i) => i.status === "pending"));
-  const capped = compare(shrunk, { height: 197 }, [{ ...entry("accepted")[0], max: 2 }]);
+  const capped = compare(grown, { height: 230 }, [{ ...entry("accepted")[0], max: 2 }]);
   assert.equal(capped.pass, false, "an entry with max does not cover a larger change");
 });
 
@@ -203,28 +206,29 @@ test("font size, weight, line height and colour are compared when the spec state
   assert.deepEqual(r.issues.map((i) => [i.property, i.expected, i.actual]), [["font", "size 22", "size 20"], ["font", "color #1f2329", "color #2457c5"]]);
 });
 
-test("a differing area outside the texts is a finding with its place, excused by a region entry; one that moved with a text is not", () => {
+test("a differing area outside the texts is a note with its place; a region entry marks it accepted; one that moved with a text is neither", () => {
   const regions = [{ box: box(20, 20, 96, 96), area: 4000, near: "New" }, { box: box(200, 60, 80, 3), area: 240, near: "Buy", movedWith: "Buy" }];
   const r = compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions });
-  assert.deepEqual(r.issues.map((i) => [i.landmark, i.property, i.status]), [["region near “New”", "region", "fail"]]);
+  assert.equal(r.pass, true);
+  assert.deepEqual(r.issues, []);
+  assert.deepEqual(r.notes.map((n) => [n.landmark, n.property, n.box]), [["region near “New”", "region", box(20, 20, 96, 96)]]);
   assert.equal(r.moved, 1);
+  assert.doesNotMatch(renderReport({ frames: [r] }), /NaN/);
   const ok = compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions,
     ledger: [{ property: "region", region: [16, 16, 104, 104], category: "system", status: "accepted", decidedBy: "owner", reason: "the kit's image" }] });
-  assert.equal(ok.pass, true);
-  const allProperties = { landmark: "New", property: "*", category: "system", status: "accepted", decidedBy: "owner", reason: "kit badge" };
-  assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [allProperties] }).pass, false);
-  assert.equal(compareFrame({ frame: "f", spec: SPEC, measured: measured(), regions, ledger: [{ ...allProperties, landmark: "*" }] }).pass, true);
+  assert.deepEqual(ok.issues.map((i) => [i.property, i.status]), [["region", "accepted"]]);
 });
 
 test("image-only root height respects each ledger status and measured limit", () => {
-  const entry = { landmark: "root", property: "height", category: "owner", reason: "bottom padding", max: 8 };
+  // Past 24 px, where a height is a finding.
+  const entry = { landmark: "root", property: "height", category: "design-error", reason: "bottom padding", max: 30 };
   const height = (status, delta) => compareFrame({ frame: "f", spec: { frame: { width: 50, height: 40 }, landmarks: [] },
     measured: { root: { width: 50, height: 40 + delta }, landmarks: [] }, ledger: [{ ...entry, status }] });
   for (const [status, expected] of [["accepted", "accepted"], ["proposed", "pending"]]) {
-    const r = height(status, 8);
+    const r = height(status, 30);
     assert.equal(r.issues[0].status, expected);
     assert.equal(r.verdict, "incomplete");
-    assert.equal(height(status, 8.01).verdict, "fail");
+    assert.equal(height(status, 30.01).verdict, "fail");
   }
 });
 
@@ -238,10 +242,11 @@ test("layout changes are found between widths and held against the ones the desi
 
 test("widths become ranges and the reports lead with the root and where to start", () => {
   assert.equal(ranges([300, 308, 316, 500, 324]), "300–324, 500");
-  const r = compare({ New: { dy: 16 } }, { height: 216 });
-  assert.match(renderReport({ frames: [r] }), /Start here: between “SKU” and “New” vertically \+16 px/);
+  const r = compare({ New: { dy: 30 } }, { height: 230 });
+  assert.match(renderReport({ frames: [r] }), /Start here: between “SKU” and “New” vertically \+30 px/);
   const summary = renderSummary({ frames: [r] });
-  assert.match(summary, /start here: between “SKU” and “New” vertically \+16 px/);
+  assert.match(summary, /start here: between “SKU” and “New” vertically \+30 px/);
+  assert.ok(summary.includes("root height"), summary);
   assert.ok(summary.indexOf("root height") < summary.indexOf("New y"), "the root is listed first");
   assert.equal(causes([], SPEC, { root: { width: 300, height: 200 } }).length, 0);
 });
@@ -297,16 +302,31 @@ test("a frame's size is held to the ledger's max as measured, not as rounded for
 });
 
 test("a proposal still counts in the score: relabelling a failure is no progress", () => {
-  const failing = compare({}, { height: 217 });
-  const proposed = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
-  const accepted = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "accepted", decidedBy: "owner", reason: "more air" }]);
+  const failing = compare({}, { height: 230 });
+  const proposed = compare({}, { height: 230 }, [{ landmark: "root", property: "height", category: "design-error", status: "proposed", reason: "more air" }]);
+  const accepted = compare({}, { height: 230 }, [{ landmark: "root", property: "height", category: "owner", status: "accepted", decidedBy: "owner", reason: "more air" }]);
+  assert.ok(failing.score > 0);
   assert.equal(proposed.score, failing.score);
   assert.equal(accepted.score, 0);
+  assert.equal(compare({}, { height: 217 }).score, 0, "a note counts nothing");
 });
 
 test("a frame waiting for a decision says so, not that it failed", () => {
-  const r = compare({}, { height: 217 }, [{ landmark: "root", property: "height", category: "owner", status: "proposed", reason: "more air" }]);
+  const r = compare({}, { height: 230 }, [{ landmark: "root", property: "height", category: "design-error", status: "proposed", reason: "more air" }]);
   assert.match(renderSummary({ frames: [r] }), /f: awaiting a decision on 1/);
+});
+
+test("draft 28: a proposed entry of any category leaves a finding pending, for the owner", () => {
+  const entry = (category) => ({ landmark: "New", property: "y", category, status: "proposed", reason: "the frame's spacing is off the scale" });
+  for (const category of ["design-error", "missing-state", "platform", "system", "ux"]) {
+    assert.deepEqual(ledgerFaults([entry(category)]), [], category);
+    const r = compare({ New: { dy: 30 }, Title: { dy: 30 } }, { height: 230 }, [entry(category)]);
+    assert.equal(r.verdict, "pending", `${category}: ${JSON.stringify(r.issues)}`);
+    assert.deepEqual(r.issues.map((i) => [i.landmark, i.property, i.status]), [["New", "y", "pending"], ["Title", "y", "pending"], ["root", "height", "pending"]]);
+  }
+  // The owner's own call is recorded as accepted; a text entry names what the page shows.
+  assert.match(ledgerFaults([entry("owner")]).join(), /"owner" is the owner's own call/);
+  assert.match(ledgerFaults([{ landmark: "New", property: "text", category: "design-error", status: "proposed", reason: "a word form" }]).join(), /names the page's text in "actual"/);
 });
 
 // ------------------------------------------------------------------ in the browser
@@ -418,7 +438,7 @@ test("extra text inside a matched node and text under an invisible parent cannot
   assert.equal(unchanged.result.frames[0].pixels.ratio, 0);
 });
 
-test("an eleventh independent region still fails when the ledger accepts the ten larger regions", browser, () => {
+test("each differing region stands alone: the ledger accepts ten, and the eleventh is a note of its own", browser, () => {
   const f = smallFrame(), marks = [], ledger = [];
   for (let i = 0; i < 11; i++) {
     const x = 5 + i * 22, side = i === 10 ? 6 : 10;
@@ -428,10 +448,10 @@ test("an eleventh independent region still fails when the ledger accepts the ten
   f.write(`<main><span>Ready</span>${marks.join("")}</main>`);
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify(ledger));
   const r = check(f.dir);
-  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
   const regions = r.result.frames[0].issues.filter((i) => i.property === "region");
   assert.equal(regions.filter((i) => i.status === "accepted").length, 10);
-  assert.deepEqual(regions.filter((i) => i.status === "fail").map((i) => i.box.x), [225]);
+  assert.deepEqual(r.result.frames[0].notes.filter((n) => n.property === "region").map((n) => n.box.x), [225]);
 });
 
 test("combining marks, soft hyphens and bidi controls alone do not implicate an installed font", browser, () => {
@@ -457,7 +477,8 @@ test("setup can create the root and lazy images beyond it do not block measureme
   fs.writeFileSync(f.config, JSON.stringify(cfg));
   f.write('<div style="height:18000px"></div><main><span>Ready</span><img loading="lazy" style="position:absolute;width:100px;height:20px;top:40px;left:0" src="0.png"></main>');
   const inside = spawnSync(process.execPath, [DESIGN, "check", f.config, "--no-sweep"], { encoding: "utf8", timeout: 25000 });
-  assert.equal(inside.status, 1, inside.error?.message ?? inside.stdout + inside.stderr);
+  // The image inside the root is measured: its pixels differ, a note.
+  assert.equal(inside.status, 0, inside.error?.message ?? inside.stdout + inside.stderr);
   assert.ok(JSON.parse(fs.readFileSync(path.join(f.dir, "out/result.json"))).frames[0].pixels.ratio > 0);
 });
 
@@ -541,17 +562,19 @@ test("the reference passes against its own snapshot, with no pixel different", b
 });
 
 test("a changed spacing fails and is traced to the pair it separates, in every frame", browser, () => {
-  const r = check(variant(".badges { margin-top: 12px; }"), "--no-sweep");
+  // 20 px, past the 12 px band.
+  const r = check(variant(".badges { margin-top: 26px; }"), "--no-sweep");
   assert.equal(r.status, 1);
   for (const f of r.result.frames) {
-    assert.deepEqual([f.causes[0].after, f.causes[0].before, f.causes[0].step], ["SKU AUR-14P-512", "New", 6], f.frame);
+    assert.deepEqual([f.causes[0].after, f.causes[0].before, f.causes[0].step], ["SKU AUR-14P-512", "New", 20], f.frame);
   }
-  assert.match(r.stdout, /start here: between “SKU AUR-14P-512” and “New” vertically \+6 px/);
-  assert.match(fs.readFileSync(path.join(r.dir, "out/report.md"), "utf8"), /Start here: between “SKU AUR-14P-512” and “New” vertically \+6 px/);
+  assert.match(r.stdout, /start here: between “SKU AUR-14P-512” and “New” vertically \+20 px/);
+  assert.match(fs.readFileSync(path.join(r.dir, "out/report.md"), "utf8"), /Start here: between “SKU AUR-14P-512” and “New” vertically \+20 px/);
 });
 
 test("when a neighbour grows, start here names its width, not the texts it pushes along", browser, () => {
-  const r = check(variant(".badge.new { letter-spacing: 3px; }"), "--frame", "720");
+  // 30 px wider, so what it pushes along drifts past 24 px.
+  const r = check(variant(".badge.new { letter-spacing: 10px; }"), "--frame", "720");
   assert.equal(r.status, 1);
   assert.match(r.stdout, /start here: the width of “New” changes by \+\d+(\.\d+)? px/);
 });
@@ -564,7 +587,8 @@ test("a smaller font is found even where its line height keeps every position", 
 });
 
 test("an accepted deviation passes, a proposed one remains pending, an unlisted one fails", browser, () => {
-  const css = ".card { padding-bottom: 28px; }";
+  // 30 px more, past the 24 px a height may differ by as a note.
+  const css = ".card { padding-bottom: 50px; }";
   const entry = { landmark: "root", property: "height", category: "owner", reason: "the owner asked for more space below" };
   const accepted = check(variant(css, [{ ...entry, status: "accepted", decidedBy: "owner" }]), "--frame", "720");
   assert.equal(accepted.status, 0, accepted.stdout);
@@ -629,19 +653,21 @@ test("a page snapshot matches repeated text in document order", browser, () => {
   assert.deepEqual(result.result.frames[0].issues, []);
 });
 
-test("what is not text is checked too: an image's size and a background's colour are areas that differ", browser, () => {
+test("what is not text is checked too: an image's size and a background's colour are areas that differ, as notes", browser, () => {
   const r = check(variant(".media { width: 72px; height: 72px; } .add { background: #1a8a4a; }"), "--frame", "720");
-  assert.equal(r.status, 1);
-  const regions = r.result.frames[0].issues.filter((i) => i.property === "region");
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.stdout, /notes, the system's and not findings: .*\d+ pixel regions/);
+  const regions = r.result.frames[0].notes.filter((i) => i.property === "region");
   assert.ok(regions.some((i) => i.box.x === 20 && i.box.y === 20 && i.box.width === 96 && i.box.height === 96), JSON.stringify(regions));
   assert.ok(regions.some((i) => i.landmark === "region near “Add to cart”"), JSON.stringify(regions));
 });
 
-test("the kit's shorter badge, once accepted, excuses everything below it and the areas that moved with it", browser, () => {
-  const entry = { landmark: ["New", "Bestseller"], property: "*", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit's badge is 19 px high" };
-  const r = check(variant(".badge { line-height: 19px; }", [entry]), "--no-sweep");
+test("the kit's taller badge, once accepted, excuses everything below it", browser, () => {
+  // 26 px taller: past the 24 px a height, or a drift it carries, may differ by as a note.
+  const entry = { landmark: ["New", "Bestseller"], property: "*", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit's badge is 48 px high" };
+  const r = check(variant(".badge { line-height: 48px; }", [entry]), "--no-sweep");
   assert.equal(r.status, 0, r.stdout);
-  assert.equal(check(variant(".badge { line-height: 19px; }"), "--no-sweep").status, 1);
+  assert.equal(check(variant(".badge { line-height: 48px; }"), "--no-sweep").status, 1);
 });
 
 test("text is found across markup and case: a unit in its own span, a label whose case CSS changes", browser, () => {
@@ -664,8 +690,11 @@ test("the sweep finds a card that stops fitting between the frames, and a layout
   assert.ok(!/4[2-9]\d|[5-7]\d\d/.test(overflow.ranges), `seen only below 420: ${overflow.ranges}`);
   const moved = variant();
   const cfg = JSON.parse(fs.readFileSync(path.join(moved, "design.json"), "utf8"));
-  fs.writeFileSync(path.join(moved, "design.json"), JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, switches: [640, 420] } }));
-  assert.equal(check(moved).result.sweep.pass, true);
+  // At 420 the reference's max-content specs run out of the card with longer texts, as the generated conditions
+  // report there; this case is about the switches.
+  fs.writeFileSync(path.join(moved, "design.json"), JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, switches: [640, 420], generate: false } }));
+  const named = check(moved);
+  assert.equal(named.result.sweep.pass, true, named.stdout);
   const page = path.join(moved, "page.html");
   fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace("@container (max-width: 639px)", "@container (max-width: 499px)"));
   const late = check(moved);
@@ -689,11 +718,12 @@ test("a check of one frame leaves the gallery of the last full check; a full che
 test("each round's score is kept, and the summary shows the round before and the lowest", browser, () => {
   const dir = variant();
   const page = path.join(dir, "page.html"), original = fs.readFileSync(page, "utf8");
-  for (const css of [".badges { margin-top: 8px; }", ".badges { margin-top: 20px; }"]) {
+  // Steps of 14, 34 and 24 px: past the 12 px band, so each round fails.
+  for (const css of [".badges { margin-top: 20px; }", ".badges { margin-top: 40px; }"]) {
     fs.writeFileSync(page, original.replace("</style>", `${css}\n</style>`));
     check(dir, "--no-sweep");
   }
-  fs.writeFileSync(page, original.replace("</style>", ".badges { margin-top: 10px; }\n</style>"));
+  fs.writeFileSync(page, original.replace("</style>", ".badges { margin-top: 30px; }\n</style>"));
   const third = check(dir, "--no-sweep");
   const history = fs.readFileSync(path.join(dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(history.map((h) => [h.round, h.status]), [[1, "fail"], [2, "fail"], [3, "fail"]]);
@@ -849,7 +879,7 @@ test("a dense story is swept too: a text over a text, a control under another el
   const story = r.result.sweep.issues.filter((i) => i.story === "dense");
   assert.ok(story.some((i) => i.property === "covered" && i.landmark === "Help"), JSON.stringify(story));
   assert.ok(story.some((i) => i.property === "overlap"), JSON.stringify(story));
-  assert.ok(r.result.sweep.issues.every((i) => i.story === "dense"), "the frame's own story is clean");
+  assert.ok(r.result.sweep.issues.every((i) => ["dense", "dense, texts stretched"].includes(i.story)), "the frame's own story is clean");
   assert.match(r.stdout, /covered Help \(dense\)/);
   const gallery = fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8");
   assert.match(gallery, /<h2>Story: dense<\/h2>/);
@@ -931,7 +961,7 @@ test("journeys hold or fail step by step, by pointer and by touch", browser, () 
   assert.match(fs.readFileSync(path.join(f.dir, "out/gallery.html"), "utf8"), /<h2>Journeys<\/h2>/);
 });
 
-test("a full check is incomplete without review.md's acceptance list or a frame for every reference", browser, () => {
+test("a full check is incomplete without a story or a frame for every reference; without review.md it can pass", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40 } }));
@@ -947,9 +977,10 @@ test("a full check is incomplete without review.md's acceptance list or a frame 
   assert.match(r.stdout, /references no frame checks: frames\/popover\/reference\.png/);
   fs.rmSync(path.join(f.dir, "frames"), { recursive: true });
   fs.rmSync(path.join(f.dir, "review.md"));
+  // Draft 28: the acceptance list is an aid, not a gate; its rows are assessed when it has them.
   r = check(f.dir);
-  assert.equal(r.status, 2, r.stdout);
-  assert.match(r.stdout, /review\.md has no acceptance list/);
+  assert.equal(r.status, 0, r.stdout);
+  assert.deepEqual(r.result.acceptance, []);
   assert.equal(r.result.round, 4);
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).review, false);
 });
@@ -999,7 +1030,7 @@ test("covered leaves wrapped links, a transparent file input and a disabled fiel
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(path.join(f.dir, "controls.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:60px;background:white;font:16px/20px monospace}</style><main>
 <p style="width:200px;margin:0">I agree to the <a href="#">terms of service</a> and <a href="#">privacy policy of the site</a>.</p>
-<span style="position:relative;display:inline-block"><button style="width:80px;height:24px">Upload</button><input type="file" style="position:absolute;inset:0;opacity:0"></span>
+<span style="position:relative;display:inline-block"><button style="height:24px">Upload</button><input type="file" style="position:absolute;inset:0;opacity:0"></span>
 <fieldset disabled style="position:relative;border:0;padding:0;margin:0"><button style="width:60px;height:20px">Send</button><span style="position:absolute;inset:0"></span></fieldset></main>`);
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, stories: [{ name: "controls", url: "controls.html" }] } }));
   const r = check(f.dir);
@@ -1093,13 +1124,15 @@ test("the pointer rests outside the page, and a change of journeys starts a new 
   assert.match(check(f.dir).stdout, /scores start a new series/);
 });
 
-test("the acceptance list is a heading with lines under it, not the word alone", browser, () => {
+test("the acceptance list is a heading with lines under it, not the word alone, and its rows are assessed when it has them", browser, () => {
   const f = smallFrame();
   const review = path.join(f.dir, "review.md");
-  for (const [text, status] of [["No acceptance list was written.\n", 2], ["## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n", 2],
-    ["## Acceptance\n\n- every frame: pass — captured\n", 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n", 0], ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 2]]) {
+  for (const [text, rows, status] of [["No acceptance list was written.\n", 0, 0], ["## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n", 0, 0],
+    ["## Acceptance\n\n- every frame: pass — captured\n", 1, 0], ["## The acceptance list\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n", 1, 0],
+    ["## Acceptance\n\n| frame | check | pass |\n|---|---|---|\n", 0, 0], ["## Acceptance\n\n- every frame: pass\n", 1, 2]]) {
     fs.writeFileSync(review, MODEL + text);
-    assert.equal(check(f.dir).status, status, text);
+    const r = check(f.dir);
+    assert.deepEqual([r.result.acceptance.length, r.status], [rows, status], text);
   }
 });
 
@@ -1140,7 +1173,8 @@ test("a static pack can omit the sweep and a story can enter its state on the fr
   f.write('<main><span>Ready</span><button aria-expanded="false" style="position:absolute;left:200px;top:0">More</button></main>');
   const opener = run(cfg);
   assert.match(opener.stdout, /1 control opens something with no journey that opens and closes it: “More”/);
-  assert.equal(opener.status, 1, "the button is not in the spec either");
+  assert.match(opener.stdout, /page text not in the design \(1\): “More”/, "the button is not in the spec either");
+  assert.equal(opener.status, 2);
 });
 
 test("the handoff's evidence counts what the ledger excused, names unused entries and blank acceptance rows", browser, () => {
@@ -1370,9 +1404,8 @@ test("v22: the sweep forecasts fragile constructs once across stories and measur
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, switches: [320], stories } }));
   const r = check(f.dir);
   const frail = r.result.sweep.fragile;
-  const price = frail.filter((x) => x.landmark === "€ 1 250" && x.kind !== "may split");
+  const price = frail.filter((x) => x.landmark === "€ 1 250");
   assert.equal(price.length, 1, `one line for both stories: ${JSON.stringify(frail)}`);
-  assert.ok(frail.some((x) => x.landmark === "€ 1 250" && x.kind === "may split"), "a price joined by ordinary spaces may split");
   assert.equal(price[0].kind, "positioned");
   assert.equal(price[0].story, "frail, again");
   assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
@@ -1387,24 +1420,21 @@ test("v22: the sweep forecasts fragile constructs once across stories and measur
   assert.match(price[0].ranges, /321/, price[0].ranges);
 });
 
-test("v22: a swept page needs a layout model in review.md; a header alone is not one, and a static page needs none", browser, () => {
+test("v22, draft 28: the layout model is an aid, not a gate; the evidence counts its rows, and a header alone is none", browser, () => {
   const f = smallFrame();
   const review = path.join(f.dir, "review.md");
   const acceptance = REVIEW.slice(REVIEW.indexOf("## The acceptance list"));
+  const handoff = () => fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   const run = (text) => { fs.writeFileSync(review, text + acceptance); return check(f.dir); };
   let r = run("# Review\n\n");
-  assert.equal(r.status, 2, r.stdout);
-  assert.match(r.stdout, /review\.md has no layout model/);
-  assert.equal(r.result.history ?? JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).model, 0);
+  assert.equal(r.status, 0, r.stdout);
+  assert.doesNotMatch(r.stdout, /layout model/);
+  assert.match(handoff(), /^- layout model: none in review\.md$/m);
   r = run("## Layout model\n\n| Line | Shares | Width | Below | Construct |\n|---|---|---|---|---|\n\n");
-  assert.match(r.stdout, /review\.md has no layout model/, "a header alone is not a model");
+  assert.match(handoff(), /^- layout model: none in review\.md$/m, "a header alone is not a model");
   r = run("## Модель раскладки\n\n- одна строка: метка, 12 символов по контракту; 140 px; ниже переносится; flex-wrap\n\n");
   assert.equal(r.status, 0, r.stdout);
-  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined, static: "a fixed label, no data to stress" }));
-  r = run("# Review\n\n");
-  assert.doesNotMatch(r.stdout, /layout model/);
-  assert.equal(r.status, 0, r.stdout);
+  assert.match(handoff(), /^- layout model: 1 row in review\.md, first seen in round 3 /m);
 });
 
 // ------------------------------------------------------------------ draft 23: ink, lines, and a narrower ledger
@@ -1444,15 +1474,14 @@ main{width:100%;display:flex;flex-wrap:wrap;gap:8px}.sku{white-space:nowrap}.pri
   // One element named twice is not a line.
   r = run([{ name: "twice", pieces: [".sku", "main > .sku"] }]);
   assert.match(r.stdout, /the line “twice” never showed two of its pieces/);
-  // A complete check needs a line.
+  // Draft 28: lines are checked when declared; a complete check needs none.
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, stories: [{ name: "wrap", url: "wrap.html" }] } }));
-  assert.match(check(f.dir).stdout, /sweep\.lines is empty/);
+  r = check(f.dir);
+  assert.equal(r.status, 0, r.stdout);
+  assert.doesNotMatch(r.stdout, /sweep\.lines/);
 });
 
-test("v23: a platform entry cannot excuse where a thing sits or whether it shows, and a broad excuse is named first", browser, () => {
-  const faults = (e) => ledgerFaults([e]).join("\n");
-  for (const property of ["x", "y", "presence", "line"]) assert.match(faults({ landmark: "Price", property, category: "platform", status: "proposed", reason: "the font" }), /a platform difference/, property);
-  assert.equal(faults({ landmark: "Price", property: "width", category: "platform", status: "proposed", reason: "the font" }), "");
+test("v23: a broad excuse is named first", browser, () => {
   const f = smallFrame('<span style="margin-left:9px">A</span> <span>B</span> <span>C</span> <span>D</span>');
   // 30 px, past twice the band, so what B, C and D carry from A is no drift note either.
   f.write('<main><span style="margin-left:39px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
@@ -1512,7 +1541,6 @@ test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading th
   // "static" is for one width.
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined, static: "screenshots only", frames: [...cfg.frames, { ...cfg.frames[0], name: "narrow", width: 200 }] }));
   assert.match(check(f.dir).stdout, /"static" is for a page at one width; these frames have 2 widths/);
-  assert.match(ledgerFaults([{ landmark: "*", property: "*", category: "platform", status: "accepted", decidedBy: "owner", reason: "font" }]).join(), /not every property/);
 });
 
 // ------------------------------------------------------------------ draft 24: an excuse is tested against what it claims
@@ -1530,16 +1558,18 @@ test("v25: boxes proposes pieces to name; unnamed, the frame is not measured; na
   let r = boxCase(CARD(), CARD(), 420);
   assert.equal(r.frame.verdict, "pass", r.stdout);
   assert.ok(r.spec.pieces.length >= 4 && fs.existsSync(path.join(r.dir, "boxes.png")));
-  // Another font alone moves nothing; a shifted column, a changed format and a larger price do.
+  // Another font alone moves nothing; a shifted column and a changed format do; a wider text is a note.
   r = boxCase(CARD(), CARD({ family: "serif" }), 420);
-  assert.deepEqual(r.frame.issues.filter((i) => i.status === "fail" && i.property !== "region"), [], r.stdout);
+  assert.deepEqual(r.frame.issues.filter((i) => i.status === "fail"), [], r.stdout);
   r = boxCase(CARD(), CARD({ col: 166 }), 420);
   assert.ok(r.frame.issues.some((i) => i.property === "x" && i.landmark === "32 ядер" && Math.round(i.delta) === 16), r.stdout);
   r = boxCase(CARD(), CARD({ disk: "838 × 2" }), 420);
   assert.ok(r.frame.issues.some((i) => i.property === "presence" && i.landmark === "2 × 838" && i.actual === "missing"), r.stdout);
   assert.match(r.stdout, /page text not in the design \(1\): “838 × 2”/);
   r = boxCase(CARD(), CARD({ price: "font-size:20px;font-weight:700" }), 420);
-  assert.ok(r.frame.issues.some((i) => i.property === "width" && i.landmark === "1 234 €" && /wider than the font explains/.test(i.actual)), r.stdout);
+  assert.ok(!r.frame.issues.some((i) => i.property === "width"), r.stdout);
+  assert.ok(r.frame.notes.some((n) => n.property === "width" && n.landmark === "1 234 €"), r.stdout);
+  assert.match(r.stdout, /notes, the system's and not findings: .*1 texts wider or narrower than drawn/);
   // A piece left out of every landmark keeps the frame incomplete.
   const spec = path.join(r.dir, "spec.json");
   const s = JSON.parse(fs.readFileSync(spec, "utf8"));
@@ -1551,18 +1581,20 @@ test("v25: boxes proposes pieces to name; unnamed, the frame is not measured; na
   assert.match(check(r.dir, "--frame", "frame").stdout, /the named boxes are not ready: no landmark is named yet/);
 });
 
-test("v25: a moderate offset may be the system's; a large one, or a size the font does not explain, only the owner's", browser, () => {
+test("v25, draft 28: within the band an offset is a note, proposed or not; past it, a proposal of any category leaves it pending", browser, () => {
   const entry = (landmark, property, category) => [{ landmark, property, category, status: "proposed", reason: "the kit's spacing token" }];
-  // Within the band it is a note since draft 26, proposed or not.
   let r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: entry("32 ядер", "x", "system") });
   assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), r.stdout);
-  r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "system") });
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  r = boxCase(CARD(), CARD({ col: 170 }), 420);
   assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "fail", r.stdout);
-  r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "design-error") });
-  assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "pending", r.stdout);
+  for (const category of ["system", "design-error"]) {
+    r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", category) });
+    assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "pending", `${category}: ${r.stdout}`);
+  }
 });
 
-test("v25: a negative margin or a transform that moves text is a construct to lay out instead", browser, () => {
+test("v25, draft 28: a negative margin or a transform that moves text is a construct, a note for the owner's eye", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   fs.writeFileSync(path.join(f.dir, "hacks.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{display:flex;gap:12px;padding:8px}</style>
@@ -1573,7 +1605,11 @@ test("v25: a negative margin or a transform that moves text is a construct to la
   assert.ok(constructs.some((i) => i.landmark === "Beta" && /negative margin \(left -6 px\)/.test(i.actual)), JSON.stringify(constructs));
   assert.ok(constructs.some((i) => i.landmark === "Gamma" && /a transform moves it 0, 3 px/.test(i.actual)), JSON.stringify(constructs));
   assert.ok(!constructs.some((i) => i.landmark === "Delta"), "a hairline is not a construct");
-  assert.equal(r.status, 1);
+  assert.ok(constructs.every((i) => i.status === "note"), JSON.stringify(constructs));
+  assert.equal(r.status, 0, r.stdout);
+  assert.equal(r.result.sweep.score, 0, "a note counts nothing");
+  assert.match(r.stdout, /2 notes, not findings: construct “Beta” \(hacks\), construct “Gamma” \(hacks\)/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- story hacks: no findings; 2 notes, not findings: construct “Beta”/m);
 });
 
 // ------------------------------------------------------------------ draft 25.1: the critic's and verifier's cases
@@ -1624,11 +1660,11 @@ test("v26: a moderate offset is a note, also two of them the other way round; a 
   let r = boxCase(CARD(), CARD({ col: 158 }), 420);
   assert.equal(r.frame.verdict, "pass", r.stdout);
   assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), JSON.stringify(r.frame.notes));
-  assert.match(r.stdout, /moderate offsets \(12 px or less, or a drift to 24 carried from the pieces before; the system's, not findings\): \d+/);
+  assert.match(r.stdout, /notes, the system's and not findings: \d+ offsets of 12 px or less, or drifts to 24 carried from the pieces before, at most \d+(\.\d+)? px/);
   // A proposal for it changes nothing: it needs no decision, and holds nothing pending.
   r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
   assert.equal(r.frame.verdict, "pass", r.stdout);
-  // Each 8 px, the other way round: two notes (draft 27 dropped the relation rule, which only ever misfired).
+  // Each 8 px, the other way round: two notes, not a broken relation between them.
   r = boxCase(CARD(), CARD({ sku: 8, col: 158 }), 420);
   assert.equal(r.frame.verdict, "pass", r.stdout);
   // One piece past the band is the finding; the gap it changes is not a second one.
@@ -1638,16 +1674,16 @@ test("v26: a moderate offset is a note, also two of them the other way round; a 
   // A right-aligned piece that grows keeps its right edge: the free space before it changes, no relation breaks.
   r = boxCase(CARD({ top: 12 }), CARD({ top: 12, price: "letter-spacing:2px" }), 420);
   assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
-  // Past the band, a system proposal excuses nothing, and the finding says so.
+  // Past the band, a system proposal leaves the finding pending, for the owner.
   r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", category: "system", reason: "the kit's gap token", status: "proposed" }] });
-  assert.match(r.stdout, /32 ядер x: .* — past 12 px a system proposal excuses nothing/);
+  assert.equal(r.frame.verdict, "pending", r.stdout);
   // One above the other, a gap that closes up is a finding.
   const STACK = (a, b) => `<main style="position:relative;width:420px;height:120px;font:14px/18px sans-serif;color:#111"><div style="position:absolute;left:16px;top:${a}px">Title text</div><div style="position:absolute;left:16px;top:${b}px">Below text</div></main>`;
   r = boxCase(STACK(12, 40), STACK(20, 32), 420);
   assert.ok(r.frame.issues.some((i) => i.gap && i.property === "y" && /nearly touch/.test(i.actual)), r.stdout);
 });
 
-test("v26: a price split from its period, a number from its unit and a word between its letters are wraps", browser, () => {
+test("v26, draft 28: a value split from its period, “×” split from its numbers and a word broken between its letters are wraps; a number and its unit wrap with room", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
   const run = (html) => {
@@ -1655,22 +1691,42 @@ test("v26: a price split from its period, a number from its unit and a word betw
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
   };
+  const room = /wraps, though on one line it fits the component and runs into nothing/;
   assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
-  assert.match(run('<div style="width:40px">12 345 ГБ</div>').join(), /a number (broken across lines|split from its unit)/);
   assert.match(run('<div style="width:30px;overflow-wrap:anywhere">потока</div>').join(), /a word broken between its letters: “потока”/);
+  assert.match(run('<div style="width:40px">5587 × 4</div>').join(), /“×” split from its numbers/);
   assert.deepEqual(run('<div style="width:200px">1 234 567,00 ₽ / месяц</div>'), []);
-  // Prose wraps where it wraps: a line may end on "5%", "Note:", a list's "·", or a short word after a number.
+  // What the unit list caught, a short text that wraps with room catches: no list of units to keep.
+  for (const html of ['<div style="width:40px">12 345 ГБ</div>', '<div style="width:50px">12 345 ₽</div>', '<div style="width:40px">126,5 m²</div>',
+    '<div style="width:96px">1 234 567,00 ₽ /&nbsp;месяц</div>']) assert.match(run(html).join(), room, html);
+  // Prose of more than six words wraps where it wraps: a line may end on "5%", "Note:" or a list's "·".
   assert.deepEqual(run('<p style="width:90px;margin:0">Growth was 5% this year. Note: prices change.</p>'), []);
-  assert.deepEqual(run('<p style="width:40px;margin:0">с 9 до 18</p>'), []);
   assert.deepEqual(run('<p style="width:120px;margin:0">4 ядра · 16 ГБ · 512 ГБ</p>'), []);
-  assert.match(run('<div style="width:50px">12 345 ₽</div>').join(), /a number split from its unit: “345” \| “₽”/);
   // Across elements and text nodes, as a component renders it: "{amount} ₽ / {period}".
   assert.match(run('<div style="width:118px"><span>1 234 567,00</span> <span>₽</span> <span>/</span> <span>месяц</span></div>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
   assert.match(run('<div id="p" style="width:118px"></div><script>document.getElementById("p").append("1 234 567,00 ₽", " / ", "месяц")</script>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
-  // The period moved whole, while the component could hold the price on one line, is a split too.
-  assert.match(run('<div style="width:96px">1 234 567,00 ₽ /&nbsp;месяц</div>').join(), /a value split from its period: “₽” \| “\/ месяц”, though “1 234 567,00 ₽ \/ месяц” \(\d+ px\) fits the component/);
-  assert.match(run('<div style="width:40px">5587 × 4</div>').join(), /“×” split from its numbers/);
-  assert.match(run('<div style="width:40px">126,5 m²</div>').join(), /a number split from its unit: “126,5” \| “m²”/);
+});
+
+test("draft 28: a short text that wraps with room in the component is a wrap; one beside another text, or in a line clamp, is not", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html) => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}</style><main>${html}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, stories: [{ name: "w", url: "w.html" }] } }));
+    return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap");
+  };
+  // A price of 155 px capped at 150, in a card of 284: it wraps, and on one line it fits.
+  const capped = run('<div style="max-width:150px">12 345 678,00 ₽ / месяц</div>');
+  assert.ok(capped.some((i) => i.kind === "wraps with room" && i.landmark === "12 345 678,00 ₽ / месяц" && i.status === "fail"), JSON.stringify(capped));
+  // A title of 130 px in a column of 90 beside another text: on one line it would run into its neighbour. Alone, it
+  // wraps with room.
+  const column = (next) => run(`<div style="display:grid;grid-template-columns:90px 1fr;gap:8px"><h3 style="margin:0;font-size:14px">Dedicated server pro</h3>${next}</div>`);
+  assert.deepEqual(column('<p style="margin:0">Frankfurt, a ten gigabit uplink and backups every night</p>'), []);
+  assert.ok(column("").some((i) => i.kind === "wraps with room"));
+  // A line clamp is a choice, not a wrap.
+  const clamp = "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden";
+  assert.deepEqual(run(`<p title="Dedicated server with NVMe" style="width:120px;margin:0;${clamp}">Dedicated server with NVMe</p>`), []);
+  assert.ok(run('<p style="width:120px;margin:0">Dedicated server with NVMe</p>').some((i) => i.kind === "wraps with room"));
 });
 
 test("v26: a popover that opens above without flipping is cut at the window's top edge; one that flips holds", browser, () => {
@@ -1723,25 +1779,21 @@ test("v26: an acceptance row that names its story answers for that story, and sa
 
 // ------------------------------------------------------------------ draft 26.1: the critic's and verifier's cases
 
-test("v26.1: prose, dates, breadcrumbs and Chinese labels wrap freely; a word with its comma is still a word; a short price joined by a breakable space is forecast", browser, () => {
+test("v26.1: with no room, prose, dates, breadcrumbs and Chinese labels wrap freely; a word with its comma is still a word; a price wider than the component moves its period whole", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  const run = (html) => {
-    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}</style><main>${html}</main>`);
+  const run = (html, main = "padding:8px") => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{${main}}</style><main>${html}</main>`);
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
     return check(f.dir).result.sweep;
   };
   const wraps = (sweep) => sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
-  for (const html of ['<p style="width:120px;margin:0">Founded in 2020 and growing</p>', '<p style="width:110px;margin:0">On November 21, 2026</p>',
-    '<p style="width:110px;margin:0">Home / Servers / Dedicated</p>', '<div lang="ja" style="width:5em">専用サーバー構成管理画面</div>']) assert.deepEqual(wraps(run(html)), [], html);
+  // A component of 80 px cannot hold them on one line.
+  for (const html of ["<p style=\"margin:0\">Founded in 2020 and growing</p>", "<p style=\"margin:0\">On November 21, 2026</p>",
+    "<p style=\"margin:0\">Home / Servers / Dedicated</p>", '<div lang="ja">専用サーバー構成管理画面</div>']) assert.deepEqual(wraps(run(html, "padding:8px;width:80px")), [], html);
   assert.match(wraps(run('<div style="width:60px;overflow-wrap:anywhere">Serverkonfiguration,</div>')).join(), /a word broken between its letters: “Serverkonfiguration”/);
-  // Wider than the component itself, the period moving whole is the last resort, for the owner to decide.
-  const wide = run('<div style="font-size:24px;line-height:30px">1&nbsp;234&nbsp;567&nbsp;890,00&nbsp;₽ /&nbsp;месяц</div>');
-  assert.deepEqual(wraps(wide), []);
-  assert.ok(wide.fragile.some((x) => x.kind === "last resort" && /the owner decides/.test(x.actual)), JSON.stringify(wide.fragile));
-  const fits = run('<div style="width:300px">1 234 ₽ / месяц</div>');
-  assert.deepEqual(wraps(fits), []);
-  assert.ok(fits.fragile.some((x) => x.kind === "may split" && /a no-break space keeps it/.test(x.actual)), JSON.stringify(fits.fragile));
+  assert.deepEqual(wraps(run('<div style="font-size:24px;line-height:30px">1&nbsp;234&nbsp;567&nbsp;890,00&nbsp;₽ /&nbsp;месяц</div>')), []);
+  assert.deepEqual(wraps(run('<div style="width:300px">1 234 ₽ / месяц</div>')), []);
 });
 
 test("v26.1: a gap the design sets that closes up is a finding, though the edges hold", browser, () => {
@@ -1782,12 +1834,47 @@ test("v26.1: --quick with no frame inside the sweep still measures, and a row na
 
 // ------------------------------------------------------------------ draft 27: what iteration 3's run and review showed
 
-test("v27: the kit's type token may be proposed as system, once for every frame; the evidence lists what each story tested", browser, () => {
-  const token = { landmark: "1 234 €", property: "width", category: "system", status: "proposed", reason: "the kit's t-price: 20 px bold against the drawn 14 px" };
-  const r = boxCase(CARD(), CARD({ price: "font-size:20px;font-weight:700" }), 420, { ledger: [token] });
-  assert.equal(r.frame.issues.find((i) => i.property === "width" && i.landmark === "1 234 €")?.status, "pending", r.stdout);
-  assert.match(ledgerFaults([{ ...token, frame: "frame" }]).join(), /a kit token's size is the same on every frame: give no frame/);
+test("v27: the evidence lists what each story tested", browser, () => {
   const f = smallFrame();
   check(f.dir);
   assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /- story dense: .*; its longest texts: “Ready”/);
+});
+
+// ------------------------------------------------------------------ draft 28: two tiers, the type's size, generated conditions
+
+// Six texts at fixed places, so that only the type's size or family changes between the design and the page.
+const TYPE = (size, family = "sans-serif") => `<main style="position:relative;width:420px;height:120px;font:${size}px/20px ${family};color:#111">
+<div style="position:absolute;left:16px;top:12px">Server BA-i201</div><div style="position:absolute;left:220px;top:12px">32 cores</div>
+<div style="position:absolute;left:16px;top:48px">128 GB RAM</div><div style="position:absolute;left:220px;top:48px">2 × 838 SSD</div>
+<div style="position:absolute;left:16px;top:84px">Frankfurt</div><div style="position:absolute;left:220px;top:84px">1 234 € / month</div></main>`;
+
+test("draft 28: a screenshot's type set at 13 px where 15 is drawn is a type finding; another font of the same size is not", browser, () => {
+  let r = boxCase(TYPE(15), TYPE(13), 420);
+  const type = r.frame.issues.find((i) => i.property === "type");
+  assert.ok(type?.status === "fail" && /% smaller than drawn, by the ink heights of 6 texts/.test(type.actual), r.stdout);
+  assert.ok(r.frame.type.ratio < 0.9, JSON.stringify(r.frame.type));
+  r = boxCase(TYPE(15, "DejaVu Sans"), TYPE(15, "Liberation Sans"), 420);
+  assert.ok(!r.frame.issues.some((i) => i.property === "type"), r.stdout);
+  assert.ok(Math.abs(r.frame.type.ratio - 1) < 0.1, JSON.stringify(r.frame.type));
+});
+
+test("draft 28: the generated conditions find an overlap only longer texts cause and a fixed height only doubled entries overflow; a layout that grows passes them", browser, () => {
+  // 20 px monospace is 12 px a letter: "Ready" ends at 60 and "Go" starts at 84; two fifths longer, "Ready Re" ends at 96.
+  let r = check(smallFrame('<span style="position:absolute;left:0;top:0">Ready</span><span style="position:absolute;left:84px;top:0">Go</span>').dir);
+  assert.equal(r.status, 1, r.stdout);
+  assert.deepEqual(r.result.frames[0].issues, [], "the frame as drawn is clean");
+  const overlaps = r.result.sweep.issues.filter((i) => i.property === "overlap");
+  assert.deepEqual(overlaps.map((i) => i.story).sort(), ["dense, texts stretched", "the frames' page, texts stretched"], JSON.stringify(r.result.sweep.issues));
+  assert.match(r.stdout, /overlap Ready Re × Go G \(the frames' page, texts stretched\)/);
+  // Two entries fit a fixed height; doubled, they are cut. Only the entries are doubled: the total placed beside them
+  // is not, or its copy would lie on it.
+  const list = (css) => `<div style="${css}"><div class="entry">One</div><div class="entry">Two</div><b style="position:absolute;right:0;top:0">Total</b></div>`;
+  r = check(smallFrame(list("height:56px;overflow:hidden")).dir);
+  assert.equal(r.status, 1, r.stdout);
+  assert.ok(r.result.sweep.issues.length && r.result.sweep.issues.every((i) => i.property === "clipped" && i.story === "the frames' page, entries doubled"), JSON.stringify(r.result.sweep.issues));
+  // The same list in a root that grows passes every condition.
+  r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style>${list("")}`).dir);
+  assert.equal(r.status, 0, r.stdout);
+  assert.deepEqual(r.result.sweep.issues, []);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "dense, texts stretched"]);
 });

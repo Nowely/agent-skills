@@ -48,7 +48,7 @@ A selected text layer becomes its own landmark at the frame origin.
    later catches a wrong text in the spec: the check looks for that text on the page and excludes text from the pixel
    comparison.
 5. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
-   (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only in pixels.
+   (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only as a pixel note.
 
 ## What else to read
 
@@ -71,8 +71,9 @@ showing a state (an open menu, a selected row, hover) gets `setup` steps in `des
 state before it is measured; a state drawn outside the component, such as a popover or a sheet, also names its own
 `root`.
 
-When content or actions can collide, use a story with a legal combination of long data and conditional controls.
-Say what the case adds to the reference. Keep those inputs constant while varying the component's width. A story
+When content or actions can collide, use a story with a legal combination of long data and conditional controls:
+there a price that splits from its period, or any short text that wraps while the component has room for it, is a
+`wrap` finding ("wraps with room"). Say what the case adds to the reference. Keep those inputs constant while varying the component's width. A story
 may use another URL, arguments, or setup on the original page. Inspect the rendered state to verify that its data
 changed. The checker measures the supplied story and cannot determine whether the case is representative.
 
@@ -89,9 +90,10 @@ It writes `frames/<frame>/spec.json` with the numbered pieces of ink and `boxes.
 `landmarks` once, each from its pieces: the text as the frame shows it (`"5587 × 4"`, not the format you would
 prefer), or a page selector for an icon, a shape or a photo; an icon and its label are two landmarks, and where
 one piece holds both, the landmark gives its own `box` instead. The check
-then measures the frame as it measures a Figma frame: each landmark by place and its text exactly
-([check.md](check.md#frames)). Inspect typography and states against the screenshot, and report unobserved widths
-and interactions. Do not invent Figma metadata or imply an assumed scale is measured.
+then measures each landmark by place and its text exactly ([check.md](check.md#frames)): an offset of 12 px or less,
+or a drift up to 24 px carried from the pieces before, is a note; the type's size, read from the ink heights of five
+texts or more, is a finding when it is 10 % or more off. Inspect typography and states against the screenshot, and
+report unobserved widths and interactions. Do not invent Figma metadata or imply an assumed scale is measured.
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
