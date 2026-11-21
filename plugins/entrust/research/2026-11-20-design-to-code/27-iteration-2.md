@@ -96,3 +96,53 @@ skips icons, whose selectors differ per submission; an implementer names them by
 
 - 21.1, 23.1 and the control are accepted.
 - **22.1 is returned:** it shows 4 of 8 disk groups at every width, silently dropping data.
+
+## The runs: draft 25.1, three arms
+
+One Sonnet run per arm, started together.
+
+- **Listing** (the public case, with specs: the Figma path), without the review pass.
+- **Server card A,** without the review pass.
+- **Server card B,** with it. The builder stopped at "ready for review". A fresh Sonnet agent then ran the review pass from
+  `references/review-pass.md`, and its findings went back for one round.
+
+| Arm | Judge v1 and v2 (automatic) | Evidence status | Wall time · tokens · tool calls | Check rounds |
+|---|---|---|---|---|
+| Listing | **accepted**, visual part included (its judge has one) | `pass`, an empty ledger | 6:20 · 137k · 34 | 5 |
+| Card A | accepted | `pending`, 60 proposed | 63:34 · 318k · 136 | 135 |
+| Card B, builder | accepted | `pending`, 52 proposed | 41:00 · 308k · 126 | 85 |
+| Card B, review pass | — | — | 0:40 · 80k · 15 | — |
+| Card B, after its round | accepted | `pending`, 61 proposed | +2:10 · +6k · 5 | 85 |
+
+**The review pass** accepted B, with one optional finding: a word broken at 240 px, below the narrowest frame. B fixed
+it.
+
+**The blind review, under the owner's criteria.** Three submissions, keys revealed after the verdicts:
+
+| Submission | Verdict | Deciding finding | Rank |
+|---|---|---|---|
+| 25.1 A, no review pass | returned | the network popover opens above the icon without flipping: a card near the top of the page cuts about 10 px of it. All nine card captures had no material finding. | 1 |
+| 25.1 B, review pass | returned | on long prices at 280 (dense and many) the period breaks from its price: "₽ /" ends one line, "месяц" starts the next. The review pass saw this wrap and called it fine. | 2 |
+| 23.1 | returned | the disk format against two frames, as in iteration 1 | 3 |
+
+All three grew with eight disk groups, and none dropped data or overlapped.
+
+## What this shows
+
+- **Draft 25.1 is the closest yet.** Its frames, dense data and many entries had no material finding in submission A.
+  What returned A and B is what the checker does not test:
+  - **an open popover inside the window:** the journeys see it open, not whether the page edge cuts it;
+  - **what must stay together:** a price with its period, a value with its unit. The lines check it only where the
+    builder declares it, and neither did.
+- **The review pass did not help in this one A/B.** A fresh Sonnet with the owner's criteria was more lenient than the
+  blind judge: it saw the split price and accepted it. One pair says little about the mode in general. It does say
+  that the review pass needs the owner's concrete examples, as the judge's prompt had them.
+- **Draft 25.1 costs two to three times as much on a screenshot card:**
+  - 85–135 check rounds, against 11–12 before;
+  - 300k+ tokens, against about 220k;
+  - 40–60 minutes, against about 20.
+
+  Every offset of 12 px or less is a finding that needs a ledger entry, so the builders looped and then generated their
+  ledgers: 52–61 entries, mostly pixel regions, B's from a script it wrote. That contradicts the owner's own stance, that
+  a moderate mismatch is fine.
+- **The listing case,** on the Figma path with specs, passed in 6 minutes with nothing proposed.
