@@ -176,3 +176,5 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
   6, and is returned for a price split its own page allowed.
 - [Iteration 4](29-iteration-4.md): draft 27 treats a value and its period as one group, and drops a strict rule that
   never caught a real return.
+- [The Terra run](30-terra-run.md): the owner's one run, prepared so that it reads clearly: the mechanics tested first,
+  the data's bounds seeded, the review pass on, the rule for reading it written before.
