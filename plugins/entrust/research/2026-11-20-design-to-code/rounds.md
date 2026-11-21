@@ -671,3 +671,66 @@ One Sonnet run per draft on a case built from the server card's references, with
 - **Draft 21.1:** its layout broke on dense data without overlapping, because it switched at fixed widths.
 - **Draft 22.1:** its frames had shifted columns and a swapped indicator, hidden behind one broad "font" deviation.
 - **Neither** wrote its acceptance list or model before building.
+
+## Draft 23: arrangement, ink, and a narrower ledger (iteration 1)
+
+Built on 22.1 from the two returned submissions of [23-server-card-sonnet.md](23-server-card-sonnet.md), with Fable's
+advice first: check the arrangement, not only collisions; narrow what a font may excuse; replay the new checker on
+the frozen submissions before any model run.
+
+- **`sweep.lines`: the layout model's lines as a check.** On the frames' page and every story, at each swept width in
+  a line's range or mode, its pieces share a row, keep their order and do not wrap. A complete check needs one line,
+  each measured.
+- **Ink for screenshot-only frames.** Runs of text and icons are paired with the page's and compared by place. A
+  screenshot-only frame was `incomplete` at best; now it can pass on positions, with its words left to the eye.
+- **A platform entry** (a font, a renderer) cannot excuse a position, a presence, a text, a line or a collision. An
+  entry covering more than three findings is named first in the evidence file.
+- **The page** asks what changes in each mode, and for the construct tried behind "cannot be built".
+
+**Replay on the frozen submissions:** the checker returned both, for what the blind review returned them for.
+
+- **22.1:** the columns sit 13–21 px off; "Доступно 1" is 27 px off, which is the swapped indicator.
+- **21.1:** the price is 20–24 px lower at 601.
+
+**The critic found:**
+
+- **`static` escaped every new gate.** The page named "a screenshot-only task" as a reason.
+- **Trivial lines.** The test fixture's own 1 px absolute markers satisfied the gate.
+- **Drift in another font.** A run after a wider word moved with it and could not be excused.
+- **The icon joined its label.** So the swap the page promised to catch was not caught.
+- **An uncalibrated glyph check.**
+- **A stacked label over its value read as a wrap.**
+
+**The verifier, running the checker on 30 constructed cards, found:**
+
+- **Filled shapes swallowed what sat on them.** A button, a pill, a dark card or a photo hid its text; a changed label
+  or colour passed.
+- **Missing pieces passed.** A badge dropped beside a title passed.
+- **The glyph check was wrong both ways.** It missed changed words, and called fonts of near-equal width "other
+  glyphs".
+- **A hidden tooltip read as a wrap; a heading that wrapped inside a block did not.**
+- **Order broke in right-to-left rows.**
+- **A Playwright selector stopped the whole check.**
+- **A platform `*` entry slipped through.**
+
+**Draft 23.1 fixes them:**
+
+- **Ink:**
+  - neutral and coloured ink kept apart;
+  - filled shapes and outlines as boxes, compared by place and size, with their holes read as what is drawn on them;
+  - each pair placed by the reading that moved least, including the gap to its neighbour before it or above it;
+  - a width beyond the font's ratio as a part added or missing;
+  - runs one side joins compared as one;
+  - the glyph check removed for a `words.png` sheet to read;
+  - only text left out of the pixels, so colour changes remain regions.
+- **Lines:**
+  - wraps counted per visible text in the flow;
+  - pieces out of the flow or clipped away not counted;
+  - order by position in the reading direction;
+  - a bad selector named as a gap.
+- **The ledger:** `static` refused for frames at several widths; a platform `*` or resize refused; broad excuses
+  counted by cause.
+
+The verifier's ink cases now hold, except the known limit: a word changed at the same width in another font is for
+the eye. `node --test evals/design-to-code.test.mjs`: 90 passed; skill checks 8 of 8; packaging 21 passed and 1
+tag-only skip. The page is frozen as [drafts/23-v23.md](drafts/23-v23.md), at commit `4adcc2c`.
