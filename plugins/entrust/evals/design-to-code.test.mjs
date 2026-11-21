@@ -1317,21 +1317,44 @@ test("v21: no sweep needs a stated reason, and a story is its own data", browser
   assert.match(cli("check", (fs.writeFileSync(f.config, JSON.stringify({ ...noSweep, static: "" })), f.config)).stderr, /"static" gives the reason/);
   assert.equal(run({ ...noSweep, static: "a fixed label" }).status, 0);
   assert.match(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html" }] } }).stdout, /the story same is a frame's own page/);
-  assert.doesNotMatch(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html", setup: [{ wait: 10 }] }] } }).stdout, /frame's own page/);
+  assert.doesNotMatch(run({ ...cfg, sweep: { ...sweep, stories: [{ name: "same", url: "page.html", setup: [{ click: "main" }] }] } }).stdout, /frame's own page/);
 });
 
-test("v21: an overlay frame needs a journey that opens and closes it; the owner's past returns are acceptance rows", browser, () => {
+test("v21: an overlay frame needs a journey that acts on its opener, sees it open and then closed", browser, () => {
   const f = smallFrame();
-  f.write('<main><span>Ready</span><button id="t" style="position:absolute;left:200px;top:0">?</button></main>');
+  f.write(`<main><span>Ready</span><button class="help" style="position:absolute;left:200px;top:0">Help</button></main>
+<div class="tip" hidden style="position:absolute;left:0;top:100px;width:120px;height:30px;background:#eee">Tip</div>
+<script>const b = document.querySelector(".help"), t = document.querySelector(".tip");
+b.onmouseenter = () => { t.hidden = false; }; b.onmouseleave = () => { t.hidden = true; };</script>`);
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [...cfg.frames, { ...cfg.frames[0], name: "hovered", setup: [{ hover: "#t" }] }] }));
-  fs.writeFileSync(path.join(f.dir, "..", "returns.md"), "# Past returns\n\n- long price beside several disks\n- popover closes when the pointer leaves\n");
-  fs.writeFileSync(path.join(f.dir, "review.md"), `${REVIEW}| long price beside several disks: dense story | sweep.stories | pass — no overlap |\n`);
-  const r = check(f.dir);
-  assert.match(r.stdout, /the state frame hovered opens “#t”, and no journey opens it and expects it closed/);
-  assert.match(r.stdout, /past returns not in the acceptance list: “popover closes when the pointer leaves”/);
-  assert.doesNotMatch(r.stdout, /past returns not in the acceptance list: .*long price/);
-  fs.rmSync(path.join(f.dir, "..", "returns.md"));
+  const frames = [...cfg.frames, { name: "tip", width: 300, root: ".tip", setup: [{ hover: ".help" }], spec: "tip.json", reference: "tip.png" }];
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames }));
+  assert.equal(cli("snapshot", f.config, "--images", "--frame", "tip").status, 0);
+  const run = (journeys) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames, journeys })); return check(f.dir).stdout; };
+  assert.match(run([]), /the overlay frame tip opens “\.help”, and no journey acts on it, sees it open and expects it closed/);
+  assert.match(run([{ name: "opens only", steps: [{ hidden: ".tip" }, { hover: ".help" }, { visible: ".tip" }] }]), /overlay frame tip opens/);
+  assert.doesNotMatch(run([{ name: "opens and closes", steps: [{ hover: "text=Help" }, { visible: ".tip" }, { move: [290, 600] }, { hidden: ".tip" }] }]), /overlay frame tip opens/,
+    "the same element, named another way, with an action between open and closed");
+});
+
+test("v21: past returns are matched without case, emphasis, quotes or a final full stop, and escaped pipes stay in a cell", browser, () => {
+  const f = smallFrame();
+  fs.writeFileSync(path.join(f.dir, "..", "returns.md"), "# Past returns\n\n- Long price beside several disks.\n- **Popover** closes when the pointer leaves\n- A | B stays readable\n");
+  fs.writeFileSync(path.join(f.dir, "review.md"), `${REVIEW}| long price beside several disks: the dense story | sweep.stories | pass — no overlap |\n| “popover closes when the pointer leaves” | journey | pass — journey holds |\n`);
+  try {
+    const r = check(f.dir);
+    assert.match(r.stdout, /past returns not in the acceptance list: “A \| B stays readable”/);
+    assert.doesNotMatch(r.stdout, /past returns not in the acceptance list: .*(Long price|Popover)/);
+    fs.appendFileSync(path.join(f.dir, "review.md"), "| a \\| b stays readable | sweep.stories | pass — no overlap |\n");
+    assert.doesNotMatch(check(f.dir).stdout, /past returns not in the acceptance list/);
+  } finally { fs.rmSync(path.join(f.dir, "..", "returns.md")); }
+});
+
+test("v21: a story on a frame's page whose setup only waits is the frame again", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, stories: [{ name: "same", url: "page.html", setup: [{ wait: 1 }] }] } }));
+  assert.match(check(f.dir).stdout, /the story same is a frame's own page/);
 });
 
 test("v21: the evidence file starts with the handover status, a fail says to keep working, and other data is named", browser, () => {
@@ -1342,26 +1365,4 @@ test("v21: the evidence file starts with the handover status, a fail says to kee
   assert.match(r.stdout, /A fail is not a state to hand over in: fix the first cause and check again/);
   assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
   assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
-});
-
-// ------------------------------------------------------------------ v22: predicting where the layout breaks
-
-test("v22: the sweep forecasts fragile constructs and measures the predicted switch widths exactly", browser, () => {
-  const f = smallFrame();
-  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(path.join(f.dir, "frail.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0}main{position:relative;width:300px;min-height:80px;background:white;font:16px/20px monospace}</style>
-<main><span>Ready</span><span class="price" style="position:absolute;right:0;top:0">€ 1 250</span>
-<div style="height:20px;width:120px">A label long enough to wrap onto lines</div>
-<div role="tooltip" style="position:absolute;left:0;top:60px">Help</div></main>`);
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 340, step: 40, switches: [320], stories: [{ name: "frail", url: "frail.html" }] } }));
-  const r = check(f.dir);
-  const frail = r.result.sweep.fragile.filter((x) => x.story === "frail");
-  assert.ok(frail.some((x) => x.kind === "positioned" && x.landmark === "€ 1 250"), JSON.stringify(frail));
-  assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
-  assert.ok(!frail.some((x) => x.landmark === "Help"), "an overlay is not fragile");
-  assert.match(r.stdout, /fragile under other data: € 1 250 \(frail\) takes no space in the layout/);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /fragile under other data: € 1 250/);
-  const seen = frail.find((x) => x.kind === "positioned").ranges;
-  assert.match(seen, /319/, `measured a pixel either side of the predicted 320: ${seen}`);
-  assert.match(seen, /321/, seen);
 });

@@ -24,20 +24,15 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
 - A frame for each `frames/<name>/reference.png` in the pack: put target states there, and context images in
   `context/`.
 - An observed open and close transition for each detected control that opens content, including the component
-  root itself, and for each frame of an overlay: one with its own `root`, or one its setup opens by hovering. See
-  [Journeys](#journeys).
+  root itself, and for each frame of an overlay (one that names its own `root`, as a popup's frame does): a passing
+  journey that acts on the same element its setup opened it from, sees something visible and, after an action,
+  expects the same thing hidden. See [Journeys](#journeys).
 - A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason (a fixed page,
-  a screenshot-only task). A story on a frame's own URL needs a `setup` that brings its other data or state; verify
+  a screenshot-only task). A story on a frame's own URL needs a `setup` with a step other than `wait` that brings its other data or state; verify
   the combination in its capture. The script cannot tell whether a story is dense: the acceptance record names what
   it adds.
 - Each line of the owner's past returns, `.design/returns.md` beside the task's folder (or `"returns"` in
-  `design.json`), quoted in an acceptance row.
-
-The sweep measures each width in `sweep.switches` a pixel either side, so a layout model's predicted switches are
-checked exactly. It also forecasts what longer data could break, as warnings that do not change the verdict:
-"fragile under other data" names text positioned out of the flow (other than an overlay: a tooltip, dialog, menu,
-listbox or popover) and a box whose content already runs past its own height. Change the construct, or say in
-`review.md` why it holds.
+  `design.json`), quoted in an acceptance row; letter case, emphasis, quotes and a final full stop do not matter.
 
 The evidence file opens with the handover status. A frame on which most of the design's texts are missing is named
 as rendering other data than its frame. A `fail` is reported as not a state to hand over in.

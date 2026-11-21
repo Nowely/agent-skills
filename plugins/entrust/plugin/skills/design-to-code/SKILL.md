@@ -33,29 +33,6 @@ acceptance list, quoted. A decision the owner gave with the task goes in the led
 naming where the owner decided it. An expected value in a test, a journey or an acceptance row comes from the
 requirement or the reference, and the row names its source; never from the code you just wrote.
 
-## Model the layout before building
-
-You have the code: predict where the layout will break instead of waiting to find it. In `review.md`, write a short
-[layout model](references/review.md#the-layout-model) for each layout mode:
-
-- **What shares each line,** and the longest legal value of each piece with its source: the data contract or its
-  types, the fixtures, the backend's limits, the owner. The frames are samples, not the limits.
-- **The width that line needs:** the pieces' content widths plus gaps and padding, from the kit's sizes and the code,
-  then measured once it renders. Below that container width it no longer fits: a critical width.
-- **What happens below it,** following the design's intent: wrap, move to its own row, truncate with the full text
-  reachable, or switch layout. Put a switch where the content stops fitting, not at a frame's width.
-- **Constructs that cannot overlap:** normal flow, grid areas with `minmax(0, 1fr)` and content-sized tracks,
-  `flex-wrap` with `gap`, `overflow-wrap` for long tokens. Text positioned out of the flow, or a fixed height around
-  text, needs a reason in `review.md`.
-
-Ask before building: what shares this line, what is its longest legal value and who says so, what appears only
-sometimes, what must line up, what happens one step narrower, and what the user does here that must survive a resize.
-
-Write the predicted switch widths in `sweep.switches`, which the check measures a pixel either side, and give the
-dense story the longest values the model names. The sweep then confirms the model or refutes it: a switch
-elsewhere, an overlap or a "fragile under other data" warning means the model was wrong. Correct the model and the
-layout, not only the pixel.
-
 ## Build and compare
 
 Capture the existing screen before editing when available. For a page requiring login, use the project's browser
@@ -71,8 +48,8 @@ specified by a screenshot alone, a capture at the supplied size paired with the 
 If data or environment access blocks that comparison, record what you tried and the specific blocker. Mark the
 affected condition unverified and continue the checks you can run independently.
 
-When there is much to do, take it in this order: the target frames on their own data through the real entry point,
-then the states and their journeys, then the dense story. Implement the supported states with the existing product
+When there is much to do, take it in this order: the target frames on their own data and the dense story through
+the real entry point, then the states and their journeys. The dense story comes early because it decides the layout. Implement the supported states with the existing product
 patterns. For a layout driven by data, also exercise a
 legal combination that stresses the layout. If the layout changes with width, keep those inputs fixed as you
 resize through the transition. At representative widths, inspect the rendered elements together. Check that
@@ -82,7 +59,7 @@ visible and usable. Account for intentional overlays and verify that the expecte
 For UI built from frames, [the checker](references/check.md) is how you show the work is done. Its complete check
 needs a frame per target state on the frame's own data (targets in `frames/`, context images in `context/`), a sweep
 with one dense story (a legal combination of the longest values and every conditional action), and a journey that
-opens and closes each overlay or opener. A static page or a screenshot-only task says why in `design.json`
+opens and closes each overlay or opener (a popup's frame names the popup as its root). A static page or a screenshot-only task says why in `design.json`
 (`"static"`) instead of sweeping. Trace an offset to its first cause, fix it and check every frame again; when two
 rounds in a row bring no new lowest score, record each remaining difference as `proposed` with its reason, or ask.
 With screenshots alone, compare the visible content and alignment at the same scale and state any uncertainty about
@@ -96,10 +73,6 @@ smallest reversible change that could satisfy both. Compare the same state, chec
 measurement uses. If the change satisfies both and preserves the required behaviour, keep it and recheck
 the affected state. If the difference remains, report the change you tried and what you observed against
 each source. If the trial was blocked, name the blocker and mark the conflict unverified.
-
-Then try to break it from the model: for each risk it names, render one input at its critical width (the longest
-value, an empty one, many items, a missing image) and record what happened. A risk you could not render is reported
-as not checked.
 
 After the last change affecting a state or its consumer, repeat its entry-point check. Capture the final result
 and inspect it side by side with each target reference.

@@ -125,6 +125,16 @@ function openerInfoIn(el, { inventory = false, point, keyboard } = {}) {
     return { key, name, ids };
   });
 }
+// An element's identity across fresh pages of the same story, whatever its markup: its id, or its path of positions.
+const elementKey = (el) => {
+  if (el.id) return `#${el.id}`;
+  const parts = [];
+  for (let n = el; n && n !== document.body; n = n.parentElement) {
+    const same = [...(n.parentElement?.children ?? [])].filter((c) => c.localName === n.localName);
+    parts.unshift(`${n.localName}:${same.indexOf(n) + 1}`);
+  }
+  return parts.join(">");
+};
 async function rootOf(page, selector) {
   const marked = page.locator(`[${MARK}]`);
   return (await marked.count()) ? marked.first() : page.locator(selector).filter({ visible: true }).first();
@@ -576,23 +586,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (hits.some(({ i }) => i === 0) || hits.length >= 2) issues.push({ landmark: named(el), property: "covered", actual: `${hits.length} of ${points.length} points under ${named(hits[0].hit)}` });
   }
   scrollTo(sx, sy);
-  // What longer data could break, read from the layout itself: text that takes no space in it (positioned outside the
-  // flow, other than an overlay), and a box whose content already spills out of it without being clipped.
-  const fragile = [];
-  const positioned = (el) => /absolute|fixed/.test(getComputedStyle(el).position);
-  const overlay = (el) => el.closest('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog, [aria-hidden="true"]');
-  for (const el of root.querySelectorAll("*")) {
-    if (!visible(el) || !el.textContent.trim() || overlay(el)) continue;
-    const cs = getComputedStyle(el);
-    let outer = true;
-    for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (positioned(p)) { outer = false; break; }
-    if (outer && positioned(el)) fragile.push({ landmark: label(el.textContent), kind: "positioned", actual: "takes no space in the layout, so longer data can run into its neighbours" });
-    const spill = el.scrollHeight - el.clientHeight;
-    if (cs.overflowY === "visible" && el.clientHeight > 0 && spill > 2 && !/inline/.test(cs.display) && el.textContent.trim().length > 1) {
-      fragile.push({ landmark: label(el.textContent), kind: "spills", actual: `its content runs ${spill} px past its own height` });
-    }
-  }
-  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured, fragile };
+  return { root: { width: rr.width, height: rr.height }, issues, rows, unmeasured };
 }
 
 // Compares the design's image with the page's, both at the device scale. Outside boxes owned by text checks,
@@ -733,6 +727,14 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       continue;
     }
     const { context, page } = opened;
+    // An overlay frame (its own root) records the element its setup opened it from, for the journey that must close it.
+    const setupTargets = [];
+    if (frame.root && frame.root !== cfg.root) for (const st of frame.setup ?? []) {
+      const [act] = Object.keys(st);
+      if (!["hover", "click", "tap", "focus"].includes(act) || typeof st[act] !== "string") continue;
+      const key = await page.locator(st[act]).first().evaluate(elementKey, null, { timeout: 2000 }).catch(() => null);
+      if (key) setupTargets.push({ selector: st[act], key });
+    }
     try {
       const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth }
         : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot" }));
@@ -759,6 +761,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
         regions = nameRegions(found, spec.landmarks);
       }
       const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
+      if (setupTargets.length) result.setupTargets = setupTargets;
       if (before.reason) result.beforeUnavailable = before.reason;
       if (before.comparison) result.beforeComparison = before.comparison;
       result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true });
@@ -797,8 +800,6 @@ async function sweep(browser, cfg, ledger) {
   const widths = new Set(frameWidths);
   for (let w = to; w >= from; w -= step) widths.add(w);
   widths.add(from);
-  // The widths the layout model predicts a switch at are measured exactly, a pixel either side.
-  for (const w of s.switches ?? []) for (const x of [w - 1, w, w + 1]) if (x >= from && x <= to) widths.add(x);
   const order = [...widths].sort((a, b) => b - a);
   // One mounted page for every width, narrowing from the widest, as a user resizes it: state set up once must survive.
   // A story (the longest data, every conditional action at once) is swept the same way, and pictured at the frames' widths.
@@ -832,33 +833,20 @@ async function sweep(browser, cfg, ledger) {
   const changes = switches(probes, s.switches ?? [], step);
   const issues = sweepIssues([...probes, back], ledger, changes.issues);
   const groups = alignmentGaps([...probes, back]);
-  const stories = [], storyProbes = [];
+  const stories = [];
   for (const story of s.stories ?? []) {
     const shots = new Map();
     let r;
     try { r = await run(story.url, story.setup, shots); }
-    catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); storyProbes.push([]); continue; }
-    storyProbes.push([...r.probes, r.back]);
-    const these = storyProbes.at(-1);
-    groups.push(...alignmentGaps(these).map((g) => ({ ...g, story: story.name })));
-    issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name })));
+    catch (e) { stories.push({ name: story.name, unmeasured: e.message.split("\n")[0], shots: [] }); continue; }
+    const storyProbes = [...r.probes, r.back];
+    groups.push(...alignmentGaps(storyProbes).map((g) => ({ ...g, story: story.name })));
+    issues.push(...sweepIssues(storyProbes, ledger).map((i) => ({ ...i, story: story.name })));
     stories.push({ name: story.name, shots: [...shots].filter(([, png]) => png).map(([width, png]) => ({ width, image: dataUrl(png) })) });
   }
   const failing = issues.filter((i) => i.status === "fail");
-  // Fragile constructs, by element and kind, with the widths they were seen at: a forecast, not a verdict.
-  const fragile = new Map();
-  const collect = (list, story) => {
-    for (const p of list) for (const f of p.fragile ?? []) {
-      const k = `${story ?? ""}\u0000${f.kind}\u0000${f.landmark}`;
-      if (!fragile.has(k)) fragile.set(k, { ...f, ...(story ? { story } : {}), widths: [] });
-      fragile.get(k).widths.push(p.width);
-    }
-  };
-  collect([...probes, back]);
-  for (const [i, story] of (s.stories ?? []).entries()) collect(storyProbes[i] ?? [], story.name);
   return {
     from, to, step, pass: failing.length === 0, issues, switches: changes.seen, stories,
-    fragile: [...fragile.values()].map(({ widths: at, ...f }) => ({ ...f, ranges: ranges([...new Set(at)]) })),
     score: issues.filter((i) => i.status !== "accepted").length * 10,
     unmeasured: groups.filter((g) => g.everywhere), partial: groups.filter((g) => !g.everywhere),
   };
@@ -879,6 +867,8 @@ async function journeys(browser, cfg) {
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
     const observed = new Map();
     let trigger, visibleBefore = new Set();
+    const acted = new Set(), openSeen = new Set(), actedOn = new Set();
+    let closes = false;
     if (opened) {
       const { page } = opened;
       try {
@@ -898,6 +888,11 @@ async function journeys(browser, cfg) {
                 [trigger] = await locator.evaluate(openerInfoIn, { point, keyboard: action === "press" }, { timeout: 2000 }).catch(() => []);
               }
             }
+            if (["hover", "click", "tap", "focus", "move"].includes(action) && typeof arg === "string") {
+              const key = await page.locator(arg).first().evaluate(elementKey, null, { timeout: 2000 }).catch(() => null);
+              if (key) acted.add(key);
+            }
+            if (!EXPECT.includes(action) && action !== "wait") for (const t of openSeen) actedOn.add(t);
             if ("width" in step) {
               await setWidth(page, cfg, step.width, 900);
               await settle(page, cfg.root);
@@ -905,6 +900,12 @@ async function journeys(browser, cfg) {
               continue;
             }
             await runStep(page, step);
+            if (step.visible) openSeen.add(step.visible);
+            if ("hidden" in step) {
+              if (actedOn.has(step.hidden)) closes = true;
+              openSeen.delete(step.hidden);
+              actedOn.delete(step.hidden);
+            }
             const shown = step.visible ?? step.text?.[0];
             if (shown) {
               seen.add(shown);
@@ -927,7 +928,8 @@ async function journeys(browser, cfg) {
         }
       } finally { await opened.context.close(); }
     }
-    results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed] });
+    results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
+      acted: [...acted], closes });
   }
   return results;
 }
@@ -952,7 +954,7 @@ function acceptanceRows(cfg) {
   const rows = [];
   let table = [];
   const flush = () => {
-    const cells = table.filter((l) => !/^\s*\|?[\s|:-]*\|?\s*$/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+    const cells = table.filter((l) => !/^\s*\|?[\s|:-]*\|?\s*$/.test(l)).map((l) => l.trim().replace(/^\||(?<!\\)\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|")));
     if (cells.length > 1) {
       const result = cells[0].findIndex((c) => /result|status|результат|итог/i.test(c));
       const method = cells[0].findIndex((c) => /^checked by$/i.test(c));
@@ -1013,24 +1015,19 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     else if (!cfg.sweep.stories?.length) gaps.push("no dense story is swept: add one to sweep.stories");
     const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
     // A story on a frame's page brings data of its own by its setup; without one it is the frame again.
-    for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.length) gaps.push(`the story ${st.name} is a frame's own page: a dense story renders data of its own`);
+    for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.some((x) => !("wait" in x))) gaps.push(`the story ${st.name} is a frame's own page: a dense story's setup brings data of its own`);
   }
-  // A frame of an overlay its setup opens (its own root, as a popover, menu or sheet has, or a hover) wants a passing
-  // journey that opens the same thing and expects something hidden, whatever the product's markup.
-  const acts = ["hover", "click", "tap", "focus"];
-  const closing = cfg.journeys.filter((j) => journeyResults.find((r) => r.name === j.name)?.pass && j.steps.some((st) => "hidden" in st));
-  for (const f of cfg.frames) {
-    const overlay = (f.root && f.root !== cfg.root) || (f.setup ?? []).some((st) => typeof st.hover === "string");
-    for (const st of overlay ? f.setup ?? [] : []) {
-      const [act] = Object.keys(st);
-      if (!acts.includes(act) || typeof st[act] !== "string") continue;
-      const sel = st[act];
-      if (!closing.some((j) => j.steps.some((x) => [...acts, "move"].some((k) => x[k] === sel)))) gaps.push(`the state frame ${f.name} opens “${sel}”, and no journey opens it and expects it closed`);
+  // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
+  // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.
+  const closing = journeyResults.filter((j) => j.pass && j.closes).flatMap((j) => j.acted ?? []);
+  for (const r of results) {
+    for (const t of r.setupTargets ?? []) {
+      if (!closing.includes(t.key)) gaps.push(`the overlay frame ${r.frame} opens “${t.selector}”, and no journey acts on it, sees it open and expects it closed`);
     }
   }
   // Each past return the owner recorded is a line of the acceptance list.
   if (fs.existsSync(cfg.returnsFile)) {
-    const norm = (t) => t.toLowerCase().replace(/\s+/g, " ").trim();
+    const norm = (t) => t.toLowerCase().replace(/\\\|/g, "|").replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim().replace(/[.!?;:,]+$/, "");
     const items = fs.readFileSync(cfg.returnsFile, "utf8").split("\n").map((l) => l.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*\S)/)?.[1]).filter(Boolean);
     const listed = rows.map((r) => norm(r.item));
     const missing = items.filter((t) => !listed.some((l) => l.includes(norm(t))));

@@ -51,19 +51,6 @@ departs from a drawing. Those go there as `proposed`, with the same options. A g
 state, stays in `review.md`. An improvement the request does not need is an idea: list it with its gain and cost,
 do not build it.
 
-## The layout model
-
-Write it before building, from the design, the code and the data contract; correct it when the sweep refutes it.
-One row per line that holds several pieces, in each layout mode:
-
-| Line and mode | What shares it: longest legal value, source | Width it needs | Below that width | Construct |
-|---|---|---|---|---|
-| top row, wide | title (120 characters, API limit), six specs ("126.5 m²", fixtures), price ("12 345 678 € / month", owner) | about 690 px | the specs take their own row | grid areas, `minmax(0, 1fr)` |
-| footer, any | availability (60 characters, data contract), help icon, edit action (owner's listings only) | about 380 px | the action wraps under the text | `flex-wrap` with `gap` |
-
-The widths where the table says the layout switches go in `sweep.switches`. Each risk the table implies (a line
-near its limit, a conditional action, an empty value) is a row of the acceptance list, tried at its critical width.
-
 ## The acceptance list
 
 Write the applicable criteria before implementation, then record an outcome and evidence for each after checking.
