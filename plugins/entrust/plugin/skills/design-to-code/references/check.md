@@ -12,9 +12,11 @@ A **complete check** runs every frame, the sweep and the journeys; only it write
 without journeys, for tuning.
 
 **Exit codes**, the first that applies: 1 a finding, a ledger fault, a failing journey or acceptance row; 2
-something not measured (a frame without its image or showing text its spec lacks, named boxes not ready, a root or
-setup that fails, a story or condition not swept, an alignment group never of two); 3 what remains awaits the owner;
-0 a pass. A complete check is also incomplete when:
+something not measured (a frame without its image or showing text its spec lacks, ink no named box holds, a root or
+setup that fails, a story or condition not swept, an alignment group never of two); 3 what remains awaits the owner
+(a proposal, a journey disputed with the check); 0 a pass. For a 2, name what is missing (the ink's landmark, the
+text in the spec, the row's evidence), or record why it cannot be, and check again. A complete check is also
+incomplete when:
 
 - an acceptance row in `review.md` is blank, unrecognised or unmeasured ([the list](review.md#the-acceptance-list));
   with no rows, nothing is assessed;
@@ -26,11 +28,17 @@ setup that fails, a story or condition not swept, an alignment group never of tw
   never frames at several);
 - a story on a frame's own URL has no setup but `wait`, so it is the frame again;
 - a line of the owner's past returns (`.design/returns.md` beside the task's folder) is not quoted in an acceptance
-  row.
+  row;
+- a [candidate](#generated-conditions) is unanswered.
 
-**Rounds.** The score adds what is not settled, findings and proposals alike; notes count nothing. The summary gives
-the round before and the lowest among rounds measured the same way, and says to stop adjusting after two rounds
-without a new lowest. **Before** is the page the first check saw; delete `out/before/` for a new baseline.
+**Rounds.** The score adds what is not settled, findings and proposals alike; notes and candidates count nothing. The
+console is a digest of fifteen lines at most: the round before and the lowest among rounds measured the same way, what
+changed since (findings fixed, new ones), each frame's new findings with where to start and the unchanged ones as a
+count; the full tables are in `report.md`. After two complete rounds without a new lowest score, or with the same first
+finding, the verdict line says "stop re-running: fix it, propose it with a reason, or report the check as blocked".
+Each line of `history.jsonl` records the round's status, score and findings, whether it was `quick`, its `seconds` and
+the `bytes` it printed.
+**Before** is the page the first check saw; delete `out/before/` for a new baseline.
 
 ## design.json
 
@@ -42,7 +50,7 @@ Paths are relative to the file.
 | `root` | CSS selector of the component's root; the first match a person can see |
 | `host`, `viewport` | the element given each frame's width, when the container sizes the component, and the viewport then (default 1280) |
 | `tolerance` | how far a position may differ, in CSS px; default 1 |
-| `ledger` | the ledger's file, usually `deviations.json` |
+| `ledger` | the ledger's file; `deviations.json` beside design.json when not given |
 | `kit` | the UI kit's class prefixes, `["Mui", "ant-"]`: its negative gutters and offsets are not constructs |
 | `frames[]` | `name`, `width`, `spec`, `reference`; optionally `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `sweep` | `from`, `to`, `step` (default 8), `setup`, `stories`, `switches`, `align`, `lines`, `generate` |
@@ -52,7 +60,7 @@ Paths are relative to the file.
 each adds. `switches` are the widths where the layout should switch, measured a pixel either side. `align` names
 groups that line up: `{ "selector": ".price", "edge": "right" }`. `lines` are rows of pieces, when you declare them:
 `{ "name": "top row", "pieces": [".sku", { "selector": ".ram", "wraps": true }, ".price"], "from": 640, "when":
-"[data-mode=wide]" }`. `generate: false` skips the generated conditions.
+"[data-mode=wide]" }`. `generate: false` skips the generated conditions, and the evidence lists them as not checked.
 
 `setup` steps run in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap`, `{ "move": [x, y] }` or a selector,
 `{ "fill": ["<selector>", "<text>"] }`, `{ "press": "Escape" }`, `{ "wait": 200 }`. A step on what never appears
@@ -63,7 +71,12 @@ fails in 5 seconds.
 Each journey opens the page afresh at the widest frame's width (by touch with `"touch": true`, on its own `url` if it
 gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations, each given a second to come true
 as a person sees it: `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
-journey with no expectation is an error; the first step that does not hold fails it.
+journey with no expectation is an error; the first step that does not hold fails it. A journey runs with the page's
+transitions and animations: what is running is brought to its end, its end events fired, before each expectation, so a
+sheet that hides itself when its closing transition ends closes, and one that never closes fails. With
+`"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
+must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
+an observer left on removed elements or a layout not chosen again shows.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
@@ -76,10 +89,14 @@ in the window and in every box that clips it. An opener in a fixed or sticky bar
 A spec landmark is a text, found whatever its spaces, case and markup, or a `selector` for an element without text,
 with its `box` in the design.
 
-**From Figma**, texts are compared by position, height and `font` (size, weight, line height, colour) where the spec
-gives it, and by width where it says `widths`, as a snapshot does. Design text that is absent and text cut by a
-clipping box are findings; page text the spec lacks leaves the frame incomplete, unless an accepted `presence` entry
-names it. A text cut with an ellipsis or a line clamp is truncated on purpose.
+**From Figma**, `design.mjs figma` (with `FIGMA_TOKEN`) or `design.mjs spec … --context` (from Figma MCP, which reads
+each text's `text-[Npx]` and `leading-[Npx]` by node id) writes the spec. Texts are compared by position, height and
+`font` (size, weight, line height, colour) where the spec gives it, and by width where it says `widths`, as a snapshot
+does; a spec with no font size leaves the type's size uncompared, and the console and the evidence say so. A spec
+from `design.mjs snapshot` is the page itself: outside a review, the evidence says it compares the page with itself.
+Design text that is absent and text cut by a clipping box are findings; page text the spec lacks leaves the frame
+incomplete, unless an accepted `presence` entry names it. A text cut with an ellipsis or a line clamp is truncated on
+purpose.
 
 **From a screenshot**, name its boxes: `design.mjs boxes <reference.png> --width <px>` writes `spec.json` with every
 piece of ink and every filled shape numbered, and `boxes.png` to read the numbers from. Fill `landmarks`:
@@ -96,7 +113,8 @@ measured while a landmark has no text or selector, names a missing piece or take
 twice; ink in no landmark and not skipped keeps it incomplete. The page's boxes are made tight to their ink and
 compared by place within 4 px. A text wider in the page's font moves the next piece, and that is the font's; heights
 are not compared. **The type's size** is the trimmed mean (the middle 60 %) of the page's ink heights over the
-design's, with five texts or more: 10 % or more off is a `type` finding.
+design's, with five texts or more: 10 % or more off is a `type` finding. One text 20 % or more off by its own ink (a
+price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it).
 
 Either way, texts stacked on one left edge stay on it (`align`), an area outside the texts whose pixels differ is a
 `region`, and a font the page asks for that cannot draw its text is named.
@@ -118,16 +136,18 @@ back; each story and generated condition the same way. At each width:
   - "/" left at a line's end after a value (a number, a currency or per-cent sign): "₽ /" | "месяц";
   - "×" split from its numbers;
   - a word broken between its letters, unless `hyphens: auto`;
-  - **wraps with room**: a text of two to six words that wraps, though with its own limits lifted (no wrapping, no
-    maximum width, no shrinking) it fits the component on one line and runs into no other text: a price and its
-    period, a value and its unit, a label. A line clamp or an ellipsis is a choice, not a wrap, and so are two wraps a
-    design draws: a block as narrow as its own min-content width (its words stacked, as `width: min-content` does),
-    and a row of chips (each word in a box with its own background or border) wrapping between them, though each
-    chip's own text is still held to it;
+  - **wraps with room**: a text of two to six words (a group of digits, "1 234 567,00", is one) that wraps, though
+    with its own limits lifted (no wrapping, no maximum width, no shrinking) it sits on one line inside the
+    component's content box, runs into no other text, icon or control, and pushes none out: a price and its period, a
+    value and its unit, a label. The items of a flex row (a title and a price, a row of chips) are held one by one,
+    and a line whose context is the root is read too. A line clamp, an ellipsis, a line break, an item a flex row puts
+    on its own row, and a block as narrow as its own min-content width (its words stacked, as `width: min-content`
+    does) are choices, not wraps;
+- `truncated`: a text cut with an ellipsis or a clamp whose full text is nowhere to read: give it a title, an
+  accessible name or a tooltip;
 - `construct`: a negative margin over 3 px (not a bleed, nor the kit's), a nudge of 2 px or more by a transform,
-  `translate` or a relative offset (not centring or a slide), a text cut on purpose with no title or accessible name.
-
-"Fragile under other data" warns of text positioned out of the flow and of a box whose text runs past its height.
+  `translate` or a relative offset (not centring or a slide). A construct is a note that needs its reason: fix it, or
+  give the reason in the handoff.
 
 ## Findings and notes
 
@@ -140,28 +160,35 @@ font explains, or pixels alone, shown for the owner's eye; a ledger entry for on
 - a text's `width`, wider or narrower than drawn (its size is the `type` finding's);
 - a `height` within 24 px;
 - a frame's column edge (`align`) within 12 px;
-- in the sweep, a `construct` and a `switch`.
+- in the sweep, a `switch`, and a `construct`, which needs its reason in the handoff.
 
 Everything else is a finding: an offset, a drift, a height or a column edge past these; a gap of 8 px or more that
-closes to under 4; the root's width; a presence, a text, a font, the type's size; a cut, an overlap, a covered
-control, an overflow, a line, a wrap, a sweep alignment, a resize.
+closes to under 4, whatever drift the pieces carry; the root's width; a presence, a text, a font, the type's size; a
+cut, a truncated text with no way to read it, an overlap, a covered control, an overflow, a line, a wrap, a sweep
+alignment, a resize. What only a generated condition finds is a candidate (below).
 
 **Start here** names a frame's first cause from the top: an offset between two neighbours, or a landmark's width or
 height that carried them. An offset marked *inherited* goes with its cause.
 
 ## Generated conditions
 
-Unless `sweep.generate` is `false`, the sweep makes its own extremes:
+Unless `sweep.generate` is `false`, the sweep makes its own extremes on the frames' page (the stories already carry
+the longest legal values):
 
-- the frames' page with every text two fifths longer ("texts stretched");
-- the frames' page with every set of repeated entries (siblings that share a class) doubled ("entries doubled");
-- each story with its texts stretched.
+- every text two fifths longer ("texts stretched");
+- every list's rows doubled ("entries doubled"): siblings that share a class and stand each below the one before, a
+  list inside a row too; buttons or columns side by side are not doubled.
 
 They run at the frames' widths, the sweep's ends and the switches. Once a condition is applied, the component is
 resized a pixel and back with a resize event, so that one that picks its layout from its content chooses again, and
 what it renders anew takes the condition too. Their texts are not the product's, so only `overlap`, `clipped`,
-`outside` and `covered` count, under the condition's name. A layout that grows with its content, or chooses again,
-passes them; a fixed height around repeated entries, or text out of the flow, does not.
+`outside` and `covered` count, and a text set not to wrap (`white-space: nowrap`) is no cut under longer texts.
+
+What they find is a **candidate**, not a finding: it fails nothing and scores nothing, but an unanswered one leaves a
+complete check incomplete. Answer it by reproducing it with legal data (a story with a real long value, or a
+supported locale: then the story's own finding counts), or under a heading that names candidates in `review.md`, one
+list item each, the candidate as the check prints it and after a colon the contract's bound that rules it out:
+`- Ready Re × Go G: the label is at most 8 characters (api/types.ts)`.
 
 ## The ledger
 
@@ -175,27 +202,31 @@ passes them; a fixed height around repeated entries, or text out of the flow, do
 | `frame` | a frame's name or a list of them; absent or `*` for all |
 | `max` | the largest difference in px it covers, at each width; only one with a size |
 | `actual` | for `text`: the text the page shows, which the check then looks for |
-| `category` | the cause, for the owner: `design-error`, `missing-state`, `platform`, `system`, `owner`, `ux` |
+| `category` | optional: the cause, for the owner: `design-error`, `missing-state`, `platform`, `system`, `owner`, `ux` |
+| `cause` | `checker`: the check itself causes the finding, shown by a minimal reproduction in `review.md` |
 | `status` | `accepted`, by the owner only, or `proposed`, by you |
 | `reason` | a sentence the owner can judge: for what cannot be built, the construct tried and what was measured |
 | `decidedBy`, `options` | who accepted it; for a proposal, the options and their cost |
 
 An entry that matches a finding settles it: accepted, it excuses it; proposed, of any category, it leaves it pending
-for the owner. A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
+for the owner. An entry with `"cause": "checker"` may also name a failing journey (`"property": "journey"`, its name
+as the landmark): the journey waits for the owner instead of failing, and the evidence lists it under "Disputed with
+the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
 
-An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property,
-category or status; accepted without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text`
-without `actual` or with more than one design text. Entries of one cause that cover more than three findings are
+An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
+status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
+without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text` without `actual` or with more
+than one design text. Entries of one cause that cover more than three findings are
 named first in the evidence, as broad excuses.
 
 ## Output
 
-The console shows each verdict, the notes, where to start, the first findings and the score. In `out/`:
+The console shows the digest (see Rounds above). In `out/`:
 
 | File | What |
 |---|---|
 | `report.md`, `result.json` | every finding and note, the causes, the sweep and the journeys |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
-| `handoff.md` | by a complete check, the evidence a handoff quotes: the status first, then the pictures, frames, stories with their longest texts, journeys, ledger entries, acceptance rows and what was not checked |
+| `handoff.md` | by a complete check, the evidence a handoff quotes: the status first, then the pictures, frames, stories with their longest texts, candidates, constructs, journeys, ledger entries, what is disputed with the check, acceptance rows and what was not checked |
 | `gallery.html` | by a complete check: design, before, after and difference per frame, with the stories and the ledger |
-| `history.jsonl` | one line per check: round, status, score and what it was measured against |
+| `history.jsonl` | one line per check: round, status, score, what it was measured against, `quick`, `seconds` and `bytes` printed |

@@ -2,7 +2,7 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "type", "wrap", "journey"];
+  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct", "type", "wrap", "journey", "truncated"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -577,7 +577,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length || notNamed.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(typeUnchecked ? { typeUnchecked } : {}), ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(typeUnchecked ? { typeUnchecked } : {}), ...(spec.source === "page snapshot" ? { snapshot: true } : {}), ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
     ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map((h) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
     // A region has no size of its own to give, only its place.
     ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.delta) }), ...(i.box ? { box: i.box } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
@@ -1065,7 +1065,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     const head = failing.length ? `${failing.length} finding${failing.length === 1 ? "" : "s"}; first: ${say(ordered(failing)[0])}` : "no findings";
     return `${head}${ok ? `; ${ok} excused by the ledger` : ""}${noted.length ? `; ${sweepNotes(noted)}` : ""}${cand.length ? `; ${cand.length} candidate${cand.length === 1 ? "" : "s"}, ${open.length} unanswered` : ""}`;
   };
-  const handoverState = { pass: "done", pending: "only after two rounds without a new lowest score, each remaining difference proposed in the ledger",
+  const handoverState = { pass: "done", pending: "proposals wait for the owner: hand over, naming each",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
   // An excuse should be narrower than what it excuses: an entry that covers many findings is named first.
   const covered = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
@@ -1096,6 +1096,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
     if (f.beforeComparison) out.push(`  Before: ${f.beforeComparison}.`);
+    if (f.snapshot) out.push("  Its spec is a snapshot of the page (`design.mjs snapshot`): outside a review it compares the page with itself, not with a design.");
   }
   out.push("", "## Widths and stories", "");
   if (sweepCoverage(sweep)) out.push(`- ${sweepCoverage(sweep)}`);
@@ -1115,6 +1116,11 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     out.push("", "## Candidates from the generated conditions", "",
       "A collision found only under longer texts or doubled entries is not a finding until legal data reproduces it (then the story's own finding counts); until then it is answered in review.md, under Candidates, by the contract's bound that rules it out.", "");
     for (const i of generated) out.push(`- ${i.answer ? "answered" : "unanswered"}: ${say(i)}${i.answer ? ` — ${i.answer}` : ""}`);
+  }
+  const constructs = (sweep?.issues ?? []).filter((i) => i.property === "construct");
+  if (constructs.length) {
+    out.push("", "## Constructs", "", "A construct is a note that needs its reason: fix it, or give the reason in the handoff.", "");
+    for (const i of constructs) out.push(`- ${say(i)}`);
   }
   out.push("", "## Journeys", "");
   if (!journeys.length) out.push("- none defined");

@@ -47,8 +47,9 @@ A selected text layer becomes its own landmark at the frame origin.
    give. A layer whose text the code builds from data (`{count} cores`) is reported as missing, not guessed. Nothing
    later catches a wrong text in the spec: the check looks for that text on the page and excludes text from the pixel
    comparison.
-5. For each text whose style the design context states, add `"font": { "size", "weight", "lineHeight", "color" }`
-   (CSS px, `#rrggbb`). Without it a smaller font that keeps its line height shows only as a pixel note.
+5. The spec takes each text's size and line height from the context's `text-[Npx]` and `leading-[Npx]` classes by
+   node id. Add weight and colour where the context states them: `"font": { "weight", "color" }` (`#rrggbb`). A spec
+   with no font size leaves the type's size uncompared, and the check says so.
 
 ## What else to read
 
@@ -97,4 +98,5 @@ report unobserved widths and interactions. Do not invent Figma metadata or imply
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
-text widths, which a Figma spec does not.
+text widths, which a Figma spec does not. Outside a review it compares the page with itself, and the evidence says
+so.

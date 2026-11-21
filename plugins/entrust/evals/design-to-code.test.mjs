@@ -1028,8 +1028,11 @@ test("truncation drawn on purpose collides with nothing; one that draws no ellip
   };
   assert.deepEqual(sweep("ellipsis", '<div style="display:flex;gap:8px"><div title="A very long apartment title that cannot fit" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title that cannot fit</div><b>€10</b></div>'), []);
   assert.deepEqual(sweep("clamp", '<p aria-label="Line one of a long text that wraps onto line two and three" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0">Line one of a long text that wraps onto line two and three</p><a href="#">Read more</a>'), []);
-  // Cut on purpose with the full text nowhere to reach is a construct.
-  assert.deepEqual(sweep("unreachable", '<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title</div>'), ["construct"]);
+  // Cut on purpose with the full text nowhere to read is a finding with its action (draft 28.2), not a construct.
+  assert.deepEqual(sweep("unreachable", '<div style="width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A very long apartment title</div>'), ["truncated"]);
+  const cut = check(f.dir).result.sweep.issues.find((i) => i.property === "truncated");
+  assert.equal(cut.status, "fail");
+  assert.match(cut.actual, /give it a title, an accessible name or a tooltip/);
   assert.deepEqual(sweep("wrapped", '<div style="width:120px;height:20px;overflow:hidden;text-overflow:ellipsis">A text that wraps and is cut below its first line</div>'), ["clipped"]);
 });
 
@@ -1609,7 +1612,10 @@ test("v25, draft 28: a negative margin or a transform that moves text is a const
   assert.equal(r.status, 0, r.stdout);
   assert.equal(r.result.sweep.score, 0, "a note counts nothing");
   assert.match(r.stdout, /2 notes, not findings: construct “Beta” \(hacks\), construct “Gamma” \(hacks\)/);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- story hacks: no findings; 2 notes, not findings: construct “Beta”/m);
+  const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
+  assert.match(handoff, /^- story hacks: no findings; 2 notes, not findings: construct “Beta”/m);
+  // Draft 28.2: a construct is a note that needs its reason, and the evidence lists each for it.
+  assert.match(handoff, /^## Constructs\n\nA construct is a note that needs its reason: fix it, or give the reason in the handoff\.\n\n- Beta \(hacks\) construct: a negative margin/m);
 });
 
 // ------------------------------------------------------------------ draft 25.1: the critic's and verifier's cases
@@ -1692,7 +1698,7 @@ test("v26, draft 28: a value split from its period, “×” split from its numb
     return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
   };
   const room = /wraps, though on one line it fits the component and runs into nothing/;
-  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a value split from its period: “₽ \/” \| “месяц”/);
+  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a value split from its period: “₽ \/” \| “месяц”: white-space: nowrap on the amount and on the period \(a value and its unit\), an ordinary space between them, and no cap on their block; only a price wider than the component moves its period whole to the next line/);
   assert.match(run('<div style="width:30px;overflow-wrap:anywhere">потока</div>').join(), /a word broken between its letters: “потока”/);
   assert.match(run('<div style="width:40px">5587 × 4</div>').join(), /“×” split from its numbers/);
   assert.deepEqual(run('<div style="width:200px">1 234 567,00 ₽ / месяц</div>'), []);
@@ -1717,7 +1723,8 @@ test("draft 28: a short text that wraps with room in the component is a wrap; on
   };
   // A price of 155 px capped at 150, in a card of 284: it wraps, and on one line it fits.
   const capped = run('<div style="max-width:150px">12 345 678,00 ₽ / месяц</div>');
-  assert.ok(capped.some((i) => i.kind === "wraps with room" && i.landmark === "12 345 678,00 ₽ / месяц" && i.status === "fail"), JSON.stringify(capped));
+  assert.ok(capped.some((i) => i.kind === "wraps with room" && i.landmark === "12 345 678,00 ₽ / месяц" && i.status === "fail"
+    && /keep it on one line: white-space: nowrap on the amount and on the period \(a value and its unit\), an ordinary space between them, and no cap on their block$/.test(i.actual)), JSON.stringify(capped));
   // A title of 130 px in a column of 90 beside another text: on one line it would run into its neighbour. Alone, it
   // wraps with room.
   const column = (next) => run(`<div style="display:grid;grid-template-columns:90px 1fr;gap:8px"><h3 style="margin:0;font-size:14px">Dedicated server pro</h3>${next}</div>`);
@@ -2182,4 +2189,14 @@ test("draft 28.2: a first finding that stays first over two complete rounds stop
   const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(history.map((h) => h.first), ["frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x"]);
   assert.ok(history[1].score < history[0].score && history[2].score < history[1].score, `each round a new lowest: ${history.map((h) => h.score)}`);
+});
+
+// ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
+
+test("draft 28.2: pending means proposals wait for the owner; a page snapshot used as the spec is named as comparing the page with itself", () => {
+  const pending = renderHandoff({ frames: [], status: "pending" });
+  assert.match(pending, /^Status: pending — proposals wait for the owner: hand over, naming each$/m);
+  const snap = compareFrame({ frame: "card", spec: { ...SPEC, source: "page snapshot" }, measured: measured() });
+  assert.match(renderHandoff({ frames: [snap], status: "pass" }), /^- card: pass — no findings.*\n  Its spec is a snapshot of the page \(`design\.mjs snapshot`\): outside a review it compares the page with itself/m);
+  assert.doesNotMatch(renderHandoff({ frames: [compare({})], status: "pass" }), /compares the page with itself/);
 });

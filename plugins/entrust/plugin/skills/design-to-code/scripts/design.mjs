@@ -540,8 +540,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (deliberate(cs)) {
       // Cut on purpose, the full text must still be reachable: a title, an accessible name, or a tooltip on it.
       const cutNow = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
-      if (cutNow && !el.closest("[title], [aria-label], [aria-describedby], [data-tooltip]")) issues.push({ landmark: label(el.textContent), property: "construct", kind: "truncated",
-        actual: "cut with an ellipsis or a clamp, and its full text is nowhere to reach: give it a title, an accessible name or a tooltip" });
+      if (cutNow && !el.closest("[title], [aria-label], [aria-describedby], [data-tooltip]")) issues.push({ landmark: label(el.textContent), property: "truncated",
+        actual: "cut with an ellipsis or a clamp, and its full text is nowhere to read: give it a title, an accessible name or a tooltip" });
       continue;
     }
     const own = el.getBoundingClientRect();
@@ -613,7 +613,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) return; // the same line
       // Wherever there is no room, two breaks still split what belongs together: "/" after a value left at a line's
       // end ("₽ /" | "месяц"), and "×" split from its numbers.
-      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a value split from its period: “${run[k - 2].t} /” | “${t}”: keep the whole group on one line (white-space: nowrap on it), and let its block take the group's width`);
+      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a value split from its period: “${run[k - 2].t} /” | “${t}”: white-space: nowrap on the amount and on the period (a value and its unit), an ordinary space between them, and no cap on their block; only a price wider than the component moves its period whole to the next line`);
       else if ((a === "×" && number(t)) || (t === "×" && number(a))) say(from, `“×” split from its numbers: “${a}” | “${t}”: keep them on one line`);
     });
   }
@@ -701,7 +701,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     for (const [c, style] of pins) { if (style === null) c.removeAttribute("style"); else c.setAttribute("style", style); }
     if (fits && !clash) {
       const text = run.map((x) => x.t).join(" ");
-      issues.push({ landmark: label(text), property: "wrap", kind: "wraps with room", actual: `“${text}” wraps, though on one line it fits the component and runs into nothing: keep it whole (white-space: nowrap on it), and let its block take its width` });
+      issues.push({ landmark: label(text), property: "wrap", kind: "wraps with room", actual: `“${text}” wraps, though on one line it fits the component and runs into nothing: keep it on one line: white-space: nowrap on the amount and on the period (a value and its unit), an ordinary space between them, and no cap on their block` });
     }
   }
   lift.remove();

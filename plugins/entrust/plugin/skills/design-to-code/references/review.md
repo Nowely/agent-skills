@@ -1,7 +1,10 @@
 # Reading the design
 
 `review.md`, beside `design.json`, holds the references with their roles, the map, the gaps and the decisions. The
-layout model and the acceptance list are aids, not gates: the check reads the list when it is there.
+layout model and the acceptance list are aids, not gates: the check reads the list when it is there. It also holds the
+answers to the check's [candidates](check.md#generated-conditions), under a heading that names them (`- <candidate as
+printed>: <the contract's bound that rules it out>`), and the minimal reproduction of any finding a ledger entry with
+`"cause": "checker"` says the check itself causes.
 
 ## The map
 
@@ -45,7 +48,7 @@ Its switch widths can go in `sweep.switches` and its lines in `sweep.lines`, so 
 ## The acceptance list
 
 What the owner will check, under a heading containing `Acceptance`, `приёмк` or `приемк`, as table rows or list
-items. Each line of the owner's past returns (`.design/returns.md`) is a row, quoted. Name where each expected value
+items: `- item: pass — evidence`. Each line of the owner's past returns (`.design/returns.md`) is a row, quoted. Name where each expected value
 comes from (the task, a reference, the owner, the data contract): a value taken from the code you wrote proves only
 that the code agrees with itself.
 
