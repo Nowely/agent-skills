@@ -14,13 +14,13 @@ either draft gets a first submission accepted where the five Terra iterations di
   The design is screenshots only: no layer data.
 - **Arms:**
   - Sonnet in a fresh subagent with the same brief and rules (work only in its own directory);
-  - prepared and frozen with `evals/design-to-code/harness/arm.mjs`: draft 21.1 at `d70839e`, draft 22.1 at
-    `28ec7ad`;
+  - prepared and frozen with `evals/design-to-code/harness/arm.mjs`: draft 21.1 at `d2b7ff3`, draft 22.1 at
+    `1fb9085` (`d70839e` and `28ec7ad` before the branch was rebased on 0.44.0; the skill files are the same);
   - no past returns given;
   - run concurrently.
 
   The arms stayed in their directories.
-- **The judge:** frozen before the runs, with its checker pinned at `28ec7ad`.
+- **The judge:** frozen before the runs, with its checker pinned at `1fb9085`.
   - **Automatic part:**
     - the judge's dense offer swept from 280 to 800 px;
     - both popovers by hover, moving in, leaving, tap, tap elsewhere, focus and Escape;

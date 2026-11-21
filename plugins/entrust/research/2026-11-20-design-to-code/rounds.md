@@ -658,7 +658,7 @@ gets the fixes to what 22 added.
   - each warning is named once, with every story that shows it.
 
 `node --test evals/design-to-code.test.mjs`: 85 passed; the skill checks: 8 of 8. The pages are frozen as
-[drafts/21.1-v21.1.md](drafts/21.1-v21.1.md) (commit `d70839e`) and [drafts/22.1-v22.1.md](drafts/22.1-v22.1.md).
+[drafts/21.1-v21.1.md](drafts/21.1-v21.1.md) (commit `d2b7ff3`) and [drafts/22.1-v22.1.md](drafts/22.1-v22.1.md).
 
 ## Server card with Sonnet: drafts 21.1 and 22.1 side by side
 
