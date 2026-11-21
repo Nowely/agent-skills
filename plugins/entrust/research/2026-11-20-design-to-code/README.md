@@ -187,3 +187,12 @@ the builder's first checkpoint, independent review, one correction round, the ow
 checker defects and available role costs. The [visual report](31-terra-first-visual.html) embeds each principal
 reference beside the corresponding result and labels contextual comparisons. This is one case, not proof of a
 general improvement; no further product correction is in scope.
+
+
+## Cost and iteration-speed forensics
+
+[The detailed cost and process analysis](32-efficiency-forensics.md) reconstructs the first checkpoint, reviewer,
+coordinator, permission helpers, a prior full-task run and a narrow sample of the original product workflow. It
+corrects record 31's permission-helper accounting for two visible compaction requests, keeps the original record as
+history, and separates measured facts from speedup hypotheses. Anonymised machine-readable stage, response, phase,
+round and analysis-cost data accompany it. No new UI implementation was run.

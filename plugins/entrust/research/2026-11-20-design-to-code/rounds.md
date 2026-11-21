@@ -748,3 +748,14 @@ checker code. No skill or product code was changed in this reporting round.
 The [full run, cost, provenance and consolidated analysis](31-terra-real-task.md) and its
 [paired visual report](31-terra-first-visual.html) preserve the conditions and limits. The outcome is one case, not a
 measured success rate.
+
+
+## Forensics: first-checkpoint cost and iteration speed
+
+A transcript audit reconstructed the existing draft-27 first checkpoint and compared the recorded process with the
+prior full-task run. Two visible permission-helper compaction requests were absent from record 31's `token_count`
+subtotal; [the forensic record](32-efficiency-forensics.md) gives both original and corrected definitions without
+rewriting the frozen run. It also separates call intervals from wall time, image serialization from model tokens,
+initial checkpoint from independent verdict/correction, and measurable outcomes from untested speedup hypotheses.
+Existing frozen controls, small model probes and full implementations answer different questions. No new model
+implementation, checker run or skill change was made in this research round.
