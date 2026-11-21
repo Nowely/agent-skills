@@ -196,3 +196,5 @@ coordinator, permission helpers, a prior full-task run and a narrow sample of th
 corrects record 31's permission-helper accounting for two visible compaction requests, keeps the original record as
 history, and separates measured facts from speedup hypotheses. Anonymised machine-readable stage, response, phase,
 round and analysis-cost data accompany it. No new UI implementation was run.
+- [Five more iterations](33-five-iterations-plan.md): the plan written before them, with what each must show and when
+  to stop.
