@@ -440,7 +440,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     }
     const left = delta - e.amount;
     const inherited = !own.has(`${axis}\u0000${p.index}`);
-    const base = { expected: shown(expected), actual: shown(actual), delta, inherited };
+    const base = { expected: shown(expected), actual: shown(actual), delta, inherited, own: own.get(`${axis}\u0000${p.index}`)?.step ?? 0 };
     if (!over(left)) {
       if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)) });
       return;
@@ -470,6 +470,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     }
     if (l.font?.color && m.font?.color && !sameColour(l.font.color, m.font.color)) add(label, "font", `color ${l.font.color}`, `color ${m.font.color}`);
   });
+  // The type's size, read from ink heights: the page's text against the design's, the same string. Another font
+  // changes a cap height by a few per cent; a size of another class changes it by more. Recorded for every frame.
+  const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height }));
+  const typeRatio = heights.length >= 3 ? heights.map((h) => h.ratio).sort((a, b) => a - b)[Math.floor(heights.length / 2)] : null;
   // Named boxes from an image: the page's texts are as much wider as its font is. One wider beyond that is a larger
   // size or more text: a finding a font cannot excuse.
   if (boxesSpec && fontRatio) {
@@ -536,7 +540,10 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const unexpected = all.filter(extra).map((i) => i.landmark);
   // Named boxes: a moderate offset the system explains is a note, for the owner to see, not a finding to excuse.
   // Within the band an offset is a note, whether or not the ledger proposes it: it needs no decision.
-  const note = (i) => ["x", "y"].includes(i.property) && !i.gap && ["fail", "pending"].includes(i.status) && Math.abs(i.delta ?? 0) <= band;
+  // A drift is a note too: carried from the pieces before it (a wider font, the kit's token) up to twice the band,
+  // while its own step stays within it. A piece that moves by itself past the band, or a drift past twice it, is not.
+  const note = (i) => ["x", "y"].includes(i.property) && !i.gap && ["fail", "pending"].includes(i.status)
+    && (Math.abs(i.delta ?? 0) <= band || (Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band));
   const notes = all.filter((i) => !extra(i) && note(i));
   const classified = all.filter((i) => !extra(i) && !note(i));
   const failing = classified.filter((i) => i.status === "fail");
@@ -555,6 +562,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
     frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
+    ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map((h) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
     ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, delta: round(i.delta) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
@@ -608,7 +616,7 @@ export function causes(placed, spec, measured, tolerance = 1) {
     record(p, "y", above, stepY, "the top of the root");
     // Centred text sits where its box puts it, not after a neighbour: it is read against the root alone.
     const rightward = p.align === "right";
-    const beside = p.align === "center" ? undefined : placed.filter((q) => q !== p && overlapY(q.l.box, b) && (rightward ? q.l.box.x >= right(p) - 1 : right(q) <= b.x + 1))
+    let beside = p.align === "center" ? undefined : placed.filter((q) => q !== p && overlapY(q.l.box, b) && (rightward ? q.l.box.x >= right(p) - 1 : right(q) <= b.x + 1))
       .sort((q, r) => (rightward ? q.l.box.x - r.l.box.x : right(r) - right(q)))[0];
     // A neighbour's shift in this landmark's frame of reference: its left edge for a left chain, else its right.
     // A left chain follows the neighbour's left edge (a column) or its right edge (a gap after it), measured from the
@@ -620,7 +628,13 @@ export function causes(placed, spec, measured, tolerance = 1) {
       const fromRight = (beside.m.box.x + beside.m.box.width - measured.root.width) - (beside.l.box.x + beside.l.box.width - spec.frame.width);
       [stepX, viaX] = rightward ? best(p.dx, fromRight, fromRight - beside.dw) : best(p.dx, fromLeft, fromLeft + beside.dw);
     } else stepX = p.dx;
-    p.side = beside ? { index: beside.index, term: viaX ? "width" : null, sign: rightward ? -1 : 1 } : null;
+    // A line the design stacks under another on the same left edge (a column's second line) follows that column,
+    // when that reads a smaller step than its row or the root.
+    if (above && p.align !== "center" && Math.abs(above.l.box.x - b.x) <= 1) {
+      const columnStep = (p.m.box.x - b.x) - (above.m.box.x - above.l.box.x);
+      if (Math.abs(columnStep) < Math.abs(stepX)) { stepX = columnStep; viaX = null; beside = above; }
+    }
+    p.side = beside ? { index: beside.index, term: viaX ? "width" : null, sign: rightward && beside !== above ? -1 : 1 } : null;
     if (viaX) size(beside, "width", beside.dw);
     record(p, "x", beside, stepX, p.align === "center" ? "the root" : rightward ? "the right edge of the root" : "the left edge of the root");
   }
@@ -889,7 +903,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
-    if (f.notes) out.push(`Moderate offsets (${f.band} px or less, the system's, not findings): ${f.notes.map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
+    if (f.notes) out.push(`Moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before; the system's, not findings): ${f.notes.map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
     if (images.length) out.push(`Images: ${images.join(", ")}.`);
@@ -952,7 +966,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
     if (f.imageOnly) out.push(`  ${imageOnlyNote(f)}`);
     if (f.uncovered) out.push(`  ${uncoveredNote(f)}`);
-    if (f.notes) out.push(`  moderate offsets (${f.band} px or less, the system's, not findings): ${f.notes.length}, at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px`);
+    if (f.notes) out.push(`  moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before; the system's, not findings): ${f.notes.length}, at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px`);
     // Where to start fixing: only for a frame with a finding, never for notes alone.
     const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
@@ -1024,7 +1038,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
     const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.skipped && `skipped pieces: ${f.skipped.join("; ")}`,
-      f.notes && `${f.notes.length} moderate offsets of ${f.band} px or less, at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px (${f.notes.slice(0, 4).map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}${f.notes.length > 4 ? ", …" : ""})`,
+      f.notes && `${f.notes.length} moderate offsets (${f.band} px or less, or a drift to ${2 * f.band} carried from the pieces before), at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px (${f.notes.slice(0, 4).map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}${f.notes.length > 4 ? ", …" : ""})`,
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);

@@ -144,7 +144,9 @@ test("an offset is traced to where it starts, column by column, and those below 
   assert.equal(r.pass, false);
   assert.deepEqual(r.causes.map((c) => [c.after, c.before, c.step]), [["SKU", "New", 16], ["1 499 €", "Buy", -14]]);
   const y = Object.fromEntries(r.issues.filter((i) => i.property === "y").map((i) => [i.landmark, i.inherited]));
-  assert.deepEqual(y, { New: false, Title: true, Buy: false });
+  assert.deepEqual(y, { New: false, Buy: false });
+  // What "New" carries down is a drift, its own step none: a note (draft 28).
+  assert.ok(r.notes?.some((n) => n.landmark === "Title" && n.property === "y"), JSON.stringify(r.notes));
 });
 
 test("the root comes first: a narrower root is its own finding, not one of every text anchored right", () => {
@@ -1452,8 +1454,8 @@ test("v23: a platform entry cannot excuse where a thing sits or whether it shows
   for (const property of ["x", "y", "presence", "line"]) assert.match(faults({ landmark: "Price", property, category: "platform", status: "proposed", reason: "the font" }), /a platform difference/, property);
   assert.equal(faults({ landmark: "Price", property: "width", category: "platform", status: "proposed", reason: "the font" }), "");
   const f = smallFrame('<span style="margin-left:9px">A</span> <span>B</span> <span>C</span> <span>D</span>');
-  // 19 px, past the band, where only an owner-level cause may excuse an offset.
-  f.write('<main><span style="margin-left:28px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
+  // 30 px, past twice the band, so what B, C and D carry from A is no drift note either.
+  f.write('<main><span style="margin-left:39px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["A", "B", "C", "D"], property: "x", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }]));
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
@@ -1622,7 +1624,7 @@ test("v26: a moderate offset is a note, also two of them the other way round; a 
   let r = boxCase(CARD(), CARD({ col: 158 }), 420);
   assert.equal(r.frame.verdict, "pass", r.stdout);
   assert.ok(r.frame.notes?.some((n) => n.landmark === "32 ядер" && n.property === "x"), JSON.stringify(r.frame.notes));
-  assert.match(r.stdout, /moderate offsets \(12 px or less, the system's, not findings\): \d+/);
+  assert.match(r.stdout, /moderate offsets \(12 px or less, or a drift to 24 carried from the pieces before; the system's, not findings\): \d+/);
   // A proposal for it changes nothing: it needs no decision, and holds nothing pending.
   r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
   assert.equal(r.frame.verdict, "pass", r.stdout);
