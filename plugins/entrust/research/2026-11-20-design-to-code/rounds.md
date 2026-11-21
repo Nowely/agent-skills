@@ -571,3 +571,31 @@ A read-only audit of the same five-iteration turn found 23 linked local usage jo
 ## Post-series: fifth-submission postmortem and iteration 6 proposal
 
 A new [postmortem](21-fifth-submission-postmortem.md) consolidates the fifth submission’s overlap, test-expectation, state coverage and interaction evidence, alongside positive package and honest-handoff observations. A separate [iteration 6 plan](22-sixth-iteration-plan.md) proposes a completion boundary and independent first-submission assessment, compares an optional early prober, and records the limits of the earlier prober pilot. This record makes no skill edit, sixth implementation, new verdict or claim of causal effectiveness.
+
+## Draft 21: the five iterations' misses as gates and inputs
+
+A fresh Fable analysis of the five Terra iterations, with the coordinator, supported a partial conclusion. The drafts
+had moved from enforced evidence to optional judgement, and the listing case and the fifth run's overlap and popups
+followed that move; the library task's packaging miss did not, and v14 also failed there. Draft 21 keeps v20's
+short page and its early packaged-consumer check, and restores as gates what the misses show:
+
+- A complete check needs a sweep with a dense story, unless `design.json` gives `"static"` with the reason. A
+  story on a frame's own URL needs a setup that brings other data.
+- Each overlay frame (one with its own root, or one its setup hovers) needs a passing journey that opens the same
+  element and expects something hidden. This holds whatever the product's ARIA markup.
+- Each line of the owner's past returns (`.design/returns.md`) is quoted in an acceptance row.
+- A frame on which most design texts are missing is named as rendering other data.
+- The evidence file opens with the handover status, and a `fail` is said not to be a state to hand over in.
+
+On the page:
+
+- references are listed with their roles;
+- owner decisions given with the task go in the ledger as accepted, naming where they were decided;
+- expected values name their source;
+- the work is ordered as target frames through the real entry point, then states and journeys, then the dense
+  story;
+- the submission starts with the evidence file's status.
+
+`evals/design-to-code/harness/arm.mjs` prepares an arm from a skill commit and freezes it after the first handoff,
+recording the status the worker handed over on. `node --test evals/design-to-code.test.mjs`: 81 passed. The page is
+frozen as [drafts/21-v21.md](drafts/21-v21.md).
