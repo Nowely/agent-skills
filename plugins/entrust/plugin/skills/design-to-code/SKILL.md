@@ -93,14 +93,15 @@ visible and usable. Account for intentional overlays and verify that the expecte
 For UI built from frames, [the checker](references/check.md) is how you show the work is done. Its complete check
 needs a frame per target state on the frame's own data (targets in `frames/`, context images in `context/`), a sweep
 with one dense story (a legal combination of the longest values and every conditional action), and a journey that
-opens and closes each overlay or opener (a popup's frame names the popup as its root). A static page or a screenshot-only task says why in `design.json`
-(`"static"`) instead of sweeping. Trace an offset to its first cause, fix it and check every frame again; when two
+opens and closes each overlay or opener (a popup's frame names the popup as its root). A page with one layout at one
+width says why in `design.json` (`"static"`) instead of sweeping; frames at several widths are always swept, whether
+they come from Figma or screenshots. Trace an offset to its first cause, fix it and check every frame again; when two
 rounds in a row bring no new lowest score, record each remaining difference as `proposed` with its reason, or ask.
-With screenshots alone, the check compares their ink by place, so a shifted column, a swapped icon or a moved row is
-a finding whatever the font. In another font, compare what the words say by eye, and state any uncertainty about
-scale. A font or renderer explains glyphs and their sizes, never where something sits or whether it shows. A
-deviation proposed because the design cannot be built names the construct tried and what the check measured. Only
-the owner accepts a proposed deviation.
+With screenshots alone, the check compares their ink by place, so a shifted column, a moved icon, a missing badge or
+a moved row is a finding whatever the font. What the words say is for the eye: read each frame's `words.png`, and
+state any uncertainty about scale. A font or renderer explains glyphs and their sizes, never where something sits or whether it shows. A
+deviation proposed because the design cannot be built names, in its `reason`, the construct tried and what the check
+measured. Only the owner accepts a proposed deviation.
 
 ## Verify and hand over
 

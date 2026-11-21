@@ -31,8 +31,8 @@ It writes `handoff.md` and the gallery. The following evidence contributes to th
   names it (`Layout model`, `Модель раскладки`) with at least one table row below the header, or one list item. A
   component with one line needs one row.
 - The model's lines in `sweep.lines`, unless the page is static: at least one, each shown somewhere.
-- A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason (a fixed page,
-  a screenshot-only task). A story on a frame's own URL needs a `setup` with a step other than `wait` that brings its other data or state; verify
+- A width sweep with at least one dense story, unless `design.json` gives `"static"` with the reason: a page with one
+  layout at one width. Frames at several widths cannot be static, whatever their source. A story on a frame's own URL needs a `setup` with a step other than `wait` that brings its other data or state; verify
   the combination in its capture. The script cannot tell whether a story is dense: the acceptance record names what
   it adds.
 - Each line of the owner's past returns, `.design/returns.md` beside the task's folder (or `"returns"` in
@@ -75,7 +75,7 @@ Paths are relative to the file.
 | `ledger` | the ledger's file, usually `deviations.json` |
 | `frames[]` | `name`, `width` (CSS px), `spec`, `reference`; optionally its own `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `journeys` | what a user does and what should follow, run by a check of every frame: [Journeys](#journeys) |
-| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the layout switches, by the design or your layout model, e.g. `[640, 420]`, each measured a pixel either side; `lines`: the layout model's lines, `[{ "name": "top row, wide", "pieces": [".sku", ".specs", { "selector": ".ram", "wraps": true }, ".price"], "from": 700, "when": "[data-mode=wide]" }]`: at each width in `from`–`to` (both optional), while `when` (optional) matches a visible element, the pieces shown (every visible match of each selector, two different elements at least) share a row (their first lines overlap), stand left to right in the order listed, and each takes one line unless it `wraps`; a break is a `line` finding on the frames' page and every story; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
+| `sweep` | `from`, `to`, `step` (default 8) in px; `switches`: the widths where the layout switches, by the design or your layout model, e.g. `[640, 420]`, each measured a pixel either side; `lines`: the layout model's lines, `[{ "name": "top row, wide", "pieces": [".sku", ".cpu", { "selector": ".ram", "wraps": true }, ".price"], "when": "[data-mode=wide]" }]`. At each width in `from`–`to` (sweep widths, both optional) while `when` (optional) matches a visible element, the pieces shown share a row (their first lines overlap), stand in the order listed (in the reading direction; the matches of one selector in any order), and each keeps its texts on one line unless it `wraps`. A piece shown is every visible match of its selector in the flow, not clipped away; two different elements at least make a line. A break is a `line` finding on the frames' page and every story. A piece is one item of the row: `wraps` is for an item that stacks its own text (a value over its type), not for a group whose items should be pieces. Where the layout switches with its content (longer data switches wider), name the mode with `when` rather than a width; `align`: groups that must line up, `{ "selector": ".price", "edge": "right" }` (left, right, center, top); `setup`; `stories`: additional states or pages swept the same way, `[{ "name": "dense", "url": "…", "setup": [] }]` |
 
 `setup` is a list of steps run before measuring, in order: `{ "click": "<selector>" }`, `hover`, `focus`, `tap` (the
 page is then opened for touch), `{ "move": "<selector>" }` or `{ "move": [x, y] }` (the pointer, in page px),
@@ -138,18 +138,35 @@ says which texts truncate. Overlaps and texts outside the root are measured on w
 clips it. The pixel mask keeps the text
 findings from being counted again as regions.
 
-**A reference that is an image alone** (a spec with no text landmarks) is read as ink. The pixels far from the
-paper are grouped into runs: a value, a label, an icon with its text. Each run in the design is paired with the
-nearest run of like shape on the page, after the page's widths are scaled by the typical width ratio, since another
-font is wider or narrower throughout. Each pair is compared by place, by the edge that moved least: a right-aligned
-price keeps its right edge in a wider font. An offset over 4 px (or the tolerance, if larger) is an `x` or `y`
-finding named by the page's text there. A run without a pair is a `presence` finding. Where one side joins what the
-other draws apart (a unit after its value, a closer word space), the runs are compared by their joint box. In the
-same font (the widths agree) the glyphs inside each pair compare too, so a changed word is a `text` finding. In
-another font, what the words say is listed under what the script did not check. The runs are left out of the pixel
-comparison, so a region there is something other than text: a background, a border, an image. A frame compared
-this way can pass. Limit: a left-aligned text shifted by exactly its change of width keeps its right edge and reads
-as aligned. In practice this matters only between fonts of very different width.
+**A reference that is an image alone** (a spec with no text landmarks) is read as ink, the pixels far from the paper:
+
+- **Runs.** Neutral and coloured ink are grouped apart into runs: a value, a label, an icon with its text. A coloured
+  icon stays apart from its grey label.
+- **Boxes.** A large filled shape (a button, a pill, a dark card, a photo) and an outline around other ink are boxes,
+  compared by place and size. What is drawn on a filled box is read from its holes; a photo is not read inside.
+- **Pairing.** Each design run is paired with the page's run of like place and shape, after the page's widths are
+  scaled by the typical width ratio (another font is wider or narrower throughout). One run spanning several on the
+  other side is compared with them as one (a unit after its value, a closer word space).
+- **Place.** It is read the way that moved least: against the root's left edge, right edge or centre (a
+  right-aligned price keeps its right edge), or as the gap to the pair before it in its row or above it. A run that a
+  wider word before it pushed along is not a finding of its own; the first changed gap is.
+
+What is reported:
+
+- **An offset** over 4 px (or the tolerance, if larger) is an `x` or `y` finding.
+- **A width beyond the font's ratio** (over 8 px and 15 %) is a `presence` finding: a part added or missing.
+- **A box of another size** is a `width` or `height` finding.
+- **Ink without a pair** is a `presence` finding: moved more than about 40 px, missing, or added.
+
+A finding is named by the page's text there (cut at 40 characters), or as `ink at x, y (w×h)` in design coordinates;
+`page ink at` uses page coordinates, which move as the page changes, so a ledger entry names the text where it can.
+
+Text left this way is out of the pixel comparison; icons and boxes stay in it, so a changed colour is a region. What
+the words say is not compared: each frame's `words.png` sets every paired run of the design beside the page's, to read.
+A frame compared this way can pass, with its words listed under what the script did not check.
+
+Limit: a left-aligned text shifted by exactly its change of width keeps its right edge and reads as aligned; this
+matters only between fonts of very different width.
 
 ## The ledger
 
@@ -158,14 +175,14 @@ as aligned. In practice this matters only between fonts of very different width.
 | Field | Meaning |
 |---|---|
 | `landmark` | a design text or a list of them, a selector, `root`, or `*` |
-| `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `covered`, `outside`, `align`, `resize`, `switch`, or `*` |
+| `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `covered`, `outside`, `align`, `resize`, `switch`, `line`, or `*` |
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px; it covers the differing areas inside it |
 | `frame` | a frame's name or a list of names; absent or `*` for all |
 | `max` | the largest difference in px the entry covers, at each width in the sweep; only a difference with a size (a position, a size, an overflow, a cut, an overlap, an alignment spread, a resize) can be covered, never a layout switch or a covered control; absent, any |
 | `actual` | for `text`: the text the page shows instead of the design's; the check looks for this one. A `text` entry names one design text |
 | `category` | `design-error` (the design is wrong: a word form, an off-scale spacing), `missing-state` (no frame shows it), `platform` (the browser or font renders it so: it changes glyphs and their sizes, so it may cover `font`, `width`, `height`, `region` or `overflow`, never where a thing sits, whether it shows, what it says or what it runs into), `system` (the UI kit's component or token differs from the drawing), `owner` (asked for), `ux` (an improvement) |
 | `status` | `accepted`: excused, set only by the owner, with `decidedBy`; `proposed`: written by you, shown as pending until the owner decides; a pending-only check does not pass. An entry the owner refuses is deleted and the difference fixed |
-| `reason` | why, in a sentence the owner can judge |
+| `reason` | why, in a sentence the owner can judge; for "cannot be built", the construct tried and what the check measured |
 | `decidedBy`, `options` | who accepted it; for a proposed entry, the options and what each costs |
 
 An entry excuses a cause and what it carries: an accepted badge 3 px lower also excuses the 3 px every landmark

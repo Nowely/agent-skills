@@ -80,10 +80,11 @@ changed. The checker measures the supplied story and cannot determine whether th
 
 Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
 assumption and compare at a consistent size. When using the checker with known frame dimensions, make a spec with the reference's frame dimensions and `landmarks: []`.
-The check then reads both images as ink ([check.md](check.md#frames)): each run of text or icon in the design is
-paired with the page's and compared by place, so a shifted column, a swapped icon or a row that moved is a finding
-whatever the font. In the same font the glyphs compare too. In another font, what the words say is for the eye:
-inspect it, with typography and states, against the screenshot, and report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do
+The check then reads both images as ink ([check.md](check.md#frames)): each run of text or icon, and each button,
+pill or photo, in the design is paired with the page's and compared by place, so a shifted column, a moved icon, a
+missing badge or a row that moved is a finding whatever the font. What the words say is for the eye: read each
+frame's `words.png`, which sets the design's runs beside the page's, and inspect typography and states against the
+screenshot. Report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do
 not invent Figma metadata or imply an assumed scale is measured.
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes

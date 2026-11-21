@@ -369,11 +369,11 @@ const check = (dir, ...flags) => {
 // A fixed-size frame keeps changes to text, pixels and the state that opens the frame independent.
 // Two transparent markers in every small page's root, so the fixture's sweep has a line of the model to measure.
 const LINES = [{ name: "markers", pieces: [".row-a", ".row-b"] }];
-const MARKERS = '<b class="row-a" style="position:absolute;top:0;left:0;width:1px;height:1px"></b><b class="row-b" style="position:absolute;top:0;left:2px;width:1px;height:1px"></b>';
+const MARKERS = '<b class="row-a" style="display:inline-block;width:1px;height:1px;vertical-align:top"></b><b class="row-b" style="display:inline-block;width:1px;height:1px;vertical-align:top"></b>';
 function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   const dir = tmp(), page = path.join(dir, "page.html"), config = path.join(dir, "design.json");
   const markers = "<b class=row-a></b><b class=row-b></b>"; // no quotes: a test may put <main> inside an attribute
-  const markup = (html) => `<!doctype html><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}.row-a,.row-b{position:absolute;top:0;width:1px;height:1px}.row-a{left:0}.row-b{left:2px}</style>${html.replace(/<main([^>]*)>/g, `<main$1>${markers}`)}`;
+  const markup = (html) => `<!doctype html><style>body{margin:0}main{position:relative;width:300px;height:80px;background:white;font:20px/24px monospace}.row-a,.row-b{display:inline-block;width:1px;height:1px;vertical-align:top}</style>${html.replace(/<\/main>/g, `${markers}</main>`)}`;
   const write = (html) => fs.writeFileSync(page, markup(html));
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
@@ -598,7 +598,7 @@ test("a missing reference image makes the visual check incomplete", browser, () 
   assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="incomplete">incomplete</);
 });
 
-test("an image-only reference is compared by its ink: in place, and glyph by glyph in the same font", browser, () => {
+test("an image-only reference is compared by its ink in place; what its words say is left to a sheet for the eye", browser, () => {
   const dir = variant();
   const specFile = path.join(dir, "design/720/spec.json");
   const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
@@ -608,15 +608,16 @@ test("an image-only reference is compared by its ink: in place, and glyph by gly
   assert.equal(frame.imageOnly, true);
   assert.equal(frame.verdict, "pass", same.stdout);
   assert.equal(frame.ink.pairs, frame.ink.design, JSON.stringify(frame.ink));
-  assert.equal(frame.ink.glyphs, true, "the same font: glyphs compared too");
-  assert.match(same.stdout, /image-only reference: ink compared by place, \d+ of \d+ design runs paired, glyphs too/);
+  assert.match(same.stdout, /image-only reference: ink compared by place \(\d+ of \d+ design runs and \d+ of \d+ boxes paired; the page's text 1× as wide\); what the words say, read in words\.png/);
+  assert.ok(fs.existsSync(path.join(dir, "out", frame.images.words)), "the words sheet is written");
+  // A longer word is a part added, by its width against the font's.
   const page = path.join(dir, "page.html");
-  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">New<", ">Old<"));
-  const changed = check(dir, "--frame", "720");
-  assert.equal(changed.status, 1, changed.stdout + changed.stderr);
-  assert.ok(changed.result.frames[0].issues.some((i) => i.property === "text" && i.via === "ink" && /Old/.test(i.landmark)), JSON.stringify(changed.result.frames[0].issues));
+  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">New<", ">Brand new<"));
+  const longer = check(dir, "--frame", "720");
+  assert.equal(longer.status, 1, longer.stdout);
+  assert.ok(longer.result.frames[0].issues.some((i) => i.via === "ink" && i.status === "fail"), JSON.stringify(longer.result.frames[0].issues));
   // Outside the text an image-only difference still fails.
-  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">Old<", ">New<").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
+  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">Brand new<", ">New<").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
   const media = check(dir, "--frame", "720");
   assert.equal(media.status, 1, media.stdout);
   assert.ok(media.result.frames[0].issues.some((i) => i.status === "fail"));
@@ -1432,7 +1433,6 @@ test("v23: in another font an image-only frame matches by place, a shifted colum
   f.write(`<main>${body(150, "serif")}</main>`);
   let r = check(f.dir, "--frame", "frame");
   let frame = r.result.frames[0];
-  assert.equal(frame.ink.glyphs, false, JSON.stringify(frame.ink));
   assert.deepEqual(frame.issues.filter((i) => i.via === "ink"), [], "another font alone moves nothing");
   f.write(`<main>${body(165, "serif")}</main>`);
   r = check(f.dir, "--frame", "frame");
@@ -1441,7 +1441,7 @@ test("v23: in another font an image-only frame matches by place, a shifted colum
   // Read by the edge that moved least, the 15 px shift shows as a little less in a narrower font.
   assert.ok(moved && /Col 7/.test(moved.landmark) && moved.delta >= 10, JSON.stringify({ ink: frame.ink, issues: frame.issues }));
   check(f.dir);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /what the words say in frame: an image-only reference in another font/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /what the words say in frame: an image-only reference; read them side by side in each frame's words\.png/);
 });
 
 test("v23: a line of the model holds its pieces in one row, in order, unwrapped, where its range and mode say", browser, () => {
@@ -1494,4 +1494,66 @@ test("v23: a platform entry cannot excuse where a thing sits or whether it shows
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /## Broad excuses\n\n- one entry covers 4 findings: A, B, C, D x — the kit's padding \(system, proposed\)/, handoff);
   assert.ok(handoff.indexOf("## Broad excuses") < handoff.indexOf("## Pictures to look at first"));
+});
+
+// ------------------------------------------------------------------ draft 23.1: the critic's and verifier's cases
+
+// A design page snapshot as an image alone, then the page swapped and one frame checked.
+function inkCase(design, page, width = 320) {
+  const dir = tmp(), config = path.join(dir, "design.json"), file = path.join(dir, "page.html");
+  const wrap = (body) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fff}</style>${body}`;
+  fs.writeFileSync(file, wrap(design));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", frames: [{ name: "frame", width, spec: "spec.json", reference: "ref.png" }] }));
+  fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+  const snap = cli("snapshot", config, "--images", "--scale", "2");
+  assert.equal(snap.status, 0, snap.stderr);
+  const spec = path.join(dir, "spec.json");
+  fs.writeFileSync(spec, JSON.stringify({ ...JSON.parse(fs.readFileSync(spec, "utf8")), landmarks: [] }));
+  fs.writeFileSync(file, wrap(page));
+  const r = check(dir, "--frame", "frame");
+  return { ...r, frame: r.result.frames[0], ink: r.result.frames[0].issues.filter((i) => i.via === "ink") };
+}
+
+test("v23.1: ink sees what sits on a filled box, what is missing beside a title, and not a whole row a wider font pushes along", browser, () => {
+  const button = (bg, top = 72) => `<main style="position:relative;width:320px;height:120px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:12px;font-weight:600">Server BA-2026</div>
+<button style="position:absolute;left:16px;right:16px;top:${top}px;height:36px;border:0;border-radius:8px;background:${bg};color:#fff;font:600 14px/18px sans-serif">Order now</button></main>`;
+  let r = inkCase(button("#2563eb"), button("#2563eb"));
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  r = inkCase(button("#2563eb"), button("#dc2626"));
+  assert.ok(r.frame.issues.some((i) => i.property === "region" && i.status === "fail"), "a changed fill is a region");
+  r = inkCase(button("#1f2937"), button("#1f2937", 84));
+  assert.ok(r.ink.some((i) => i.property === "y"), `the button moved: ${JSON.stringify(r.ink)}`);
+  const title = (badge) => `<main style="position:relative;width:320px;height:60px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:16px;display:flex;gap:8px;align-items:center"><b>Server BA-2026</b>${badge ? '<span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:9px">New</span>' : ""}</div></main>`;
+  r = inkCase(title(true), title(false));
+  assert.ok(r.ink.some((i) => i.property === "presence"), `the badge is missing: ${JSON.stringify(r.ink)}`);
+  const row = (family) => `<main style="position:relative;width:520px;height:60px;font:14px/18px ${family};color:#111">
+<div style="position:absolute;left:16px;top:20px;display:flex;gap:20px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>2 × 1 TB NVMe</span><span>10 Gbit/s</span><span>Frankfurt</span></div></main>`;
+  r = inkCase(row("sans-serif"), row("serif"), 520);
+  assert.deepEqual(r.ink.filter((i) => i.property === "x"), [], "a row a wider font pushes along keeps its gaps");
+});
+
+test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading that wraps is, a right-to-left row keeps its order, and a bad selector is named", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html, lines, extra = {}) => {
+    fs.writeFileSync(path.join(f.dir, "row.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{display:flex;gap:12px;padding:8px}.title{font-weight:600}.price{margin-inline-start:auto;white-space:nowrap}</style>${html}`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, ...extra, sweep: { from: 240, to: 400, step: 80, lines: [...LINES, ...lines], stories: [{ name: "row", url: "row.html" }] } }));
+    return check(f.dir);
+  };
+  const line = [{ name: "top row", pieces: [".title", ".price"] }];
+  let r = run('<main><div class="title">Server BA</div><div class="price" style="position:relative">1 234 € <span style="position:absolute;bottom:100%;right:0;opacity:0;white-space:nowrap">Billed yearly</span></div></main>', line);
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "line"), [], r.stdout);
+  r = run('<main><div class="title"><h3 style="margin:0;font-size:14px">Dedicated server with NVMe storage and backups</h3></div><div class="price">1 234 €</div></main>', line);
+  assert.ok(r.result.sweep.issues.some((i) => i.property === "line" && /“\.title” wraps/.test(i.actual)), r.stdout);
+  r = run('<main dir="rtl"><span class="tag">NVMe</span><span class="tag">10G</span><span class="price">1 234 €</span></main>', [{ name: "tags", pieces: [".tag", ".price"] }]);
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.property === "line"), [], r.stdout);
+  r = run('<main><div class="title">A</div><div class="price">B</div></main>', [{ name: "bad", pieces: ["text=A", ".price"] }]);
+  assert.match(r.stdout, /the line bad: .*use a CSS selector/);
+  assert.ok(fs.existsSync(path.join(f.dir, "out/report.md")), "the check still writes its report");
+  // "static" is for one width.
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: undefined, static: "screenshots only", frames: [...cfg.frames, { ...cfg.frames[0], name: "narrow", width: 200 }] }));
+  assert.match(check(f.dir).stdout, /"static" is for a page at one width; these frames have 2 widths/);
+  assert.match(ledgerFaults([{ landmark: "*", property: "*", category: "platform", status: "accepted", decidedBy: "owner", reason: "font" }]).join(), /not every property/);
 });
