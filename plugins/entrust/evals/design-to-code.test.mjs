@@ -598,30 +598,6 @@ test("a missing reference image makes the visual check incomplete", browser, () 
   assert.match(fs.readFileSync(path.join(dir, "out/gallery.html"), "utf8"), /<h2>720 <span class="incomplete">incomplete</);
 });
 
-test("an image-only reference is compared by its ink in place; what its words say is left to a sheet for the eye", browser, () => {
-  const dir = variant();
-  const specFile = path.join(dir, "design/720/spec.json");
-  const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
-  fs.writeFileSync(specFile, JSON.stringify({ ...spec, landmarks: [] }));
-  const same = check(dir, "--frame", "720");
-  const frame = same.result.frames[0];
-  assert.equal(frame.imageOnly, true);
-  assert.equal(frame.verdict, "pass", same.stdout);
-  assert.equal(frame.ink.pairs, frame.ink.design, JSON.stringify(frame.ink));
-  assert.match(same.stdout, /image-only reference: ink compared by place \(\d+ of \d+ design runs and \d+ of \d+ boxes paired; the page's text 1× as wide\); what the words say, read in words\.png/);
-  assert.ok(fs.existsSync(path.join(dir, "out", frame.images.words)), "the words sheet is written");
-  // A longer word is a part added, by its width against the font's.
-  const page = path.join(dir, "page.html");
-  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">New<", ">Brand new<"));
-  const longer = check(dir, "--frame", "720");
-  assert.equal(longer.status, 1, longer.stdout);
-  assert.ok(longer.result.frames[0].issues.some((i) => i.via === "ink" && i.status === "fail"), JSON.stringify(longer.result.frames[0].issues));
-  // Outside the text an image-only difference still fails.
-  fs.writeFileSync(page, fs.readFileSync(page, "utf8").replace(">Brand new<", ">New<").replace("</style>", ".media { width: 72px; height: 72px; }\n</style>"));
-  const media = check(dir, "--frame", "720");
-  assert.equal(media.status, 1, media.stdout);
-  assert.ok(media.result.frames[0].issues.some((i) => i.status === "fail"));
-});
 
 test("a font the page names first but cannot draw its text with is reported, and findings stay visible", browser, () => {
   const r = check(variant(".price { font-family: 'Design Font Nobody Has', 'DejaVu Sans', sans-serif; font-size: 20px; }"), "--frame", "720");
@@ -1423,26 +1399,6 @@ test("v22: a swept page needs a layout model in review.md; a header alone is not
 
 // ------------------------------------------------------------------ draft 23: ink, lines, and a narrower ledger
 
-test("v23: in another font an image-only frame matches by place, a shifted column is an offset, and the words are left to the eye", browser, () => {
-  // Two fonts of about the same width, as the design's and the kit's are. A shift that equals a text's change of width
-  // would keep its far edge in place, and read as alignment: the limit of reading place by the edge that moved least.
-  const body = (col, family) => `<div style="font-family:${family}"><span style="position:absolute;left:10px;top:10px">Ready</span><span style="position:absolute;right:10px;top:10px">1 250 €</span><span style="position:absolute;left:${col}px;top:44px">Col 7</span></div>`;
-  const f = smallFrame(body(150, "sans-serif"));
-  const spec = path.join(f.dir, "0.json");
-  fs.writeFileSync(spec, JSON.stringify({ ...JSON.parse(fs.readFileSync(spec, "utf8")), landmarks: [] }));
-  f.write(`<main>${body(150, "serif")}</main>`);
-  let r = check(f.dir, "--frame", "frame");
-  let frame = r.result.frames[0];
-  assert.deepEqual(frame.issues.filter((i) => i.via === "ink"), [], "another font alone moves nothing");
-  f.write(`<main>${body(165, "serif")}</main>`);
-  r = check(f.dir, "--frame", "frame");
-  frame = r.result.frames[0];
-  const moved = frame.issues.find((i) => i.via === "ink" && i.property === "x");
-  // Read by the edge that moved least, the 15 px shift shows as a little less in a narrower font.
-  assert.ok(moved && /Col 7/.test(moved.landmark) && moved.delta >= 10, JSON.stringify({ ink: frame.ink, issues: frame.issues }));
-  check(f.dir);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /what the words say in frame: an image-only reference; read them side by side in each frame's words\.png/);
-});
 
 test("v23: a line of the model holds its pieces in one row, in order, unwrapped, where its range and mode say", browser, () => {
   const f = smallFrame();
@@ -1498,41 +1454,31 @@ test("v23: a platform entry cannot excuse where a thing sits or whether it shows
 
 // ------------------------------------------------------------------ draft 23.1: the critic's and verifier's cases
 
-// A design page snapshot as an image alone, then the page swapped and one frame checked.
-function inkCase(design, page, width = 320) {
+// A design page snapshot as an image, its named boxes made by `boxes` and named from the snapshot's own texts (a
+// perfect transcription), then the page swapped and one frame checked.
+function boxCase(design, page, width = 320, { ledger = [] } = {}) {
   const dir = tmp(), config = path.join(dir, "design.json"), file = path.join(dir, "page.html");
   const wrap = (body) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fff}</style>${body}`;
   fs.writeFileSync(file, wrap(design));
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", frames: [{ name: "frame", width, spec: "spec.json", reference: "ref.png" }] }));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  const snap = cli("snapshot", config, "--images", "--scale", "2");
-  assert.equal(snap.status, 0, snap.stderr);
-  const spec = path.join(dir, "spec.json");
-  fs.writeFileSync(spec, JSON.stringify({ ...JSON.parse(fs.readFileSync(spec, "utf8")), landmarks: [] }));
+  fs.writeFileSync(path.join(dir, "ledger.json"), JSON.stringify(ledger));
+  assert.equal(cli("snapshot", config, "--images", "--scale", "2").status, 0);
+  const made = cli("boxes", path.join(dir, "ref.png"), "--width", String(width), "--out", path.join(dir, "spec.json"));
+  assert.equal(made.status, 0, made.stderr);
+  const snap = JSON.parse(fs.readFileSync(path.join(dir, "snap.json"), "utf8"));
+  const spec = JSON.parse(fs.readFileSync(path.join(dir, "spec.json"), "utf8"));
+  const inside = (p, b) => { const cx = p.box.x + p.box.width / 2, cy = p.box.y + p.box.height / 2; return cx >= b.x - 1 && cx <= b.x + b.width + 1 && cy >= b.y - 1 && cy <= b.y + b.height + 1; };
+  spec.landmarks = snap.landmarks.filter((l) => l.text).map((l) => ({ text: l.text, pieces: spec.pieces.filter((p) => inside(p, l.box)).map((p) => p.n) })).filter((l) => l.pieces.length);
+  const used = new Set(spec.landmarks.flatMap((l) => l.pieces));
+  spec.skip = Object.fromEntries(spec.pieces.filter((p) => !used.has(p.n)).map((p) => [p.n, "not text: a box or a rule"]));
+  fs.writeFileSync(path.join(dir, "spec.json"), JSON.stringify(spec));
+  fs.writeFileSync(config, JSON.stringify({ ...JSON.parse(fs.readFileSync(config, "utf8")), frames: [{ name: "frame", width, spec: "spec.json", reference: "ref.png" }] }));
   fs.writeFileSync(file, wrap(page));
   const r = check(dir, "--frame", "frame");
-  return { ...r, dir, frame: r.result.frames[0], ink: r.result.frames[0].issues.filter((i) => i.via === "ink") };
+  return { ...r, dir, spec, frame: r.result.frames[0] };
 }
 
-test("v23.1: ink sees what sits on a filled box, what is missing beside a title, and not a whole row a wider font pushes along", browser, () => {
-  const button = (bg, top = 72) => `<main style="position:relative;width:320px;height:120px;font:14px/18px sans-serif;color:#111">
-<div style="position:absolute;left:16px;top:12px;font-weight:600">Server BA-2026</div>
-<button style="position:absolute;left:16px;right:16px;top:${top}px;height:36px;border:0;border-radius:8px;background:${bg};color:#fff;font:600 14px/18px sans-serif">Order now</button></main>`;
-  let r = inkCase(button("#2563eb"), button("#2563eb"));
-  assert.equal(r.frame.verdict, "pass", r.stdout);
-  r = inkCase(button("#2563eb"), button("#dc2626"));
-  assert.ok(r.frame.issues.some((i) => i.property === "region" && i.status === "fail"), "a changed fill is a region");
-  r = inkCase(button("#1f2937"), button("#1f2937", 84));
-  assert.ok(r.ink.some((i) => i.property === "y"), `the button moved: ${JSON.stringify(r.ink)}`);
-  const title = (badge) => `<main style="position:relative;width:320px;height:60px;font:14px/18px sans-serif;color:#111">
-<div style="position:absolute;left:16px;top:16px;display:flex;gap:8px;align-items:center"><b>Server BA-2026</b>${badge ? '<span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:9px">New</span>' : ""}</div></main>`;
-  r = inkCase(title(true), title(false));
-  assert.ok(r.ink.some((i) => i.property === "presence"), `the badge is missing: ${JSON.stringify(r.ink)}`);
-  const row = (family) => `<main style="position:relative;width:520px;height:60px;font:14px/18px ${family};color:#111">
-<div style="position:absolute;left:16px;top:20px;display:flex;gap:20px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>2 × 1 TB NVMe</span><span>10 Gbit/s</span><span>Frankfurt</span></div></main>`;
-  r = inkCase(row("sans-serif"), row("serif"), 520);
-  assert.deepEqual(r.ink.filter((i) => i.property === "x"), [], "a row a wider font pushes along keeps its gaps");
-});
 
 test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading that wraps is, a right-to-left row keeps its order, and a bad selector is named", browser, () => {
   const f = smallFrame();
@@ -1560,17 +1506,60 @@ test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading th
 
 // ------------------------------------------------------------------ draft 24: an excuse is tested against what it claims
 
-test("v24: a changed gap names itself, and only an owner-level cause can excuse it", browser, () => {
-  const row = (gap) => `<main style="position:relative;width:420px;height:50px;font:14px/18px sans-serif;color:#111">
-<div style="position:absolute;left:16px;top:16px;display:flex;gap:${gap}px;white-space:nowrap"><span>4 cores</span><span>64 GB RAM</span><span>Frankfurt</span></div></main>`;
-  let r = inkCase(row(16), row(28), 420);
-  const gap = r.ink.find((i) => i.gap);
-  assert.ok(gap && /a 1\d px gap after “4 cores” → 2\d px \(a font changes widths, not gaps\)/.test(`${gap.expected} → ${gap.actual}`), JSON.stringify(r.ink));
-  // The same finding, proposed as the kit's font, still fails; as the design's error it waits for the owner.
-  for (const [category, status] of [["system", "fail"], ["platform", "fail"], ["design-error", "pending"]]) {
-    fs.writeFileSync(path.join(r.dir, "ledger.json"), JSON.stringify([{ landmark: gap.landmark, property: "x", category, status: "proposed", reason: "the kit font is wider" }]));
-    const again = check(r.dir, "--frame", "frame");
-    const f = again.result.frames[0].issues.find((i) => i.landmark === gap.landmark && i.gap);
-    assert.equal(f.status, status, `${category}: ${JSON.stringify(f)}`);
-  }
+
+// ------------------------------------------------------------------ draft 25: named boxes, and logic over hacks
+
+const CARD = ({ family = "sans-serif", col = 150, disk = "2 × 838", price = "font-size:14px" } = {}) => `<main style="position:relative;width:420px;height:90px;font:14px/18px ${family};color:#111">
+<div style="position:absolute;left:16px;top:12px;font-weight:600">BA-i201-B</div>
+<div style="position:absolute;left:${col}px;top:12px">32 ядер</div>
+<div style="position:absolute;left:260px;top:12px">${disk}</div>
+<div style="position:absolute;right:16px;top:52px;${price}">1 234 €</div></main>`;
+
+test("v25: boxes proposes pieces to name; unnamed, the frame is not measured; named, it compares by place and its text exactly", browser, () => {
+  let r = boxCase(CARD(), CARD(), 420);
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  assert.ok(r.spec.pieces.length >= 4 && fs.existsSync(path.join(r.dir, "boxes.png")));
+  // Another font alone moves nothing; a shifted column, a changed format and a larger price do.
+  r = boxCase(CARD(), CARD({ family: "serif" }), 420);
+  assert.deepEqual(r.frame.issues.filter((i) => i.status === "fail" && i.property !== "region"), [], r.stdout);
+  r = boxCase(CARD(), CARD({ col: 166 }), 420);
+  assert.ok(r.frame.issues.some((i) => i.property === "x" && i.landmark === "32 ядер" && Math.round(i.delta) === 16), r.stdout);
+  r = boxCase(CARD(), CARD({ disk: "838 × 2" }), 420);
+  assert.ok(r.frame.issues.some((i) => i.property === "presence" && i.landmark === "2 × 838" && i.actual === "missing"), r.stdout);
+  assert.match(r.stdout, /page text not in the design \(1\): “838 × 2”/);
+  r = boxCase(CARD(), CARD({ price: "font-size:20px;font-weight:700" }), 420);
+  assert.ok(r.frame.issues.some((i) => i.property === "width" && i.landmark === "1 234 €" && /wider than the font explains/.test(i.actual)), r.stdout);
+  // A piece left out of every landmark keeps the frame incomplete.
+  const spec = path.join(r.dir, "spec.json");
+  const s = JSON.parse(fs.readFileSync(spec, "utf8"));
+  fs.writeFileSync(spec, JSON.stringify({ ...s, landmarks: s.landmarks.slice(1) }));
+  const partial = check(r.dir, "--frame", "frame");
+  assert.ok(partial.result.frames[0].uncovered?.length >= 1, partial.stdout);
+  assert.match(partial.stdout, /pieces of the design's ink are in no named box/);
+  fs.writeFileSync(spec, JSON.stringify({ ...s, landmarks: [] }));
+  assert.match(check(r.dir, "--frame", "frame").stdout, /the named boxes are not ready: no landmark is named yet/);
+});
+
+test("v25: a moderate offset may be the system's; a large one, or a size the font does not explain, only the owner's", browser, () => {
+  const entry = (landmark, property, category) => [{ landmark, property, category, status: "proposed", reason: "the kit's spacing token" }];
+  let r = boxCase(CARD(), CARD({ col: 158 }), 420, { ledger: entry("32 ядер", "x", "system") });
+  assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "pending", r.stdout);
+  r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "system") });
+  assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "fail", r.stdout);
+  r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: entry("32 ядер", "x", "design-error") });
+  assert.equal(r.frame.issues.find((i) => i.landmark === "32 ядер" && i.property === "x").status, "pending", r.stdout);
+});
+
+test("v25: a negative margin or a transform that moves text is a construct to lay out instead", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(path.join(f.dir, "hacks.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{display:flex;gap:12px;padding:8px}</style>
+<main><span class="a">Alpha</span><span class="b" style="margin-left:-6px">Beta</span><span class="c" style="transform:translateY(3px)">Gamma</span><span class="d" style="margin-left:-1px">Delta</span></main>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "hacks", url: "hacks.html" }] } }));
+  const r = check(f.dir);
+  const constructs = r.result.sweep.issues.filter((i) => i.property === "construct");
+  assert.ok(constructs.some((i) => i.landmark === "Beta" && /negative margin \(left -6 px\)/.test(i.actual)), JSON.stringify(constructs));
+  assert.ok(constructs.some((i) => i.landmark === "Gamma" && /a transform moves it 0, 3 px/.test(i.actual)), JSON.stringify(constructs));
+  assert.ok(!constructs.some((i) => i.landmark === "Delta"), "a hairline is not a construct");
+  assert.equal(r.status, 1);
 });

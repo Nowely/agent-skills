@@ -79,13 +79,18 @@ changed. The checker measures the supplied story and cannot determine whether th
 ## Screenshots without a spec
 
 Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
-assumption and compare at a consistent size. When using the checker with known frame dimensions, make a spec with the reference's frame dimensions and `landmarks: []`.
-The check then reads both images as ink ([check.md](check.md#frames)): each run of text or icon, and each button,
-pill or photo, in the design is paired with the page's and compared by place, so a shifted column, a moved icon, a
-missing badge or a row that moved is a finding whatever the font. What the words say is for the eye: read each
-frame's `words.png`, which sets the design's runs beside the page's, and inspect typography and states against the
-screenshot. Report unobserved widths and interactions. Keep the reference and before/after images for the owner. Do
-not invent Figma metadata or imply an assumed scale is measured.
+assumption and compare at a consistent size. Then name it:
+
+```bash
+node "<skill-dir>/scripts/design.mjs" boxes frames/<frame>/reference.png --width <frame px>
+```
+
+It writes `frames/<frame>/spec.json` with the numbered pieces of ink and `boxes.png` to read them from. Fill
+`landmarks` once, each from its pieces: the text as the frame shows it (`"5587 × 4"`, not the format you would
+prefer), or a page selector for an icon, a shape or a photo; an icon and its label are two landmarks. The check
+then measures the frame as it measures a Figma frame: each landmark by place and its text exactly
+([check.md](check.md#frames)). Inspect typography and states against the screenshot, and report unobserved widths
+and interactions. Do not invent Figma metadata or imply an assumed scale is measured.
 
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares

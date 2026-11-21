@@ -5,6 +5,7 @@
 //   node design.mjs spec <metadata.xml> [--context <design-context>] [--frame <id|name>] [--coords auto|relative|absolute] [--out spec.json]
 //   node design.mjs check <design.json> [--frame <name>] [--no-sweep] [--out <dir>]
 //   node design.mjs snapshot <design.json> [--frame <name>] [--images] [--scale <n>] [--force]
+//   node design.mjs boxes <reference.png> --width <css px> [--out spec.json] [--force]
 //
 // `figma` fetches one frame from Figma's REST API (FIGMA_TOKEN): its spec, every text with its characters, box,
 // alignment and font, and its image. `spec` reads the MCP server's `get_metadata` outline instead, taking each
@@ -26,7 +27,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, compareInk, inkRuns, isImageOnly, joinContext, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  compareFrame, inkRuns, joinContext, tightBox, uncovered, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -447,6 +448,8 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       if (l.selector) {
         const el = root.querySelectorAll(l.selector)[l.nth ?? 0];
         if (!visible(el)) return { found: false };
+        // An icon drawn with a character ("?") is the selector's, not text the design lacks.
+        chars.forEach((c, i) => { if (el.contains(c.node)) covered[i] = 1; });
         const r = el.getBoundingClientRect();
         return { found: true, box: { x: r.left - rr.left, y: r.top - rr.top, width: r.width, height: r.height }, align: "left" };
       }
@@ -688,6 +691,15 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const box = el.getBoundingClientRect();
     if (box.width <= 2 || box.height <= 2) continue; // kept for screen readers alone
     const cs = getComputedStyle(el);
+    // A construct that moves a thing to a drawn place instead of laying it out: a negative margin, a transform that
+    // shifts text. It holds for the data it was tuned on and breaks for the next.
+    const pulls = ["Top", "Right", "Bottom", "Left"].map((side) => [side, parseFloat(cs[`margin${side}`])]).filter(([, v]) => v < -2);
+    if (pulls.length) issues.push({ landmark: label(el.textContent), property: "construct", kind: "negative margin",
+      actual: `a negative margin (${pulls.map(([side, v]) => `${side.toLowerCase()} ${Math.round(v)} px`).join(", ")}) pulls it into place: lay it out instead` });
+    const t = cs.transform.match(/^matrix\(([^)]+)\)$/)?.[1].split(",").map(Number);
+    if (t && (Math.abs(t[4]) > 0.5 || Math.abs(t[5]) > 0.5) && !/translate|transform/.test(cs.transitionProperty) && cs.animationName === "none") {
+      issues.push({ landmark: label(el.textContent), property: "construct", kind: "transform", actual: `a transform moves it ${Math.round(t[4])}, ${Math.round(t[5])} px: lay it out instead` });
+    }
     let outer = true;
     for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (positioned(p)) { outer = false; break; }
     if (outer && positioned(el) && !overImage(el)) fragile.push({ landmark: label(el.textContent), kind: "positioned", actual: "takes no space in the layout, so longer data can run into its neighbours" });
@@ -804,29 +816,6 @@ async function luminance(page, png) {
   return { W, H, lum: Uint8Array.from(Buffer.from(data, "base64")), chroma: Uint8Array.from(Buffer.from(colour, "base64")) };
 }
 
-// The words of an image-only frame, to read: each paired run of the design beside the page's, one pair per row.
-async function wordsSheet(page, reference, shot, pairs, scale) {
-  return page.evaluate(async ([ref, act, pairs, scale]) => {
-    const load = (src) => new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error("image does not load")); i.src = src; });
-    const [a, b] = await Promise.all([load(ref), load(act)]);
-    const pad = 3, gap = 16;
-    const rows = pairs.map((p) => ({ ...p, h: Math.ceil(Math.max(p.design.height, p.page.height) * scale) + pad * 2 }));
-    const left = Math.ceil(Math.max(1, ...pairs.map((p) => p.design.width)) * scale) + pad * 2, right = Math.ceil(Math.max(1, ...pairs.map((p) => p.page.width)) * scale) + pad * 2;
-    const c = document.createElement("canvas");
-    c.width = left + gap + right; c.height = Math.max(1, rows.reduce((s, r) => s + r.h + 4, 0));
-    const x = c.getContext("2d");
-    x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);
-    let y = 0;
-    for (const r of rows) {
-      const crop = (img, box, dx) => x.drawImage(img, box.x * scale - pad, box.y * scale - pad, box.width * scale + pad * 2, box.height * scale + pad * 2, dx, y, box.width * scale + pad * 2, box.height * scale + pad * 2);
-      crop(a, r.design, 0); crop(b, r.page, left + gap);
-      y += r.h + 4;
-      x.fillStyle = "#e5e7eb"; x.fillRect(0, y - 2, c.width, 1);
-    }
-    return c.toDataURL();
-  }, [`data:image/png;base64,${reference.toString("base64")}`, `data:image/png;base64,${shot.toString("base64")}`, pairs, scale]);
-}
-
 const writeDataUrl = (file, url) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(url.split(",")[1], "base64")); };
 const dataUrl = (buf) => buf && `data:image/png;base64,${buf.toString("base64")}`;
 
@@ -860,6 +849,35 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
   for (const frame of frames) {
     const spec = readJson(frame.spec);
     const reference = frame.reference && fs.existsSync(frame.reference) ? fs.readFileSync(frame.reference) : null;
+    // Named boxes: each landmark's box is the union of its pieces. Measured once every landmark has a text or a
+    // selector and its pieces exist.
+    let unnamed = [];
+    if (spec.source === "image boxes") {
+      const byN = new Map((spec.pieces ?? []).map((p) => [p.n, p.box]));
+      for (const l of spec.landmarks) {
+        const boxes = (l.pieces ?? []).map((n) => byN.get(n)).filter(Boolean);
+        if (!l.box && boxes.length) {
+          const x = Math.min(...boxes.map((b) => b.x)), y = Math.min(...boxes.map((b) => b.y));
+          l.box = { x, y, width: Math.max(...boxes.map((b) => b.x + b.width)) - x, height: Math.max(...boxes.map((b) => b.y + b.height)) - y };
+        }
+      }
+      // A text named twice is matched in reading order, top to bottom, then left to right.
+      const seen = new Map();
+      for (const l of [...spec.landmarks].filter((x) => x.box && x.text).sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x)) {
+        const k = String(l.text).replace(/\s+/g, "").toLowerCase(), n = seen.get(k) ?? 0;
+        seen.set(k, n + 1);
+        if (n) l.nth = n;
+      }
+      unnamed = spec.landmarks.map((l, i) => (!String(l.text ?? "").trim() && !String(l.selector ?? "").trim() ? `landmark ${i + 1} has no text or selector`
+        : !l.box ? `landmark ${i + 1} (“${l.text || l.selector}”) names no piece that exists` : null)).filter(Boolean);
+      if (!spec.landmarks.length) unnamed.push("no landmark is named yet");
+    }
+    if (unnamed.length) {
+      results.push({ frame: frame.name, pass: false, verdict: "incomplete", score: null, causes: [], issues: [], root: { spec: spec.frame, page: null }, images: {},
+        unmeasured: `the named boxes are not ready: ${unnamed.slice(0, 4).join("; ")}${unnamed.length > 4 ? "; …" : ""}. Name them from boxes.png`,
+        gallery: { width: spec.frame.width, images: { design: dataUrl(reference) } } });
+      continue;
+    }
     const size = reference && pngSize(reference);
     const scale = size ? Math.max(1, Math.round(size.width / spec.frame.width)) : 1;
     // A frame of a state drawn outside the component, a popover or a sheet, names its own root.
@@ -898,27 +916,18 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       const before = beforeFrame(out, frame, settings, shot);
       measured.images = { page: path.relative(out, path.join(dir, "page.png")) };
       let regions = [];
-      // A reference that is an image alone is read as ink: each run of text or icon in the design paired with the
-      // page's and compared by place, so a shifted column or a swapped icon is an offset, whatever the font does to
-      // the glyphs. The runs are then left out of the pixels: what is left there is not text.
-      let inkBoxes = [];
-      if (reference && isImageOnly(spec)) {
-        const designInk = inkRuns(await luminance(scratch, reference), { scale }), pageInk = inkRuns(await luminance(scratch, shot), { scale });
-        const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-        const labelOf = (run) => {
-          const best = measured.textLines.map((l) => [l, overlap(l.box, run)]).filter(([, o]) => o > 0).sort((a, b) => b[1] - a[1])[0];
-          return best ? (best[0].text.length > 40 ? `${best[0].text.slice(0, 39)}…` : best[0].text) : null;
-        };
-        measured.ink = compareInk(designInk, pageInk, { designWidth: spec.frame.width, pageWidth: measured.root.width, tolerance: Math.max(4, cfg.tolerance ?? 1), labelOf });
-        // Text runs leave the pixel comparison; icons and boxes stay in it, so a changed colour is still a region.
-        inkBoxes = measured.ink.text;
-        writeDataUrl(path.join(dir, "words.png"), await wordsSheet(scratch, reference, shot, measured.ink.shown.filter((x) => labelOf(x.page)), scale));
-        measured.images = { ...measured.images, words: path.relative(out, path.join(dir, "words.png")) };
-        delete measured.ink.shown; delete measured.ink.text;
+      // A spec of named boxes, from an image alone: each box tight to the ink the design draws, so the page's box is
+      // made tight to its ink too before they compare, and the design's ink must all be named.
+      if (reference && spec.source === "image boxes") {
+        const pageInk = await luminance(scratch, shot);
+        for (const m of measured.landmarks) if (m?.found) m.box = tightBox(pageInk, m.box, scale);
+        const skipped = Object.keys(spec.skip ?? {}).map(Number);
+        measured.uncovered = uncovered(inkRuns(await luminance(scratch, reference), { scale, join: 0.45 }),
+          [...spec.landmarks, ...(spec.pieces ?? []).filter((p) => skipped.includes(p.n))]);
       }
       if (reference) {
-        // Text is left out of the pixels: its landmarks measure it, or, for an image-only reference, its ink does.
-        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box), ...inkBoxes];
+        // Text is left out of the pixels: its landmarks measure it.
+        const ignore = [...measured.textBoxes, ...spec.landmarks.filter((l) => l.text).map((l) => l.box)];
         const shifts = spec.landmarks.map((l, i) => measured.landmarks[i]?.found
           && { label: l.text ?? l.selector, box: l.box, dx: measured.landmarks[i].box.x - l.box.x, dy: measured.landmarks[i].box.y - l.box.y }).filter(Boolean);
         const { png, regions: found, ...pixels } = await pixelDiff(scratch, reference, shot, { scale, ignore, shifts });
@@ -929,7 +938,8 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
         measured.pixels = pixels;
         regions = nameRegions(found, spec.landmarks);
       }
-      const result = compareFrame({ frame: frame.name, spec, measured, tolerance: cfg.tolerance, ledger, regions, missingReference: !reference });
+      // Named boxes from an image read glyph edges in another font: held to 4 px, as an owner's eye is.
+      const result = compareFrame({ frame: frame.name, spec, measured, tolerance: spec.source === "image boxes" ? Math.max(4, cfg.tolerance) : cfg.tolerance, ledger, regions, missingReference: !reference });
       if (setupTargets.length) result.setupTargets = setupTargets;
       if (before.reason) result.beforeUnavailable = before.reason;
       if (before.comparison) result.beforeComparison = before.comparison;
@@ -1378,6 +1388,58 @@ async function snapshot(file, flags) {
   }
 }
 
+// A draft spec from an image alone: every piece of ink, and every filled shape or outline, as a numbered box, for
+// the implementer to name once with the text it reads or a page selector. boxes.png beside it shows the numbers.
+async function boxes(file, flags) {
+  const png = fs.readFileSync(file);
+  const size = pngSize(png), width = Number(flags.width);
+  if (!size || !(width > 0)) throw Object.assign(new Error("boxes: give the PNG and the frame's CSS width, --width <px>"), { exit: 2 });
+  const scale = Number(flags.scale ?? Math.max(1, Math.round(size.width / width)));
+  const out = path.resolve(flags.out ?? path.join(path.dirname(file), "spec.json"));
+  if (fs.existsSync(out) && !flags.force) throw Object.assign(new Error(`${out} exists; pass --force to replace it`), { exit: 2 });
+  const browser = await (await chromium()).launch();
+  try {
+    const page = await (await browser.newContext()).newPage();
+    // Fine pieces: letters join into words, and the implementer joins words and icons into what they name.
+    const ink = inkRuns(await luminance(page, png), { scale, join: 0.45 });
+    const r2 = (b) => Object.fromEntries(Object.entries(b).filter(([k]) => ["x", "y", "width", "height"].includes(k)).map(([k, v]) => [k, Math.round(v * 100) / 100]));
+    const items = [...ink.runs.map((b) => ({ box: r2(b), kind: b.kind === "colour" ? "coloured ink" : "ink" })), ...ink.boxes.map((b) => ({ box: r2(b), kind: b.kind }))]
+      .sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
+    const pieces = items.map((it, i) => ({ n: i + 1, kind: it.kind, box: it.box }));
+    writeJson(out, { frame: { name: path.basename(path.dirname(out)), width, height: Math.round(size.height / scale) }, source: "image boxes",
+      landmarks: [], skip: {}, pieces });
+    const picture = await page.evaluate(async ([src, list, scale]) => {
+      const i = new Image();
+      await new Promise((resolve, reject) => { i.onload = resolve; i.onerror = () => reject(new Error("image does not load")); i.src = src; });
+      const z = Math.max(2, scale), c = document.createElement("canvas");
+      c.width = i.width / scale * z; c.height = i.height / scale * z;
+      const x = c.getContext("2d");
+      x.imageSmoothingEnabled = false;
+      x.drawImage(i, 0, 0, c.width, c.height);
+      x.font = `bold ${5 * z}px sans-serif`; x.textBaseline = "top";
+      for (const l of list) {
+        const hue = (l.n * 67) % 360;
+        x.strokeStyle = `hsl(${hue} 90% 40%)`; x.lineWidth = 1;
+        x.strokeRect(l.box.x * z - 0.5, l.box.y * z - 0.5, l.box.width * z + 1, l.box.height * z + 1);
+        const tag = String(l.n), w = x.measureText(tag).width + 4;
+        x.fillStyle = `hsl(${hue} 90% 40%)`; x.fillRect(l.box.x * z, l.box.y * z - 5 * z - 2, w, 5 * z + 2);
+        x.fillStyle = "#fff"; x.fillText(tag, l.box.x * z + 2, l.box.y * z - 5 * z - 1);
+      }
+      return c.toDataURL();
+    }, [`data:image/png;base64,${png.toString("base64")}`, pieces, scale]);
+    const shown = path.join(path.dirname(out), "boxes.png");
+    writeDataUrl(shown, picture);
+    console.log(`${pieces.length} pieces → ${path.relative(process.cwd(), out)}, numbered in ${path.relative(process.cwd(), shown)}.`);
+    console.log('Fill "landmarks" with what the design shows, each from its pieces: { "text": "5587 × 4", "pieces": [11, 12, 13] } as it');
+    console.log('reads, or { "selector": ".help", "pieces": [27] } for an icon, a shape or a photo. An icon and its label are two. A');
+    console.log('piece that is not part of the component goes in "skip" with why: { "31": "the page\'s shadow" }. The check compares');
+    console.log("each by place and its text exactly; a piece in no landmark and not skipped keeps the frame incomplete.");
+    return 0;
+  } finally {
+    await browser.close();
+  }
+}
+
 // One frame from Figma's REST API: its spec, with each text's characters, box, alignment and font, and its image.
 async function figma(url, flags) {
   const token = process.env.FIGMA_TOKEN;
@@ -1426,6 +1488,7 @@ async function main(argv) {
   }
   if (command === "check") return check(file, flags);
   if (command === "snapshot") return snapshot(file, flags);
+  if (command === "boxes") return boxes(file, flags);
   console.log(USAGE);
   return 2;
 }

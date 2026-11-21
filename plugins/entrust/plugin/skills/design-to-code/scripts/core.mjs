@@ -2,10 +2,10 @@
 // against that spec, the ledger of deliberate deviations, and the reports. design.mjs measures; this file judges.
 
 export const PROPERTIES = ["x", "y", "width", "height", "font", "presence", "text", "region", "overflow", "clipped",
-  "overlap", "covered", "outside", "align", "resize", "switch", "line"];
+  "overlap", "covered", "outside", "align", "resize", "switch", "line", "construct"];
 // What another font or renderer can change: the glyphs and the sizes they take. Never where a thing sits, whether
 // it shows, what it says, or what it runs into.
-const PLATFORM_CANNOT = ["x", "y", "presence", "text", "overlap", "covered", "outside", "clipped", "switch", "line", "align", "resize", "*"];
+const PLATFORM_CANNOT = ["x", "y", "presence", "text", "overlap", "covered", "outside", "clipped", "switch", "line", "align", "resize", "construct", "*"];
 export const CATEGORIES = ["design-error", "missing-state", "platform", "system", "owner", "ux"];
 export const STATUSES = ["accepted", "proposed"];
 
@@ -306,12 +306,15 @@ const frameMatches = (entry, frame) => entry.frame === undefined || entry.frame 
 const landmarkMatches = (entry, label) => [entry.landmark].flat().some((v) => v === "*" || v === label);
 const within = (b, r, pad = 4) => b.x >= r[0] - pad && b.y >= r[1] - pad && b.x + b.width <= r[0] + r[2] + pad && b.y + b.height <= r[1] + r[3] + pad;
 
-// A changed gap between two pieces is the layout's own: a font or a kit component changes the pieces, not the gap.
-// Only the design's error, a state it lacks, or the owner's call can excuse it.
-const GAP_CAUSES = ["design-error", "missing-state", "owner", "ux"];
+// A moderate offset that a consistent system explains (the kit's spacing, its components) may be proposed as
+// such; past `moderate`, or a size the font does not explain, only the design's error, a state it lacks or the owner's
+// call can excuse it.
+const OWNER_CAUSES = ["design-error", "missing-state", "owner", "ux"];
+export const MODERATE = 12;
+const strict = (issue) => issue.strict || (["x", "y"].includes(issue.property) && Math.abs(issue.delta ?? 0) > MODERATE);
 export function ledgerEntryFor(issue, frame, ledger = []) {
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
-    && (!issue.gap || GAP_CAUSES.includes(e.category))
+    && (!strict(issue) || OWNER_CAUSES.includes(e.category))
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
       : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
@@ -422,8 +425,6 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
-  // An image-only reference's ink, paired and compared by place (compareInk).
-  for (const i of measured.ink?.issues ?? []) issues.push({ ...i, expected: shown(i.expected), actual: shown(i.actual) });
   for (const text of measured.unexpected ?? []) add(text, "presence", "absent", "present");
   spec.landmarks.forEach((l, index) => {
     const label = landmarkLabel(l), p = byIndex.get(index);
@@ -436,7 +437,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     if (m.clipped > tolerance) add(label, "clipped", 0, m.clipped);
     if (over(p.dx)) offset(p, "x", p.ex, p.ax, p.dx);
     if (over(p.dy)) offset(p, "y", l.box.y, m.box.y, p.dy);
-    if (over(p.dh)) add(label, "height", l.box.height, m.box.height);
+    // A named box from an image is tight to its ink: another font changes its height, not where it stands.
+    if (over(p.dh) && spec.source !== "image boxes") add(label, "height", l.box.height, m.box.height);
     if ((l.checkWidth ?? spec.widths) && l.text && Math.abs(p.dw) > Math.max(tolerance, l.box.width * 0.02)) add(label, "width", l.box.width, m.box.width);
     for (const [k, limit] of Object.entries(FONT)) {
       const want = Number(l.font?.[k]), got = Number(m.font?.[k]);
@@ -444,6 +446,18 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     }
     if (l.font?.color && m.font?.color && !sameColour(l.font.color, m.font.color)) add(label, "font", `color ${l.font.color}`, `color ${m.font.color}`);
   });
+  // Named boxes from an image: the page's texts are as much wider as its font is. One wider beyond that is a larger
+  // size or more text: a finding a font cannot excuse.
+  if (spec.source === "image boxes") {
+    const texts = placed.filter((p) => p.l.text && p.l.box.width > 0);
+    const r = texts.map((p) => p.m.box.width / p.l.box.width).sort((a, b) => a - b);
+    const ratio = r.length >= 3 ? r[Math.floor(r.length / 2)] : 1;
+    for (const p of texts) {
+      // Only wider: a design piece can hold an icon beside its text that the page's text box does not.
+      const extra = p.m.box.width / ratio - p.l.box.width;
+      if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text`, { strict: true });
+    }
+  }
   // The root's height is the lowest landmark's offset carried down plus the bottom step: excused as they are.
   const dH = measured.root.height - spec.frame.height;
   if (over(dH) && !placed.length) add("root", "height", spec.frame.height, measured.root.height);
@@ -475,16 +489,16 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const open = classified.filter((i) => i.status !== "accepted");
   // An image-only reference leaves its texts to the eye. A missing font is reported, not used to hide findings.
   const imageOnly = isImageOnly(spec), fonts = measured.fonts ?? [];
-  const ink = measured.ink && { pairs: measured.ink.pairs, design: measured.ink.design, page: measured.ink.page, boxes: measured.ink.boxes, ratio: measured.ink.ratio };
+  // A transcription that leaves ink out of every box has not named the whole frame.
+  const notNamed = measured.uncovered ?? [];
   // When most of the design's texts are missing, the page renders other data than the frame: its offsets mean nothing.
   const texts = spec.landmarks.filter((l) => l.text).length;
   const missing = classified.filter((i) => i.property === "presence" && i.actual === "missing" && i.status === "fail").length;
   const otherData = texts >= 3 && missing * 2 > texts ? `${missing} of ${texts} design texts are missing: the page likely renders other data than this frame; render the frame's own data` : undefined;
-  // With its ink compared, an image-only frame is measured in place; what its words say is still for the eye.
-  const verdict = failing.length ? "fail" : (imageOnly && !ink) || missingReference || unexpected.length ? "incomplete"
+  const verdict = failing.length ? "fail" : imageOnly || missingReference || unexpected.length || notNamed.length ? "incomplete"
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
-    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ink, missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -596,7 +610,7 @@ export function nameRegions(regions, landmarks) {
 // - Glyphs join into runs (a value, a label, an icon with its text) when closer than the taller one's height side by
 //   side, a dot or accent just above or below, or a pixel apart. A thin rule across most of the capture is not ink.
 // `img` is { lum, chroma, W, H }: one byte each per pixel. Boxes come back in CSS px.
-export function inkRuns(img, { scale = 1, contrast = 56 } = {}) {
+export function inkRuns(img, { scale = 1, contrast = 56, join = 1 } = {}) {
   const { lum, chroma, W, H } = img;
   const hist = new Uint32Array(256);
   for (let i = 0; i < W * H; i++) hist[lum[i]]++;
@@ -671,7 +685,7 @@ export function inkRuns(img, { scale = 1, contrast = 56 } = {}) {
     const ha = a.y1 - a.y0, hb = b.y1 - b.y0, h = Math.max(ha, hb);
     const gx = Math.max(0, b.x0 - a.x1, a.x0 - b.x1), gy = Math.max(0, b.y0 - a.y1, a.y0 - b.y1);
     const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0), ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
-    const side = oy >= 0.3 * Math.min(ha, hb) && gx <= Math.max(2 * scale, h);
+    const side = oy >= 0.3 * Math.min(ha, hb) && gx <= Math.max(2 * scale, join * h);
     const accent = ox > 0 && gy <= 0.35 * h && Math.min(ha, hb) <= 0.5 * h;
     // Antialiasing breaks a thin ring or stroke into pieces a pixel apart.
     const touching = gx <= scale && gy <= scale;
@@ -690,121 +704,29 @@ export function inkRuns(img, { scale = 1, contrast = 56 } = {}) {
   return { runs, boxes: boxes.map((b) => ({ ...css(b), kind: b.box, mean: Math.round(b.mean) })).sort((a, b) => a.y - b.y || a.x - b.x) };
 }
 
-// Pairs the design's ink with the page's and compares each pair by place. Runs pair with runs, boxes with boxes,
-// each with the one nearest in place and shape after the page's widths are scaled by the typical width ratio (another
-// font is wider or narrower throughout). A place is read the way that moved least: against the root's left edge,
-// right edge or centre (a right-aligned price keeps its right edge in a wider font), or as the gap to the neighbour
-// before it in its row or above it (a run after a wider word moves with it, and is not a finding of its own).
-// - A pair further apart than the tolerance is an `x` or `y` finding, named by the page's text there.
-// - A run wider or narrower than the font explains has a part added or missing: a `presence` finding.
-// - A box of another size is a `width` or `height` finding.
-// - Ink without a pair is a `presence` finding: moved further than the pairing reaches, missing or added.
-// What the words say is not compared: `pairs` lists each pair, for a picture to read them side by side.
-export function compareInk(design, page, { designWidth, pageWidth, tolerance = 4, labelOf = () => null } = {}) {
-  const issues = [], shown = [];
-  const at = (b) => `${Math.round(b.x)}, ${Math.round(b.y)} (${Math.round(b.width)}×${Math.round(b.height)})`;
-  const band = (u, v) => Math.min(u.y + u.height, v.y + v.height) - Math.max(u.y, v.y) >= 0.5 * Math.min(u.height, v.height);
-  const joint = (list) => {
-    const x = Math.min(...list.map((b) => b.x)), y = Math.min(...list.map((b) => b.y));
-    return { x, y, width: Math.max(...list.map((b) => b.x + b.width)) - x, height: Math.max(...list.map((b) => b.y + b.height)) - y, kind: list[0].kind };
-  };
-  const edges = (a, b) => [b.x - a.x, (b.x + b.width - pageWidth) - (a.x + a.width - designWidth),
-    (b.x + b.width / 2 - pageWidth / 2) - (a.x + a.width / 2 - designWidth / 2)];
-  const least = (values) => values.filter(Number.isFinite).sort((u, v) => Math.abs(u) - Math.abs(v))[0];
-  // One to one, nearest in place and shape first. Shape weighs as much as place: a shifted column must not pair with
-  // its narrower neighbour.
-  const pairUp = (A, B, ratio, usedA = new Set(), usedB = new Set()) => {
-    const all = [];
-    A.forEach((a, i) => B.forEach((b, j) => {
-      if (usedA.has(i) || usedB.has(j)) return;
-      const rw = b.width / ratio / a.width, rh = b.height / a.height;
-      if (rw < 0.6 || rw > 1.6 || rh < 0.6 || rh > 1.7) return;
-      const cost = Math.abs(least(edges(a, b))) + Math.abs(b.y - a.y) + 40 * Math.abs(Math.log(rw)) + 24 * Math.abs(Math.log(rh)) + (a.kind === b.kind ? 0 : 12);
-      if (cost <= 48) all.push({ i, j, cost });
-    }));
-    all.sort((u, v) => u.cost - v.cost);
-    const out = [];
-    for (const p of all) if (!usedA.has(p.i) && !usedB.has(p.j)) { usedA.add(p.i); usedB.add(p.j); out.push({ a: A[p.i], b: B[p.j] }); }
-    return out;
-  };
-  const ratioOf = (pairs) => {
-    const r = pairs.map((p) => p.b.width / p.a.width).sort((u, v) => u - v);
-    return r.length >= 3 ? Math.min(1.5, Math.max(0.67, r[Math.floor(r.length / 2)])) : 1;
-  };
-  const ratio = ratioOf(pairUp(design.runs, page.runs, 1));
-  // First what one side draws as one and the other as several (a unit after its value, an icon after its label, a
-  // closer word space): one run spanning two or more on the other side, about as wide as they are together.
-  const usedA = new Set(), usedB = new Set(), pairs = [];
-  for (const [A, B, uA, uB, pageSide] of [[design.runs, page.runs, usedA, usedB, false], [page.runs, design.runs, usedB, usedA, true]]) {
-    A.forEach((u, k) => {
-      if (uA.has(k)) return;
-      // Pieces that start inside it; together they may run past its end, as a wider gap would make them.
-      const parts = B.map((v, m) => [v, m]).filter(([v, m]) => !uB.has(m) && v.kind === u.kind && band(u, v) && v.x >= u.x - tolerance - 2 && v.x < u.x + u.width);
-      if (parts.length < 2) return;
-      const together = joint(parts.map(([v]) => v));
-      const [a, b] = pageSide ? [together, u] : [u, together];
-      const rw = b.width / ratio / a.width;
-      if (rw < 0.6 || rw > 1.6) return;
-      uA.add(k);
-      for (const [, m] of parts) uB.add(m);
-      pairs.push({ a, b });
-    });
+// The ink inside a box of a capture: the glyph-tight box of what is drawn there, against the box's own background
+// (its commonest luminance). A box from the DOM is a line box; a named box from an image is tight to its ink; this
+// makes the page's comparable.
+export function tightBox(img, box, scale = 1, contrast = 40) {
+  const { lum, W, H } = img;
+  const x0 = Math.max(0, Math.floor(box.x * scale)), y0 = Math.max(0, Math.floor(box.y * scale));
+  const x1 = Math.min(W, Math.ceil((box.x + box.width) * scale)), y1 = Math.min(H, Math.ceil((box.y + box.height) * scale));
+  if (x1 <= x0 || y1 <= y0) return box;
+  const hist = new Uint32Array(256);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) hist[lum[y * W + x]]++;
+  let bg = 0;
+  for (let v = 1; v < 256; v++) if (hist[v] > hist[bg]) bg = v;
+  let a = x1, b = y1, c = x0 - 1, d = y0 - 1;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (Math.abs(lum[y * W + x] - bg) > contrast) {
+    if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y;
   }
-  pairs.push(...pairUp(design.runs, page.runs, ratio, usedA, usedB));
-  // Each pair's offset. Across, the reading that moved least: against the root, or as the gap to the pair before it in
-  // its row, named, since a font changes widths, not gaps. Down, its place.
-  const name = (b, a) => labelOf(b) ?? `ink at ${at(a)}`;
-  const offsets = (list) => list.map((p) => {
-    const { a, b } = p;
-    // A gap is read only from a neighbour drawn the same on both sides: if one side joins an icon the other draws
-    // apart, their ends are not the same place.
-    const alike = (q) => Math.abs(q.b.width / ratio - q.a.width) <= Math.max(4, 0.12 * q.a.width);
-    const left = list.filter((q) => q !== p && alike(q) && band(a, q.a) && q.a.x + q.a.width <= a.x + 2).sort((q, r) => (r.a.x + r.a.width) - (q.a.x + q.a.width))[0];
-    const [l, r, c] = edges(a, b);
-    // The right edge reads only what the design sets against the root's right side, and the centre only what it
-    // centres: in the middle of a row, a right edge that stays put in a wider font is chance.
-    const xs = [{ d: l, expected: Math.round(a.x), actual: Math.round(b.x) }];
-    if (designWidth - (a.x + a.width) <= 24) xs.push({ d: r, expected: "the right edge as designed", actual: `${Math.round(Math.abs(r))} px ${r > 0 ? "right" : "left"} of it` });
-    if (Math.abs(a.x + a.width / 2 - designWidth / 2) <= 8) xs.push({ d: c, expected: "centred as designed", actual: `${Math.round(Math.abs(c))} px ${c > 0 ? "right" : "left"} of it` });
-    if (left) {
-      const dg = a.x - (left.a.x + left.a.width), pg = b.x - (left.b.x + left.b.width);
-      xs.push({ d: pg - dg, gap: true, expected: `a ${Math.round(dg)} px gap after “${name(left.b, left.a)}”`, actual: `${Math.round(pg)} px (a font changes widths, not gaps)` });
-    }
-    // Vertically the place itself counts: a font hardly moves rows, and small changes of gap add up down a card.
-    const ys = [{ d: b.y - a.y, expected: Math.round(a.y), actual: Math.round(b.y) }];
-    // On a tie the gap tells more: it names the piece the offset starts after.
-    const pick = (list) => list.filter((x) => Number.isFinite(x.d)).sort((u, v) => Math.abs(u.d) - Math.abs(v.d) || (v.gap ? 1 : 0) - (u.gap ? 1 : 0))[0];
-    return { ...p, x: pick(xs), y: pick(ys) };
-  });
-  const place = (p, label) => {
-    for (const [axis, o] of [["x", p.x], ["y", p.y]]) if (Math.abs(o.d) > tolerance) {
-      issues.push({ landmark: label, property: axis, delta: o.d, expected: o.expected, actual: o.actual, via: "ink", ...(o.gap ? { gap: true } : {}) });
-    }
-  };
-  for (const p of offsets(pairs)) {
-    const label = name(p.b, p.a);
-    place(p, label);
-    const extra = p.b.width / ratio - p.a.width;
-    if (Math.abs(extra) > Math.max(8, 0.15 * p.a.width)) issues.push({ landmark: label, property: "presence", expected: `${Math.round(p.a.width)} px wide`, actual: `${Math.round(Math.abs(extra))} px ${extra > 0 ? "wider" : "narrower"} than the font explains: a part added or missing`, via: "ink" });
-    shown.push({ design: p.a, page: p.b, label });
-  }
-  design.runs.forEach((a, i) => { if (!usedA.has(i)) issues.push({ landmark: `design ink at ${at(a)}`, property: "presence", expected: "present", actual: "nothing like it within about 40 px on the page: moved further, or missing", via: "ink" }); });
-  page.runs.forEach((b, j) => { if (!usedB.has(j)) issues.push({ landmark: labelOf(b) ?? `page ink at ${at(b)}`, property: "presence", expected: "not in the design", actual: `at ${at(b)}`, via: "ink" }); });
-  // Boxes: a button, a pill, a card, a photo, compared by place and size.
-  const boxA = new Set(), boxB = new Set();
-  for (const p of offsets(pairUp(design.boxes, page.boxes, 1, boxA, boxB))) {
-    const label = labelOf(p.b) ?? `${p.b.kind} at ${at(p.a)}`;
-    place(p, label);
-    if (Math.abs(p.b.width - p.a.width) > tolerance) issues.push({ landmark: label, property: "width", delta: p.b.width - p.a.width, expected: Math.round(p.a.width), actual: Math.round(p.b.width), via: "ink", box: true });
-    if (Math.abs(p.b.height - p.a.height) > tolerance) issues.push({ landmark: label, property: "height", delta: p.b.height - p.a.height, expected: Math.round(p.a.height), actual: Math.round(p.b.height), via: "ink", box: true });
-  }
-  design.boxes.forEach((a, i) => { if (!boxA.has(i)) issues.push({ landmark: `design ${a.kind} at ${at(a)}`, property: "presence", expected: "present", actual: "no box like it on the page", via: "ink" }); });
-  page.boxes.forEach((b, j) => { if (!boxB.has(j)) issues.push({ landmark: `page ${b.kind} at ${at(b)}`, property: "presence", expected: "not in the design", actual: `at ${at(b)}`, via: "ink" }); });
-  // What the pixel comparison leaves to these findings: text, paired or not, and design ink with no pair. An icon the
-  // page pairs and a box stay in it, so a changed colour is still a region.
-  const text = [...shown.filter((x) => labelOf(x.page)).flatMap((x) => [x.design, x.page]),
-    ...design.runs.filter((_, i) => !usedA.has(i)), ...page.runs.filter((b, j) => !usedB.has(j) && labelOf(b))];
-  return { issues, pairs: pairs.length, design: design.runs.length, page: page.runs.length, boxes: `${boxA.size} of ${design.boxes.length}`, ratio: round(ratio), shown, text };
+  return c < a ? box : { x: a / scale, y: b / scale, width: (c - a + 1) / scale, height: (d - b + 1) / scale };
+}
+
+// Ink of a reference that no named box covers: what the transcription left out.
+export function uncovered(ink, landmarks) {
+  const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  return [...ink.runs, ...ink.boxes].filter((r) => !landmarks.some((l) => l.box && overlap(r, l.box) >= 0.5 * r.width * r.height));
 }
 
 export function sweepIssues(probes, ledger = [], extra = []) {
@@ -869,9 +791,8 @@ const counts = (frames, sweep) => {
 const ordered = (issues) => [...issues.filter((i) => i.landmark === "root"), ...issues.filter((i) => i.landmark !== "root")];
 const verdictOf = (f) => f.verdict ?? (f.pass ? "pass" : "fail");
 // One wording for an image-only frame, wherever it is reported.
-const imageOnlyNote = (f) => (f.ink
-  ? `image-only reference: ink compared by place (${f.ink.pairs} of ${f.ink.design} design runs and ${f.ink.boxes} boxes paired; the page's text ${f.ink.ratio}× as wide); what the words say, read in words.png`
-  : "image-only reference: text was not measured; inspect it in the images");
+const imageOnlyNote = () => "image-only reference: nothing in it is named, so nothing is measured; name its boxes with `design.mjs boxes`";
+const uncoveredNote = (f) => `${f.uncovered.length} pieces of the design's ink are in no named box, from ${f.uncovered.slice(0, 3).map((b) => `${Math.round(b.x)}, ${Math.round(b.y)}`).join("; ")}: name them, or the frame is not fully compared`;
 const listed = (texts, limit = 8) => `${texts.slice(0, limit).map((t) => `“${t}”`).join(", ")}${texts.length > limit ? ` and ${texts.length - limit} more` : ""}`;
 const notInDesign = (f) => `page text not in the design (${f.unexpected.length}): ${listed(f.unexpected)}`;
 const where = (i) => `${i.landmark}${i.story ? ` (${i.story})` : ""}`;
@@ -896,6 +817,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
   for (const f of frames) {
     out.push(`## ${f.frame} — ${verdictOf(f)}`, "");
     if (f.imageOnly) out.push(`${imageOnlyNote(f)}.`, "");
+    if (f.uncovered) out.push(`${uncoveredNote(f)}.`, "");
     if (f.fontsMissing?.length) out.push(`Fonts not available: ${f.fontsMissing.join(", ")}. Their texts render in a fallback: load them before trusting the text findings.`, "");
     const { spec, page } = f.root;
     if (!page) { out.push(f.unmeasured, ""); continue; }
@@ -965,6 +887,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     if (f.otherData) out.push(`  ${f.otherData}`);
     if (f.fontsMissing?.length) out.push(`  fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`);
     if (f.imageOnly) out.push(`  ${imageOnlyNote(f)}`);
+    if (f.uncovered) out.push(`  ${uncoveredNote(f)}`);
     const shown = f.causes.filter((c) => !c.repeat);
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
     const mine = failing.filter((i) => !i.inherited);
@@ -1034,7 +957,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   out.push("", "## Frames", "");
   for (const f of frames) {
     const pending = f.issues.filter((i) => i.status === "pending").length;
-    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f),
+    const detail = f.unmeasured ?? [count(f.issues), pending && `${pending} awaiting your decision`, f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f),
       f.otherData, f.missingReference && "no reference image: pixels not compared", f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}`,
       f.unexpected?.length && notInDesign(f)].filter(Boolean).join("; ");
     out.push(`- ${f.frame}: ${verdictOf(f)} — ${detail}`);
@@ -1083,8 +1006,6 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   for (const a of acceptance) out.push(`- ${acceptanceLine(a)}`);
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
-  const byEye = frames.filter((f) => f.imageOnly).map((f) => f.frame);
-  if (byEye.length) out.push(`- what the words say in ${byEye.join(", ")}: an image-only reference; read them side by side in each frame's words.png`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");
   return out.join("\n");
 }
@@ -1093,7 +1014,7 @@ export function renderGallery({ title = "Design check", frames, sweep, journeys 
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
     const shown = f.result.causes.filter((c) => !c.repeat);
-    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? `${esc(imageOnlyNote(f.result))}.` : "",
+    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? `${esc(imageOnlyNote(f.result))}.` : "", f.result.uncovered ? `${esc(uncoveredNote(f.result))}.` : "",
       f.result.unexpected?.length ? esc(notInDesign(f.result)) : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     const verdict = verdictOf(f.result);
     return `<section><h2>${esc(f.result.frame)} <span class="${verdict}">${verdict}</span></h2>

@@ -2,7 +2,7 @@
 
 `node "<skill-dir>/scripts/design.mjs" check <design.json>` renders the component in Chromium at each frame's width,
 compares it with the frame's spec and image, applies [the ledger](#the-ledger) and runs the configured sweep and journeys.
-Read [Frames](#frames) for how a frame is compared, [the summary](#the-summary-and-the-report) for findings and [Output](#output) for the saved evidence. Playwright is
+Read [Frames](#frames) for how a frame is compared, [Constructs](#constructs-and-the-moderate-offset) for what may be proposed, [the summary](#the-summary-and-the-report) for findings and [Output](#output) for the saved evidence. Playwright is
 resolved from the working directory first. Run it from the project that has it. It creates fresh Chromium contexts.
 For an authenticated route, use the project's authorized browser profile to capture and test the real page.
 Record those observations as separate evidence.
@@ -138,37 +138,39 @@ says which texts truncate. Overlaps and texts outside the root are measured on w
 clips it. The pixel mask keeps the text
 findings from being counted again as regions.
 
-**A reference that is an image alone** (a spec with no text landmarks) is read as ink, the pixels far from the paper:
+**A reference that is an image alone** is named before it is measured. `design.mjs boxes <reference.png> --width
+<px> [--out spec.json]` writes a draft spec with `"source": "image boxes"`: every piece of ink (a word, an icon) and
+every filled shape or outline as a numbered piece, and `boxes.png` beside it with the numbers drawn. The implementer
+fills `landmarks`, each from its pieces:
 
-- **Runs.** Neutral and coloured ink are grouped apart into runs: a value, a label, an icon with its text. A coloured
-  icon stays apart from its grey label.
-- **Boxes.** A large filled shape (a button, a pill, a dark card, a photo) and an outline around other ink are boxes,
-  compared by place and size. What is drawn on a filled box is read from its holes; a photo is not read inside.
-- **Pairing.** Each design run is paired with the page's run of like place and shape, after the page's widths are
-  scaled by the typical width ratio (another font is wider or narrower throughout). One run spanning several on the
-  other side is compared with them as one (a unit after its value, a closer word space).
-- **Place.** It is read the way that moved least: against the root's left edge, right edge or centre (a
-  right-aligned price keeps its right edge), or as the gap to the pair before it in its row or above it. A run that a
-  wider word before it pushed along is not a finding of its own; the first changed gap is.
+```json
+{ "landmarks": [
+    { "text": "5587 × 4", "pieces": [11, 12, 13] },
+    { "text": "HDD", "pieces": [14] },
+    { "selector": ".offer__stock-icon", "pieces": [35] } ],
+  "skip": { "31": "the page's shadow, not the component" } }
+```
 
-What is reported:
+A text reads as the frame shows it; a selector names the page's own element for an icon, a shape or a photo, and
+the characters inside it (a "?" in a help icon) are its own. A text named twice is matched in reading order. Each
+landmark's box is the union of its pieces. A frame is not measured while a landmark has neither a text nor a selector,
+or names no piece; the design's ink in no landmark and not skipped keeps it `incomplete`.
 
-- **An offset** over 4 px (or the tolerance, if larger) is an `x` or `y` finding. When the gap to the piece before it
-  reads it, the finding says so ("a 14 px gap after “×2” → 22 px"), and only a `design-error`, `missing-state`,
-  `owner` or `ux` entry can excuse it: a font or a kit component changes the pieces, not the gaps between them.
-- **A width beyond the font's ratio** (over 8 px and 15 %) is a `presence` finding: a part added or missing.
-- **A box of another size** is a `width` or `height` finding.
-- **Ink without a pair** is a `presence` finding: moved more than about 40 px, missing, or added.
+The page's box for each landmark is made tight to its ink, as the design's is, and the two are compared as a Figma
+spec is: by place, read by the edge that moved least, with each offset traced to its first cause, and by the exact
+text. A text wider than the page's font explains (over 8 px and 15 % beyond the typical ratio) is a `width` finding:
+a larger size or more text. Heights and narrower widths are not compared, since a font changes them and a design's
+piece may hold an icon beside its text. Positions are held to 4 px, or the tolerance if larger.
 
-A finding is named by the page's text there (cut at 40 characters), or as `ink at x, y (w×h)` in design coordinates;
-`page ink at` uses page coordinates, which move as the page changes, so a ledger entry names the text where it can.
+## Constructs and the moderate offset
 
-Text left this way is out of the pixel comparison; icons and boxes stay in it, so a changed colour is a region. What
-the words say is not compared: each frame's `words.png` sets every paired run of the design beside the page's, to read.
-A frame compared this way can pass, with its words listed under what the script did not check.
+The sweep reports as `construct` findings what moves a thing to a drawn place instead of laying it out: a negative
+margin over 2 px, and a transform that shifts text (not one that animates). A strong reason for one goes in the
+ledger, for the owner.
 
-Limit: a left-aligned text shifted by exactly its change of width keeps its right edge and reads as aligned; this
-matters only between fonts of very different width.
+An `x` or `y` offset of 12 px or less may be proposed as the system's (a token gap, a kit component): `system`
+covers it. Past 12 px, and for a text wider than the font explains, only a `design-error`, `missing-state`, `owner`
+or `ux` entry can.
 
 ## The ledger
 

@@ -33,6 +33,20 @@ acceptance list, quoted. A decision the owner gave with the task goes in the led
 naming where the owner decided it. An expected value in a test, a journey or an acceptance row comes from the
 requirement or the reference, and the row names its source; never from the code you just wrote.
 
+## Build from logic, not to the pixel
+
+The design is the intent; the code is a system. Build the layout from the kit's tokens and components, normal flow,
+grid and flex with consistent gaps, and the relations the design shows: what lines up, what shares a row, what wraps,
+what grows. A hundred per cent match is not reachable and is not the goal. A moderate, systematic difference the
+system explains (a 16 px token gap where the frame measures 14 and 18, the kit's chip height) is fine: record it once,
+naming the token. A broken relation is not: a misaligned column, a wrong order or format, a piece that moved a row,
+an overlap.
+
+Do not nail things in place without a strong reason: a negative margin, a transform that moves text, text positioned
+out of the flow, a fixed height around content that can grow, a different magic number per mode. They match the frame
+for the data they were tuned on and break for the next. The check reports a negative margin and a moving transform as
+constructs; a strong reason goes in the ledger for the owner to accept.
+
 ## Model the layout before building
 
 You have the code: predict where the layout will break instead of waiting to find it. In `review.md`, write a short
@@ -48,6 +62,10 @@ You have the code: predict where the layout will break instead of waiting to fin
   each frame for the sizes, order, spacing and text formats it changes. Where frames differ, build each as drawn and
   propose a unification with what it would cost: if the owner wants it, it is a small follow-up; if a unification is
   built and the owner does not, it is a return.
+- **What repeats, and where it goes:** disk groups, badges, rows can come N times. Horizontally the container is
+  the limit; vertically the component grows, so nothing that repeats sits in a fixed height. Where the design fixes
+  the height (a tile, a table row), use the standard CSS way: an ellipsis, a line clamp, "+N", a scroll, with the full
+  content reachable.
 - **Constructs that cannot overlap:** normal flow, grid areas with `minmax(0, 1fr)` and content-sized tracks,
   `flex-wrap` with `gap`, `overflow-wrap` for long tokens. Text positioned out of the flow, or a fixed height around
   text, needs a reason in `review.md`.
@@ -55,11 +73,13 @@ You have the code: predict where the layout will break instead of waiting to fin
 A component with one line needs one row. The complete check needs the model unless the page is static.
 
 Ask before building: what shares this line, what is its longest legal value and who says so, what appears only
-sometimes, what must line up, what happens one step narrower, and what the user does here that must survive a resize.
+sometimes, what repeats and how many times, what must line up, what happens one step narrower, and what the user does
+here that must survive a resize.
 
 Put the model in `design.json`. Its switch widths go in `sweep.switches`, which the check measures a pixel either
 side. Each line goes in `sweep.lines`, with its pieces in order and where the line holds. Give the dense story the
-longest values the model names. The sweep then checks the arrangement on the frames' page and every story, not only
+longest values the model names, and add a story with many entries, beyond what any frame shows (eight disk groups
+where the frames show three): the component must grow, not overlap or cut. The sweep then checks the arrangement on the frames' page and every story, not only
 collisions. Any of these means the model was wrong:
 
 - a piece that leaves its row, changes order or wraps;
@@ -101,19 +121,22 @@ they come from Figma or screenshots. Trace an offset to its first cause, fix it 
 
 When two rounds in a row bring no new lowest score:
 
-- **Residue may be proposed:** pixel regions and what a font does to glyphs, with their reason.
-- **Named findings are fixed:** a gap, a box's size, an order, a missing or extra piece. The check reads a gap as
-  the layout's own, since a font or a kit component changes the pieces, not the gaps between them, and only the
-  design's error, a state it lacks or the owner's call can excuse one.
+- **What the system explains may be proposed:** pixel residue, and an offset of 12 px or less that a consistent
+  token or a kit component explains, named once.
+- **The rest is fixed:** an offset over 12 px, a text or format, an order, a missing or extra piece, a text wider
+  than the font explains, a construct. Only the design's error, a state it lacks or the owner's call can excuse them.
 - **A kit component drawn another size:** its entry gives the kit's measured size against the drawn one, and the
   rows around it keep the drawn pitch, so the difference does not add up down the card.
 
-`pending` means owner decisions wait, not differences you stopped on.
-With screenshots alone, the check compares their ink by place, so a shifted column, a moved icon, a missing badge or
-a moved row is a finding whatever the font. What the words say is for the eye: read each frame's `words.png`, and
-state any uncertainty about scale. A font or renderer explains glyphs and their sizes, never where something sits or whether it shows. A
-deviation proposed because the design cannot be built names, in its `reason`, the construct tried and what the check
-measured. Only the owner accepts a proposed deviation.
+`pending` means owner decisions wait, not differences you stopped on. A font or renderer explains glyphs and their
+sizes, never where something sits or whether it shows. A deviation proposed because the design cannot be built names,
+in its `reason`, the construct tried and what the check measured. Only the owner accepts a proposed deviation.
+
+With screenshots alone, name their boxes first: `design.mjs boxes <reference.png> --width <px>` proposes numbered
+pieces of ink in `spec.json` and `boxes.png`. Name each landmark once from its pieces, its text as it reads or a
+selector for an icon or a shape (see [the pack](references/pack.md#screenshots-without-a-spec)). The check then
+compares each by place and its text exactly, as with Figma; ink left out of every landmark keeps the frame
+incomplete. State any uncertainty about scale.
 
 ## Verify and hand over
 
@@ -138,3 +161,16 @@ again.
 Hand over each reference with its final image, labelled by data, width and state. Include comparable before
 images when available. State what the comparison shows, which checks passed, which differences remain, which
 decisions await the owner and which conditions you could not verify.
+
+## Reviewing or tidying an implementation
+
+The skill also reviews UI that already matches its design: at what cost, and how to put the inside in order without
+changing what users see.
+
+1. Take the current look as the baseline: `design.mjs snapshot <design.json> --images` on every frame, with the dense
+   and many-entries stories.
+2. Run the complete check and read its cost: the constructs, the "fragile under other data" warnings, the lines that
+   do not hold, and fixed heights the many-entries story overflows.
+3. Rewrite the inside from tokens, flow and grid.
+4. Check against the baseline: any visible change is a finding unless the owner accepts it.
+
