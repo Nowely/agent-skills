@@ -751,26 +751,27 @@ export function compareInk(design, page, { designWidth, pageWidth, tolerance = 4
     });
   }
   pairs.push(...pairUp(design.runs, page.runs, ratio, usedA, usedB));
-  // Each pair's offset, read the way that moved least: against the root, or as the gap to the pair before it in its
-  // row, or above it. A gap is named, since a font changes widths, not gaps.
+  // Each pair's offset. Across, the reading that moved least: against the root, or as the gap to the pair before it in
+  // its row, named, since a font changes widths, not gaps. Down, its place.
   const name = (b, a) => labelOf(b) ?? `ink at ${at(a)}`;
   const offsets = (list) => list.map((p) => {
     const { a, b } = p;
-    const left = list.filter((q) => q !== p && band(a, q.a) && q.a.x + q.a.width <= a.x + 2).sort((q, r) => (r.a.x + r.a.width) - (q.a.x + q.a.width))[0];
-    const above = list.filter((q) => q !== p && q.a.y + q.a.height <= a.y + 1)
-      .sort((q, r) => (r.a.y + r.a.height) - (q.a.y + q.a.height) || Math.abs(q.a.x - a.x) - Math.abs(r.a.x - a.x))[0];
+    // A gap is read only from a neighbour drawn the same on both sides: if one side joins an icon the other draws
+    // apart, their ends are not the same place.
+    const alike = (q) => Math.abs(q.b.width / ratio - q.a.width) <= Math.max(4, 0.12 * q.a.width);
+    const left = list.filter((q) => q !== p && alike(q) && band(a, q.a) && q.a.x + q.a.width <= a.x + 2).sort((q, r) => (r.a.x + r.a.width) - (q.a.x + q.a.width))[0];
     const [l, r, c] = edges(a, b);
-    const xs = [{ d: l, expected: Math.round(a.x), actual: Math.round(b.x) }, { d: r, expected: "the right edge as designed", actual: `${Math.round(Math.abs(r))} px ${r > 0 ? "right" : "left"} of it` },
-      { d: c, expected: "centred as designed", actual: `${Math.round(Math.abs(c))} px ${c > 0 ? "right" : "left"} of it` }];
+    // The right edge reads only what the design sets against the root's right side, and the centre only what it
+    // centres: in the middle of a row, a right edge that stays put in a wider font is chance.
+    const xs = [{ d: l, expected: Math.round(a.x), actual: Math.round(b.x) }];
+    if (designWidth - (a.x + a.width) <= 24) xs.push({ d: r, expected: "the right edge as designed", actual: `${Math.round(Math.abs(r))} px ${r > 0 ? "right" : "left"} of it` });
+    if (Math.abs(a.x + a.width / 2 - designWidth / 2) <= 8) xs.push({ d: c, expected: "centred as designed", actual: `${Math.round(Math.abs(c))} px ${c > 0 ? "right" : "left"} of it` });
     if (left) {
       const dg = a.x - (left.a.x + left.a.width), pg = b.x - (left.b.x + left.b.width);
       xs.push({ d: pg - dg, gap: true, expected: `a ${Math.round(dg)} px gap after “${name(left.b, left.a)}”`, actual: `${Math.round(pg)} px (a font changes widths, not gaps)` });
     }
+    // Vertically the place itself counts: a font hardly moves rows, and small changes of gap add up down a card.
     const ys = [{ d: b.y - a.y, expected: Math.round(a.y), actual: Math.round(b.y) }];
-    if (above) {
-      const dg = a.y - (above.a.y + above.a.height), pg = b.y - (above.b.y + above.b.height);
-      ys.push({ d: pg - dg, gap: true, expected: `a ${Math.round(dg)} px gap below “${name(above.b, above.a)}”`, actual: `${Math.round(pg)} px` });
-    }
     // On a tie the gap tells more: it names the piece the offset starts after.
     const pick = (list) => list.filter((x) => Number.isFinite(x.d)).sort((u, v) => Math.abs(u.d) - Math.abs(v.d) || (v.gap ? 1 : 0) - (u.gap ? 1 : 0))[0];
     return { ...p, x: pick(xs), y: pick(ys) };
