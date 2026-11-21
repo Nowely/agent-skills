@@ -418,8 +418,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   };
 
   const issues = [];
-  // The band a moderate offset may sit in: what a token or another font explains, narrower on a narrow frame.
-  const band = spec.frame.width <= 400 ? 8 : MODERATE;
+  // The band a moderate offset may sit in: what a token or another font explains.
+  const band = MODERATE;
   // Sizes are kept as measured, for the ledger's max and the score; only what a person reads is rounded.
   const shown = (v) => (typeof v === "number" ? round(v) : v);
   const add = (landmark, property, expected, actual, extra = {}) => issues.push({
@@ -427,9 +427,15 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     ...(typeof expected === "number" && typeof actual === "number" ? { delta: actual - expected } : {}), ...extra,
   });
   const offset = (p, axis, expected, actual, delta) => {
-    let e = excused(p, axis);
-    // Past a moderate offset only an owner-level cause excuses any of it, however it was split into steps.
-    if (Math.abs(delta) > band && e.entries.some((x) => x.status !== "accepted" && !OWNER_CAUSES.includes(x.category))) e = { amount: 0, status: "accepted", entries: [] };
+    let e = excused(p, axis), why;
+    // Past a moderate offset only an owner-level cause excuses any of it, however it was split into steps; a lesser
+    // proposal for it is named, so it is not proposed again.
+    const lesser = (x) => x.status !== "accepted" && !OWNER_CAUSES.includes(x.category);
+    if (Math.abs(delta) > band) {
+      if (e.entries.some(lesser)) e = { amount: 0, status: "accepted", entries: [] };
+      const named = ledger.find((x) => lesser(x) && frameMatches(x, frame) && [axis, "*"].includes(x.property) && landmarkMatches(x, p.label));
+      if (named && !e.entries.length) why = `past ${band} px a ${named.category} proposal excuses nothing: only the design's error, a state it lacks or the owner's call`;
+    }
     const left = delta - e.amount;
     const inherited = !own.has(`${axis}\u0000${p.index}`);
     const base = { expected: shown(expected), actual: shown(actual), delta, inherited };
@@ -437,7 +443,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
       if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)) });
       return;
     }
-    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), ...(Math.abs(delta) > band ? { strict: true } : {}), status: "fail" });
+    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), ...(Math.abs(delta) > band ? { strict: true } : {}), ...(why ? { why } : {}), status: "fail" });
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
@@ -472,28 +478,37 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
       if (extra > Math.max(8, 0.15 * p.l.box.width)) add(p.label, "width", Math.round(p.l.box.width), `${Math.round(extra)} px wider than the font explains: a larger size or more text`, { strict: true });
     }
   }
-  // Two pieces the design sets side by side keep a relation: the gap between them (a flow), their left edges (fixed
-  // tracks), their right edges, or the outer edges (free space between a left and a right group). When none of the
-  // four holds within the band, two moderate offsets the other way round are a broken relation, not two notes.
-  if (boxesSpec) {
-    const edges = (b) => [b.x, b.x + b.width];
+  // Two neighbours keep a relation, side by side or one above the other: the gap between them (a flow), their start
+  // edges (fixed tracks), their end edges, their outer edges (free space between two groups) or their centres (a
+  // centred piece in another font). When none of the five holds within the band, two moderate offsets the other way
+  // round are a broken relation, not two notes. A pair with a piece already past the band is left to that piece.
+  for (const [axis, pos, size, cross, crossSize, word] of [["x", "x", "width", "y", "height", "after"], ["y", "y", "height", "x", "width", "below"]]) {
+    const edges = (b) => [b[pos], b[pos] + b[size], b[pos] + b[size] / 2];
+    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && !i.gap && Math.abs(i.delta ?? 0) > band);
     for (const p of placed) {
-      const right = placed.filter((q) => q !== p && q.l.box.x >= p.l.box.x + p.l.box.width - 1
-        && Math.min(p.l.box.y + p.l.box.height, q.l.box.y + q.l.box.height) - Math.max(p.l.box.y, q.l.box.y) >= 0.5 * Math.min(p.l.box.height, q.l.box.height))
-        .sort((a, b) => a.l.box.x - b.l.box.x)[0];
-      // A piece already offset past the band names the cause; the gap it changes is its consequence.
-      const past = (q) => issues.some((i) => i.landmark === q.label && i.property === "x" && !i.gap && Math.abs(i.delta ?? 0) > band);
-      if (!right || past(p) || past(right)) continue;
-      const [dl, dr] = edges(p.l.box), [ml, mr] = edges(p.m.box), [dl2, dr2] = edges(right.l.box), [ml2, mr2] = edges(right.m.box);
-      const changes = [[dr, dl2, mr, ml2], [dl, dl2, ml, ml2], [dr, dr2, mr, mr2], [dl, dr2, ml, mr2]].map(([a, b, c, d]) => (d - c) - (b - a));
+      const next = placed.filter((q) => q !== p && q.l.box[pos] >= p.l.box[pos] + p.l.box[size] - 1
+        && Math.min(p.l.box[cross] + p.l.box[crossSize], q.l.box[cross] + q.l.box[crossSize]) - Math.max(p.l.box[cross], q.l.box[cross]) >= 0.5 * Math.min(p.l.box[crossSize], q.l.box[crossSize]))
+        .sort((a, b) => a.l.box[pos] - b.l.box[pos])[0];
+      if (!next || past(p) || past(next)) continue;
+      // A gap the design sets that closes up: the pieces nearly touch, whatever their edges keep.
+      const dGap = next.l.box[pos] - (p.l.box[pos] + p.l.box[size]), mGap = next.m.box[pos] - (p.m.box[pos] + p.m.box[size]);
+      if (dGap >= 8 && mGap < Math.min(4, dGap / 2)) {
+        add(next.label, axis, `a ${Math.round(dGap)} px gap ${word} “${p.label}”`, `${Math.round(mGap)} px: they nearly touch; keep the design's gap`, { delta: mGap - dGap, gap: true, strict: true });
+        continue;
+      }
+      // Neither moved on its own: what moved them (the root, a piece before them, a wider text) is its own finding or
+      // excuse. A piece's own step is what the cause chain leaves it after what it follows.
+      const ownStep = (q) => own.get(`${axis}\u0000${q.index}`)?.step ?? 0;
+      if (!over(ownStep(p)) && !over(ownStep(next))) continue;
+      const [ds, de, dc] = edges(p.l.box), [ms, me, mc] = edges(p.m.box), [ds2, de2, dc2] = edges(next.l.box), [ms2, me2, mc2] = edges(next.m.box);
+      const changes = [[de, ds2, me, ms2], [ds, ds2, ms, ms2], [de, de2, me, me2], [ds, de2, ms, me2], [dc, dc2, mc, mc2]].map(([a, b, c, d]) => (d - c) - (b - a));
       if (changes.every((c) => Math.abs(c) > band)) {
-        const dg = dl2 - dr, pg = ml2 - mr;
-        add(right.label, "x", `a ${Math.round(dg)} px gap after “${p.label}”`, `${Math.round(pg)} px, and neither edge keeps its distance (if a piece holds an icon beside its text, give the landmark its own box)`, { delta: changes[0], gap: true, strict: true });
+        add(next.label, axis, `a ${Math.round(ds2 - de)} px gap ${word} “${p.label}”`, `${Math.round(ms2 - me)} px, and neither edge nor centre keeps its distance (if a piece holds an icon beside its text, give the landmark its own box)`, { delta: changes[0], gap: true, strict: true });
       }
     }
   }
   // What the design stacks on one left edge (a column's lines, a value under its label) stays on one edge.
-  if (boxesSpec) {
+  {
     const texts = placed.filter((p) => p.l.text);
     const seenPair = new Set();
     for (const p of texts) for (const q of texts) {
@@ -535,7 +550,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const unexpected = all.filter(extra).map((i) => i.landmark);
   // Named boxes: a moderate offset the system explains is a note, for the owner to see, not a finding to excuse.
   // Within the band an offset is a note, whether or not the ledger proposes it: it needs no decision.
-  const note = (i) => boxesSpec && ["x", "y"].includes(i.property) && !i.gap && ["fail", "pending"].includes(i.status) && Math.abs(i.delta ?? 0) <= band;
+  const note = (i) => ["x", "y"].includes(i.property) && !i.gap && ["fail", "pending"].includes(i.status) && Math.abs(i.delta ?? 0) <= band;
   const notes = all.filter((i) => !extra(i) && note(i));
   const classified = all.filter((i) => !extra(i) && !note(i));
   const failing = classified.filter((i) => i.status === "fail");
@@ -555,8 +570,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   return {
     frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
     ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, delta: round(i.delta) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
-    score: round(unexpected.length * 10 + open.filter((i) => !(i.status === "pending" && ["x", "y"].includes(i.property) && Math.abs(i.delta ?? 0) <= band
-      && i.entries?.every((n) => ledger[n]?.category === "system"))).reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
+    score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
     pixels: measured.pixels, images: measured.images ?? {},
@@ -885,9 +899,11 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     if (!page) { out.push(f.unmeasured, ""); continue; }
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
 
-    const shown = f.causes.filter((c) => !c.repeat);
+    // Where to start fixing: only for a frame with a finding, never for notes alone.
+    const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
+    if (f.notes) out.push(`Moderate offsets (${f.band} px or less, the system's, not findings): ${f.notes.map((n) => `${n.landmark} ${n.property} ${n.delta > 0 ? "+" : ""}${n.delta}`).join(", ")}.`);
     if (f.pixels) out.push(`Pixels: ${round(f.pixels.ratio * 100)} % differ${f.pixels.sizeMatch ? "" : ` (sizes differ: design ${f.pixels.reference}, page ${f.pixels.actual})`}.`);
     const images = Object.values(f.images);
     if (images.length) out.push(`Images: ${images.join(", ")}.`);
@@ -927,10 +943,10 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
 
 // What the console shows: per frame the verdict, where to start and the first findings that are not inherited;
 // the full tables stay in report.md. A round reads this, not the tables.
-export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false }, { limit = 8, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, stalled = 0, restarted = false, quick = false }, { limit = 8, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const out = [`${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
-    + ` · ${journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
+    + ` · ${quick ? "journeys: not run (--quick)" : journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
     + `${previous ? ` · previous round: ${previous.score}` : ""}${best && best.round !== n ? ` · lowest: ${best.score} in round ${best.round}` : ""}`];
   if (restarted) out.push("The specs or the sweep changed: scores start a new series here.");
   if (sweepCoverage(sweep)) out.push(sweepCoverage(sweep));
@@ -951,10 +967,11 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     if (f.imageOnly) out.push(`  ${imageOnlyNote(f)}`);
     if (f.uncovered) out.push(`  ${uncoveredNote(f)}`);
     if (f.notes) out.push(`  moderate offsets (${f.band} px or less, the system's, not findings): ${f.notes.length}, at most ${Math.max(...f.notes.map((n) => Math.abs(n.delta)))} px`);
-    const shown = f.causes.filter((c) => !c.repeat);
+    // Where to start fixing: only for a frame with a finding, never for notes alone.
+    const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
     if (shown.length) out.push(`  start here: ${sayCause(shown[0])}`, ...shown.slice(1, 4).map((c) => `  then: ${sayCause(c)}`));
     const mine = failing.filter((i) => !i.inherited);
-    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`);
+    for (const i of mine.slice(0, limit)) out.push(`  ${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.why ? ` — ${i.why}` : ""}`);
     const rest = failing.length - Math.min(mine.length, limit);
     if (rest > 0) out.push(`  … ${rest} more, ${failing.filter((i) => i.inherited).length} of them inherited`);
     if (f.unexpected?.length) out.push(`  ${notInDesign(f)}`);
@@ -1077,7 +1094,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
 export function renderGallery({ title = "Design check", frames, sweep, journeys = [], gaps = [], ledger = [] }) {
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
-    const shown = f.result.causes.filter((c) => !c.repeat);
+    const shown = f.result.issues.some((i) => i.status === "fail") ? f.result.causes.filter((c) => !c.repeat) : [];
     const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? `${esc(imageOnlyNote(f.result))}.` : "", f.result.uncovered ? `${esc(uncoveredNote(f.result))}.` : "",
       f.result.unexpected?.length ? esc(notInDesign(f.result)) : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     const verdict = verdictOf(f.result);

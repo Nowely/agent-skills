@@ -40,10 +40,11 @@ The owner's criteria:
   - an interaction that does not work;
   - a construct that nails a thing in place without a strong reason: a negative margin, a transform moving text, a
     fixed height around content that grows.
-- Look where returns hide: open the dense and many-entries stories at the narrowest width, and each overlay with its
-  opener near the window's top and bottom edges.
-- Do not return for: a moderate, systematic difference the system explains (a consistent token gap where the frame
-  measures a few pixels more or less, the kit's own component size, another font's widths), a stand-in icon.
+- Look where returns hide: open the dense and many-entries stories at the narrowest width the product supports (the
+  sweep's `from` in design.json), and each overlay with its opener near the window's top and bottom edges.
+- Do not return for: a moderate, systematic difference the system explains, 12 px or less (a consistent token gap
+  where the frame measures a few pixels more or less, the kit's own component size, another font's widths), a
+  stand-in icon.
 
 For each finding: the frame or story and width, what you see, by how much, and "fix" or "acceptable". Be concrete;
 do not invent what you cannot see. End with RETURN or ACCEPT.

@@ -563,27 +563,63 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     const h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
     if (w > 1 && h > 1) issues.push({ landmark: `${label(a.node.data)} × ${label(b.node.data)}`, property: "overlap", delta: Math.min(w, h), actual: `${Math.round(w)} × ${Math.round(h)} px` });
   }
-  // What must stay together, read from where every text breaks, with nothing to declare: a line that ends on a
-  // separator or a currency sign while its value goes on below ("₽ /" | "месяц"), a number broken across lines or
-  // split from its unit, and a word broken between its letters.
+  // What must stay together, read from where every text breaks, with nothing to declare. Text is read by its line
+  // context: inline elements, inline blocks and the items of a flex row join their parent's, so a price written as
+  // three text nodes ("1 234 ₽", " / ", "месяц") reads as one.
+  const UNITS = new Set(["₽", "€", "$", "£", "¥", "%", "‰", "ГБ", "ТБ", "МБ", "КБ", "Гб", "Мб", "GB", "TB", "MB", "KB",
+    "ГГц", "МГц", "GHz", "MHz", "Гбит/с", "Мбит/с", "Gbps", "Mbps", "шт", "шт.", "руб", "руб.", "мес", "мес.", "м²", "m²",
+    "м", "m", "см", "cm", "мм", "mm", "км", "km", "км/ч", "km/h", "кг", "kg", "px", "°", "°C", "°С", "°F", "ч", "мин",
+    "мин.", "сек", "мс", "ms", "Вт", "W", "кВт", "kW"]);
+  const number = (t) => /^\d(?:[\d.,]*\d)?$/.test(t);
+  const unit = (t) => UNITS.has(t.replace(/[,;)]+$/, ""));
+  const value = (t) => number(t) || unit(t);
+  const joins = (el) => {
+    if (/^(inline|contents)/.test(getComputedStyle(el).display)) return true;
+    const p = el.parentElement && getComputedStyle(el.parentElement);
+    return Boolean(p && /flex/.test(p.display) && !p.flexDirection.startsWith("column"));
+  };
+  const contextOf = (el) => { while (el && el !== root && joins(el)) el = el.parentElement; return el ?? root; };
+  const runs = new Map();
   for (const node of nodes) {
     if (!visible(node.parentElement)) continue;
-    const tokens = [...node.data.matchAll(/\S+/g)].map((m) => ({ t: m[0], i: m.index }));
-    const rectsOf = (from, to) => { const r = document.createRange(); r.setStart(node, from); r.setEnd(node, to); return [...r.getClientRects()].filter((x) => x.width > 0.5); };
-    const tops = tokens.map(({ t, i }) => rectsOf(i, i + t.length));
-    const say = (msg) => issues.push({ landmark: label(node.data), property: "wrap", kind: msg.split(":")[0], actual: msg });
-    tops.forEach((rects, k) => {
-      const { t } = tokens[k];
-      const rows = new Set(rects.map((r) => Math.round(r.top)));
-      if (rows.size > 1 && Math.max(...rects.map((r) => r.top)) - Math.min(...rects.map((r) => r.top)) > Math.min(...rects.map((r) => r.height)) / 2
-        && /^\p{L}{4,}$/u.test(t) && getComputedStyle(node.parentElement).hyphens !== "auto") say(`a word broken between its letters: “${t}”`);
-      if (k === 0 || !rects.length || !tops[k - 1].length) return;
-      const a = tokens[k - 1].t, prev = tops[k - 1].at(-1), next = rects[0];
-      if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) return; // the same line
-      // A separator left alone at a line's end ("₽ /" | "месяц"), a number broken, or split from its unit or currency.
-      if (/^[\/×·•|]$/.test(a)) say(`a line ends on “${a}”, split from “${t}” below: keep them together`);
-      else if (/^\d[\d.,]*$/.test(a) && /^\d[\d.,]*$/.test(t)) say(`a number broken across lines: “${a}” | “${t}”`);
-      else if (/^\d[\d.,]*$/.test(a) && /^(\p{L}{1,3}\.?|[₽€$£¥%])$/u.test(t)) say(`a number split from its unit: “${a}” | “${t}”`);
+    const run = runs.get(contextOf(node.parentElement)) ?? [];
+    runs.set(contextOf(node.parentElement), run);
+    for (const m of node.data.matchAll(/\S+/g)) {
+      const r = document.createRange(); r.setStart(node, m.index); r.setEnd(node, m.index + m[0].length);
+      const rects = [...r.getClientRects()].filter((x) => x.width > 0.5);
+      // What follows the token in its own text: a breakable space, or the text ends there.
+      if (rects.length) run.push({ t: m[0], node, rects, space: /^[ \t\n]/.test(node.data.slice(m.index + m[0].length)) });
+    }
+  }
+  const keepTogether = [];
+  for (const run of runs.values()) {
+    const say = (node, msg) => issues.push({ landmark: label(node.data), property: "wrap", kind: msg.split(":")[0], actual: msg });
+    run.forEach(({ t, node, rects }, k) => {
+      // A word of a space-delimited script, or a long run of digits, broken inside: not Chinese or Japanese, which
+      // break between any two characters, and not where the page allows hyphenation.
+      const word = t.replace(/^[(«"“]+|[)»"”,.;:!?]+$/g, "");
+      const tops = rects.map((r) => r.top);
+      if (Math.max(...tops) - Math.min(...tops) > Math.min(...rects.map((r) => r.height)) / 2
+        && (/^[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}]{4,}$/u.test(word) || /^\d{4,}$/.test(word))
+        && getComputedStyle(node.parentElement).hyphens !== "auto") say(node, `a word broken between its letters: “${word}”`);
+      if (k === 0) return;
+      const { t: a, node: from, rects: before } = run[k - 1], prev = before.at(-1), next = rects[0];
+      const pair = [run[k - 2]?.t, a, t];
+      // A short text (a price, a value, a label) whose pair may split at another width: a forecast, not a finding.
+      const pairs = (x, y, z) => (y === "/" && value(x ?? "")) || (y === "×" && number(z)) || (z === "×" && number(y))
+        || (number(y) && (unit(z) || number(z))) || (/^[₽€$£¥]$/.test(y) && number(z));
+      if (next.top < prev.bottom - Math.min(prev.height, next.height) / 2) { // the same line
+        if (run.length <= 6 && run[k - 1].space && pairs(...pair)) keepTogether.push({ landmark: label(from.data), kind: "may split", actual: `“${a} ${t}” is joined by a breakable space: at another width it can split; a no-break space keeps it` });
+        return;
+      }
+      // "/" after a value left at a line's end ("₽ /" | "месяц"), "×" split from a number, a number broken, or split
+      // from its unit or currency. A breadcrumb's "/" and a list's "·" may end a line.
+      if (a === "/" && value(run[k - 2]?.t ?? "")) say(from, `a line ends on “/”, split from “${t}” below: keep “/ ${t}” together (a no-break space), and the whole group on one line where it fits`);
+      else if ((a === "×" && number(t)) || (t === "×" && number(a))) say(from, `“×” split from its numbers: “${a}” | “${t}”: keep them on one line`);
+      else if (/^[₽€$£¥]$/.test(a) && number(t)) say(from, `a currency sign split from its number: “${a}” | “${t}”`);
+      // Two numbers in one element are one number grouped; in two cells of a row they are two values.
+      else if (number(a) && number(t) && from.parentElement === node.parentElement) say(from, `a number broken across lines: “${a}” | “${t}”`);
+      else if (number(a) && unit(t)) say(from, `a number split from its unit: “${a}” | “${t}”: a no-break space between them`);
     });
   }
   // Text over an icon or a small picture: the graphics people read beside text, not a backdrop it is set on.
@@ -726,7 +762,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
   scrollTo(sx, sy);
   // What longer data could break, read from the layout itself: text that takes no space in it (positioned outside the
   // flow, other than an overlay), and a box whose content already spills out of it without being clipped.
-  const fragile = [];
+  const fragile = [...keepTogether];
   const positioned = (el) => /absolute|fixed/.test(getComputedStyle(el).position);
   const overlay = (el) => el.closest('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog, [aria-hidden="true"]');
   // A positioned label over a box with no text of its own (a badge on an image) has nothing to run into.
@@ -1073,6 +1109,7 @@ async function sweep(browser, cfg, ledger) {
   const widths = new Set(frameWidths);
   // A quick check, while tuning, sweeps the frames' widths only: the same stories and checks, far fewer widths.
   if (!cfg.quick) { for (let w = to; w >= from; w -= step) widths.add(w); widths.add(from); }
+  else if (!widths.size) widths.add(Math.min(to, Math.max(from, ...cfg.frames.map((f) => f.width)))); // no frame inside the sweep
   // The widths the layout model predicts a switch at are measured exactly, a pixel either side.
   for (const w of s.switches ?? []) for (const x of [w - 1, w, w + 1]) if (x >= from && x <= to) widths.add(x);
   const order = [...widths].sort((a, b) => b - a);
@@ -1157,7 +1194,9 @@ async function journeys(browser, cfg) {
   const width = Math.max(...cfg.frames.map((f) => f.width));
   const results = [];
   // Each journey that opens something from an opener runs again with the opener at the window's top edge and at its
-  // bottom edge: an open popover must flip or shift to stay in the window, wherever the component sits on the page.
+  // bottom edge, at the widest and the narrowest frame's width: an open popover must flip or shift to stay in the
+  // window, wherever the component sits on the page and however narrow the window is.
+  const narrowest = Math.min(...cfg.frames.map((f) => f.width));
   const edged = [];
   const openers = new Set();
   for (const j of cfg.journeys) {
@@ -1166,19 +1205,31 @@ async function journeys(browser, cfg) {
     const opener = first && (first.hover ?? first.focus ?? first.tap ?? first.click);
     if (!opener || !j.steps.some((st) => st.visible) || openers.has(`${opener}\u0000${Boolean(j.touch)}`)) continue;
     openers.add(`${opener}\u0000${Boolean(j.touch)}`);
-    for (const edge of ["top", "bottom"]) edged.push({ j, edge, opener });
+    for (const at of j.width ? [j.width] : [...new Set([width, narrowest])]) for (const edge of ["top", "bottom"]) edged.push({ j, edge, opener, at });
   }
-  for (const { j: base, edge, opener } of edged) {
-    const j = edge ? { ...base, name: `${base.name} (at the window's ${edge} edge)` } : base;
-    let opened, failed;
+  for (const { j: base, edge, opener, at } of edged) {
+    const j = edge ? { ...base, width: at, name: `${base.name} (at the window's ${edge} edge${at !== (base.width ?? width) ? `, ${at} px` : ""})` } : base;
+    let opened, failed, overlaySeen = false, openerDone = false;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch) }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
     if (opened && edge) {
-      // Room to scroll, then the opener against the edge.
-      await opened.page.evaluate(([sel, edge]) => {
-        document.body.style[edge === "top" ? "paddingBottom" : "paddingTop"] = "3000px";
-        document.querySelector(sel)?.scrollIntoView({ block: edge === "top" ? "start" : "end" });
-      }, [opener, edge]).catch(() => {});
+      // Room to scroll at both ends, then the opener against the edge, found as the journey's own steps find it. An
+      // opener the page does not scroll (in a fixed or sticky bar), or that is covered there, is not tried.
+      const untried = await opened.page.locator(opener).first().evaluate((el, edge) => {
+        for (let p = el; p; p = p.parentElement) if (/fixed|sticky/.test(getComputedStyle(p).position)) return "it sits in a fixed or sticky bar";
+        document.body.style.paddingTop = document.body.style.paddingBottom = "3000px";
+        el.scrollIntoView({ block: edge === "top" ? "start" : "end" });
+        const r = el.getBoundingClientRect();
+        if (edge === "top" ? r.top > 8 : innerHeight - r.bottom > 8) return "the page did not scroll it to the edge";
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return hit && !el.contains(hit) && !hit.contains(el) ? "something covers it there" : "";
+      }, edge, { timeout: 2000 }).catch(() => "it was not found");
+      if (untried) {
+        await opened.context.close();
+        const ran = results.find((r) => r.name === base.name);
+        if (ran) (ran.notes ??= []).push(`not tried with ${opener} at the window's ${edge} edge, ${at} px: ${untried}`);
+        continue;
+      }
     }
     const widths = opened ? [j.width ?? width] : [];
     const seen = new Set(), notes = [], closed = new Set();
@@ -1192,6 +1243,7 @@ async function journeys(browser, cfg) {
       const { page } = opened;
       try {
         for (const [i, step] of j.steps.entries()) {
+          if (failed) break;
           try {
             const [action] = Object.keys(step), arg = step[action];
             if (targets.length && !EXPECT.includes(action) && action !== "wait") {
@@ -1219,17 +1271,34 @@ async function journeys(browser, cfg) {
               continue;
             }
             await runStep(page, step);
+            if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             if (step.visible) {
-              // What opens must be in the window, whole: a popover cut by the window's edge is a failure.
-              // An overlay only (positioned out of the flow, or a popup's role): the page's own content may scroll.
-              const cut = await page.locator(step.visible).filter({ visible: true }).first().evaluate((el) => {
-                const overlay = /absolute|fixed/.test(getComputedStyle(el).position) || el.matches('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog');
-                if (!overlay) return 0;
+              // What opens must be in view, whole: a popover cut by the window's edge, or by a box that scrolls or
+              // clips it, is a failure. An overlay only (positioned out of the flow, or a popup's role, or the nearest
+              // such ancestor of what the step names), the first match a person sees; the page's own content may
+              // scroll. One larger than the window need only start inside it.
+              const cut = await page.locator(step.visible).evaluateAll((els) => {
+                const seen = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width > 0;
+                const isOverlay = (el) => /absolute|fixed/.test(getComputedStyle(el).position) || el.matches('[role=tooltip], [role=dialog], [role=menu], [role=listbox], [popover], dialog');
+                let el = els.find(seen);
+                while (el && !isOverlay(el)) el = el.parentElement;
+                if (!el || el === document.body || el === document.documentElement) return -1;
                 const r = el.getBoundingClientRect();
-                return Math.max(0, -r.top, r.bottom - innerHeight, -r.left, r.right - innerWidth);
-              }, null, { timeout: 2000 }).catch(() => 0);
-              if (cut > 1) throw new Error(`${step.visible} is open but ${Math.round(cut)} px of it is outside the window: flip or shift it to stay in view`);
-              if (edge) break;
+                let view = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+                if (getComputedStyle(el).position !== "fixed") for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+                  const cs = getComputedStyle(p);
+                  if (!/hidden|clip|auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
+                  const c = p.getBoundingClientRect();
+                  view = { left: Math.max(view.left, c.left), top: Math.max(view.top, c.top), right: Math.min(view.right, c.right), bottom: Math.min(view.bottom, c.bottom) };
+                }
+                const tall = r.height > view.bottom - view.top, wide = r.width > view.right - view.left;
+                const y = tall ? Math.max(0, view.top - r.top) : Math.max(0, view.top - r.top, r.bottom - view.bottom);
+                const x = wide ? Math.max(0, view.left - r.left) : Math.max(0, view.left - r.left, r.right - view.right);
+                return Math.max(x, y);
+              }, null, { timeout: 2000 }).catch(() => -1);
+              if (cut > 1) throw new Error(`${step.visible} is open but ${Math.round(cut)} px of it is outside the window or a box that clips it: flip or shift it to stay in view`);
+              // At an edge, the first overlay the opener opens is what is checked; the rest of the journey is not.
+              if (edge && openerDone && cut >= 0) { overlaySeen = true; break; }
               openSeen.add(step.visible);
             }
             if ("hidden" in step) {
@@ -1259,6 +1328,7 @@ async function journeys(browser, cfg) {
         }
       } finally { await opened.context.close(); }
     }
+    if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
     results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
       acted: [...acted], closes });
   }
@@ -1314,14 +1384,19 @@ function assessRow(row, sweep) {
   let reason;
   if (status === "pass" || status === "passed") {
     const measured = row.method === "sweep" || row.method === "sweep.stories";
-    // A row that names stories answers for those; one that names none, for all of them.
-    const names = (sweep?.stories ?? []).map((s) => s.name ?? s).filter((n) => `${row.item} ${row.result}`.includes(`\`${n}\``));
-    const issues = measured ? (sweep?.issues ?? []).filter((i) => Boolean(i.story) === (row.method === "sweep.stories") && (!i.story || !names.length || names.includes(i.story))) : [];
+    // A row that names stories in inline code answers for those; one that names none, for all of them. Inline code
+    // that names no configured story is a misspelling or a story never swept.
+    const all = (sweep?.stories ?? []).map((s) => s.name ?? s);
+    const codes = [...`${row.item} ${row.result}`.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+    const names = all.filter((n) => codes.includes(n));
+    const mine = (story) => !names.length || names.includes(story);
+    const issues = measured ? (sweep?.issues ?? []).filter((i) => Boolean(i.story) === (row.method === "sweep.stories") && (!i.story || mine(i.story))) : [];
     const failed = issues.find((i) => i.status === "fail");
     if (failed) return { ...row, status: "fail", reason: `the sweep fails: ${failed.property} “${failed.landmark}”${failed.story ? ` (${failed.story})` : ""}${failed.ranges ? ` at ${failed.ranges}` : ""}` };
     if (!detail) reason = "pass has no evidence";
+    else if (row.method === "sweep.stories" && codes.length && !names.length) reason = `it names no configured story (${codes.map((c) => `\`${c}\``).join(", ")}); the stories are ${all.map((n) => `\`${n}\``).join(", ") || "none"}`;
     else if (row.method === "sweep" && (!sweep || sweep.reason || sweep.unmeasured?.some((u) => !u.story))) reason = "the width sweep was not fully measured";
-    else if (row.method === "sweep.stories" && (!sweep?.stories?.length || sweep.stories.some((s) => s.unmeasured) || sweep.unmeasured?.some((u) => u.story))) reason = "additional stories were not all measured";
+    else if (row.method === "sweep.stories" && (!sweep?.stories?.length || sweep.stories.some((s) => s.unmeasured && mine(s.name ?? s)) || sweep.unmeasured?.some((u) => u.story && mine(u.story)))) reason = "additional stories were not all measured";
     else if (issues.some((i) => i.status === "pending")) return { ...row, status: "pending", reason: "the measurement awaits a decision" };
     else return { ...row, status: "pass" };
   } else reason = na ? "N/A has no reason" : mark || !row.result ? "not checked" : "no recognized result";
@@ -1447,11 +1522,11 @@ async function check(file, flags) {
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
-    // What the score was measured against: the frames' specs and the sweep. A round that changed them starts a new
-    // series, since its score says nothing about the page against the earlier ones.
+    // What the score was measured against: the frames' specs, the sweep and the journeys, quick or complete. A round
+    // that changed them starts a new series, since its score says nothing about the page against the earlier ones.
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
     const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
-      frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full ? cfg.journeys : null])).digest("hex").slice(0, 12);
+      frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full && !flags.quick ? cfg.journeys : null, Boolean(flags.quick)])).digest("hex").slice(0, 12);
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, model: layoutModelRows(cfg), status, score };
     fs.appendFileSync(historyFile, `${JSON.stringify(record)}\n`);
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
@@ -1461,7 +1536,7 @@ async function check(file, flags) {
     const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
     const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
     const restarted = history.length > 0 && !comparable.length;
-    const data = { frames: results, sweep: sweepResult, journeys: journeyResults, acceptance, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
+    const data = { quick: Boolean(flags.quick), frames: results, sweep: sweepResult, journeys: journeyResults, acceptance, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     if (complete) {
       const git = (...args) => spawnSync("git", args, { cwd: cfg.dir, encoding: "utf8" });
@@ -1480,7 +1555,7 @@ async function check(file, flags) {
     console.log(`Verdict: ${status}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`);
     if (status === "fail") console.log("A fail is not a state to hand over in: fix the first cause and check again.");
     if (complete) console.log(`Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`);
-    else console.log(`A partial check (${flags.frame ? "--frame" : "--no-sweep"}): it is not the evidence for a handoff.`);
+    else console.log(`A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`);
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();

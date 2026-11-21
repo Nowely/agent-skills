@@ -139,9 +139,10 @@ const measured = (shift = {}, { height = 200, width = 300 } = {}) => ({
 const compare = (shift, root, ledger) => compareFrame({ frame: "f", spec: SPEC, measured: measured(shift, root), ledger });
 
 test("an offset is traced to where it starts, column by column, and those below it are marked inherited", () => {
-  const r = compare({ New: { dy: 6 }, Title: { dy: 6 }, Buy: { dy: -3 } }, { height: 206 });
+  // Past the 12 px band: within it an offset is a note.
+  const r = compare({ New: { dy: 16 }, Title: { dy: 16 }, Buy: { dy: -14 } }, { height: 216 });
   assert.equal(r.pass, false);
-  assert.deepEqual(r.causes.map((c) => [c.after, c.before, c.step]), [["SKU", "New", 6], ["1 499 €", "Buy", -3]]);
+  assert.deepEqual(r.causes.map((c) => [c.after, c.before, c.step]), [["SKU", "New", 16], ["1 499 €", "Buy", -14]]);
   const y = Object.fromEntries(r.issues.filter((i) => i.property === "y").map((i) => [i.landmark, i.inherited]));
   assert.deepEqual(y, { New: false, Title: true, Buy: false });
 });
@@ -235,10 +236,10 @@ test("layout changes are found between widths and held against the ones the desi
 
 test("widths become ranges and the reports lead with the root and where to start", () => {
   assert.equal(ranges([300, 308, 316, 500, 324]), "300–324, 500");
-  const r = compare({ New: { dy: 6 } }, { height: 206 });
-  assert.match(renderReport({ frames: [r] }), /Start here: between “SKU” and “New” vertically \+6 px/);
+  const r = compare({ New: { dy: 16 } }, { height: 216 });
+  assert.match(renderReport({ frames: [r] }), /Start here: between “SKU” and “New” vertically \+16 px/);
   const summary = renderSummary({ frames: [r] });
-  assert.match(summary, /start here: between “SKU” and “New” vertically \+6 px/);
+  assert.match(summary, /start here: between “SKU” and “New” vertically \+16 px/);
   assert.ok(summary.indexOf("root height") < summary.indexOf("New y"), "the root is listed first");
   assert.equal(causes([], SPEC, { root: { width: 300, height: 200 } }).length, 0);
 });
@@ -1367,8 +1368,9 @@ test("v22: the sweep forecasts fragile constructs once across stories and measur
   fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { lines: LINES, from: 300, to: 340, step: 40, switches: [320], stories } }));
   const r = check(f.dir);
   const frail = r.result.sweep.fragile;
-  const price = frail.filter((x) => x.landmark === "€ 1 250");
+  const price = frail.filter((x) => x.landmark === "€ 1 250" && x.kind !== "may split");
   assert.equal(price.length, 1, `one line for both stories: ${JSON.stringify(frail)}`);
+  assert.ok(frail.some((x) => x.landmark === "€ 1 250" && x.kind === "may split"), "a price joined by ordinary spaces may split");
   assert.equal(price[0].kind, "positioned");
   assert.equal(price[0].story, "frail, again");
   assert.ok(frail.some((x) => x.kind === "spills" && /A label long/.test(x.landmark)), JSON.stringify(frail));
@@ -1450,12 +1452,12 @@ test("v23: a platform entry cannot excuse where a thing sits or whether it shows
   for (const property of ["x", "y", "presence", "line"]) assert.match(faults({ landmark: "Price", property, category: "platform", status: "proposed", reason: "the font" }), /a platform difference/, property);
   assert.equal(faults({ landmark: "Price", property: "width", category: "platform", status: "proposed", reason: "the font" }), "");
   const f = smallFrame('<span style="margin-left:9px">A</span> <span>B</span> <span>C</span> <span>D</span>');
-  // 6 px: within the band of a 300 px frame (8 px), where the system may explain an offset.
-  f.write('<main><span style="margin-left:15px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
-  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["A", "B", "C", "D"], property: "x", category: "system", status: "proposed", reason: "the kit's padding" }]));
+  // 19 px, past the band, where only an owner-level cause may excuse an offset.
+  f.write('<main><span style="margin-left:28px">A</span> <span>B</span> <span>C</span> <span>D</span></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["A", "B", "C", "D"], property: "x", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }]));
   check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
-  assert.match(handoff, /## Broad excuses\n\n- one entry covers 4 findings: A, B, C, D x — the kit's padding \(system, proposed\)/, handoff);
+  assert.match(handoff, /## Broad excuses\n\n- one entry covers 4 findings: A, B, C, D x — the frame's padding is off the scale \(design-error, proposed\)/, handoff);
   assert.ok(handoff.indexOf("## Broad excuses") < handoff.indexOf("## Pictures to look at first"));
 });
 
@@ -1634,9 +1636,15 @@ test("v26: a moderate offset is a note; two moving apart past the band is a brok
   // A right-aligned piece that grows keeps its right edge: the free space before it changes, no relation breaks.
   r = boxCase(CARD({ top: 12 }), CARD({ top: 12, price: "letter-spacing:2px" }), 420);
   assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
-  // On a narrow frame the band is 8 px: 10 px is past it, and the system cannot excuse it.
-  r = boxCase(CARD(), CARD({ col: 160 }), 360, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", max: 12, category: "system", reason: "the kit's gap token", status: "proposed" }] });
-  assert.ok(r.frame.issues.some((i) => i.property === "x" && i.landmark === "32 ядер" && i.status === "fail"), r.stdout);
+  // Past the band, a system proposal excuses nothing, and the finding says so.
+  r = boxCase(CARD(), CARD({ col: 170 }), 420, { ledger: [{ frame: "frame", landmark: "32 ядер", property: "x", category: "system", reason: "the kit's gap token", status: "proposed" }] });
+  assert.match(r.stdout, /32 ядер x: .* — past 12 px a system proposal excuses nothing/);
+  // One above the other, each 8 px the other way round: a broken relation too.
+  const STACK = (a, b) => `<main style="position:relative;width:420px;height:120px;font:14px/18px sans-serif;color:#111"><div style="position:absolute;left:16px;top:${a}px">Title text</div><div style="position:absolute;left:16px;top:${b}px">Below text</div></main>`;
+  r = boxCase(STACK(12, 52), STACK(4, 60), 420);
+  assert.ok(r.frame.issues.some((i) => i.gap && i.property === "y" && /gap below “Title text”/.test(i.expected)), r.stdout);
+  r = boxCase(STACK(12, 52), STACK(4, 44), 420);
+  assert.ok(!r.frame.issues.some((i) => i.gap), r.stdout);
 });
 
 test("v26: a price split from its period, a number from its unit and a word between its letters are wraps", browser, () => {
@@ -1647,13 +1655,22 @@ test("v26: a price split from its period, a number from its unit and a word betw
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
     return check(f.dir).result.sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
   };
-  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a line ends on “\/”, split from “месяц” below: keep them together/);
+  assert.match(run('<div style="width:118px">1 234 567,00 ₽ / месяц</div>').join(), /a line ends on “\/”, split from “месяц” below/);
   assert.match(run('<div style="width:40px">12 345 ГБ</div>').join(), /a number (broken across lines|split from its unit)/);
   assert.match(run('<div style="width:30px;overflow-wrap:anywhere">потока</div>').join(), /a word broken between its letters: “потока”/);
   assert.deepEqual(run('<div style="width:200px">1 234 567,00 ₽ / месяц</div>'), []);
-  // Prose wraps where it wraps: a line may end on "5%" or "Note:".
+  // Prose wraps where it wraps: a line may end on "5%", "Note:", a list's "·", or a short word after a number.
   assert.deepEqual(run('<p style="width:90px;margin:0">Growth was 5% this year. Note: prices change.</p>'), []);
+  assert.deepEqual(run('<p style="width:40px;margin:0">с 9 до 18</p>'), []);
+  assert.deepEqual(run('<p style="width:120px;margin:0">4 ядра · 16 ГБ · 512 ГБ</p>'), []);
   assert.match(run('<div style="width:50px">12 345 ₽</div>').join(), /a number split from its unit: “345” \| “₽”/);
+  // Across elements and text nodes, as a component renders it: "{amount} ₽ / {period}".
+  assert.match(run('<div style="width:118px"><span>1 234 567,00</span> <span>₽</span> <span>/</span> <span>месяц</span></div>').join(), /a line ends on “\/”, split from “месяц” below/);
+  assert.match(run('<div id="p" style="width:118px"></div><script>document.getElementById("p").append("1 234 567,00 ₽", " / ", "месяц")</script>').join(), /a line ends on “\/”, split from “месяц” below/);
+  // The period moved whole is not a split.
+  assert.deepEqual(run('<div style="width:96px">1 234 567,00 ₽ /&nbsp;месяц</div>'), []);
+  assert.match(run('<div style="width:40px">5587 × 4</div>').join(), /“×” split from its numbers/);
+  assert.match(run('<div style="width:40px">126,5 m²</div>').join(), /a number split from its unit: “126,5” \| “m²”/);
 });
 
 test("v26: a popover that opens above without flipping is cut at the window's top edge; one that flips holds", browser, () => {
@@ -1670,7 +1687,7 @@ t.onmouseleave = () => { pop.hidden = true; };</script>`;
     return check(f.dir).result.journeys;
   };
   const stuck = run(false);
-  assert.ok(stuck.some((j) => /top edge/.test(j.name) && !j.pass && /outside the window: flip or shift it/.test(j.failed)), JSON.stringify(stuck));
+  assert.ok(stuck.some((j) => /top edge/.test(j.name) && !j.pass && /outside the window.*flip or shift it/.test(j.failed)), JSON.stringify(stuck));
   const flips = run(true);
   assert.ok(flips.every((j) => j.pass), JSON.stringify(flips));
 });
@@ -1683,6 +1700,12 @@ test("v26: --quick sweeps every story at the frames' widths only, and is a parti
   assert.match(r.stdout, /partial check/i);
   assert.ok(!fs.existsSync(path.join(f.dir, "out/handoff.md")), "a partial check writes no evidence file");
   assert.equal(r.result.journeys.length, 0);
+  // Quick rounds score in their own series: a complete check after two of them is the first of its own.
+  f.write("<main><span style=\"margin-left:30px\">Ready</span></main>");
+  check(f.dir, "--quick");
+  check(f.dir, "--quick");
+  check(f.dir, "--quick");
+  assert.doesNotMatch(check(f.dir).stdout, /rounds without a new lowest score/);
 });
 
 test("v26: an acceptance row that names its story answers for that story, and says what failed", browser, () => {
@@ -1696,4 +1719,59 @@ test("v26: an acceptance row that names its story answers for that story, and sa
   const split = rows.find((r) => /split/.test(r.item));
   assert.equal(split.status, "fail");
   assert.match(split.reason, /the sweep fails: wrap “.*” \(split\) at \d+/);
+});
+
+// ------------------------------------------------------------------ draft 26.1: the critic's and verifier's cases
+
+test("v26.1: prose, dates, breadcrumbs and Chinese labels wrap freely; a word with its comma is still a word; a short price joined by a breakable space is forecast", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html) => {
+    fs.writeFileSync(path.join(f.dir, "w.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{padding:8px}</style><main>${html}</main>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "w", url: "w.html" }] } }));
+    return check(f.dir).result.sweep;
+  };
+  const wraps = (sweep) => sweep.issues.filter((i) => i.story === "w" && i.property === "wrap").map((i) => i.actual);
+  for (const html of ['<p style="width:120px;margin:0">Founded in 2020 and growing</p>', '<p style="width:110px;margin:0">On November 21, 2026</p>',
+    '<p style="width:110px;margin:0">Home / Servers / Dedicated</p>', '<div lang="ja" style="width:5em">専用サーバー構成管理画面</div>']) assert.deepEqual(wraps(run(html)), [], html);
+  assert.match(wraps(run('<div style="width:60px;overflow-wrap:anywhere">Serverkonfiguration,</div>')).join(), /a word broken between its letters: “Serverkonfiguration”/);
+  const fits = run('<div style="width:300px">1 234 ₽ / месяц</div>');
+  assert.deepEqual(wraps(fits), []);
+  assert.ok(fits.fragile.some((x) => x.kind === "may split" && /a no-break space keeps it/.test(x.actual)), JSON.stringify(fits.fragile));
+});
+
+test("v26.1: a gap the design sets that closes up is a finding, though the edges hold", browser, () => {
+  const r = boxCase(CARD(), CARD().replace('font-weight:600">BA-i201-B', 'font-weight:600;letter-spacing:8.5px">BA-i201-B'), 420);
+  assert.ok(r.frame.issues.some((i) => i.gap && /nearly touch/.test(i.actual)), r.stdout);
+});
+
+test("v26.1: an overlay cut by a box that scrolls fails; one in a sticky bar is not tried at the edges, and says so", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html, steps) => {
+    fs.writeFileSync(f.page, fs.readFileSync(f.page, "utf8").replace(/<div id="wrap"[\s\S]*$/, "") + `<div id="wrap">${html}</div>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "help opens", steps }] }));
+    return check(f.dir).result.journeys;
+  };
+  const steps = [{ hover: "#t" }, { visible: "#pop span" }, { move: [290, 890] }, { hidden: "#pop" }];
+  const script = `<script>const t = document.getElementById("t"), pop = document.getElementById("pop"); t.onmouseenter = () => { pop.hidden = false; }; t.onmouseleave = () => { pop.hidden = true; };</script>`;
+  const clipped = run(`<div style="position:relative;height:120px;overflow:auto;margin-top:200px"><button id="t" style="margin-top:10px">?</button><div id="pop" hidden style="position:absolute;top:-60px;left:0;width:120px;height:50px;background:#eee"><span>Help</span></div><div style="height:400px"></div></div>${script}`, steps);
+  assert.ok(clipped.some((j) => !/edge/.test(j.name) && !j.pass && /a box that clips it/.test(j.failed)), JSON.stringify(clipped));
+  const sticky = run(`<div style="position:sticky;top:0;background:#fff"><button id="t">?</button><div id="pop" hidden style="position:absolute;top:24px;left:0;width:120px;height:50px;background:#eee"><span>Help</span></div></div><div style="height:2000px"></div>${script}`, steps);
+  assert.ok(!sticky.some((j) => /edge/.test(j.name)), JSON.stringify(sticky));
+  assert.ok(sticky.some((j) => j.notes?.some((n) => /not tried .* fixed or sticky bar/.test(n))), JSON.stringify(sticky));
+});
+
+test("v26.1: --quick with no frame inside the sweep still measures, and a row naming no configured story is incomplete", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, from: 320, to: 400 } }));
+  const quick = check(f.dir, "--quick");
+  assert.notEqual(quick.status, 2, quick.stdout + quick.stderr);
+  assert.match(quick.stdout, /journeys: not run \(--quick\)/);
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  fs.writeFileSync(path.join(f.dir, "review.md"), `${MODEL}## Acceptance\n\n| Item | Checked by | Result |\n|---|---|---|\n| frame | check | pass — captured |\n| \`dnese\` keeps every line | sweep.stories | pass — clean |\n`);
+  const row = check(f.dir).result.acceptance.find((r) => /dnese/.test(r.item));
+  assert.equal(row.status, "incomplete");
+  assert.match(row.reason, /names no configured story \(`dnese`\); the stories are `dense`/);
 });

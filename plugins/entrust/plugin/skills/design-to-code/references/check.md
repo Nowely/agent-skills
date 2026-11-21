@@ -16,7 +16,8 @@ decision; 0 a pass. Not measured are:
 - everything, when there is no browser;
 - in a complete check, what the acceptance list needs (below).
 
-A **complete check** attempts every configured frame, sweep, story and journey without `--frame` or `--no-sweep`.
+A **complete check** attempts every configured frame, sweep, story and journey without `--frame`, `--no-sweep` or
+`--quick`.
 It writes `handoff.md` and the gallery. The following evidence contributes to the verdict.
 
 - An acceptance list in `review.md` beside `design.json`. The [acceptance record](review.md#the-acceptance-list)
@@ -52,7 +53,8 @@ design's texts are missing is named as rendering other data than its frame. A `f
 hand over in.
 
 **Partial checks:** `--frame <name>` checks one frame and skips the sweep; `--no-sweep` skips the sweep; `--quick`
-checks every frame and sweeps every story at the frames' widths only, without journeys: for tuning. They write
+checks every frame and sweeps every story at the frames' widths only, without journeys: for tuning. Its rounds score
+in their own series, so the two-round rule compares complete checks with complete checks. They write
 no evidence file and no gallery, leaving the last complete check's gallery in place, and their verdict is said to be
 about what they measured. Every check first removes an earlier `handoff.md`, so the one that exists is the last
 complete check's. The page before the work is the one the first check saw. If the root was absent after setup, the
@@ -179,13 +181,18 @@ read by the edge that moved least, with each offset traced to its first cause, a
 - **Not compared:** heights and narrower widths, since a font changes them and a design's piece may hold an icon
   beside its text.
 - **Tolerance:** positions are held to 4 px, or the tolerance if larger.
-- **The moderate band:** an `x` or `y` offset of 12 px or less (8 px on a frame 400 px wide or narrower) is a note
-  in the report and the evidence file, not a finding: the system's. Past the band, only the design's error, a state
-  it lacks or the owner's call excuses it.
-- **Relations:** two pieces the design sets side by side keep one of four distances: the gap between them (a flow),
-  their left edges (fixed tracks), their right edges, or their outer edges (free space between a left and a right
-  group). When none holds within the band, the pair is a finding: two moderate offsets the other way round. A pair
-  with a piece already past the band is left to that piece's finding.
+
+Two rules hold for every frame, from Figma or a screenshot:
+
+- **The moderate band:** an `x` or `y` offset of 12 px or less is a note in the console and the evidence file, not a
+  finding: the system's (a token gap, a kit component, another font). It needs nothing, and a ledger entry for it
+  changes nothing. Past the band, only the design's error, a state it lacks or the owner's call excuses an offset.
+- **Relations:** two neighbours, side by side or one above the other, keep one of five distances: the gap between
+  them (a flow), their start edges (fixed tracks), their end edges, their outer edges (free space between two groups)
+  or their centres (a centred piece). When none holds within the band, the pair is a finding: two moderate offsets
+  the other way round. A pair with a piece already past the band is left to that piece's finding, and a pair neither
+  of which moved on its own to what moved them both (the root, a piece before them). A gap of 8 px or more that
+  closes to under 4 px (or half of it) is a finding whatever the edges keep: the pieces nearly touch.
 
 ## Constructs and the moderate offset
 
@@ -200,26 +207,37 @@ The sweep reports as `construct` findings:
   name or tooltip on it.
 
 The sweep also reports text over an icon or a small picture (64 × 64 px at most) as an `overlap`: the collision people
-see first. It reads where every text breaks, with nothing to declare, and reports as a `wrap`:
+see first. It reads where every text breaks, with nothing to declare, and reports as a `wrap`. It reads a line's text
+across elements (a price written as `{amount} ₽ / {period}` reads as one), and reports:
 
-- a separator left alone at a line's end, its value below ("₽ /" | "месяц");
-- a number broken across lines, or split from its unit or currency after it ("12 345" | "₽");
-- a word of letters broken between them, unless the page sets `hyphens: auto`.
+- "/" after a value left at a line's end, its period below ("₽ /" | "месяц"): keep "/ месяц" together, and the whole
+  price on one line where it fits. A break before "/" moves the period as a unit, and is not a finding;
+- "×" split from either of its numbers ("5587 ×" | "4");
+- a number broken across lines in one element, or split from its unit or currency ("12 345" | "₽", "$" | "120").
+  Units are a list: currency signs, %, ГБ, ТБ, GB, ГГц, GHz, Гбит/с, шт., мес., м², °C, px and the like, not any
+  short word;
+- a word of a space-delimited script (Latin, Cyrillic, Greek), or a run of four digits or more, broken inside, unless
+  the page sets `hyphens: auto`.
 
-Prose wraps where it wraps: a line may end on "5%" or "Note:".
+Prose wraps where it wraps: a line may end on "5%", "Note:", "·", a breadcrumb's "/" or a date's "21,", and Chinese or
+Japanese breaks between any two characters. In a short text (six words or fewer), such a pair joined by an ordinary
+space is a "may split" forecast, a warning: the sweep may step over the width where it splits.
 
 Each journey that opens something from an opener also runs with the opener at the window's top edge and at its bottom
-edge. On any `visible` step, an overlay (positioned out of the flow, or with a popup's role) must be whole in the
-window, or the journey fails: a popover flips or shifts to stay in view.
+edge, at the widest and the narrowest frame's width. On any `visible` step, an overlay (positioned out of the flow, or
+with a popup's role, or the nearest such ancestor of what the step names; the first match a person sees) must be
+whole in the window and in every box that scrolls or clips it, or the journey fails: a popover flips or shifts to stay
+in view. An overlay larger than the window need only start inside it. At an edge, the first overlay after the opener's
+step is checked, and the run stops there. An opener in a fixed or sticky bar, one the page does not scroll to the
+edge, or one covered there is not tried, and the journey's notes say so; so does an edge run that sees no overlay.
 
 **What may be proposed, and by whom:**
 
-- **The system's:** an `x` or `y` offset of 12 px or less may be proposed as the system's (a token gap, a kit
-  component), and `system` covers it. It costs nothing in the score, so a literal number is not a better answer than
-  the token.
-- **Only owner-level causes:** past 12 px in total, however the steps add up; a text wider than the font explains;
-  a presence, a text, a line, a construct, a broken column. Only a `design-error`, `missing-state` or `ux` proposal,
-  or an entry the owner accepted, covers these.
+- **Nothing within the band:** an offset of 12 px or less is a note (above).
+- **Only owner-level causes:** an offset past 12 px in total, however the steps add up; a text wider than the font
+  explains; a presence, a text, a line, a wrap, a construct, a broken column or relation. Only a `design-error`,
+  `missing-state` or `ux` proposal, or an entry the owner accepted, covers these. A `system` or `platform` proposal for
+  one is named in the finding as excusing nothing.
 - **`owner`** is the owner's own call: an entry of it is accepted, with `decidedBy`.
 
 ## The ledger
@@ -229,7 +247,7 @@ window, or the journey fails: a popover flips or shifts to stay in view.
 | Field | Meaning |
 |---|---|
 | `landmark` | a design text or a list of them, a selector, `root`, or `*` |
-| `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `covered`, `outside`, `align`, `resize`, `switch`, `line`, or `*` |
+| `property` | `x`, `y`, `width`, `height`, `font`, `presence`, `text`, `region`, `overflow`, `clipped`, `overlap`, `covered`, `outside`, `align`, `resize`, `switch`, `line`, `wrap`, `construct`, or `*` |
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px; it covers the differing areas inside it |
 | `frame` | a frame's name or a list of names; absent or `*` for all |
 | `max` | the largest difference in px the entry covers, at each width in the sweep; only a difference with a size (a position, a size, an overflow, a cut, an overlap, an alignment spread, a resize) can be covered, never a layout switch or a covered control; absent, any |

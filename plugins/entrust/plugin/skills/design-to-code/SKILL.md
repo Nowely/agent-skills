@@ -39,12 +39,13 @@ The design is the intent; the code is a system. Build the layout from the kit's 
 grid and flex with consistent gaps, and the relations the design shows: what lines up, what shares a row, what wraps,
 what grows. A hundred per cent match is not reachable and is not the goal. A moderate, systematic difference the
 system explains (a 16 px token gap where the frame measures 14 and 18, the kit's chip height) is fine: the check
-reports it as a note, not a finding. A broken relation is not fine: a misaligned column, a gap that changed past the
-moderate band, a wrong order or format, a piece that moved a row, an overlap.
+reports an offset of 12 px or less as a note, not a finding, from Figma or a screenshot. A broken relation is not
+fine: a misaligned column, two neighbours moved apart past the band, a wrong order or format, a piece that moved a
+row, an overlap.
 
 What belongs together stays together at every width: a price with its period, a value with its unit, an icon with
 its count. Keep each such group on one line (a no-break space, `white-space: nowrap` on the group) and let the groups
-wrap between them. An open popover stays in the window, wherever the component sits: place it with the kit's popover
+wrap between them: where the longest price does not fit beside its period, "/ месяц" moves to the next line whole. An open popover stays in the window, wherever the component sits: place it with the kit's popover
 or CSS anchor positioning with a fallback, not hand-written offsets.
 
 Do not nail things in place without a strong reason: a negative margin, a transform that moves text, text positioned
@@ -81,7 +82,8 @@ Ask before building: what shares this line, what is its longest legal value and 
 sometimes, what repeats and how many times, what must line up, what happens one step narrower, and what the user does
 here that must survive a resize.
 
-Put the model in `design.json`. Its switch widths go in `sweep.switches`, which the check measures a pixel either
+Put the model in `design.json`. Sweep from the narrowest width the product supports, as the contract or the owner
+names it, not below: past returns came at that width. Its switch widths go in `sweep.switches`, which the check measures a pixel either
 side. Each line goes in `sweep.lines`, with its pieces in order and where the line holds. Give the dense story the
 longest values the model names, and add a story with many entries, beyond what any frame shows (eight disk groups
 where the frames show three): the component must grow, not overlap or cut. The sweep then checks the arrangement on the frames' page and every story, not only
@@ -122,13 +124,14 @@ needs a frame per target state on the frame's own data (targets in `frames/`, co
 with one dense story (a legal combination of the longest values and every conditional action), and a journey that
 opens and closes each overlay or opener (a popup's frame names the popup as its root). A page with one layout at one
 width says why in `design.json` (`"static"`) instead of sweeping; frames at several widths are always swept, whether
-they come from Figma or screenshots. Trace an offset to its first cause, fix it and check every frame again.
+they come from Figma or screenshots. Trace a finding to its first cause, fix it and check every frame again; a
+note needs nothing.
 
 Tune with `--quick` (every frame and story at the frames' widths, no journeys) and run the complete check at
 milestones; batch the fixes a check names before checking again. When two rounds in a row bring no new lowest score:
 
-- **Notes need nothing:** an offset of 12 px or less (8 on a frame 400 px wide or narrower) that the system explains
-  is a note in the evidence. Pixel residue may be proposed with its reason.
+- **Notes need nothing:** an offset of 12 px or less is a note in the evidence. Pixel residue (a stand-in icon, a
+  rendering) may be proposed with its reason.
 - **The rest is fixed:** a gap changed past the band, an offset past it, a text or format, an order, a missing or
   extra piece, a text wider than the font explains, a wrap that splits what belongs together, a popover outside the
   window, a construct. Only the design's error, a state it lacks or the owner's call can excuse them.
