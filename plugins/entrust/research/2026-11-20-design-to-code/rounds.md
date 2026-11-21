@@ -659,3 +659,15 @@ gets the fixes to what 22 added.
 
 `node --test evals/design-to-code.test.mjs`: 85 passed; the skill checks: 8 of 8. The pages are frozen as
 [drafts/21.1-v21.1.md](drafts/21.1-v21.1.md) (commit `d70839e`) and [drafts/22.1-v22.1.md](drafts/22.1-v22.1.md).
+
+## Server card with Sonnet: drafts 21.1 and 22.1 side by side
+
+One Sonnet run per draft on a case built from the server card's references, with screenshots only:
+[23-server-card-sonnet.md](23-server-card-sonnet.md).
+
+- **Both drafts:**
+  - passed the frozen judge's automatic part: dense sweep, popovers, configure, stock;
+  - were returned by the blind visual review.
+- **Draft 21.1:** its layout broke on dense data without overlapping, because it switched at fixed widths.
+- **Draft 22.1:** its frames had shifted columns and a swapped indicator, hidden behind one broad "font" deviation.
+- **Neither** wrote its acceptance list or model before building.
