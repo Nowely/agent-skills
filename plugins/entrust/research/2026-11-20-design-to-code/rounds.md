@@ -734,3 +734,17 @@ the frozen submissions before any model run.
 The verifier's ink cases now hold, except the known limit: a word changed at the same width in another font is for
 the eye. `node --test evals/design-to-code.test.mjs`: 90 passed; skill checks 8 of 8; packaging 21 passed and 1
 tag-only skip. The page is frozen as [drafts/23-v23.md](drafts/23-v23.md), at commit `4adcc2c`.
+
+
+## Draft 27: one full-task Terra run, with a frozen pre-review checkpoint
+
+One worker used the pinned draft on the full task; one independent reviewer returned the first checkpoint for a
+reproduced remount/resize defect. One correction round addressed that path. The owner also observed a transient
+sidebar transition; a separate frozen-server probe measured intermediate DOM geometry, without proving a painted
+frame. Both checkpoint reports remained `fail` because four sheet journeys were affected by the checker's own
+transition suppression. A separate synthetic control reproduced one false-pass regression in later draft-28
+checker code. No skill or product code was changed in this reporting round.
+
+The [full run, cost, provenance and consolidated analysis](31-terra-real-task.md) and its
+[paired visual report](31-terra-first-visual.html) preserve the conditions and limits. The outcome is one case, not a
+measured success rate.

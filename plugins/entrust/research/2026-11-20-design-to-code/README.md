@@ -141,11 +141,11 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 
 ## Iteration 5: packaged entry, incomplete first submission
 
-[The fifth iteration](16-iteration-05.md) independently loaded the built public consumer but returned the first submission for observed dense-data overlap and other state gaps. Its [visual report](16-iteration-05-visual.html) puts each shown card beside a reference, with data differences named. The owner set a limit of five implementation iterations; the follow-up draft has not had a sixth worker run.
+[The fifth iteration](16-iteration-05.md) independently loaded the built public consumer but returned the first submission for observed dense-data overlap and other state gaps. Its [visual report](16-iteration-05-visual.html) puts each shown card beside a reference, with data differences named. At the time of that series, the owner set a limit of five implementation iterations; its follow-up draft did not receive a sixth worker run.
 
 ## Five-iteration summary
 
-[The comparison and available accounting](17-iteration-summary.md) records first-submission outcomes, frozen versions, available role costs, visual references and remaining uncertainty. The five-run cap was reached; the final revision has not had another implementation trial.
+[The comparison and available accounting](17-iteration-summary.md) records first-submission outcomes, frozen versions, available role costs, visual references and remaining uncertainty. The five-run cap for that series was reached; its final revision did not receive another implementation trial.
 
 ## Post-series checker calibration
 
@@ -161,7 +161,7 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 
 ## Fifth-submission postmortem and sixth-iteration proposal
 
-[The postmortem](21-fifth-submission-postmortem.md) consolidates the observed defects, their causes and limits, prior findings and cost. Its [visual evidence](21-fifth-submission-visual.html) pairs each shown state with a reference and labels different data. [The proposed sixth iteration](22-sixth-iteration-plan.md) is a plan only; the owner has not authorized another implementation run.
+[The postmortem](21-fifth-submission-postmortem.md) consolidates the observed defects, their causes and limits, prior findings and cost. Its [visual evidence](21-fifth-submission-visual.html) pairs each shown state with a reference and labels different data. [The proposed sixth iteration](22-sixth-iteration-plan.md) was a plan only at that point; the later owner-approved draft-27 run is recorded separately below.
 
 ## The server card with Sonnet: drafts 21.1 to 27
 
@@ -178,3 +178,12 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
   never caught a real return.
 - [The Terra run](30-terra-run.md): the owner's one run, prepared so that it reads clearly: the mechanics tested first,
   the data's bounds seeded, the review pass on, the rule for reading it written before.
+
+
+## Draft 27 on the full task: first checkpoint and one review round
+
+The owner authorised one new Terra run of frozen draft 27. The [detailed record](31-terra-real-task.md) separates
+the builder's first checkpoint, independent review, one correction round, the owner's subsequent observations,
+checker defects and available role costs. The [visual report](31-terra-first-visual.html) embeds each principal
+reference beside the corresponding result and labels contextual comparisons. This is one case, not proof of a
+general improvement; no further product correction is in scope.
