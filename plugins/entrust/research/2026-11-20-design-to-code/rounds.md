@@ -563,3 +563,7 @@ Without launching a sixth implementation, the current checker was run on the fro
 ## Post-series: mark changed Before capture settings
 
 A targeted check reproduced a Before image from one width and URL being shown without a warning after both changed. The checker now preserves the original and marks recorded changes or unknown capture settings in the gallery and handoff. The same URL still does not prove unchanged data or theme. [Reproduction, visual evidence, checks and costs](19-before-conditions.md). This is not a new frontend implementation iteration and does not validate draft 20 on a first submission.
+
+## Post-series: account for coordination overhead
+
+A read-only audit of the same five-iteration turn found 23 linked local usage journals. It records coordinator, worker and helper token counters separately, plus the number of wait calls without attributing a token cost to each. [Method, anonymized counts and limits](20-coordinator-accounting.md). No new implementation, skill revision or acceptance result is implied.

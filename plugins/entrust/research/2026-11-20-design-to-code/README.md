@@ -154,3 +154,7 @@ The judge returned v16 for the same 6 px mobile difference as v15. The worker re
 ## Post-series: Before image provenance
 
 [The Before-image audit](19-before-conditions.md) reproduces an unlabelled change of capture conditions, preserves the original image and records the corrected gallery, checks and costs. It does not constitute a sixth frontend implementation.
+
+## Post-series: coordination accounting
+
+[The coordination audit](20-coordinator-accounting.md) adds recorded token use for the coordinator, five workers and other linked roles during the five-iteration turn. It separates cached, uncached and output tokens and names unmeasured costs; it is not another implementation iteration.
