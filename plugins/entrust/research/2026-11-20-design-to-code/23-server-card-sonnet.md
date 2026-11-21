@@ -67,7 +67,7 @@ either draft gets a first submission accepted where the five Terra iterations di
   where the fifth Terra iteration failed: dense overlap and popups that stayed open. With one run per draft and no
   plain arm, this run does not show that the skill caused it.
 - **One broad "font" entry hid the layout errors.** Draft 22.1 proposed one entry per frame, "glyph-level differences
-  from the font", which covered 13 to 43 differing regions each. Among them were the shifted columns and the swapped
+  from the font", which covered 13 to 43 differing regions on each card frame. Among them were the shifted columns and the swapped
   indicator. With a screenshot-only design the check leaves text out of the comparison. Text positions were therefore
   left to the eye, and the eye passed them.
 - **A layout can break without overlapping.** Draft 21.1 switched layouts at fixed container widths, so the dense
