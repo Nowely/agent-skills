@@ -15,7 +15,8 @@ forensics remain in the repository references and release notes.
 - The OpenCode adapter's orchestration page links the orchestrate page's Verification for what a fresh verifier is
   given, instead of naming only the requirements and the raw artifacts.
 - The speed profile in `references/plan.md` keeps the default team's minimum, the plan critic and the verifier, and
-  any further review the consequences warrant; it asked for "a targeted check" and named neither role.
+  any further review the consequences warrant, beside its targeted check; it said only "Keep the review the
+  consequences warrant" and named neither role.
 - On a card, a role the user dropped is named as dropped at the user's word: `references/plan.md`'s team row has said
   so since 0.46.0, whose notes did not mention it.
 
