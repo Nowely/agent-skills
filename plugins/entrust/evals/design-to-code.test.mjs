@@ -3049,3 +3049,37 @@ test("44.9: the story page's Details, whose sheet is only on the consumer's page
     assert.equal(r.status, 2, r.stdout);
   }
 });
+
+test("44.9: an opener whose click on its own page mounts its target, or throws, needs a journey there; one whose click opens nothing is covered from another page", browser, () => {
+  // Page a mounts the sheet only on open ({open && <Sheet/>}), and its journey opens and closes it. Page b shows the
+  // same card with the same Details opener, and `b` is its script.
+  const card = `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${MARKERS}</div></div>`;
+  const mounts = `<script>const b = document.querySelector(".d"); b.onclick = () => { let s = document.getElementById("sheet");
+if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = document.createElement("div"); s.id = "sheet"; s.textContent = "Sheet"; document.body.append(s); b.setAttribute("aria-expanded", "true"); } };</script>`;
+  const run = (b) => {
+    const dir = tmp(), config = path.join(dir, "design.json");
+    const page = (html) => `<!doctype html><style>body{margin:0}.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}#sheet{position:fixed;left:20px;top:100px;background:#eee}</style>${html}`;
+    fs.writeFileSync(path.join(dir, "a.html"), page(card + mounts));
+    fs.writeFileSync(path.join(dir, "b.html"), page(card + b));
+    fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+    fs.writeFileSync(config, JSON.stringify({ url: "a.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+      frames: [{ name: "a", width: 600, spec: "a.json", reference: "a.png" }, { name: "b", width: 600, url: "b.html", spec: "b.json", reference: "b.png" }],
+      sweep: { from: 600, to: 600, stories: [{ name: "dense", url: "a.html?dense" }], lines: LINES },
+      journeys: [{ name: "details", steps: [{ click: ".d" }, { visible: "#sheet" }, { click: ".d" }, { hidden: "#sheet" }] }] }));
+    const snap = cli("snapshot", config, "--images");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(dir).result;
+  };
+  const gap = "1 control opens something with no journey that opens and closes it: “Details”";
+  // Before (the verifier of doc 44): its target absent until a click, b's opener was covered by a's journey, also
+  // where its handler throws (the consumer forgot the sheet's provider) or mounts the sheet as a's does.
+  for (const [what, b] of [["throws", '<script>document.querySelector(".d").onclick = () => { throw new Error("no sheet provider"); };</script>'], ["mounts its target", mounts]]) {
+    const r = run(b);
+    assert.deepEqual(r.gaps, [gap], `${what}: ${JSON.stringify(r.gaps)}`);
+    assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), `${what}: ${JSON.stringify(r.journeys)}`);
+  }
+  // A click that opens nothing there, as on a story page without the sheet: covered by a's journey, which says so.
+  const r = run("");
+  assert.deepEqual(r.gaps, [], JSON.stringify(r.gaps));
+  assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, ["covers “Details” on b.html, whose target #sheet is not on that page"]);
+});

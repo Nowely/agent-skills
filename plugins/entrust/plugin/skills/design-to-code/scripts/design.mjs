@@ -256,8 +256,8 @@ const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 
 // Run on the frame root (inventory) or the target of a gesture (one opener). Equal labels on different
 // controls must stay distinct across the fresh pages used for frames and journeys. Each also says its role, its page
 // without the query, whether its target is missing from that page and, in the inventory, which of the journeys'
-// selectors pick it out (it or something inside it).
-function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [] } = {}) {
+// selectors pick it out (it or something inside it). Given `nth`, the inventory's opener at that place itself.
+function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [], nth } = {}) {
   const selector = "[aria-expanded], [popovertarget], [aria-haspopup]";
   const label = (o) => (o.getAttribute("aria-label") || o.title || o.textContent || o.localName).replace(/\s+/g, " ").trim();
   const role = (o) => o.getAttribute("role")?.trim().split(/\s+/)[0].toLowerCase()
@@ -269,6 +269,7 @@ function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [] }
   const target = point ? document.elementFromPoint(...point) : keyboard ? document.activeElement : el;
   const matches = inventory ? controls.filter((o) => el.contains(o) && o.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
     : [controls.findLast((o) => o.contains(target))].filter(Boolean);
+  if (nth !== undefined) return matches[nth];
   return matches.map((o) => {
     const name = label(o);
     const ids = [o.getAttribute("aria-controls"), o.getAttribute("popovertarget")].filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
@@ -292,6 +293,30 @@ const elementKey = (el) => {
 async function rootOf(page, selector) {
   const marked = page.locator(`[${MARK}]`);
   return (await marked.count()) ? marked.first() : page.locator(selector).filter({ visible: true }).first();
+}
+// Whether the inventory's opener at `nth`, whose target is not on its page, leaves it so when clicked there: the click
+// throws nothing, mounts no target and shows nothing else, as on a story page without the consumer's sheet. A target
+// mounted only on open ({open && <Sheet/>}) is on its page, and so is one that cannot be told (the click fails, the
+// page goes elsewhere).
+async function staysAway(page, selector, nth, ids) {
+  const errors = [], onError = (e) => errors.push(e);
+  page.on("pageerror", onError);
+  try {
+    const opener = (await (await rootOf(page, selector)).evaluateHandle(openerInfoIn, { inventory: true, nth })).asElement();
+    if (!opener) return false;
+    const before = await page.evaluateHandle(([o, seen]) => {
+      const visible = new Function(`return (${seen})`)();
+      return { expanded: o.getAttribute("aria-expanded") === "true", shown: new Set([...document.querySelectorAll("body *")].filter(visible)) };
+    }, [opener, seenIn.toString()]);
+    await opener.click({ timeout: 2000 });
+    await page.mouse.move(-5, -5);
+    const opened = () => page.evaluate(([o, ids, was, seen]) => {
+      const visible = new Function(`return (${seen})`)();
+      return ids.some((id) => document.getElementById(id)) || (!was.expanded && o.getAttribute("aria-expanded") === "true")
+        || [...document.querySelectorAll("body *")].some((e) => visible(e) && !was.shown.has(e) && !o.contains(e));
+    }, [opener, ids, before, seenIn.toString()]);
+    return !(await until(page, async () => errors.length > 0 || await opened()));
+  } catch { return false; } finally { page.off("pageerror", onError); }
 }
 const markRoot = (page, selector) => page.evaluate(([sel, mark, seen]) => {
   const visible = new Function(`return (${seen})`)();
@@ -1302,6 +1327,15 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (before.comparison) result.beforeComparison = before.comparison;
       const selectors = [...new Set(cfg.journeys.flatMap((j) => j.steps.map((st) => st.hover ?? st.focus ?? st.tap ?? st.click ?? st.move)).filter((s) => typeof s === "string"))];
       result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true, selectors });
+      // An opener whose target is absent is clicked here, once for each name, role and target: is the target on this
+      // page only once opened? The frame is measured; the page closes after.
+      const tried = new Map();
+      for (const [i, o] of result.openers.entries()) {
+        if (!o.away) continue;
+        const k = JSON.stringify([o.name, o.role, o.ids]);
+        if (!tried.has(k)) tried.set(k, await staysAway(page, fcfg.root, i, o.ids));
+        o.away = tried.get(k);
+      }
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -2059,8 +2093,9 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
   const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o])));
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
-  // An opener whose target is not on its page (a story page without the consumer's sheet) is covered by a passing
-  // journey on another page that opened and closed one by the same selector, with the same role, name and target.
+  // An opener whose target is not on its page, even once clicked there (a story page without the consumer's sheet), is
+  // covered by a passing journey on another page that opened and closed one by the same selector, with the same role,
+  // name and target.
   // A same-named opener of another role or target is not. The covering journey's line in the handoff names it.
   const closers = journeyResults.filter((j) => j.pass).flatMap((j) => (j.closers ?? []).map((c) => ({ c, j })));
   const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));

@@ -106,10 +106,11 @@ An opener is covered by a passing journey that acts on it while its content is h
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
 one that acts on the element its setup opened it from. An opener whose target is not on its page (a story page
 without the consumer's sheet) is covered by such a journey on another page that opens one by the same selector, with
-the same role, accessible name and target; the handoff names that journey. Each journey that opens something also
-runs with the opener at the window's top and bottom edges, at the widest and narrowest frames' widths: the overlay it
-shows must be whole in the window and in every box that clips it. An opener in a fixed or sticky bar is not tried
-there.
+the same role, accessible name and target; the handoff names that journey. The check clicks it on its own page first:
+a target that appears then (one mounted only on open) or a click that throws makes it that page's to cover, as does
+anything else the click shows. Each journey that opens something also runs with the opener at the window's top and
+bottom edges, at the widest and narrowest frames' widths: the overlay it shows must be whole in the window and in every
+box that clips it. An opener in a fixed or sticky bar is not tried there.
 
 ## Frames
 
