@@ -37,7 +37,7 @@ case directory inside it as `${n}-${slug}`", and `:167-168` "the git clone insid
 and `:167-168` are comment lines of the process helper ("TERM before KILL, and to the GROUP"); the artifact directory is
 built at `:123`, the case directory at `:125` and the clone at `:196` and `:201`. The addresses were already stale at
 `def9f23` (`:87` the header's "Case 4 measures the agent", the builder at `:122`) and at `0665237`, the repository's
-first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3333-3334`, the 0.12.0 note,
+first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3336-3337`, the 0.12.0 note,
 quotes the same three addresses; that release predates the repository's first commit, so whether they held then cannot
 be checked here. Found by an implementer of the orchestrate rework's minimum team, 2026-11-22.
 
@@ -278,7 +278,7 @@ lift the rest.
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
 transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
 1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
-cost tables that `orchestrate/references/plan.md:33` sends a plan to as comparables ("Estimate batches from comparable
+cost tables that `orchestrate/references/plan.md:76` sends a plan to as comparables ("Estimate batches from comparable
 runs") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by
 the harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
 
@@ -339,8 +339,8 @@ task list and its Stop on such a task.
 
 ## E103. In `dontAsk` mode the codex page, and the advisor page that loads it first, do not load, because the Codex status line it runs needs an allow rule the page cannot give
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:23` runs `scripts/status.mjs` through Claude Code's
-`` !`…` `` substitution as the page loads, and its frontmatter (`:11`) pre-approves it with
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:22` runs `scripts/status.mjs` through Claude Code's
+`` !`…` `` substitution as the page loads, and its frontmatter (`:10`) pre-approves it with
 `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; at `def9f23` `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolved its
 advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer said to load
 the page first); today the advisor reaches an adapter only for a named model the host does not run natively (`:12`),
