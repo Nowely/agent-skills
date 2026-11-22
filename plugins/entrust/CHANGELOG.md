@@ -12,7 +12,8 @@ forensics remain in the repository references and release notes.
   a speed run verifies. The profile keeps the bulk tier at a medium effort and one scout per independent unit.
 - The advisor page links orchestrate's plan reference for a chosen model that is unavailable, instead of restating
   its rule beside the link. `evals/advisor.test.mjs` checks the link and fails when the page uses the rule's own
-  words (a fallback, the alternatives, the unavailable model a second time); a restatement in other words passes it.
+  words (a fallback, alternatives in the plural, the unavailable model a second time); a restatement in other words
+  or in the singular passes it, since the advice section asks for "one alternative".
 - The proxy skill and orchestrate's `references/main-proxy.md`, both shared pages, call the transporting host "the
   host", no longer "normally Luna": the shared skills name no model since 0.26.0 (E155).
 - `lint-draft.mjs` no longer prints `SHA256=`: the answer page reads the draft without a manifest, and nothing
