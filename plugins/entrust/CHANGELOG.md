@@ -7,6 +7,8 @@ forensics remain in the repository references and release notes.
 
 ### Orchestrate
 
+- The advisor page links orchestrate's plan reference for a chosen model that is unavailable, instead of restating
+  its rule beside the link; `evals/advisor.test.mjs` checks the link and that the rule is not restated.
 - The proxy skill and orchestrate's `references/main-proxy.md`, both shared pages, call the transporting host "the
   host", no longer "normally Luna": the shared skills name no model since 0.26.0 (E155).
 - `lint-draft.mjs` no longer prints `SHA256=`: the answer page reads the draft without a manifest, and nothing
