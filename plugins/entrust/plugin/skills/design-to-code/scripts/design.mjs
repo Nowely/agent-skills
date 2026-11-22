@@ -1352,22 +1352,26 @@ const STRESSED = ["overlap", "clipped", "outside", "covered"];
 // narrows, or another page's, holds it. A component laid out by its own width is the same in both; one that follows the
 // window (a media query, matchMedia, a script reading the window's width) is not.
 const WIDE_WINDOW = 1280, OWN_WIDTH = "the component's own width";
+// How far the root's own width may move under the hold before the condition measures nothing at that width.
+const HELD = 3;
 // In the page: the content width of the root's container (its parent, past one that is display: contents or inline),
 // or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width. The
-// root is the marked one, or with no mark the first a person sees.
-function containerIn([selector, mark, seen, width]) {
+// root is the marked one, or with no mark the first a person sees. Asked, "page" when that container is the page's
+// body: the root is the page, which the window lays out.
+function containerIn([selector, mark, seen, width, asPage = false]) {
   const visible = new Function(`return (${seen})`)();
   const root = (mark && document.querySelector(`[${mark}]`)) || [...document.querySelectorAll(selector)].find(visible);
   let box = root?.parentElement;
   while (box?.parentElement && /^(contents|inline)$/.test(getComputedStyle(box).display)) box = box.parentElement;
   if (!box) return null;
+  if (asPage && (box === document.body || box === document.documentElement)) return "page";
   const cs = getComputedStyle(box), px = (k) => parseFloat(cs[k]) || 0;
   const edges = px("paddingLeft") + px("paddingRight") + px("borderLeftWidth") + px("borderRightWidth");
   if (width === null) return box.getBoundingClientRect().width - edges;
   for (const k of ["width", "min-width", "max-width"]) box.style.setProperty(k, `${cs.boxSizing === "border-box" ? width + edges : width}px`, "important");
   return width;
 }
-const container = (page, cfg, width = null) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width]).catch(() => null);
+const container = (page, cfg, width = null, asPage = false) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width, asPage]).catch(() => null);
 
 // What differs between the root in a window of its frame's width and in the wide window with its container held at
 // the same width: which texts share a row, its size, the spec's landmarks. Null when they agree within the tolerance.
@@ -1394,7 +1398,7 @@ async function ownWidth(browser, cfg, ledger, widths) {
   // Each width once, on the first frame of the component's own root drawn at it.
   const frames = new Map();
   for (const f of cfg.frames) if ((!f.root || f.root === cfg.root) && widths.has(f.width) && f.width !== WIDE_WINDOW && !frames.has(f.width)) frames.set(f.width, f);
-  const probes = [];
+  const probes = [], pageRoot = [], unheld = [];
   try {
     for (const [width, frame] of frames) {
       const spec = frame.spec && fs.existsSync(frame.spec) ? readJson(frame.spec) : {};
@@ -1409,7 +1413,9 @@ async function ownWidth(browser, cfg, ledger, widths) {
       let narrow, wide, held;
       // In a window of the frame's width, as the frame is when the window sizes it.
       let opened = await open(browser, cfg, { ...at, width, viewport: width });
-      try { held = await container(opened.page, cfg); narrow = await layout(opened.page); } finally { await opened.context.close(); }
+      try { held = await container(opened.page, cfg, null, true); narrow = held === "page" ? null : await layout(opened.page); } finally { await opened.context.close(); }
+      // A root in the page's body is the page: the window lays it out, as it should.
+      if (held === "page") { pageRoot.push(width); continue; }
       if (!(held > 0)) continue;
       // In the wide window, the container held before the setup acts and again once the page is set up; what the
       // component does on its container's change (an observer, a container query) is then done.
@@ -1421,6 +1427,10 @@ async function ownWidth(browser, cfg, ledger, widths) {
         await markRoot(opened.page, cfg.root);
         wide = await layout(opened.page);
       } finally { await opened.context.close(); }
+      // The hold gives the root's container its width, not always the root its own: beside it in the container, the
+      // page may lay out more in the wide window (a sidebar the narrow one hides). Then the condition compares two
+      // widths of the component, not two windows, and measures nothing at this width.
+      if (Math.abs(wide.root.width - narrow.root.width) > HELD) { unheld.push({ width, held, narrow: narrow.root.width, wide: wide.root.width }); continue; }
       const issue = ownWidthIssue({ frame: frame.name, width, held, narrow, wide, labels: landmarks.map((l) => l.text ?? l.selector), tolerance: cfg.tolerance });
       probes.push({ width, issues: issue ? [issue] : [] });
     }
@@ -1429,7 +1439,13 @@ async function ownWidth(browser, cfg, ledger, widths) {
     return { issues: [], story: { name: OWN_WIDTH, generated: true, unmeasured: e.message.split("\n")[0], shots: [] } };
   }
   const issues = sweepIssues(probes, ledger).map((i) => ({ ...i, story: OWN_WIDTH, ...(i.status === "accepted" ? {} : { status: "candidate" }) }));
-  return { issues, story: { name: OWN_WIDTH, generated: true, shots: [] } };
+  // What it did not try, or could not measure: notes in the evidence, not gaps, since the page decides them.
+  const r = Math.round, px = (list) => `${list.slice(0, -1).join(", ")}${list.length > 1 ? " and " : ""}${list.at(-1)} px`;
+  const notes = [
+    ...(pageRoot.length ? [`not tried at ${px(pageRoot)}: the root's container is the page's body, and a page is laid out by the window`] : []),
+    ...unheld.map((u) => `not measured at ${u.width} px: with its container held at ${r(u.held)} px in a ${WIDE_WINDOW} px window, the root is ${r(u.wide)} px wide, not the ${r(u.narrow)} it has at ${u.width}; what else the container holds there (a sidebar the narrower window hides) takes the rest`),
+  ];
+  return { issues, story: { name: OWN_WIDTH, generated: true, shots: [], ...(notes.length ? { notes } : {}) } };
 }
 
 async function sweep(browser, cfg, ledger) {

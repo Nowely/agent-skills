@@ -1045,6 +1045,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     if (sweep.reason) out.push(sweep.reason, "");
     else out.push(`Layout changes between: ${sweep.switches.length ? sweep.switches.join(", ") : "none"}.`, "");
     if (sweep.stories?.length) out.push(`Stories swept as well: ${sweep.stories.map((st) => st.name).join(", ")}.`, "");
+    for (const st of sweep.stories ?? []) for (const note of st.notes ?? []) out.push(`${st.name[0].toUpperCase()}${st.name.slice(1)}: ${note}.`, "");
     for (const u of sweep.unmeasured ?? []) out.push(`Not measured: the alignment group ${cell(alignmentName(u))} matched at most ${u.matched} across the sweep. It needs two or more.`, "");
     if (sweep.generate === false) out.push("Generated conditions: not run (sweep.generate is false).", "");
     for (const u of sweep.partial ?? []) out.push(`The alignment group ${cell(alignmentName(u))} had fewer than two matches at ${u.ranges} px during the sweep. The other samples were measured.`, "");
@@ -1235,7 +1236,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       out.push(`- predicted switches: ${model.predicted.length ? model.predicted.join(", ") : "none"}; measured layout changes: ${model.measured.length ? model.measured.join(", ") : "none"}`);
     }
     for (const u of sweep.partial ?? []) out.push(`- alignment ${alignmentName(u)}, ${u.edge} edge: fewer than two elements at ${u.ranges} px, measured in the other samples`);
-    for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}${st.longest?.length ? `; its longest texts: ${st.longest.map((t) => `“${t}”`).join(", ")}` : ""}`);
+    for (const st of sweep.stories ?? []) out.push(`- story ${st.name}: ${st.unmeasured ?? count(sweep.issues.filter((i) => i.story === st.name))}${st.longest?.length ? `; its longest texts: ${st.longest.map((t) => `“${t}”`).join(", ")}` : ""}${(st.notes ?? []).map((n) => `; ${n}`).join("")}`);
   }
   const generated = (sweep?.issues ?? []).filter((i) => i.status === "candidate");
   if (generated.length) {

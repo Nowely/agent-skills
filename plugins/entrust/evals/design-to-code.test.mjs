@@ -2556,6 +2556,21 @@ test("44.2: the generated conditions' answers name the candidate at the head of 
   }
 });
 
+test("44.2: a root whose container is the page's body is not tried; where the hold cannot give the root its own width, the condition measures nothing there", browser, () => {
+  // Before (the verifier): a page laid out by a media query, its root in the body, was a candidate at 375 px.
+  let r = check(windowFrames(`<main class="card">${MEDIA}${ROW}</main>`, { root: "main" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root's container is the page's body, and a page is laid out by the window"] });
+  // Before (the verifier): a container-query component on a page whose sidebar hides below 700 px. Its container held
+  // at 375 px in the wide window, the sidebar came back and the root went from 375 to 135 px: a candidate.
+  const sidebar = "<style>.shell{display:flex}.side{width:240px;flex:none}@media (max-width: 700px){.side{display:none}}main{container-type:inline-size;flex:1;min-width:0}@container (width < 600px){.row{flex-direction:column}}</style>";
+  r = check(windowFrames(`${sidebar}<div class="shell"><aside class="side">Filters</aside><main class="card">${ROW}</main></div>`, { root: "main" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not measured at 375 px: with its container held at 375 px in a 1280 px window, the root is 135 px wide, not the 375 it has at 375; what else the container holds there (a sidebar the narrower window hides) takes the rest"] });
+  assert.ok(!r.result.sweep.stories.find((st) => st.name === "the component's own width").unmeasured, "a note, not a story unmeasured: the page decides it");
+  // The same component in a column of its own, laid out by the window: still a candidate.
+  r = check(windowFrames(`<main><div class="card">${MEDIA}${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+});
+
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
 // The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
 test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
