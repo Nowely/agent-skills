@@ -2266,8 +2266,10 @@ document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${
   const kept = run(true);
   assert.ok(kept.length === 1 && kept[0].pass, JSON.stringify(kept));
   const stale = run(false);
-  // 44.3: the observer left on the removed row is named first; without it the fresh load shows the height (below).
-  assert.ok(!stale[0].pass && /^after its steps, a ResizeObserver still observes an element removed from the page \(div\.row\)/.test(stale[0].failed), JSON.stringify(stale));
+  // The restored row is never observed, so it keeps the line where a fresh load stacks it; the observer left on the
+  // removed row is a note beside it (44.3).
+  assert.ok(!stale[0].pass && /^after its steps, the component differs from a fresh load at 300 px: div height 24, fresh 56/.test(stale[0].failed), JSON.stringify(stale));
+  assert.deepEqual(stale[0].issues.map((i) => [i.landmark, i.kind, i.status]), [["div.row", "stale observer", "note"]]);
 });
 
 test("draft 28.2: the console is a digest of fifteen lines at most: what changed since the round before, each frame's new findings first, the rest as a count", () => {
@@ -2724,32 +2726,68 @@ test("44.1: after a sameAsFresh journey the check resizes the page through the f
 });
 
 // Item 3: ResizeObserver and matchMedia are wrapped in an init script on the checked pages.
-test("44.3: an observer left on an element a journey removed fails the journey; one that follows the mount does not", browser, () => {
-  // The restored row is observed again, so the layout is right at every width; the old observer still holds the old row.
+const KEPT = "after its steps, a ResizeObserver still observes an element removed from the page: disconnect it on unmount, or give its reason";
+test("44.3: an observer left on an element a journey removed is a construct note, not a finding; the layout it keeps fails the fresh comparison", browser, () => {
+  // Before (the verifier): this failed the journey. The restored row is observed again, so the layout is right at
+  // every width; the old observer still holds the old row: a note that needs its reason.
   const stale = listPage({ disconnect: false, rewatch: true })({});
-  assert.equal(stale.pass, false, JSON.stringify(stale));
-  assert.match(stale.failed, /^after its steps, a ResizeObserver still observes an element removed from the page \(div\.row\): disconnect it on unmount and observe what mounts$/);
-  assert.ok(listPage({ disconnect: true, rewatch: true })({}).pass);
+  assert.ok(stale.pass, JSON.stringify(stale));
+  assert.deepEqual(stale.issues, [{ landmark: "div.row", property: "construct", kind: "stale observer", status: "note", actual: KEPT }]);
+  assert.ok(!listPage({ disconnect: true, rewatch: true })({}).issues);
+  // The behaviour it hints at, the restored row never observed, is the fresh comparison's (item 1).
+  const lost = listPage({ disconnect: false, rewatch: false })({ sameAsFresh: true });
+  assert.equal(lost.pass, false, JSON.stringify(lost));
+  assert.match(lost.failed, /^after its steps and a resize to 320 px, the component differs from a fresh load at 320 px: /);
+  const journey = (body, steps) => {
+    const f = smallFrame(body);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "j", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "j");
+  };
+  // Before (the verifier): a keep-alive tab pane, detached and cached with its observer, failed; so did a cleanup
+  // deferred 150 ms. Both hold, with the note.
+  const tabs = `<div id="host"></div><button id="a">A</button><button id="b">B</button><style>.row{display:flex}.row[data-mode=stack]{flex-direction:column}</style>
+<script>const host = document.getElementById("host"); const A = document.createElement("div"); A.className = "row pa"; A.innerHTML = "<span>Ready</span>";
+const B = document.createElement("p"); B.className = "pb"; B.textContent = "Other";
+new ResizeObserver(() => { A.dataset.mode = A.clientWidth < 200 ? "stack" : "line"; }).observe(A);
+const show = (el) => host.replaceChildren(el); show(A); document.getElementById("a").onclick = () => show(A); document.getElementById("b").onclick = () => show(B);</script>`;
+  for (const j of [journey(tabs, [{ click: "#b" }, { visible: ".pb" }, { hidden: ".pa" }]),
+    journey(`<div id="host"></div><button id="toggle">Toggle</button><script>const host = document.getElementById("host"); let ob;
+host.innerHTML = '<div class="row"><span>Ready</span></div>'; (ob = new ResizeObserver(() => {})).observe(host.firstChild);
+document.getElementById("toggle").onclick = () => { const o = ob; host.innerHTML = "<p>None</p>"; setTimeout(() => o.disconnect(), 150); };</script>`, [{ click: "#toggle" }, { visible: "main p" }, { hidden: ".row" }])]) {
+    assert.ok(j.pass, JSON.stringify(j));
+    assert.deepEqual(j.issues?.map((i) => [i.kind, i.status, i.actual]), [["stale observer", "note", KEPT]], JSON.stringify(j));
+  }
   // An observer on an element outside the component is not the component's.
-  const f = smallFrame(`<button id="drop">Drop</button><script>const aside = document.createElement("aside"); aside.textContent = "x"; document.body.append(aside);
-new ResizeObserver(() => {}).observe(aside); document.getElementById("drop").onclick = () => aside.remove();</script>`);
-  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "drop", steps: [{ click: "#drop" }, { hidden: "aside" }] }] }));
-  assert.ok(check(f.dir, "--no-sweep").result.journeys[0].pass);
+  assert.ok(!journey(`<button id="drop">Drop</button><script>const aside = document.createElement("aside"); aside.textContent = "x"; document.body.append(aside);
+new ResizeObserver(() => {}).observe(aside); document.getElementById("drop").onclick = () => aside.remove();</script>`, [{ click: "#drop" }, { hidden: "aside" }]).issues);
+  // Before (the verifier, on check.md's "an element the steps removed"): an element the page itself removed while it
+  // loaded counted as one the steps removed. Only what the steps remove counts.
+  const early = journey(`<button id="noop">Noop</button><script>const r = document.createElement("div"); r.textContent = "x"; document.querySelector("main").append(r);
+new ResizeObserver(() => {}).observe(r); r.remove();</script>`, [{ click: "#noop" }, { visible: "#noop" }]);
+  assert.ok(early.pass && !early.issues, JSON.stringify(early));
 });
 
-test("44.3: a mode a ResizeObserver or matchMedia sets is a construct note that needs its reason; a container query's is not", browser, () => {
-  const modes = (script, style = "") => {
+test("44.3: a mode a ResizeObserver or a matchMedia change listener sets is a construct note that needs its reason; a one-shot read or a container query's is not", browser, () => {
+  const modes = (script, style = "", sweep = {}) => {
     const f = smallFrame(`<style>.row{display:flex}${style}</style><div class="row"><span>Ready</span></div>${script ? `<script>const row = document.querySelector(".row");${script}</script>` : ""}`);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, ...sweep } }));
     const r = check(f.dir);
     assert.equal(r.status, 0, r.stdout);
     // The frames' page; its dense story is the same page, with the same note.
     return r.result.sweep.issues.filter((i) => i.kind === "script-set mode" && !i.story).map((i) => [i.landmark, i.status, i.actual]);
   };
+  // Before (the verifier): "switch it by a container query instead", wrong for a fit to content.
+  const fits = "if it decides the layout, switch it by a container query; if it fits content, give its reason";
   assert.deepEqual(modes('new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row);'),
-    [["Ready", "note", "a ResizeObserver callback sets its data-mode: switch it by a container query instead"]]);
-  assert.deepEqual(modes('const q = matchMedia("(min-width: 400px)"); const lay = () => { row.dataset.mode = q.matches ? "line" : "stack"; }; lay(); q.addEventListener("change", lay);'),
-    [["Ready", "note", 'a script reading matchMedia("(min-width: 400px)") sets its data-mode: switch it by a container query instead']]);
+    [["Ready", "note", `a ResizeObserver callback sets its data-mode: ${fits}`]]);
+  // A change listener, fired as the sweep crosses 400 px.
+  assert.deepEqual(modes('const q = matchMedia("(min-width: 400px)"); const lay = () => { row.dataset.mode = q.matches ? "line" : "stack"; }; lay(); q.addEventListener("change", lay);', "", { to: 500, step: 100 }),
+    [["Ready", "note", `a matchMedia("(min-width: 400px)") listener sets its data-mode: ${fits}`]]);
+  // Before (the verifier): a one-shot read named the next class a script set as its mode. The component's own width
+  // (item 2) shows a layout a read picks.
+  assert.deepEqual(modes('window.isDesktop = matchMedia("(min-width: 1024px)").matches; row.classList.add("is-ready");'), []);
   assert.deepEqual(modes("", "main{container-type:inline-size}@container (width < 400px){.row{flex-direction:column}}"), []);
   // A query that is not the window's size decides no layout mode.
   assert.deepEqual(modes('row.classList.toggle("calm", matchMedia("(prefers-reduced-motion: reduce)").matches);'), []);
@@ -2779,7 +2817,7 @@ function catalogueLifecycleArm(change = (js) => js) {
   return dir;
 }
 
-test("44, controls: the catalogue card's reference build gets no new finding; with its observers left on removed cards, the list journey fails", browser, () => {
+test("44, controls: the catalogue card's reference build gets no new finding; its observers left on removed cards are a note on the list journey", browser, () => {
   const ref = check(catalogueLifecycleArm());
   // As before the change: every frame, the sweep and the journeys hold.
   assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
@@ -2794,12 +2832,17 @@ test("44, controls: the catalogue card's reference build gets no new finding; wi
   // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
   assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
   assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
-  // The stateful bench's stale-observer class: the cards leaving keep their observers.
+  const edit = (js, from, to) => { assert.equal(js.split(from).length, 2, from); return js.replace(from, to); };
   const unwatch = "    for (const card of host.querySelectorAll(\".card\")) unwatch(card);\n";
-  const stale = check(catalogueLifecycleArm((js) => { assert.equal(js.split(unwatch).length, 2); return js.replace(unwatch, ""); }), "--no-sweep");
-  const failed = stale.result.journeys.filter((j) => !j.pass).map((j) => [j.name, j.failed]);
-  assert.deepEqual(failed, [["list: emptied by the search and restored, the cards come back",
-    "after its steps, a ResizeObserver still observes 3 elements removed from the page (article.card): disconnect it on unmount and observe what mounts"]]);
+  // The cards leaving keep their observers, and the cards mounted are observed: the layout is right, so it is a
+  // construct note on the list journey. Before (the verifier of doc 44): it failed the journey.
+  const kept = check(catalogueLifecycleArm((js) => edit(js, unwatch, "")), "--no-sweep");
+  assert.ok(kept.result.journeys.every((j) => j.pass), JSON.stringify(kept.result.journeys.filter((j) => !j.pass)));
+  assert.deepEqual(kept.result.journeys.filter((j) => j.issues).map((j) => [j.name, j.issues.map((i) => [i.landmark, i.status, i.actual])]), [["list: emptied by the search and restored, the cards come back",
+    [["article.card", "note", "after its steps, a ResizeObserver still observes 3 elements removed from the page: disconnect it on unmount, or give its reason"]]]]);
+  // The class where the cards mounted again are not observed is the fresh comparison's: the stateful bench's
+  // stale-observer and 44.3's list page. Not here: the consumer page's host grows to fill its row (flex: 1), so the
+  // journey's width steps and the resizes after it leave the cards at the row's width.
 });
 
 // E159: a one-digit landmark, the stock count "1", with the same digit inside a longer text drawn above it; two "HDD"

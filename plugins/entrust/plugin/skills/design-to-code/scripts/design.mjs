@@ -143,13 +143,14 @@ const finishMotion = (page) => page.evaluate(async () => {
 }).catch(() => {});
 
 // Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
-// component (the root, inside it or around it), and what a ResizeObserver callback, a matchMedia listener or a script
-// reading a window-size query sets on an element (a class, a data- attribute, a style) from then until the next frame,
-// by which a framework has rendered the state it set. A journey then asks for the component's targets removed from the
-// page and still observed; the sweep, for the modes set by script.
+// component (the root, inside it or around it), what changed the component (a root mounted or unmounted, its content
+// changed), and what a ResizeObserver callback or a window-size matchMedia listener sets on an element (a class, a
+// data- attribute, a style) from then until the next frame, by which a framework has rendered the state it set. A
+// journey marks where its steps start, then asks what they changed and which of the component's targets they removed
+// with the observer kept; the sweep asks for the modes set by script.
 function watchScripts(rootSelector) {
   if (window.__designCheck) return;
-  const modes = new Map(), targets = new Set(), left = new WeakSet();
+  const modes = new Map(), targets = new Set(), left = new WeakMap();
   const isMode = (name) => name === "class" || name === "style" || (name.startsWith("data-") && !name.startsWith("data-design-"));
   let source = null, token = 0;
   const credit = (records) => {
@@ -162,18 +163,33 @@ function watchScripts(rootSelector) {
   };
   const mutations = new MutationObserver(credit);
   mutations.observe(document, { attributes: true, subtree: true });
-  // An observed element removed with what holds it: from the component if it is a root, holds one, or sat in one.
-  const removals = new MutationObserver((records) => {
-    if (!targets.size) return;
-    for (const r of records) for (const n of r.removedNodes) {
-      if (n.nodeType !== 1) continue;
-      for (const set of targets) for (const t of set) {
-        if (t !== n && !n.contains(t)) continue;
-        try { if (t.matches(rootSelector) || t.querySelector(rootSelector) || t.closest(rootSelector) || r.target.closest?.(rootSelector)) left.add(t); } catch { /* a selector the page cannot read */ }
+  // Each batch of changes is stamped, so a journey counts only what its steps did, not the page's own load.
+  let stamp = 0, since = 0;
+  const changed = { mount: 0, data: 0 };
+  const read = (fn) => { try { return fn(); } catch { return false; /* a selector the page cannot read */ } };
+  const inRoot = (n) => read(() => Boolean(n?.closest?.(rootSelector)));
+  const holdsRoot = (n) => n.nodeType === 1 && read(() => n.matches(rootSelector) || Boolean(n.querySelector(rootSelector)));
+  const onChange = (records) => {
+    stamp++;
+    for (const r of records) {
+      const at = r.target.nodeType === 1 ? r.target : r.target.parentElement;
+      if (r.type === "characterData") { if (inRoot(at)) changed.data++; continue; }
+      const nodes = [...r.addedNodes, ...r.removedNodes];
+      if (nodes.some(holdsRoot)) changed.mount++;
+      else if (nodes.length && inRoot(at)) changed.data++;
+      // An observed element removed with what holds it: from the component if it is a root, holds one, or sat in one.
+      for (const n of r.removedNodes) {
+        if (n.nodeType !== 1) continue;
+        for (const set of targets) for (const t of set) {
+          if (t !== n && !n.contains(t)) continue;
+          if (read(() => t.matches(rootSelector) || t.querySelector(rootSelector) || t.closest(rootSelector) || r.target.closest?.(rootSelector))) left.set(t, stamp);
+        }
       }
     }
-  });
-  removals.observe(document, { childList: true, subtree: true });
+  };
+  const removals = new MutationObserver(onChange);
+  removals.observe(document, { childList: true, subtree: true, characterData: true });
+  const flush = () => onChange(removals.takeRecords());
   const open = (what) => {
     credit(mutations.takeRecords());
     source = what;
@@ -216,16 +232,17 @@ function watchScripts(rootSelector) {
     list.removeEventListener = function (type, listener, options) { return remove.call(this, type, type === "change" && listener ? wrapped.get(listener) ?? listener : listener, options); };
     list.addListener = function (listener) { return add.call(this, "change", wrap(listener)); };
     list.removeListener = function (listener) { return remove.call(this, "change", (listener && wrapped.get(listener)) ?? listener); };
-    const matches = Object.getOwnPropertyDescriptor(list, "matches"), onchange = Object.getOwnPropertyDescriptor(list, "onchange");
-    if (matches?.get) Object.defineProperty(list, "matches", { ...matches, get() {
-      if (!source && sized(this.media)) open(`a script reading matchMedia("${this.media}")`);
-      return matches.get.call(this);
-    } });
+    // A one-shot read of `.matches` is not wrapped: the component's own width (a generated condition) shows a layout
+    // it picks, and a read for anything else (a flag, a hint) would be named as a mode.
+    const onchange = Object.getOwnPropertyDescriptor(list, "onchange");
     if (onchange?.set) Object.defineProperty(list, "onchange", { ...onchange, set(listener) { onchange.set.call(this, typeof listener === "function" ? wrap(listener) : listener); } });
   }
   Object.defineProperty(window, "__designCheck", { configurable: true, value: {
     modes: () => [...modes].flatMap(([el, attrs]) => [...attrs].map(([attr, from]) => ({ el, attr, source: from }))),
-    stale: () => [...targets].flatMap((set) => [...set]).filter((t) => !t.isConnected && left.has(t)),
+    // Where a journey's steps start: what came before (the page's own load) is not theirs.
+    mark: () => { flush(); since = stamp; changed.mount = changed.data = 0; },
+    changed: () => { flush(); return { ...changed }; },
+    stale: () => { flush(); return [...targets].flatMap((set) => [...set]).filter((t) => !t.isConnected && left.get(t) > since); },
   } });
 }
 
@@ -1002,12 +1019,13 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       if (nudge(dx, dy)) issues.push({ landmark: label(el.textContent), property: "construct", kind: "nudge", actual: `${how} moves it ${Math.round(dx)}, ${Math.round(dy)} px: lay it out instead` });
     }
   }
-  // A mode set by script: a class, data- attribute or style that a ResizeObserver or matchMedia callback set (the init
-  // script saw it), where a container query would switch it.
+  // A mode set by script: a class, data- attribute or style written in a ResizeObserver callback or a window-size
+  // matchMedia change listener (the init script saw it). A layout it decides is a container query's to switch; a fit
+  // to content (a font shrunk to fit, "+3 more") is the script's, with its reason.
   for (const { el, attr, source } of window.__designCheck?.modes() ?? []) {
     if (!el.isConnected || !root.contains(el) || overlay(el)) continue;
     issues.push({ landmark: el === root ? "root" : label(el.textContent) || el.localName, property: "construct", kind: "script-set mode",
-      actual: `${source} sets its ${attr}: switch it by a container query instead` });
+      actual: `${source} sets its ${attr}: if it decides the layout, switch it by a container query; if it fits content, give its reason` });
   }
   // The longest texts shown: what a story tested, for the owner to see in the evidence.
   const longest = [...new Set(nodes.map((n) => n.data.trim().replace(/\s+/g, " ")))].sort((a, b) => b.length - a.length).slice(0, 4);
@@ -1706,6 +1724,7 @@ async function journeys(browser, cfg) {
     let trigger, visibleBefore = new Set();
     const acted = new Set(), openSeen = new Set(), actedOn = new Set();
     let closes = false;
+    const constructs = [];
     if (opened) {
       const { page } = opened;
       // The container as the journey starts, and the page around it then. The floor holds where the container narrows
@@ -1738,6 +1757,7 @@ async function journeys(browser, cfg) {
         const after = await layoutOf(page, cfg.root);
         if (after) toHold.push({ i, step, after, width: now.width, before, at: Math.max(1, Math.round(now.width + around)) });
       };
+      await page.evaluate(() => window.__designCheck?.mark()).catch(() => {});
       try {
         for (const [i, step] of j.steps.entries()) {
           if (failed) break;
@@ -1827,10 +1847,13 @@ async function journeys(browser, cfg) {
             }
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
-        // An observer the steps left on elements they removed: the component's observer follows what is mounted.
+        // An observer the steps left on elements they removed is a construct note, not a finding: an element detached
+        // and kept (a tab pane cached to be shown again) or a cleanup deferred is fine; a layout the stale observer
+        // keeps shows in the fresh comparison after a sameAsFresh journey.
         if (!edge && !failed) {
           const stale = await page.evaluate(() => window.__designCheck?.stale().map((t) => `${t.localName}${t.classList[0] ? `.${t.classList[0]}` : ""}`) ?? []).catch(() => []);
-          if (stale.length) failed = `after its steps, a ResizeObserver still observes ${stale.length === 1 ? "an element" : `${stale.length} elements`} removed from the page (${[...new Set(stale)].slice(0, 3).join(", ")}): disconnect it on unmount and observe what mounts`;
+          if (stale.length) constructs.push({ landmark: [...new Set(stale)].slice(0, 3).join(", "), property: "construct", kind: "stale observer", status: "note",
+            actual: `after its steps, a ResizeObserver still observes ${stale.length === 1 ? "an element" : `${stale.length} elements`} removed from the page: disconnect it on unmount, or give its reason` });
         }
         // A state the steps went through and back must leave no trace: the component as a fresh load of the same page
         // draws it at the same width (an observer left on removed elements, a layout not chosen again). Then the check
@@ -1867,7 +1890,7 @@ async function journeys(browser, cfg) {
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
     results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
-      acted: [...acted], closes, closers });
+      acted: [...acted], closes, closers, ...(constructs.length ? { issues: constructs } : {}) });
   }
   return results;
 }

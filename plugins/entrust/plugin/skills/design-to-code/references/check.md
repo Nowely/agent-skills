@@ -84,7 +84,9 @@ sheet that hides itself when its closing transition ends closes, and one that ne
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
 an observer left on removed elements or a layout not chosen again shows. The check then resizes that page through the
 frames' widths and holds each against a fresh load at that width. After any journey, a `ResizeObserver` still observing
-an element the steps removed (the root, one inside it or one around it) fails it.
+an element its steps removed (the root, one inside it or one around it; not one the page removed while it loaded) is
+a construct note on the journey: disconnect it on unmount, or give its reason (a tab pane kept to be shown again, a
+cleanup deferred).
 
 **The component's width.** After each step, at a width the sweep covers, the check measures the root's container (its
 parent). The step fails the journey when the container is narrower than a fresh load gives it at the sweep's `from`,
@@ -176,9 +178,10 @@ back; each story and generated condition the same way. At each width:
   accessible name or a tooltip;
 - `construct`: a negative margin over 3 px (not a bleed, nor the kit's), a nudge of 2 px or more by a transform,
   `translate` or a relative offset (not centring or a slide); a mode set by script: a class, `data-` attribute or style
-  on the root or inside it that a `ResizeObserver` callback, a `matchMedia` listener or a script reading a window-size
-  query sets, where a container query would switch it. A construct is a note that needs its reason: fix it, or give the
-  reason in the handoff.
+  on the root or inside it that a `ResizeObserver` callback or a window-size `matchMedia` change listener writes (a
+  one-shot read of `.matches` is the component's own width's to show): if it decides the layout, switch it by a
+  container query; if it fits content, give its reason. A construct is a note that needs its reason: fix it, or give
+  the reason in the handoff.
 
 ## Findings and notes
 
@@ -192,7 +195,8 @@ font explains, or pixels alone, shown for the owner's eye; a ledger entry for on
 - a `height` within 24 px;
 - a frame's column edge (`align`) within 12 px;
 - a shift a missing text's `presence` entry carries ([the ledger](#the-ledger));
-- in the sweep, a `switch`, and a `construct`, which needs its reason in the handoff.
+- in the sweep, a `switch`, and a `construct` (after a journey, too: an observer kept on what its steps removed),
+  which needs its reason in the handoff.
 
 Everything else is a finding: an offset, a drift, a height or a column edge past these; a gap of 8 px or more that
 closes to under 4, whatever drift the pieces carry; the root's width; a presence, a text, a font, the type's size; a

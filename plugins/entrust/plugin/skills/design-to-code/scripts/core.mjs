@@ -1037,7 +1037,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
   }
   if (journeys.length) {
     out.push("## Journeys", "");
-    for (const j of journeys) out.push(`- ${j.pass ? "holds" : "fails"}: ${j.name}${j.failed ? ` (${j.failed})` : ""}`);
+    for (const j of journeys) out.push(`- ${j.pass ? "holds" : "fails"}: ${j.name}${j.failed ? ` (${j.failed})` : ""}${(j.issues ?? []).map((i) => `; a note, not a finding: ${i.actual} (${i.landmark})`).join("")}`);
     out.push("");
   }
   if (sweep) {
@@ -1160,6 +1160,8 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
   }
   const broken = journeys.filter((x) => !x.pass);
   if (broken.length) body.push(broken.map((j) => `journey ${j.status ? `disputed with the check (${j.status})` : "fails"}: ${j.name}: ${j.failed}`).join("; "));
+  const journeyNotes = journeys.flatMap((j) => (j.issues ?? []).map((i) => `${j.name}: ${i.actual} (${i.landmark})`));
+  if (journeyNotes.length) body.push(`journey notes, not findings: ${journeyNotes.slice(0, 2).join("; ")}${journeyNotes.length > 2 ? `; and ${journeyNotes.length - 2} more` : ""}`);
   // At most `limit` lines with the head and the path: what does not fit is in the report.
   const room = Math.max(1, limit - 2);
   const kept = body.length > room ? [...body.slice(0, room - 1), `… ${body.length - room + 1} more lines in ${file}`] : body;
@@ -1244,7 +1246,9 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       "A collision found only under longer texts or doubled entries, or a layout that differs in a wider window with its container held, is not a finding until legal data reproduces it (then the story's own finding counts); until then it is answered in review.md, under Candidates, by the contract's bound that rules it out.", "");
     for (const i of generated) out.push(`- ${i.answer ? "answered" : "unanswered"}: ${say(i)}${i.answer ? ` — ${i.answer}` : ""}`);
   }
-  const constructs = (sweep?.issues ?? []).filter((i) => i.property === "construct");
+  // The sweep's and the journeys' (an observer kept on what a journey removed).
+  const constructs = [...(sweep?.issues ?? []), ...journeys.flatMap((j) => (j.issues ?? []).map((i) => ({ ...i, story: `journey ${j.name}` })))]
+    .filter((i) => i.property === "construct");
   if (constructs.length) {
     out.push("", "## Constructs", "", "A construct is a note that needs its reason: fix it, or give the reason in the handoff.", "");
     for (const i of constructs) out.push(`- ${say(i)}`);
