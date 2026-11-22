@@ -78,7 +78,7 @@ forensics remain in the repository references and release notes.
 
 ### Known issues
 
-- New open issues E154, E155 and E156 are described in
+- New open issues E154, E155, E156 and E157 are described in
   [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
 
 ## 0.45.0 — 2026-11-22
