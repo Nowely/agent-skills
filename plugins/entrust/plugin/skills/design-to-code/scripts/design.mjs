@@ -234,10 +234,16 @@ function watchScripts(rootSelector) {
 const MARK = "data-design-root";
 const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
 // Run on the frame root (inventory) or the target of a gesture (one opener). Equal labels on different
-// controls must stay distinct across the fresh pages used for frames and journeys.
-function openerInfoIn(el, { inventory = false, point, keyboard } = {}) {
+// controls must stay distinct across the fresh pages used for frames and journeys. Each also says its role, its page
+// without the query, whether its target is missing from that page and, in the inventory, which of the journeys'
+// selectors pick it out (it or something inside it).
+function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [] } = {}) {
   const selector = "[aria-expanded], [popovertarget], [aria-haspopup]";
   const label = (o) => (o.getAttribute("aria-label") || o.title || o.textContent || o.localName).replace(/\s+/g, " ").trim();
+  const role = (o) => o.getAttribute("role")?.trim().split(/\s+/)[0].toLowerCase()
+    || (o.localName === "button" || o.localName === "summary" || (o.localName === "input" && /^(button|submit|reset|image)$/i.test(o.type)) ? "button"
+      : /^(a|area)$/.test(o.localName) && o.hasAttribute("href") ? "link" : o.localName);
+  const picks = (o, s) => { try { return o.matches(s) || Boolean(o.querySelector(s)); } catch { return false; } };
   const controls = [...document.querySelectorAll(selector)].filter((o) => o.hasAttribute("aria-expanded") || o.hasAttribute("popovertarget")
     || !/^(false|)$/i.test((o.getAttribute("aria-haspopup") ?? "").trim()));
   const target = point ? document.elementFromPoint(...point) : keyboard ? document.activeElement : el;
@@ -249,7 +255,8 @@ function openerInfoIn(el, { inventory = false, point, keyboard } = {}) {
     // Across data variants on one page, a named control linked to the same popup has an explicit identity.
     const page = o.id && ids.length ? location.origin + location.pathname + location.hash : location.href;
     const key = JSON.stringify([page, name, ...(o.id ? ["id", o.id, ...ids] : ["index", controls.filter((c) => label(c) === name).indexOf(o)])]);
-    return { key, name, ids };
+    return { key, name, ids, role: role(o), page: location.href.replace(/[?#].*$/, ""), away: ids.length > 0 && ids.every((id) => !document.getElementById(id)),
+      ...(inventory ? { answers: selectors.filter((s) => picks(o, s)) } : {}) };
   });
 }
 // An element's identity across fresh pages of the same story, whatever its markup: its id, or its path of positions.
@@ -1272,7 +1279,8 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (setupTargets.length) result.setupTargets = setupTargets;
       if (before.reason) result.beforeUnavailable = before.reason;
       if (before.comparison) result.beforeComparison = before.comparison;
-      result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true });
+      const selectors = [...new Set(cfg.journeys.flatMap((j) => j.steps.map((st) => st.hover ?? st.focus ?? st.tap ?? st.click ?? st.move)).filter((s) => typeof s === "string"))];
+      result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true, selectors });
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -1675,7 +1683,7 @@ async function journeys(browser, cfg) {
       }
     }
     const widths = opened ? [j.width ?? width] : [], asFresh = [], heldAt = [], toHold = [];
-    const seen = new Set(), notes = [], closed = new Set();
+    const seen = new Set(), notes = [], closed = new Set(), closers = [];
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
     const observed = new Map();
@@ -1730,6 +1738,7 @@ async function journeys(browser, cfg) {
                 const point = Array.isArray(arg) ? arg : undefined;
                 const locator = page.locator(point || action === "press" ? "html" : arg).first();
                 [trigger] = await locator.evaluate(openerInfoIn, { point, keyboard: action === "press" }, { timeout: 2000 }).catch(() => []);
+                if (trigger && !point && action !== "press") trigger.selector = arg;
               }
             }
             if (["hover", "click", "tap", "focus", "move"].includes(action) && typeof arg === "string") {
@@ -1788,12 +1797,12 @@ async function journeys(browser, cfg) {
               if (observed.has(shown)) observed.get(shown).acted = false;
               if (trigger && targets.includes(shown) && !visibleBefore.has(shown)
                 && (!trigger.ids.length || await anySeen(page, shown, step.text?.[1], trigger.ids))) {
-                observed.set(shown, { key: trigger.key, acted: false });
+                observed.set(shown, { key: trigger.key, acted: false, opener: trigger });
               }
             }
             if ("hidden" in step) {
               const open = observed.get(arg);
-              if (open?.acted) closed.add(open.key);
+              if (open?.acted) { closed.add(open.key); closers.push(open.opener); }
               else if (!seen.has(arg)) notes.push(`${arg} was never seen open before it was expected hidden`);
               else if (open) notes.push(`${arg} was not seen open before a closing action`);
               observed.delete(arg);
@@ -1842,7 +1851,7 @@ async function journeys(browser, cfg) {
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
     results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
-      acted: [...acted], closes });
+      acted: [...acted], closes, closers });
   }
   return results;
 }
@@ -1969,9 +1978,22 @@ function layoutModelRows(cfg) {
 function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   const gaps = [];
   for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
-  const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o.name])));
+  const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o])));
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
-  const unchecked = [...openers].filter(([key]) => !closed.has(key)).map(([, name]) => name);
+  // An opener whose target is not on its page (a story page without the consumer's sheet) is covered by a passing
+  // journey on another page that opened and closed one by the same selector, with the same role, name and target.
+  // A same-named opener of another role or target is not. The covering journey's line in the handoff names it.
+  const closers = journeyResults.filter((j) => j.pass).flatMap((j) => (j.closers ?? []).map((c) => ({ c, j })));
+  const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+  const shown = (u) => (u.startsWith("file:") ? path.relative(cfg.dir, fileURLToPath(u)) : u);
+  const unchecked = [];
+  for (const o of openers.values()) {
+    if (closed.has(o.key)) continue;
+    const by = o.away && closers.find(({ c }) => c.page !== o.page && c.name === o.name && c.role === o.role && sameIds(c.ids, o.ids) && o.answers?.includes(c.selector));
+    if (!by) { unchecked.push(o.name); continue; }
+    const note = `covers “${o.name}” on ${shown(o.page)}, whose target ${o.ids.map((id) => `#${id}`).join(", ")} is not on that page`;
+    if (!by.j.notes?.includes(note)) (by.j.notes ??= []).push(note);
+  }
   if (unchecked.length) gaps.push(`${unchecked.length} control${unchecked.length === 1 ? "" : "s"} open${unchecked.length === 1 ? "s" : ""} something with no journey that opens and closes ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.slice(0, 4).map((o) => `“${o}”`).join(", ")}${unchecked.length > 4 ? ", …" : ""}`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));

@@ -2721,11 +2721,16 @@ function catalogueLifecycleArm(change = (js) => js) {
 
 test("44, controls: the catalogue card's reference build gets no new finding; with its observers left on removed cards, the list journey fails", browser, () => {
   const ref = check(catalogueLifecycleArm());
-  // As before the change: every frame, the sweep and the journeys hold; the story page's Details opener has no sheet.
+  // As before the change: every frame, the sweep and the journeys hold.
   assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
   assert.ok(ref.result.journeys.every((j) => j.pass), JSON.stringify(ref.result.journeys.filter((j) => !j.pass)));
-  assert.equal(ref.status, 2, ref.stdout);
-  assert.deepEqual(ref.result.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"]);
+  // Item 9 (E152): the story page's Details opener, whose sheet only the consumer's page holds, is covered by the
+  // sheet's journey there, which opens and closes the same opener; before, it alone left the check incomplete.
+  assert.deepEqual(ref.result.gaps, []);
+  assert.equal(ref.status, 0, ref.stdout);
+  const cover = "covers “Details” on ../story.html, whose target #sheet is not on that page";
+  assert.deepEqual(ref.result.journeys.filter((j) => j.notes?.includes(cover)).map((j) => j.name), ["sheet: Details opens it, Close closes it"]);
+  assert.match(fs.readFileSync(path.join(ref.dir, "out/handoff.md"), "utf8"), /^- sheet: Details opens it, Close closes it \([^)]*\): holds; covers “Details” on \.\.\/story\.html, whose target #sheet is not on that page$/m);
   // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
   assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
   assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
@@ -2863,4 +2868,29 @@ test("44.8, controls: the catalogue's start code fails its sidebar journey where
   const ref = check(catalogueSidebarArm("reference"), "--no-sweep");
   assert.deepEqual(ref.result.journeys.filter((j) => !j.pass), [], ref.stdout);
   assert.deepEqual(ref.result.journeys.find((j) => j.name === sidebar).held, [928, 632, 928]);
+
+// ------------------------------------------------------------------ 44, item 9: an opener covered on another page
+
+test("44.9: the story page's Details, whose sheet is only on the consumer's page, is not covered there by a same-named opener of another role or target", browser, () => {
+  // The twins of the catalogue's reference arm (covered in the test above): the story page's Details shares its text
+  // with the consumer's, which the sheet's journey opens and closes, but not its role or its target.
+  const twin = (attr, value) => {
+    const dir = catalogueLifecycleArm();
+    const story = path.join(dir, "../story.html"), render = '  renderCards(host, window.CATALOGUE[params.get("data") || "default"]);\n';
+    const html = fs.readFileSync(story, "utf8");
+    assert.equal(html.split(render).length, 2);
+    fs.writeFileSync(story, html.replace(render, `${render}  for (const b of host.querySelectorAll(".details")) b.setAttribute("${attr}", "${value}");\n`));
+    // What decides the cover only: the frames, the sheet's journey and a sweep of the frames' widths.
+    const file = path.join(dir, "design.json"), c = JSON.parse(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(file, JSON.stringify({ ...c, lifecycle: false, sweep: { ...c.sweep, from: 375, to: 764, step: 389, switches: [] }, journeys: [c.journeys[0]] }));
+    return check(dir);
+  };
+  for (const [attr, value] of [["role", "link"], ["aria-controls", "notes"]]) {
+    const r = twin(attr, value);
+    const sheet = r.result.journeys.find((j) => j.name === "sheet: Details opens it, Close closes it");
+    assert.ok(sheet.pass && sheet.closers.some((c) => c.name === "Details" && c.role === "button" && c.ids.join() === "sheet"), JSON.stringify(sheet));
+    assert.ok(r.result.gaps.includes("1 control opens something with no journey that opens and closes it: “Details”"), `${attr}: ${JSON.stringify(r.result.gaps)}`);
+    assert.ok(!r.result.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), JSON.stringify(r.result.journeys));
+    assert.equal(r.status, 2, r.stdout);
+  }
 });
