@@ -10,6 +10,21 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E161. The 0.46.2 changelog's known-issues sentence ends at "are described in", with no link after it
+
+**Evidence, level 1.** `f1fb6fa:plugins/entrust/CHANGELOG.md:33` (today `:71`) is "- No new
+issues; the open ones, E154 to E157 among them, are described in", and the next line is blank. Every other release's
+known-issues sentence that ends "described in" continues on the next line with the `[ISSUES.md](…)` link (today `:42`,
+`:125`, `:203`). The release notes for `entrust@0.46.2` are cut from this section (RELEASING.md); whether the
+published notes carry the same cut was not checked. Found by an independent verifier of this branch, 2026-11-22.
+
+**Check.** `grep -n -A1 'described in$' plugins/entrust/CHANGELOG.md` shows the 0.46.2 sentence followed by an empty line.
+
+**Issue text.** The 0.46.2 entry of entrust's changelog ends its known-issues sentence at "are described in" and
+never names where: the link to `ISSUES.md` that every other release's sentence carries is missing. Restore the
+`[ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md)` line, and check the
+published release notes for the same cut.
+
 ## E160. The live gate's index names cases 1, 5 and 6 for the codex page's load and the card's rows, which five cases check
 
 **Evidence, level 1.** `evals/orchestrate-live.test.mjs:28` ("the codex page loaded only by a plan with a Codex

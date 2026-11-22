@@ -38,7 +38,7 @@ forensics remain in the repository references and release notes.
 ### Known issues
 
 - New: E160, the live gate's check index lists three of the five cases that check the codex page's load and the
-  card's rows. The open ones are described in
+  card's rows; E161, the 0.46.2 entry's known-issues sentence lost its link. The open ones are described in
   [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
 
 ## 0.46.2 — 2026-11-22
