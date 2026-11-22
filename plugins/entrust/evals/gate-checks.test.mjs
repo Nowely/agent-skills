@@ -119,11 +119,11 @@ test("five fields: a template return parses and validates against the shipped sc
 
 const CARD = [
   "**Work:** add slug(title) to lib/slug.mjs with a test.",
-  "**Team:** one worker, Opus W1 (implementer); two checking agents, Codex Terra C1 (verifier) and Opus K1 (completeness critic).",
+  "**Team:** one worker, Opus W1; two checking agents, Codex Terra C1 (verifier) and Opus K1 (final reader).",
   "**Writes:** W1 writes lib/slug.mjs and test/slug.test.mjs in the live tree; C1 and K1 write nothing. Every agent reaches the network; reports land outside the repository.",
   "**Checks:** C1 runs node --test, K1 reads the answer.",
 ].join("\n");
-const ROWS = G.planRecord("id | model | role | writes | tokens\nW1 | opus | implementer | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | completeness critic | nothing | 0\n");
+const ROWS = G.planRecord("id | model | role | writes | tokens\nW1 | opus | worker | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | final reader | nothing | 0\n");
 
 test("the card: four required rows, no models/cost rows, and every registered agent on it",
   "the card is what \"go\" covers; redundant rows and dropped agents ask for approval on a word not in the work",
@@ -198,7 +198,7 @@ test("the manifest: every launch is on the registered plan by id and model, an a
       .claude("Opus W1: write the helper", "opus", "TASK: write it", five())
       .newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: run the suite")
       .codex("Codex Terra C1: run the suite", "/d/run/C1/report.json");
-    const good = run().claude("Opus K1: completeness critic", "opus", "completeness critic", five()).parsed();
+    const good = run().claude("Opus K1: final reader", "opus", "You are the final reader.", five()).parsed();
     const stray = run().claude("Sonnet X9: extra look", "sonnet", "TASK: look", five()).parsed();
     const wrongModel = session().claude("Sonnet W1: write the helper", "sonnet", "TASK", five()).parsed();
     const amended = run().plan("/d/run", "R2 | sol | refuter | nothing | 0", true).claude("Sol R2: refute", "sol", "TASK", five()).parsed();
@@ -212,50 +212,150 @@ test("the manifest: every launch is on the registered plan by id and model, an a
       expectSome(G.manifestProblems({ runTurn: good, rows: [] }), /no plan was registered/),
       // The launcher's own continuation rule: C1-2 is C1's next link, C1-02 and X9-2 are not.
       expectNone(G.manifestProblems({ runTurn: run().newAgent("/d/run/C1-2/report.json", "RESUME: t\nMODEL: terra").codex("Codex Terra C1-2: again", "/d/run/C1-2/report.json")
-        .claude("Opus K1: completeness critic", "opus", "completeness critic", five()).parsed(), rows: ROWS })),
+        .claude("Opus K1: final reader", "opus", "You are the final reader.", five()).parsed(), rows: ROWS })),
       expectSome(G.manifestProblems({ runTurn: run().newAgent("/d/run/C1-02/report.json", "MODEL: terra").parsed(), rows: ROWS, finalText: "K1 dropped" }), /--new for C1-02, which the plan does not list/),
       expectSome(G.manifestProblems({ runTurn: run().newAgent("/d/run/X9-2/report.json", "MODEL: terra").parsed(), rows: ROWS, finalText: "K1 dropped" }), /--new for X9-2/),
     );
   });
 
-// --------------------------------------------------------------- the split critic
+// --------------------------------------------------------------- the critics
 
-test("the split critic: no worker brief before it returns, each names the file in its artifacts, the shared interface has one writer",
-  "D12 (#16, T5): twenty agents on a bad split agree and are all wrong, and T5's fan-out started before its critique had finished; E59: the file is the critic's artifact, not the first path in its hand-back (a Codex critic's REPORT= line), and the owner is who wrote the file, not a brief that quotes the request",
+// A verifier's brief as the probe of 2026-11-22 wrote one: it says what it is, then names its roles.md row and
+// mentions another core role after it.
+const VERIFIER_TEXT = "You are the verifier. Read your row in /p/skills/orchestrate/references/roles.md. The plan critic's acceptance checks: node --test passes for lib/a.mjs and lib/b.mjs.";
+
+test("the plan critic: no worker brief before it returns, and the shared interface has one writer",
+  "D12 (#16, T5): twenty agents on a bad split agree and are all wrong, and T5's fan-out started before its critique had finished; the plan critic is found by its role's name at any tier, it writes no corrected split for a brief to name, and the owner is who wrote the file, not a brief that quotes the request",
   () => {
-    const file = path.join(TMP, "split-7.md");
-    fs.writeFileSync(file, "unit a: lib/a.mjs, owner W1\nunit b: lib/b.mjs, owner W2\ninterface lib/shared.mjs, shared by a and b, owner W1\n");
-    const REPORTS = { "/d/run/A1/report.json": { answerJson: { artifacts: [file, "/tmp/validate-split.py"] } },
-      "/d/run/C3/report.json": { answerJson: {}, filesTouched: ["lib/shared.mjs"] } };
-    const critic = (s) => s.newAgent("/d/run/A1/report.json", "MODEL: astra\nTASK: critique this split of the task: unit a (lib/a.mjs), unit b (lib/b.mjs)")
-      .codex("Codex Astra A1: critique the split", "/d/run/A1/report.json", "DRIVER_EXIT=0\nPATH=own\nANSWER=Astra A1: done, the corrected split is in artifacts");
+    const REPORTS = { "/d/run/C3/report.json": { answerJson: {}, filesTouched: ["lib/shared.mjs"] } };
+    const critic = (s) => s.newAgent("/d/run/P1/report.json", "MODEL: astra\nTASK: judge this plan of the task: unit a (lib/a.mjs), unit b (lib/b.mjs)")
+      .codex("Codex Astra P1: plan critic", "/d/run/P1/report.json", "DRIVER_EXIT=0\nPATH=own\nANSWER=Astra P1: sound, no objections");
     // Each brief quotes the request, which names every file: only the writes decide who owns lib/shared.mjs.
     const worker = (s, id, unit, writesShared) => s.claude(`Opus ${id}: ${unit}`, "opus",
-      `TASK: change ${unit} from the split ${file}.\nWhy: the user asked to rename fmt in lib/shared.mjs and update lib/a.mjs and lib/b.mjs.`,
+      `TASK: change ${unit}.\nWhy: the user asked to rename fmt in lib/shared.mjs and update lib/a.mjs and lib/b.mjs.`,
       five(), [`/work/${unit}`, ...(writesShared ? ["/work/lib/shared.mjs"] : [])]);
     const opts = { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs", reportOf: (p) => REPORTS[p] ?? null };
     const good = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     const early = critic(worker(session(), "W1", "lib/a.mjs", true)).parsed();
     const twoWriters = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", true).parsed();
     const codexWriter = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false)
-      .newAgent("/d/run/C3/report.json", `MODEL: terra\nTASK: tidy lib/shared.mjs from the split ${file}`)
+      .newAgent("/d/run/C3/report.json", "MODEL: terra\nTASK: tidy lib/shared.mjs")
       .codex("Codex Terra C3: tidy", "/d/run/C3/report.json").parsed();
     const noWriter = worker(worker(critic(session()), "W1", "lib/a.mjs", false), "W2", "lib/b.mjs", false).parsed();
-    const noFile = critic(session()).claude("Opus W1: lib/a.mjs", "opus", "TASK: change lib/a.mjs and lib/shared.mjs.", five(), ["/work/lib/shared.mjs"]).parsed();
-    const fableCritic = (artifacts) => worker(session()
-      .claude("Fable S1: critique the split", "fable", "TASK: critique this split of the task: unit a (lib/a.mjs), unit b (lib/b.mjs)", five({ artifacts })),
+    // By the role's name, at any tier: a Sonnet plan critic counts, and a Fable agent given the split under no
+    // core role's name is not one.
+    const sonnet = worker(session().claude("Sonnet P1: plan critic", "sonnet", "TASK: judge this plan: unit a (lib/a.mjs), unit b (lib/b.mjs)", five()),
       "W1", "lib/a.mjs", true).parsed();
+    const unnamed = worker(session().claude("Fable S1: critique the split", "fable", "TASK: critique this split: unit a (lib/a.mjs), unit b (lib/b.mjs)", five()),
+      "W1", "lib/a.mjs", true).parsed();
+    // A verifier briefed early names every unit and is no worker.
+    const verifier = worker(critic(session().claude("Opus V1: verifier", "opus", "TASK: run the suite over lib/a.mjs and lib/b.mjs", five())),
+      "W1", "lib/a.mjs", true).parsed();
+    // S1 (probe, 2026-11-22): a brief whose description names no role says it is the verifier and only mentions
+    // the plan critic's checks after its roles.md path; read as the plan critic, it made the order pass with none.
+    const s1 = worker(worker(session().claude("Opus V1: baseline the suite", "opus", VERIFIER_TEXT, five()),
+      "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     return all(
       expectNone(G.splitAdmissionProblems(good, opts)),
-      expectSome(G.splitAdmissionProblems(early, opts), /written before the split critic returned/),
+      expectSome(G.splitAdmissionProblems(early, opts), /1 worker brief\(s\) written before the plan critic returned/),
       expectSome(G.splitAdmissionProblems(twoWriters, opts), /2 agents wrote lib\/shared\.mjs, and it has one owner/),
       expectSome(G.splitAdmissionProblems(codexWriter, opts), /2 agents wrote lib\/shared\.mjs/),
       expectSome(G.splitAdmissionProblems(noWriter, opts), /0 agents wrote lib\/shared\.mjs/),
-      expectSome(G.splitAdmissionProblems(noFile, opts), /do not name the corrected split/),
-      expectSome(G.splitAdmissionProblems(good, { ...opts, reportOf: () => null }), /the split critic's artifacts name no file/),
-      expectNone(G.splitAdmissionProblems(fableCritic([file]), opts)),
-      expectSome(G.splitAdmissionProblems(fableCritic([]), opts), /the split critic's artifacts name no file/),
-      expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts), /no top-row agent was given the split/),
+      expectNone(G.splitAdmissionProblems(sonnet, opts)),
+      expectSome(G.splitAdmissionProblems(unnamed, opts), /no plan critic ran/),
+      expectNone(G.splitAdmissionProblems(verifier, opts)),
+      expectSome(G.splitAdmissionProblems(s1, opts), /no plan critic ran/),
+      // A plan critic named only by the link to its section of roles.md.
+      expectNone(G.splitAdmissionProblems(worker(session().claude("Sonnet P1: judge the plan", "sonnet",
+        "TASK: judge this plan: unit a (lib/a.mjs), unit b (lib/b.mjs). Your row: /p/skills/orchestrate/references/roles.md#the-plan-critic", five()),
+        "W1", "lib/a.mjs", true).parsed(), opts)),
+      // The role a description names first, not the first of the list: a verifier of the plan critic's checks,
+      // briefed after the worker with no plan critic in the run, is no plan critic.
+      expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true)
+        .claude("Opus V1: verifier of the plan critic's checks", "opus", "TASK: run the suite over lib/a.mjs", five()).parsed(), opts), /no plan critic ran/),
+      G.roleOf({ description: "Opus V1: verifier of the plan critic's checks", text: "" }) === "verifier" || "the description's first role was not taken",
+      G.roleOf({ description: "Opus V1: baseline the suite", text: VERIFIER_TEXT }) === "verifier" || "S1's brief is not read as the verifier",
+      expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts), /no plan critic ran/),
+    );
+  });
+
+test("the architecture critic, when the card's trigger holds: it ran, and it returned before the plan critic or any worker was briefed",
+  "the card runs it when the solution adds a concept, changes or removes a contract others consume, acts irreversibly or leaves the approach open; a verdict other than keep changes the approach the plan critic and the workers would work from",
+  () => {
+    const arch = (s) => s.claude("Fable A1: architecture critic", "fable", "TASK: judge the approach: a new lib/slug.mjs", five());
+    const plan = (s) => s.claude("Opus P1: plan critic", "opus", "TASK: judge the plan", five());
+    const work = (s) => s.claude("Opus W1: write lib/slug.mjs", "opus", "TASK: write lib/slug.mjs", five());
+    const parallel = session();
+    const a = parallel.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
+    plan(parallel);
+    parallel.result(a, framed(five()));
+    // A scout briefed beside the critic names no unit of the task and is no worker.
+    const scouted = session();
+    const b = scouted.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
+    scouted.claude("Haiku S1: list the modules", "haiku", "TASK: list the modules under lib/ and their exports", five());
+    scouted.result(b, framed(five()));
+    // A worker briefed while the critic runs, the plan critic after it returned.
+    const workedEarly = session();
+    const c = workedEarly.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
+    work(workedEarly);
+    workedEarly.result(c, framed(five()));
+    const opts = { units: ["lib/slug.mjs"] };
+    return all(
+      expectNone(G.architectureProblems(work(plan(arch(session()))).parsed(), opts)),
+      expectSome(G.architectureProblems(work(plan(session())).parsed(), opts), /no architecture critic ran, though the card's trigger holds/),
+      expectSome(G.architectureProblems(work(parallel).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
+      expectNone(G.architectureProblems(work(plan(scouted)).parsed(), opts)),
+      expectSome(G.architectureProblems(plan(workedEarly).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
+      expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed(), opts), /never returned/),
+    );
+  });
+
+test("the minimum team in every run: a plan critic briefed before the first worker, a verifier briefed after the last worker returned that wrote none of what it checks, and either one left out only at the user's word",
+  "the owner's decision of 2026-11-22: the coordinator puts the plan critic and the verifier on every card and only the user's word drops either, so the card's own reason (\"the plan is too small\") and an architecture critic in its place (probe P1, 2026-11-22: a coordinator ran it and skipped the plan critic) are each red; a verifier briefed while a worker still runs, or one that is a worker, checks nothing independent",
+  () => {
+    const plan = (s) => s.claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five());
+    const work = (s, id = "W1") => s.claude(`Opus ${id}: write lib/slug.mjs`, "opus", "TASK: write lib/slug.mjs and its test.", five(), ["/work/lib/slug.mjs"]);
+    const verify = (s, id = "V1", writes = []) => s.claude(`Opus ${id}: verifier`, "opus", "TASK: run the suite over lib/slug.mjs.", five(), writes);
+    const opts = { units: ["lib/slug.mjs"] };
+    const check = (s, more = {}) => G.minimumTeamProblems(s.parsed(), { ...opts, ...more });
+    // A verifier briefed while the worker it follows has not returned.
+    const early = plan(session());
+    const w = early.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
+    verify(early);
+    early.result(w, framed(five()));
+    // A worker that never returned, and a verifier briefed after its brief.
+    const lost = plan(session());
+    lost.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
+    verify(lost);
+    // A Codex verifier whose report touched the worker's file.
+    const REPORTS = [{ id: "C1", report: { filesTouched: ["lib/slug.mjs"] } }];
+    const codex = work(plan(session())).newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: you are the verifier; run the suite.")
+      .codex("Codex Terra C1: verifier", "/d/run/C1/report.json");
+    return all(
+      expectNone(check(verify(work(plan(session()))))),
+      // The coordinator's own reason drops nothing, and neither does an architecture critic in the plan critic's place.
+      expectSome(check(verify(work(session().say("The plan is too small to need a plan critic.")))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(work(session().claude("Fable A1: architecture critic", "fable", "TASK: judge the approach.", five())))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(plan(work(session())))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(work(plan(session())).done("Opus W1 wrote it.")), /no verifier was briefed after the last worker returned/),
+      expectSome(check(early), /no verifier was briefed after the last worker returned/),
+      expectSome(check(lost), /no verifier was briefed after the last worker returned/),
+      expectNone(check(verify(work(work(plan(session()), "W2"))))),
+      expectSome(check(verify(work(plan(session())), "W1")), /the verifier briefed after the last worker returned is a worker or wrote a worker's file: Opus W1: verifier/),
+      // On read-only work the worker writes nothing, and the verifier that is that worker is red by its id alone.
+      expectSome(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
+        .claude("Opus W1: survey lib/slug.mjs", "opus", "TASK: find the callers of lib/slug.mjs; change nothing.", five()), "W1")), /is a worker or wrote a worker's file: Opus W1: verifier/),
+      expectNone(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
+        .claude("Opus W1: survey lib/slug.mjs", "opus", "TASK: find the callers of lib/slug.mjs; change nothing.", five())))),
+      // One independent verifier is enough beside one that is not.
+      expectNone(check(verify(verify(work(plan(session())), "W1"), "V1"))),
+      expectSome(check(verify(work(plan(session())), "V1", ["/work/lib/slug.mjs"])), /is a worker or wrote a worker's file: Opus V1: verifier/),
+      expectSome(G.minimumTeamProblems(codex.parsed(), { ...opts, reports: REPORTS }), /is a worker or wrote a worker's file: Codex Terra C1: verifier/),
+      expectNone(G.minimumTeamProblems(codex.parsed(), opts)),
+      // A role the case's user dropped is not asked for.
+      expectNone(check(verify(work(session())), { dropped: ["plan critic"] })),
+      expectNone(check(work(plan(session())), { dropped: ["verifier"] })),
+      expectSome(check(verify(plan(session()))), /no worker brief names a unit of the task/),
     );
   });
 
@@ -276,105 +376,95 @@ test("one paragraph per phase, and no update turns an unverified return into suc
     );
   });
 
-test("the critic's digest: it names a shasum manifest, returns the manifest's sha256 first, nothing in it changed, and what went out is the draft it froze",
-  "D10 (F4: T3 :641 and T8 changed the answer after the critic read it): a digest is the version link the page lacked",
+test("the draft's read: the verifier's thread or a final reader reads the linted draft by its path, at most twice; nothing writes it after; what went out is that file, or after a second read that file and an Open: list quoting the reader",
+  "the answer page (#15 F4: three answers changed after their critic read them; 2026-10-09: a shorter text went out unread): the gate takes the draft's path and the read's time from the message that starts the read",
   () => {
-    const dir = fs.mkdtempSync(path.join(TMP, "critic-"));
+    const dir = fs.mkdtempSync(path.join(TMP, "read-"));
     const draft = path.join(dir, "draft.md");
-    const answer = "Opus W1 added the helper; Codex Terra C1 ran node --test: 5 of 5.\n";
+    const answer = "Opus W1 added the helper; Opus V1 ran node --test: 5 of 5.\n";
     fs.writeFileSync(draft, answer);
-    const manifest = path.join(dir, "manifest.sha256");
-    const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
-    fs.writeFileSync(manifest, `${sha(answer)}  ${draft}\n`);
-    const digest = sha(fs.readFileSync(manifest));
-    const run = (first) => session().claude("Opus K1: completeness critic", "opus",
-      `You are the completeness critic. The draft and its manifest: ${manifest}`, five({ evidence: [first, "read the draft"] })).parsed();
-    const good = G.criticDigestProblems(run(digest), { finalText: answer });
-    const wrong = G.criticDigestProblems(run("0".repeat(64)), { finalText: answer });
-    const drifted = G.criticDigestProblems(run(digest), { finalText: `${answer}\nOne more claim added after the critic.` });
-    fs.writeFileSync(draft, `${answer}edited\n`);
-    const changed = G.criticDigestProblems(run(digest), { finalText: answer });
-    // Decision 8: the draft edited after the verdict and the manifest rewritten to match it: every entry
-    // agrees with its file, and only the manifest's own digest against the critic's shows the change.
-    const edited = `${answer}One more claim.\n`;
-    fs.writeFileSync(draft, edited);
-    fs.writeFileSync(manifest, `${sha(edited)}  ${draft}\n`);
-    const rewritten = G.criticDigestProblems(run(digest), { finalText: edited });
-    const none = G.criticDigestProblems(session().claude("Opus K1: completeness critic", "opus", "completeness critic, no files", five()).parsed(), { finalText: answer });
-    return all(
-      expectNone(good),
-      expectSome(wrong, /the critic returned 000000000000…/),
-      expectSome(drifted, /adds text after the draft the critic read: "One more claim added after the critic\."/),
-      expectSome(changed, /changed after the critic read it/),
-      expectSome(rewritten, /the critic returned [0-9a-f]{12}…, the manifest .* is [0-9a-f]{12}…/),
-      rewritten.length === 1 || `a rewritten manifest should fail on the digest alone: ${JSON.stringify(rewritten)}`,
-      expectSome(none, /names no shasum manifest/),
-    );
-  });
-
-test("a critic continued by SendMessage: its second verdict over the new manifest counts, and after the draft the answer carries one line, the critic's verdict in the page's form",
-  "measured on the live gate's case 5, 2026-09-28: the coordinator re-froze the draft and continued its critic, as the page says, and the gate read only the first verdict; the answer then carried the verdict and one unrelated paragraph",
-  () => {
-    const dir = fs.mkdtempSync(path.join(TMP, "critic2-"));
-    const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
-    const draft = path.join(dir, "draft.md");
-    const first = "Opus W1 added the helper.\n";
-    fs.writeFileSync(draft, first);
-    const m1 = path.join(dir, "manifest.sha256");
-    fs.writeFileSync(m1, `${sha(first)}  ${draft}\n`);
-    const d1 = sha(fs.readFileSync(m1));
-    const second = "Opus W1 added the helper and its test.\n";
-    fs.writeFileSync(draft, second);
-    const m2 = path.join(dir, "manifest-2.sha256");
-    fs.writeFileSync(m2, `${sha(second)}  ${draft}\n`);
-    const d2 = sha(fs.readFileSync(m2));
-    const run = (verdict) => {
-      const s = session();
-      const id = s.use("Agent", { description: "Opus K1: completeness critic", model: "opus", prompt: `You are the completeness critic. Manifest: ${m1}` });
-      s.result(id, [{ type: "text", text: `${FRAME}${five({ status: "partial", evidence: [d1] }).split("\n").map((l) => `  ${l}`).join("\n")}\nagentId: a23ff0b7ba0739d2e (use SendMessage)` }]);
-      s.result(s.use("SendMessage", { to: "a23ff0b7ba0739d2e", message: `Re-read the changed part. Manifest: ${m2}.` }), "Resuming agent");
+    const lint = (s) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1, Opus V1" --receipts ${dir}/v1.jsonl ${draft}`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0`);
+    // A Claude verifier, its thread continued by SendMessage to the agentId its first result names.
+    const verifier = (s) => {
+      const id = s.use("Agent", { description: "Opus V1: verifier", model: "opus", prompt: "You are the verifier. TASK: run the suite on the combined tree." });
+      s.result(id, [{ type: "text", text: `${FRAME}${five().split("\n").map((l) => `  ${l}`).join("\n")}\nagentId: a23ff0b7ba0739d2e (use SendMessage)` }]);
+      return id;
+    };
+    const read = (s, id, verdict = five({ result: "Opus V1: every claim backed by a raw artifact; nothing unanswered." })) => {
+      s.result(s.use("SendMessage", { to: "a23ff0b7ba0739d2e", message: `Read the draft ${draft} against the request, by the answer page's protocol.` }), "Resuming agent");
       if (verdict) s.sub(id, verdict);
       return s;
     };
-    const good = run(five({ evidence: [d2, "re-read"] }));
-    // The orchestrate page (f6029d4): the draft's text and one line after it, "<Model> <id>: done",
-    // "partial" or "not done"; nothing else follows the lint.
-    const check = (text) => G.criticDigestProblems(run(five({ evidence: [d2] })).done(text).parsed(), { finalText: text });
-    const withVerdict = `${second}\nOpus K1: done`;
+    const run = (more = () => {}) => { const s = session(); const id = verifier(s); lint(s); read(s, id); more(s, id); return s; };
+    const check = (s, finalText = answer) => G.draftReadProblems(s.done(finalText).parsed(), { finalText });
+    const reader = (s) => s.claude("Opus R1: final reader", "opus", `You are the final reader. The request, the draft ${draft} and the artifacts.`, five());
+    // A Codex verifier continued with RESUME: on its next report path.
+    const REPORTS = { "/d/run/C1-2/report.json": { answerJson: { status: "done", result: "Terra C1: every claim backed.", evidence: [], artifacts: [], open: [] }, answer: "" } };
+    const codex = lint(session().newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: run the suite.").codex("Codex Terra C1: verifier", "/d/run/C1/report.json"))
+      .newAgent("/d/run/C1-2/report.json", `RESUME: /d/run/C1/report.json\nMODEL: terra\nTASK: read the draft ${draft} against the request.`)
+      .codex("Codex Terra C1-2: read the draft", "/d/run/C1-2/report.json");
+    const gap = "the empty title is not tested";
+    const twice = (item, second = five({ result: `Opus V1: one request item unanswered: ${gap}.` })) => {
+      const s = session(); const id = verifier(s); lint(s); read(s, id, five({ status: "partial" }));
+      s.result(s.use("Write", { file_path: draft, content: answer }), "ok");
+      lint(s); read(s, id, second);
+      return check(s, `${answer}\nOpen:\n- ${item}\n`);
+    };
     return all(
-      expectNone(G.criticDigestProblems(good.done(second).parsed(), { finalText: second })),
-      expectNone(check(withVerdict)),
-      expectNone(check(`${second}\n\nOpus K1: partial\n`)),
-      expectNone(check(`${second}\nOpus K1: not done`)),
-      expectSome(check(`${second}\n**Opus K1's verdict: done.** Nothing is missing.\n`), /adds text after the draft the critic read: "\*\*Opus K1's verdict/),
-      expectSome(check(`${second}\nOpus K1: done, nothing missing`), /adds text after the draft the critic read/),
-      expectSome(check(`${withVerdict}\nSeparately, another session asked me for a review.`), /adds text after the draft the critic read: "Opus K1: done Separately, another session/),
-      expectSome(check(`${second}\nSonnet W5: done`), /adds text after the draft the critic read: "Sonnet W5: done"/),
-      // The rerun of 2026-09-28 reworded the frozen draft after the critic and then added the verdict line.
-      expectSome(check("Opus W1 added the helper and a test for it.\nOpus K1: done"), /not a file the critic's manifest froze; it departs from the draft at/),
-      expectSome(G.criticDigestProblems(run(five({ evidence: [d1] })).done(second).parsed(), { finalText: second }), /the critic returned/),
-      expectSome(G.criticDigestProblems(run(null).done(second).parsed(), { finalText: second }), /continued and its second verdict never arrived/),
+      expectNone(check(run())),
+      // S2 (probe, 2026-11-22): the verifier's brief names no role in its description; read as the plan critic,
+      // its continued read of the draft was not found.
+      expectNone(check((() => {
+        const s = session();
+        const id = s.use("Agent", { description: "Opus V1: check the tree", model: "opus", prompt: VERIFIER_TEXT });
+        s.result(id, [{ type: "text", text: `${FRAME}${five().split("\n").map((l) => `  ${l}`).join("\n")}\nagentId: a23ff0b7ba0739d2e (use SendMessage)` }]);
+        lint(s);
+        return read(s, id);
+      })())),
+      // No verifier ran, as when the user dropped it: a final reader's read stands, and with no read at all the run is red.
+      expectNone(check(reader(lint(session())))),
+      expectSome(check(lint(session())), /neither the verifier's thread nor a final reader read a linted draft/),
+      expectNone(G.draftReadProblems(codex.done(answer).parsed(), { finalText: answer, reportOf: (p) => REPORTS[p] ?? null })),
+      expectNone(check(reader(lint(session().claude("Fable A1: architecture critic", "fable", "TASK", five()))))),
+      expectSome(check((() => { const s = session().claude("Fable A1: architecture critic", "fable", "TASK", five()); const id = verifier(s); lint(s); return read(s, id); })()),
+        /an architecture critic ran, and the draft was read by the verifier's thread, not by a final reader/),
+      expectSome(check((() => { const s = session(); verifier(s); return lint(s); })()), /neither the verifier's thread nor a final reader read a linted draft/),
+      expectSome(check((() => { const s = session(); const id = verifier(s); return read(s, id); })()), /neither the verifier's thread nor a final reader read a linted draft/),
+      expectSome(check(run((s) => s.result(s.use("Edit", { file_path: draft, old_string: "a", new_string: "b" }), "ok"))), /was written after its read/),
+      expectSome(check(run((s) => s.bash(`printf 'more\\n' >> ${draft}`))), /was written after its read/),
+      expectSome(check(run(), `${answer}One more claim added after the read.`), /not the draft that was read; it departs from it at/),
+      expectSome(check(run(), `${answer}\nOpen:\n- ${gap}\n`), /appends an Open: list to a draft read once/),
+      expectNone(twice(gap)),
+      expectSome(twice("a gap nobody returned"), /does not quote a gap the reader returned: "- a gap nobody returned"/),
+      expectSome((() => { const s = session(); const id = verifier(s); lint(s); read(s, id); lint(s); read(s, id); lint(s); read(s, id); return check(s); })(), /3 reads of one answer, and it gets two at most/),
+      expectSome((() => { const s = session(); const id = verifier(s); lint(s); read(s, id, null); return check(s); })(), /the last read of the draft never returned/),
     );
   });
 
-test("the draft was linted before the critic read it, and the last lint passed",
-  "D14: the page lints the frozen draft before the critic; a lint after the critic, or one left failing, is the order the page forbids",
+test("the draft was linted before its read, the last lint passed, and nothing changed the draft between them",
+  "the answer page lints the draft last and then starts its read; a lint after the read, one left failing, or an edit between them is the order the page forbids",
   () => {
-    const lint = (s, hits) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1" /t/draft.md`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=${hits}`);
-    const critic = (s) => s.claude("Opus K1: completeness critic", "opus", "completeness critic", five());
-    const echoed = (s) => s.bash(`node "/p/lint-draft.mjs" /t/draft.md; echo "LINT_EXIT=$?"`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0\nLINT_EXIT=0`);
-    const echoedRed = (s) => s.bash(`node "/p/lint-draft.mjs" /t/draft.md; echo "LINT_EXIT=$?"`, "LINT=path: 1: x\nWORDS=12\nHITS=1\nLINT_EXIT=1");
-    const runner = (s) => s.bash(`node /p/capture-check.mjs --label "any label" -- 'node /p/lint-draft.mjs /t/draft.md'`, "LABEL=any label\nLOG=/t/x.log\nLINES=3\nBYTES=90\nWORDS=12\nSHA256=x\nEXIT=0");
+    const dir = fs.mkdtempSync(path.join(TMP, "lint-"));
+    const draft = path.join(dir, "draft.md");
+    fs.writeFileSync(draft, "Opus W1 added the helper.\n");
+    const lint = (s, hits) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1" ${draft}`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=${hits}`);
+    const reader = (s) => s.claude("Opus K1: final reader", "opus", `You are the final reader. The draft: ${draft}`, five());
+    const echoed = (s) => s.bash(`node "/p/lint-draft.mjs" ${draft}; echo "LINT_EXIT=$?"`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0\nLINT_EXIT=0`);
+    const echoedRed = (s) => s.bash(`node "/p/lint-draft.mjs" ${draft}; echo "LINT_EXIT=$?"`, "LINT=path: 1: x\nWORDS=12\nHITS=1\nLINT_EXIT=1");
+    const runner = (s) => s.bash(`node /p/capture-check.mjs --label "any label" -- 'node /p/lint-draft.mjs ${draft}'`, "LABEL=any label\nLOG=/t/x.log\nLINES=3\nBYTES=90\nWORDS=12\nSHA256=x\nEXIT=0");
+    const edited = (s) => { s.result(s.use("Write", { file_path: draft, content: "x" }), "ok"); return s; };
     return all(
-      expectNone(G.lintCallProblems(critic(lint(session(), 0)).parsed())),
+      expectNone(G.lintCallProblems(reader(lint(session(), 0)).parsed())),
       // Measured on the rerun of 2026-09-28: HITS=0 and then the coordinator's own LINT_EXIT=0 line.
-      expectNone(G.lintCallProblems(critic(echoed(session())).parsed())),
-      expectSome(G.lintCallProblems(critic(echoedRed(session())).parsed()), /did not pass/),
-      expectNone(G.lintCallProblems(critic(runner(session())).parsed())),
+      expectNone(G.lintCallProblems(reader(echoed(session())).parsed())),
+      expectSome(G.lintCallProblems(reader(echoedRed(session())).parsed()), /did not pass/),
+      expectNone(G.lintCallProblems(reader(runner(session())).parsed())),
       G.receiptsFrom(echoed(session()).parsed()).includes("linter") || "an echoed clean lint is no receipt",
       !G.receiptsFrom(echoedRed(session()).parsed()).includes("linter") || "an echoed red lint became a receipt",
-      expectSome(G.lintCallProblems(lint(critic(session()), 0).parsed()), /never linted before the critic/),
-      expectSome(G.lintCallProblems(critic(lint(session(), 2)).parsed()), /did not pass/),
+      expectSome(G.lintCallProblems(lint(reader(session()), 0).parsed()), /no read of the draft by the verifier's thread or a final reader followed its lint/),
+      expectSome(G.lintCallProblems(reader(session()).parsed()), /the draft was never linted before its read/),
+      expectSome(G.lintCallProblems(reader(lint(session(), 2)).parsed()), /did not pass/),
+      expectSome(G.lintCallProblems(reader(edited(lint(session(), 0))).parsed()), /the draft changed between its last lint and its read/),
     );
   });
 
@@ -396,8 +486,8 @@ test("every return admitted in five fields before the synthesis; a malformed one
         { schema: SCHEMA, finalText: "Opus W1's result is unknown: its return never parsed." })),
       expectSome(G.fiveFieldProblems(prose, { schema: SCHEMA, finalText: "Opus W1's result is unknown." }), /does not parse/),
       expectSome(G.fiveFieldProblems(good, { schema: SCHEMA, finalText: "Opus W1 wrote it and Sonnet S4 reviewed it." }), /names Sonnet S4, an agent that never ran/),
-      expectSome(G.fiveFieldProblems(session().claude("Opus K1: completeness critic", "opus", "You are the completeness critic.", "Verdict: done. Nothing missing.").say("done").parsed(), { schema: SCHEMA }),
-        /Opus K1: completeness critic's return does not parse/),
+      expectSome(G.fiveFieldProblems(session().claude("Opus K1: final reader", "opus", "You are the final reader.", "Verdict: done. Nothing missing.").say("done").parsed(), { schema: SCHEMA }),
+        /Opus K1: final reader's return does not parse/),
     );
   });
 
@@ -424,16 +514,33 @@ test("a per-run OUTPUT_SCHEMA copy equal to the shipped schema apart from its ca
     );
   });
 
-test("inline reads are priced as bytes times the calls after them, and a check read whole instead of through the runner is a flood",
-  "D7/D8 (F9, F21): the page prices inline work; the gate measures it and names the check that bypassed the runner",
+test("inline reads are priced as bytes times the calls after them",
+  "D7/D8 (F9, F21): the page prices inline work, and the gate measures it",
   () => {
     const forty = Array.from({ length: 40 }, (_, i) => `ok ${i}`).join("\n");
-    const s = session().bash("node --test", forty).bash("ls", "a").bash("node capture-check.mjs --label suite -- 'node --test'", "LABEL=suite\nEXIT=0").parsed();
+    const s = session().bash("git log --oneline", forty).bash("ls", "a").bash("wc -l lib/a.mjs", "1 lib/a.mjs").parsed();
     const c = G.inlineCost(s);
     const first = c.rows[0];
+    return first.later === 2 && first.cost === Buffer.byteLength(forty) * 2 || `the first read is priced ${JSON.stringify(first)}`;
+  });
+
+test("the coordinator edits nothing in the working tree and runs no check itself, through the runner or not",
+  "the orchestrate page's contract: the coordinator never edits the tree and never runs the project's checks, which its workers and its verifier run (#15 F9: the floods were checks a coordinator ran)",
+  () => {
+    const cwd = fs.mkdtempSync(path.join(TMP, "coordinator-"));
+    const card = path.join(TMP, "card.md");
+    const write = (s, name, file, parent = null) => { s.result(s.use(name, { file_path: file, content: "x" }, parent), "ok", { parent }); return s; };
+    const good = write(session().bash("git status --short", "").bash("grep -l fmt lib", "lib/a.mjs"), "Write", card)
+      .bash(`node /p/lint-draft.mjs ${card}`, "HITS=0");
+    const worker = session();
+    write(worker, "Edit", path.join(cwd, "lib", "a.mjs"), worker.use("Agent", { description: "Opus W1: edit", model: "opus", prompt: "TASK" }));
     return all(
-      first.later === 2 && first.cost === Buffer.byteLength(forty) * 2 || `the first read is priced ${JSON.stringify(first)}`,
-      c.floods.length === 1 && /40 lines of "node --test"/.test(c.floods[0]) || `floods ${JSON.stringify(c.floods)}`,
+      expectNone(G.coordinatorProblems(good.parsed(), { cwd })),
+      expectNone(G.coordinatorProblems(worker.parsed(), { cwd })),
+      expectSome(G.coordinatorProblems(write(session(), "Edit", path.join(cwd, "lib", "a.mjs")).parsed(), { cwd }), /the coordinator wrote lib\/a\.mjs in the working tree itself \(Edit\)/),
+      expectSome(G.coordinatorProblems(write(session(), "Write", "lib/b.mjs").parsed(), { cwd }), /the coordinator wrote lib\/b\.mjs in the working tree itself \(Write\)/),
+      expectSome(G.coordinatorProblems(session().bash("node --test", "ok 1").parsed(), { cwd }), /the coordinator ran a check itself: "node --test"/),
+      expectSome(G.coordinatorProblems(session().bash("node /p/capture-check.mjs --label suite -- 'node --test'", "LABEL=suite\nEXIT=0").parsed()), /the coordinator ran a check itself/),
     );
   });
 
@@ -573,36 +680,45 @@ test("receipts: a Codex command that exited 0, unwrapped from its shell, and a b
 
 // --------------------------------------------------------------- a run, whole
 
-test("one coherent good run passes every check at once, and the pre-fix shape of the same run fails the ones it should",
-  "checks that no run could satisfy together would fail every live run, and a composite that stays green on the old shape would be measuring nothing",
+test("one coherent good run passes every check at once, the pre-fix shape of the same run fails the ones it should, and a coordinator that edits or checks is red",
+  "checks that no run could satisfy together would fail every live run, a composite that stays green on the old shape would be measuring nothing, and the coordinator's contract holds only if breaking it turns the run red",
   () => {
     const dir = fs.mkdtempSync(path.join(TMP, "run-"));
+    const scope = fs.mkdtempSync(path.join(TMP, "scope-"));
     const runner = "/p/skills/orchestrate/scripts/capture-check.mjs";
     const request = "/entrust:orchestrate TASK: add a slug(title) helper with a test. CHECK: node --test passes. RETURN: the files and the test count.";
-    const answer = "Opus W1 added the slug helper and its test, and Codex Terra C1 ran node --test on them: 5 of 5. Opus K1 read this answer against the request and found nothing missing.\n";
-    const draft = path.join(dir, "draft.md");
+    const answer = "Fable A1 kept the approach and Opus P1 found the plan sound. Opus W1 added the slug helper and its test, and Codex Terra C1 ran node --test on them: 5 of 5. Opus K1 read this answer against the request and found nothing missing.\n";
+    const draft = path.join(scope, "draft.md");
     fs.writeFileSync(draft, answer);
-    const manifest = path.join(dir, "manifest.sha256");
     const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
-    fs.writeFileSync(manifest, `${sha(answer)}  ${draft}\n`);
-    const rows = G.planRecord("W1 | opus | implementer | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | completeness critic | nothing | 0");
-    const c1 = `MODEL: terra\nOUTPUT_SCHEMA: ${SCHEMA_PATH}\nTASK: check the slug helper.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`;
-    const s1 = session().skill("entrust:codex").plan("/d/run", "W1 | opus | implementer | live tree | 40000").say(CARD).parsed();
-    const good = session()
+    const rows = G.planRecord("A1 | fable | architecture critic | nothing | 0\nP1 | opus | plan critic | nothing | 0\nW1 | opus | worker | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | final reader | nothing | 0");
+    const c1 = `MODEL: terra\nOUTPUT_SCHEMA: ${SCHEMA_PATH}\nTASK: you are the verifier; check the slug helper.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`;
+    const s1 = session().skill("entrust:codex").plan("/d/run", "W1 | opus | worker | live tree | 40000").say(CARD).parsed();
+    const planCritic = (s) => s.claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five({ result: "Opus P1: sound, no objections." }));
+    const run = (breach = (s) => s, critics = planCritic) => breach(critics(session()
+      .claude("Fable A1: architecture critic", "fable", "You are the architecture critic. TASK: judge the approach, a new lib/slug.mjs.", five({ result: "Fable A1: keep." })))
       .claude("Opus W1: write the slug helper", "opus", `TASK: write lib/slug.mjs and test/slug.test.mjs.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`,
         five({ evidence: ["ran `node --test` through the runner: EXIT=0, 5 of 5"] }), [path.join(dir, "lib", "slug.mjs"), path.join(dir, "test", "slug.test.mjs")])
       .newAgent("/d/run/C1/report.json", c1)
-      .codex("Codex Terra C1: check the slug helper", "/d/run/C1/report.json")
+      .codex("Codex Terra C1: verifier", "/d/run/C1/report.json"))
       .say("Opus W1 wrote the helper, and Codex Terra C1 ran node --test on it: 5 of 5.")
-      .bash(`node /p/skills/orchestrate/scripts/lint-draft.mjs --agents "Opus W1, Codex Terra C1, Opus K1" ${draft}`, `WORDS=30\nSHA256=${sha(answer)}\nHITS=0`)
-      .claude("Opus K1: completeness critic", "opus", `You are the completeness critic. The request, and the frozen draft with its manifest ${manifest}.`,
-        five({ result: "Opus K1: done, nothing missing.", evidence: [sha(fs.readFileSync(manifest)), "read the draft whole"] }))
-      .done(`${answer}Opus K1: done`).parsed();
+      .bash(`node /p/skills/orchestrate/scripts/lint-draft.mjs --agents "Fable A1, Opus P1, Opus W1, Codex Terra C1, Opus K1" ${draft}`, `WORDS=40\nSHA256=${sha(answer)}\nHITS=0`)
+      .claude("Opus K1: final reader", "opus", `You are the final reader. The request, the draft ${draft} and the artifacts.`,
+        five({ result: "Opus K1: done, every claim backed by a raw artifact, nothing unanswered.", evidence: ["read the draft whole"] }))
+      .done(answer).parsed();
     const reports = [{ id: "C1", report: { answerJson: { status: "done", result: "Terra C1: done, 5 of 5.", evidence: ["node --test: EXIT=0"], artifacts: [], open: [] },
       commands: [{ command: `/bin/zsh -lc "node ${runner} --label suite -- 'node --test'"`, exitCode: 0 }] } }];
-    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP] };
-    const ok = G.runProblems({ ...inputs, s2: good });
-    // The same run the way the saved pre-fix sessions ran it: no lint, no manifest, a bare suite and prose.
+    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP], units: ["lib/slug.mjs"], architecture: true };
+    const ok = G.runProblems({ ...inputs, s2: run() });
+    const edited = G.runProblems({ ...inputs, s2: run((s) => { s.result(s.use("Edit", { file_path: path.join(dir, "lib", "slug.mjs"), old_string: "a", new_string: "b" }), "ok"); return s; }) }).problems;
+    const checked = G.runProblems({ ...inputs, s2: run((s) => s.bash(`node ${runner} --label suite -- 'node --test'`, "LABEL=suite\nEXIT=0")) }).problems;
+    // Probe P1: the architecture critic ran and the plan critic was skipped, in a case that asserts no trigger; and
+    // the same run when the case's user dropped the plan critic.
+    const unpaired = G.runProblems({ ...inputs, architecture: false, s2: run(undefined, (s) => s) }).problems;
+    const dropped = G.runProblems({ ...inputs, architecture: false, dropped: ["plan critic"], s2: run(undefined, (s) => s) }).problems;
+    // The Codex verifier's report touched the worker's file.
+    const touched = G.runProblems({ ...inputs, s2: run(), reports: [{ id: "C1", report: { ...reports[0].report, filesTouched: [path.join(dir, "lib", "slug.mjs")] } }] }).problems;
+    // The same run the way the saved pre-fix sessions ran it: no critics, no lint, no read, a bare suite and prose.
     const old = session()
       .claude("Opus W1: write the slug helper", "opus", "TASK: write lib/slug.mjs.\nCHECK: node --test passes.", "I wrote it and it works.", [path.join(dir, "lib", "slug.mjs")])
       .claude("Opus K1: a look at the tests", "opus", "TASK: look at the tests.", five(), [path.join(dir, "test", "slug.test.mjs")])
@@ -610,13 +726,19 @@ test("one coherent good run passes every check at once, and the pre-fix shape of
       .claude("Opus K1: completeness critic", "opus", "You are the completeness critic.", five())
       .done("Done: the tests passed, see /Users/me/scratch/lib/slug.mjs.").parsed();
     const bad = G.runProblems({ ...inputs, s2: old, reports: [] }).problems;
-    const want = [/names no shasum manifest/, /never linted before the critic/, /read inline, not through the runner/, /W1's brief asks for a check/,
+    const want = [/neither the verifier's thread nor a final reader read a linted draft/, /the draft was never linted before its read/,
+      /the coordinator ran a check itself: "node --test"/, /W1's brief asks for a check/, /no architecture critic ran/,
       /does not parse into the five fields/, /lints red, path/, /lints red, unsupported-success/, /C1 is registered, never ran/,
-      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/];
+      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/, /no plan critic was briefed/, /no verifier was briefed/];
     const missed = want.filter((re) => !bad.some((p) => re.test(p)));
     return all(
       ok.problems.length === 0 || `the good run failed: ${ok.problems.join("; ")}`,
       missed.length === 0 || `the pre-fix run passed ${missed.join(", ")}: ${JSON.stringify(bad)}`,
+      expectSome(edited, /the coordinator wrote lib\/slug\.mjs in the working tree itself \(Edit\)/),
+      expectSome(checked, /the coordinator ran a check itself/),
+      expectSome(unpaired, /no plan critic was briefed before the first worker brief/),
+      !dropped.some((p) => /no plan critic/.test(p)) || `a plan critic the user dropped is still asked for: ${dropped.join("; ")}`,
+      expectSome(touched, /is a worker or wrote a worker's file: Codex Terra C1: verifier/),
     );
   });
 

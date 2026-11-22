@@ -15,7 +15,7 @@ tier: it is the host's smallest model, which relays an external agent's run, as 
 
 Luna is fast and low-cost, not limited to shallow reasoning: it is the first choice for scouting and
 independent units once its model/task pilot passes, with Sol as the same-material pilot reference. Astra
-takes consequential plan and architecture critique. Every external agent carries an `EFFORT:` line
+takes consequential architecture critique. Every external agent carries an `EFFORT:` line
 ([measured](incidents.md#effort-inherited-by-a-bulk-agent)).
 
 ## Native history

@@ -10,7 +10,6 @@
 // A heuristic over free text says so where it is one: a plan can satisfy every line here and still be a
 // bad plan, and the release reader judges the artifacts the gate saves.
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { lintDraft } from "../../plugin/skills/orchestrate/scripts/lint-draft.mjs";
@@ -346,21 +345,22 @@ function writesSeen(s, reports) {
 // Every write an agent was seen to make, against the writes its row allows: `nothing`, `live tree` (under
 // the working directory), `write <dir>` (under that directory), `worktree` (its own tree, under the
 // repository's .claude directory). A write under the temporary directory is every agent's.
+// The real path of the longest part that exists, the rest joined on: a file an agent wrote may be gone.
+const real = (p) => {
+  let head = path.resolve(p), tail = [];
+  for (;;) {
+    try { return path.join(fs.realpathSync(head), ...tail); } catch {}
+    const up = path.dirname(head);
+    if (up === head) return path.resolve(p);
+    tail.unshift(path.basename(head));
+    head = up;
+  }
+};
+const under = (p, dir) => { const a = real(p), b = real(dir); return a === b || a.startsWith(`${b}${path.sep}`); };
+
 export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
   const problems = [];
   if (!rows.length) return problems;
-  // The real path of the longest part that exists, the rest joined on: a file an agent wrote may be gone.
-  const real = (p) => {
-    let head = path.resolve(p), tail = [];
-    for (;;) {
-      try { return path.join(fs.realpathSync(head), ...tail); } catch {}
-      const up = path.dirname(head);
-      if (up === head) return path.resolve(p);
-      tail.unshift(path.basename(head));
-      head = up;
-    }
-  };
-  const under = (p, dir) => { const a = real(p), b = real(dir); return a === b || a.startsWith(`${b}${path.sep}`); };
   const temps = tmp.filter(Boolean);
   const allowed = (row, file) => {
     // The temporary directory is everyone's, except the working tree when the tree itself lies under it.
@@ -381,42 +381,85 @@ export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
   return problems;
 }
 
-// --------------------------------------------------------------- the split critic
+// --------------------------------------------------------------- the core roles
 
 const escapeRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const FILE_RE = /(?<![\w/.-])((?:[\w.-]+\/)*[\w-]+\.(?:mjs|cjs|js|jsx|ts|tsx|py|rb|go|rs|java|c|h|sh|md|json|ya?ml|toml|txt|css|html))(?![\w/])/g;
 
-// No worker brief exists before the split critic returns; each names the file the critic published in its
-// artifacts; and the shared interface has one owner, counted from the agents seen writing it (#16's
-// acceptance check, T5's bypass). What the briefs and the split say about owners is not read: measured on
-// the live gate's case 7 (2026-09-28), a brief quoting the request read as owning every file it named, and
-// the critic's report.json, the first path in its hand-back, read as the split, while each file had one
-// writer.
-export function splitAdmissionProblems(s, { units, shared, reportOf = null, read = (p) => fs.readFileSync(p) }) {
+// The core roles the orchestrate page names, other than the worker and the coordinator. A brief is for the role
+// its description names first, or else the one its text first says the agent is ("You are the verifier") or links
+// by its section of roles.md (roles.md#the-verifier); a role a brief merely mentions ("the plan critic's acceptance
+// checks") is not its own. By name, never by tier: a plan may run any role on any tier. Heuristic over free text.
+export const CORE_ROLES = ["architecture critic", "plan critic", "final reader", "verifier"];
+export function roleOf(b) {
+  const first = (text, re) => CORE_ROLES.map((r) => ({ r, m: re(r).exec(String(text ?? "")) })).filter((x) => x.m)
+    .sort((a, b) => a.m.index - b.m.index)[0]?.r ?? null;
+  return first(b.description, (r) => new RegExp(`\\b${r}\\b`, "i"))
+    ?? first(b.text, (r) => new RegExp(`\\byou are (?:the |an? )?${r}\\b|roles\\.md#the-${r.replace(/ /g, "-")}\\b`, "i"));
+}
+// A Codex brief that continues an earlier thread: it is that agent again, not a new worker.
+const resumes = (b) => (b.side === "codex" ? /^RESUME:\s*(\S+)/m.exec(b.text)?.[1] ?? null : null);
+// A worker's brief: one that names a unit of the task and is for none of the core roles, and no continuation.
+const workersOf = (bs, units) => bs.filter((b) => !roleOf(b) && !resumes(b) && units.some((u) => b.text.includes(u)));
+
+// No worker brief exists before the plan critic returns, and the shared interface has one owner, counted from
+// the agents seen writing it (#16's acceptance check, T5's bypass). The plan critic is found by its role's name
+// at any tier; a worker is a brief that names a unit of the task and is for none of the other core roles. What
+// the briefs say about owners is not read: measured on the live gate's case 7 (2026-09-28), a brief quoting the
+// request read as owning every file it named, while each file had one writer.
+export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   const bs = briefs(s);
   const problems = [];
-  const isTop = (b) => (b.side === "claude" ? b.model === "fable" : /^astra$/i.test(b.model ?? ""));
-  const critic = bs.find((b) => isTop(b) && /\bsplit\b|decomposition|разбиени|декомпоз/i.test(b.text));
-  if (!critic) return ["no top-row agent was given the split to critique"];
-  if (critic.done === null) problems.push("the split critic never returned");
-  const workers = bs.filter((b) => b !== critic && !isTop(b) && [...units, shared].some((u) => b.text.includes(u))
-    && !/completeness critic/i.test(b.text));
+  const critic = bs.find((b) => roleOf(b) === "plan critic");
+  if (!critic) return ["no plan critic ran"];
+  if (critic.done === null) problems.push("the plan critic never returned");
+  const workers = workersOf(bs, [...units, shared]);
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
-  if (early.length) problems.push(`${early.length} worker brief(s) written before the split critic returned`);
-  // A Codex critic's artifacts are in its report; a Claude critic's are the artifacts field of its return.
-  const artifacts = critic.side === "codex" ? (reportOf ? reportOf(critic.report) : null)?.answerJson?.artifacts
-    : parseFiveFields(s.results.get(critic.call?.id)?.text ?? "").fields.artifacts;
-  const file = (Array.isArray(artifacts) ? artifacts : []).find((p) => /\.(?:md|txt|json)$/.test(String(p))) ?? null;
-  if (!file) problems.push("the split critic's artifacts name no file for the corrected split");
-  else {
-    const without = workers.filter((w) => !w.text.includes(file));
-    if (without.length) problems.push(`${without.length} worker brief(s) do not name the corrected split ${file}`);
-    try { read(file); } catch { problems.push(`the corrected split ${file} cannot be read`); }
-  }
+  if (early.length) problems.push(`${early.length} worker brief(s) written before the plan critic returned`);
   const reports = bs.filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
   const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
   if (writers.size !== 1) problems.push(`${writers.size} agents wrote ${shared}, and it has one owner`);
+  return problems;
+}
+
+// When a card's trigger for the architecture critic holds: it ran, and it returned before the plan critic's brief
+// and before any worker's, since a verdict other than `keep` changes the approach they would work from. A worker is
+// a brief that names a unit of the task, as for the plan critic; a scout or a foreman is none.
+export function architectureProblems(s, { units }) {
+  const bs = briefs(s);
+  const critic = bs.find((b) => roleOf(b) === "architecture critic");
+  if (!critic) return ["no architecture critic ran, though the card's trigger holds"];
+  if (critic.done === null) return ["the architecture critic never returned"];
+  const early = [...bs.filter((b) => roleOf(b) === "plan critic"), ...workersOf(bs, units)].filter((b) => b.seq < critic.done);
+  return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
+}
+
+// In every run, the orchestrate page's minimum team: a plan critic briefed before the first worker, and a verifier
+// briefed after the last worker returned that is no worker and wrote no file a worker wrote. Only the user's word
+// drops either, so a case whose user dropped one names it in `dropped`; nothing the coordinator says drops one, and
+// an architecture critic that ran never stands in for the plan critic (probe P1, 2026-11-22: a coordinator ran it and
+// skipped the plan critic). A worker is a brief that names a unit of the task, as above; a continuation is that agent
+// again, counted on neither side.
+export function minimumTeamProblems(s, { units, reports = [], dropped = [] }) {
+  const bs = briefs(s);
+  const workers = workersOf(bs, units);
+  if (!workers.length) return ["no worker brief names a unit of the task, so the minimum team's order cannot be read"];
+  const problems = [];
+  if (!dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
+    problems.push("no plan critic was briefed before the first worker brief");
+  if (dropped.includes("verifier")) return problems;
+  const last = Math.max(...workers.map((w) => w.done ?? Infinity));
+  const verifiers = bs.filter((b) => roleOf(b) === "verifier" && b.seq > last);
+  if (!verifiers.length) return [...problems, "no verifier was briefed after the last worker returned"];
+  const rows = workers.filter((w) => w.id).map((w) => ({ id: w.id }));
+  const seen = writesSeen(s, reports);
+  const theirs = seen.filter((w) => planRowOf(w.id, rows)).map((w) => w.file);
+  const same = (a, b) => a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+  const checked = (v) => Boolean(v.id) && (Boolean(planRowOf(v.id, rows))
+    || seen.some((w) => w.id.toLowerCase() === v.id.toLowerCase() && theirs.some((f) => same(f, w.file))));
+  if (verifiers.every(checked))
+    problems.push(`the verifier briefed after the last worker returned is a worker or wrote a worker's file: ${verifiers.map((v) => v.description ?? v.id).join(", ")}`);
   return problems;
 }
 
@@ -440,13 +483,6 @@ const collapse = (t) => String(t).replace(/\s+/g, " ").trim();
 // Absolute paths under the roots a run writes to, a sentence's closing punctuation left off.
 export const absolutePaths = (text) => [...String(text).matchAll(/(\/(?:private\/)?(?:var|tmp|Users|home)\/[^\s"'`)\]]+)/g)]
   .map((m) => m[1].replace(/[.,;:!?]+$/, ""));
-export const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
-export const shasumLines = (text) => String(text).split("\n").map((l) => /^([0-9a-f]{64})\s+\*?(.+)$/.exec(l.trim())).filter(Boolean)
-  .map(([, digest, file]) => ({ digest, file }));
-
-// The critic read a frozen draft: its prompt names a `shasum -a 256` manifest, its verdict returns the
-// manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
-// those files (#15 F4: three answers changed after their critic read them).
 // A lint that passed, by the linter's own last HITS= line, or, when a runner clipped that away, by the
 // runner's EXIT=0 last line, whatever the label (measured on the live gate's case 5 of 2026-09-28: the
 // coordinator echoed LINT_EXIT=0 after HITS=0, and the old reading wanted HITS=0 as the last line).
@@ -457,84 +493,98 @@ export const lintPassed = (text) => {
   return /(^|\n)EXIT=0$/.test(t);
 };
 
-// The critic's last word: a Claude critic continued by SendMessage (to the agentId its first result names)
-// re-reads under the continuation's message, and its second verdict is the last text its own traffic
-// carries after that message (measured on the live gate's case 5, 2026-09-28: the continued agent's
-// messages keep the first Agent call's id as their parent, and no tool result carries the verdict).
-export function criticVerdict(s, c) {
-  if (c.side !== "claude" || !c.call) return { brief: c.text, returned: null, continued: false };
-  const first = s.results.get(c.call.id)?.text ?? "";
-  const agentId = /agentId:\s*(\w+)/.exec(first)?.[1] ?? null;
-  const sm = agentId ? rootUses(s).filter((u) => u.name === "SendMessage" && String(u.input.to ?? "") === agentId && u.seq > c.seq).pop() : null;
-  if (!sm) return { brief: c.text, returned: first, continued: false };
-  const texts = s.events.filter((e) => e.kind === "text" && e.parent === c.call.id && e.seq > sm.seq);
-  return { brief: String(sm.input.message ?? ""), returned: texts.length ? texts[texts.length - 1].text : null, continued: true };
+const lintCalls = (s) => rootUses(s).filter((u) => /lint-draft\.mjs/.test(bashCommand(u)) && !/--help/.test(bashCommand(u)));
+// The files a lint call lints: its absolute paths, less a script and the values of --receipts and --request.
+export const lintedFiles = (cmd) => [...String(cmd).matchAll(/(\/(?:private\/)?(?:var|tmp|Users|home)\/[^\s"'`)\]]+)/g)]
+  .filter((m) => !/--(?:receipts?|request)[=\s]+["']?$/.test(String(cmd).slice(0, m.index)) && !/\.m?js$/.test(m[1]))
+  .map((m) => m[1].replace(/[.,;:!?]+$/, ""));
+// Every write the coordinator made to a file: a Write, Edit or NotebookEdit call on it, or a shell command that
+// names it after a redirection, tee, cp, mv or sed -i. Heuristic over the command's text.
+function rootWritesTo(s, file) {
+  const shell = new RegExp(`(?:>{1,2}|\\btee\\b(?:\\s+-a)?|\\b(?:cp|mv)\\b[^|;&\\n]*|\\bsed\\s+-i[^|;&\\n]*)\\s*["']?${escapeRe(file)}(?![\\w./-])`);
+  return rootUses(s).filter((u) => (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(u.name)
+    && String(u.input.file_path ?? u.input.notebook_path ?? "") === file) || shell.test(bashCommand(u))).map((u) => u.seq);
+}
+const fieldsText = (j) => (j && typeof j === "object" ? Object.values(j).flat().map(String).join("\n") : "");
+
+// Every read of the final draft: the message that starts it, by the verifier's thread or a final reader, and
+// the draft it names, a file a lint before it linted. A message starts a read when it is a final reader's
+// brief, a SendMessage continuing a Claude verifier or final reader (to the agentId its first result names), or
+// a Codex brief that RESUMEs one; its return is the agent's next word: the continued agent's last text after
+// that message (measured on the live gate's case 5, 2026-09-28: a continued agent's messages keep the first
+// Agent call's id as their parent, and no tool result carries them), or a Codex report's answer.
+export function draftReads(s, { reportOf = null } = {}) {
+  const lints = lintCalls(s);
+  const sends = rootUses(s).filter((u) => u.name === "SendMessage");
+  const fromReport = (report) => { const r = reportOf ? reportOf(report) : null; return r ? `${fieldsText(r.answerJson)}\n${r.answer ?? ""}` : null; };
+  const starts = [];
+  const roleByReport = new Map();
+  for (const b of briefs(s)) {
+    const role = roleOf(b) ?? (resumes(b) ? roleByReport.get(resumes(b)) ?? null : null);
+    if (b.side === "codex" && b.report && role) roleByReport.set(b.report, role);
+    if (role !== "verifier" && role !== "final reader") continue;
+    const returned = b.side === "codex" ? fromReport(b.report) : s.results.get(b.call?.id)?.text ?? null;
+    if (role === "final reader" || resumes(b)) starts.push({ seq: b.seq, message: b.text, role, returned });
+    if (b.side !== "claude" || !b.call) continue;
+    const agentId = /agentId:\s*(\w+)/.exec(s.results.get(b.call.id)?.text ?? "")?.[1] ?? null;
+    const mine = agentId ? sends.filter((u) => String(u.input.to ?? "") === agentId && u.seq > b.seq) : [];
+    mine.forEach((sm, i) => {
+      const texts = s.events.filter((e) => e.kind === "text" && e.parent === b.call.id && e.seq > sm.seq && (!mine[i + 1] || e.seq < mine[i + 1].seq));
+      starts.push({ seq: sm.seq, message: String(sm.input.message ?? ""), role, returned: texts.length ? texts[texts.length - 1].text : null });
+    });
+  }
+  return starts.map((st) => {
+    const linted = new Set(lints.filter((u) => u.seq < st.seq).flatMap((u) => lintedFiles(bashCommand(u))));
+    const draft = absolutePaths(st.message).find((p) => linted.has(p)) ?? null;
+    return draft ? { ...st, draft } : null;
+  }).filter(Boolean).sort((a, b) => a.seq - b.seq);
 }
 
-// The critic read a frozen draft: its brief names a `shasum -a 256` manifest, its verdict returns the
-// manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
-// those files and at most one line after it, the critic's verdict in the page's form (#15 F4: three
-// answers changed after their critic read them).
-export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSync(p), reportOf = null }) {
-  const bs = briefs(s);
-  const critics = bs.filter((b) => /completeness critic/i.test(`${b.description ?? ""}\n${b.text}`));
-  if (!critics.length) return ["no completeness critic ran"];
-  const c = critics[critics.length - 1];
+// The draft was read before it went out (#15 F4: three answers changed after their critic read them): by a
+// final reader when an architecture critic ran, at most twice; nothing wrote to it after the last read; and what
+// went out is that file, or, after a second read, that file and an Open: list quoting the reader's gaps.
+export function draftReadProblems(s, { finalText, read = (p) => fs.readFileSync(p), reportOf = null }) {
+  const reads = draftReads(s, { reportOf });
+  if (!reads.length) return ["neither the verifier's thread nor a final reader read a linted draft"];
+  const last = reads[reads.length - 1];
+  const ofDraft = reads.filter((r) => r.draft === last.draft);
   const problems = [];
-  const verdict = criticVerdict(s, c);
-  if (verdict.continued && verdict.returned === null) return ["the critic was continued and its second verdict never arrived"];
-  const paths = absolutePaths(verdict.brief);
-  let manifest = null, manifestPath = null;
-  for (const p of paths) {
-    let body = null;
-    try { body = read(p); } catch { continue; }
-    if (shasumLines(body.toString("utf8")).length) { manifest = body; manifestPath = p; break; }
+  if (ofDraft.length > 2) problems.push(`${ofDraft.length} reads of one answer, and it gets two at most`);
+  if (briefs(s).some((b) => roleOf(b) === "architecture critic") && last.role !== "final reader")
+    problems.push("an architecture critic ran, and the draft was read by the verifier's thread, not by a final reader");
+  if (last.returned === null) problems.push("the last read of the draft never returned");
+  if (rootWritesTo(s, last.draft).some((seq) => seq > last.seq)) problems.push(`${last.draft} was written after its read`);
+  let body;
+  try { body = read(last.draft).toString("utf8"); } catch { return [...problems, `the draft ${last.draft} cannot be read`]; }
+  const frozen = collapse(body), final = collapse(finalText);
+  if (frozen === final) return problems;
+  const lines = String(finalText).replace(/\s+$/, "").split("\n");
+  const at = lines.findLastIndex((l) => /^\s*(?:\*\*)?Open:(?:\*\*)?\s*$/.test(l));
+  if (at >= 0 && collapse(lines.slice(0, at).join("\n")) === frozen) {
+    const items = lines.slice(at + 1).filter((l) => l.trim());
+    const said = collapse(last.returned ?? "");
+    const unquoted = items.filter((l) => !said.includes(collapse(l.replace(/^\s*[-*]\s+/, ""))));
+    if (!items.length || !items.every((l) => /^\s*[-*]\s+\S/.test(l))) problems.push("the answer appends to the draft something other than an Open: list");
+    else if (ofDraft.length < 2) problems.push("the answer appends an Open: list to a draft read once; the changed draft needed its second read");
+    else if (unquoted.length) problems.push(`the Open: list does not quote a gap the reader returned: ${JSON.stringify(unquoted[0].trim().slice(0, 100))}`);
+    return problems;
   }
-  if (!manifest) return [`the critic's brief names no shasum manifest (paths: ${paths.join(", ") || "none"})`];
-  let returned = "";
-  if (c.side === "claude") returned = parseFiveFields(verdict.returned ?? "").fields.evidence?.[0] ?? "";
-  else if (reportOf) returned = String(reportOf(c.report)?.answerJson?.evidence?.[0] ?? "");
-  const digest = /\b[0-9a-f]{64}\b/.exec(returned)?.[0] ?? null;
-  if (!digest) problems.push("the critic's first evidence line carries no sha256");
-  else if (digest !== sha256(manifest)) problems.push(`the critic returned ${digest.slice(0, 12)}…, the manifest ${manifestPath} is ${sha256(manifest).slice(0, 12)}…`);
-  const entries = shasumLines(manifest.toString("utf8"));
-  // The one line the orchestrate page lets follow the draft: "<Model> <id>: done", "partial" or "not done".
-  const d = c.call ? describedAgent(c.call) : null;
-  const verdictLine = d ? new RegExp(`^(?:Codex\\s+|Claude\\s+)?${escapeRe(d.model)}\\s+${escapeRe(d.id)}: (?:done|partial|not done)\\.?$`, "i") : null;
-  const final = collapse(finalText);
-  let wentOut = false, added = null, differs = null;
-  for (const e of entries) {
-    const file = path.isAbsolute(e.file) ? e.file : path.join(path.dirname(manifestPath), e.file);
-    let body = null;
-    try { body = read(file); } catch { problems.push(`${e.file} in the manifest is gone`); continue; }
-    if (sha256(body) !== e.digest) problems.push(`${e.file} changed after the critic read it`);
-    const frozen = collapse(body.toString("utf8"));
-    if (!frozen) continue;
-    if (frozen === final) { wentOut = true; continue; }
-    const lines = String(finalText).trim().split("\n");
-    const last = lines[lines.length - 1].trim();
-    if (verdictLine && verdictLine.test(last) && collapse(lines.slice(0, -1).join("\n")) === frozen) { wentOut = true; continue; }
-    if (final.startsWith(frozen)) added = final.slice(frozen.length).trim().slice(0, 100);
-    else if (differs === null && e.file.endsWith(".md")) {
-      let i = 0;
-      while (i < frozen.length && frozen[i] === final[i]) i++;
-      differs = final.slice(Math.max(0, i - 20), i + 60);
-    }
-  }
-  if (!wentOut) problems.push(added !== null
-    ? `the answer adds text after the draft the critic read: ${JSON.stringify(added)}`
-    : `the answer that went out is not a file the critic's manifest froze${differs !== null ? `; it departs from the draft at ${JSON.stringify(differs)}` : ""}`);
+  let i = 0;
+  while (i < frozen.length && frozen[i] === final[i]) i++;
+  problems.push(`the answer that went out is not the draft that was read; it departs from it at ${JSON.stringify(final.slice(Math.max(0, i - 20), i + 60))}`);
   return problems;
 }
 
-// The coordinator linted the draft before the critic read it, and the last lint before the critic passed.
+// The last lint of the draft came before its last read, passed, and nothing wrote to the draft between them.
 export function lintCallProblems(s) {
-  const uses = rootUses(s);
-  const critic = briefs(s).filter((b) => /completeness critic/i.test(`${b.description ?? ""}\n${b.text}`)).pop();
-  const lints = uses.filter((u) => /lint-draft\.mjs/.test(bashCommand(u)) && (!critic || u.seq < critic.seq));
-  if (!lints.length) return ["the draft was never linted before the critic read it"];
-  const last = s.results.get(lints[lints.length - 1].id)?.text ?? "";
-  return lintPassed(last) ? [] : [`the last lint before the critic did not pass: ${JSON.stringify(last.trim().split("\n").pop())}`];
+  const reads = draftReads(s);
+  const last = reads[reads.length - 1] ?? null;
+  if (!last) return [lintCalls(s).length ? "no read of the draft by the verifier's thread or a final reader followed its lint" : "the draft was never linted before its read"];
+  const lint = lintCalls(s).filter((u) => u.seq < last.seq && lintedFiles(bashCommand(u)).includes(last.draft)).pop();
+  const out = s.results.get(lint.id)?.text ?? "";
+  const problems = lintPassed(out) ? [] : [`the last lint before the read did not pass: ${JSON.stringify(out.trim().split("\n").pop())}`];
+  if (rootWritesTo(s, last.draft).some((seq) => seq > lint.seq && seq < last.seq)) problems.push("the draft changed between its last lint and its read");
+  return problems;
 }
 
 // "<Model> <id>" for every agent that ran: a Claude agent by its tag and its description's id, a Codex
@@ -599,8 +649,8 @@ export function schemaFileOf(file, { shipped, read = (p) => fs.readFileSync(p) }
 }
 
 // Every return in the five fields and valid against its schema (a Codex return against the file its prompt
-// named, a Claude return against the shipped one), the completeness critic's included, and every one but
-// the critic's in before the synthesis started; a malformed Claude return is repaired by a later call with
+// named, a Claude return against the shipped one), the final reader's included, and every one but the final
+// reader's in before the synthesis started, which is the first read of the draft or else the last text; a malformed Claude return is repaired by a later call with
 // the same id, or, once a repair was asked, named unknown in the answer, or it is a failure named by agent;
 // every agent the answer names is one that ran.
 export function fiveFieldProblems(s, { schema, reports = [], prompts = [], finalText = "", read = (p) => fs.readFileSync(p) }) {
@@ -619,14 +669,14 @@ export function fiveFieldProblems(s, { schema, reports = [], prompts = [], final
   }
   const bs = briefs(s);
   const claude = bs.filter((b) => b.side === "claude" && b.call);
-  const isCritic = (b) => /completeness critic/i.test(`${b.description ?? ""}\n${b.text}`);
-  const synthesis = Math.min(...[bs.filter(isCritic).map((b) => b.seq)[0],
+  const isReader = (b) => roleOf(b) === "final reader";
+  const synthesis = Math.min(...[draftReads(s)[0]?.seq,
     root(s).filter((e) => e.kind === "text").pop()?.seq].filter((x) => x !== undefined));
   for (const b of claude) {
     const res = s.results.get(b.call.id);
     const name = b.description ?? b.id ?? "an agent";
     if (!res) { problems.push(`${name} never returned`); continue; }
-    if (!isCritic(b) && Number.isFinite(synthesis) && res.seq > synthesis) problems.push(`${name} returned after the synthesis started`);
+    if (!isReader(b) && Number.isFinite(synthesis) && res.seq > synthesis) problems.push(`${name} returned after the synthesis started`);
     const { fields, problems: p } = parseFiveFields(res.text);
     const errs = p.length ? p : validate(schema, fields);
     if (!errs.length) continue;
@@ -707,23 +757,34 @@ export function claimOriginProblems(s, { reports = [], finalText = "" }) {
 
 // --------------------------------------------------------------- the coordinator's own reads
 
-// What the coordinator read inline, priced as the page prices it: each result's bytes times the calls after
-// it. A check command whose output reached the context whole, not through the runner, is a flood.
+// What the coordinator read inline, priced as the page prices it: each result's bytes times the calls after it.
 export function inlineCost(s) {
   const r = root(s);
   const calls = r.filter((e) => e.kind === "tool_use");
   const rows = [];
-  const floods = [];
   for (const res of r.filter((e) => e.kind === "tool_result")) {
     const use = calls.find((u) => u.id === res.id);
     const bytes = Buffer.byteLength(res.text);
     const later = calls.filter((u) => u.seq > res.seq).length;
     rows.push({ tool: use?.name ?? "?", bytes, later, cost: bytes * later });
-    const cmd = use ? bashCommand(use) : "";
-    if (cmd && CHECK_COMMAND.test(cmd) && !/capture-check\.mjs/.test(cmd) && res.text.split("\n").length > 20)
-      floods.push(`${res.text.split("\n").length} lines of ${JSON.stringify(cmd.slice(0, 80))} read inline, not through the runner`);
   }
-  return { rows, total: rows.reduce((n, x) => n + x.cost, 0), bytes: rows.reduce((n, x) => n + x.bytes, 0), floods };
+  return { rows, total: rows.reduce((n, x) => n + x.cost, 0), bytes: rows.reduce((n, x) => n + x.bytes, 0) };
+}
+
+// The coordinator's contract: it edits nothing under the working tree and runs none of the project's checks,
+// through the runner or not; a check is its workers' and its verifier's. A write through a shell command is
+// not visible here, and a write is judged only when the working tree is known.
+export function coordinatorProblems(s, { cwd = null } = {}) {
+  const problems = [];
+  for (const u of rootUses(s)) {
+    const file = String(u.input.file_path ?? u.input.notebook_path ?? "");
+    if (cwd && file && ["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(u.name) && under(path.resolve(cwd, file), cwd))
+      problems.push(`the coordinator wrote ${path.relative(real(cwd), real(path.resolve(cwd, file)))} in the working tree itself (${u.name})`);
+    // A heredoc's body is text the command writes, a brief's CHECK: line among them, not a command it runs.
+    const cmd = bashCommand(u).replace(/<<-?\s*'?"?(\w+)'?"?[^\n]*\n[\s\S]*?\n\s*\1\s*$/m, "");
+    if (cmd && CHECK_COMMAND.test(cmd)) problems.push(`the coordinator ran a check itself: ${JSON.stringify(cmd.slice(0, 80))}`);
+  }
+  return problems;
 }
 
 // Every brief that asks for a check command names the runner (#15 F9: the floods of T2 and T7 were Claude
@@ -815,8 +876,11 @@ export function activationRecord({ transcript = "", stream, skill }) {
 // streams and what the run left (prompt files, reports, the registered plan, the runner's ledger). Pure
 // over its inputs, so gate-checks.test.mjs can hand it one coherent good run and check that every check
 // passes it at once: checks that no run could satisfy together would fail every live run.
+// units: what names a worker's brief; architecture: true when the card's trigger for the architecture critic holds,
+// so it must have run first; dropped: the minimum team's roles the case's user dropped.
 export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], ledger = [], schema, request = "", phases,
-  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [] }) {
+  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [], units = [],
+  architecture = false, dropped = [] }) {
   const problems = [];
   const finalText = s2.resultText;
   const receipts = receiptsFrom(s2, { reports: reports.map((r) => r.report), ledger });
@@ -828,8 +892,10 @@ export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], led
   const claudeBriefs = briefs(s2).filter((b) => b.side === "claude").map((b) => ({ id: b.id ?? b.description, text: b.text }));
   problems.push(...runnerBriefProblems([...prompts, ...claudeBriefs]));
   const cost = inlineCost(s2);
-  problems.push(...cost.floods);
-  problems.push(...criticDigestProblems(s2, { finalText, read, reportOf }));
+  problems.push(...coordinatorProblems(s2, { cwd }));
+  problems.push(...minimumTeamProblems(s2, { units, reports, dropped }));
+  if (architecture) problems.push(...architectureProblems(s2, { units }));
+  problems.push(...draftReadProblems(s2, { finalText, read, reportOf }));
   problems.push(...phaseProblems(s2, { max: phases, receipts, finalText }));
   problems.push(...lintCallProblems(s2));
   const lint = lintDraft(finalText, { agents, receipts, request });

@@ -6,7 +6,7 @@ description: >-
   proposals to improve the skill.
 disable-model-invocation: true
 metadata:
-  version: "0.45.0"
+  version: "0.46.0"
 license: MIT
 ---
 
@@ -59,5 +59,5 @@ read and the report. `<skill-dir>` is this skill's installed directory.
   that wrote none of the report checks every detail by that rule before it goes out; what it removed goes to the
   user beside the report.
 - The report goes in your answer: its title on a line of its own, then its body as one fenced block whose fence is
-  longer than any fence inside it. Orchestrate's completeness critic reads it first. The skill publishes nothing;
+  longer than any fence inside it. Orchestrate's final reader reads it first, as a publication. The skill publishes nothing;
   the private folder keeps the corpus, the timeline and the measures, and the cleanup neither lists nor removes it.

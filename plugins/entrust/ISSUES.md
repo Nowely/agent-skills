@@ -10,6 +10,83 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
+
+**Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
+"builds the artifact directory as `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`", `:88-89` "the
+case directory inside it as `${n}-${slug}`", and `:167-168` "the git clone inside THAT as `scratch`". Today
+`evals/orchestrate-live.test.mjs:87` is a bare `//` in the header comment, `:88-89` begin the header's account of case 4,
+and `:167-168` are comment lines of the process helper ("TERM before KILL, and to the GROUP"); the artifact directory is
+built at `:123`, the case directory at `:125` and the clone at `:196` and `:201`. The addresses were already stale at
+`def9f23` (`:87` the header's "Case 4 measures the agent", the builder at `:122`) and at `0665237`, the repository's
+first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3306-3307`, the 0.12.0 note,
+quotes the same three addresses; that release predates the repository's first commit, so whether they held then cannot
+be checked here. Found by an implementer of the orchestrate rework's minimum team, 2026-11-22.
+
+**Check.** `sed -n 54,56p plugins/entrust/plugin/skills/cleanup/scripts/cleanup.mjs` prints the three addresses;
+`sed -n '87p;167,168p' plugins/entrust/evals/orchestrate-live.test.mjs` prints comment lines, and
+`grep -n 'orchestrate-live-\${\|^const caseDir\|"clone", "--local"' plugins/entrust/evals/orchestrate-live.test.mjs`
+prints `123:`, `124:` and `201:`.
+
+**Issue text.** The comment in the cleanup script that explains which directory shapes a test suite writes under the
+temporary directory points at lines 87, 88-89 and 167-168 of the live orchestrate gate for the code that builds the
+artifact directory, the case directory and the scratch clone. Those lines hold header comments and a process helper;
+the code has sat 30 to 36 lines lower since the repository's first commit. A reader who follows the addresses to check
+the shape the cleanup matches finds unrelated text. Name the code the comment means (the artifact directory's
+`createTempDir` call, `caseDir`, the scratch clone) instead of its line numbers, or correct the numbers.
+
+## E156. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
+
+**Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
+returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
+which admits a worker briefed after the critic's brief and before its return, left `node evals/gate-checks.test.mjs`
+at 26 of 26. `:679` names a Claude return that arrived after the synthesis started; deleting that line left the suite
+at 26 of 26 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and `:629`), so the gaps
+predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its worker before the
+critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by an independent
+verifier of the orchestrate rework.
+
+**Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 26 passed`.
+
+**Issue text.** Two of the live gate's checks have no offline case that fails when they break: a worker briefed while
+the plan critic is still running, and a return that came in after the synthesis started. Each check can be weakened
+or removed with the suite still green, so a live run the gate should fail would pass it. Add a fixture for each: a
+worker's brief between the plan critic's brief and its return, and an agent's return after the coordinator's last text.
+
+## E154. Only the claude adapter declares its agents native, so a five-column plan row with a Codex model under a Codex host resolves to the external Codex adapter
+
+**Evidence, level 2.** `claude/adapter.json:6` is the one adapter manifest whose `plan` carries `"native": true`;
+`codex/adapter.json:6` lists `["astra", "sol", "terra", "luna"]` and no `native`. `orchestrate/scripts/agent-run.mjs:552-553`
+gives a row with no adapter column the adapter that lists its model, and `native` only when that adapter's plan says
+so (`lister?.plan.native ? "native" : lister?.id`). On 2026-11-22 the row `W1 | sol | worker | nothing | unknown`
+registered through `--plan` (`AGENT=W1 sol nothing`, exit 0); the launcher prints no adapter for it, and no `--new`
+under it was run, so which adapter it resolved to is read from the code, not observed. `codex/references/orchestration.md:31`
+("An all-native plan needs no driver registration or state directory") keeps an all-native Codex plan clear of it; a
+mixed plan under a Codex host is not. Found by Fable F12.
+
+**Check.** Under a Codex host, register that row with `agent-run.mjs --plan --run-dir <run>` and run `--new` for `W1`
+without `--adapter`: by the code above the agent is made for the `codex` adapter, an external run, not a native subagent.
+
+**Issue text.** Under a Codex host, a plan row that names a Codex model and no adapter column resolves to the external
+Codex adapter, because only the claude adapter marks its agents native. A mixed plan in Codex therefore cannot register
+a native Codex subagent in the ordinary five-column form. Decide whether a row's nativeness should follow the host that
+runs the plan rather than the adapter manifest that lists the model.
+
+## E155. Two shared pages call the host "normally Luna", though the shared skills name no model
+
+**Evidence, level 1.** `proxy/SKILL.md:12`: "this host, normally Luna, transports messages and answers".
+`orchestrate/references/main-proxy.md:4`: "The host (normally Luna) relays messages and replies." The entry "The shared skills name no
+model (most of E122)" in `plugins/entrust/CHANGELOG.md`, under `## 0.26.0 — 2026-10-08`, moved model names to each
+adapter's `references/models.md`. `claude/SKILL.md:18` names Luna too; it is an adapter page, where a model name
+belongs. Found by Fable F12.
+
+**Check.** `grep -n 'Luna' plugins/entrust/plugin/skills/proxy/SKILL.md plugins/entrust/plugin/skills/orchestrate/references/main-proxy.md`
+prints both lines.
+
+**Issue text.** The proxy skill and orchestrate's main-proxy reference, both shared pages, call the transporting host
+"normally Luna", against the rule since 0.26.0 that the shared skills name no model and each adapter's models page maps
+tiers to models. Say "the host", or its tier, and leave Luna to the Codex adapter's models page.
+
 ## E153. The design-to-code review pass has not run where it counts
 
 **Evidence, level 3 for the harness, level 1 for the remedy.** `design-to-code/SKILL.md:92` asks for a second
@@ -120,19 +197,21 @@ directory stays for this reason, and should stay until that case is measured too
 
 **Evidence, level 2.** `plugins/entrust/evals/lib/gate-checks.mjs` has no `parseSplit` or `ownsPath` function, and no
 test names "the corrected split is read: an interface it omits, one its owner's brief omits, and a file a brief
-takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). `splitAdmissionProblems`
-(`gate-checks.mjs:395-421`) only checks that the split critic named a file, that each worker brief names that
-file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:331-344`), which reads
-only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:330`) says "A
-write made through a shell command is not visible here." The orchestrate page asked the coordinator to check each
-brief against the file's owners until `cc7efbb` ("before a worker launches you check the files and interfaces its
-brief touches against the file's owners"); today it says "Launch within the approved ownership and the runtime's
-limits" (`orchestrate/SKILL.md:88`), which no longer names the check of each brief's files and interfaces, and no
-test stands behind either. Found by Fable H1.
+takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). At `def9f23`, `splitAdmissionProblems`
+(`gate-checks.mjs:395-421`) only checked that the split critic named a file, that each worker brief named that
+file's path and that the file opened. Since the plan critic replaced the split critic, it returns objections and
+no split file, and the function (today `gate-checks.mjs:410-424`) keeps only the order of the briefs and the count of
+the shared file's writers, from `writesSeen` (`:330-343`), which reads only Write/Edit/NotebookEdit/MultiEdit calls
+and a Codex report's `filesTouched`; its own comment (`:329`) says "A write made through a shell command is not
+visible here." The orchestrate page asked the coordinator to check each brief against the file's owners until
+`cc7efbb` ("before a worker launches you check the files and interfaces its brief touches against the file's
+owners"); today it says "Launch within the approved ownership and the runtime's limits" (`orchestrate/SKILL.md:48`),
+and the plan critic judges ownership and shared interfaces before any brief (`orchestrate/references/roles.md`, the
+plan critic), but no test stands behind a brief's files against their owners. Found by Fable H1.
 
 **Check.** `grep -n 'parseSplit\|ownsPath' plugins/entrust/evals/lib/gate-checks.mjs` finds nothing; reading
-`splitAdmissionProblems` (`:395-421`) shows no check of a brief's claimed files or interfaces against the split
-file's contents, only that the brief names the split file's path. A worker whose write ran through `sed -i` leaves
+`splitAdmissionProblems` (`:410-424`) shows no check of a brief's claimed files or interfaces against their owners.
+A worker whose write ran through `sed -i` leaves
 `filesTouched` and every Write/Edit call empty, so `writesSeen` returns no writer for it and
 `splitAdmissionProblems` reports "0 agents wrote lib/shared.mjs" on a correct run.
 
@@ -140,8 +219,9 @@ file's contents, only that the brief names the split file's path. A worker whose
 as the split and a quoted request as ownership, with a narrower check that only confirms a file exists and is
 named; it never restored a check of what each brief claims against what the split file says an owner should touch,
 and it counts a file's writers only from tool calls and `filesTouched`, so a worker that writes through a shell
-command is invisible to the count. The gate should read the split file's own owner and interface list and compare
-each brief against it, and count a shell write that names the shared file among the writers.
+command is invisible to the count. The plan critic now returns objections, not a split file, so the owners to
+compare a brief against are the approved card's; the gate should compare each brief with them, and count a shell
+write that names the shared file among the writers.
 
 ## E90. The swarm, the bulk row's batch route, is called an experiment, holds fifty units at most, and reports no tokens
 
@@ -152,7 +232,7 @@ each brief against it, and count a shell write that names the shared file among 
   A batch wider than fifty units takes several swarms.
 - `swarm.mjs:112-116` and `:149-150`: the summary holds per agent its number, unit, report path, the launcher's
   status lines and times, and no tokens, which the plan's stop line reads, an agent's tokens per unit against the
-  pilot's median per unit (`orchestrate/references/plan.md:33-37`); each report has to be opened for them.
+  pilot's median per unit (`orchestrate/references/plan.md:76-81`); each report has to be opened for them.
 - A swarm's agent ids are `001` to `050` (`swarm.mjs:113`), and the plan registration takes only ids that start with
   a letter (`orchestrate/scripts/agent-run.mjs:468`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
   through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
@@ -235,10 +315,11 @@ task list and its Stop on such a task.
 
 **Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:23` runs `scripts/status.mjs` through Claude Code's
 `` !`…` `` substitution as the page loads, and its frontmatter (`:11`) pre-approves it with
-`allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolves its
-advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer says to load
-the page first), and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:15` names the page as an external Codex run's
-adapter, loaded once that worker is selected (`:23`). On 2026-09-29,
+`allowed-tools: Bash(node *codex/scripts/status.mjs*)`; at `def9f23` `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolved its
+advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer said to load
+the page first); today the advisor reaches an adapter only for a named model the host does not run natively (`:12`),
+and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:73-80` loads an adapter's page only for a provider the user
+named. On 2026-09-29,
 Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
 call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
 Claude Code is running in don't ask mode": the model never received the page. The same case with the operator's
@@ -253,7 +334,7 @@ when its plan has a Codex agent and the codex page it loads is cancelled was not
 `--ablation none --runs 1`: the Skill call's result is the permission failure above and no `CODEX=` line reaches the session.
 
 **Issue text.** In `dontAsk` mode, the mode `claude plugin eval` runs every case in and the one locked-down CI uses, the
-codex page no longer loads, and neither does the advisor page, which loads it first. The page runs the Codex status script as
+codex page no longer loads, and neither does an advisor the user names on a Codex model, which loads it first. The page runs the Codex status script as
 it loads, and `dontAsk` counts only allow rules and hook approvals, not the page's own `allowed-tools`, so Claude Code
 cancels the page before the model sees it. The status is advice for the composition and should never take a page down: in
 `dontAsk` the page should load and the plan should say Codex was not checked unless the operator allowed the command. The two
@@ -284,11 +365,11 @@ the rule in the model table and have the parity reference link it.
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:110-113` gives judgement to the top tier and the bulk tier
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:89-92` gives judgement to the top tier and the bulk tier
 "independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:11-17` names Luna
 for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review, refutation
 and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
-(`orchestrate/SKILL.md:136`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
+(`orchestrate/references/plan.md:58`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
 with no other Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`; neither records the effort): it said
 E92's isolation belongs with the unit that knows the agent's directory (it named the launcher) — the judge kept the
@@ -309,7 +390,7 @@ on 2026-09-30, and the commands.md sentence the entrust changelog kept; the thir
 known violations to ledger headings, which was removed later, when the owner chose to have the test fail on every
 violation.
 
-**Check.** `grep -n 'bulk' plugins/entrust/plugin/skills/orchestrate/SKILL.md plugins/entrust/plugin/skills/codex/references/models.md`;
+**Check.** `grep -n 'bulk' plugins/entrust/plugin/skills/orchestrate/SKILL.md plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/codex/references/models.md`;
 the verdict table in `rounds.md`.
 
 **Issue text.** The pages keep Luna, the bulk model, out of judgement, and one run suggests that at
@@ -362,21 +443,23 @@ then either make the two cases pass there or have the suite say that they cannot
 
 ## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:49-53` ("A bulk row") states
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:91-97` ("A bulk row") states
 the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
-path") and the count ("Announce the unit count and how it was derived"), and `:28-29` the pilot ("define the
-acceptance rule and pilot representative work. Compare the same inputs with a stronger reference").
+path") and the count ("Announce the unit count and how it was derived"), and `:71-72` the pilot ("define the
+acceptance rule and pilot representative work. Compare the same inputs with a stronger reference");
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:104-105` states the tally ("Open one complete return before
+trusting a unanimous tally of verifiers"), which the bulk row links.
 `plugins/entrust/plugin/skills/swarm/SKILL.md:24` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
 of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
 units with the plan saying why that many, before the launch", and "Pilot first: a stronger model marks the pilot's
 units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the
-brief's fixes and its effort". No suite pins either copy, and nothing compares them. Both copies were on main before
+brief's fixes and its effort", and `:34` the tally: "Read one return whole yourself before trusting the tally". No suite pins either copy, and nothing compares them. Both copies were on main before
 2026-09-30, the first on `orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the
 reference word for word and kept both copies, because the swarm page describes a swarm and a bulk batch may also run
 as ordinary agents, which it cannot own; the reference has since been cut to the shorter wording above. Found by Fable F1.
 
-**Check.** `grep -n 'describes the subject\|unit count\|derived from the units\|pilot' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
+**Check.** `grep -n 'describes the subject\|unit count\|derived from the units\|pilot\|unanimous\|one return whole' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/orchestrate/SKILL.md plugins/entrust/plugin/skills/swarm/SKILL.md`
 prints the lines in each file.
 
 **Issue text.** The rules for a bulk fan-out's unit, its derived count and its pilot are written twice: once in

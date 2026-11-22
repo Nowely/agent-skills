@@ -247,7 +247,9 @@ const rules = [
 // (`function Yu(e,r=4){...return Math.round(e.length/r)}`,
 // `function wcr(e,n){if(Yu(e)<=n)return e;let r=n*4-qGt.length;return e.slice(0,r)+qGt}`, `rcr=5000`) and
 // 2.1.170 (the same shape: `pM3`, `Xz`, `EM3=5000`), and matched over all 19,900 characters of three
-// re-attached blocks in one session: a measurement of those versions, which a later Claude Code can change.
+// re-attached blocks in one session: a measurement of those versions, which a later Claude Code can change. On
+// 2.1.330 (2026-11-22, n=1 each) one process re-attached an invoked skill whole after `/compact`, while a session
+// resumed in a new process (`claude -p --resume`) re-attached none: the re-attachment is the invoking process's.
 // Every path, the header's and each substituted one, is taken as PATH characters, a chosen bound, not a
 // measurement: this machine's are 49 to 79, and a longer path moves the cut earlier by its excess, once per
 // occurrence. A note, not a rule here:

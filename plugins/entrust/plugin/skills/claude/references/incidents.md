@@ -1,7 +1,8 @@
 # Incidents behind the rules
 
-The measurements behind this adapter's rules. The newest, on the relay: [a relay stopped without a signal](#a-relay-stopped-without-a-signal)
-and [a hand-back that lost its last line](#a-hand-back-that-lost-its-last-line).
+The measurements behind this adapter's rules. The newest: [a compaction in one process and in a resumed one](#a-compaction-in-one-process-and-in-a-resumed-one);
+on the relay, [a relay stopped without a signal](#a-relay-stopped-without-a-signal) and
+[a hand-back that lost its last line](#a-hand-back-that-lost-its-last-line).
 
 ## Waiting for background agents
 
@@ -120,3 +121,17 @@ matched the launcher's lines. A later Luna hand-back of a tool call carried its 
 the top level, where the request has an `input` object; the coordinator approved the original, read whole from the
 report. The launcher's `--handback` compares a copy with the run, and on the earlier build it returned the full
 canonical lines for a deliberately truncated partial.
+
+## A compaction in one process and in a resumed one
+
+2026-11-22, Claude Code 2.1.330, headless `claude -p` with `--plugin-dir`, one task (add a function and its test),
+n=1 per mode: `/entrust:orchestrate` with the task, then `/compact`, then a turn after it. In one process fed its
+turns on stdin (`--input-format stream-json`, Sonnet), the session file after the compact boundary carried an
+`invoked_skills` attachment with `entrust:orchestrate` whole (7,998 characters) and `entrust:claude` (5,208), and file
+attachments of two references it had read (`orchestrate/references/plan.md`, `claude/references/models.md`); its next
+answer named the coordinator's role. With each turn a process of its own (`claude -p --resume <id>`, Opus), the
+session file after the boundary carried no `invoked_skills` attachment, only `plan.md` as a file; the next turn
+went on from the compaction summary and that re-attached `plan.md`, not the page, launched its critic, worker and
+verifier, used the run's `card.md`, and read further orchestrate files by their paths. Typing the command puts the
+page into the session: the first turn's did, 7,998 characters. Whether typing it again in a resumed process brings a
+run back to the page's steps was not measured.

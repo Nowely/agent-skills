@@ -4,7 +4,7 @@ description: >-
   Run external Claude agents, native Claude delegation and entrust plans selecting Claude. A request to make
   Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”) is answered with the explicit proxy command.
 metadata:
-  version: "0.45.0"
+  version: "0.46.0"
 license: MIT
 ---
 
@@ -27,7 +27,7 @@ its CLI, or a specific provider keeps that route; do not silently switch provide
 
 ## Agent calls
 
-Apply [skills per invocation](../orchestrate/SKILL.md#skills-per-invocation) to native Claude briefs and
+Apply [skills per invocation](../orchestrate/references/plan.md#skills-per-invocation) to native Claude briefs and
 continuations as well as external agents.
 
 - Tag every Agent call with an explicit `model` from the tier table; untagged, a subagent inherits the
@@ -44,7 +44,7 @@ continuations as well as external agents.
   `SAFE_MODE: yes` does not ([external.md](references/external.md)).
 - Claude agents launched together share the session's `$TMPDIR`. A file an agent must leave goes in a
   directory of its own that it makes with `mktemp -d`, with the path in its return.
-- Continue an agent with SendMessage; give independent verification a fresh agent.
+- Continue an agent with SendMessage.
 
 ## Waiting
 
