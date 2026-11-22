@@ -201,6 +201,10 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 - [Iteration 6](34-iteration-6.md): draft 28.2 against 28.1 on Sonnet, three runs each on two cases. No cost effect shown;
   every card returned by a stricter reviewer as seen and as read, 28.2's first in both sets; four code faults recur.
 - [Iteration 7](35-iteration-7.md): the architecture critic's and Fable's reading of iteration 6, and the plan it chose:
-  draft 28.3, Sonnet on the stateful case and a card with a planted finding, and a capped Terra dry run.
+  draft 28.3, Sonnet on the stateful case and a card with a planted finding, and a capped Terra dry run. Then drafts
+  28.4 (a gate, reverted under the plan's rule) and 28.5 (an inputs record), each on Sonnet: every handover put the
+  planted question with options; what differed was inputs bent to clear it, and the cost.
+- [Terra dry run, registered](36-terra-dry-run.md): the capped run in the owner's Codex on the planted card, now the
+  rerun on draft 28.5 with the plan's approval in the task prompt as a changed condition.
 - [Terra dry run on draft 28.4](37-terra-28-4-dry-run.md): the first handover stopped before the gate; the result is
   inconclusive for gate obedience, with the worker's approval request, observed checks and role costs recorded.
