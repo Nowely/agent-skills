@@ -7,6 +7,9 @@ forensics remain in the repository references and release notes.
 
 ### Orchestrate
 
+- The speed profile in `references/plan.md` no longer names a targeted check: the verifier runs the full relevant
+  suite on every profile, as its section in `references/roles.md` says, so the two pages no longer disagree on what
+  a speed run verifies. The profile keeps the bulk tier at a medium effort and one scout per independent unit.
 - The advisor page links orchestrate's plan reference for a chosen model that is unavailable, instead of restating
   its rule beside the link; `evals/advisor.test.mjs` checks the link and that the rule is not restated.
 - The proxy skill and orchestrate's `references/main-proxy.md`, both shared pages, call the transporting host "the
