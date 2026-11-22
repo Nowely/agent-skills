@@ -20,7 +20,7 @@ quality only when it materially changes the allocation, with the approval that s
 | work | deliverables, ownership, interfaces and completion criteria |
 | team | coordinator role and each agent's role, one model display name and policy coverage in one place; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
-| checks | who verifies what and which evidence decides; include host runtime facts, passive adapter-status source/freshness, the OpenCode model list's source (Desktop or the whole catalogue), quota windows, allocation and exact launch validation |
+| checks | who verifies what and which evidence decides; only when the plan has an external route, or a usage window is near its limit: the adapter status's source and freshness, the OpenCode model list's source (Desktop or the whole catalogue), the quota windows and the exact launch validation |
 
 Show worker concurrency only when it affects parallel work; count nested workers by the host's rules.
 
@@ -58,8 +58,8 @@ scale improves throughput or cost under the model-fit rule, and within actual ho
 When the user asks to measure one of these rules or a composition rather than to finish a task, the
 plan is a protocol written before any agent: a hypothesis that can be false; arms, one of them the
 comparator the hypothesis needs; material with its ground truth or acceptance check, frozen before any
-arm sees it; metrics, with n and an interval where n is under fifty; a judge from the other model family
-or the user, reading the returns by letter with each model's name removed; and a budget with a stop
+arm sees it; metrics, with n and an interval where n is under fifty; the user, or a judge the user names,
+reading the returns by letter with each model's name removed; and a budget with a stop
 rule. Arms get the same brief except the composition and never see each other's returns. Record a
 failed arm with its reason; never rerun it for a better number. Write the metrics and a conclusion that
 names n, what stayed unmeasured and the confounds; the user's verdict decides, and neither is rewritten.

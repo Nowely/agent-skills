@@ -12,15 +12,17 @@ license: MIT
 You own the work-list, the plan, the user conversation and the synthesis. Agents own bounded
 deliverables. Use the host's native delegation capabilities; in Claude Code, load the [claude
 adapter](../claude/SKILL.md) (`entrust:claude`) before composing, since it owns how Claude Code runs
-agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an external Codex run (a
-native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
-the server connection, model selection, session continuation and callbacks, and
-[claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
-or outside this session. Every external worker is made, run, read and continued the same way, as
-[external.md](references/external.md) says. A proxy relays each `--run` of an external worker ([external.md](references/external.md#3-run-it));
-when the user switches to a Claude session with the explicit proxy skill and confirms it, this conversation
-relays messages and replies while Claude executes the work ([main-proxy.md](references/main-proxy.md)). Do not load adapter skill text for capability discovery; use
-the capability snapshot below, then load only the selected worker's adapter.
+agents.
+
+## Other providers
+
+Agents run on the host's own delegation and models. Another provider, model or route appears only when the user
+names it, in the conversation or in the user's or project's instructions (CLAUDE.md, AGENTS.md); several may be
+named at once. A named model the host runs natively is native. For any other, run
+`node "<skill-dir>/scripts/adapter-status.mjs" --skip <the adapter of the host's own provider>` and route each named
+model through the adapter that lists it; then follow [external.md](references/external.md) and that adapter's page.
+Nothing proposes another provider unprompted, a cross-family second opinion included. In the
+[main proxy mode](references/main-proxy.md), which the proxy skill starts, Claude executes and this conversation relays.
 
 ## Your own hands
 
@@ -35,36 +37,19 @@ the full log and ledger go under the runtime's temporary directory, and the real
 reported even when a pipeline fails. Put the ledger under an approved temporary root; set
 `TMPDIR` to that root when the default temp directory is outside the approved scope. Resolve
 `<skill-dir>` from this skill's installed location;
-give a native worker or a Codex agent the resolved absolute script path and ask it to cite its exit status
-and counts. OpenCode reads any path it can access, regardless of `RIGHTS`; Bash runs without prompts and is not
-confined to it, so give it the exact command and keep its effects within the task. A Claude read agent asks for
-commands outside Claude Code's read-only set;
-brief it to check with its file tools, as [external.md](references/external.md#1-write-the-prompt) says.
+give a worker the resolved absolute script path and ask it to cite its exit status and counts.
 
 Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
 Pass that JSON as `ENTRUST_TEMP_CONTEXT` on your check commands and a native worker's so they share the
 initiating project and run even when their working directory changes. Without that context, separate commands
-create separate runs. External drivers and swarms establish and forward the context themselves, so the
-launcher's calls take none of it.
-A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an OpenCode or Claude agent
-inherits yours, so give it its own temporary directory when its checks write.
+create separate runs.
 
 ## The plan
 
 1. Read [plan.md](references/plan.md) before composing. Take host identity, native model/effort
    choices, delegation features and read-only usage windows directly from the active runtime. Do not
    serialize them into a status-script input or infer them from another CLI; missing facts stay
-   `unknown`. Then run the read-only adapter collector:
-   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip <id>` for an adapter whose provider is
-   the active host, so its status is not queried a second time. The collector returns registered
-   adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
-   worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
-   sources remain `unknown`/`unsupported`. A recent reference is not proof it is currently runnable; the
-   chosen adapter validates the exact model and variant before execution. For a named Claude model with no
-   specified route and unavailable native and Claude CLI routes, check OpenCode as its adapter page says
-   before reporting a gap. For any named OpenCode model absent from Desktop's list, check its full catalogue.
-   If no candidate remains, report the gap. Preserve explicitly named routes and model versions; ask before
-   a different version or an ambiguous route.
+   `unknown`.
 
    Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
    usage window's account/route/model scope, source and observation time; do not sum overlapping
@@ -83,15 +68,7 @@ inherits yours, so give it its own temporary directory when its checks write.
    [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
    that concrete scope and allocation. A model or route outside the approved policy needs approval
    before launch. Scope or rights changes need a new decision; commits and publication need their own
-   authority. An approved plan, or an explicit request to use an adapter or model for a task, authorizes sending
-   its selected provider the prompt and task-needed data, including a diff and related files, within that scope
-   and its rights. Ask for no second consent to that same transfer. A model mentioned only for information is
-   not a request, and this does not authorize unrelated data, a different route, writes or publication. In Codex,
-   run the launcher's `--plan`, `--new` and `--decide` without escalation, since they need nothing outside the sandbox. Escalated, a
-   `--new` goes to the reviewer of escalated commands (auto-review), which refused one on an approval inside a
-   brief the user pasted and passed it on the user's own chat words naming the provider
-   ([measured](../claude/references/incidents.md#an-approval-in-a-pasted-brief)). If the host refuses, report the
-   action and its stated reason; do not infer a universal wording that will make it pass.
+   authority.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
@@ -123,9 +100,8 @@ mode is explicitly requested.
 ## Capacity and models
 
 Choose the smallest team that meets the work and verification needs. Tiers describe work demands, not
-fixed model ability or a quality ranking. Each adapter names its models for them:
-[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md), and OpenCode's
-recent models ([opencode](../opencode/SKILL.md)). On another host, take the models from its runtime.
+fixed model ability or a quality ranking. The host's models page names its models for them:
+[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md); on another host, its runtime.
 
 | Tier | Work |
 | --- | --- |
@@ -142,7 +118,7 @@ Default bounds, capped further by the host's capacity and the user's agreed limi
 | comparison or design | 2 to 4 agents |
 | complex | 5 or more, launched in batches |
 | alive at once | 6, every route counted |
-| top tier | 1 alive at a time per model family; a standing advisor is not counted |
+| top tier | 1 alive at a time; a standing advisor is not counted |
 
 Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
 as a selection input when it can change the choice; omit cost estimates from the approval plan. Choose
@@ -160,8 +136,7 @@ Recommend one of these profiles:
 | quality | Keep the user's model as coordinator. The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
 
 A new model/task pairing gets a pilot ([model fit](references/plan.md#model-fit-and-estimates)); reuse
-a successful result only for comparable work. Model diversity is useful when it can change a decision;
-a fresh same-model context does not prove a different model perspective.
+a successful result only for comparable work.
 
 The user's model remains coordinator unless the user requests otherwise. An unavailable model or
 unsupported effort is a proposal to resolve, not permission to substitute: show the available
@@ -175,11 +150,6 @@ Check one assembled brief's input paths, output rights and completion criteria b
 Vary verifier perspectives rather than commissioning identical refuters. A decisive check that
 could not run yields `unknown`, not a refutation. Open one complete return before trusting a
 unanimous tally: agreement may be evidence of one broken prompt or prerequisite.
-
-Before dispatch, refresh passive adapter status and the relevant usage observations. The adapter's
-launch path validates the exact chosen model/variant/profile before creating a worker or submitting
-its task. That check is not a planning catalog: if it fails, stop and amend the plan. Availability,
-authorization and budget remain separate coordinator decisions.
 
 Fix and cross-review at most two rounds, then use a stronger available reviewer or return the
 remaining blocker to the user. When the user answered a cross-review's page, the fix round's brief carries the
@@ -197,10 +167,6 @@ Ask task and review agents for these fields, in text or structured output suppor
     evidence:  what ran, with exit status and counts; unknown where it could not run
     artifacts: paths to the full outputs under the agent's permitted roots
     open:      missing coverage, questions and risks
-
-A proxy hands back the launcher's lines unchanged; it is a copy, so `--handback` compares it with the run before you act
-on it ([external.md](references/external.md#4-read-the-result)). Read an external worker's complete answer in its report,
-where `answerPath` replaces a clipped display, never the worker's answer with a summary.
 
 A large result goes into an artifact with a summary retaining every material finding. An artifact
 path must be writable for that agent; returning text requires no new filesystem grant. A verifier

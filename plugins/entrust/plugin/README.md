@@ -34,12 +34,12 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | starts full Claude Code execution after confirmation; the host relays messages and replies, with tool activity in the existing journal |
 | [review](skills/review/SKILL.md) | you: `/entrust:review`, `$entrust:review` | proposes a plan for approval before reviewing behavior, necessity, design and tests, with evidence, questions and the smallest clean solution; one reviewer by default, or on request a coordinator that uses fresh-context helpers per direction and keeps the one map and report. A complete review has a structured report with a connected code map and mechanism costs; incomplete coverage is partial. On request, a complete review can have an interactive HTML view where you mark what to apply |
 | [cleanup](skills/cleanup/SKILL.md) | you: `/entrust:cleanup` | lists what entrust left on this machine and deletes the items you pick by number |
-| [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor, of the other model family where a route exists, for one run; an experiment |
+| [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor for one run, on the host's own models unless you name another; an experiment |
 | [swarm](skills/swarm/SKILL.md) | you: `/entrust:swarm`, or an approved plan | up to fifty bulk agents over a file of units, reduced to one summary; an experiment |
 | [prepare-feedback](skills/prepare-feedback/SKILL.md) | you: `/entrust:prepare-feedback` | reads your sessions where entrust or terse loaded and returns findings and proposals for the skill |
 | [claude](skills/claude/SKILL.md) | orchestrate | in Claude Code, Claude's model tiers, Agent calls, waiting on agents, Workflow; from any host, external Claude agents through `claude -p` |
-| [codex](skills/codex/SKILL.md) | the assistant, in Claude Code | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
-| [opencode](skills/opencode/SKILL.md) | the assistant | OpenCode workers |
+| [codex](skills/codex/SKILL.md) | the assistant, in Claude Code, when you name Codex | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
+| [opencode](skills/opencode/SKILL.md) | the assistant, when you name OpenCode or a model it serves | OpenCode workers |
 
 Every external run goes through a relay agent that decides nothing: `entrust:relay` in Claude Code, a native
 subagent on the host's smallest model elsewhere, a fresh one for each run of the launcher.

@@ -1046,7 +1046,7 @@ const ADVISOR_TURNS = [
 ];
 
 test("an explicit advisor request starts consultation and continues until the user pauses or resumes it",
-  "a Claude-hosted advisor verifies Astra through the Codex adapter, uses the request's authority without duplicate approval, and retains the adapter schema on continuation",
+  "the user names Astra, which Claude Code does not run natively, so the Claude-hosted advisor reaches it through the Codex adapter (an advisor no one names runs natively), uses the request's authority without duplicate approval, and retains the adapter schema on continuation",
   async () => {
     const dir = caseDir(8, "advisor");
     const scratch = splitProject(dir);

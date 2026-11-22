@@ -2,9 +2,8 @@
 name: codex
 description: >-
   Claude-to-Codex adapter: launch external Codex agents with per-call rights, isolated worktrees,
-  evidence gates and receipts. Use in Claude when external Codex is requested or chosen for an
-  independent review, competing implementation or multi-provider panel. Native Codex subagents
-  use the host's own delegation facilities instead.
+  evidence gates and receipts. Use in Claude only when the user asks for Codex or names a Codex
+  model. Native Codex subagents use the host's own delegation facilities instead.
 metadata:
   version: "0.45.0"
 license: MIT
@@ -32,8 +31,7 @@ Apply all six rules:
 
 1. Show the Codex agents and their exact model allocations in the approved plan before launch. Read-only
    rights need no write grant; they do not remove model selection from the plan.
-2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents and say the resulting
-   panel is all-Claude and shares one model bias.
+2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents.
 3. Attribute every finding; if a Codex agent failed or returned nothing, say so and never backfill it with
    a Claude answer.
 4. Knowing the answer is not a reason to skip a requested second opinion.
@@ -44,7 +42,7 @@ Apply all six rules:
      report it and propose available alternatives. Use a replacement only when the approved standing policy
      names that fallback or the user approves the amended plan; nearest-model order alone grants no authority.
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
-     signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
+     signed in, not installed, or lists no model.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
      a signed-out server lists models too.
    - The command itself in place of those lines was not run: run it with the Bash tool before composing.
@@ -54,15 +52,14 @@ Apply all six rules:
 | What the user says | Composition |
 | --- | --- |
 | “no codex”, “just you” | zero Codex agents |
-| nothing | follow [orchestrate's model policy](../orchestrate/SKILL.md#capacity-and-models); add a Codex agent only for a role that improves quality, time or cost |
+| nothing | zero Codex agents; [orchestrate's model policy](../orchestrate/SKILL.md#capacity-and-models) composes the team |
 | “a codex agent”, “one of them codex” | exactly one |
 | “half codex” | half the agents, rounded up |
 | “mostly codex” | every agent except the coordinator |
 | “only codex”, “all codex” | every agent, including a one-agent task |
 | “two of five codex” | exactly as stated |
 
-Add another model only when its perspective or independent coverage can improve the result. “Only codex”
-means Codex does the task while the coordinator checks it.
+“Only codex” means Codex agents do the task and its checks; the coordinator stays this session.
 
 ## Rights
 
