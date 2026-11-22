@@ -435,12 +435,32 @@ export function architectureProblems(s, { units }) {
   return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
 }
 
-// In every run, whether or not the case asserts the trigger: an architecture critic that ran brings the plan critic
-// with it (probe P1, 2026-11-22: a coordinator ran the architecture critic and skipped the plan critic).
-export function criticPairProblems(s) {
+// In every run, the orchestrate page's minimum team: a plan critic briefed before the first worker, and a verifier
+// briefed after the last worker returned that is no worker and wrote no file a worker wrote. Only the user's word
+// drops either, so a case whose user dropped one names it in `dropped`; nothing the coordinator says drops one, and
+// an architecture critic that ran never stands in for the plan critic (probe P1, 2026-11-22: a coordinator ran it and
+// skipped the plan critic). A worker is a brief that names a unit of the task, as above; a continuation is that agent
+// again, counted on neither side.
+export function minimumTeamProblems(s, { units, reports = [], dropped = [] }) {
   const bs = briefs(s);
-  return bs.some((b) => roleOf(b) === "architecture critic") && !bs.some((b) => roleOf(b) === "plan critic")
-    ? ["the architecture critic ran and no plan critic did"] : [];
+  const workers = workersOf(bs, units);
+  if (!workers.length) return ["no worker brief names a unit of the task, so the minimum team's order cannot be read"];
+  const problems = [];
+  if (!dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
+    problems.push("no plan critic was briefed before the first worker brief");
+  if (dropped.includes("verifier")) return problems;
+  const last = Math.max(...workers.map((w) => w.done ?? Infinity));
+  const verifiers = bs.filter((b) => roleOf(b) === "verifier" && b.seq > last);
+  if (!verifiers.length) return [...problems, "no verifier was briefed after the last worker returned"];
+  const rows = workers.filter((w) => w.id).map((w) => ({ id: w.id }));
+  const seen = writesSeen(s, reports);
+  const theirs = seen.filter((w) => planRowOf(w.id, rows)).map((w) => w.file);
+  const same = (a, b) => a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+  const checked = (v) => Boolean(v.id) && (Boolean(planRowOf(v.id, rows))
+    || seen.some((w) => w.id.toLowerCase() === v.id.toLowerCase() && theirs.some((f) => same(f, w.file))));
+  if (verifiers.every(checked))
+    problems.push(`the verifier briefed after the last worker returned is a worker or wrote a worker's file: ${verifiers.map((v) => v.description ?? v.id).join(", ")}`);
+  return problems;
 }
 
 // --------------------------------------------------------------- the answer
@@ -856,10 +876,11 @@ export function activationRecord({ transcript = "", stream, skill }) {
 // streams and what the run left (prompt files, reports, the registered plan, the runner's ledger). Pure
 // over its inputs, so gate-checks.test.mjs can hand it one coherent good run and check that every check
 // passes it at once: checks that no run could satisfy together would fail every live run.
-// architecture: { units } when the card's trigger for the architecture critic holds, so it must have run first,
-// the units being what names a worker's brief.
+// units: what names a worker's brief; architecture: true when the card's trigger for the architecture critic holds,
+// so it must have run first; dropped: the minimum team's roles the case's user dropped.
 export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], ledger = [], schema, request = "", phases,
-  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [], architecture = null }) {
+  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [], units = [],
+  architecture = false, dropped = [] }) {
   const problems = [];
   const finalText = s2.resultText;
   const receipts = receiptsFrom(s2, { reports: reports.map((r) => r.report), ledger });
@@ -872,8 +893,8 @@ export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], led
   problems.push(...runnerBriefProblems([...prompts, ...claudeBriefs]));
   const cost = inlineCost(s2);
   problems.push(...coordinatorProblems(s2, { cwd }));
-  problems.push(...criticPairProblems(s2));
-  if (architecture) problems.push(...architectureProblems(s2, architecture));
+  problems.push(...minimumTeamProblems(s2, { units, reports, dropped }));
+  if (architecture) problems.push(...architectureProblems(s2, { units }));
   problems.push(...draftReadProblems(s2, { finalText, read, reportOf }));
   problems.push(...phaseProblems(s2, { max: phases, receipts, finalText }));
   problems.push(...lintCallProblems(s2));

@@ -536,13 +536,13 @@ function runEvidence(dirs, s) {
 
 // Everything after "go" that the answer and its evidence must show (lib/gate-checks.mjs runProblems, one
 // delta each), and the measurements the page asks the plan to price, saved beside the case, never asserted.
-function runProblems({ s1, s2, dirs, dir, request, phases, architecture = null }) {
+function runProblems({ s1, s2, dirs, dir, request, phases, units, architecture = false }) {
   const { prompts, reports, ledger, ledgers } = runEvidence(dirs, s2);
   const reg = registeredPlan(path.join(dir, "scratch"));
   const schema = readJsonFile(SCHEMA_FILE);
   // The fixtures stage nothing and run no daemon, so the capsule's staged inputs and tools are empty here;
   // gate-checks.test.mjs pins that half against a staged fixture.
-  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, architecture, reportOf: readJsonFile,
+  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, units, architecture, reportOf: readJsonFile,
     cwd: path.join(dir, "scratch"), tmp: [os.tmpdir(), process.env.TMPDIR] });
   save(dir, "run-evidence.json", JSON.stringify({ plan: reg, agents: r.agents, receipts: r.receipts, ledgers,
     prompts: prompts.map((p) => p.id), reports: reports.map((x) => x.id) }, null, 2));
@@ -815,7 +815,7 @@ function tinyProject(dir) {
 }
 
 test("the full run under Opus: plan, go, run",
-  "everything above stops before the agents, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex agent that actually ran, every Claude agent tagged, and a live tree that gains files but not a commit",
+  "everything above stops before the agents, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex agent that actually ran, every Claude agent tagged, a plan critic before any worker even for one helper, and a live tree that gains files but not a commit",
   async () => {
     const dir = caseDir(5, "full-run");
     const scratch = tinyProject(dir);
@@ -942,16 +942,14 @@ test("the full run under Opus: plan, go, run",
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
     // One helper in a new lib/slug.mjs is no new module, the page says, so no trigger of the architecture critic
-    // holds and none runs. The plan critic runs unless the card says why the plan is too small to need it; when it
-    // runs, no worker is briefed before it returns and lib/slug.mjs has one writer. The draft is read by the
+    // holds and none runs. The plan critic is on every card, so it runs here too: no worker is briefed before it
+    // returns and lib/slug.mjs has one writer. The verifier follows the last worker, and the draft is read by the
     // verifier's thread or a final reader (runProblems).
-    const roles = briefs(s2).map(roleOf);
-    if (roles.includes("architecture critic")) problems.push("an architecture critic ran, though no trigger holds for one helper in a new file");
-    if (roles.includes("plan critic"))
-      problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
-    // The slug task's phases: the plan critique when it runs, the fan-out's returns, the verification, the
-    // synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 5 }));
+    if (briefs(s2).map(roleOf).includes("architecture critic")) problems.push("an architecture critic ran, though no trigger holds for one helper in a new file");
+    problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
+    // The slug task's phases: the plan critique, the fan-out's returns, the verification, the synthesis, and the
+    // answer.
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 5, units: ["lib/slug.mjs", "test/slug.test.mjs"] }));
     return settle(dir, problems);
   });
 
@@ -1046,7 +1044,7 @@ test("the plan critic: no worker brief before it returns, the shared interface h
     if (!/export const format\b/.test(fs.readFileSync(path.join(scratch, "lib", "shared.mjs"), "utf8"))) problems.push("lib/shared.mjs does not export format");
     if (git(scratch, "rev-parse", "HEAD").trim() !== head0) problems.push("HEAD moved, so the run committed");
     // Architecture critique, plan critique, fan-out, verification, synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, architecture: { units: ["lib/a.mjs", "lib/b.mjs", "lib/shared.mjs"] } }));
+    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, units: ["lib/a.mjs", "lib/b.mjs", "lib/shared.mjs"], architecture: true }));
     return settle(dir, problems);
   });
 

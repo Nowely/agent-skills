@@ -279,8 +279,8 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
     );
   });
 
-test("the architecture critic, when the card's trigger holds: it ran, a plan critic ran too, and it returned before the plan critic or any worker was briefed",
-  "the card runs it when the solution adds a concept, changes or removes a contract others consume, acts irreversibly or leaves the approach open, and then runs the plan critic too (probe P1, 2026-11-22: a coordinator ran the architecture critic and skipped the plan critic); a verdict other than keep changes the approach the plan critic and the workers would work from",
+test("the architecture critic, when the card's trigger holds: it ran, and it returned before the plan critic or any worker was briefed",
+  "the card runs it when the solution adds a concept, changes or removes a contract others consume, acts irreversibly or leaves the approach open; a verdict other than keep changes the approach the plan critic and the workers would work from",
   () => {
     const arch = (s) => s.claude("Fable A1: architecture critic", "fable", "TASK: judge the approach: a new lib/slug.mjs", five());
     const plan = (s) => s.claude("Opus P1: plan critic", "opus", "TASK: judge the plan", five());
@@ -306,10 +306,56 @@ test("the architecture critic, when the card's trigger holds: it ran, a plan cri
       expectSome(G.architectureProblems(work(parallel).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
       expectNone(G.architectureProblems(work(plan(scouted)).parsed(), opts)),
       expectSome(G.architectureProblems(plan(workedEarly).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
-      expectSome(G.criticPairProblems(work(arch(session())).parsed()), /the architecture critic ran and no plan critic did/),
-      expectNone(G.criticPairProblems(work(plan(arch(session()))).parsed())),
-      expectNone(G.criticPairProblems(work(plan(session())).parsed())),
       expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed(), opts), /never returned/),
+    );
+  });
+
+test("the minimum team in every run: a plan critic briefed before the first worker, a verifier briefed after the last worker returned that wrote none of what it checks, and either one left out only at the user's word",
+  "the owner's decision of 2026-11-22: the coordinator puts the plan critic and the verifier on every card and only the user's word drops either, so the card's own reason (\"the plan is too small\") and an architecture critic in its place (probe P1, 2026-11-22: a coordinator ran it and skipped the plan critic) are each red; a verifier briefed while a worker still runs, or one that is a worker, checks nothing independent",
+  () => {
+    const plan = (s) => s.claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five());
+    const work = (s, id = "W1") => s.claude(`Opus ${id}: write lib/slug.mjs`, "opus", "TASK: write lib/slug.mjs and its test.", five(), ["/work/lib/slug.mjs"]);
+    const verify = (s, id = "V1", writes = []) => s.claude(`Opus ${id}: verifier`, "opus", "TASK: run the suite over lib/slug.mjs.", five(), writes);
+    const opts = { units: ["lib/slug.mjs"] };
+    const check = (s, more = {}) => G.minimumTeamProblems(s.parsed(), { ...opts, ...more });
+    // A verifier briefed while the worker it follows has not returned.
+    const early = plan(session());
+    const w = early.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
+    verify(early);
+    early.result(w, framed(five()));
+    // A worker that never returned, and a verifier briefed after its brief.
+    const lost = plan(session());
+    lost.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
+    verify(lost);
+    // A Codex verifier whose report touched the worker's file.
+    const REPORTS = [{ id: "C1", report: { filesTouched: ["lib/slug.mjs"] } }];
+    const codex = work(plan(session())).newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: you are the verifier; run the suite.")
+      .codex("Codex Terra C1: verifier", "/d/run/C1/report.json");
+    return all(
+      expectNone(check(verify(work(plan(session()))))),
+      // The coordinator's own reason drops nothing, and neither does an architecture critic in the plan critic's place.
+      expectSome(check(verify(work(session().say("The plan is too small to need a plan critic.")))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(work(session().claude("Fable A1: architecture critic", "fable", "TASK: judge the approach.", five())))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(plan(work(session())))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(work(plan(session())).done("Opus W1 wrote it.")), /no verifier was briefed after the last worker returned/),
+      expectSome(check(early), /no verifier was briefed after the last worker returned/),
+      expectSome(check(lost), /no verifier was briefed after the last worker returned/),
+      expectNone(check(verify(work(work(plan(session()), "W2"))))),
+      expectSome(check(verify(work(plan(session())), "W1")), /the verifier briefed after the last worker returned is a worker or wrote a worker's file: Opus W1: verifier/),
+      // On read-only work the worker writes nothing, and the verifier that is that worker is red by its id alone.
+      expectSome(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
+        .claude("Opus W1: survey lib/slug.mjs", "opus", "TASK: find the callers of lib/slug.mjs; change nothing.", five()), "W1")), /is a worker or wrote a worker's file: Opus W1: verifier/),
+      expectNone(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
+        .claude("Opus W1: survey lib/slug.mjs", "opus", "TASK: find the callers of lib/slug.mjs; change nothing.", five())))),
+      // One independent verifier is enough beside one that is not.
+      expectNone(check(verify(verify(work(plan(session())), "W1"), "V1"))),
+      expectSome(check(verify(work(plan(session())), "V1", ["/work/lib/slug.mjs"])), /is a worker or wrote a worker's file: Opus V1: verifier/),
+      expectSome(G.minimumTeamProblems(codex.parsed(), { ...opts, reports: REPORTS }), /is a worker or wrote a worker's file: Codex Terra C1: verifier/),
+      expectNone(G.minimumTeamProblems(codex.parsed(), opts)),
+      // A role the case's user dropped is not asked for.
+      expectNone(check(verify(work(session())), { dropped: ["plan critic"] })),
+      expectNone(check(work(plan(session())), { dropped: ["verifier"] })),
+      expectSome(check(verify(plan(session()))), /no worker brief names a unit of the task/),
     );
   });
 
@@ -660,12 +706,16 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
       .done(answer).parsed();
     const reports = [{ id: "C1", report: { answerJson: { status: "done", result: "Terra C1: done, 5 of 5.", evidence: ["node --test: EXIT=0"], artifacts: [], open: [] },
       commands: [{ command: `/bin/zsh -lc "node ${runner} --label suite -- 'node --test'"`, exitCode: 0 }] } }];
-    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP], architecture: { units: ["lib/slug.mjs"] } };
+    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP], units: ["lib/slug.mjs"], architecture: true };
     const ok = G.runProblems({ ...inputs, s2: run() });
     const edited = G.runProblems({ ...inputs, s2: run((s) => { s.result(s.use("Edit", { file_path: path.join(dir, "lib", "slug.mjs"), old_string: "a", new_string: "b" }), "ok"); return s; }) }).problems;
     const checked = G.runProblems({ ...inputs, s2: run((s) => s.bash(`node ${runner} --label suite -- 'node --test'`, "LABEL=suite\nEXIT=0")) }).problems;
-    // Probe P1: the architecture critic ran and the plan critic was skipped, in a case that asserts no trigger.
-    const unpaired = G.runProblems({ ...inputs, architecture: null, s2: run(undefined, (s) => s) }).problems;
+    // Probe P1: the architecture critic ran and the plan critic was skipped, in a case that asserts no trigger; and
+    // the same run when the case's user dropped the plan critic.
+    const unpaired = G.runProblems({ ...inputs, architecture: false, s2: run(undefined, (s) => s) }).problems;
+    const dropped = G.runProblems({ ...inputs, architecture: false, dropped: ["plan critic"], s2: run(undefined, (s) => s) }).problems;
+    // The Codex verifier's report touched the worker's file.
+    const touched = G.runProblems({ ...inputs, s2: run(), reports: [{ id: "C1", report: { ...reports[0].report, filesTouched: [path.join(dir, "lib", "slug.mjs")] } }] }).problems;
     // The same run the way the saved pre-fix sessions ran it: no critics, no lint, no read, a bare suite and prose.
     const old = session()
       .claude("Opus W1: write the slug helper", "opus", "TASK: write lib/slug.mjs.\nCHECK: node --test passes.", "I wrote it and it works.", [path.join(dir, "lib", "slug.mjs")])
@@ -677,14 +727,16 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const want = [/neither the verifier's thread nor a final reader read a linted draft/, /the draft was never linted before its read/,
       /the coordinator ran a check itself: "node --test"/, /W1's brief asks for a check/, /no architecture critic ran/,
       /does not parse into the five fields/, /lints red, path/, /lints red, unsupported-success/, /C1 is registered, never ran/,
-      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/];
+      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/, /no plan critic was briefed/, /no verifier was briefed/];
     const missed = want.filter((re) => !bad.some((p) => re.test(p)));
     return all(
       ok.problems.length === 0 || `the good run failed: ${ok.problems.join("; ")}`,
       missed.length === 0 || `the pre-fix run passed ${missed.join(", ")}: ${JSON.stringify(bad)}`,
       expectSome(edited, /the coordinator wrote lib\/slug\.mjs in the working tree itself \(Edit\)/),
       expectSome(checked, /the coordinator ran a check itself/),
-      expectSome(unpaired, /the architecture critic ran and no plan critic did/),
+      expectSome(unpaired, /no plan critic was briefed before the first worker brief/),
+      !dropped.some((p) => /no plan critic/.test(p)) || `a plan critic the user dropped is still asked for: ${dropped.join("; ")}`,
+      expectSome(touched, /is a worker or wrote a worker's file: Codex Terra C1: verifier/),
     );
   });
 
