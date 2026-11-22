@@ -25,7 +25,7 @@ require; it named the line in prose and wrote no ledger entry, so the gate it wa
   rounds (see the reading rule below).
 - **A changed condition, recorded as such:** the plan's approval travels in the task prompt (step 4).
 
-The version under test: the skill at `<28.5 commit>` (draft 28.5). Always pass that hash, never the branch's head.
+The version under test: the skill at `f1a2eef` (draft 28.5). Always pass that hash, never the branch's head.
 
 ## What it measures
 
@@ -99,7 +99,7 @@ it another way: note how.
    ```
 
    ```bash
-   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill <28.5 commit>
+   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill f1a2eef
    ```
 
 2. **Check that Chromium starts from the arm.** The check resolves Playwright from the folder it runs in, then from the
