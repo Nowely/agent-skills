@@ -327,6 +327,15 @@ test("the minimum team in every run: a plan critic briefed before the first work
     const lost = plan(session());
     lost.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
     verify(lost);
+    // Two workers: a plan critic briefed after the first worker's brief and before the second's.
+    const two = { units: ["lib/slug.mjs", "lib/title.mjs"] };
+    const second = (s) => s.claude("Opus W2: write lib/title.mjs", "opus", "TASK: write lib/title.mjs and its test.", five(), ["/work/lib/title.mjs"]);
+    const between = verify(second(plan(work(session()))));
+    // Two workers: a verifier briefed after the first returned, while the second still runs.
+    const midway = work(plan(session()));
+    const w2 = midway.use("Agent", { description: "Opus W2: write lib/title.mjs", model: "opus", prompt: "TASK: write lib/title.mjs." });
+    verify(midway);
+    midway.result(w2, framed(five()));
     // A Codex verifier whose report touched the worker's file.
     const REPORTS = [{ id: "C1", report: { filesTouched: ["lib/slug.mjs"] } }];
     const codex = work(plan(session())).newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: you are the verifier; run the suite.")
@@ -341,6 +350,9 @@ test("the minimum team in every run: a plan critic briefed before the first work
       expectSome(check(early), /no verifier was briefed after the last worker returned/),
       expectSome(check(lost), /no verifier was briefed after the last worker returned/),
       expectNone(check(verify(work(work(plan(session()), "W2"))))),
+      expectNone(check(verify(second(work(plan(session())))), two)),
+      expectSome(check(between, two), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(midway, two), /no verifier was briefed after the last worker returned/),
       expectSome(check(verify(work(plan(session())), "W1")), /the verifier briefed after the last worker returned is a worker or wrote a worker's file: Opus W1: verifier/),
       // On read-only work the worker writes nothing, and the verifier that is that worker is red by its id alone.
       expectSome(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
