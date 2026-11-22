@@ -2003,7 +2003,7 @@ test("draft 28.2: one text a fifth or more off its drawn ink height is a type fi
   assert.ok(price.type && Math.abs(price.type.ratio - 1) < 0.1, "the frame's mean holds");
   const type = price.issues.filter((i) => i.property === "type");
   assert.deepEqual(type.map((i) => [i.landmark, i.status, i.delta]), [["1 234 € / month", "fail", 25]], JSON.stringify(price.issues));
-  assert.match(type[0].actual, /^25 % larger than drawn, by its ink height: a size of another class; set the size the frame draws$/);
+  assert.match(type[0].actual, /^25 % larger than drawn, by its ink height: a size of another class; set the size the frame draws, or, if this is the kit's class for the role, propose it$/);
   assert.deepEqual(inked({ "1 234 € / month": 11.5 }).issues.filter((i) => i.property === "type"), [], "15 % is another font's");
   assert.deepEqual(inked({ Frankfurt: 7.5 }, ["Frankfurt"]).issues.filter((i) => i.property === "type"), [], "a box given with an icon in it");
   // The frame's own finding names no token to propose.

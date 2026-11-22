@@ -485,14 +485,14 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   if (boxesSpec) for (const h of heights) {
     if (h.joined) continue;
     if (Math.abs(h.ratio - 1) >= 0.2) {
-      add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws`, { delta: Math.round((h.ratio - 1) * 100) });
+      add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws, or, if this is the kit's class for the role, propose it`, { delta: Math.round((h.ratio - 1) * 100) });
       continue;
     }
     if (!fontRatio || !(h.drawn?.width > 0)) continue;
     const across = h.page.width / fontRatio / h.drawn.width, gap = h.page.width / fontRatio - h.drawn.width, rise = h.page.height - h.drawn.height;
     const withIt = Math.sign(rise) === Math.sign(gap) && Math.abs(rise) >= 0.5 && Math.abs(h.page.height - h.drawn.height * across) <= 1.5;
     if (Math.abs(across - 1) >= 0.1 && Math.abs(gap) >= 6 && withIt) {
-      add(h.label, "type", "as drawn", `${sized(across)}, by its width against the frame's font and its ink height (${round(h.drawn.height)} → ${round(h.page.height)} px): a size of another class; set the size the frame draws`, { delta: Math.round((across - 1) * 100) });
+      add(h.label, "type", "as drawn", `${sized(across)}, by its width against the frame's font and its ink height (${round(h.drawn.height)} → ${round(h.page.height)} px): a size of another class; set the size the frame draws, or, if this is the kit's class for the role, propose it`, { delta: Math.round((across - 1) * 100) });
     }
   }
   // A spec that states no font size (an MCP outline without its design context) leaves the type's size unchecked.
