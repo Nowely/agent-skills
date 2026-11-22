@@ -1,0 +1,6 @@
+.card { padding: 12px; background: #fff; border: 1px solid #ddd; font-size: 14px; }
+.card .sku { color: #888; }
+.card .badge { padding: 1px 5px; background: #eee; font-size: 12px; }
+.card .q { cursor: help; border: 1px solid #999; border-radius: 50%; padding: 0 4px; font-size: 10px; }
+.card .hint { position: absolute; padding: 6px; background: #333; color: #fff; font-size: 12px; }
+.card .price { font-weight: bold; margin-top: 6px; }

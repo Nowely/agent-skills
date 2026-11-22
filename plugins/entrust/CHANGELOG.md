@@ -3,6 +3,51 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.45.0 — 2026-11-22
+
+### Design to code
+
+- **New, experimental:** `design-to-code` builds or changes UI from Figma, screenshots or a mockup, responsive
+  layouts and interactive states included, so that the owner accepts the first submission. "Done" is checked, not
+  claimed. Before building, `review.md` lists each reference with its role, the data's limits (each field's longest
+  legal value, how many entries repeat, the narrowest supported width) and past returns quoted as acceptance rows.
+- **The check:** an optional Chromium script, `scripts/design.mjs check design.json`, compares each frame's landmarks
+  and image with its reference, made from Figma specs or from named boxes on a screenshot (`design.mjs boxes`).
+  - Moderate, systematic offsets are notes. Findings are broken relations, text over text, cut or covered text, a
+    price split from its period while there is room, and a type size of another class, per frame and per text.
+  - A width sweep runs between the frames on the frames' page and on `dense` and `many` stories, with conditions the
+    check makes itself (texts stretched, entries doubled) whose collisions need an answer.
+  - Journeys open and close each overlay from its own opener, at the window's edges. A consumer path (a list emptied
+    and refilled, a parent's width change, a remount) can be compared with a fresh load (`sameAsFresh`).
+  - `--quick` runs a partial round while building; the digest shows what changed first, in at most 15 lines. When the
+    same first finding leads three rounds, the check says to fix it or propose it.
+- **The owner's decisions:** every entry of the deviations ledger, `deviations.json`, is a proposal until the owner
+  accepts it, and a check with proposals hands over at `pending`. A ledger entry records a question, such as a design
+  that draws data the contract does not send, frames that disagree, the kit against the drawing or an unbounded
+  value; the builder writes it when the gap is first seen, without asking. A full check writes `out/handoff.md` and a
+  gallery of design, before and after.
+- **The code, on the page:** one element for each thing shown, not copies swapped by CSS; what the layout hides is
+  hidden visually, not with `display: none`; selectors stay under the component's root, and kit classes are never
+  restyled page-wide. Modes switch by container queries; a script that measures widths is a construct unless it fits
+  content no query expresses, and then its observer follows the mounted element and is cleaned up. The review of an
+  implementation, with its five code questions, is in `references/pack.md` and `references/review-pass.md`.
+- **Measured:** on a bench of an accepted control's mutants and frozen submissions, the check catches 14 of 15 known
+  return classes with no clean build blocked, and 2 of 3 on a stateful consumer bench. On Sonnet, a card restyled
+  inside a stateful consumer was accepted on its width and its kept choice in 4 of 4 runs. On a server card whose
+  frames draw a line the contract does not send, every run put the line to the owner as a question with options, and
+  a strict blind reviewer, with a control in each set, accepted one build as seen and as read and found none of the
+  four code faults that had recurred before. A gate that refused to continue on an unchanged first finding, and a
+  record of the owner's inputs, were tried and dropped. [The research
+  record](https://github.com/Nowely/agent-skills/blob/9571213/plugins/entrust/research/2026-11-20-design-to-code/35-iteration-7.md)
+  holds the plans written before the runs, the runs, the blind reviews and the owner's Terra runs.
+- **Known issues E146–E153:** a builder can change the owner's references, specs, frames' data or tolerance to clear a
+  contradiction, and nothing in the skill detects it, so review those inputs against the originals; under a
+  plan-approval rule, the ledger entry may wait for approval, and the page's line to write it without asking has not
+  been run on Terra; a run on a contradictory design costs 77–131 calls on Sonnet; the benches miss column shifts and
+  need a builder-written fresh-load journey for a stale observer; builders still write ledger entries naming every
+  landmark of a frame; type sizes within about 10 % per text are not told apart at 1× references; an opener on a
+  story page without its overlay leaves the check `incomplete`; and the review pass has not been exercised.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report

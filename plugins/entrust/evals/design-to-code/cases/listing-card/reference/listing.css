@@ -1,0 +1,32 @@
+.listing-box { container-type: inline-size; }
+.listing { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "main specs price" "foot foot foot";
+  column-gap: var(--s-6); row-gap: var(--s-4); padding: var(--s-5); background: var(--c-surface); border-radius: var(--r-card);
+  box-shadow: var(--shadow-card); }
+.listing__main { grid-area: main; min-width: 0; }
+.listing__title { margin: 0; overflow-wrap: anywhere; }
+.listing__address { margin: var(--s-1) 0 0; overflow-wrap: anywhere; }
+.listing__badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s-2); }
+.listing__specs { grid-area: specs; display: grid; grid-template-columns: repeat(3, auto); justify-content: start; align-content: start;
+  column-gap: var(--s-4); row-gap: var(--s-2); margin: 0; }
+.listing__specs dt { font-weight: 600; }
+.listing__specs dd { margin: 0; color: var(--c-muted); }
+.listing__price { grid-area: price; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.listing__deal { display: flex; align-items: center; gap: 6px; margin-top: var(--s-1); }
+.listing__footer { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: var(--s-3);
+  border-top: 1px solid var(--c-line); }
+.listing__availability { min-width: 0; }
+.listing__edit { margin-left: auto; }
+.deal-pop { display: grid; gap: var(--s-1); min-width: 180px; }
+.deal-pop__row { display: flex; justify-content: space-between; gap: var(--s-4); }
+.deal-pop__until { margin-top: 2px; }
+
+@container (max-width: 639px) {
+  .listing { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main price" "specs specs" "foot foot"; }
+  .listing__specs { grid-template-columns: repeat(6, auto); column-gap: var(--s-6); }
+}
+@container (max-width: 419px) {
+  .listing { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "specs" "price" "foot"; padding: var(--s-4); }
+  .listing__specs { grid-template-columns: repeat(3, auto); column-gap: var(--s-4); }
+  .listing__price { align-items: flex-start; text-align: left; }
+  .listing__edit { flex-basis: 100%; margin: var(--s-2) 0 0; }
+}

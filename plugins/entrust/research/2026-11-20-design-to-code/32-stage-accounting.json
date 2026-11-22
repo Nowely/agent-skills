@@ -1,0 +1,647 @@
+{
+  "method": "Distinct response_id; uncached = input - cached; reasoning is included in output. UTC.",
+  "ui_method": "Unadjusted deltas between available event_msg token-count samples. Distinct from raw responses.",
+  "occupancy": "Union of task_started to task_complete clipped to stage; may include idle, waits, and parallel work. No CPU or billing inference.",
+  "active_session_counts": {
+    "builder": 1,
+    "builder permission reviewer": 4,
+    "coordinator": 1,
+    "coordinator permission reviewer": 1,
+    "research analyst": 1,
+    "reviewer": 1,
+    "reviewer permission reviewer": 5
+  },
+  "compactions": [
+    {
+      "role": "builder permission reviewer",
+      "time": "2026-11-21T19:30:37.631Z",
+      "window": "pre_review_checkpoint",
+      "preceding_raw_response_usage": {
+        "uncached_input": 227649,
+        "cached_input": 5760,
+        "output": 1289,
+        "reasoning_in_output": 0
+      }
+    },
+    {
+      "role": "builder permission reviewer",
+      "time": "2026-11-21T19:58:16.667Z",
+      "window": "pre_review_checkpoint",
+      "preceding_raw_response_usage": {
+        "uncached_input": 219169,
+        "cached_input": 5760,
+        "output": 1639,
+        "reasoning_in_output": 0
+      }
+    }
+  ],
+  "stages": [
+    {
+      "stage": "pre_review_checkpoint",
+      "start": "2026-11-21T18:40:03.207Z",
+      "end": "2026-11-21T20:23:22.368Z",
+      "wall_seconds": 6199.161,
+      "interval": {
+        "responses": 827,
+        "uncached_input": 2005095,
+        "cached_input": 224760320,
+        "output": 242198,
+        "reasoning_in_output": 90014,
+        "outer_calls": 719
+      },
+      "since_approval": {
+        "responses": 827,
+        "uncached_input": 2005095,
+        "cached_input": 224760320,
+        "output": 242198,
+        "reasoning_in_output": 90014,
+        "outer_calls": 719
+      },
+      "roles": {
+        "builder": {
+          "responses": 530,
+          "uncached_input": 810733,
+          "cached_input": 168079744,
+          "output": 197341,
+          "reasoning_in_output": 77089,
+          "outer_calls": 527,
+          "outer_tools": {
+            "exec": 508,
+            "send_message": 17,
+            "wait": 2
+          },
+          "ui_counter_delta": {
+            "uncached_input": 810733,
+            "cached_input": 168079744,
+            "output": 197341,
+            "reasoning_in_output": 77089
+          },
+          "first_and_last_meter": [
+            "2026-11-21T18:44:15.276Z",
+            "2026-11-21T20:23:22.353Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 5952.901,
+          "turn_occupancy_sum_seconds": 5952.901,
+          "first_and_last_turn_activity": [
+            "2026-11-21T18:44:09.467Z",
+            "2026-11-21T20:23:22.368Z"
+          ]
+        },
+        "builder permission reviewer": {
+          "responses": 103,
+          "uncached_input": 1070326,
+          "cached_input": 13396480,
+          "output": 11923,
+          "reasoning_in_output": 2568,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 623508,
+            "cached_input": 13384960,
+            "output": 8995,
+            "reasoning_in_output": 2568
+          },
+          "first_and_last_meter": [
+            "2026-11-21T18:45:08.817Z",
+            "2026-11-21T20:20:54.601Z"
+          ],
+          "turn_intervals": 101,
+          "turn_occupancy_union_seconds": 434.508,
+          "turn_occupancy_sum_seconds": 434.508,
+          "first_and_last_turn_activity": [
+            "2026-11-21T18:45:05.191Z",
+            "2026-11-21T20:20:54.605Z"
+          ]
+        },
+        "coordinator": {
+          "responses": 192,
+          "uncached_input": 101256,
+          "cached_input": 43169664,
+          "output": 32726,
+          "reasoning_in_output": 10295,
+          "outer_calls": 192,
+          "outer_tools": {
+            "exec": 68,
+            "spawn_agent": 1,
+            "wait_agent": 115,
+            "list_agents": 1,
+            "send_message": 7
+          },
+          "ui_counter_delta": {
+            "uncached_input": 101073,
+            "cached_input": 42920320,
+            "output": 32705,
+            "reasoning_in_output": 10295
+          },
+          "first_and_last_meter": [
+            "2026-11-21T18:40:18.329Z",
+            "2026-11-21T20:23:10.085Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 6199.161,
+          "turn_occupancy_sum_seconds": 6199.161,
+          "first_and_last_turn_activity": [
+            "2026-11-21T18:40:03.207Z",
+            "2026-11-21T20:23:22.368Z"
+          ]
+        },
+        "coordinator permission reviewer": {
+          "responses": 2,
+          "uncached_input": 22780,
+          "cached_input": 114432,
+          "output": 208,
+          "reasoning_in_output": 62,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 22780,
+            "cached_input": 114432,
+            "output": 208,
+            "reasoning_in_output": 62
+          },
+          "first_and_last_meter": [
+            "2026-11-21T18:42:25.231Z",
+            "2026-11-21T18:54:31.455Z"
+          ],
+          "turn_intervals": 2,
+          "turn_occupancy_union_seconds": 7.715,
+          "turn_occupancy_sum_seconds": 7.715,
+          "first_and_last_turn_activity": [
+            "2026-11-21T18:42:20.494Z",
+            "2026-11-21T18:54:31.459Z"
+          ]
+        }
+      }
+    },
+    {
+      "stage": "first_independent_verdict",
+      "start": "2026-11-21T20:23:22.368Z",
+      "end": "2026-11-21T20:33:31.148Z",
+      "wall_seconds": 608.78,
+      "interval": {
+        "responses": 126,
+        "uncached_input": 482974,
+        "cached_input": 15724928,
+        "output": 23092,
+        "reasoning_in_output": 5444,
+        "outer_calls": 93
+      },
+      "since_approval": {
+        "responses": 953,
+        "uncached_input": 2488069,
+        "cached_input": 240485248,
+        "output": 265290,
+        "reasoning_in_output": 95458,
+        "outer_calls": 812
+      },
+      "roles": {
+        "coordinator": {
+          "responses": 26,
+          "uncached_input": 261482,
+          "cached_input": 6557184,
+          "output": 5592,
+          "reasoning_in_output": 2211,
+          "outer_calls": 25,
+          "outer_tools": {
+            "exec": 13,
+            "spawn_agent": 1,
+            "send_message": 1,
+            "wait_agent": 10
+          },
+          "ui_counter_delta": {
+            "uncached_input": 261665,
+            "cached_input": 6806528,
+            "output": 5613,
+            "reasoning_in_output": 2211
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:23:33.525Z",
+            "2026-11-21T20:33:09.150Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 608.78,
+          "turn_occupancy_sum_seconds": 608.78,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:23:22.368Z",
+            "2026-11-21T20:33:31.148Z"
+          ]
+        },
+        "reviewer": {
+          "responses": 70,
+          "uncached_input": 119445,
+          "cached_input": 7449728,
+          "output": 14864,
+          "reasoning_in_output": 2651,
+          "outer_calls": 68,
+          "outer_tools": {
+            "exec": 65,
+            "send_message": 3
+          },
+          "ui_counter_delta": {
+            "uncached_input": 119445,
+            "cached_input": 7449728,
+            "output": 14864,
+            "reasoning_in_output": 2651
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:24:22.993Z",
+            "2026-11-21T20:33:31.138Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 556.984,
+          "turn_occupancy_sum_seconds": 556.984,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:24:14.164Z",
+            "2026-11-21T20:33:31.148Z"
+          ]
+        },
+        "reviewer permission reviewer": {
+          "responses": 30,
+          "uncached_input": 102047,
+          "cached_input": 1718016,
+          "output": 2636,
+          "reasoning_in_output": 582,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 102047,
+            "cached_input": 1718016,
+            "output": 2636,
+            "reasoning_in_output": 582
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:25:18.861Z",
+            "2026-11-21T20:32:38.839Z"
+          ],
+          "turn_intervals": 30,
+          "turn_occupancy_union_seconds": 101.319,
+          "turn_occupancy_sum_seconds": 101.319,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:25:14.122Z",
+            "2026-11-21T20:32:38.842Z"
+          ]
+        }
+      }
+    },
+    {
+      "stage": "worker_correction_frozen_next",
+      "start": "2026-11-21T20:33:31.148Z",
+      "end": "2026-11-21T20:50:46.089Z",
+      "wall_seconds": 1034.941,
+      "interval": {
+        "responses": 221,
+        "uncached_input": 379543,
+        "cached_input": 73888512,
+        "output": 65235,
+        "reasoning_in_output": 21250,
+        "outer_calls": 182
+      },
+      "since_approval": {
+        "responses": 1174,
+        "uncached_input": 2867612,
+        "cached_input": 314373760,
+        "output": 330525,
+        "reasoning_in_output": 116708,
+        "outer_calls": 994
+      },
+      "roles": {
+        "builder": {
+          "responses": 84,
+          "uncached_input": 98541,
+          "cached_input": 45219584,
+          "output": 29506,
+          "reasoning_in_output": 11259,
+          "outer_calls": 83,
+          "outer_tools": {
+            "exec": 81,
+            "send_message": 2
+          },
+          "ui_counter_delta": {
+            "uncached_input": 98541,
+            "cached_input": 45219584,
+            "output": 29506,
+            "reasoning_in_output": 11259
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:33:53.021Z",
+            "2026-11-21T20:50:46.080Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 1023.65,
+          "turn_occupancy_sum_seconds": 1023.65,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:33:42.439Z",
+            "2026-11-21T20:50:46.089Z"
+          ]
+        },
+        "builder permission reviewer": {
+          "responses": 21,
+          "uncached_input": 110497,
+          "cached_input": 1997184,
+          "output": 2377,
+          "reasoning_in_output": 866,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 110497,
+            "cached_input": 1997184,
+            "output": 2377,
+            "reasoning_in_output": 866
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:35:03.106Z",
+            "2026-11-21T20:48:45.861Z"
+          ],
+          "turn_intervals": 21,
+          "turn_occupancy_union_seconds": 81.976,
+          "turn_occupancy_sum_seconds": 81.976,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:34:57.406Z",
+            "2026-11-21T20:48:45.863Z"
+          ]
+        },
+        "coordinator": {
+          "responses": 67,
+          "uncached_input": 28800,
+          "cached_input": 19334528,
+          "output": 18795,
+          "reasoning_in_output": 6811,
+          "outer_calls": 64,
+          "outer_tools": {
+            "exec": 44,
+            "followup_task": 4,
+            "wait_agent": 12,
+            "send_message": 3,
+            "list_agents": 1
+          },
+          "ui_counter_delta": {
+            "uncached_input": 28555,
+            "cached_input": 19025024,
+            "output": 18671,
+            "reasoning_in_output": 6799
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:33:32.770Z",
+            "2026-11-21T20:50:28.613Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 1034.941,
+          "turn_occupancy_sum_seconds": 1034.941,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:33:31.148Z",
+            "2026-11-21T20:50:46.089Z"
+          ]
+        },
+        "coordinator permission reviewer": {
+          "responses": 5,
+          "uncached_input": 21068,
+          "cached_input": 398336,
+          "output": 399,
+          "reasoning_in_output": 78,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 21068,
+            "cached_input": 398336,
+            "output": 399,
+            "reasoning_in_output": 78
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:41:41.979Z",
+            "2026-11-21T20:48:21.974Z"
+          ],
+          "turn_intervals": 5,
+          "turn_occupancy_union_seconds": 16.485,
+          "turn_occupancy_sum_seconds": 16.485,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:41:34.961Z",
+            "2026-11-21T20:48:21.976Z"
+          ]
+        },
+        "reviewer": {
+          "responses": 38,
+          "uncached_input": 77973,
+          "cached_input": 6640256,
+          "output": 13395,
+          "reasoning_in_output": 1934,
+          "outer_calls": 35,
+          "outer_tools": {
+            "exec": 33,
+            "send_message": 2
+          },
+          "ui_counter_delta": {
+            "uncached_input": 77973,
+            "cached_input": 6640256,
+            "output": 13395,
+            "reasoning_in_output": 1934
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:34:55.281Z",
+            "2026-11-21T20:50:40.915Z"
+          ],
+          "turn_intervals": 3,
+          "turn_occupancy_union_seconds": 381.373,
+          "turn_occupancy_sum_seconds": 381.373,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:34:48.154Z",
+            "2026-11-21T20:50:46.089Z"
+          ]
+        },
+        "reviewer permission reviewer": {
+          "responses": 6,
+          "uncached_input": 42664,
+          "cached_input": 298624,
+          "output": 763,
+          "reasoning_in_output": 302,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 42664,
+            "cached_input": 298624,
+            "output": 763,
+            "reasoning_in_output": 302
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:35:26.818Z",
+            "2026-11-21T20:50:37.405Z"
+          ],
+          "turn_intervals": 6,
+          "turn_occupancy_union_seconds": 27.06,
+          "turn_occupancy_sum_seconds": 27.06,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:35:23.469Z",
+            "2026-11-21T20:50:37.407Z"
+          ]
+        }
+      }
+    },
+    {
+      "stage": "research_report_and_publication",
+      "start": "2026-11-21T20:50:46.089Z",
+      "end": "2026-11-21T21:12:12.800Z",
+      "wall_seconds": 1286.711,
+      "interval": {
+        "responses": 239,
+        "uncached_input": 403489,
+        "cached_input": 62107008,
+        "output": 77044,
+        "reasoning_in_output": 17383,
+        "outer_calls": 193
+      },
+      "since_approval": {
+        "responses": 1413,
+        "uncached_input": 3271101,
+        "cached_input": 376480768,
+        "output": 407569,
+        "reasoning_in_output": 134091,
+        "outer_calls": 1187
+      },
+      "roles": {
+        "coordinator": {
+          "responses": 125,
+          "uncached_input": 51274,
+          "cached_input": 43494272,
+          "output": 41617,
+          "reasoning_in_output": 12078,
+          "outer_calls": 115,
+          "outer_tools": {
+            "exec": 91,
+            "send_message": 14,
+            "wait_agent": 7,
+            "spawn_agent": 1,
+            "list_agents": 1,
+            "followup_task": 1
+          },
+          "ui_counter_delta": {
+            "uncached_input": 51519,
+            "cached_input": 43803776,
+            "output": 41741,
+            "reasoning_in_output": 12090
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:50:50.915Z",
+            "2026-11-21T21:12:12.795Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 1286.711,
+          "turn_occupancy_sum_seconds": 1286.711,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:50:46.089Z",
+            "2026-11-21T21:12:12.800Z"
+          ]
+        },
+        "coordinator permission reviewer": {
+          "responses": 19,
+          "uncached_input": 69284,
+          "cached_input": 2513536,
+          "output": 1681,
+          "reasoning_in_output": 369,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 69284,
+            "cached_input": 2513536,
+            "output": 1681,
+            "reasoning_in_output": 369
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:51:27.503Z",
+            "2026-11-21T21:11:47.460Z"
+          ],
+          "turn_intervals": 19,
+          "turn_occupancy_union_seconds": 61.387,
+          "turn_occupancy_sum_seconds": 61.387,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:51:24.613Z",
+            "2026-11-21T21:11:47.465Z"
+          ]
+        },
+        "research analyst": {
+          "responses": 36,
+          "uncached_input": 151138,
+          "cached_input": 3594368,
+          "output": 16063,
+          "reasoning_in_output": 1527,
+          "outer_calls": 33,
+          "outer_tools": {
+            "exec": 28,
+            "send_message": 5
+          },
+          "ui_counter_delta": {
+            "uncached_input": 151138,
+            "cached_input": 3594368,
+            "output": 16063,
+            "reasoning_in_output": 1527
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:53:12.422Z",
+            "2026-11-21T21:07:07.586Z"
+          ],
+          "turn_intervals": 2,
+          "turn_occupancy_union_seconds": 420.251,
+          "turn_occupancy_sum_seconds": 420.251,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:53:03.630Z",
+            "2026-11-21T21:07:07.658Z"
+          ]
+        },
+        "reviewer": {
+          "responses": 47,
+          "uncached_input": 44134,
+          "cached_input": 12220672,
+          "output": 16019,
+          "reasoning_in_output": 2572,
+          "outer_calls": 45,
+          "outer_tools": {
+            "exec": 36,
+            "send_message": 9
+          },
+          "ui_counter_delta": {
+            "uncached_input": 44134,
+            "cached_input": 12220672,
+            "output": 16019,
+            "reasoning_in_output": 2572
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:50:49.429Z",
+            "2026-11-21T20:58:49.361Z"
+          ],
+          "turn_intervals": 1,
+          "turn_occupancy_union_seconds": 483.358,
+          "turn_occupancy_sum_seconds": 483.358,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:50:46.089Z",
+            "2026-11-21T20:58:49.447Z"
+          ]
+        },
+        "reviewer permission reviewer": {
+          "responses": 12,
+          "uncached_input": 87659,
+          "cached_input": 284160,
+          "output": 1664,
+          "reasoning_in_output": 837,
+          "outer_calls": 0,
+          "outer_tools": {},
+          "ui_counter_delta": {
+            "uncached_input": 87659,
+            "cached_input": 284160,
+            "output": 1664,
+            "reasoning_in_output": 837
+          },
+          "first_and_last_meter": [
+            "2026-11-21T20:51:12.097Z",
+            "2026-11-21T20:58:10.710Z"
+          ],
+          "turn_intervals": 12,
+          "turn_occupancy_union_seconds": 49.794,
+          "turn_occupancy_sum_seconds": 49.794,
+          "first_and_last_turn_activity": [
+            "2026-11-21T20:51:09.056Z",
+            "2026-11-21T20:58:10.715Z"
+          ]
+        }
+      }
+    }
+  ]
+}

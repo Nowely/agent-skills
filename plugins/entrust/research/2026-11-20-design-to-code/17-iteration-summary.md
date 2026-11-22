@@ -1,0 +1,29 @@
+# Five iterations: first-submission outcomes and costs
+
+The owner asked for at most five evidence-driven iterations towards a skill that makes a capable agent deliver a visually faithful, responsive and working frontend on its first submission. **That goal is not established by this series:** the fifth, full-task submission was returned for an observed dense-layout overlap and unresolved state behaviours. We revised the skill after the fifth result, but did not run a sixth implementation to test the revision.
+
+| Iteration | Draft | First-submission case | Independent result | Worker thread | Uncached input | Output | Calls |
+|---:|---|---|---|---:|---:|---:|---:|
+| 1 | v15 | interactive listing | returned: one 6 px visual mismatch; dense and 17/17 interactions passed | 5:22 | 38,081 | 13,023 | 25 |
+| 2 | v16 | same listing and initial tree | returned: the same mismatch; dense and 17/17 interactions passed | 5:16 | 39,557 | 11,920 | 27 |
+| 3 | v17 | adaptive distributed library | returned: consumer could not load three packaged assets; visual/state coverage incomplete | 15:14 | 135,497 | 33,235 | 91 |
+| 4 | v18 | static screenshot-only | strict checker failed; its pixel-identical alternate-CSS control also failed. Visual reviewer saw small differences; owner acceptance unknown | 2:43 | 27,627 | 6,464 | 17 |
+| 5 | v19 | same initial adaptive library | returned: package consumer smoke passed, but dense price overlaps hardware on multiple widths and states remain incomplete | 23:47 | 177,597 | 49,899 | 164 |
+
+The saved earlier v14 listing submission was accepted by the same calibrated case judge used for iterations 1–2; the earlier v14 library submission was returned. The two listing inputs use the same Git tree, and the two later library inputs match in source, Storybook, package metadata and 28 supplied design files. Those are useful comparisons, **not** a statistical ranking: one run per version, different sessions/times and fixture/verification limitations. The requested native worker model was Terra xhigh; effective model/effort was not separately reported by the host. There was no new no-skill arm, per the owner's direction. Shared filesystem means none of the runs was blind.
+
+Worker output totals include reasoning and must not be added to reasoning again. The five workers together recorded 418,359 uncached input and 114,541 output tokens, and 52:22 summed thread wall time. This is not end-to-end elapsed time, compute time or a monetary cost. Permission-review helpers separately recorded 388,714 uncached input and 6,502 output tokens across the five worker sessions. The independent Astra analysis continuations for the five results recorded at least 144,728 uncached input and 26,580 output tokens; the earlier checker implementation/review, coordinator, browser, judges and later reflection are additional or not fully measured. Cached input and per-role figures are preserved in the individual records. Do not treat the reduced token count of one run as proof of a systematic saving.
+
+## What the iterations changed
+
+1. [v15 / iteration 1](12-iteration-01.md): reduce mandatory work to the task and correct checker status, root and opener handling. A calibrated listing judge returned one mismatch. Astra showed an apparent screenshot/context conflict could be satisfied without a trade-off.
+2. [v16 / iteration 2](13-iteration-02.md): ask to inspect an apparent conflict. The worker read the instruction but the available record showed no trial; the same mismatch remained. v17 made a proposed material conflict carry a reversible trial and its observation or a blocker.
+3. [v17 / iteration 3](14-iteration-03.md): the library package built but its public import failed on missing assets; comparison frames used an internal row and different data. v18 moved a minimal real-entry/packaged-consumer check and a reference-matched sample earlier, and retained a final recheck.
+4. [v18 / iteration 4](15-iteration-04.md): on a screenshot-only task the strict numeric checker failed even a separately calibrated, RGB-pixel-identical alternate CSS implementation. v19 clarified that unprovided CSS and line-box metrics are diagnostic, not evidence of visible differences by themselves. The submitted screenshot had small visible differences; the owner did not accept it.
+5. [v19 / iteration 5](16-iteration-05.md): the worker found and corrected the package problem before submission and the independent public-consumer smoke passed. The first submission nevertheless had visible overlap of price and hardware under combined content, plus stock/popover gaps. v20 sharpens the existing stress check to require readable adjacent content and usable controls at representative widths. This final draft has **not** been validated by another worker.
+
+## Verification and interpretation
+
+The final checker implementation's complete Chromium suite passed 77/77 with no skips; skill-page validation passed 8/8; packaging checks passed 21 with one release-tag-only skip. Independent targeted reproduction confirmed that an entirely unmeasured story alignment is incomplete. The checker also documents limits: a journey records observed actions and visibility at named widths, not physical causality or proof that the same control works at untested widths. A positive, visible-alternate control is necessary for a screenshot-only evaluator; do not change a frozen verdict or infer a universal tolerance after seeing an outcome.
+
+The owner-set cap was five implementation iterations. A sixth was not run. The next decision requires acknowledging that the newest revision is promising but unproven against the goal; further end-to-end trials would need an explicit extension of that cap. A ready package, a green unit suite or an honest handoff is individually useful, but none substitutes for an accepted first submission with the required reference states, interactions and consumers covered.

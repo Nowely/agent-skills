@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Listing story</title>
+<link rel="stylesheet" href="kit/kit.css">
+<link rel="stylesheet" href="listing.css">
+<style>body { margin: 0; padding: 24px; background: var(--c-page); } #host { width: 760px; }</style>
+<div id="host"></div>
+<script src="kit/popover.js"></script>
+<script src="data.js"></script>
+<script src="listing.js"></script>
+<script>
+  const name = new URLSearchParams(location.search).get("data") || "frame";
+  renderListing(document.getElementById("host"), LISTINGS[name], { onEdit: (id) => { window.edited = id; } });
+</script>

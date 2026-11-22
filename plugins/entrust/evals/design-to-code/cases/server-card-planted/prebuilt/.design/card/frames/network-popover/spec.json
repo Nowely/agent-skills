@@ -1,0 +1,191 @@
+{
+ "frame": {
+  "name": "network-popover",
+  "width": 267,
+  "height": 113
+ },
+ "source": "image boxes",
+ "landmarks": [
+  {
+   "text": "Скорость соединения сетевых карт",
+   "pieces": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "text": "Приватная сеть:",
+   "pieces": [
+    6,
+    7
+   ]
+  },
+  {
+   "text": "25 Гбит/с",
+   "pieces": [
+    5
+   ]
+  },
+  {
+   "text": "Публичная сеть:",
+   "pieces": [
+    9,
+    10
+   ]
+  },
+  {
+   "text": "25 Гбит/с",
+   "pieces": [
+    8
+   ]
+  },
+  {
+   "text": "Резервирование через",
+   "pieces": [
+    11,
+    13
+   ]
+  },
+  {
+   "text": "MC-LAG",
+   "pieces": [
+    12
+   ]
+  }
+ ],
+ "skip": {},
+ "pieces": [
+  {
+   "n": 1,
+   "kind": "ink",
+   "box": {
+    "x": 16,
+    "y": 17,
+    "width": 62,
+    "height": 13
+   }
+  },
+  {
+   "n": 2,
+   "kind": "ink",
+   "box": {
+    "x": 82,
+    "y": 19,
+    "width": 78,
+    "height": 10
+   }
+  },
+  {
+   "n": 3,
+   "kind": "ink",
+   "box": {
+    "x": 164,
+    "y": 19,
+    "width": 53,
+    "height": 8
+   }
+  },
+  {
+   "n": 4,
+   "kind": "ink",
+   "box": {
+    "x": 221,
+    "y": 19,
+    "width": 29,
+    "height": 11
+   }
+  },
+  {
+   "n": 5,
+   "kind": "ink",
+   "box": {
+    "x": 125,
+    "y": 42,
+    "width": 58,
+    "height": 13
+   }
+  },
+  {
+   "n": 6,
+   "kind": "ink",
+   "box": {
+    "x": 17,
+    "y": 43,
+    "width": 69,
+    "height": 13
+   }
+  },
+  {
+   "n": 7,
+   "kind": "ink",
+   "box": {
+    "x": 90,
+    "y": 46,
+    "width": 30,
+    "height": 7
+   }
+  },
+  {
+   "n": 8,
+   "kind": "ink",
+   "box": {
+    "x": 125,
+    "y": 60,
+    "width": 58,
+    "height": 13
+   }
+  },
+  {
+   "n": 9,
+   "kind": "ink",
+   "box": {
+    "x": 17,
+    "y": 61,
+    "width": 70,
+    "height": 13
+   }
+  },
+  {
+   "n": 10,
+   "kind": "ink",
+   "box": {
+    "x": 91,
+    "y": 64,
+    "width": 30,
+    "height": 7
+   }
+  },
+  {
+   "n": 11,
+   "kind": "ink",
+   "box": {
+    "x": 17,
+    "y": 87,
+    "width": 108,
+    "height": 13
+   }
+  },
+  {
+   "n": 12,
+   "kind": "coloured ink",
+   "box": {
+    "x": 170,
+    "y": 87,
+    "width": 53,
+    "height": 10
+   }
+  },
+  {
+   "n": 13,
+   "kind": "ink",
+   "box": {
+    "x": 129,
+    "y": 89,
+    "width": 37,
+    "height": 11
+   }
+  }
+ ]
+}
