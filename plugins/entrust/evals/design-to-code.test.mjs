@@ -2868,6 +2868,7 @@ test("44.8, controls: the catalogue's start code fails its sidebar journey where
   const ref = check(catalogueSidebarArm("reference"), "--no-sweep");
   assert.deepEqual(ref.result.journeys.filter((j) => !j.pass), [], ref.stdout);
   assert.deepEqual(ref.result.journeys.find((j) => j.name === sidebar).held, [928, 632, 928]);
+});
 
 // ------------------------------------------------------------------ 44, item 9: an opener covered on another page
 
