@@ -1,0 +1,108 @@
+/* The offer card. Built on kit/kit.css (tokens, type styles, badge, chip, help, icons, action, popover).
+   One layout per data-mode, chosen by card.js from the width of the card's own container:
+   wide (764 frame), medium (601), narrow (486), compact (280). */
+
+.card { --rg: var(--s-3); --pad-y: var(--s-3); --pad-x: var(--s-4); --col-gap: var(--s-4);
+  position: relative; box-sizing: border-box; width: 100%; min-width: 0; display: flex; flex-direction: column;
+  row-gap: var(--rg); padding: var(--pad-y) var(--pad-x); background: var(--c-surface); border-radius: var(--r-card);
+  box-shadow: var(--shadow-card); color: var(--c-text); font-family: sans-serif; }
+.card ul { list-style: none; margin: 0; padding: 0; }
+.card button { font-family: inherit; }
+.card :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; border-radius: var(--r-chip); }
+.card .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.card__grid { display: grid; align-items: start; min-width: 0; }
+.c-id { display: flex; flex-direction: column; gap: var(--s-2); }
+.sku { width: max-content; max-width: min(100%, 220px); overflow-wrap: anywhere; } /* one line up to 220 px, then it wraps */
+.badges { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.c-cpu { }
+.cpu__model { width: max-content; max-width: 100%; overflow-wrap: anywhere; }
+.card[data-mode="wide"] .cpu__model, .card[data-mode="medium"] .cpu__model { max-width: none; } /* these layouts are chosen only while it fits on one line */
+.vendor { display: flex; align-items: center; gap: 3px; margin-top: 2px; color: var(--c-faint); font: 800 12px/16px sans-serif; letter-spacing: .04em; }
+.vendor__mark { flex: none; }
+
+.c-spec { display: flex; align-items: flex-start; gap: var(--s-4); }
+.c-spec > * { flex: none; white-space: nowrap; }
+.c-cores { display: flex; align-items: center; gap: 10px; }
+.c-threads, .c-ram { display: flex; flex-direction: column; gap: 2px; }
+.ram__type { width: min-content; white-space: normal; } /* "DDR3 ECC" is drawn stacked: a choice, not a wrap */
+.c-disks { display: flex; flex-direction: column; gap: 2px; }
+.disk { white-space: nowrap; }
+.disk__t { margin-inline-start: var(--s-1); }
+
+.c-price { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.price { white-space: nowrap; max-width: 100%; }
+.card__grid .price { white-space: nowrap; }
+.price__amount, .price__period { white-space: nowrap; }
+.pop-wrap { display: inline-flex; }
+.card button.kit-icon { padding: 0; border: 0; cursor: pointer; }
+
+.card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.foot__item, .net { display: inline-flex; align-items: center; gap: 3px; }
+.net { gap: 4px; }
+.ico--port { flex: none; color: var(--c-muted); }
+.card .kit-help { position: relative; }
+.card .kit-help::before { content: "?"; } /* a glyph, not text: the button's name is its aria-label */
+.card .kit-help::after { content: ""; position: absolute; inset: -5px; }
+.configure svg { flex: none; }
+.stock { display: flex; align-items: center; gap: var(--s-2); margin-inline-start: auto; white-space: nowrap; }
+.card__bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); }
+
+/* the popovers: the kit's look, in the top layer, placed by card.js next to their icon */
+.card .pop { inset: auto; margin: 0; border: 0; overflow: visible; }
+.card .pop::after { content: ""; position: absolute; top: 100%; left: calc(var(--tail-x, 24px) - 7px); width: 14px; height: 8px;
+  background: var(--c-surface); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.card .pop[data-side="bottom"]::after { top: auto; bottom: 100%; clip-path: polygon(50% 0, 0 100%, 100% 100%); }
+.pop__grid { display: grid; grid-template-columns: auto auto; justify-content: start; column-gap: var(--s-1); line-height: 18px; }
+.pop__row { line-height: 18px; }
+.pop__row--last { margin-top: var(--s-2); }
+.pop s { color: var(--c-text); }
+
+/* wide: one row, then the footer */
+.card[data-mode="wide"] .card__grid { grid-template-columns: fit-content(220px) fit-content(200px) auto minmax(max-content, 1fr); column-gap: clamp(var(--s-4), 3%, 32px); }
+.card[data-mode="wide"] .c-price { justify-self: end; white-space: nowrap; }
+
+/* medium: the processor and the price move under the badges; the specs keep the top row */
+.card[data-mode="medium"] .card__grid { grid-template-columns: fit-content(220px) minmax(max-content, 1fr); column-gap: var(--s-4); row-gap: var(--s-1); }
+.card[data-mode="medium"] .c-id { grid-area: 1 / 1; }
+.card[data-mode="medium"] .c-spec { grid-area: 1 / 2; }
+.card[data-mode="medium"] .c-cpu { grid-area: 2 / 1; }
+.card[data-mode="medium"] .c-price { grid-area: 2 / 2; align-self: end; justify-self: end; flex-direction: column; align-items: flex-end; gap: 2px; }
+.card[data-mode="medium"] .stock { flex-direction: row-reverse; }
+
+/* narrow: the processor beside the SKU, the specs spread over a row, the price and the stock at the bottom */
+.card[data-mode="narrow"], .card[data-mode="compact"] { --rg: var(--s-5); }
+.card[data-mode="narrow"] .card__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--col-gap); row-gap: var(--s-5); }
+.card[data-mode="narrow"] .c-spec { grid-column: 1 / -1; justify-content: space-between; gap: var(--s-4); }
+.card[data-mode="narrow"] .c-price { justify-content: flex-start; }
+.card[data-mode="narrow"] .pop-wrap, .card[data-mode="compact"] .pop-wrap { order: 1; }
+.card[data-mode="narrow"] .c-price { flex-wrap: wrap; }
+
+/* compact: one column; its type is the kit's 17 px */
+.card[data-mode="compact"] { --pad-y: 18px; --pad-x: var(--s-5); }
+.card[data-mode="compact"] .card__grid { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-5); }
+.card[data-mode="compact"] .c-spec { flex-wrap: wrap; gap: var(--s-5) var(--s-4); }
+.card[data-mode="compact"] .c-freq, .card[data-mode="compact"] .c-ram, .card[data-mode="compact"] .c-disks { flex-basis: 100%; }
+.card[data-mode="compact"] .c-disks { gap: 0; }
+.card[data-mode="compact"] .ram__type { width: auto; white-space: normal; }
+.card[data-mode="compact"] .c-ram { display: block; white-space: normal; }
+.card[data-mode="compact"] .vendor { font-size: 16px; line-height: 20px; }
+.card[data-mode="compact"] .card__bottom { flex-direction: column; align-items: flex-start; }
+.card[data-mode="compact"] .c-price { flex-wrap: wrap; justify-content: flex-start; }
+.card[data-mode="compact"] .stock { margin-inline-start: 0; }
+.card[data-mode="compact"] .t-body, .card[data-mode="compact"] .kit-action, 
+.card[data-mode="compact"] .t-caption { font-size: 17px; line-height: 20px; }
+.card[data-mode="compact"] .kit-badge { height: 28px; padding: 0 var(--s-3); font-size: 17px; line-height: 28px; }
+.card[data-mode="compact"] .kit-chip { height: 28px; font-size: 17px; }
+
+/* the badges stay on one row in the two wide layouts (as drawn); when they do not fit, the card takes a narrower layout */
+.card[data-mode="wide"] .badges, .card[data-mode="medium"] .badges { flex-wrap: nowrap; }
+
+/* the frames draw the price at the body's size, not the kit's 17 px (t-price); only the compact frame is larger */
+.card .price { font-size: 15px; line-height: 22px; }
+.card[data-mode="compact"] .price { font-size: 17px; }
+
+/* medium: the stacks keep the frame's tight lines, so the processor and the footer sit as high as a legal list allows */
+.card[data-mode="medium"] { --rg: var(--s-2); }
+.card[data-mode="medium"] .card__grid { row-gap: 0; }
+.card[data-mode="medium"] .c-ram, .card[data-mode="medium"] .c-threads, .card[data-mode="medium"] .c-disks { gap: 0; }

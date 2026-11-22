@@ -1,0 +1,287 @@
+{
+  "url": "../../story.html?data=card-764&w=764",
+  "root": ".card",
+  "host": "#host",
+  "viewport": 1280,
+  "tolerance": 1,
+  "kit": [
+    "kit-"
+  ],
+  "frames": [
+    {
+      "name": "card-764",
+      "width": 764,
+      "spec": "frames/card-764/spec.json",
+      "reference": "frames/card-764/reference.png",
+      "url": "../../story.html?data=card-764&w=764"
+    },
+    {
+      "name": "card-601",
+      "width": 601,
+      "spec": "frames/card-601/spec.json",
+      "reference": "frames/card-601/reference.png",
+      "url": "../../story.html?data=card-601&w=601"
+    },
+    {
+      "name": "card-486",
+      "width": 486,
+      "spec": "frames/card-486/spec.json",
+      "reference": "frames/card-486/reference.png",
+      "url": "../../story.html?data=card-486&w=486"
+    },
+    {
+      "name": "card-280",
+      "width": 280,
+      "spec": "frames/card-280/spec.json",
+      "reference": "frames/card-280/reference.png",
+      "url": "../../story.html?data=card-280&w=280"
+    },
+    {
+      "name": "network-popover",
+      "width": 267,
+      "spec": "frames/network-popover/spec.json",
+      "reference": "frames/network-popover/reference.png",
+      "url": "../../story.html?data=card-764&w=764",
+      "root": ".pop[data-for='net']",
+      "setup": [
+        {
+          "hover": ".kit-help[data-pop='net']"
+        },
+        {
+          "wait": 300
+        }
+      ]
+    }
+  ],
+  "sweep": {
+    "from": 280,
+    "to": 900,
+    "step": 8,
+    "stories": [
+      {
+        "name": "dense",
+        "url": "../../story.html?data=dense&w=764"
+      },
+      {
+        "name": "many",
+        "url": "../../story.html?data=many&w=764"
+      }
+    ]
+  },
+  "journeys": [
+    {
+      "name": "network hover",
+      "steps": [
+        {
+          "hover": ".kit-help[data-pop='net']"
+        },
+        {
+          "visible": ".pop[data-for='net']"
+        },
+        {
+          "move": [
+            900,
+            700
+          ]
+        },
+        {
+          "hidden": ".pop[data-for='net']"
+        }
+      ]
+    },
+    {
+      "name": "network keyboard",
+      "steps": [
+        {
+          "focus": ".kit-help[data-pop='net']"
+        },
+        {
+          "visible": ".pop[data-for='net']"
+        },
+        {
+          "press": "Escape"
+        },
+        {
+          "hidden": ".pop[data-for='net']"
+        }
+      ]
+    },
+    {
+      "name": "network tap",
+      "touch": true,
+      "steps": [
+        {
+          "tap": ".kit-help[data-pop='net']"
+        },
+        {
+          "visible": ".pop[data-for='net']"
+        },
+        {
+          "tap": ".kit-help[data-pop='net']"
+        },
+        {
+          "hidden": ".pop[data-for='net']"
+        }
+      ]
+    },
+    {
+      "name": "network tap elsewhere",
+      "touch": true,
+      "steps": [
+        {
+          "tap": ".kit-help[data-pop='net']"
+        },
+        {
+          "visible": ".pop[data-for='net']"
+        },
+        {
+          "tap": ".sku"
+        },
+        {
+          "hidden": ".pop[data-for='net']"
+        }
+      ]
+    },
+    {
+      "name": "power hover",
+      "steps": [
+        {
+          "hover": ".kit-help[data-pop='psu']"
+        },
+        {
+          "visible": ".pop[data-for='psu']"
+        },
+        {
+          "move": [
+            900,
+            700
+          ]
+        },
+        {
+          "hidden": ".pop[data-for='psu']"
+        }
+      ]
+    },
+    {
+      "name": "power keyboard",
+      "steps": [
+        {
+          "focus": ".kit-help[data-pop='psu']"
+        },
+        {
+          "visible": ".pop[data-for='psu']"
+        },
+        {
+          "press": "Escape"
+        },
+        {
+          "hidden": ".pop[data-for='psu']"
+        }
+      ]
+    },
+    {
+      "name": "power tap",
+      "touch": true,
+      "steps": [
+        {
+          "tap": ".kit-help[data-pop='psu']"
+        },
+        {
+          "visible": ".pop[data-for='psu']"
+        },
+        {
+          "tap": ".kit-help[data-pop='psu']"
+        },
+        {
+          "hidden": ".pop[data-for='psu']"
+        }
+      ]
+    },
+    {
+      "name": "discount hover",
+      "url": "../../story.html?data=card-601&w=601",
+      "steps": [
+        {
+          "hover": ".deal"
+        },
+        {
+          "visible": ".pop[data-for='deal']"
+        },
+        {
+          "move": [
+            900,
+            700
+          ]
+        },
+        {
+          "hidden": ".pop[data-for='deal']"
+        }
+      ]
+    },
+    {
+      "name": "discount keyboard",
+      "url": "../../story.html?data=card-601&w=601",
+      "steps": [
+        {
+          "focus": ".deal"
+        },
+        {
+          "visible": ".pop[data-for='deal']"
+        },
+        {
+          "press": "Escape"
+        },
+        {
+          "hidden": ".pop[data-for='deal']"
+        }
+      ]
+    },
+    {
+      "name": "discount tap",
+      "url": "../../story.html?data=card-601&w=601",
+      "touch": true,
+      "steps": [
+        {
+          "tap": ".deal"
+        },
+        {
+          "visible": ".pop[data-for='deal']"
+        },
+        {
+          "tap": ".deal"
+        },
+        {
+          "hidden": ".pop[data-for='deal']"
+        }
+      ]
+    },
+    {
+      "name": "resize with popover",
+      "url": "../../story.html?data=card-601&w=601",
+      "sameAsFresh": true,
+      "steps": [
+        {
+          "hover": ".kit-help[data-pop='net']"
+        },
+        {
+          "visible": ".pop[data-for='net']"
+        },
+        {
+          "width": 320
+        },
+        {
+          "width": 601
+        },
+        {
+          "move": [
+            900,
+            700
+          ]
+        },
+        {
+          "hidden": ".pop[data-for='net']"
+        }
+      ]
+    }
+  ]
+}

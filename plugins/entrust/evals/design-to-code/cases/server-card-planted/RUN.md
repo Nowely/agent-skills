@@ -21,6 +21,7 @@ build's own findings remain.
 | `brief.md` | the builder, as `.brief.md`: iteration 6's brief, word for word |
 | `grade.mjs` | nobody: reads the arm's history, ledger, specs and source, and renders the build |
 | `rounds.mjs`, `rounds.test.mjs` | nobody: the grader's reading of the rounds, and its tests (`node --test`) |
+| `prebuilt/` | the builder, with `make-arm.mjs <dir> --prebuilt`: iteration 6's c282a build with its check set up on the planted references (specs, `design.json`, `review.md`), an empty ledger and no rounds, for the capped Terra dry run |
 | `plant/` | nobody: how the references were made (`compose.py` over iteration 6's, the lines from `render.mjs`) |
 
 ## Run an arm
