@@ -1038,54 +1038,10 @@ export function rerunNotice({ complete, status, stalled = 0, streak = 0 }) {
   return "";
 }
 
-// The owner's inputs, as the first check saw them: each frame's reference image, its spec (its texts and its boxes),
-// the data each frame renders, the data contract and the check's own settings. The record is written once, beside
-// design.json, and grows only by a frame or a file it had not seen; a later difference is evidence for the owner, not a
-// finding, and does not change the status. `recorded` and `current` are records of this shape:
-// { round, references: { frame: digest }, specs: { frame: { texts, boxes } }, data: { frame: digest },
-//   contract: { file: digest }, config: { key: value } }.
-export function compareInputs(recorded, current) {
-  if (!recorded) return [];
-  const changes = [];
-  const quote = (list) => list.slice(0, 3).map((t) => `“${t}”`).join(", ") + (list.length > 3 ? ` and ${list.length - 3} more` : "");
-  for (const [frame, was] of Object.entries(recorded.references ?? {})) {
-    const now = current.references?.[frame];
-    if (was && now !== undefined && now !== was) changes.push(now === null ? `${frame}'s reference image is gone` : `${frame}'s reference image`);
-  }
-  for (const [frame, was] of Object.entries(recorded.specs ?? {})) {
-    const now = current.specs?.[frame];
-    if (!was || !now) continue;
-    const gone = was.texts.filter((t) => !now.texts.includes(t)), added = now.texts.filter((t) => !was.texts.includes(t));
-    if (gone.length || added.length) changes.push(`${frame}'s spec: ${[gone.length && `texts gone: ${quote(gone)}`, added.length && `texts added: ${quote(added)}`].filter(Boolean).join("; ")}`);
-    else if (now.boxes !== was.boxes) changes.push(`${frame}'s spec: its boxes`);
-  }
-  for (const [frame, was] of Object.entries(recorded.data ?? {})) {
-    const now = current.data?.[frame];
-    if (was && now && now !== was) changes.push(`${frame}'s data`);
-  }
-  for (const [file, was] of Object.entries(recorded.contract ?? {})) {
-    const now = current.contract?.[file];
-    if (was && now !== undefined && now !== was) changes.push(now === null ? `the contract ${file} is gone` : `the contract ${file}`);
-  }
-  for (const [key, was] of Object.entries(recorded.config ?? {})) {
-    if (!(key in (current.config ?? {}))) continue;
-    const now = current.config[key];
-    if (JSON.stringify(now) !== JSON.stringify(was)) changes.push(`${key} ${JSON.stringify(was)} → ${JSON.stringify(now)}`);
-  }
-  return changes;
-}
-
-// The line the digest and the handoff open with when the owner's inputs changed since the record was made, or when the
-// record is missing while rounds are recorded.
-export function inputsLine({ changes = [], since, missing = 0 } = {}) {
-  if (missing) return `Input record missing: ${missing} round${missing === 1 ? " is" : "s are"} recorded but design.inputs.json is not, so the owner's inputs cannot be compared with what the first check saw`;
-  return changes.length ? `Input changed since round ${since ?? 1}: ${changes.join("; ")}. These are the owner's inputs: name each change and why in the handoff` : "";
-}
-
 // What the console shows: a digest of at most `limit` lines. First what changed since the last round measured the same
 // way, then each frame's verdict with where to start and its new findings first (the rest as a count), the sweep, the
 // journeys and what was not checked; the full tables stay in report.md, whose path ends it.
-export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, restarted = false, quick = false, inputs = "" }, { limit = 15, file = "report.md" } = {}) {
+export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, previous, best, restarted = false, quick = false }, { limit = 15, file = "report.md" } = {}) {
   const count = counts(frames, sweep);
   const head = `${n ? `Round ${n}: ` : ""}frames ${frames.filter((f) => f.pass).length} of ${frames.length} pass${sweep ? ` · sweep: ${verdictOf(sweep)}` : ""}`
     + ` · ${quick ? "journeys: not run (--quick)" : journeyLine(journeys)} · accepted: ${count("accepted")} · pending: ${count("pending")} · score: ${totalScore(frames, sweep, journeys) ?? "unmeasured"} (lower is better)`
@@ -1094,7 +1050,6 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
   const before = Array.isArray(previous?.findings) ? new Set(previous.findings) : null;
   const fresh = (k) => !before || !before.has(k);
   const body = [];
-  if (inputs) body.push(inputs);
   if (restarted) body.push("The specs or the sweep changed: scores start a new series here.");
   if (before) {
     const fixed = previous.findings.filter((k) => !now.has(k)), added = [...now.keys()].filter((k) => !before.has(k));
@@ -1156,7 +1111,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
 // the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
 export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], ledgerProblems = [], acceptance = [],
-  pictures = [], round: n, status, score, stamp = "", model, inputs = "" }) {
+  pictures = [], round: n, status, score, stamp = "", model }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
@@ -1183,7 +1138,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
       const gaps = found.filter((i) => i.gap || i.box).length;
       return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${[e.category, e.status].filter(Boolean).join(", ")}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;
     });
-  const out = [`Status: ${status} — ${handoverState}`, ...(inputs ? [inputs] : []), "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
+  const out = [`Status: ${status} — ${handoverState}`, "", "# Evidence for the handoff", "", `Round ${n} · verdict: ${status} · score: ${score ?? "unmeasured"} (lower is better)${stamp ? ` · ${stamp}` : ""}`, "",
     "Quote these lines in the handoff. A claim beyond them names its own evidence (a command and its output, a picture),",
     "or goes under what was not checked.", "", ...(broad.length ? ["## Broad excuses", "", ...broad, ""] : []), "## Pictures to look at first", "",
     "Compare the reference and final captures at the same state and width. Record any visible differences. For Before/After, confirm the rendered data and theme even when capture settings match.", ""];
