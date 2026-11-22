@@ -27,8 +27,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, findingKeys, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
-  specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
+  compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -1786,14 +1786,14 @@ async function check(file, flags) {
     // The gallery is the record to hand over: written only by a complete check.
     if (complete) fs.writeFileSync(path.join(out, "gallery.html"), renderGallery({ title: `Design check · ${path.basename(cfg.dir)}`, frames: results.map((r) => ({ result: r, ...r.gallery })), sweep: sweepResult, journeys: journeyResults, gaps, ledger }));
     const where = path.relative(process.cwd(), out) || ".";
-    // Two complete rounds without a new lowest score, or with the same first finding: the verdict itself says to stop.
-    const same = record.first && comparable.length >= 2 && comparable.slice(-2).every((h) => h.first === record.first);
-    const stop = complete && status !== "pass" && (stalled >= 2 || same) ? " — stop re-running: fix it, propose it with a reason, or report the check as blocked" : "";
+    // The same first finding over three rounds, quick or complete and whatever changed in the specs, or two complete
+    // rounds without a new lowest score: the verdict itself says to decide rather than re-run.
+    const notice = rerunNotice({ complete, status, stalled, streak: firstStreak(history, record.first) });
     // The console is a digest of fifteen lines at most, the verdict's included.
-    const tail = 2 + (status === "fail" && !stop ? 1 : 0);
+    const tail = 2 + (status === "fail" && !notice ? 1 : 0);
     const printed = [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
-      `Verdict: ${status}${stop}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
-      ...(status === "fail" && !stop ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
+      `Verdict: ${status}${notice}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
+      ...(status === "fail" && !notice ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
       complete ? `Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`
         : `A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`].join("\n");
     fs.appendFileSync(historyFile, `${JSON.stringify({ ...record, seconds: Math.round((Date.now() - started) / 100) / 10, bytes: Buffer.byteLength(`${printed}\n`) })}\n`);

@@ -982,6 +982,25 @@ export function findingKeys({ frames = [], sweep, journeys = [], acceptance = []
   return keys;
 }
 
+// How many rounds in a row, this one included, have had the same first finding. A finding is named by its key, which
+// neither a quick round nor a change of the specs alters, so the count runs across modes and series alike.
+export function firstStreak(history, first) {
+  if (!first) return 0;
+  let n = 1;
+  for (let i = history.length - 1; i >= 0 && history[i]?.first === first; i--) n++;
+  return n;
+}
+
+// What the verdict line adds when re-running has stopped telling the builder anything: on a complete round, two rounds
+// without a new lowest score or a first finding unchanged for three, stop; on a partial round, the same first finding
+// for three rounds asks for a decision, since a quick round is for tuning and not for evidence.
+export function rerunNotice({ complete, status, stalled = 0, streak = 0 }) {
+  if (status === "pass") return "";
+  if (complete && (stalled >= 2 || streak >= 3)) return " — stop re-running: fix it, propose it with a reason, or report the check as blocked";
+  if (streak >= 3) return ` — the first finding is unchanged for ${streak} rounds: fix it or propose it`;
+  return "";
+}
+
 // What the console shows: a digest of at most `limit` lines. First what changed since the last round measured the same
 // way, then each frame's verdict with where to start and its new findings first (the rest as a count), the sweep, the
 // journeys and what was not checked; the full tables stay in report.md, whose path ends it.

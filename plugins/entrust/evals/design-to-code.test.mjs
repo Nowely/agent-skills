@@ -16,8 +16,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  causes, compareFrame, contextTexts, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
-  renderSummary, specFromMetadata, specFromRest, sweepIssues, switches,
+  causes, compareFrame, contextTexts, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
+  renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -371,7 +371,6 @@ test("a launch that cannot start says why in one line and exits 2; --help prints
     assert.doesNotMatch(r.stderr, /ENOENT/, args.join(" "));
   }
 });
-
 
 // The reference card rendered once as the design: its specs and 2× images, in a directory a test copies.
 let design;
@@ -898,7 +897,11 @@ test("scores are compared only between rounds measured the same way, and two rou
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).quick, true);
   const spec = JSON.parse(fs.readFileSync(path.join(f.dir, "0.json"), "utf8"));
   fs.writeFileSync(path.join(f.dir, "0.json"), JSON.stringify({ ...spec, landmarks: [...spec.landmarks, { ...spec.landmarks[0], text: "Steady" }] }));
-  assert.doesNotMatch(check(f.dir).stdout, /previous round|lowest|stop/);
+  // A changed spec starts a new series of scores; draft 28.3: the first finding, named by its key, is the same "Ready"
+  // as before the change, and it has come first in every round since the first.
+  const changed = check(f.dir).stdout;
+  assert.doesNotMatch(changed, /previous round|lowest/);
+  assert.match(changed, /^Verdict: fail — stop re-running/m);
 });
 
 test("a dense story is swept too: a text over a text, a control under another element, and its pictures", browser, () => {
@@ -1789,12 +1792,18 @@ test("v26: --quick sweeps every story at the frames' widths only, and is a parti
   assert.match(r.stdout, /partial check/i);
   assert.ok(!fs.existsSync(path.join(f.dir, "out/handoff.md")), "a partial check writes no evidence file");
   assert.equal(r.result.journeys.length, 0);
-  // Quick rounds score in their own series: a complete check after two of them is the first of its own.
+  // Quick rounds score in their own series: a complete check after them starts a series of its own.
+  // Draft 28.3: the first finding is matched by its key whatever the series, so the same "Ready" first in quick
+  // rounds says so on the quick round, and the complete check after them says stop.
   f.write("<main><span style=\"margin-left:30px\">Ready</span></main>");
   check(f.dir, "--quick");
   check(f.dir, "--quick");
-  check(f.dir, "--quick");
-  assert.doesNotMatch(check(f.dir).stdout, /stop re-running/);
+  const q = check(f.dir, "--quick");
+  assert.match(q.stdout, /^Verdict: fail — the first finding is unchanged for \d+ rounds: fix it or propose it on what this partial check measured$/m);
+  assert.doesNotMatch(q.stdout, /stop re-running|check again/);
+  const after = check(f.dir);
+  assert.match(after.stdout, /scores start a new series here/);
+  assert.match(after.stdout, /^Verdict: fail — stop re-running/m);
 });
 
 test("v26: an acceptance row that names its story answers for that story, and says what failed", browser, () => {
@@ -2215,6 +2224,27 @@ test("draft 28.2: a first finding that stays first over two complete rounds stop
   const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(history.map((h) => h.first), ["frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x"]);
   assert.ok(history[1].score < history[0].score && history[2].score < history[1].score, `each round a new lowest: ${history.map((h) => h.score)}`);
+});
+
+// Terra's 31 recorded rounds on draft 27 (research/…/32-checker-rounds.json): q quick, f complete; A the text width
+// finding (-16.69 px) first in 19 of rounds 1–21, B the -5.69 px one, C the sheet journey the check's own
+// transition:none broke, - where the record shows no first finding. Draft 28.2's rule matched the first finding only
+// within one basis and only on complete rounds, so it first spoke at round 31.
+test("draft 28.3: replayed on Terra's recorded rounds, an unchanged first finding speaks by round 4 and stops the first complete round after", () => {
+  const rounds = "qA qA qA qA qA fA fA qA fA fA qA q- qA q- qA q- qA qA qA qA qA qB qB qB qB qB q- fC fC q- fC".split(" ");
+  const history = [], said = [];
+  for (const [i, r] of rounds.entries()) {
+    const first = r[1] === "-" ? null : r[1], complete = r[0] === "f";
+    const notice = rerunNotice({ complete, status: first ? "fail" : "pending", stalled: 0, streak: firstStreak(history, first) });
+    if (notice) said.push([i + 1, /stop re-running/.test(notice) ? "stop" : "unchanged"]);
+    history.push({ round: i + 1, first, quick: !complete });
+  }
+  assert.deepEqual(said[0], [3, "unchanged"]);
+  assert.deepEqual(said.find(([, kind]) => kind === "stop"), [6, "stop"]);
+  assert.ok(said.some(([n]) => n === 24), "the second finding, first from round 22, speaks at round 24");
+  assert.equal(rerunNotice({ complete: true, status: "pass", stalled: 5, streak: 5 }), "");
+  assert.equal(firstStreak([{ first: "a" }, { first: "b" }, { first: "b" }], "b"), 3);
+  assert.equal(firstStreak([{ first: "b" }, {}], "b"), 1);
 });
 
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say

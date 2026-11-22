@@ -34,8 +34,11 @@ incomplete when:
 **Rounds.** The score adds what is not settled, findings and proposals alike; notes and candidates count nothing. The
 console is a digest of fifteen lines at most: the round before and the lowest among rounds measured the same way, what
 changed since (findings fixed, new ones), each frame's new findings with where to start and the unchanged ones as a
-count; the full tables are in `report.md`. After two complete rounds without a new lowest score, or with the same first
-finding, the verdict line says "stop re-running: fix it, propose it with a reason, or report the check as blocked".
+count; the full tables are in `report.md`. A finding is named by its key (frame, landmark, property), which neither
+`--quick` nor a change of the specs alters. When the same finding has come first in three rounds in a row, quick or
+complete, a quick round's verdict line says "the first finding is unchanged for N rounds: fix it or propose it"; a
+complete round's, and one after two complete rounds without a new lowest score, says "stop re-running: fix it, propose
+it with a reason, or report the check as blocked".
 Each line of `history.jsonl` records the round's status, score and findings, whether it was `quick`, its `seconds` and
 the `bytes` it printed.
 **Before** is the page the first check saw; delete `out/before/` for a new baseline.
