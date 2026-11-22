@@ -10,6 +10,11 @@ forensics remain in the repository references and release notes.
 - The proxy skill and orchestrate's `references/main-proxy.md`, both shared pages, call the transporting host "the
   host", no longer "normally Luna": the shared skills name no model since 0.26.0 (E155).
 
+### Cleanup
+
+- The comment on the shapes a suite writes under the temporary directory names the live gate's code that builds
+  them (`ART`, `caseDir`, `scratchClone`) instead of three line numbers that never held it (E157).
+
 ## 0.46.2 — 2026-11-22
 
 ### Orchestrate

@@ -28,31 +28,6 @@ places correctly. The builder pays for it with ledger entries that excuse the ch
 `incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
 only contains it.
 
-## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
-
-**Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
-"builds the artifact directory as `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`", `:88-89` "the
-case directory inside it as `${n}-${slug}`", and `:167-168` "the git clone inside THAT as `scratch`". Today
-`evals/orchestrate-live.test.mjs:87` is a bare `//` in the header comment, `:88-89` begin the header's account of case 4,
-and `:167-168` are comment lines of the process helper ("TERM before KILL, and to the GROUP"); the artifact directory is
-built at `:123`, the case directory at `:125` and the clone at `:196` and `:201`. The addresses were already stale at
-`def9f23` (`:87` the header's "Case 4 measures the agent", the builder at `:122`) and at `0665237`, the repository's
-first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3389-3390`, the 0.12.0 note,
-quotes the same three addresses; that release predates the repository's first commit, so whether they held then cannot
-be checked here. Found by an implementer of the orchestrate rework's minimum team, 2026-11-22.
-
-**Check.** `sed -n 54,56p plugins/entrust/plugin/skills/cleanup/scripts/cleanup.mjs` prints the three addresses;
-`sed -n '87p;167,168p' plugins/entrust/evals/orchestrate-live.test.mjs` prints comment lines, and
-`grep -n 'orchestrate-live-\${\|^const caseDir\|"clone", "--local"' plugins/entrust/evals/orchestrate-live.test.mjs`
-prints `123:`, `124:` and `201:`.
-
-**Issue text.** The comment in the cleanup script that explains which directory shapes a test suite writes under the
-temporary directory points at lines 87, 88-89 and 167-168 of the live orchestrate gate for the code that builds the
-artifact directory, the case directory and the scratch clone. Those lines hold header comments and a process helper;
-the code has sat about 30 lines lower since the repository's first commit. A reader who follows the addresses to check
-the shape the cleanup matches finds unrelated text. Name the code the comment means (the artifact directory's
-`createTempDir` call, `caseDir`, the scratch clone) instead of its line numbers, or correct the numbers.
-
 ## E156. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
 
 **Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not

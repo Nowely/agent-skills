@@ -51,10 +51,11 @@ const EVAL_KINDS = [["entrust-test-", "the delegation tests"],
 // where one component ends and the next begins is not recoverable from it; the shape is therefore
 // matched against the WHOLE tail below the temp root, which is what a suite's own naming determines
 // end to end.
-//   orchestrate-live-<ISO stamp>/<n>-<case>[/scratch] — plugins/entrust/evals/orchestrate-live.test.mjs:87 builds the
-//     artifact directory as `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`,
-//     :88-89 the case directory inside it as `${n}-${slug}`, and :167-168 the git clone inside THAT
-//     as `scratch`. All 43 of this machine's answer to this shape.
+//   orchestrate-live-<ISO stamp>/<n>-<case>[/scratch] — in plugins/entrust/evals/orchestrate-live.test.mjs,
+//     `ART` builds the artifact directory through `createTempDir` with the prefix
+//     `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}-`, `caseDir` the case directory
+//     inside it as `${n}-${slug}`, and `scratchClone` the git clone inside THAT as `scratch`. All 43 of
+//     this machine's answer to this shape.
 //   cdx-permprobe-<suffix> — Claude Code's own permission probe, which nothing in this repository
 //     writes; the shape is pinned from what it has left here (`cdx-permprobe-r8K76l`): one bare word
 //     with no separator of its own.
