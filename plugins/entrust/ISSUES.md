@@ -175,17 +175,17 @@ test names "the corrected split is read: an interface it omits, one its owner's 
 takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). At `def9f23`, `splitAdmissionProblems`
 (`gate-checks.mjs:395-421`) only checked that the split critic named a file, that each worker brief named that
 file's path and that the file opened. Since the plan critic replaced the split critic, it returns objections and
-no split file, and the function (today `gate-checks.mjs:406-420`) keeps only the order of the briefs and the count of
+no split file, and the function (today `gate-checks.mjs:410-424`) keeps only the order of the briefs and the count of
 the shared file's writers, from `writesSeen` (`:330-343`), which reads only Write/Edit/NotebookEdit/MultiEdit calls
 and a Codex report's `filesTouched`; its own comment (`:329`) says "A write made through a shell command is not
 visible here." The orchestrate page asked the coordinator to check each brief against the file's owners until
 `cc7efbb` ("before a worker launches you check the files and interfaces its brief touches against the file's
-owners"); today it says "Launch within the approved ownership and the runtime's limits" (`orchestrate/SKILL.md:47`),
+owners"); today it says "Launch within the approved ownership and the runtime's limits" (`orchestrate/SKILL.md:48`),
 and the plan critic judges ownership and shared interfaces before any brief (`orchestrate/references/roles.md`, the
 plan critic), but no test stands behind a brief's files against their owners. Found by Fable H1.
 
 **Check.** `grep -n 'parseSplit\|ownsPath' plugins/entrust/evals/lib/gate-checks.mjs` finds nothing; reading
-`splitAdmissionProblems` (`:406-420`) shows no check of a brief's claimed files or interfaces against their owners.
+`splitAdmissionProblems` (`:410-424`) shows no check of a brief's claimed files or interfaces against their owners.
 A worker whose write ran through `sed -i` leaves
 `filesTouched` and every Write/Edit call empty, so `writesSeen` returns no writer for it and
 `splitAdmissionProblems` reports "0 agents wrote lib/shared.mjs" on a correct run.
@@ -207,7 +207,7 @@ write that names the shared file among the writers.
   A batch wider than fifty units takes several swarms.
 - `swarm.mjs:112-116` and `:149-150`: the summary holds per agent its number, unit, report path, the launcher's
   status lines and times, and no tokens, which the plan's stop line reads, an agent's tokens per unit against the
-  pilot's median per unit (`orchestrate/references/plan.md:68-72`); each report has to be opened for them.
+  pilot's median per unit (`orchestrate/references/plan.md:76-81`); each report has to be opened for them.
 - A swarm's agent ids are `001` to `050` (`swarm.mjs:113`), and the plan registration takes only ids that start with
   a letter (`orchestrate/scripts/agent-run.mjs:468`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
   through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
@@ -293,7 +293,7 @@ task list and its Stop on such a task.
 `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; at `def9f23` `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolved its
 advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer said to load
 the page first); today the advisor reaches an adapter only for a named model the host does not run natively (`:12`),
-and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:70-77` loads an adapter's page only for a provider the user
+and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:71-79` loads an adapter's page only for a provider the user
 named. On 2026-09-29,
 Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
 call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
@@ -344,7 +344,7 @@ the rule in the model table and have the parity reference link it.
 "independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:11-17` names Luna
 for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review, refutation
 and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
-(`orchestrate/references/plan.md:50`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
+(`orchestrate/references/plan.md:58`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
 with no other Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`; neither records the effort): it said
 E92's isolation belongs with the unit that knows the agent's directory (it named the launcher) — the judge kept the
@@ -418,11 +418,12 @@ then either make the two cases pass there or have the suite say that they cannot
 
 ## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:83-90` ("A bulk row") states
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:91-97` ("A bulk row") states
 the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
-path"), the count ("Announce the unit count and how it was derived") and the tally ("Open one complete return before
-trusting a unanimous tally", moved there from the orchestrate page's Verification), and `:63-64` the pilot ("define
-the acceptance rule and pilot representative work. Compare the same inputs with a stronger reference").
+path") and the count ("Announce the unit count and how it was derived"), and `:71-72` the pilot ("define the
+acceptance rule and pilot representative work. Compare the same inputs with a stronger reference");
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:103-104` states the tally ("Open one complete return before
+trusting a unanimous tally of verifiers"), which the bulk row links.
 `plugins/entrust/plugin/skills/swarm/SKILL.md:24` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
 of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
@@ -433,7 +434,7 @@ brief's fixes and its effort", and `:34` the tally: "Read one return whole yours
 reference word for word and kept both copies, because the swarm page describes a swarm and a bulk batch may also run
 as ordinary agents, which it cannot own; the reference has since been cut to the shorter wording above. Found by Fable F1.
 
-**Check.** `grep -n 'describes the subject\|unit count\|derived from the units\|pilot\|unanimous\|one return whole' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
+**Check.** `grep -n 'describes the subject\|unit count\|derived from the units\|pilot\|unanimous\|one return whole' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/orchestrate/SKILL.md plugins/entrust/plugin/skills/swarm/SKILL.md`
 prints the lines in each file.
 
 **Issue text.** The rules for a bulk fan-out's unit, its derived count and its pilot are written twice: once in
