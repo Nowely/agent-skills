@@ -28,16 +28,6 @@ places correctly. The builder pays for it with ledger entries that excuse the ch
 `incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
 only contains it.
 
-## E158. The planted-card grader misses options recorded as a ledger array
-
-**Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/inputs.mjs:16-20` recognizes option labels
-in text; `:45` serializes an entry's `options` array without its field name. In the frozen Terra rerun, an entry
-names the missing contract data and contains two options, but `findQuestion` returns `named: true, surfaced: false`.
-Appending the label `Options:` to the same text returns `surfaced: true`. The grader uses these documents at
-`evals/design-to-code/cases/server-card-planted/grade.mjs:131-149`, so it can report `QUESTION NOT SURFACED` despite
-an entry having options. The run itself also stopped before a worker handover; this is not a claim that it passed.
-The reproduction and that distinction are in `research/2026-11-20-design-to-code/39-terra-045-rerun.md`.
-
 ## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
 
 **Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
@@ -135,9 +125,17 @@ journey cannot be written there; the builder of c1 passed the same journeys on t
 ## E151. Design-to-code builders write ledger entries that name every landmark of a frame
 
 **Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:185`, `:320`).** When one missing line
-moves everything below it, builders carry the consequence as one entry per frame naming every piece, which would also
-excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft 28.4's entries with a stated shift fixed
-it but multiplied proposals, and went with the gate.
+moved everything below it, builders carried the consequence as one entry per frame naming every piece, which would
+also excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft 28.4's entries with a stated shift
+fixed it but multiplied proposals, and went with the gate.
+
+**Since 0.46.1, level 3 for the check, not established for builders.** The missing text's own `presence` entry
+carries that shift, within the text's height and its gap (`design-to-code/references/check.md:228-235`), so the case
+seen needs no such entry, and a 20 px shift planted below the line stays a finding (`evals/design-to-code.test.mjs:2407`,
+`:2430`). Still open: nothing refuses an every-landmark entry a builder writes anyway, and a vertical shift with
+another cause than a missing text is carried by nothing. On three harness arms on the candidate, entries fell from a
+median of 7 to 3, one per reason; what each named was not recorded
+(`research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md`, "Results before the sitting").
 
 ## E150. A single text's type size within about 10 % is not told apart at 1× references
 
