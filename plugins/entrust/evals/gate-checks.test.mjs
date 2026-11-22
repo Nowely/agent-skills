@@ -270,8 +270,8 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
     );
   });
 
-test("the architecture critic, when the card's trigger holds: it ran, and returned before the plan critic or any worker was briefed",
-  "the card runs it when the solution adds a concept, changes a contract others consume, acts irreversibly or leaves the approach open; a verdict other than keep changes the approach the plan critic and the workers would work from",
+test("the architecture critic, when the card's trigger holds: it ran, a plan critic ran too, and it returned before the plan critic or any worker was briefed",
+  "the card runs it when the solution adds a concept, changes or removes a contract others consume, acts irreversibly or leaves the approach open, and then runs the plan critic too (probe P1, 2026-11-22: a coordinator ran the architecture critic and skipped the plan critic); a verdict other than keep changes the approach the plan critic and the workers would work from",
   () => {
     const arch = (s) => s.claude("Fable A1: architecture critic", "fable", "TASK: judge the approach: a new lib/slug.mjs", five());
     const plan = (s) => s.claude("Opus P1: plan critic", "opus", "TASK: judge the plan", five());
@@ -291,6 +291,7 @@ test("the architecture critic, when the card's trigger holds: it ran, and return
       expectSome(G.architectureProblems(work(plan(session())).parsed(), opts), /no architecture critic ran, though the card's trigger holds/),
       expectSome(G.architectureProblems(work(parallel).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
       expectNone(G.architectureProblems(work(plan(scouted)).parsed(), opts)),
+      expectSome(G.architectureProblems(work(arch(session())).parsed(), opts), /the architecture critic ran and no plan critic did/),
       expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed(), opts), /never returned/),
     );
   });

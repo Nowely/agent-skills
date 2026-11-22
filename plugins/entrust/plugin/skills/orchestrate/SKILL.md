@@ -61,8 +61,8 @@ user conversation and the synthesis; agents do the work.
 | Role | When | Tier |
 | --- | --- | --- |
 | coordinator | this session, throughout | the user's model, unless the user asks otherwise |
-| architecture critic | once, after approval and before the plan critic, when the solution adds a concept (a module, mechanism, flag, layer, state or dependency), changes a public interface or a contract other units consume, takes an irreversible or outward-facing action, or leaves several viable approaches, or when the user asks; the card says whether it runs and which trigger holds | top |
-| plan critic | once, after approval and the architecture critic, before the first worker brief; the card leaves it out only by saying why the plan is too small to need it | strong |
+| architecture critic | once, after approval and before the plan critic, when the solution adds a concept (a module, mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or when the user asks; the card says whether it runs and which trigger holds | top |
+| plan critic | once, after approval and the architecture critic, before the first worker brief; the card leaves it out only by saying why the plan is too small to need it, never when the architecture critic runs | strong |
 | worker | after the critics; usually one, one per owned deliverable | strong; cheap for mechanical work |
 | verifier | fresh, after the writes | strong |
 

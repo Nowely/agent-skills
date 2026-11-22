@@ -423,16 +423,20 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   return problems;
 }
 
-// When a card's trigger for the architecture critic holds: it ran, and it returned before the plan critic's
-// brief and before any worker's, since a verdict other than `keep` changes the approach they would work from. A
-// worker is a brief that names a unit of the task, as for the plan critic; a scout or a foreman is none.
+// When a card's trigger for the architecture critic holds: it ran, a plan critic ran too, and the architecture
+// critic returned before the plan critic's brief and before any worker's, since a verdict other than `keep` changes
+// the approach they would work from. A worker is a brief that names a unit of the task, as for the plan critic; a
+// scout or a foreman is none.
 export function architectureProblems(s, { units }) {
   const bs = briefs(s);
   const critic = bs.find((b) => roleOf(b) === "architecture critic");
   if (!critic) return ["no architecture critic ran, though the card's trigger holds"];
   if (critic.done === null) return ["the architecture critic never returned"];
-  const early = [...bs.filter((b) => roleOf(b) === "plan critic"), ...workersOf(bs, units)].filter((b) => b.seq < critic.done);
-  return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
+  const plan = bs.filter((b) => roleOf(b) === "plan critic");
+  const early = [...plan, ...workersOf(bs, units)].filter((b) => b.seq < critic.done);
+  const problems = plan.length ? [] : ["the architecture critic ran and no plan critic did"];
+  if (early.length) problems.push(`${early.length} plan critic or worker brief(s) written before the architecture critic returned`);
+  return problems;
 }
 
 // --------------------------------------------------------------- the answer
