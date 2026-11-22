@@ -10,6 +10,21 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E160. The live gate's index names cases 1, 5 and 6 for the codex page's load and the card's rows, which five cases check
+
+**Evidence, level 1.** `evals/orchestrate-live.test.mjs:28` ("the codex page loaded only by a plan with a Codex
+agent, before the launcher's first call  1, 5, 6") and `:29` ("the card's four rows and every registered agent on
+it  1, 5, 6") list three cases. Both checks run inside `planProblems` (`:449` `codexLoadProblems`, `:454`
+`cardProblems`), which cases 1 (`:628`), 2 (`:665`), 5 (`:846`), 6 (`:983`) and 7 (`:1036`) call. Found in passing
+while adding the card-minimum row at `:30`, which lists all five.
+
+**Check.** `grep -n 'planProblems(' plugins/entrust/evals/orchestrate-live.test.mjs` prints five calls besides the
+definition, one in each of cases 1, 2, 5, 6 and 7; `sed -n 28,29p` of the same file prints `1, 5, 6` for both rows.
+
+**Issue text.** The check index at the top of the live orchestrate gate says the codex page's load and the card's
+four rows are checked in cases 1, 5 and 6. Both run in `planProblems`, which cases 1, 2, 5, 6 and 7 call, so a
+reader who uses the index to find which cases cover a check misses cases 2 and 7. List the five cases in both rows.
+
 ## E159. The design check pairs a one-digit landmark with the same digit inside a longer page text
 
 **Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/prebuilt/.design/card/frames/card-486/spec.json:189`

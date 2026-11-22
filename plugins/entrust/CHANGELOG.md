@@ -31,6 +31,12 @@ forensics remain in the repository references and release notes.
 - The comment on the shapes a suite writes under the temporary directory names the live gate's code that builds
   them (`ART`, `caseDir`, `scratchClone`) instead of three line numbers that never held it (E157).
 
+### Known issues
+
+- New: E160, the live gate's check index lists three of the five cases that check the codex page's load and the
+  card's rows. The open ones are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.46.2 — 2026-11-22
 
 ### Orchestrate
