@@ -45,18 +45,25 @@ the `bytes` it printed, each frame's reference (`refs`: the image's and the spec
 ### The gate
 
 When the same finding, by its key, has come first in three rounds in a row, quick or complete, the check prints that
-finding alone with what to do and exits 4. Two ways out: fix it, or propose that one finding in the ledger with a
-reason (its frame, landmark and property). A list of landmarks, `*` or a region does not settle a finding the gate
-stopped on: it stays a failure. After two stops in one history, `--quick` is refused and only the complete check
-runs.
+finding alone with what to do and exits 4. Two ways out: fix it, or propose that one finding with a reason: a ledger
+entry for its frame, landmark and property; for a region, a `region` drawn round it; a consequence entry
+(`consequenceOf`, `shift`), since its shift bounds what it covers; for a journey, an entry with `"cause": "checker"`
+or a `category` where the design leaves the behaviour open; for an acceptance row, its result marked `pending:` with
+the question. A list of landmarks, `*` or a region drawn round more does not settle a finding the gate stopped on: it
+stays a failure. Only the rounds that measured a finding count toward it: a `--frame` round of another frame, a quick
+round for a journey, does not reset it. After two stops in one history, `--quick` is refused (the refusal is recorded)
+and only the complete check runs. Deleting `history.jsonl`, or a fresh `--out`, starts a new history and anchor; the
+handoff's round count shows it.
 
 ### The reference
 
 The first round that checks a frame records its reference: the image, and what the spec expects (its size, each
 landmark's box). A later round whose image differs, or whose spec drops a landmark, moves one or changes the frame's
 size, has a `reference` finding, "changed since round N", first of all, until a ledger entry for that frame
-(`"frame"`, `"property": "reference"`) says why. Naming more pieces is free; making the frames before the first check
-is too.
+(`"frame"`, `"property": "reference"`, and the `"digest"` the finding prints) says why. The entry settles that
+reference only: a later rewrite is a new finding. A frame's image is anchored where it first appears, and a frame
+renamed in `design.json` keeps its anchor through its files. Naming more pieces is free; making the frames before the
+first check is too.
 **Before** is the page the first check saw; delete `out/before/` for a new baseline.
 
 ## design.json
@@ -225,6 +232,7 @@ list item each, the candidate as the check prints it and after a colon the contr
 | `landmark` | a design text or a list of them, a selector, `root`, or `*` |
 | `property` | a finding's property (`x`, `height`, `text`, `type`, `region`, `overlap`, `wrap`, …), or `*` |
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px |
+| `digest` | for `reference`: the digest its finding prints, the reference it settles |
 | `frame` | a frame's name or a list of them; absent or `*` for all |
 | `max` | the largest difference in px it covers, at each width; only one with a size |
 | `id`, `consequenceOf`, `shift` | an entry's name; a consequence of the entry with that `id` (the row a missing line moves up): for `x`, `y`, `width` or `height`, it covers a difference of `shift` px, within the tolerance, and no other |
@@ -236,15 +244,15 @@ list item each, the candidate as the check prints it and after a colon the contr
 | `decidedBy`, `options` | who accepted it; for a proposal, the options and their cost |
 
 An entry that matches a finding settles it: accepted, it excuses it; proposed, of any category, it leaves it pending
-for the owner. An entry with `"cause": "checker"` may also name a failing journey (`"property": "journey"`, its name
-as the landmark): the journey waits for the owner instead of failing, and the evidence lists it under "Disputed with
-the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
+for the owner. An entry with `"cause": "checker"`, or with a `category` where the design or contract leaves the behaviour
+open, may also name a failing journey (`"property": "journey"`, its name as the landmark): the journey waits for the
+owner instead of failing, and the evidence lists one the check causes under "Disputed with the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
 
 An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
-status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
+status; with an unknown category or a `cause` other than `checker`; a journey entry with neither that cause nor a category; accepted
 without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text` without `actual` or with more
-than one design text; a consequence without its `shift` or without the entry it names; a `reference` entry without
-its frame; a proposed `x` or `y` entry for more than three landmarks without `shift`, since it would cover any offset
+than one design text; a consequence without its `shift`, without the entry it names, or naming another consequence; a
+`reference` entry without its frame or its `digest`; a proposed `x` or `y` entry for more than three landmarks without `shift`, since it would cover any offset
 of theirs. Entries of one cause that cover more than three findings are named first in the evidence, as broad
 excuses.
 
