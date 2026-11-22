@@ -2781,3 +2781,86 @@ test("doc 44, item 7 (E159): on the prebuilt planted card with its delivery line
   assert.ok(one?.status === "fail" && one.delta <= -50, JSON.stringify(f.issues));
 });
 
+
+// ------------------------------------------------------------------ 44, item 8: the component's width inside a journey
+
+// A page whose Filters button opens a 200 px sidebar beside the component's column (16 px of padding each side, a
+// 16 px gap). The component is a row of two texts that stacks below 360 px: by a container query on its column
+// (`own`), by a media query on the window that takes the column for the window less its padding (`window`), or once,
+// from its own width on load (`once`). With `stacked` the sidebar stacks above the column below 600 px. `#more` adds a
+// text to the row; `#wide` puts a 2000 px block on the page.
+function sidebarPage({ mode = "own", stacked = false } = {}) {
+  const f = smallFrame();
+  const switched = { own: ".col{container-type:inline-size}@container (width < 360px){.row{flex-direction:column}}",
+    window: "@media (max-width: 391px){.row{flex-direction:column}}", once: "main[data-mode=stack] .row{flex-direction:column}" }[mode];
+  f.write(`<style>.page{display:flex;gap:16px;padding:0 16px}aside{flex:0 0 200px}aside[hidden]{display:none}.col{flex:1 1 auto;min-width:0}
+main{width:auto;height:auto}.row{display:flex;gap:8px}${switched}${stacked ? "@media (max-width: 599px){.page{flex-direction:column}aside{flex:none}}" : ""}</style>
+<button id="filters">Filters</button><button id="more">More</button><button id="wide">Wide</button>
+<div class="page"><aside id="sidebar" hidden>Filters</aside><div class="col"><main><div class="row"><span>Ready</span><span>Steady</span></div></main></div></div>
+<script>const main = document.querySelector("main"), sidebar = document.getElementById("sidebar");
+${mode === "once" ? 'main.dataset.mode = main.clientWidth < 360 ? "stack" : "line";' : ""}
+document.getElementById("filters").onclick = () => { sidebar.hidden = !sidebar.hidden; };
+document.getElementById("more").onclick = () => main.querySelector(".row").insertAdjacentHTML("beforeend", "<span>Go</span>");
+document.getElementById("wide").onclick = () => document.body.insertAdjacentHTML("beforeend", '<div style="width:2000px;height:1px"></div>');</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  return (...steps) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "sidebar", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "sidebar");
+  };
+}
+const OPEN = [{ click: "#filters" }, { visible: "#sidebar" }];
+
+test("44.8: after each step, a container narrower than at the sweep's from, or a page that starts to scroll sideways, fails the step", browser, () => {
+  // At 400 px the column is 368 px; the sidebar leaves it 152, and a fresh load gives it 268 at the sweep's 300.
+  const squeezed = sidebarPage()({ width: 400 }, ...OPEN);
+  assert.equal(squeezed.pass, false, JSON.stringify(squeezed));
+  assert.equal(squeezed.failed, 'step 2, {"click":"#filters"}: after it the component\'s container is 152 px wide (368 before), narrower than the 268 px it has at the narrowest supported width, 300 px: what it opened takes the component\'s room; where there is no room beside, stack it above or below the component, or lay it over');
+  // Stacked above the column there, the sidebar leaves it its width; below the narrowest supported width nothing is held.
+  const stacked = sidebarPage({ stacked: true })({ width: 400 }, ...OPEN);
+  assert.ok(stacked.pass, JSON.stringify(stacked));
+  assert.deepEqual(stacked.held, [368], "the width step changed the container: held against a fresh load");
+  assert.ok(sidebarPage()({ width: 280 }, ...OPEN).pass);
+  const wide = sidebarPage()({ click: "#wide" }, { visible: "main" });
+  assert.equal(wide.pass, false, JSON.stringify(wide));
+  assert.match(wide.failed, /^step 1, \{"click":"#wide"\}: after it the page scrolls sideways, its content \d+ px wider than the window: keep what it opened inside the window, beside or over the component$/);
+});
+
+test("44.8: a step that changes the container's width holds the component against a fresh load whose container is held at that width", browser, () => {
+  // At 600 px the column is 568; with the sidebar open, 352. A fresh load with its column held at 352 stacks the row.
+  const journey = [{ width: 600 }, ...OPEN, { click: "#filters" }, { hidden: "#sidebar" }];
+  const own = sidebarPage()(...journey);
+  assert.ok(own.pass, JSON.stringify(own));
+  assert.deepEqual(own.held, [568, 352, 568]);
+  // Bound to the window, the row stays on one line in the narrowed column.
+  const bound = sidebarPage({ mode: "window" })(...journey);
+  assert.equal(bound.pass, false, JSON.stringify(bound));
+  assert.match(bound.failed, /^step 2, \{"click":"#filters"\}: after it the component's container is 352 px wide \(568 before\), and the component differs from a fresh load with its container held at 352 px: the root's height 48 px, fresh 80; \.row height 24, fresh 56; .*: lay it out by its own width whenever that changes \(a container query, or an observer on the component\), not by the window's or once on mount$/);
+  // Chosen once on load, at the frame's 268 px, it stays stacked when the window widens.
+  const once = sidebarPage({ mode: "once" })(...journey);
+  assert.match(once.failed, /^step 1, \{"width":600\}: after it the component's container is 568 px wide \(268 before\), and the component differs from a fresh load with its container held at 568 px: the root's height 80 px, fresh 48; \.row height 56, fresh 24/);
+  // A component that shows other text than a fresh load is not held, and the journey says so.
+  const other = sidebarPage({ mode: "window" })({ width: 600 }, { click: "#more" }, ...OPEN);
+  assert.ok(other.pass, JSON.stringify(other));
+  assert.deepEqual(other.notes, ["step 3: not held against a fresh load with the container at 352 px: the component shows other text than a fresh load"]);
+});
+
+// The catalogue page sized by the window, its sidebar opened at 960 px, where it leaves the list 632 px. Before item 8
+// both builds held this journey: the start code keeps the wide layout matchMedia picks from the 960 px window.
+function catalogueSidebarArm(build) {
+  const dir = catalogueArm(build);
+  const frames = [["card-764", 796], ["card-375", 407]].map(([name, width]) => ({ name, width,
+    spec: path.join(CATALOGUE, "pack", name, "spec.json"), reference: path.join(CATALOGUE, "pack", name, "reference.png") }));
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "index.html", root: ".card", frames, sweep: { from: 407, to: 1280 },
+    journeys: [{ name: "sidebar: Filters opens it beside the list and closes it", steps: [{ width: 960 }, ...OPEN, { click: "#filters" }, { hidden: "#sidebar" }] }] }));
+  return dir;
+}
+
+test("44.8, controls: the catalogue's start code fails its sidebar journey where the sidebar opens; the reference holds", browser, () => {
+  const sidebar = "sidebar: Filters opens it beside the list and closes it";
+  const start = check(catalogueSidebarArm("start"), "--no-sweep").result.journeys.find((j) => j.name === sidebar);
+  assert.equal(start.pass, false, JSON.stringify(start));
+  assert.match(start.failed, /^step 2, \{"click":"#filters"\}: after it the component's container is 632 px wide \(928 before\), and the component differs from a fresh load with its container held at 632 px: the root's height \d+ px, fresh \d+/);
+  const ref = check(catalogueSidebarArm("reference"), "--no-sweep");
+  assert.deepEqual(ref.result.journeys.filter((j) => !j.pass), [], ref.stdout);
+  assert.deepEqual(ref.result.journeys.find((j) => j.name === sidebar).held, [928, 632, 928]);
+});

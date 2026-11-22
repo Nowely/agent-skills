@@ -1345,10 +1345,11 @@ const STRESSED = ["overlap", "clipped", "outside", "covered"];
 // window (a media query, matchMedia, a script reading the window's width) is not.
 const WIDE_WINDOW = 1280, OWN_WIDTH = "the component's own width";
 // In the page: the content width of the root's container (its parent, past one that is display: contents or inline),
-// or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width.
+// or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width. The
+// root is the marked one, or with no mark the first a person sees.
 function containerIn([selector, mark, seen, width]) {
   const visible = new Function(`return (${seen})`)();
-  const root = document.querySelector(`[${mark}]`) ?? [...document.querySelectorAll(selector)].find(visible);
+  const root = (mark && document.querySelector(`[${mark}]`)) || [...document.querySelectorAll(selector)].find(visible);
   let box = root?.parentElement;
   while (box?.parentElement && /^(contents|inline)$/.test(getComputedStyle(box).display)) box = box.parentElement;
   if (!box) return null;
@@ -1540,7 +1541,7 @@ async function sweep(browser, cfg, ledger) {
 }
 
 // The component's geometry as a person sees it: the root's place on the page, its size and scrolled width, and each
-// visible child's box within it.
+// visible child's box within it; and the text it shows.
 const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
   const visible = new Function(`return (${seen})`)();
   const root = [...document.querySelectorAll(sel)].find(visible);
@@ -1550,14 +1551,15 @@ const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
     const b = c.getBoundingClientRect();
     return { name: c.className && typeof c.className === "string" ? `.${c.className.trim().split(/\s+/)[0]}` : c.localName, x: b.left - r.left, y: b.top - r.top, width: b.width, height: b.height };
   });
-  return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height, scrollWidth: root.scrollWidth, kids };
+  return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height, scrollWidth: root.scrollWidth, kids, text: root.innerText.replace(/\s+/g, " ").trim() };
 }, [selector, seenIn.toString()]);
-// What differs between two such geometries, beyond the tolerance.
-function layoutDiff(a, b, tolerance = 1) {
+// What differs between two such geometries, beyond the tolerance; without the root's place on the page when it sits
+// elsewhere by design (its container held in another window).
+function layoutDiff(a, b, tolerance = 1, { place = true } = {}) {
   if (!a || !b) return [a ? "the fresh load shows no root" : "the root is not shown"];
   const out = [];
   const px = (v) => Math.round(v * 10) / 10;
-  for (const k of ["x", "y", "width", "height", "scrollWidth"]) if (Math.abs(a[k] - b[k]) > tolerance) out.push(`the root's ${k} ${px(a[k])} px, fresh ${px(b[k])}`);
+  for (const k of [...(place ? ["x", "y"] : []), "width", "height", "scrollWidth"]) if (Math.abs(a[k] - b[k]) > tolerance) out.push(`the root's ${k} ${px(a[k])} px, fresh ${px(b[k])}`);
   if (a.kids.length !== b.kids.length) out.push(`${a.kids.length} children shown, fresh ${b.kids.length}`);
   else a.kids.forEach((c, i) => {
     const f = b.kids[i], moved = ["x", "y", "width", "height"].filter((k) => Math.abs(c[k] - f[k]) > tolerance);
@@ -1596,6 +1598,46 @@ async function journeys(browser, cfg) {
     const differs = layoutDiff(after, layout, cfg.tolerance);
     return differs.length ? `${when}, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}` : undefined;
   };
+  // The component's width inside a journey. After each step, the root's container (its parent) and how far the page
+  // scrolls sideways; a fresh load of the journey's page, once, for the container at the sweep's `from`, the narrowest
+  // supported width; and the component in a fresh load whose container is held at a width, as the component's own
+  // width holds it, in the window that leaves the page around the container as wide as the journey's start had it.
+  const from = cfg.sweep ? Number(cfg.sweep.from) : null;
+  const roomOf = async (page) => ({
+    width: await page.evaluate(containerIn, [cfg.root, null, seenIn.toString(), null]).catch(() => null),
+    ...await page.evaluate(([sel, seen]) => {
+      const visible = new Function(`return (${seen})`)(), root = [...document.querySelectorAll(sel)].find(visible);
+      return { beyond: document.documentElement.scrollWidth - document.documentElement.clientWidth, root: root ? Math.max(root.getBoundingClientRect().width, root.scrollWidth) : null };
+    }, [cfg.root, seenIn.toString()]).catch(() => ({ beyond: 0, root: null })),
+  });
+  const floors = new Map(), held = new Map();
+  const floorOf = async (j) => {
+    const key = JSON.stringify([j.url, Boolean(j.touch)]);
+    if (!floors.has(key)) {
+      let opened;
+      try {
+        opened = await open(browser, cfg, { url: j.url, width: from, touch: Boolean(j.touch), still: false });
+        floors.set(key, await container(opened.page, cfg));
+      } catch { floors.set(key, null); }
+      finally { await opened?.context.close(); }
+    }
+    return floors.get(key);
+  };
+  const heldOf = async (j, at, width) => {
+    const key = JSON.stringify([j.url, Boolean(j.touch), at, Math.round(width * 10) / 10]);
+    if (!held.has(key)) {
+      let opened;
+      const hold = (page) => container(page, cfg, width);
+      try {
+        opened = await open(browser, cfg, { url: j.url, width: at, touch: Boolean(j.touch), still: false, prepare: hold });
+        await hold(opened.page);
+        for (let i = 0; i < 2; i++) await settle(opened.page, cfg.root);
+        held.set(key, { layout: await layoutOf(opened.page, cfg.root) });
+      } catch (e) { held.set(key, { error: e.message.split("\n")[0] }); }
+      finally { await opened?.context.close(); }
+    }
+    return held.get(key);
+  };
   const edged = [];
   const openers = new Set();
   for (const j of cfg.journeys) {
@@ -1609,6 +1651,8 @@ async function journeys(browser, cfg) {
   for (const { j: base, edge, opener, at } of edged) {
     const j = edge ? { ...base, width: at, name: `${base.name} (at the window's ${edge} edge${at !== (base.width ?? width) ? `, ${at} px` : ""})` } : base;
     let opened, failed, overlaySeen = false, openerDone = false;
+    // Taken before the journey's page opens, as the held loads are taken after it closes: the journey keeps its pace.
+    const floor = from !== null ? await floorOf(j) : null;
     try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch), still: false }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
     if (opened && edge) {
@@ -1630,7 +1674,7 @@ async function journeys(browser, cfg) {
         continue;
       }
     }
-    const widths = opened ? [j.width ?? width] : [], asFresh = [];
+    const widths = opened ? [j.width ?? width] : [], asFresh = [], heldAt = [], toHold = [];
     const seen = new Set(), notes = [], closed = new Set();
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
@@ -1640,6 +1684,36 @@ async function journeys(browser, cfg) {
     let closes = false;
     if (opened) {
       const { page } = opened;
+      // The container as the journey starts, and the page around it then. The floor holds where the container narrows
+      // with the width (a host the page's flex row widens again does not).
+      let room = await roomOf(page), around = room.width === null ? null : widths[0] - room.width;
+      const least = room.width !== null && widths[0] > from && room.width <= floor + cfg.tolerance ? null : floor;
+      // After a step: a container narrower than at the narrowest supported width, or a page that starts to scroll
+      // sideways, fails it; a container whose width the step changed holds the component, as it is now, against a fresh
+      // load whose container is held at that width, once the journey is over. Below the narrowest supported width
+      // nothing is held to it.
+      const roomAfter = async (i, step) => {
+        const moved = (r) => r.width !== null && room.width !== null && Math.abs(r.width - room.width) > cfg.tolerance;
+        const spills = (r) => r.beyond > cfg.tolerance && !(room.beyond > cfg.tolerance);
+        let now = await roomOf(page);
+        if (moved(now) || spills(now)) { await finishMotion(page); now = await roomOf(page); }
+        const before = room.width, changed = moved(now), spilled = spills(now);
+        room = { width: now.width ?? room.width, beyond: now.beyond };
+        if (around === null && now.width !== null) around = widths.at(-1) - now.width;
+        if (from !== null && widths.at(-1) < from) return;
+        const px = (v) => Math.round(v);
+        if (changed && least > 0 && now.width < least - cfg.tolerance) {
+          throw new Error(`after it the component's container is ${px(now.width)} px wide (${px(before)} before), narrower than the ${px(least)} px it has at the narrowest supported width, ${from} px: what it opened takes the component's room; where there is no room beside, stack it above or below the component, or lay it over`);
+        }
+        if (spilled) {
+          throw new Error(now.root !== null && now.width !== null && now.root > now.width + cfg.tolerance
+            ? `after it the page scrolls sideways: the component is ${px(now.root)} px wide in its ${px(now.width)} px container: lay it out by its own width whenever that changes (a container query, or an observer on the component), not by the window's or once on mount`
+            : `after it the page scrolls sideways, its content ${px(now.beyond)} px wider than the window: keep what it opened inside the window, beside or over the component`);
+        }
+        if (!changed) return;
+        const after = await layoutOf(page, cfg.root);
+        if (after) toHold.push({ i, step, after, width: now.width, before, at: Math.max(1, Math.round(now.width + around)) });
+      };
       try {
         for (const [i, step] of j.steps.entries()) {
           if (failed) break;
@@ -1667,11 +1741,13 @@ async function journeys(browser, cfg) {
               await setWidth(page, cfg, step.width, 900);
               await settle(page, cfg.root);
               widths.push(step.width);
+              await roomAfter(i, step);
               continue;
             }
             if (EXPECT.includes(action)) await finishMotion(page);
             await runStep(page, step);
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
+            await roomAfter(i, step);
             if (step.visible) {
               // What opens must be in view, whole: a popover cut by the window's edge, or by a box that scrolls or
               // clips it, is a failure. An overlay only (positioned out of the flow, or a popup's role, or the nearest
@@ -1750,9 +1826,22 @@ async function journeys(browser, cfg) {
           }
         }
       } finally { await opened.context.close(); }
+      // The component as each step that changed its container's width left it, against a fresh load with the container
+      // held at that width: the first that differs fails the journey at its step, before whatever failed after it. One
+      // that shows other text than the fresh load (a popover open, a list filtered) is not compared.
+      for (const h of toHold) {
+        const px = Math.round, { layout, error } = await heldOf(j, h.at, h.width);
+        if (error || !layout) { notes.push(`step ${h.i + 1}: no fresh load with the container held at ${px(h.width)} px to compare with: ${error ?? "it shows no root"}`); continue; }
+        if (h.after.text !== layout.text) { notes.push(`step ${h.i + 1}: not held against a fresh load with the container at ${px(h.width)} px: the component shows other text than a fresh load`); continue; }
+        heldAt.push(px(h.width));
+        const differs = layoutDiff(h.after, layout, cfg.tolerance, { place: false });
+        if (!differs.length) continue;
+        failed = `step ${h.i + 1}, ${JSON.stringify(h.step)}: after it the component's container is ${px(h.width)} px wide (${px(h.before)} before), and the component differs from a fresh load with its container held at ${px(h.width)} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}: lay it out by its own width whenever that changes (a container query, or an observer on the component), not by the window's or once on mount`;
+        break;
+      }
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
-    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
+    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
       acted: [...acted], closes });
   }
   return results;

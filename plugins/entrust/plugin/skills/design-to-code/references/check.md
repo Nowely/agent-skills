@@ -86,6 +86,17 @@ an observer left on removed elements or a layout not chosen again shows. The che
 frames' widths and holds each against a fresh load at that width. After any journey, a `ResizeObserver` still observing
 an element the steps removed (the root, one inside it or one around it) fails it.
 
+**The component's width.** After each step, at a width the sweep covers, the check measures the root's container (its
+parent). The step fails the journey when the container is narrower than a fresh load gives it at the sweep's `from`,
+where it narrows with the width (what opened, a sidebar beside the list, takes the component's room), or when the page
+starts to scroll sideways. When
+the step changed the container's width, the component is held against a fresh load whose container is held at that
+width, as [the component's own width](#generated-conditions) holds it, in a window wider than the container by as much
+as at the journey's start; what differs beyond the tolerance fails the step, so a layout bound to the window, or chosen
+once on mount, shows where a sidebar narrows its column. A component showing other text than that fresh load (a
+popover open, a list filtered) is not held, and the journey notes it. Each failure names the journey, the step and what
+to fix.
+
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
 one that acts on the element its setup opened it from. Each journey that opens something also runs with the opener
