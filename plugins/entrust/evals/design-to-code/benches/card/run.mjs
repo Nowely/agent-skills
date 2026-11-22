@@ -49,6 +49,8 @@ const MUTANTS = [
   { name: "dropped-disk", expect: ["text"], change: js("o.disks.map(dsk)", "o.disks.slice(0, 2).map(dsk)") },
   { name: "overlap", expect: ["overlap"], change: css(".offer .cpu-model { margin-left: -60px; }") },
   { name: "column-shift", expect: ["offset"], change: css("[data-mode=\"wide\"] .ram { margin-left: 30px; }") },
+  // The column shift's clean twin (doc 44, item 6): the wide row's padding moved 10 px, every relation kept.
+  { name: "common-shift", expect: [], change: css("[data-mode=\"wide\"] .card { padding-left: 26px; padding-right: 6px; }") },
   { name: "order-swap", expect: ["offset"], change: css("[data-mode=\"mid\"] .stock .kit-icon { order: 1 !important; }") },
   { name: "disk-format", expect: ["text"], change: js("${esc(d.size)} × ${esc(d.count)}</span> <span class=\"t-muted\">", "${esc(d.count)} × ${esc(d.size)}</span> <span class=\"t-muted\">") },
   { name: "cut-sku", expect: ["cut"], change: css(".offer .sku { overflow: hidden; max-width: 120px; white-space: nowrap !important; }") },

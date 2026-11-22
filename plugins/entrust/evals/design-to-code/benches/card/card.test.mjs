@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const MIN_CAUGHT = 14; // of 15; column-shift is missed today (ISSUES.md E149)
+const MIN_CAUGHT = 15; // of 15 since doc 44, item 6 caught column-shift; common-shift is its clean twin
 const playwright = (() => {
   for (const name of ["playwright", "@playwright/test", "playwright-core"]) {
     try { createRequire(path.join(process.cwd(), "noop.js")).resolve(name); return true; } catch { /* next */ }
