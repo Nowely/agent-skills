@@ -37,7 +37,7 @@ case directory inside it as `${n}-${slug}`", and `:167-168` "the git clone insid
 and `:167-168` are comment lines of the process helper ("TERM before KILL, and to the GROUP"); the artifact directory is
 built at `:123`, the case directory at `:125` and the clone at `:196` and `:201`. The addresses were already stale at
 `def9f23` (`:87` the header's "Case 4 measures the agent", the builder at `:122`) and at `0665237`, the repository's
-first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3336-3337`, the 0.12.0 note,
+first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3389-3390`, the 0.12.0 note,
 quotes the same three addresses; that release predates the repository's first commit, so whether they held then cannot
 be checked here. Found by an implementer of the orchestrate rework's minimum team, 2026-11-22.
 
