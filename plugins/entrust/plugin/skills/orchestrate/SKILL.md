@@ -71,7 +71,7 @@ and an architecture critic stands in for neither. Any other role joins only when
 ## Other providers
 
 A provider, model or route other than the host's own appears only when the user names it, in the conversation or
-the user's or project's instructions (CLAUDE.md, AGENTS.md). A named model the host runs natively is native. For any other, run
+the user's or project's instructions (CLAUDE.md, AGENTS.md). Each named model the host runs natively is native. For any other, run
 `node "<skill-dir>/scripts/adapter-status.mjs" --skip <the adapter of the host's own provider>` and route each named
 model through the adapter that lists it; then follow [external.md](references/external.md) and that adapter's page.
 Nothing proposes another provider unprompted, a cross-family second opinion included. The
