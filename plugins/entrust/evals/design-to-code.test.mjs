@@ -2011,6 +2011,36 @@ test("draft 28.2: one text a fifth or more off its drawn ink height is a type fi
   assert.ok(small.issues.some((i) => i.landmark === "the type" && /smaller than drawn/.test(i.actual) && !/token|propose/.test(i.actual)), JSON.stringify(small.issues));
 });
 
+// Draft 28.3: texts of a screenshot's spec with their drawn width and ink height, and the page's, in a font 8 % wider
+// throughout. The price is c282c's at 486, which the blind review returned as set about 2 px smaller than drawn: ink
+// 15 → 14 px, 154 → 146 px wide, where the font alone would make it 166.
+const sized = (page) => {
+  const drawn = { Server: [74, 10], "32 cores": [62, 10], "128 GB": [53, 9], "2 × 838": [46, 10], "×2": [13, 10], Frankfurt: [72, 13], "125 898,00 ₽ / месяц": [154, 15] };
+  const texts = Object.keys(drawn);
+  const spec = { frame: { width: 486, height: 228 }, source: "image boxes", landmarks: texts.map((text, i) => ({ text, box: box(16, 12 + i * 24, ...drawn[text]) })) };
+  const measured = { root: { width: 486, height: 228 }, landmarks: texts.map((text, i) => {
+    const [w, h] = page[text] ?? [drawn[text][0] * 1.08, drawn[text][1]];
+    return { found: true, box: box(16, 12 + i * 24, w, h), align: "left" };
+  }) };
+  return compareFrame({ frame: "card-486", spec, measured }).issues.filter((i) => i.property === "type");
+};
+
+test("draft 28.3: one text a size off by its width against the frame's font, with its ink the same way, is a type finding", () => {
+  const price = sized({ "125 898,00 ₽ / месяц": [146, 14] });
+  assert.deepEqual(price.map((i) => [i.landmark, i.status, i.delta]), [["125 898,00 ₽ / месяц", "fail", -12]], JSON.stringify(price));
+  assert.match(price[0].actual, /^12 % smaller than drawn, by its width against the frame's font and its ink height \(15 → 14 px\)/);
+  assert.deepEqual(sized({ "125 898,00 ₽ / месяц": [182, 16] }), [], "9 % wider and taller: under the bar");
+  assert.deepEqual(sized({ "125 898,00 ₽ / месяц": [186, 16] }).map((i) => i.delta), [12], "12 % wider and taller");
+  // Not another size: narrower with the same ink (a narrower face, a letter-spacing); narrower but taller; a short
+  // text whose few pixels of width are a tenth of it ("×2", 10 → 9 px of ink, 2 px narrower).
+  assert.deepEqual(sized({ "125 898,00 ₽ / месяц": [146, 15] }), [], "the same ink height");
+  assert.deepEqual(sized({ "125 898,00 ₽ / месяц": [146, 16] }), [], "narrower but taller");
+  assert.deepEqual(sized({ "×2": [12, 9] }), [], "a short text");
+  // A stand-in wordmark: the page sets "Server" in the kit's font where the frame draws a logo, 32 % narrower than the
+  // font explains while its ink is a pixel lower: not a size the frame draws, and not the page's to match.
+  assert.deepEqual(sized({ Server: [74 * 1.08 * 0.68, 9] }), [], "a wordmark");
+});
+
 test("draft 28.2: a spec with no font sizes says the type's size was not compared; the design context gives them by node id", () => {
   const spec = specFromMetadata(RELATIVE);
   const measuredHere = { root: { width: 280, height: 200 }, landmarks: spec.landmarks.map((l) => ({ found: true, box: l.box, align: "left", font: { size: 14 } })) };

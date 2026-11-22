@@ -117,7 +117,10 @@ twice; ink in no landmark and not skipped keeps it incomplete. The page's boxes 
 compared by place within 4 px. A text wider in the page's font moves the next piece, and that is the font's; heights
 are not compared. **The type's size** is the trimmed mean (the middle 60 %) of the page's ink heights over the
 design's, with five texts or more: 10 % or more off is a `type` finding. One text 20 % or more off by its own ink (a
-price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it).
+price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it). A
+size a step off (a price 2 px smaller) moves the ink by a pixel, as rounding does; it moves the width by ten times as
+many. So one text is also a `type` finding when it is 10 % and 6 px wider or narrower than the frame's font explains
+(the median of the texts' width ratios) and its ink is taller or lower the same way.
 
 Either way, texts stacked on one left edge stay on it (`align`), an area outside the texts whose pixels differ is a
 `region`, and a font the page asks for that cannot draw its text is named.

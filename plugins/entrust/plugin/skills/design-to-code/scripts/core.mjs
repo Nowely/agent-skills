@@ -467,7 +467,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // changes a cap height by a few per cent; a size of another class changes it by more. Recorded for every frame.
   // The mean of the middle sixty per cent: a box that holds an icon beside its text, or a line the font draws taller,
   // falls at the ends.
-  const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height, ...(p.l.joined ? { joined: true } : {}) }));
+  const heights = placed.filter((p) => p.l.text && p.l.box.height >= 6 && p.m.box.height > 0).map((p) => ({ label: p.label, ratio: p.m.box.height / p.l.box.height, drawn: { width: p.l.box.width, height: p.l.box.height }, page: { width: p.m.box.width, height: p.m.box.height }, ...(p.l.joined ? { joined: true } : {}) }));
   const middle = heights.map((h) => h.ratio).sort((a, b) => a - b).slice(Math.floor(heights.length * 0.2), heights.length - Math.floor(heights.length * 0.2));
   const typeRatio = heights.length >= 5 ? middle.reduce((a, b) => a + b, 0) / middle.length : null;
   const sized = (r) => `${Math.round(Math.abs(r - 1) * 100)} % ${r < 1 ? "smaller" : "larger"} than drawn`;
@@ -477,8 +477,23 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   }
   // One text set in another size, a price larger than drawn, whatever the rest do: a fifth or more off by its own ink.
   // A box the spec gives itself holds more than its text (an icon joined to its label), so its ink says nothing.
-  if (boxesSpec) for (const h of heights) if (!h.joined && Math.abs(h.ratio - 1) >= 0.2) {
-    add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws`, { delta: Math.round((h.ratio - 1) * 100) });
+  // A size a step off (a price 2 px smaller) moves its ink height by a pixel or two, as much as rounding moves another
+  // text's; its width moves by ten times as many pixels. So one text is also another size when it is 10 % and 6 px
+  // wider or narrower than the frame's font explains, and its ink moves with it: the same way, and to within a pixel
+  // and a half of where that width puts it. A wider font changes every text's width alike and leaves the height; a
+  // wordmark drawn in its own letters (a stand-in logo) is far narrower or wider than its ink says.
+  if (boxesSpec) for (const h of heights) {
+    if (h.joined) continue;
+    if (Math.abs(h.ratio - 1) >= 0.2) {
+      add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws`, { delta: Math.round((h.ratio - 1) * 100) });
+      continue;
+    }
+    if (!fontRatio || !(h.drawn?.width > 0)) continue;
+    const across = h.page.width / fontRatio / h.drawn.width, gap = h.page.width / fontRatio - h.drawn.width, rise = h.page.height - h.drawn.height;
+    const withIt = Math.sign(rise) === Math.sign(gap) && Math.abs(rise) >= 0.5 && Math.abs(h.page.height - h.drawn.height * across) <= 1.5;
+    if (Math.abs(across - 1) >= 0.1 && Math.abs(gap) >= 6 && withIt) {
+      add(h.label, "type", "as drawn", `${sized(across)}, by its width against the frame's font and its ink height (${round(h.drawn.height)} → ${round(h.page.height)} px): a size of another class; set the size the frame draws`, { delta: Math.round((across - 1) * 100) });
+    }
   }
   // A spec that states no font size (an MCP outline without its design context) leaves the type's size unchecked.
   const typeUnchecked = !boxesSpec && spec.landmarks.some((l) => l.text) && !spec.landmarks.some((l) => Number.isFinite(Number(l.font?.size)));
@@ -578,7 +593,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     : classified.some((i) => i.status === "pending") ? "pending" : "pass";
   return {
     frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(typeUnchecked ? { typeUnchecked } : {}), ...(spec.source === "page snapshot" ? { snapshot: true } : {}), ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
-    ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map((h) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
+    ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map(({ drawn, page, ...h }) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
     // A region has no size of its own to give, only its place.
     ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.delta) }), ...(i.box ? { box: i.box } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
