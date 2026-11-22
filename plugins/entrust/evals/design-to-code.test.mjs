@@ -2736,3 +2736,48 @@ test("44, controls: the catalogue card's reference build gets no new finding; wi
   assert.deepEqual(failed, [["list: emptied by the search and restored, the cards come back",
     "after its steps, a ResizeObserver still observes 3 elements removed from the page (article.card): disconnect it on unmount and observe what mounts"]]);
 });
+
+// E159: a one-digit landmark, the stock count "1", with the same digit inside a longer text drawn above it; two "HDD"
+// beside "4 TB" for labels that do repeat.
+const STOCK = ({ stock = 16, whole = false, order = "row" } = {}) => `<main style="position:relative;width:420px;height:90px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:12px">Выдача за 1 день</div>
+<div style="position:absolute;left:16px;top:40px;display:flex;gap:40px;flex-direction:${order}"><span>HDD</span><span>4 TB</span><span>HDD</span></div>
+<div style="position:absolute;right:${stock}px;top:64px">${whole ? "Доступно 1" : "<span>Доступно</span> <span>1</span>"}</div></main>`;
+
+test("doc 44, item 7 (E159): a text no other landmark repeats is the hit nearest its box, not the same digit inside a longer text; repeated labels pair by place", browser, () => {
+  // Before, the "1" was paired with the delivery line's (x -307, y -51) and its own was page text not in the design.
+  let r = boxCase(STOCK(), STOCK(), 420);
+  assert.deepEqual(r.spec.landmarks.map((l) => l.text), ["Выдача за 1 день", "HDD", "4 TB", "HDD", "Доступно", "1"]);
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  // The page in one text node, "Доступно 1", where the design draws two pieces; the labels in another DOM order.
+  for (const page of [STOCK({ whole: true }), STOCK({ order: "row-reverse" })]) {
+    r = boxCase(STOCK(), page, 420);
+    assert.equal(r.frame.verdict, "pass", r.stdout);
+  }
+  // A "1" that is displaced still fails, with its label.
+  r = boxCase(STOCK(), STOCK({ stock: 76 }), 420);
+  const moved = r.frame.issues.filter((i) => i.status === "fail" && i.property === "x");
+  assert.deepEqual(moved.map((i) => i.landmark), ["Доступно", "1"], r.stdout);
+  assert.ok(moved.every((i) => i.delta <= -50), JSON.stringify(moved));
+  assert.deepEqual(r.frame.unexpected, []);
+});
+
+test("doc 44, item 7 (E159): on the prebuilt planted card with its delivery line rendered at 486, the stock's “1” is its own", browser, () => {
+  const deliver = (dir) => {
+    const arm = path.dirname(path.dirname(dir));
+    const edit = (file, from, to) => { const f = path.join(arm, file), s = fs.readFileSync(f, "utf8"); assert.ok(s.includes(from), file); fs.writeFileSync(f, s.replace(from, to)); };
+    edit("data.js", '"card-486": { id: "o-486",', '"card-486": { id: "o-486", delivery: "Выдача за 1 день",');
+    edit("card.js", "return `<div class=\"card__grid\">", 'return `${o.delivery ? `<div class="delivery t-caption">${esc(o.delivery)}</div>` : ""}<div class="card__grid">');
+    return dir;
+  };
+  // Before: "1" x -352 and y -212, paired with the delivery line's "1", and the stock's own "1" was page text not in
+  // the design.
+  let f = check(deliver(plantedArm()), "--frame", "card-486").result.frames[0];
+  assert.deepEqual(f.issues.filter((i) => i.landmark === "1"), [], JSON.stringify(f.issues));
+  assert.deepEqual(f.unexpected, []);
+  // The stock 60 px from its place: its "1" goes with it, a finding.
+  f = check(deliver(plantedArm('.card[data-mode="narrow"] .stock { margin-inline-end: 60px; }')), "--frame", "card-486").result.frames[0];
+  const one = f.issues.find((i) => i.landmark === "1" && i.property === "x");
+  assert.ok(one?.status === "fail" && one.delta <= -50, JSON.stringify(f.issues));
+});
+

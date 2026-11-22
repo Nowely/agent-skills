@@ -14,6 +14,11 @@ forensics remain in the repository references and release notes.
   against the processor was never compared. Another edge now takes over from the one the text's alignment holds only
   when it moved less by more than the tolerance. The card bench catches 15 of 15 classes; a new clean twin that moves
   every piece of the row 10 px stays clean, and no clean build is blocked.
+- **A one-digit landmark is paired with its own text** (E159). On a screenshot's spec, a text was paired with the
+  page's first match in reading order, so on the prebuilt planted card with its delivery line rendered at 486, the
+  stock's "1" was paired with the "1" of "Выдача за 1 день" (`x` -352, `y` -212) and its own "1" was page text not in
+  the design. A text no other landmark repeats is now paired with the match nearest its box; repeated labels keep
+  reading order. The frame then shows only the build's own findings, and a stock moved 60 px still fails.
 
 ### Design-to-code evals
 

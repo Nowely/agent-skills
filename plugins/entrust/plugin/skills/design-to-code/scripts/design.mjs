@@ -575,7 +575,11 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
           const lines = lineBoxes(r.range, r.el);
           return lines.length ? { r, b: boxOf(lines) } : null;
         }).filter(Boolean).sort((a, b) => (Math.abs(a.b.y - b.b.y) > Math.min(a.b.height, b.b.height) / 2 ? a.b.y - b.b.y : a.b.x - b.b.x));
-        const pick = placed[l.nth ?? 0];
+        // A text no other landmark repeats is the hit nearest its box: a short one (a count, "1") also sits inside
+        // longer texts ("Выдача за 1 день"), and the first of them in reading order is not it.
+        const alone = landmarks.filter((x) => x.text !== undefined && key(x.text) === key(l.text)).length === 1;
+        const away = (h) => Math.hypot(h.b.x - l.near.x, h.b.y - l.near.y);
+        const pick = alone ? [...placed].sort((a, b) => away(a) - away(b))[0] : placed[l.nth ?? 0];
         return pick ? match(pick.r.range, pick.r.el, pick.r.start) : { found: false };
       }
       const hit = ranges[l.nth ?? 0];

@@ -119,8 +119,9 @@ piece of ink and every filled shape numbered, and `boxes.png` to read the number
 
 A text reads as the frame shows it; a selector names the page's element for an icon or a shape. The frame is not
 measured while a landmark has no text or selector, names a missing piece or takes in another's, or a piece is named
-twice; ink in no landmark and not skipped keeps it incomplete. The page's boxes are made tight to their ink and
-compared by place within 4 px. A text wider in the page's font moves the next piece, and that is the font's; heights
+twice; ink in no landmark and not skipped keeps it incomplete. A text several landmarks share is paired with the
+page's in reading order; one no other landmark repeats, with the page's nearest its box, so a count "1" is not the
+"1" inside "Выдача за 1 день". The page's boxes are made tight to their ink and compared by place within 4 px. A text wider in the page's font moves the next piece, and that is the font's; heights
 are not compared. **The type's size** is the trimmed mean (the middle 60 %) of the page's ink heights over the
 design's, with five texts or more: 10 % or more off is a `type` finding. One text 20 % or more off by its own ink (a
 price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it). A

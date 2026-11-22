@@ -17,24 +17,6 @@ before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) 
 marks it missing and setup exits 1. The owner allowed this P to run without inventing returns; the setup warning and
 its impact are recorded in `research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
 
-## E159. The design check pairs a one-digit landmark with the same digit inside a longer page text
-
-**Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/prebuilt/.design/card/frames/card-486/spec.json:189`
-names the stock count as the landmark "1". The planted frame also draws "Выдача за 1 день". In two Sonnet arms on the
-prebuilt planted card, b1 on 0.45.0 and n1 on the 0.46.1 candidate `1f3684e`, the builder rendered that line. Both
-times the check paired the stock "1" with the header's "1": `x` -341 and a `y` gap of -216, both well placed on the page.
-Card-486 was left `incomplete`, and each builder wrote two `cause: checker` entries
-(`research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md`, "Results before the sitting").
-
-**Check.** Make the prebuilt arm (`make-arm.mjs <dir> --prebuilt`), add a `delivery` value to the 486 frame's data
-entry, render it above the SKU, and run the complete check. The 486 report pairs "1" with the header line.
-
-**Issue text.** When a landmark's text is a short token, such as one digit, that also occurs inside a longer text on
-the page, the design check can pair the landmark with the longer text. It then reports offsets for a piece the page
-places correctly. The builder pays for it with ledger entries that excuse the checker, and the frame can stay
-`incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
-only contains it.
-
 ## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
 
 **Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
