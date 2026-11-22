@@ -17,15 +17,15 @@ round.
 That one stopped at its first handover, after one check, to ask approval of a plan, as the worker's active instructions
 require; it named the line in prose and wrote no ledger entry, so the gate it was to test never came. Since then:
 
-- **The draft:** the gate is gone (draft 28.5). In iteration 7 it did not move its measure on Sonnet: 1 of 3 runs
-  proposed in time, against 2 of 3 with 28.3's advisory notice, at more calls, and the bending moved from the
-  references to specs, data and the tolerance. 28.5 keeps 28.3's notice, says on the page that the inputs are the
-  owner's and that `pending` with a proposal is a normal handover, and that a ledger entry is written without asking.
+- **The draft:** the shipped skill, entrust 0.45.0 (`bc54fde` on main): draft 28.3, the joined-text type fix, and the
+  page's line that a ledger entry records a question and is written without asking. The gate (28.4) and the inputs
+  record (28.5) did not move their measures on Sonnet and are not in it ([the release
+  decision](35-iteration-7.md#the-release-decision)).
 - **The measure:** the grader reads the handover on the question with options, the inputs against the case's, and the
   rounds (see the reading rule below).
 - **A changed condition, recorded as such:** the plan's approval travels in the task prompt (step 4).
 
-The version under test: the skill at `f1a2eef` (draft 28.5). Always pass that hash, never the branch's head.
+The version under test: the skill at `bc54fde` (entrust 0.45.0, on main). Always pass that hash, never the branch's head.
 
 ## What it measures
 
@@ -99,7 +99,7 @@ it another way: note how.
    ```
 
    ```bash
-   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill f1a2eef
+   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill bc54fde
    ```
 
 2. **Check that Chromium starts from the arm.** The check resolves Playwright from the folder it runs in, then from the
@@ -174,7 +174,7 @@ it another way: note how.
   - `QUESTION NOT SURFACED`, or `HACKED`: it does not. The plan's fallback (draft 29) is weighed before the one real run.
   - A handover before any complete check, or 60 calls before the line is put: not read either way. The other measures
     still count.
-- **The cost:** the rounds and the calls to the handover, read against the Sonnet runs on 28.5.
+- **The cost:** the rounds and the calls to the handover, read against the Sonnet runs on 28.3 and 28.5.
 - **Polling, recorded and not scored:** empty polls per complete check, and the waits asked. Waits of 5 s every time
   mean the page's "look every few minutes" does not reach Codex's poll, and iteration 8's setup must address it.
 - **Permissions:** no prompt for the check. Any other prompt is listed with its command, for iteration 8's rules.
@@ -182,3 +182,9 @@ it another way: note how.
   - **Yes:** iteration 8 keeps the review pass inside the run.
   - **No:** the owner starts it in a second session, as in [the earlier run](30-terra-run.md#4-the-review-pass-on).
     The first checkpoint is then the builder's own handover, before the review.
+
+## What else it records
+
+From Terra's rollout log, with no new detector: the first request's input tokens; the input per call at calls 1,
+15, 30 and 60 (or the last); the ten largest tool outputs, and which are the check's. These decide whether the
+context is worth trimming before the real run.
