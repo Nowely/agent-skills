@@ -1919,7 +1919,7 @@ test("draft 28: the generated conditions find an overlap only longer texts cause
   r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style>${list("")}`).dir);
   assert.equal(r.status, 0, r.stdout);
   assert.deepEqual(r.result.sweep.issues, []);
-  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "the component's own width"]);
 });
 
 test("draft 28: a block as narrow as its longest word and a row of chips wrap as drawn; a block of a width of its own and a chip's own text wrap with room", browser, () => {
@@ -2167,7 +2167,7 @@ test("draft 28.2: the generated conditions double a list's rows, nested ones too
   // Buttons side by side are not a list: doubled, they would run out of the card.
   let r = check(smallFrame('<div style="display:flex;gap:8px"><button class="btn" style="white-space:nowrap">Configure</button><button class="btn" style="white-space:nowrap">Order</button></div>').dir);
   assert.deepEqual(r.result.sweep.issues.filter((i) => i.story === "the frames' page, entries doubled"), [], JSON.stringify(r.result.sweep.issues));
-  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "the component's own width"]);
   // Rows of a list, each with its disks in a box of two lines: doubled, each row's disks are doubled too, and cut.
   const disks = '<div style="height:48px;overflow:hidden"><div class="disk">A</div><div class="disk">B</div></div>';
   r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style><div class="row">${disks}</div><div class="row">${disks}</div>`).dir);

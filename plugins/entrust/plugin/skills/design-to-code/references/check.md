@@ -196,11 +196,18 @@ resized a pixel and back with a resize event, so that one that picks its layout 
 what it renders anew takes the condition too. Their texts are not the product's, so only `overlap`, `clipped`,
 `outside` and `covered` count, and a text set not to wrap (`white-space: nowrap`) is no cut under longer texts.
 
+A third, **the component's own width** (`window`, named by the frame), takes each frame's width once: the frame's
+page and setup in a window of that width, then in a 1280 px window with the root's parent held at the content width
+it had, by `width`, `min-width` and `max-width` on it, before the setup and after. Which texts share a row, the root's
+size and the spec's landmarks must agree within the tolerance. A layout bound to the window (a media query,
+`matchMedia`, a script reading the window's width) differs; one laid out by its container (a container query, an
+observer on the component) does not. A frame with its own root is not tried.
+
 What they find is a **candidate**, not a finding: it fails nothing and scores nothing, but an unanswered one leaves a
-complete check incomplete. Answer it by reproducing it with legal data (a story with a real long value, or a
-supported locale: then the story's own finding counts), or under a heading that names candidates in `review.md`, one
-list item each, the candidate as the check prints it and after a colon the contract's bound that rules it out:
-`- Ready Re × Go G: the label is at most 8 characters (api/types.ts)`.
+complete check incomplete. Answer it by reproducing it with legal data (a story with a real long value, a supported
+locale, or a container narrower than the window: then the story's own finding counts), or under a heading that names
+candidates in `review.md`, one list item each, the candidate as the check prints it and after a colon the contract's
+bound that rules it out: `- Ready Re × Go G: the label is at most 8 characters (api/types.ts)`.
 
 ## The ledger
 

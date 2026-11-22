@@ -981,7 +981,7 @@ const sweepNotes = (noted) => `${noted.length} note${noted.length === 1 ? "" : "
 // What a generated condition found: a candidate, not a finding, until legal data reproduces it or review.md names the
 // contract's bound that rules it out.
 const candidates = (sweep, answered = false) => (sweep?.issues ?? []).filter((i) => i.status === "candidate" && Boolean(i.answer) === answered);
-const candidateLine = (open) => `${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story}${i.ranges ? `, ${i.ranges}` : ""})`).join(", ")}${open.length > 4 ? `, and ${open.length - 4} more` : ""}; reproduce each with legal data (a story with a real long value, a supported locale), or name in review.md, under Candidates, the contract's bound that rules it out`;
+const candidateLine = (open) => `${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story}${i.ranges ? `, ${i.ranges}` : ""})`).join(", ")}${open.length > 4 ? `, and ${open.length - 4} more` : ""}; reproduce each with legal data (a story with a real long value, a supported locale, a container narrower than the window), or name in review.md, under Candidates, the contract's bound that rules it out`;
 const typeNote = "type sizes not compared: the spec gives no font sizes (`design.mjs spec … --context` reads them from the design context)";
 // The notes a frame keeps, in a line: offsets and drifts with the largest, then what else, by kind.
 const noteLine = (f) => {
@@ -1238,7 +1238,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const generated = (sweep?.issues ?? []).filter((i) => i.status === "candidate");
   if (generated.length) {
     out.push("", "## Candidates from the generated conditions", "",
-      "A collision found only under longer texts or doubled entries is not a finding until legal data reproduces it (then the story's own finding counts); until then it is answered in review.md, under Candidates, by the contract's bound that rules it out.", "");
+      "A collision found only under longer texts or doubled entries, or a layout that differs in a wider window with its container held, is not a finding until legal data reproduces it (then the story's own finding counts); until then it is answered in review.md, under Candidates, by the contract's bound that rules it out.", "");
     for (const i of generated) out.push(`- ${i.answer ? "answered" : "unanswered"}: ${say(i)}${i.answer ? ` — ${i.answer}` : ""}`);
   }
   const constructs = (sweep?.issues ?? []).filter((i) => i.property === "construct");

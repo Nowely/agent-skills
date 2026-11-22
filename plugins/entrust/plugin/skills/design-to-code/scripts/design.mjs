@@ -276,7 +276,7 @@ function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale 
 }
 
 async function open(browser, cfg, target) {
-  const { url, width, setup = [], height = 900, still = true } = target;
+  const { url, width, setup = [], height = 900, still = true, prepare } = target;
   const context = await browser.newContext(contextOptions(cfg, target));
   const page = await context.newPage();
   // A step on something that never appears fails in seconds, not in Playwright's default half minute.
@@ -286,6 +286,8 @@ async function open(browser, cfg, target) {
   await page.mouse.move(-5, -5);
   if (still) await page.addStyleTag({ content: STILL });
   if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
+  // What a condition sets before the setup acts: the root's container held at a width.
+  if (prepare) await prepare(page);
   try {
     for (const step of setup) await runStep(page, step);
     await page.locator(cfg.root).first().waitFor({ state: "attached", timeout: 15000 });
@@ -405,6 +407,12 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     range.setStart(n, n.data.search(/\S/));
     range.setEnd(n, n.data.trimEnd().length);
     return range;
+  };
+  // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
+  // wraps keeps its first line's place, so wrapping inside one layout does not count.
+  const rowsOf = (nodes) => {
+    const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
+    return tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
   };
   // Every text's line boxes relative to the root: the areas the pixel comparison leaves to the text checks.
 
@@ -534,7 +542,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       })) missing.add(first);
     }
     const textLines = nodes.filter((n) => !glyphNodes.has(n)).flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => ({ text: norm(n.data), box: boxOf([line]) })));
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected };
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected, rows: rowsOf(nodes) };
   }
 
   if (command === "snapshot") {
@@ -821,10 +829,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       }
     }
   }
-  // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
-  // wraps keeps its first line's place, so wrapping inside one layout does not count.
-  const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
-  const rows = tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
+  const rows = rowsOf(nodes);
   // A control the pointer cannot fully reach: another element lies over part of it, as an action laid over a help
   // icon. Its centre and four inner points are tried, the window scrolled to it; a point on the control's own label,
   // or cut away by a clipping ancestor, does not count.
@@ -1034,6 +1039,14 @@ function beforeFrame(out, frame, settings, shot, absent) {
   return { ...(hasImage ? { image: dataUrl(first) } : { reason: first.toString("utf8") }), comparison };
 }
 
+// What the page measures for a spec's landmarks: a text, found as the spec says it (or as the ledger's text entry
+// replaces it), or a selector; a named box from an image near its place in the design.
+function landmarkTargets(spec, frame, ledger) {
+  const near = (l) => (spec.source === "image boxes" && l.box ? { x: l.box.x, y: l.box.y } : undefined);
+  return spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth, near: near(l) }
+    : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot", near: near(l) }));
+}
+
 async function measureFrames(browser, cfg, frames, ledger, out) {
   const scratch = await (await browser.newContext()).newPage();
   const results = [];
@@ -1114,10 +1127,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (key) setupTargets.push({ selector: st[act], key });
     }
     try {
-      const near = (l) => (spec.source === "image boxes" && l.box ? { x: l.box.x, y: l.box.y } : undefined);
-      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth, near: near(l) }
-        : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot", near: near(l) }));
-      const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
+      const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: landmarkTargets(spec, frame, ledger) });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
       const shot = await (await rootOf(page, fcfg.root)).screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, frameKey(frame.name));
@@ -1229,6 +1239,90 @@ const STRESS = {
 // What counts on a generated condition: a collision or a cut, not a wrap or a line of texts that are not the product's.
 const STRESSED = ["overlap", "clipped", "outside", "covered"];
 
+// The component's own width, a generated condition: at each frame's width, the frame's page in a window of that width,
+// and again in a 1280 px window with the root's container held at the content width it had, as a column a sidebar
+// narrows, or another page's, holds it. A component laid out by its own width is the same in both; one that follows the
+// window (a media query, matchMedia, a script reading the window's width) is not.
+const WIDE_WINDOW = 1280, OWN_WIDTH = "the component's own width";
+// In the page: the content width of the root's container (its parent, past one that is display: contents or inline),
+// or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width.
+function containerIn([selector, mark, seen, width]) {
+  const visible = new Function(`return (${seen})`)();
+  const root = document.querySelector(`[${mark}]`) ?? [...document.querySelectorAll(selector)].find(visible);
+  let box = root?.parentElement;
+  while (box?.parentElement && /^(contents|inline)$/.test(getComputedStyle(box).display)) box = box.parentElement;
+  if (!box) return null;
+  const cs = getComputedStyle(box), px = (k) => parseFloat(cs[k]) || 0;
+  const edges = px("paddingLeft") + px("paddingRight") + px("borderLeftWidth") + px("borderRightWidth");
+  if (width === null) return box.getBoundingClientRect().width - edges;
+  for (const k of ["width", "min-width", "max-width"]) box.style.setProperty(k, `${cs.boxSizing === "border-box" ? width + edges : width}px`, "important");
+  return width;
+}
+const container = (page, cfg, width = null) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width]).catch(() => null);
+
+// What differs between the root in a window of its frame's width and in the wide window with its container held at
+// the same width: which texts share a row, its size, the spec's landmarks. Null when they agree within the tolerance.
+function ownWidthIssue({ frame, width, held, narrow, wide, labels, tolerance }) {
+  const r = Math.round, moved = [];
+  let delta = 0;
+  const differ = (d) => Math.abs(d) > tolerance && (delta = Math.max(delta, Math.abs(d)), true);
+  if (narrow.rows !== wide.rows) moved.push("another layout (the texts share rows differently)");
+  if ([differ(wide.root.width - narrow.root.width), differ(wide.root.height - narrow.root.height)].some(Boolean)) {
+    moved.push(`the root ${r(narrow.root.width)} × ${r(narrow.root.height)} px → ${r(wide.root.width)} × ${r(wide.root.height)}`);
+  }
+  narrow.landmarks.forEach((a, i) => {
+    const b = wide.landmarks[i];
+    if (Boolean(a?.found) !== Boolean(b?.found)) moved.push(`“${labels[i]}” ${a?.found ? "hidden" : "shown"}`);
+    else if (a?.found && ["x", "y", "width", "height"].map((k) => differ(b.box[k] - a.box[k])).some(Boolean)) {
+      moved.push(`“${labels[i]}” ${r(a.box.x)}, ${r(a.box.y)} → ${r(b.box.x)}, ${r(b.box.y)}${r(a.box.width) !== r(b.box.width) ? `, ${r(a.box.width)} → ${r(b.box.width)} px wide` : ""}`);
+    }
+  });
+  if (!moved.length) return null;
+  return { landmark: frame, property: "window", delta, actual: `laid out by the window, not by its own width: in a ${WIDE_WINDOW} px window, its container held at the ${r(held)} px it had at ${width}, ${moved.slice(0, 4).join("; ")}${moved.length > 4 ? `; and ${moved.length - 4} more` : ""}` };
+}
+
+async function ownWidth(browser, cfg, ledger, widths) {
+  // Each width once, on the first frame of the component's own root drawn at it.
+  const frames = new Map();
+  for (const f of cfg.frames) if ((!f.root || f.root === cfg.root) && widths.has(f.width) && f.width !== WIDE_WINDOW && !frames.has(f.width)) frames.set(f.width, f);
+  const probes = [];
+  try {
+    for (const [width, frame] of frames) {
+      const spec = frame.spec && fs.existsSync(frame.spec) ? readJson(frame.spec) : {};
+      const landmarks = (spec.landmarks ?? []).filter((l) => String(l.text ?? "").trim() || String(l.selector ?? "").trim());
+      const targets = landmarkTargets({ ...spec, landmarks }, frame, ledger);
+      const at = { url: frame.url, setup: frame.setup ?? [] };
+      const layout = async (page) => {
+        const m = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: targets });
+        if (m.error) throw unmeasured(`${OWN_WIDTH} at ${width} px: ${m.error}`);
+        return m;
+      };
+      let narrow, wide, held;
+      // In a window of the frame's width, as the frame is when the window sizes it.
+      let opened = await open(browser, cfg, { ...at, width, viewport: width });
+      try { held = await container(opened.page, cfg); narrow = await layout(opened.page); } finally { await opened.context.close(); }
+      if (!(held > 0)) continue;
+      // In the wide window, the container held before the setup acts and again once the page is set up; what the
+      // component does on its container's change (an observer, a container query) is then done.
+      const hold = (page) => container(page, cfg, held);
+      opened = await open(browser, cfg, { ...at, ...(cfg.host ? { width, viewport: WIDE_WINDOW } : { width: WIDE_WINDOW }), prepare: hold });
+      try {
+        await hold(opened.page);
+        for (let i = 0; i < 2; i++) await settle(opened.page, cfg.root);
+        await markRoot(opened.page, cfg.root);
+        wide = await layout(opened.page);
+      } finally { await opened.context.close(); }
+      const issue = ownWidthIssue({ frame: frame.name, width, held, narrow, wide, labels: landmarks.map((l) => l.text ?? l.selector), tolerance: cfg.tolerance });
+      probes.push({ width, issues: issue ? [issue] : [] });
+    }
+  } catch (e) {
+    if (!e.unmeasured) throw e;
+    return { issues: [], story: { name: OWN_WIDTH, generated: true, unmeasured: e.message.split("\n")[0], shots: [] } };
+  }
+  const issues = sweepIssues(probes, ledger).map((i) => ({ ...i, story: OWN_WIDTH, ...(i.status === "accepted" ? {} : { status: "candidate" }) }));
+  return { issues, story: { name: OWN_WIDTH, generated: true, shots: [] } };
+}
+
 async function sweep(browser, cfg, ledger) {
   const s = cfg.sweep;
   const from = Number(s.from), to = Number(s.to), step = Number(s.step ?? 8);
@@ -1319,6 +1413,11 @@ async function sweep(browser, cfg, ledger) {
     const these = [...r.probes, r.back].map((p) => ({ ...p, issues: p.issues.filter(counts) }));
     issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name, ...(i.status === "accepted" ? {} : { status: "candidate" }) })));
     stories.push({ name: story.name, generated: true, shots: [] });
+  }
+  if (s.generate !== false) {
+    const own = await ownWidth(browser, cfg, ledger, frameWidths);
+    issues.push(...own.issues);
+    stories.push(own.story);
   }
   // The second tier: a construct (a negative margin, a nudge) and a layout switch where the model did not say are notes
   // for the owner's eye, not findings. What collides, is cut, wraps with room or leaves its line is.
@@ -1686,7 +1785,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   }
   // A candidate of the generated conditions stays open until review.md answers it.
   const open = (sweepResult?.issues ?? []).filter((i) => i.status === "candidate" && !i.answer);
-  if (open.length) gaps.push(`${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story})`).join(", ")}${open.length > 4 ? ", …" : ""}: reproduce each with legal data (a story with a real long value, a supported locale), or name in review.md, under Candidates, the contract's bound that rules it out`);
+  if (open.length) gaps.push(`${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story})`).join(", ")}${open.length > 4 ? ", …" : ""}: reproduce each with legal data (a story with a real long value, a supported locale, a container narrower than the window), or name in review.md, under Candidates, the contract's bound that rules it out`);
   // Each past return the owner recorded is a line of the acceptance list.
   if (fs.existsSync(cfg.returnsFile)) {
     const norm = (t) => t.toLowerCase().replace(/\\\|/g, "|").replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim().replace(/[.!?;:,]+$/, "");
