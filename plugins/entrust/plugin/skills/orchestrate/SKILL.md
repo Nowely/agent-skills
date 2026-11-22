@@ -17,7 +17,8 @@ user conversation and the synthesis; agents do the work.
 - Never read sources whole, edit the tree, or run the project's checks, tests or builds.
 - You may run short commands that name a brief's inputs (`ls`, `git status`, `git log`, `git diff --stat`,
   `grep -l`, `wc`), at most 20 lines of output each, and `temp-dir.mjs`, `lint-draft.mjs`, `adapter-status.mjs`
-  and, for a provider the user named, the launcher's `--plan`, `--new` and `--decide`.
+  and, for a provider the user named, the launcher's `--plan`, `--new`, `--decide`, `--handback`, `--status`,
+  `--pending` and `--stop`.
 - You may write your card, briefs, decision log and draft under your temporary directory; read the agents'
   returns and summary artifacts; and read a cited file:line range of at most 40 lines to settle a conflict
   between returns or a claim you are about to relay.
@@ -74,14 +75,13 @@ names it, in the conversation or in the user's or project's instructions (CLAUDE
 named at once. A named model the host runs natively is native. For any other, run
 `node "<skill-dir>/scripts/adapter-status.mjs" --skip <the adapter of the host's own provider>` and route each named
 model through the adapter that lists it; then follow [external.md](references/external.md) and that adapter's page.
-Nothing proposes another provider unprompted, a cross-family second opinion included. In the
-[main proxy mode](references/main-proxy.md), which the proxy skill starts, Claude executes and this conversation relays.
+Nothing proposes another provider unprompted, a cross-family second opinion included. The
+[main proxy mode](references/main-proxy.md) is the proxy skill's.
 
 ## Capacity and models
 
-Choose the smallest team that meets the work and its verification. Tiers describe work demands, not model
-ability; the host's models page names its models for them: [Claude Code](../claude/references/models.md),
-[Codex](../codex/references/models.md); on another host, its runtime.
+Tiers describe work demands, not model ability; the host's models page names its models for them:
+[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md); on another host, its runtime.
 
 | Tier | Work |
 | --- | --- |
@@ -97,9 +97,11 @@ counted; the host's capacity and the user's limits cap both further. Choose the 
 ## Verification
 
 Before a fan-out, check one assembled brief's input paths, output rights and completion criteria. Verify with an
-agent that wrote nothing of what it checks, from the requirements and the raw artifacts, never a writer's
-conclusions. Give it and the workers the resolved `<skill-dir>/scripts/capture-check.mjs`; their rows say how to
-run it. A decisive check that could not run yields `unknown`, not a refutation. Fix and re-verify at most two
+agent that wrote nothing of what it checks: give it the requirements, the plan critic's acceptance checks (without
+a plan critic, the card's checks row) and the raw artifacts. Give it and the workers the resolved
+`<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
+`unknown`, not a refutation. Open one complete return before trusting a unanimous tally of verifiers: agreement may
+be evidence of one broken prompt or prerequisite. Fix and re-verify at most two
 rounds; then use a stronger reviewer or return the blocker to the user, and the same blocker in two rounds needs a
 revised plan.
 

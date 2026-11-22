@@ -110,7 +110,7 @@ Read the shared call page's [Read the result](../../orchestrate/references/exter
 
 ## A worktree agent's harvest
 
-Land the harvest by proposal: apply `worktreeDiffPath` and restore `worktreeUntrackedPath`, or merge or cherry-pick `worktreeCommitsRef` when the agent committed; show it, then wait, unless the plan said "land the winner". A preserved tree is not a harvest: check each of the three pointers first, and when they are null, propose from `worktreePath` instead.
+Land the harvest by proposal: show it, then wait, unless the plan said "land the winner"; a worker then applies `worktreeDiffPath` and restores `worktreeUntrackedPath`, or merges or cherry-picks `worktreeCommitsRef` when the agent committed, and the verifier checks the combined tree. A preserved tree is not a harvest: check each of the three pointers in the report first, and when they are null, propose from `worktreePath` instead.
 
 ## Writers collided
 

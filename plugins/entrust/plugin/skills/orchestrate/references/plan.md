@@ -22,10 +22,11 @@ Show worker concurrency only when it affects parallel work; count nested workers
 
 ## Composition
 
-Allocate by the work, not to fill a team size. Give each deliverable one owner, keep dependent
-execution together, settle shared interfaces before parallel writes, and verify with someone who did
-not write the artifact. Choose models and effort by required quality, uncertainty, consequences, context and
-latency; use cost as a selection input when it can change the choice, and leave cost estimates off the card.
+Allocate by the work, not to fill a team size: the smallest team that meets the work and its verification.
+Give each deliverable one owner, keep dependent execution together, and settle shared interfaces before parallel
+writes; who verifies is the orchestrate page's [Verification](../SKILL.md#verification). Choose models and effort by
+required quality, uncertainty, consequences, context and latency; use cost as a selection input when it can change
+the choice, and leave cost estimates off the card.
 
 Honour requested models, routes and exclusions. A tier does not select a model or authorize a fallback: an
 unavailable model or unsupported effort goes to the user with the available alternatives, unless the approved
@@ -85,9 +86,8 @@ snapshot or access to that work, without implying authority to commit it.
 Define independent units and a fixed return shape. A verdict describes the subject, not a broken
 input path. Keep a shared prerequisite's execution with one owner and supply its evidence to every
 dependent brief. Announce the unit count and how it was derived. Use a bulk launcher only when its
-scale improves throughput or cost under the model-fit rule, and within actual host limits. Open one
-complete return before trusting a unanimous tally: agreement may be evidence of one broken prompt or
-prerequisite.
+scale improves throughput or cost under the model-fit rule, and within actual host limits. A unanimous
+tally is read as the orchestrate page's [Verification](../SKILL.md#verification) says.
 
 ## An experiment on these rules
 
