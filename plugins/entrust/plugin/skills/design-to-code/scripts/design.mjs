@@ -142,6 +142,93 @@ const finishMotion = (page) => page.evaluate(async () => {
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 }).catch(() => {});
 
+// Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
+// component (the root, inside it or around it), and what a ResizeObserver callback, a matchMedia listener or a script
+// reading a window-size query sets on an element (a class, a data- attribute, a style) from then until the next frame,
+// by which a framework has rendered the state it set. A journey then asks for the component's targets removed from the
+// page and still observed; the sweep, for the modes set by script.
+function watchScripts(rootSelector) {
+  if (window.__designCheck) return;
+  const modes = new Map(), targets = new Set(), left = new WeakSet();
+  const isMode = (name) => name === "class" || name === "style" || (name.startsWith("data-") && !name.startsWith("data-design-"));
+  let source = null, token = 0;
+  const credit = (records) => {
+    if (!source) return;
+    for (const r of records) {
+      if (r.type !== "attributes" || !isMode(r.attributeName)) continue;
+      if (!modes.has(r.target)) modes.set(r.target, new Map());
+      if (!modes.get(r.target).has(r.attributeName)) modes.get(r.target).set(r.attributeName, source);
+    }
+  };
+  const mutations = new MutationObserver(credit);
+  mutations.observe(document, { attributes: true, subtree: true });
+  // An observed element removed with what holds it: from the component if it is a root, holds one, or sat in one.
+  const removals = new MutationObserver((records) => {
+    if (!targets.size) return;
+    for (const r of records) for (const n of r.removedNodes) {
+      if (n.nodeType !== 1) continue;
+      for (const set of targets) for (const t of set) {
+        if (t !== n && !n.contains(t)) continue;
+        try { if (t.matches(rootSelector) || t.querySelector(rootSelector) || t.closest(rootSelector) || r.target.closest?.(rootSelector)) left.add(t); } catch { /* a selector the page cannot read */ }
+      }
+    }
+  });
+  removals.observe(document, { childList: true, subtree: true });
+  const open = (what) => {
+    credit(mutations.takeRecords());
+    source = what;
+    const mine = ++token;
+    requestAnimationFrame(() => { credit(mutations.takeRecords()); if (token === mine) source = null; });
+  };
+  const run = (what, fn, self, args) => {
+    open(what);
+    try { return fn.apply(self, args); } finally { credit(mutations.takeRecords()); }
+  };
+  const Native = window.ResizeObserver;
+  if (Native) {
+    const own = new WeakMap();
+    window.ResizeObserver = class ResizeObserver extends Native {
+      constructor(callback) {
+        if (typeof callback !== "function") super(callback);
+        else super(function (...args) { return run("a ResizeObserver callback", callback, this, args); });
+        own.set(this, new Set());
+        targets.add(own.get(this));
+      }
+      observe(target, options) { super.observe(target, options); own.get(this)?.add(target); }
+      unobserve(target) { super.unobserve(target); own.get(this)?.delete(target); }
+      disconnect() { super.disconnect(); own.get(this)?.clear(); }
+    };
+  }
+  const list = window.MediaQueryList?.prototype;
+  if (list) {
+    const sized = (media) => /width|height|aspect-ratio|orientation/.test(media ?? "");
+    const wrapped = new WeakMap();
+    const wrap = (listener) => {
+      if (!listener || (typeof listener !== "function" && typeof listener.handleEvent !== "function")) return listener;
+      if (!wrapped.has(listener)) wrapped.set(listener, function (e) {
+        const fn = typeof listener === "function" ? listener : listener.handleEvent, self = typeof listener === "function" ? this : listener;
+        return sized(this.media) ? run(`a matchMedia("${this.media}") listener`, fn, self, [e]) : fn.call(self, e);
+      });
+      return wrapped.get(listener);
+    };
+    const { addEventListener: add, removeEventListener: remove } = EventTarget.prototype;
+    list.addEventListener = function (type, listener, options) { return add.call(this, type, type === "change" ? wrap(listener) : listener, options); };
+    list.removeEventListener = function (type, listener, options) { return remove.call(this, type, type === "change" && listener ? wrapped.get(listener) ?? listener : listener, options); };
+    list.addListener = function (listener) { return add.call(this, "change", wrap(listener)); };
+    list.removeListener = function (listener) { return remove.call(this, "change", (listener && wrapped.get(listener)) ?? listener); };
+    const matches = Object.getOwnPropertyDescriptor(list, "matches"), onchange = Object.getOwnPropertyDescriptor(list, "onchange");
+    if (matches?.get) Object.defineProperty(list, "matches", { ...matches, get() {
+      if (!source && sized(this.media)) open(`a script reading matchMedia("${this.media}")`);
+      return matches.get.call(this);
+    } });
+    if (onchange?.set) Object.defineProperty(list, "onchange", { ...onchange, set(listener) { onchange.set.call(this, typeof listener === "function" ? wrap(listener) : listener); } });
+  }
+  Object.defineProperty(window, "__designCheck", { configurable: true, value: {
+    modes: () => [...modes].flatMap(([el, attrs]) => [...attrs].map(([attr, from]) => ({ el, attr, source: from }))),
+    stale: () => [...targets].flatMap((set) => [...set]).filter((t) => !t.isConnected && left.has(t)),
+  } });
+}
+
 // The component's root: the first match the user can see, opacity included; open() marks it, so the picture and the
 // measurements come from the same element. A popover kept hidden in the page is not the one open.
 const MARK = "data-design-root";
@@ -279,6 +366,7 @@ function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale 
 async function open(browser, cfg, target) {
   const { url, width, setup = [], height = 900, still = true, prepare } = target;
   const context = await browser.newContext(contextOptions(cfg, target));
+  await context.addInitScript(watchScripts, cfg.root);
   const page = await context.newPage();
   // A step on something that never appears fails in seconds, not in Playwright's default half minute.
   page.setDefaultTimeout(5000);
@@ -902,6 +990,13 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (!ofKit && cs.animationName === "none") for (const [how, dx, dy] of [["a transform", tx, ty], ["the translate property", tr[0], tr[1] ?? 0], ["a relative offset", rel[0], rel[1]]]) {
       if (nudge(dx, dy)) issues.push({ landmark: label(el.textContent), property: "construct", kind: "nudge", actual: `${how} moves it ${Math.round(dx)}, ${Math.round(dy)} px: lay it out instead` });
     }
+  }
+  // A mode set by script: a class, data- attribute or style that a ResizeObserver or matchMedia callback set (the init
+  // script saw it), where a container query would switch it.
+  for (const { el, attr, source } of window.__designCheck?.modes() ?? []) {
+    if (!el.isConnected || !root.contains(el) || overlay(el)) continue;
+    issues.push({ landmark: el === root ? "root" : label(el.textContent) || el.localName, property: "construct", kind: "script-set mode",
+      actual: `${source} sets its ${attr}: switch it by a container query instead` });
   }
   // The longest texts shown: what a story tested, for the owner to see in the evidence.
   const longest = [...new Set(nodes.map((n) => n.data.trim().replace(/\s+/g, " ")))].sort((a, b) => b.length - a.length).slice(0, 4);
@@ -1626,6 +1721,11 @@ async function journeys(browser, cfg) {
               trigger = null;
             }
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
+        }
+        // An observer the steps left on elements they removed: the component's observer follows what is mounted.
+        if (!edge && !failed) {
+          const stale = await page.evaluate(() => window.__designCheck?.stale().map((t) => `${t.localName}${t.classList[0] ? `.${t.classList[0]}` : ""}`) ?? []).catch(() => []);
+          if (stale.length) failed = `after its steps, a ResizeObserver still observes ${stale.length === 1 ? "an element" : `${stale.length} elements`} removed from the page (${[...new Set(stale)].slice(0, 3).join(", ")}): disconnect it on unmount and observe what mounts`;
         }
         // A state the steps went through and back must leave no trace: the component as a fresh load of the same page
         // draws it at the same width (an observer left on removed elements, a layout not chosen again). Then the check

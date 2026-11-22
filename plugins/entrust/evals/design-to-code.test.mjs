@@ -2206,13 +2206,14 @@ test("draft 28.2: with no ledger named, deviations.json beside design.json is th
 });
 
 test("draft 28.2: a journey with sameAsFresh ends as a fresh load draws the component; an observer left on removed elements does not", browser, () => {
-  // A row that stacks below 400 px by a ResizeObserver; emptied and restored, it is observed again, or not.
+  // A row that stacks below 400 px by a ResizeObserver; emptied and restored, it is observed again, or not. 44.3: the
+  // kept build lets go of the row leaving (an observer left on it fails the journey, below).
   const run = (rewatch) => {
     const f = smallFrame(`<div id="host"></div><button id="toggle">Toggle</button>
 <style>.row{display:flex;gap:8px}.row[data-mode=stack]{flex-direction:column}</style>
-<script>const host = document.getElementById("host"); let shown = true;
-const render = () => { host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
-const watch = () => { const row = host.querySelector(".row"); if (row) new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row); };
+<script>const host = document.getElementById("host"); let shown = true, observer;
+const render = () => { ${rewatch ? "observer?.disconnect(); " : ""}host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
+const watch = () => { const row = host.querySelector(".row"); if (row) (observer = new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; })).observe(row); };
 render(); watch();
 document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${rewatch ? "watch();" : ""} };</script>`);
     const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
@@ -2222,7 +2223,8 @@ document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${
   const kept = run(true);
   assert.ok(kept.length === 1 && kept[0].pass, JSON.stringify(kept));
   const stale = run(false);
-  assert.ok(!stale[0].pass && /^after its steps, the component differs from a fresh load at 300 px: .*height/.test(stale[0].failed), JSON.stringify(stale));
+  // 44.3: the observer left on the removed row is named first; without it the fresh load shows the height (below).
+  assert.ok(!stale[0].pass && /^after its steps, a ResizeObserver still observes an element removed from the page \(div\.row\)/.test(stale[0].failed), JSON.stringify(stale));
 });
 
 test("draft 28.2: the console is a digest of fifteen lines at most: what changed since the round before, each frame's new findings first, the rest as a count", () => {
@@ -2616,4 +2618,36 @@ test("44.1: after a sameAsFresh journey the check resizes the page through the f
   // Without sameAsFresh, nothing is resized.
   const plain = listPage({ disconnect: true, rewatch: false })({});
   assert.ok(plain.pass && !plain.asFresh, JSON.stringify(plain));
+});
+
+// Item 3: ResizeObserver and matchMedia are wrapped in an init script on the checked pages.
+test("44.3: an observer left on an element a journey removed fails the journey; one that follows the mount does not", browser, () => {
+  // The restored row is observed again, so the layout is right at every width; the old observer still holds the old row.
+  const stale = listPage({ disconnect: false, rewatch: true })({});
+  assert.equal(stale.pass, false, JSON.stringify(stale));
+  assert.match(stale.failed, /^after its steps, a ResizeObserver still observes an element removed from the page \(div\.row\): disconnect it on unmount and observe what mounts$/);
+  assert.ok(listPage({ disconnect: true, rewatch: true })({}).pass);
+  // An observer on an element outside the component is not the component's.
+  const f = smallFrame(`<button id="drop">Drop</button><script>const aside = document.createElement("aside"); aside.textContent = "x"; document.body.append(aside);
+new ResizeObserver(() => {}).observe(aside); document.getElementById("drop").onclick = () => aside.remove();</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "drop", steps: [{ click: "#drop" }, { hidden: "aside" }] }] }));
+  assert.ok(check(f.dir, "--no-sweep").result.journeys[0].pass);
+});
+
+test("44.3: a mode a ResizeObserver or matchMedia sets is a construct note that needs its reason; a container query's is not", browser, () => {
+  const modes = (script, style = "") => {
+    const f = smallFrame(`<style>.row{display:flex}${style}</style><div class="row"><span>Ready</span></div>${script ? `<script>const row = document.querySelector(".row");${script}</script>` : ""}`);
+    const r = check(f.dir);
+    assert.equal(r.status, 0, r.stdout);
+    // The frames' page; its dense story is the same page, with the same note.
+    return r.result.sweep.issues.filter((i) => i.kind === "script-set mode" && !i.story).map((i) => [i.landmark, i.status, i.actual]);
+  };
+  assert.deepEqual(modes('new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row);'),
+    [["Ready", "note", "a ResizeObserver callback sets its data-mode: switch it by a container query instead"]]);
+  assert.deepEqual(modes('const q = matchMedia("(min-width: 400px)"); const lay = () => { row.dataset.mode = q.matches ? "line" : "stack"; }; lay(); q.addEventListener("change", lay);'),
+    [["Ready", "note", 'a script reading matchMedia("(min-width: 400px)") sets its data-mode: switch it by a container query instead']]);
+  assert.deepEqual(modes("", "main{container-type:inline-size}@container (width < 400px){.row{flex-direction:column}}"), []);
+  // A query that is not the window's size decides no layout mode.
+  assert.deepEqual(modes('row.classList.toggle("calm", matchMedia("(prefers-reduced-motion: reduce)").matches);'), []);
 });

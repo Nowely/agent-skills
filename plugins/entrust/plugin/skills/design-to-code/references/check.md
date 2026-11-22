@@ -83,7 +83,8 @@ sheet that hides itself when its closing transition ends closes, and one that ne
 `"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
 an observer left on removed elements or a layout not chosen again shows. The check then resizes that page through the
-frames' widths and holds each against a fresh load at that width.
+frames' widths and holds each against a fresh load at that width. After any journey, a `ResizeObserver` still observing
+an element the steps removed (the root, one inside it or one around it) fails it.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
@@ -158,8 +159,10 @@ back; each story and generated condition the same way. At each width:
 - `truncated`: a text cut with an ellipsis or a clamp whose full text is nowhere to read: give it a title, an
   accessible name or a tooltip;
 - `construct`: a negative margin over 3 px (not a bleed, nor the kit's), a nudge of 2 px or more by a transform,
-  `translate` or a relative offset (not centring or a slide). A construct is a note that needs its reason: fix it, or
-  give the reason in the handoff.
+  `translate` or a relative offset (not centring or a slide); a mode set by script: a class, `data-` attribute or style
+  on the root or inside it that a `ResizeObserver` callback, a `matchMedia` listener or a script reading a window-size
+  query sets, where a container query would switch it. A construct is a note that needs its reason: fix it, or give the
+  reason in the handoff.
 
 ## Findings and notes
 
