@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import {
   causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
   renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
-  gateFor, holdGated, ledgerEntryFor, referenceChange, referenceIssue, releasesGate, specOutline,
+  anchorFor, gateFor, gateWayOut, holdGated, ledgerEntryFor, referenceChange, referenceIssue, releasesGate, specOutline,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2101,7 +2101,7 @@ test("draft 28.2: a finding the check itself causes is proposed with cause check
   const entry = { landmark: "the sheet", property: "journey", cause: "checker", status: "proposed", reason: "the check's own style keeps the sheet from closing: review.md, Checker reproduction" };
   assert.deepEqual(ledgerFaults([entry]), []);
   assert.match(ledgerFaults([{ ...entry, cause: "font" }]).join(), /"cause", when given, is "checker"/);
-  assert.match(ledgerFaults([{ ...entry, cause: undefined }]).join(), /a journey entry disputes a journey the check itself breaks/);
+  assert.match(ledgerFaults([{ ...entry, cause: undefined }]).join(), /a journey entry gives "cause": "checker"/);
   const handoff = renderHandoff({ frames: [], journeys: [{ name: "the sheet", pass: false, failed: "step 4", status: "pending", entries: [0] }], ledger: [entry], status: "pending" });
   assert.match(handoff, /^## Disputed with the check$/m);
   assert.match(handoff, /^- proposed: the sheet journey — the check's own style .* \(matches the sheet\)$/m);
@@ -2418,7 +2418,8 @@ test("draft 28.4: a reference cut after the first round is a finding of its own,
   const frame = { frame: "card-764", pass: false, verdict: "fail", issues: [{ landmark: "BA-i201-B", property: "y", expected: 41, actual: 15, delta: -26, status: "fail" }, issue] };
   assert.deepEqual([...findingKeys({ frames: [{ frame: "card-601", issues: [{ landmark: "root", property: "height", status: "fail" }] }, frame] }).keys()][0], "card-764\u0000reference\u0000reference");
   // An entry for that frame settles it as a proposal; one for another frame, or without a frame, does not.
-  const entry = { frame: "card-764", property: "reference", status: "proposed", reason: "the band holds data the API does not send" };
+  // Draft 28.4.1: the entry names the reference it settles by the digest the finding prints.
+  const entry = { frame: "card-764", property: "reference", digest: change.digest, status: "proposed", reason: "the band holds data the API does not send" };
   assert.equal(referenceIssue("card-764", change, [entry]).status, "pending");
   assert.equal(referenceIssue("card-764", change, [{ ...entry, frame: "card-601" }]).status, "fail");
   assert.match(ledgerFaults([{ ...entry, frame: undefined }]).join(), /names the frame whose reference changed/);
@@ -2452,7 +2453,9 @@ test("draft 28.4: the same first finding over three rounds stops the check with 
   const refused = check(f.dir, "--quick");
   assert.equal(refused.status, 4);
   assert.match(refused.stdout, /^Quick rounds are refused: the gate has stopped this check 2 times/m);
-  assert.equal(history().length, 4, "a refused quick round is no round");
+  // Draft 28.4.1: a refused round is recorded, so the record shows it.
+  assert.equal(history().length, 5);
+  assert.equal(history().at(-1).refused, true);
   // One entry naming the finding opens it: the complete check runs and waits for the owner.
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "x", status: "proposed", reason: "the kit's indent" }]));
   const open = check(f.dir);
@@ -2472,7 +2475,10 @@ test("draft 28.4: an image replaced after the first round leads the check until 
   assert.equal(changed.status, 1, changed.stdout);
   assert.equal(changed.result.frames[0].issues[0].property, "reference");
   assert.match(changed.result.frames[0].issues[0].actual, /^changed since round 1: the image; moved in the spec: “Ready”/);
-  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ frame: "frame", property: "reference", status: "proposed", reason: "re-captured from the page" }]));
+  // Draft 28.4.1: the entry names the reference it settles, by the digest the finding prints.
+  const digest = changed.result.frames[0].issues[0].digest;
+  assert.ok(digest && changed.stdout.includes(digest), changed.stdout);
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ frame: "frame", property: "reference", digest, status: "proposed", reason: "re-captured from the page" }]));
   const proposed = check(f.dir);
   assert.equal(proposed.status, 3, proposed.stdout);
 });
@@ -2490,6 +2496,84 @@ test("draft 28.4: a joined text a size larger is told by its width alone, wider 
   assert.match(type(94)[0].actual, /^18 % larger than drawn, by its width against the frame's font: a size of another class/);
   assert.deepEqual(type(86), [], "8 % and 6 px wider: control26's footers");
   assert.deepEqual(type(64), [], "narrower: the box was drawn round an icon too");
+});
+
+// ------------------------------------------------------------------ draft 28.4.1: no dead end at the gate, no way round it
+
+test("draft 28.4.1: a region finding the gate stopped on is settled by a region entry tight round it, not by a wide one", () => {
+  const issue = { landmark: "region near “Buy”", property: "region", box: { x: 200, y: 60, width: 40, height: 20 }, status: "pending", entries: [0] };
+  const tight = { frame: "card-764", property: "region", region: [196, 56, 50, 28], status: "proposed", reason: "the kit's button shadow" };
+  const wide = { ...tight, region: [0, 0, 764, 200] };
+  assert.equal(releasesGate(tight, issue), true);
+  assert.equal(releasesGate(wide, issue), false);
+  const gated = new Set(["card-764\u0000region near “Buy”\u0000region"]);
+  const frame = () => ({ frame: "card-764", pass: false, verdict: "pending", issues: [{ ...issue }] });
+  const a = frame();
+  holdGated({ frames: [a], ledger: [tight], gated });
+  assert.equal(a.issues[0].status, "pending");
+  const b = frame();
+  holdGated({ frames: [b], ledger: [wide], gated });
+  assert.equal(b.issues[0].status, "fail");
+});
+
+test("draft 28.4.1: whatever leads has a way out the gate names: a journey entry with a category where the design is silent, a row marked pending", () => {
+  const silent = { landmark: "the sheet closes on Escape", property: "journey", category: "missing-state", status: "proposed", reason: "the design does not say whether Escape closes the sheet" };
+  assert.deepEqual(ledgerFaults([silent]), []);
+  assert.match(ledgerFaults([{ ...silent, category: undefined }]).join(), /a journey entry gives "cause": "checker" .* or a "category"/);
+  assert.match(gateWayOut("journey\u0000the sheet closes on Escape"), /"property": "journey".*"category"/);
+  assert.match(gateWayOut("acceptance\u0000Price keeps its period"), /pending: /);
+  assert.match(gateWayOut("card-764\u0000region near “Buy”\u0000region"), /"region"/);
+  assert.match(gateWayOut("card-764\u0000reference\u0000reference", { digest: "ab12cd34.ef56ab78" }), /"digest": "ab12cd34\.ef56ab78"/);
+  assert.match(gateWayOut("card-764\u0000Title\u0000y"), /its frame, landmark and property/);
+});
+
+test("draft 28.4.1: the streak counts only the rounds that measured its finding; an interleaved --frame round or a refused one does not reset it", () => {
+  const A = "card-764\u0000Title\u0000y", B = "card-280\u0000SKU\u0000x";
+  const h = [{ first: A, frames: ["card-764", "card-280"] }, { first: B, frames: ["card-280"] }, { refused: true, quick: true }];
+  assert.equal(firstStreak(h, A), 2);
+  assert.equal(gateFor([...h, { first: A, frames: ["card-764"] }], A).blocked, true);
+  // A round that measured the frame with another finding first ends the streak.
+  assert.equal(firstStreak([{ first: A, frames: ["card-764"] }, { first: B, frames: ["card-764", "card-280"] }], A), 1);
+  // A journey is measured by complete rounds only, the sweep by rounds that swept.
+  const J = "journey\u0000the sheet", S = "sweep\u0000\u0000Title\u0000overlap\u0000";
+  assert.equal(firstStreak([{ first: J, quick: false }, { first: A, quick: true, frames: ["card-764"] }], J), 2);
+  assert.equal(firstStreak([{ first: S, sweep: true }, { first: B, sweep: false, frames: ["card-280"] }], S), 2);
+});
+
+test("draft 28.4.1: a reference entry settles the reference it was written against; a later rewrite is a new finding", () => {
+  const spec = { frame: { width: 300, height: 80 }, source: "image boxes", landmarks: [{ text: "Ready", box: box(0, 0, 60, 24) }] };
+  const anchor = { round: 1, image: "aaaaaaaaaaaaaaaa", spec: "s1", outline: specOutline(spec) };
+  const first = referenceChange(anchor, { image: "bbbbbbbbbbbbbbbb", spec: "s1", outline: specOutline(spec) }, 2);
+  assert.equal(first.digest, "bbbbbbbb.s1");
+  const issue = referenceIssue("frame", first, []);
+  assert.match(issue.actual, /\(now bbbbbbbb\.s1\)$/);
+  const entry = { frame: "frame", property: "reference", digest: "bbbbbbbb.s1", status: "proposed", reason: "re-cropped to the card" };
+  assert.deepEqual(ledgerFaults([entry]), []);
+  assert.match(ledgerFaults([{ ...entry, digest: undefined }]).join(), /"digest"/);
+  assert.equal(referenceIssue("frame", first, [entry]).status, "pending");
+  const again = referenceChange(anchor, { image: "cccccccccccccccc", spec: "s1", outline: specOutline(spec) }, 2);
+  assert.equal(referenceIssue("frame", again, [entry]).status, "fail");
+});
+
+test("draft 28.4.1: a consequence names a cause that is not itself a consequence", () => {
+  const line = { id: "line", landmark: "Выдача", property: "presence", status: "proposed", reason: "no data" };
+  const rows = { id: "rows", landmark: ["a", "b"], property: "y", consequenceOf: "line", shift: -27, status: "proposed", reason: "moved by the line" };
+  assert.deepEqual(ledgerFaults([line, rows]), []);
+  assert.match(ledgerFaults([line, rows, { landmark: ["c"], property: "y", consequenceOf: "rows", shift: -5, status: "proposed", reason: "moved by the rows" }]).join(), /not itself a consequence/);
+});
+
+test("draft 28.4.1: a frame is anchored where its image first appears, and a renamed frame by its files", () => {
+  const outline = { size: [300, 80], landmarks: {} };
+  const history = [
+    { round: 1, refs: { frame: { image: null, spec: "s1", outline, file: "frames/a.png", specFile: "frames/a.json" } } },
+    { round: 2, refs: { frame: { image: "i2", spec: "s1", file: "frames/a.png", specFile: "frames/a.json" } } },
+  ];
+  const a = anchorFor(history, "frame", { file: "frames/a.png", specFile: "frames/a.json" });
+  assert.deepEqual([a.round, a.image, a.imageRound, a.spec], [1, "i2", 2, "s1"]);
+  assert.equal(referenceChange(a, { image: "i3", spec: "s1", outline }, 2).round, 2);
+  // Renamed in design.json, the same files: the old name's anchor holds; other files have none.
+  assert.equal(anchorFor(history, "card", { file: "frames/a.png", specFile: "frames/a.json", current: ["card"] }).image, "i2");
+  assert.equal(anchorFor(history, "card", { file: "frames/b.png", specFile: "frames/b.json", current: ["card"] }), null);
 });
 
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say

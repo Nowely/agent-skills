@@ -308,7 +308,12 @@ export function ledgerFaults(entries) {
     if (!e.reason || !String(e.reason).trim()) faults.push(`${at}: no reason`);
     // A finding the check itself causes is disputed with the check, shown by a minimal reproduction in review.md.
     if (e.cause !== undefined && e.cause !== "checker") faults.push(`${at}: "cause", when given, is "checker": a finding the check itself causes, with its reproduction in review.md`);
-    if (e.property === "journey" && e.cause !== "checker") faults.push(`${at}: a journey entry disputes a journey the check itself breaks: it gives "cause": "checker"`);
+    // A journey that fails is the check's own doing ("cause": "checker") or behaviour the design or contract leaves open
+    // (a "category"): either way the entry proposes it; a journey the code could pass is fixed, not proposed.
+    if (e.property === "journey" && e.cause !== "checker" && e.category === undefined) faults.push(`${at}: a journey entry gives "cause": "checker" (the check itself breaks it) or a "category" (the design or contract leaves the behaviour open)`);
+    // A reference entry settles the reference it was written against, by the digest its finding prints: a later
+    // rewrite is another reference, and another finding.
+    if (e.property === "reference" && !String(e.digest ?? "").trim()) faults.push(`${at}: a reference entry gives the "digest" its finding prints, "digest": "1a2b3c4d.5e6f7a8b"`);
     if (e.property === "text" && !e.actual) faults.push(`${at}: a text deviation names the page's text in "actual"`);
     if (e.property === "text" && (typeof e.landmark !== "string" || e.landmark === "*")) faults.push(`${at}: a text deviation names one design text as its landmark`);
     // A consequence of one proposed cause (a missing line moves what is below it) states the shift it explains, so it
@@ -316,7 +321,9 @@ export function ledgerFaults(entries) {
     if (e.consequenceOf !== undefined || e.shift !== undefined) {
       if (!["x", "y", "width", "height"].includes(e.property)) faults.push(`${at}: a consequence entry ("consequenceOf", "shift") is of x, y, width or height`);
       if (!Number.isFinite(Number(e.shift)) || e.shift === null || e.shift === "") faults.push(`${at}: a consequence entry gives the shift it explains in px, "shift": -27`);
-      if (!String(e.consequenceOf ?? "").trim() || !entries.some((c) => c && c !== e && c.id === e.consequenceOf)) faults.push(`${at}: "consequenceOf" gives the id of the entry whose consequence it is, and that entry is in the ledger`);
+      const cause = entries.find((c) => c && c !== e && c.id === e.consequenceOf);
+      if (!String(e.consequenceOf ?? "").trim() || !cause) faults.push(`${at}: "consequenceOf" gives the id of the entry whose consequence it is, and that entry is in the ledger`);
+      else if (cause.consequenceOf !== undefined) faults.push(`${at}: "consequenceOf" names the cause itself, an entry that is not itself a consequence`);
     }
     if (e.status !== "accepted" && ["x", "y"].includes(e.property) && e.shift === undefined && [e.landmark].flat().length > 3)
       faults.push(`${at}: a proposed ${e.property} entry for more than 3 pieces covers any offset of theirs: state the cause once and the shift it moves them by ("consequenceOf", "shift"), or name each piece's own difference`);
@@ -336,7 +343,7 @@ export function ledgerEntryFor(issue, frame, ledger = [], { tolerance = 4 } = {}
   return ledger.find((e) => frameMatches(e, frame) && STATUSES.includes(e.status)
     && (e.property === "*" || e.property === issue.property)
     && (e.property === "region" ? e.region && within(issue.box, e.region)
-      : e.property === "reference" ? e.frame !== undefined && e.frame !== "*"
+      : e.property === "reference" ? e.frame !== undefined && e.frame !== "*" && e.digest !== undefined && e.digest === issue.digest
         : landmarkMatches(e, issue.property === "region" ? "*" : issue.landmark))
     // An entry bounded by size covers only a difference that has one: never an overlap or a switch of unknown size.
     && (e.max === undefined || (issue.delta !== undefined && Math.abs(issue.delta) <= e.max))
@@ -351,8 +358,25 @@ export function releasesGate(entry, issue) {
   if (entry.status === "accepted") return true;
   if (entry.shift !== undefined && entry.consequenceOf !== undefined) return true;
   if (entry.property === "reference") return issue.property === "reference";
+  // A region entry settles a region finding when it is drawn round that finding, not round the frame.
+  if (entry.property === "region") return issue.property === "region" && tightRegion(entry.region, issue.box);
   const names = [entry.landmark].flat();
   return entry.property === issue.property && names.length === 1 && names[0] === issue.landmark && names[0] !== "*";
+}
+
+// A region drawn round one finding: it holds the finding's box and reaches at most `margin` px beyond it on any side.
+const tightRegion = (r, b, margin = 24) => Array.isArray(r) && r.length === 4 && b && within(b, r)
+  && r[0] >= b.x - margin && r[1] >= b.y - margin && r[0] + r[2] <= b.x + b.width + margin && r[1] + r[3] <= b.y + b.height + margin;
+
+// What settles the finding a gate stopped on, by its kind: what the gate's message says to do besides fixing it.
+export function gateWayOut(key, issue = {}) {
+  const [head, second] = String(key).split("\u0000");
+  if (head === "journey") return `propose this journey in the ledger with a reason: "landmark": its name, "property": "journey", and "cause": "checker" if the check itself breaks it, or a "category" if the design or contract leaves the behaviour open`;
+  if (head === "acceptance") return `mark the row's result in review.md "pending: <the question for the owner>"`;
+  if (head === "sweep") return `propose this one finding in the ledger with a reason: "frame": "sweep", its landmark and property (a list or * does not settle it)`;
+  if (second === "reference") return `restore the reference, or say why in a ledger entry for this frame: "property": "reference", "digest": "${issue.digest ?? "the digest the finding prints"}"`;
+  if (String(second).startsWith("region near")) return `propose this one region in the ledger with a reason: its frame, "property": "region" and a "region" [x, y, width, height] drawn round it (one drawn round more does not settle it)`;
+  return `propose this one finding in the ledger with a reason: its frame, landmark and property (a list, * or a region does not settle it)`;
 }
 
 // The text to look for on the page: the design's own, unless the ledger records that the page says something else.
@@ -1041,7 +1065,7 @@ export function findingKeys({ frames = [], sweep, journeys = [], acceptance = []
 export function startCause(f) { return openCauses(f)[0] ?? null; }
 // A reference changed since the first round is where to start: the steps measured against it say nothing until then.
 const changedReference = (f) => (f.issues ?? []).find((i) => i.property === "reference" && i.status === "fail");
-const referenceStart = (i) => `the reference ${i.actual}; restore it, or say why in a ledger entry for this frame ("property": "reference")`;
+const referenceStart = (i) => `the reference ${i.actual}; restore it, or say why in a ledger entry for this frame ("property": "reference", "digest": "${i.digest}")`;
 function openCauses(f) {
   const issues = f.issues ?? [];
   if (!issues.some((i) => i.status === "fail") || changedReference(f)) return [];
@@ -1055,10 +1079,23 @@ function openCauses(f) {
 
 // How many rounds in a row, this one included, have had the same first finding. A finding is named by its key, which
 // neither a quick round nor a change of the specs alters, so the count runs across modes and series alike.
+// Only the rounds that measured the finding count: a --frame round of another frame, a quick round for a journey or a
+// refused round says nothing about it, so it neither adds to the streak nor ends it.
+export function measuredBy(h, key) {
+  if (!h || h.refused) return false;
+  const [head] = String(key).split("\u0000");
+  if (head === "journey" || head === "acceptance") return h.quick !== true && h.journeys !== false;
+  if (head === "sweep") return h.sweep !== false;
+  return !Array.isArray(h.frames) || h.frames.includes(head);
+}
 export function firstStreak(history, first) {
   if (!first) return 0;
   let n = 1;
-  for (let i = history.length - 1; i >= 0 && history[i]?.first === first; i--) n++;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (!measuredBy(history[i], first)) continue;
+    if (history[i].first !== first) break;
+    n++;
+  }
   return n;
 }
 
@@ -1092,7 +1129,7 @@ export function holdGated({ frames = [], sweep, ledger = [], gated = new Set() }
     if (!gated.has(key) || i.status !== "pending") return false;
     const entries = (i.entries ?? []).map((n) => ledger[n]).filter(Boolean);
     if (entries.length && entries.every((e) => releasesGate(e, i) || (i.inherited && e.property === i.property && [e.landmark].flat().length === 1 && e.landmark !== "*"))) return false;
-    Object.assign(i, { status: "fail", held: "a list, a wildcard or a region does not settle a finding the gate stopped on: propose this one finding" });
+    Object.assign(i, { status: "fail", held: "a list, a wildcard or a region drawn round more does not settle a finding the gate stopped on: propose this one finding" });
     return true;
   };
   for (const f of frames) {
@@ -1135,11 +1172,13 @@ export function specOutline(spec) {
 
 // How a frame's reference differs from its anchor, the first round that checked it: another image, or a spec that
 // dropped or moved what it expected. Null when nothing the frame is compared with changed.
+export const referenceDigest = (now) => `${String(now?.image ?? "none").slice(0, 8)}.${String(now?.spec ?? "none").slice(0, 8)}`;
 export function referenceChange(anchor, now, tolerance = 4) {
   if (!anchor) return null;
-  const what = [];
-  // A missing image is reported as unmeasured already; a different one is a change.
-  if (anchor.image && now.image && now.image !== anchor.image) what.push("the image");
+  const what = [], rounds = [];
+  // A missing image is reported as unmeasured already; a different one is a change, since the round it first appeared.
+  if (anchor.image && now.image && now.image !== anchor.image) { what.push("the image"); rounds.push(anchor.imageRound ?? anchor.round); }
+  const specWhat = what.length;
   if (anchor.outline && now.outline && anchor.spec !== now.spec) {
     const a = anchor.outline, b = now.outline;
     if (a.size.some((v, i) => Math.abs(v - b.size[i]) > tolerance)) what.push(`the frame's size, ${a.size.join(" × ")} → ${b.size.join(" × ")}`);
@@ -1149,12 +1188,28 @@ export function referenceChange(anchor, now, tolerance = 4) {
     if (gone.length) what.push(`gone from the spec: ${listed(gone, 3)}`);
     if (moved.length) what.push(`moved in the spec: ${listed(moved, 3)}`);
   }
-  return what.length ? { round: anchor.round, what } : null;
+  if (what.length > specWhat) rounds.push(anchor.specRound ?? anchor.round);
+  return what.length ? { round: Math.min(...rounds), what, digest: referenceDigest(now) } : null;
+}
+
+// A frame's anchor: its spec as the first round that checked it saw it, and its image as the first round that had one.
+// A frame renamed in design.json keeps the anchor of the name it had, found by its files.
+export function anchorFor(history, name, { file, specFile, current = [] } = {}) {
+  const own = (pick) => { const h = history.find((x) => pick(x?.refs?.[name])); return h ? { h, r: h.refs[name] } : null; };
+  const renamed = (pick, same) => {
+    for (const h of history) for (const [n, r] of Object.entries(h?.refs ?? {})) if (n !== name && !current.includes(n) && same(r) && pick(r)) return { h, r };
+    return null;
+  };
+  const spec = own((r) => r?.outline) ?? renamed((r) => r?.outline, (r) => specFile && r.specFile === specFile);
+  const image = own((r) => r?.image) ?? renamed((r) => r?.image, (r) => file && r.file === file);
+  if (!spec && !image) return null;
+  return { round: Math.min(...[spec?.h.round, image?.h.round].filter((v) => v !== undefined)), image: image?.r.image ?? null, imageRound: image?.h.round,
+    spec: spec?.r.spec ?? null, specRound: spec?.h.round, outline: spec?.r.outline ?? null };
 }
 
 // The finding a changed reference makes: it fails until a ledger entry for that frame, "property": "reference", says why.
 export function referenceIssue(frame, change, ledger = []) {
-  const issue = { landmark: "reference", property: "reference", expected: `the reference of round ${change.round}`, actual: `changed since round ${change.round}: ${change.what.join("; ")}` };
+  const issue = { landmark: "reference", property: "reference", expected: `the reference of round ${change.round}`, actual: `changed since round ${change.round}: ${change.what.join("; ")} (now ${change.digest})`, digest: change.digest };
   const entry = ledgerEntryFor(issue, frame, ledger);
   return { ...issue, status: statusOf(entry), ...(entry ? { ledger: entry.id ?? entry.reason, entries: [ledger.indexOf(entry)] } : {}) };
 }

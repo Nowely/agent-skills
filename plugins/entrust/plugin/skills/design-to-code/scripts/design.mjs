@@ -29,7 +29,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
-  describeFinding, gateFor, gatedKeys, GATE_EXIT, holdGated, referenceChange, referenceIssue, specOutline,
+  anchorFor, describeFinding, gateFor, gatedKeys, gateWayOut, GATE_EXIT, holdGated, referenceChange, referenceIssue, specOutline,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -1715,8 +1715,12 @@ async function check(file, flags) {
   const historyFile = path.join(out, "history.jsonl");
   const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
   // After the gate has stopped this history twice, only a complete check runs: its journeys and full sweep are evidence.
+  // A refused round is recorded too, so the record shows every attempt.
   if (flags.quick && gateFor(history, null).trips >= 2) {
-    console.log(`Quick rounds are refused: the gate has stopped this check ${gateFor(history, null).trips} times. Run the complete check (without --quick), after fixing or proposing what it stopped on.`);
+    const said = `Quick rounds are refused: the gate has stopped this check ${gateFor(history, null).trips} times. Run the complete check (without --quick), after fixing or proposing what it stopped on.`;
+    fs.mkdirSync(out, { recursive: true });
+    fs.appendFileSync(historyFile, `${JSON.stringify({ round: history.length + 1, time: new Date().toISOString(), quick: true, refused: true, frames: frames.map((f) => f.name) })}\n`);
+    console.log(said);
     return GATE_EXIT;
   }
   // --quick: every frame and story, swept at the frames' widths only, without journeys: for tuning, not for handover.
@@ -1739,12 +1743,16 @@ async function check(file, flags) {
     // reference rewritten after that (a band cut out, a landmark dropped) is a finding of its own, first of all, until
     // a ledger entry for that frame says why.
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
+    // Each frame's anchor is the first round that saw its spec, and the first that had its image; a frame renamed in
+    // design.json keeps its anchor through its files. Deleting history.jsonl, or a fresh --out, starts a new anchor.
     const refs = {};
+    const rel = (file) => (file ? path.relative(cfg.dir, path.resolve(cfg.dir, file)) : null);
     for (const f of frames) {
-      const anchorRecord = history.find((h) => h?.refs?.[f.name]);
+      const files = { file: rel(f.reference), specFile: rel(f.spec) };
+      const anchor = anchorFor(history, f.name, { ...files, current: cfg.frames.map((x) => x.name) });
       const now = { image: digest(f.reference)?.slice(0, 16) ?? null, spec: digest(f.spec)?.slice(0, 16) ?? null, outline: specOutline(readJson(f.spec)) };
-      refs[f.name] = anchorRecord ? { image: now.image, spec: now.spec } : now;
-      const change = anchorRecord && referenceChange({ round: anchorRecord.round, ...anchorRecord.refs[f.name] }, now, Math.max(2, cfg.tolerance ?? 1));
+      refs[f.name] = anchor?.outline ? { image: now.image, spec: now.spec, ...files } : { ...now, ...files };
+      const change = anchor && referenceChange(anchor, now, Math.max(2, cfg.tolerance ?? 1));
       const r = change && results.find((x) => x.frame === f.name);
       if (!r) continue;
       const issue = referenceIssue(f.name, change, ledger);
@@ -1787,7 +1795,7 @@ async function check(file, flags) {
     // that the next round says what changed and sees a first finding that does not move.
     const keys = findingKeys({ frames: results, sweep: sweepResult, journeys: journeyResults, acceptance });
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, model: layoutModelRows(cfg), status, score, quick: Boolean(flags.quick),
-      findings: [...keys.keys()], first: [...keys.keys()][0] ?? null, refs };
+      journeys: journeyResults.length > 0, findings: [...keys.keys()], first: [...keys.keys()][0] ?? null, refs };
     const gate = status === "pass" ? { blocked: false, trips: 0 } : gateFor(history, record.first);
     if (gate.blocked) Object.assign(record, { blocked: true, gate: record.first });
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
@@ -1819,7 +1827,7 @@ async function check(file, flags) {
     const tail = 2 + (status === "fail" && !notice ? 1 : 0);
     const printed = gate.blocked ? [
       `Round ${n}: blocked at the gate (exit ${GATE_EXIT}). The same first finding has led ${gate.streak} rounds: ${describeFinding({ frames: results, sweep: sweepResult, journeys: journeyResults, acceptance }, record.first)}`,
-      `Fix it, or propose this one finding in the ledger with a reason (its frame, landmark and property; a list, * or a region does not settle it). Full report: ${where}/report.md`,
+      `Fix it, or ${gateWayOut(record.first, results.find((r) => r.frame === String(record.first).split("\u0000")[0])?.issues?.find((i) => i.property === "reference"))}. Full report: ${where}/report.md`,
       ...(gate.trips + 1 >= 2 ? ["This is the gate's second stop: from now on only complete checks run, not --quick."] : []),
     ].join("\n") : [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
       `Verdict: ${status}${notice}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
