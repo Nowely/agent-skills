@@ -9,7 +9,6 @@
 // false positives a linter of this kind is prone to: a repository path, a URL, a date, a model's name, a
 // negated claim, a heading that happens to be one of the five labels, the user's own quoted words.
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { FIELDS, ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
@@ -144,34 +143,32 @@ test("every agent that ran is named by model and id, and an id alone is red",
     expect("Opus W2 built the runner, and W2 also wrote its suite.", ["bare-id"], { agents: ["Opus W2"] }),
   ));
 
-test("the command line: one LINT= per hit, then WORDS=, SHA256= of the bytes read and HITS= last; exit 0 clean, 1 on a hit, 2 on a refusal",
-  "the coordinator lints the draft last before its read; the digest must be of exactly the bytes linted",
+test("the command line: one LINT= per hit, then WORDS= and HITS= last, and no digest; exit 0 clean, 1 on a hit, 2 on a refusal",
+  "the coordinator lints the draft last before its read; the answer page reads the draft without a manifest, so a digest would be a number nothing compares",
   async () => {
     const clean = "Opus W2 added the runner; node --test passed, 10 of 10.\n";
     const file = path.join(TMP, "clean.md");
     fs.writeFileSync(file, clean);
-    const sha = crypto.createHash("sha256").update(clean).digest("hex");
     const a = await cli(["--agents", "Opus W2", "--receipt", "node --test", file]);
     const b = await cli(["--agents", "Opus W2"], "Opus W2: exit 6 at /tmp/x.\n");
     const c = await cli(["--bogus", file]);
     const d = await cli([path.join(TMP, "absent.md")]);
     const problems = [];
-    if (a.code !== 0 || a.last !== "HITS=0" || !a.lines.includes(`SHA256=${sha}`) || !a.lines.includes("WORDS=11")) problems.push(`clean: exit ${a.code}: ${a.out}`);
+    if (a.code !== 0 || a.last !== "HITS=0" || a.lines.join("\n") !== "WORDS=11\nHITS=0") problems.push(`clean: exit ${a.code}: ${a.out}`);
     if (b.code !== 1 || !b.lines.some((l) => /^LINT=path: 1: /.test(l)) || b.last !== `HITS=${b.lines.filter((l) => l.startsWith("LINT=")).length}`) problems.push(`stdin: exit ${b.code}: ${b.out}`);
     if (c.code !== 2 || !c.last.startsWith("ERROR=")) problems.push(`unknown flag: exit ${c.code}: ${c.out}`);
     if (d.code !== 2 || !d.last.startsWith("ERROR=")) problems.push(`missing file: exit ${d.code}: ${d.out}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("--help is the canonical reference: every rule and flag is named there, and SHA256 is the draft's digest, with no manifest or critic beside it",
-  "the pages point at --help instead of restating the rules, so --help is where they must be; the answer page reads the draft without a manifest, so a help that still named the critic's manifest would send a coordinator after a number nothing compares",
+test("--help is the canonical reference: every rule and flag is named there, with no digest, manifest or critic",
+  "the pages point at --help instead of restating the rules, so --help is where they must be; the answer page reads the draft without a manifest, so a help that still named a digest or the critic's manifest would send a coordinator after a number nothing compares",
   async () => {
     const r = await cli(["--help"]);
     const missing = ["path", "field", "five-fields", "machinery", "model-slug", "agent-id", "length", "bare-id", "agent-not-named",
-      "unsupported-success", "--agents", "--receipt", "--receipts", "--request", "--max-words", "SHA256=", "HITS=",
-      "the draft digest: the sha256 of the bytes read"].filter((s) => !r.out.includes(s));
-    const wrong = /manifest|critic/i.test(r.out);
-    return (r.code === 0 && missing.length === 0 && !wrong) || `exit ${r.code}; --help lacks ${missing.join(", ") || "nothing"}${wrong ? "; it still names a manifest or a critic" : ""}`;
+      "unsupported-success", "--agents", "--receipt", "--receipts", "--request", "--max-words", "WORDS=", "HITS="].filter((s) => !r.out.includes(s));
+    const wrong = /manifest|critic|sha256|digest/i.test(r.out);
+    return (r.code === 0 && missing.length === 0 && !wrong) || `exit ${r.code}; --help lacks ${missing.join(", ") || "nothing"}${wrong ? "; it still names a digest, a manifest or a critic" : ""}`;
   });
 
 const failed = await runCases(CASES);

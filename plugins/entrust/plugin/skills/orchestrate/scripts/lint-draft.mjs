@@ -10,7 +10,6 @@
 // is the rule that did not hold; a linter over the text needs no reading of intent. It checks what can be
 // checked mechanically and nothing more: the draft's reader still reads it for what it means.
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { adapters } from "./adapters.mjs";
@@ -26,7 +25,6 @@ Reads FILE (stdin when it is - or absent) and prints one line per hit:
   LINT=<rule>: <line number>: <the line, cut to 120 characters>
 then, always:
   WORDS=<words in the draft>
-  SHA256=<the draft digest: the sha256 of the bytes read>
   HITS=<n>                   the last line
 Exit 0 with no hit, 1 with any, 2 when nothing was linted (ERROR=<reason>).
 
@@ -174,7 +172,7 @@ export function lintDraft(text, { agents = [], receipts = [], request = "", maxW
   for (const a of specs) if (!namedPattern(a).test(flatText)) hits.push({ rule: "agent-not-named", line: 0, text: a.spec });
   const words = String(text).split(/\s+/).filter(Boolean).length;
   if (words > maxWords) hits.push({ rule: "length", line: 0, text: `${words} words, more than ${maxWords}` });
-  return { hits, words, sha256: crypto.createHash("sha256").update(String(text)).digest("hex") };
+  return { hits, words };
 }
 
 function parse(argv) {
@@ -225,6 +223,6 @@ if (isMain) {
     catch (e) { refuse(`cannot read the request ${o.request}: ${e.message}`); }
   }
   const r = lintDraft(text, { agents: o.agents, receipts, request, maxWords: o.maxWords });
-  const out = [...r.hits.map((h) => `LINT=${h.rule}: ${h.line}: ${h.text}`), `WORDS=${r.words}`, `SHA256=${r.sha256}`, `HITS=${r.hits.length}`];
+  const out = [...r.hits.map((h) => `LINT=${h.rule}: ${h.line}: ${h.text}`), `WORDS=${r.words}`, `HITS=${r.hits.length}`];
   process.stdout.write(`${out.join("\n")}\n`, () => process.exit(r.hits.length ? 1 : 0));
 }

@@ -10,7 +10,6 @@
 // tool_use id, an Agent result framed as a hand-back with every report line indented). Each check gets a
 // session that should pass and one that should not; a check that passes both is measuring nothing.
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
@@ -412,7 +411,7 @@ test("the draft's read: the verifier's thread or a final reader reads the linted
     const draft = path.join(dir, "draft.md");
     const answer = "Opus W1 added the helper; Opus V1 ran node --test: 5 of 5.\n";
     fs.writeFileSync(draft, answer);
-    const lint = (s) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1, Opus V1" --receipts ${dir}/v1.jsonl ${draft}`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0`);
+    const lint = (s) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1, Opus V1" --receipts ${dir}/v1.jsonl ${draft}`, `WORDS=12\nHITS=0`);
     // A Claude verifier, its thread continued by SendMessage to the agentId its first result names.
     const verifier = (s) => {
       const id = s.use("Agent", { description: "Opus V1: verifier", model: "opus", prompt: "You are the verifier. TASK: run the suite on the combined tree." });
@@ -476,11 +475,11 @@ test("the draft was linted before its read, the last lint passed, and nothing ch
     const dir = fs.mkdtempSync(path.join(TMP, "lint-"));
     const draft = path.join(dir, "draft.md");
     fs.writeFileSync(draft, "Opus W1 added the helper.\n");
-    const lint = (s, hits) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1" ${draft}`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=${hits}`);
+    const lint = (s, hits) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1" ${draft}`, `WORDS=12\nHITS=${hits}`);
     const reader = (s) => s.claude("Opus K1: final reader", "opus", `You are the final reader. The draft: ${draft}`, five());
-    const echoed = (s) => s.bash(`node "/p/lint-draft.mjs" ${draft}; echo "LINT_EXIT=$?"`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0\nLINT_EXIT=0`);
+    const echoed = (s) => s.bash(`node "/p/lint-draft.mjs" ${draft}; echo "LINT_EXIT=$?"`, `WORDS=12\nHITS=0\nLINT_EXIT=0`);
     const echoedRed = (s) => s.bash(`node "/p/lint-draft.mjs" ${draft}; echo "LINT_EXIT=$?"`, "LINT=path: 1: x\nWORDS=12\nHITS=1\nLINT_EXIT=1");
-    const runner = (s) => s.bash(`node /p/capture-check.mjs --label "any label" -- 'node /p/lint-draft.mjs ${draft}'`, "LABEL=any label\nLOG=/t/x.log\nLINES=3\nBYTES=90\nWORDS=12\nSHA256=x\nEXIT=0");
+    const runner = (s) => s.bash(`node /p/capture-check.mjs --label "any label" -- 'node /p/lint-draft.mjs ${draft}'`, "LABEL=any label\nLOG=/t/x.log\nLINES=3\nBYTES=90\nWORDS=12\nEXIT=0");
     const edited = (s) => { s.result(s.use("Write", { file_path: draft, content: "x" }), "ok"); return s; };
     return all(
       expectNone(G.lintCallProblems(reader(lint(session(), 0)).parsed())),
@@ -709,7 +708,7 @@ test("receipts: a Codex command that exited 0, unwrapped from its shell, and a b
         const q = G.receiptsFrom(session().parsed(), { reports: [{ commands: [{ command: '/bin/zsh -lc "node \\"/p/capture-check.mjs\\" --label \\"suite passes\\" --ledger /t/l.jsonl -- \'node --test\'"', exitCode: 0 }] }] });
         return q.includes("suite passes") && !q.some((x) => x.startsWith('\\"')) || `escaped label read as ${JSON.stringify(q)}`;
       })(),
-      G.receiptsFrom(session().bash("node /p/lint-draft.mjs /t/draft.md", "WORDS=3\nSHA256=x\nHITS=0").parsed()).includes("linter") || "a clean lint is no receipt",
+      G.receiptsFrom(session().bash("node /p/lint-draft.mjs /t/draft.md", "WORDS=3\nHITS=0").parsed()).includes("linter") || "a clean lint is no receipt",
       !G.receiptsFrom(session().bash("node /p/lint-draft.mjs /t/draft.md", "LINT=path: 1: x\nHITS=1").parsed()).includes("linter") || "a red lint became a receipt",
     );
   });
@@ -726,7 +725,6 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const answer = "Fable A1 kept the approach and Opus P1 found the plan sound. Opus W1 added the slug helper and its test, and Codex Terra C1 ran node --test on them: 5 of 5. Opus K1 read this answer against the request and found nothing missing.\n";
     const draft = path.join(scope, "draft.md");
     fs.writeFileSync(draft, answer);
-    const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
     const rows = G.planRecord("A1 | fable | architecture critic | nothing | 0\nP1 | opus | plan critic | nothing | 0\nW1 | opus | worker | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | final reader | nothing | 0");
     const c1 = `MODEL: terra\nOUTPUT_SCHEMA: ${SCHEMA_PATH}\nTASK: you are the verifier; check the slug helper.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`;
     const s1 = session().skill("entrust:codex").plan("/d/run", "W1 | opus | worker | live tree | 40000").say(CARD).parsed();
@@ -738,7 +736,7 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
       .newAgent("/d/run/C1/report.json", c1)
       .codex("Codex Terra C1: verifier", "/d/run/C1/report.json"))
       .say("Opus W1 wrote the helper, and Codex Terra C1 ran node --test on it: 5 of 5.")
-      .bash(`node /p/skills/orchestrate/scripts/lint-draft.mjs --agents "Fable A1, Opus P1, Opus W1, Codex Terra C1, Opus K1" ${draft}`, `WORDS=40\nSHA256=${sha(answer)}\nHITS=0`)
+      .bash(`node /p/skills/orchestrate/scripts/lint-draft.mjs --agents "Fable A1, Opus P1, Opus W1, Codex Terra C1, Opus K1" ${draft}`, "WORDS=40\nHITS=0")
       .claude("Opus K1: final reader", "opus", `You are the final reader. The request, the draft ${draft} and the artifacts.`,
         five({ result: "Opus K1: done, every claim backed by a raw artifact, nothing unanswered.", evidence: ["read the draft whole"] }))
       .done(answer).parsed();
