@@ -2,7 +2,7 @@
 
 Written before the runs it registers, after [the Terra rerun](39-terra-045-rerun.md) and with Fable's reading. It
 replaces the order of [38-after-the-release.md](38-after-the-release.md): its iteration 8 and 9 become one sitting,
-and the version under test becomes the next release, 0.47.0 (0.46.0, on main since, changed orchestrate and only
+and the version under test becomes the next release, the patch 0.46.1 (0.46.0, on main since, changed orchestrate and only
 the version line of this skill).
 
 ## The owner's decisions (2026-11-22)
@@ -44,6 +44,14 @@ handover at `pending`. In 60 calls ([39](39-terra-045-rerun.md#recorded-cost)):
 | `side.png` among the ten largest outputs | 4 | — |
 | Input per call at calls 1 / 30 / 59 | 25k / 69k / 93k | — |
 
+**The case itself was wrong, found after the rerun.** The prebuilt specs kept iteration 6's hand-set boxes for
+"MC-LAG 25/25" and "PSU" / "2+ PSU" in all four card frames, 30 px above their ink: the planted line moved the ink
+down and the boxes stayed (fixed in `807d848`). No build could settle them without editing the specs, and they left two
+pieces of ink unnamed in each frame. Two Sonnet builders on 0.45.0 found it and tried to correct the specs. The auto
+mode refused the edit as undermining oversight, and both handed over at `fail`. So the rerun's missing handover, and
+part of its rounds, are partly the case's. Its polls, images and context per call are not, and stay the baseline for
+those. The entries and rounds are compared only between the Sonnet arms on the fixed case.
+
 Fable's attribution, from the page and the checker:
 - **The entries:** one fair; three the same per frame; five the rows below the missing line and the root height. A
   missing landmark is never placed, so no entry carries the shift it causes, and each shifted row stays a finding.
@@ -51,7 +59,7 @@ Fable's attribution, from the page and the checker:
 - **The polls:** the page says "look every few minutes" and names no duration.
 - **The images:** the page says "view only the crop", and the checker writes no crop.
 
-## 0.47.0: four levers
+## 0.46.1: four levers
 
 1. **Polls:** the page names the wait: as long as the last complete check took.
 2. **One entry per cause:** its texts listed in `landmark`, `frame` left out when it holds in every frame.
@@ -66,11 +74,11 @@ builder writes nothing new.
 ## Measures and rules, written before
 
 **Deterministic, before any run:**
-- **C1:** the prebuilt card with the one entry for the missing line fails on 0.45.0 and is `pending` on 0.47.0.
+- **C1:** the prebuilt card with the one entry for the missing line fails on 0.45.0 and is `pending` on 0.46.1.
 - **C2:** the same with a planted 20 px shift below the line, beyond the bound, still fails on that row.
 - Lever 4 goes in only if both hold.
 
-**Sonnet, the prebuilt planted card, three arms each:** `b1`–`b3` on 0.45.0 (`bc54fde`), `n1`–`n3` on 0.47.0, the
+**Sonnet, the prebuilt planted card, three arms each:** `b1`–`b3` on 0.45.0 (`bc54fde`), `n1`–`n3` on 0.46.1, the
 approval line in the prompt as in 39. Per run: ledger entries and distinct questions, `side.png` views, check rounds,
 calls to the handover, the status at it, and the grader's verdict.
 - **Lever 2 stays** if the median of entries falls and no arm loses the question.
@@ -83,11 +91,11 @@ calls to the handover, the status at it, and the grader's verdict.
 
 ## The sitting (the owner)
 
-1. **The prebuilt pass:** the rerun of [36](36-terra-dry-run.md) on 0.47.0, 60 calls at most, the same prompt, frozen
+1. **The prebuilt pass:** the rerun of [36](36-terra-dry-run.md) on 0.46.1, 60 calls at most, the same prompt, frozen
    only after in-flight calls end. Read against the baseline table:
    - empty polls per complete check at most 1, or lever 1 is reverted in the next release;
    - the entries and rounds, beside the Sonnet arms.
-2. **Run A,** the real task on 0.47.0, with `setup` (the baseline hashes, the Codex rule, Chromium) and the approval
+2. **Run A,** the real task on 0.46.1, with `setup` (the baseline hashes, the Codex rule, Chromium) and the approval
    line. It ends at the first handover at `pass` or `pending`.
    - **A stop for approval** is not a submission: the owner answers as in any work.
    - **At the handover:** `collect`.

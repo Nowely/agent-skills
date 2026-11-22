@@ -213,5 +213,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 - [After entrust 0.45.0](38-after-the-release.md): the plan for the rest of the quota, written before the runs: the
   Terra rerun on the shipped skill, the real run as iteration 8, and the reserve.
 - [Service overhead, and the real runs in one sitting](40-overhead-and-one-sitting.md): written before the runs; the
-  owner's decisions, the review-pass control that failed, the rerun as the overhead baseline, 0.47.0's four levers
+  owner's decisions, the review-pass control that failed, the rerun as the overhead baseline, 0.46.1's four levers
   with their measures, and the sitting: the prebuilt pass, then runs A and B.
