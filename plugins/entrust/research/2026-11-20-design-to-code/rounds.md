@@ -759,3 +759,12 @@ rewriting the frozen run. It also separates call intervals from wall time, image
 initial checkpoint from independent verdict/correction, and measurable outcomes from untested speedup hypotheses.
 Existing frozen controls, small model probes and full implementations answer different questions. No new model
 implementation, checker run or skill change was made in this research round.
+
+## Draft 28.4: capped Terra dry run
+
+The prebuilt-case worker handed over after one check, before the repeated-finding gate, and asked to approve a repair
+plan under its active instructions. It identified the missing contract field in the handover but did not create the
+ledger entry the grader requires. Gate obedience is inconclusive; the check remained `fail`. The worker spawned an
+agent for preliminary analysis, but the formal review pass did not happen. [The run record](37-terra-28-4-dry-run.md)
+contains the conditions, observed results and role costs. No product or skill changes were made. No gate regression
+count can be measured from this early handover.
