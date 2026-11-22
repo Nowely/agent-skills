@@ -1230,8 +1230,7 @@ test("the handoff's evidence counts what the ledger excused, names unused entrie
   assert.match(handoff, /accepted: Ready x — the kit's padding \(system · decided by owner · excuses 1\)/);
   assert.match(handoff, /proposed: Gone presence — drop it \(ux · matched nothing\); options: keep; drop/);
   assert.match(handoff, /^- popup: incomplete \(not checked\)$/m);
-  // 0.45.1: the frame passes, so its side-by-side is in the gallery, not among the pictures to look at first.
-  assert.match(handoff, /## Pictures to look at first\n\n.*\n\n- gallery\.html\n/);
+  assert.match(handoff, /^- frame~[0-9a-f]{8}\/side\.png$/m);
   assert.equal(r.status, 2, "a blank result leaves the check incomplete");
   assert.match(r.stdout, /acceptance “popup”: not checked/);
 });
@@ -1246,18 +1245,14 @@ test("the handoff credits each ledger entry by itself, reads the result column a
     { landmark: "Ready", property: "x", category: "system", status: "accepted", decidedBy: "owner", reason: "the kit" },
     { landmark: ["*"], property: "font", category: "platform", status: "accepted", decidedBy: "owner", reason: "smoothing" }]));
   fs.writeFileSync(path.join(f.dir, "review.md"), MODEL + "## Критерии приёмки\n\n| Item | Result | Notes |\n|---|---|---|\n| frame | pass — captured | see later |\n| popup |  | later |\n\n### More\n\n- dense story: swept\n+ probe\n");
-  const r = check(f.dir);
+  check(f.dir);
   const handoff = fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8");
   assert.match(handoff, /accepted: Gone x — the kit \(system · decided by owner · matched nothing\)/);
   assert.match(handoff, /accepted: Ready x — the kit \(system · decided by owner · excuses 1\)/);
   assert.match(handoff, /\* font — smoothing \(platform · decided by owner · wildcard · matched nothing\)/);
   for (const line of [/^- frame: pass · reported: pass — captured$/m, /^- popup: incomplete \(not checked\)$/m, /^- dense story: incomplete \(no recognized result\) · reported: swept$/m, /^- probe: incomplete \(not checked\)$/m]) assert.match(handoff, line);
   assert.ok(handoff.indexOf("## Pictures to look at first") < handoff.indexOf("## Frames"), "pictures come before the numbers");
-  for (const p of (handoff.match(/^- (\S+\.png)$/gm) ?? []).map((l) => l.slice(2))) assert.ok(fs.existsSync(path.join(f.dir, "out", p)), p);
-  // 0.45.1: a frame's side-by-side is listed while it has something open, not once it passes; the gallery always.
-  assert.equal(r.result.frames[0].verdict, "pass", JSON.stringify(r.result.frames[0].issues));
-  assert.doesNotMatch(handoff, /side\.png/);
-  assert.match(handoff, /^- gallery\.html$/m);
+  for (const p of handoff.match(/^- (\S+\.png)$/gm).map((l) => l.slice(2))) assert.ok(fs.existsSync(path.join(f.dir, "out", p)), p);
 });
 
 test("journeys can change the width and expect the focus; a hidden step on what never opened is noted", browser, () => {
@@ -2428,10 +2423,8 @@ test("0.45.1, C1: on the planted card the line's presence entry alone carries ev
   assert.deepEqual([...new Set(r.result.frames.flatMap((f) => f.issues.filter((i) => i.status === "fail").map((i) => i.property)))].sort(), ["type", "width"]);
   assert.match(r.stdout, /shifts carried by the missing “Выдача за 15 минут” \(ledger entry 1, pending\)/);
   assert.doesNotMatch(r.stdout, /start here: between “the top of the root”/);
-  // One entry for the question in every frame is no broad excuse; its frames, each with a finding, are the pictures.
-  const handoff = fs.readFileSync(path.join(r.dir, "out/handoff.md"), "utf8");
-  assert.doesNotMatch(handoff, /## Broad excuses/);
-  assert.match(handoff, /^- card-764~[0-9a-f]+\/side\.png$/m);
+  // One entry for the question in every frame is no broad excuse.
+  assert.doesNotMatch(fs.readFileSync(path.join(r.dir, "out/handoff.md"), "utf8"), /## Broad excuses/);
 });
 
 test("0.45.1, C2: a 20 px margin planted above the planted card's footer, below the missing line, stays a finding", browser, () => {

@@ -253,6 +253,6 @@ The console shows the digest (see Rounds above). In `out/`:
 |---|---|
 | `report.md`, `result.json` | every finding and note, the causes, the sweep and the journeys |
 | `<frame>/page.png`, `side.png`, `diff.png` | the page now; design, page and difference side by side; the differing pixels |
-| `handoff.md` | by a complete check, the evidence a handoff quotes: the status first, then the pictures (each frame with something open, side by side, and the gallery), frames, stories with their longest texts, candidates, constructs, journeys, ledger entries, what is disputed with the check, acceptance rows and what was not checked |
+| `handoff.md` | by a complete check, the evidence a handoff quotes: the status first, then the pictures, frames, stories with their longest texts, candidates, constructs, journeys, ledger entries, what is disputed with the check, acceptance rows and what was not checked |
 | `gallery.html` | by a complete check: design, before, after and difference per frame, with the stories and the ledger |
 | `history.jsonl` | one line per check: round, status, score, what it was measured against, `quick`, `seconds` and `bytes` printed |

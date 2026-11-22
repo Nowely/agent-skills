@@ -69,10 +69,10 @@ story with legal data, or name under Candidates in `review.md` the bound that ru
 
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
 complete check, in the foreground; if the shell returns first, wait in one call as long as the last complete check
-took (`seconds` in `out/history.jsonl`, else two minutes). View a frame's `side.png` only when the digest's numbers
-leave the question open; full pages at every width once, before handover. Keep probes in one parameterised script on
-disk. When a quick round says the first finding is unchanged, fix it or propose it; when a complete round says stop,
-stop re-running.
+took (`seconds` in `out/history.jsonl`, else two minutes). View only the crop and reference answering the current
+question; full pages at every width once, before handover. Keep probes in one parameterised script on disk. When a
+quick round says the first finding is unchanged, fix it or propose it; when a complete round says stop, stop
+re-running.
 
 A finding says what to fix: fix its first cause and check again. A note needs nothing. A finding you cannot fix goes in
 `deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. One entry per cause: its
