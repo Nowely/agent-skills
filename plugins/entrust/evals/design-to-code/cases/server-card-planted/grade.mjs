@@ -22,7 +22,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { PLANT, gradeRounds } from "./rounds.mjs";
 import { compareReference, decodePng } from "./reference.mjs";
-import { compareData, entryText, findQuestion, historyReset, specChanges, toleranceChanges } from "./inputs.mjs";
+import { compareData, entryText, findQuestion, frameDataChanges, frameDataName, historyReset, specChanges, toleranceChanges } from "./inputs.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const [target, ...flags] = process.argv.slice(2);
@@ -89,7 +89,9 @@ const builds = [];
 for (const [label, root] of [["own data", arm], ["case data", tmp]]) {
   for (const [w, f] of Object.entries(FRAMES)) {
     const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
-    await page.goto(`file://${root}/story.html?data=card-${w}&w=${w}`);
+    // With the arm's data, each frame renders what its design.json frame names, as the check renders it.
+    const named = label === "own data" ? frameDataName((config.frames ?? []).find((x) => Number(x.width) === Number(w))) : null;
+    await page.goto(`file://${root}/story.html?data=${named ?? `card-${w}`}&w=${w}`);
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => {
       const host = document.getElementById("host"), card = host?.firstElementChild;
@@ -139,6 +141,7 @@ const inputs = [
   ...specChanges(specs, record.skipped ?? []),
   ...(contractChanged ? ["README.md: the contract changed"] : []),
   ...(fs.existsSync(armData) ? compareData(fs.readFileSync(path.join(HERE, "project/data.js"), "utf8"), fs.readFileSync(armData, "utf8")) : ["data.js: missing"]),
+  ...(fs.existsSync(armData) ? frameDataChanges(fs.readFileSync(path.join(HERE, "project/data.js"), "utf8"), fs.readFileSync(armData, "utf8"), config) : []),
   ...toleranceChanges(config),
 ];
 const reset = historyReset(docs);

@@ -45,10 +45,14 @@ export function findQuestion(docs) {
 export const entryText = (e) => [].concat(e.landmark ?? []).join(", ") + " — " + [e.reason, e.options && JSON.stringify(e.options)].filter(Boolean).join(" ");
 
 // data.js read as the story page reads it: window.OFFERS.
+// The context is its own `window`, as in a browser, so a file that sets `window.OFFERS` and then writes `OFFERS[…]`
+// loads as it does on the page.
 export function readOffers(source) {
-  const window = {};
-  vm.runInNewContext(String(source), { window, console: { log() {}, warn() {} } }, { timeout: 1000 });
-  return window.OFFERS ?? {};
+  const global = { console: { log() {}, warn() {} } };
+  global.window = global;
+  vm.createContext(global);
+  vm.runInContext(String(source), global, { timeout: 1000 });
+  return global.OFFERS ?? {};
 }
 
 // The frame entries the case gave, against the arm's: added stories are the builder's to add; a frame entry removed,
@@ -65,6 +69,29 @@ export function compareData(originalSource, armSource) {
     const added = Object.keys(b).filter((k) => !(k in a)), dropped = Object.keys(a).filter((k) => !(k in b));
     const changed = Object.keys(a).filter((k) => k in b && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
     out.push(`data.js: ${key} ${[added.length && `adds ${added.join(", ")}`, dropped.length && `drops ${dropped.join(", ")}`, changed.length && `changes ${changed.join(", ")}`].filter(Boolean).join("; ")}`);
+  }
+  return out;
+}
+
+// The data each frame renders, as design.json's frame URLs name it (`?data=<entry>`), against the case's entry for
+// that width (`card-<width>`): a frame pointed at an entry the builder added renders data the case did not give.
+export function frameDataName(frame) {
+  const q = String(frame?.url ?? "").split("?")[1];
+  return q ? new URLSearchParams(q).get("data") : null;
+}
+export function frameDataChanges(originalSource, armSource, config) {
+  let original, mine;
+  try { original = readOffers(originalSource); mine = readOffers(armSource); } catch { return []; }
+  const out = [];
+  for (const f of config?.frames ?? []) {
+    const name = frameDataName(f), want = `card-${f.width}`;
+    if (!name || name === want || !(want in original)) continue;
+    const a = original[want], b = mine[name];
+    if (!b) { out.push(`design.json: ${f.name} renders ${name}, which data.js does not hold`); continue; }
+    const added = Object.keys(b).filter((k) => !(k in a) && k !== "id"), dropped = Object.keys(a).filter((k) => !(k in b));
+    const changed = Object.keys(a).filter((k) => k in b && k !== "id" && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+    if (!added.length && !dropped.length && !changed.length) continue;
+    out.push(`design.json: ${f.name} renders ${name} instead of ${want}, which ${[added.length && `adds ${added.join(", ")}`, dropped.length && `drops ${dropped.join(", ")}`, changed.length && `changes ${changed.join(", ")}`].filter(Boolean).join("; ")}`);
   }
   return out;
 }
