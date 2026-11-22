@@ -321,10 +321,10 @@ is removed; `worktreePath` is the path the run named, and `worktreePreserved` is
 disk names that destination, which is not a tree this run made; a `--resume` rebuild that could not finish tries
 to remove its half-restored tree and reports `null` where it did, or the refusal where git kept it. A preserved
 tree is not a harvest: `worktreeDiffPath`, `worktreeUntrackedPath` and `worktreeCommitsRef` can all be null, so
-the landing recipe has nothing to apply. The tree itself is the artifact, at `worktreePath`; read it, take what
-is worth keeping, then remove it with `git -C <repo> worktree remove --force <path>`, which the report written
-after the turn carries ready to run as `worktreeRemoveCommand` and a pre-turn refusal's report does not.
-Removing it discards whatever was never harvested.
+the landing recipe has nothing to apply. The tree itself is the artifact, at `worktreePath`; the coordinator decides what
+of it lands, a worker reads it and takes what is worth keeping, and then it is removed with
+`git -C <repo> worktree remove --force <path>`, which the report written after the turn carries ready to run as
+`worktreeRemoveCommand` and a pre-turn refusal's report does not. Removing it discards whatever was never harvested.
 
 ## Lock design
 
