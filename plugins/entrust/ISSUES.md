@@ -12,11 +12,12 @@ before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) 
 
 ## E161. The 0.46.2 changelog's known-issues sentence ends at "are described in", with no link after it
 
-**Evidence, level 1.** `f1fb6fa:plugins/entrust/CHANGELOG.md:33` (today `:71`) is "- No new
-issues; the open ones, E154 to E157 among them, are described in", and the next line is blank. Every other release's
-known-issues sentence that ends "described in" continues on the next line with the `[ISSUES.md](…)` link (today `:42`,
-`:125`, `:203`). The release notes for `entrust@0.46.2` are cut from this section (RELEASING.md); whether the
-published notes carry the same cut was not checked. Found by an independent verifier of this branch, 2026-11-22.
+**Evidence, level 1.** `f1fb6fa:plugins/entrust/CHANGELOG.md:33` (today `:72`) is "- No new issues; the open ones,
+E154 to E157 among them, are described in", and the next line is blank. Every other sentence in the file that ends
+"described in" continues on the next line with the `[ISSUES.md](…)` link: today `:43` (under Unreleased), `:126`,
+`:204`, `:824`, `:851` and `:889`. The release notes for `entrust@0.46.2` are cut from this section (RELEASING.md);
+whether the published notes carry the same cut was not checked. Found by an independent verifier of this branch,
+2026-11-22.
 
 **Check.** `grep -n -A1 'described in$' plugins/entrust/CHANGELOG.md` shows the 0.46.2 sentence followed by an empty line.
 
