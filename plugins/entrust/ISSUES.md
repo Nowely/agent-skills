@@ -10,6 +10,16 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E158. The planted-card grader misses options recorded as a ledger array
+
+**Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/inputs.mjs:16-20` recognizes option labels
+in text; `:45` serializes an entry's `options` array without its field name. In the frozen Terra rerun, an entry
+names the missing contract data and contains two options, but `findQuestion` returns `named: true, surfaced: false`.
+Appending the label `Options:` to the same text returns `surfaced: true`. The grader uses these documents at
+`evals/design-to-code/cases/server-card-planted/grade.mjs:131-149`, so it can report `QUESTION NOT SURFACED` despite
+an entry having options. The run itself also stopped before a worker handover; this is not a claim that it passed.
+The reproduction and that distinction are in `research/2026-11-20-design-to-code/39-terra-045-rerun.md`.
+
 ## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
 
 **Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
