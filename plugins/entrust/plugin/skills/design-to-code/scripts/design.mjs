@@ -96,7 +96,8 @@ function loadConfig(file) {
   // The owner's past returns, one per line: .design/returns.md beside the task's folder unless design.json names one.
   const returns = cfg.returns ? at(cfg.returns) : path.join(dir, "..", "returns.md");
   if (cfg.static !== undefined && !(typeof cfg.static === "string" && cfg.static.trim())) throw new Error('design.json: "static" gives the reason no sweep or dense story applies');
-  if (cfg.lifecycle !== undefined && cfg.lifecycle !== false) throw new Error('design.json: "lifecycle" is false when the product can cause no lifecycle; otherwise leave it out and take each in a journey with "sameAsFresh": true');
+  // An exit from the lifecycle journey gives its reason, which the handoff prints for the owner.
+  if (cfg.lifecycle !== undefined && !(typeof cfg.lifecycle === "string" && cfg.lifecycle.trim())) throw new Error('design.json: "lifecycle" gives the reason the product can cause no lifecycle, as "static" gives its: "lifecycle": "no data changes: the card renders once"; otherwise leave it out and take each lifecycle in a journey with "sameAsFresh": true');
   // The layout model's lines: pieces that share a row, in order, where the line holds (a width range, or a selector
   // the page shows in that layout mode).
   const lines = cfg.sweep?.lines ?? [];
@@ -107,6 +108,8 @@ function loadConfig(file) {
   return {
     // The ledger is deviations.json beside design.json unless it names another.
     ...cfg, dir, returnsFile: returns, url: url(cfg.url), ledger: at(cfg.ledger ?? "deviations.json"), tolerance: cfg.tolerance ?? 1,
+    // The pages frames name in a url of their own: story pages, as the journeys' gate reads them.
+    framedUrls: cfg.frames.filter((f) => f?.url).map((f) => url(f.url)),
     journeys: journeys.map((j) => ({ ...j, url: url(j.url) ?? url(cfg.url) })),
     ...(cfg.sweep ? { sweep: { ...cfg.sweep, stories: stories.map((st) => ({ ...st, url: url(st.url) })) } } : {}),
     frames: cfg.frames.map((f) => {
@@ -1724,7 +1727,9 @@ async function journeys(browser, cfg) {
     let trigger, visibleBefore = new Set();
     const acted = new Set(), openSeen = new Set(), actedOn = new Set();
     let closes = false;
-    const constructs = [];
+    // The lifecycle the steps took, from what they did to the component: a root mounted or unmounted, its content
+    // changed, or its container's width changed by a step that is not the window's width.
+    const took = new Set(), constructs = [];
     if (opened) {
       const { page } = opened;
       // The container as the journey starts, and the page around it then. The floor holds where the container narrows
@@ -1757,7 +1762,14 @@ async function journeys(browser, cfg) {
         const after = await layoutOf(page, cfg.root);
         if (after) toHold.push({ i, step, after, width: now.width, before, at: Math.max(1, Math.round(now.width + around)) });
       };
+      let box = edge ? null : await container(page, cfg);
       await page.evaluate(() => window.__designCheck?.mark()).catch(() => {});
+      const parentMoved = async (byWindow) => {
+        if (edge) return;
+        const now = await container(page, cfg);
+        if (!byWindow && Number.isFinite(now) && Number.isFinite(box) && Math.abs(now - box) > cfg.tolerance) took.add("parent width");
+        if (Number.isFinite(now)) box = now;
+      };
       try {
         for (const [i, step] of j.steps.entries()) {
           if (failed) break;
@@ -1786,11 +1798,13 @@ async function journeys(browser, cfg) {
               await setWidth(page, cfg, step.width, 900);
               await settle(page, cfg.root);
               widths.push(step.width);
+              await parentMoved(true);
               await roomAfter(i, step);
               continue;
             }
             if (EXPECT.includes(action)) await finishMotion(page);
             await runStep(page, step);
+            await parentMoved(false);
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             await roomAfter(i, step);
             if (step.visible) {
@@ -1847,6 +1861,11 @@ async function journeys(browser, cfg) {
             }
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
+        if (!edge) {
+          const { mount, data } = await page.evaluate(() => window.__designCheck?.changed()).catch(() => null) ?? {};
+          if (mount) took.add("mount");
+          if (data) took.add("data");
+        }
         // An observer the steps left on elements they removed is a construct note, not a finding: an element detached
         // and kept (a tab pane cached to be shown again) or a cleanup deferred is fine; a layout the stale observer
         // keeps shows in the fresh comparison after a sameAsFresh journey.
@@ -1890,7 +1909,7 @@ async function journeys(browser, cfg) {
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
     results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
-      acted: [...acted], closes, closers, ...(constructs.length ? { issues: constructs } : {}) });
+      acted: [...acted], closes, closers, ...(edge ? {} : { lifecycle: [...took] }), ...(constructs.length ? { issues: constructs } : {}) });
   }
   return results;
 }
@@ -2066,11 +2085,21 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   }
   // A lifecycle the product can cause (a remount, data emptied and refilled, a parent-width change) is taken through the
   // consumer, in a journey that ends as a fresh load draws the component: on the page `url` names (whatever its query),
-  // or on a page of the journey's own that no frame or story shows. Unless design.json says the product has none.
+  // or on a page of the journey's own that no frame or story shows. When `url` is a story page (the frames are drawn
+  // there by a host the check sizes, or by a frame's own url), only the latter is the consumer's. The journey must take
+  // a lifecycle: a step that changed the component's data, mounted or unmounted it, or changed its parent's width; a
+  // width step alone is the window's. Unless design.json gives the reason the product has none.
   const page = (u) => String(u).replace(/[?#].*$/, ""), storyPages = new Set([...cfg.frames.map((f) => f.url), ...(cfg.sweep?.stories ?? []).map((st) => st.url)].map(page));
-  const consumer = (j) => page(j.url) === page(cfg.url) || !storyPages.has(page(j.url));
-  if (cfg.lifecycle !== false && !cfg.journeys.some((j) => j.sameAsFresh === true && consumer(j))) {
-    gaps.push('no journey with "sameAsFresh": true runs on the consumer\'s page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent\'s width changed) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle": false in design.json if it can cause none');
+  const storyUrl = (cfg.host ? cfg.frames.map((f) => f.url) : cfg.framedUrls ?? []).map(page).includes(page(cfg.url));
+  const consumer = (j) => (!storyUrl && page(j.url) === page(cfg.url)) || !storyPages.has(page(j.url));
+  const onConsumer = cfg.journeys.filter((j) => j.sameAsFresh === true && consumer(j));
+  const took = (j) => journeyResults.find((r) => r.name === j.name)?.lifecycle?.length;
+  const where = storyUrl ? "on a consumer page of its own `url` that no frame or story shows (the page `url` names draws the frames, a story page)" : "on the page `url` names or a consumer page of its own `url`";
+  const exit = 'or give "lifecycle" in design.json with the reason the product can cause none';
+  if (typeof cfg.lifecycle !== "string" && !onConsumer.length) {
+    gaps.push(`no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent's width changed) in one, ${where}, ${exit}`);
+  } else if (typeof cfg.lifecycle !== "string" && !onConsumer.some(took)) {
+    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps changed the component's data, mounted or unmounted it, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
   }
   // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
   // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.
@@ -2176,7 +2205,7 @@ async function check(file, flags) {
       const pictures = [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
       const modelRound = [...history, record].find((h) => h.model >= 1)?.round;
       const model = { rows: record.model, firstRound: modelRound, predicted: cfg.sweep?.switches ?? [], measured: sweepResult?.switches ?? [] };
-      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, stamp, pictures, model })}\n`);
+      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, lifecycle: cfg.lifecycle, stamp, pictures, model })}\n`);
     }
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a complete check.

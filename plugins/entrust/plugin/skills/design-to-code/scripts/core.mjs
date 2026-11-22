@@ -1179,7 +1179,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
 // the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
 export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], ledgerProblems = [], acceptance = [],
-  pictures = [], round: n, status, score, stamp = "", model }) {
+  pictures = [], round: n, status, score, stamp = "", model, lifecycle }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
   const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))}${afterLedger(i)})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
@@ -1294,6 +1294,8 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   out.push("", "## Not checked by the script", "");
   for (const g of gaps) out.push(`- ${g}`);
   if (sweep?.generate === false) out.push("- the generated conditions (sweep.generate is false): texts longer and entries more numerous than the stories carry");
+  // The exit from the lifecycle journey, with the builder's reason, so the owner sees it was taken.
+  if (lifecycle) out.push(`- a lifecycle in a journey (mount and unmount, data emptied and refilled, the parent's width changed): design.json says the product can cause none: “${lifecycle}”`);
   const unsized = frames.filter((f) => f.typeUnchecked).map((f) => f.frame);
   if (unsized.length) out.push(`- type sizes in ${unsized.join(", ")}: the spec gives no font sizes`);
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");

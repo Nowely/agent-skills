@@ -383,7 +383,7 @@ function designDir() {
   design = tmp();
   fs.copyFileSync(path.join(CASE, "reference.html"), path.join(design, "page.html"));
   fs.writeFileSync(path.join(design, "design.json"), JSON.stringify({
-    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json", lifecycle: false,
+    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json", lifecycle: "a fixture: one render, no data changes",
     sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }], lines: [{ name: "badges", pieces: [".badge.new", ".badge:not(.new)"], from: 600 }] },
     frames: CONFIG.frames.map((f) => ({ ...f, spec: `design/${f.name}/spec.json`, reference: `design/${f.name}/reference.png` })),
   }));
@@ -425,7 +425,7 @@ function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   const write = (html) => fs.writeFileSync(page, markup(html));
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", lifecycle: false,
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
     frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })),
     sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES } }));
   const snap = cli("snapshot", config, "--images");
@@ -765,7 +765,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const run = (second, align, { tolerance, hideBelow } = {}) => {
     fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", lifecycle: false, frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", lifecycle: "a fixture: one render, no data changes", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
     return check(dir);
   };
   const v = [{ selector: ".v", edge: "left" }];
@@ -932,7 +932,7 @@ test("a frame of a state drawn outside the component names its own root", browse
 help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", lifecycle: false, frames: [
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", lifecycle: "a fixture: one render, no data changes", frames: [
     { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
     sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
@@ -1532,7 +1532,7 @@ function boxCase(design, page, width = 320, { ledger = [] } = {}) {
   const dir = tmp(), config = path.join(dir, "design.json"), file = path.join(dir, "page.html");
   const wrap = (body) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fff}</style>${body}`;
   fs.writeFileSync(file, wrap(design));
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", lifecycle: false, frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", lifecycle: "a fixture: one render, no data changes", frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(path.join(dir, "ledger.json"), JSON.stringify(ledger));
   assert.equal(cli("snapshot", config, "--images", "--scale", "2").status, 0);
@@ -2518,7 +2518,7 @@ function windowFrames(html, { root = ".card", review = "" } = {}) {
   const dir = tmp(), config = path.join(dir, "design.json");
   fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0;font:20px/24px monospace}.card{background:white}.row{display:flex;gap:8px}</style>${html}`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW + review);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root, ledger: "ledger.json", lifecycle: false,
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root, ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
     frames: [["wide", 900], ["narrow", 375]].map(([name, width]) => ({ name, width, spec: `${name}.json`, reference: `${name}.png` })),
     sweep: { from: 375, to: 900, step: 100, stories: [{ name: "dense", url: "page.html?dense" }] } }));
   const snap = cli("snapshot", config, "--images");
@@ -2658,16 +2658,19 @@ test("draft 28.2: pending means proposals wait for the owner; a page snapshot us
 
 // ------------------------------------------------------------------ 44: the return classes into the checker
 
-// Item 1: a complete check is incomplete until a journey on the consumer's page carries sameAsFresh, or design.json
-// says the product has no lifecycle.
-const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle": false in design\.json if it can cause none/;
-test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh, or design.json gives \"lifecycle\": false", browser, () => {
-  const f = smallFrame();
+// Item 1: a complete check is incomplete until a journey on the consumer's page carries sameAsFresh and takes a
+// lifecycle, or design.json gives the reason the product has none.
+const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle" in design\.json with the reason the product can cause none/;
+const STORY_URL = /no journey with "sameAsFresh": true runs on the consumer's page: .* in one, on a consumer page of its own `url` that no frame or story shows \(the page `url` names draws the frames, a story page\)/;
+const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps changed the component's data, mounted or unmounted it, or changed its parent's width, and a width step is the window's/;
+test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh and takes a lifecycle, or design.json gives the reason there is none", browser, () => {
+  // A button that renders the component's content again: its data changed, as a list emptied and refilled does.
+  const f = smallFrame('<div id="c"><span>Ready</span></div><button id="again">Again</button><script>document.getElementById("again").onclick = () => { const c = document.getElementById("c"); c.innerHTML = c.innerHTML; };</script>');
   const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  assert.equal(lifecycle, false, "the fixtures state it");
+  assert.equal(typeof lifecycle, "string", "the fixtures state their reason");
   for (const name of ["consumer.html", "host.html"]) fs.copyFileSync(f.page, path.join(f.dir, name));
   const run = (config) => { fs.writeFileSync(f.config, JSON.stringify(config)); return check(f.dir); };
-  const fresh = (extra = {}) => ({ name: "remounted", sameAsFresh: true, steps: [{ width: 300 }, { visible: "main" }], ...extra });
+  const fresh = (extra = {}) => ({ name: "remounted", sameAsFresh: true, steps: [{ width: 300 }, { click: "#again" }, { visible: "main span" }], ...extra });
   // None: incomplete, and the gap says what to do.
   const none = run(cfg);
   assert.equal(none.status, 2, none.stdout);
@@ -2675,24 +2678,54 @@ test("44.1: a complete check is incomplete until a journey on the consumer's pag
   assert.ok(none.result.gaps.some((g) => LIFECYCLE.test(g)), JSON.stringify(none.result.gaps));
   // A journey without sameAsFresh, or one that says false, is not one.
   assert.equal(run({ ...cfg, journeys: [{ ...fresh(), sameAsFresh: false }] }).status, 2);
-  // On the page `url` names, whatever its query: complete.
-  assert.equal(run({ ...cfg, journeys: [fresh({ url: "page.html?other" })] }).status, 0);
+  // On the page `url` names, whatever its query, taking a lifecycle: complete; the journey says what it took.
+  const taken = run({ ...cfg, journeys: [fresh({ url: "page.html?other" })] });
+  assert.equal(taken.status, 0, taken.stdout);
+  assert.deepEqual(taken.result.journeys.find((j) => j.name === "remounted").lifecycle, ["data"]);
+  // Before (the verifier of doc 44): a journey that only sets the window's width and sees the component counted.
+  const idle = run({ ...cfg, journeys: [fresh({ steps: [{ width: 300 }, { visible: "main" }] })] });
+  assert.equal(idle.status, 2, idle.stdout);
+  assert.deepEqual(idle.result.journeys[0].lifecycle, []);
+  assert.ok(idle.result.gaps.some((g) => UNTAKEN.test(g)), JSON.stringify(idle.result.gaps));
   // The frames on a story page, `url` the consumer: a journey on the story page is not the consumer's; one on `url`,
   // or on a page of its own no frame or story shows, is.
   const story = { ...cfg, url: "consumer.html", frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })) };
   assert.match(run({ ...story, journeys: [fresh({ url: "page.html" })] }).stdout, LIFECYCLE);
   assert.equal(run({ ...story, journeys: [fresh()] }).status, 0);
   assert.equal(run({ ...story, journeys: [fresh({ url: "host.html" })] }).status, 0);
-  // The product has none: "lifecycle": false, and nothing else.
-  assert.equal(run({ ...cfg, lifecycle: false }).status, 0);
-  for (const value of [true, "none"]) {
+  // Before (the verifier): `url` itself a story page, the frames drawn there by a url of their own or by a host, and a
+  // journey on it counted. Now only a page of the journey's own that no frame or story shows does.
+  for (const onStory of [{ ...cfg, frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })) }, { ...cfg, host: "main" }]) {
+    const r = run({ ...onStory, journeys: [fresh()] });
+    assert.equal(r.status, 2, r.stdout);
+    assert.ok(r.result.gaps.some((g) => STORY_URL.test(g)), JSON.stringify(r.result.gaps));
+    const own = run({ ...onStory, journeys: [fresh({ url: "host.html" })] });
+    assert.equal(own.status, 0, own.stdout);
+  }
+  // The product has none: "lifecycle" gives the reason, and the handoff prints it for the owner.
+  assert.equal(run({ ...cfg, lifecycle: "no data changes: the card renders once" }).status, 0);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- a lifecycle in a journey \(mount and unmount, data emptied and refilled, the parent's width changed\): design\.json says the product can cause none: “no data changes: the card renders once”$/m);
+  // Before: "lifecycle": false was the exit, with no reason. Now it, true or an empty reason stops the launch.
+  for (const value of [false, true, " "]) {
     const bad = run({ ...cfg, lifecycle: value });
     assert.equal(bad.status, 2);
-    assert.match(bad.stderr, /"lifecycle" is false when the product can cause no lifecycle/);
+    assert.match(bad.stderr, /"lifecycle" gives the reason the product can cause no lifecycle, as "static" gives its: "lifecycle": "no data changes: the card renders once"/);
   }
   // A partial check asks for none.
   fs.writeFileSync(f.config, JSON.stringify(cfg));
   assert.doesNotMatch(check(f.dir, "--quick").stdout, LIFECYCLE);
+});
+
+// Item 1: the parent's width changed by a step (a sidebar opened) is a lifecycle; the window's width is not.
+test("44.1: a step that resizes the component's container takes a lifecycle; a width step alone does not", browser, () => {
+  const f = smallFrame('<style>main{width:auto;max-width:300px}#col{width:100%}#col.narrow{width:150px}</style><div id="col"><div class="card"><span>Ready</span></div></div><button id="side">Side</button><script>document.getElementById("side").onclick = () => document.getElementById("col").classList.toggle("narrow");</script>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const took = (steps) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, root: ".card", journeys: [{ name: "side", sameAsFresh: true, steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "side").lifecycle;
+  };
+  assert.deepEqual(took([{ click: "#side" }, { visible: ".card" }, { click: "#side" }, { visible: ".card" }]), ["parent width"]);
+  assert.deepEqual(took([{ width: 200 }, { visible: ".card" }, { width: 300 }, { visible: ".card" }]), []);
 });
 
 // A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer
@@ -2832,6 +2865,8 @@ test("44, controls: the catalogue card's reference build gets no new finding; it
   // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
   assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
   assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
+  // The list journey on the consumer page took its lifecycle: the cards unmounted and mounted again.
+  assert.ok(ref.result.journeys.find((j) => j.name.startsWith("list:")).lifecycle.includes("mount"), JSON.stringify(ref.result.journeys));
   const edit = (js, from, to) => { assert.equal(js.split(from).length, 2, from); return js.replace(from, to); };
   const unwatch = "    for (const card of host.querySelectorAll(\".card\")) unwatch(card);\n";
   // The cards leaving keep their observers, and the cards mounted are observed: the layout is right, so it is a
@@ -2986,7 +3021,7 @@ test("44.9: the story page's Details, whose sheet is only on the consumer's page
     fs.writeFileSync(story, html.replace(render, `${render}  for (const b of host.querySelectorAll(".details")) b.setAttribute("${attr}", "${value}");\n`));
     // What decides the cover only: the frames, the sheet's journey and a sweep of the frames' widths.
     const file = path.join(dir, "design.json"), c = JSON.parse(fs.readFileSync(file, "utf8"));
-    fs.writeFileSync(file, JSON.stringify({ ...c, lifecycle: false, sweep: { ...c.sweep, from: 375, to: 764, step: 389, switches: [] }, journeys: [c.journeys[0]] }));
+    fs.writeFileSync(file, JSON.stringify({ ...c, lifecycle: "a fixture: one render, no data changes", sweep: { ...c.sweep, from: 375, to: 764, step: 389, switches: [] }, journeys: [c.journeys[0]] }));
     return check(dir);
   };
   for (const [attr, value] of [["role", "link"], ["aria-controls", "notes"]]) {
