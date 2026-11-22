@@ -2651,3 +2651,46 @@ test("44.3: a mode a ResizeObserver or matchMedia sets is a construct note that 
   // A query that is not the window's size decides no layout mode.
   assert.deepEqual(modes('row.classList.toggle("calm", matchMedia("(prefers-reduced-motion: reduce)").matches);'), []);
 });
+
+// The catalogue card's reference build, with the design.json a builder following the skill writes (research note 35):
+// frames on the story page sized by the host, journeys on the consumer page.
+const CATALOGUE = path.join(HERE, "design-to-code/cases/catalogue-card");
+function catalogueArm(change = (js) => js) {
+  const arm = path.join(tmp(), "arm");
+  assert.equal(spawnSync(process.execPath, [path.join(CATALOGUE, "make-arm.mjs"), arm], { encoding: "utf8" }).status, 0);
+  fs.writeFileSync(path.join(arm, "card.js"), change(fs.readFileSync(path.join(CATALOGUE, "reference/card.js"), "utf8")));
+  fs.copyFileSync(path.join(CATALOGUE, "reference/card.css"), path.join(arm, "card.css"));
+  const dir = path.join(arm, "check");
+  fs.mkdirSync(dir);
+  const frame = (name, width, extra = {}) => ({ name, width, spec: `../design/${name}/spec.json`, reference: `../design/${name}/reference.png`, ...extra });
+  const list = { name: "list: emptied by the search and restored, the cards come back", url: "../index.html", sameAsFresh: true, steps: [
+    { width: 375 }, { fill: ["#q", "zzz"] }, { hidden: ".card" }, { visible: ".empty" }, { fill: ["#q", ""] }, { visible: ".card" }, { hidden: ".empty" }] };
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "../story.html", root: ".card", host: "#host", viewport: 1280,
+    frames: [frame("card-764", 764), frame("card-375", 375), frame("size-chosen-375", 375, { setup: [{ click: ".card .size:nth-child(2)" }] })],
+    sweep: { from: 320, to: 900, step: 40, switches: [640], stories: [{ name: "dense", url: "../story.html?data=dense" }, { name: "many", url: "../story.html?data=many" }] },
+    journeys: [
+      { name: "sheet: Details opens it, Close closes it", url: "../index.html", steps: [{ width: 375 }, { click: ".card .details" }, { visible: "#sheet" }, { click: ".sheet__close" }, { hidden: "#sheet" }] },
+      list,
+      { name: "sidebar: Filters opens it beside the list and closes it", url: "../index.html", sameAsFresh: true, steps: [{ width: 960 }, { click: "#filters" }, { visible: "#sidebar" }, { click: "#filters" }, { hidden: "#sidebar" }] }] }));
+  fs.writeFileSync(path.join(dir, "deviations.json"), "[]");
+  fs.writeFileSync(path.join(dir, "review.md"), "## Acceptance\n\n- frames: pass — the check\n");
+  return dir;
+}
+
+test("44, controls: the catalogue card's reference build gets no new finding; with its observers left on removed cards, the list journey fails", browser, () => {
+  const ref = check(catalogueArm());
+  // As before the change: every frame, the sweep and the journeys hold; the story page's Details opener has no sheet.
+  assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
+  assert.ok(ref.result.journeys.every((j) => j.pass), JSON.stringify(ref.result.journeys.filter((j) => !j.pass)));
+  assert.equal(ref.status, 2, ref.stdout);
+  assert.deepEqual(ref.result.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"]);
+  // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
+  assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
+  assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
+  // The stateful bench's stale-observer class: the cards leaving keep their observers.
+  const unwatch = "    for (const card of host.querySelectorAll(\".card\")) unwatch(card);\n";
+  const stale = check(catalogueArm((js) => { assert.equal(js.split(unwatch).length, 2); return js.replace(unwatch, ""); }), "--no-sweep");
+  const failed = stale.result.journeys.filter((j) => !j.pass).map((j) => [j.name, j.failed]);
+  assert.deepEqual(failed, [["list: emptied by the search and restored, the cards come back",
+    "after its steps, a ResizeObserver still observes 3 elements removed from the page (article.card): disconnect it on unmount and observe what mounts"]]);
+});
