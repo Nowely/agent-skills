@@ -1777,7 +1777,9 @@ async function check(file, flags) {
       const git = (...args) => spawnSync("git", args, { cwd: cfg.dir, encoding: "utf8" });
       const commit = git("rev-parse", "--short", "HEAD"), dirty = git("status", "--porcelain").stdout?.trim();
       const stamp = `${record.time}${commit.status === 0 ? ` · commit ${commit.stdout.trim()}${dirty ? " with uncommitted changes" : ""}` : ""}`;
-      const pictures = [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
+      // The side-by-side of each frame with something open (a finding, a proposal, something unmeasured), not of every
+      // frame: a frame that passes is in the gallery.
+      const pictures = [...results.filter((r) => r.verdict !== "pass").map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
       const modelRound = [...history, record].find((h) => h.model >= 1)?.round;
       const model = { rows: record.model, firstRound: modelRound, predicted: cfg.sweep?.switches ?? [], measured: sweepResult?.switches ?? [] };
       fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, stamp, pictures, model })}\n`);

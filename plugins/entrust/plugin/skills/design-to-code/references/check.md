@@ -168,17 +168,19 @@ font explains, or pixels alone, shown for the owner's eye; a ledger entry for on
 - a text's `width`, wider or narrower than drawn (its size is the `type` finding's);
 - a `height` within 24 px;
 - a frame's column edge (`align`) within 12 px;
+- a shift a missing text's `presence` entry carries ([the ledger](#the-ledger));
 - in the sweep, a `switch`, and a `construct`, which needs its reason in the handoff.
 
 Everything else is a finding: an offset, a drift, a height or a column edge past these; a gap of 8 px or more that
 closes to under 4, whatever drift the pieces carry; the root's width; a presence, a text, a font, the type's size; a
 cut, a truncated text with no way to read it, an overlap, a covered control, an overflow, a line, a wrap, a sweep
-alignment, a resize. What only a generated condition finds is a candidate (below).
+alignment, a resize. What only a generated condition finds is a candidate (below). Of an offset or a height the
+ledger explains in part, what is left is judged, and a finding shows it: `(-8; +22 after the ledger)`.
 
 **Start here** names a frame's first cause from the top: an offset between two neighbours, or a landmark's width or
 height that carried them. An offset marked *inherited* goes with its cause. A cause the ledger settles (proposed or
-accepted) is not named: what it explains is counted as awaiting a decision, and the first finding is the first one
-no entry covers.
+accepted), or a missing text carries, is not named: what it explains is counted as awaiting a decision, and the first
+finding is the first one no entry covers.
 
 ## Generated conditions
 
@@ -222,6 +224,12 @@ An entry that matches a finding settles it: accepted, it excuses it; proposed, o
 for the owner. An entry with `"cause": "checker"` may also name a failing journey (`"property": "journey"`, its name
 as the landmark): the journey waits for the owner instead of failing, and the evidence lists it under "Disputed with
 the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
+
+A `presence` entry, proposed or accepted, for a design text the page lacks also carries, in each frame it applies to,
+what that absence moves: a vertical step that passes the text's place, upward, by at most the text's height and its gap
+to the next landmark below (to the one above when none is below), both from the spec; so the rows below it and the
+root's height. What it carries is a note that names the entry; beyond that bound the rest is judged as any offset. Write
+no entry for the shift.
 
 An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
 status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
