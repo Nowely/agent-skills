@@ -73,3 +73,26 @@ returned for values set about 2 px smaller than drawn) and the five code questio
 - **Code-quality rules:** where do the four recurring code faults belong (the page, the review pass, the check)?
 - **Testing the cost rules:** reproduce the loop pathology in a case, or go to the Terra run.
 - **Cut data:** the generated doubling clones rendered rows, so a slice in code is not seen.
+
+## The proposals handed to the owner, marked
+
+The coordinator marked these provisionally against the owner's rulings in [30-terra-run.md](30-terra-run.md) and the
+plan's two kinds. The owner's own marking replaces this one. The six listing runs handed over no proposal.
+
+| Card | Proposal | Marked | Why |
+|---|---|---|---|
+| c281a | the discount icon 31 px right at 280, the price set "at the frame's size" in a wider font | doubtful, for the owner | the font's width is a fair question, but the reviewer measured the price 2–3 px larger than drawn: the builder could have fixed that, and it explains part of the 31 px |
+| c281a | the network popover 34 px wider: its title in the kit's font | fair | the kit's font against the drawing |
+| c281b | the same, 34 px | fair | the same |
+| c281c | the same, 40 px | fair | the same |
+| c282a | the same, 32 px | fair | the same |
+| c282b | the same, 34 px against an uncropped image | fair | the same; its numbers include the shadow it left in its frame |
+| c282c | the popover's width 9 px, "the reference includes the shadow" | fair | the same font question, explained wrongly: its own frame kept the shadow |
+| c282c | the popover's height 32 px, "the image includes the shadow and tail" | unfinished | its frame kept the image's shadow and tail; other builders cropped their frame to the box |
+
+Six fair, one unfinished, one doubtful.
+
+- **One fair question, six times.** Every run handed over the popover's width following the kit's font. Once the owner
+  rules on it, it is a ruling, and a later run that repeats it presents unfinished work.
+- **The ledger carries only what the check shows.** None of the defects the reviewer returned for (a price 2 px off,
+  disk groups cut, the code faults) reached it as a proposal or a note.
