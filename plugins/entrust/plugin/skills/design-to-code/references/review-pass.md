@@ -52,12 +52,14 @@ The owner's criteria:
   kit's own component size, another font's widths); a stand-in icon; a collision the check found only under its own
   generated conditions (texts longer than the product's, rows doubled), unless legal data shows it too.
 
-Read the diff and answer five questions, yes or no, each with a file and line:
+Read the diff and answer six questions, yes or no, each with a file and line:
 1. One rendering path for each thing shown, no duplicated view (such as two price views)?
 2. Do observers and listeners follow the mounted element, and are they cleaned up on unmount?
 3. Is the kit's public surface used, not its internals?
 4. Does no later rule override an earlier one for the same mode, and no selector reach outside the component?
 5. Is what the layout hides still available to a screen reader?
+6. Which lifecycles can the consumer cause (mount and unmount, data emptied and refilled, a parent's width changing),
+   and does a journey in design.json take each?
 A "no" is a note for the owner with its place, not a return by itself.
 
 For each finding: the frame or story and width, what you see, by how much, and "fix" or "acceptable". Be concrete;
@@ -67,5 +69,5 @@ do not invent what you cannot see. End with RETURN or ACCEPT.
 ## After it
 
 Fix each "fix", run the complete check, and hand over. In the handover, list the review's findings with what you did
-about each, and each "no" of the five questions with its place. A finding you disagree with is not dropped: say why,
+about each, and each "no" of the six questions with its place. A finding you disagree with is not dropped: say why,
 for the owner to decide.
