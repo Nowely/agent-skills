@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import {
   causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
   renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
+  gateFor, holdGated, ledgerEntryFor, referenceChange, referenceIssue, releasesGate, specOutline,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -533,6 +534,8 @@ test("Before retains the first image and labels changed or unrecorded capture se
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, frames: [{ ...cfg.frames[0], ...frame }] }));
     const snap = cli("snapshot", f.config, "--images", "--force");
     assert.equal(snap.status, 0, snap.stderr);
+    // Each capture is a new reference on purpose: a history of its own, since one history holds its first reference.
+    fs.rmSync(path.join(out, "history.jsonl"), { force: true });
     const checked = check(f.dir);
     assert.equal(checked.status, 0, checked.stdout + checked.stderr);
     return { frame: checked.result.frames[0], html: fs.readFileSync(path.join(out, "gallery.html"), "utf8"),
@@ -885,23 +888,29 @@ test("scores are compared only between rounds measured the same way, and two rou
   check(f.dir);
   const second = check(f.dir);
   assert.match(second.stdout, /previous round: /);
-  assert.doesNotMatch(second.stdout, /stop/);
-  // Draft 28.2: the verdict line itself says to stop, and each round records what it cost.
+  assert.doesNotMatch(second.stdout, /stop re-running/);
+  // Draft 28.2: each round records what it cost. Draft 28.4: the same first finding a third time stops the check at
+  // the gate, which says more than "stop": it prints that finding alone and exits 4.
+  assert.match(second.stdout, /a third stops the check at the gate/);
   const third = check(f.dir);
-  assert.match(third.stdout, /^Verdict: fail — stop re-running: fix it, propose it with a reason, or report the check as blocked$/m);
+  assert.equal(third.status, 4, third.stdout);
+  assert.match(third.stdout, /^Round 3: blocked at the gate \(exit 4\)/m);
   const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(history.map((h) => h.quick), [false, false, false]);
   assert.ok(history.every((h) => h.seconds > 0), JSON.stringify(history));
   assert.equal(history[2].bytes, Buffer.byteLength(third.stdout));
+  // Two complete rounds without a new lowest still say stop, where the first finding changes.
+  assert.equal(rerunNotice({ complete: true, status: "fail", stalled: 2, streak: 1 }), " — stop re-running: fix it, propose it with a reason, or report the check as blocked");
+  // A finding proposed alone opens the gate; a spec that names more starts a new series of scores, and no change of
+  // the reference is found, since it only adds.
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "x", status: "proposed", reason: "the kit's indent" }]));
   check(f.dir, "--quick");
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").at(-1)).quick, true);
   const spec = JSON.parse(fs.readFileSync(path.join(f.dir, "0.json"), "utf8"));
   fs.writeFileSync(path.join(f.dir, "0.json"), JSON.stringify({ ...spec, landmarks: [...spec.landmarks, { ...spec.landmarks[0], text: "Steady" }] }));
-  // A changed spec starts a new series of scores; draft 28.3: the first finding, named by its key, is the same "Ready"
-  // as before the change, and it has come first in every round since the first.
-  const changed = check(f.dir).stdout;
-  assert.doesNotMatch(changed, /previous round|lowest/);
-  assert.match(changed, /^Verdict: fail — stop re-running/m);
+  const changed = check(f.dir);
+  assert.doesNotMatch(changed.stdout, /previous round|lowest|reference/);
+  assert.match(changed.stdout, /scores start a new series here/);
 });
 
 test("a dense story is swept too: a text over a text, a control under another element, and its pictures", browser, () => {
@@ -1482,6 +1491,8 @@ main{width:100%;display:flex;flex-wrap:wrap;gap:8px}.sku{white-space:nowrap}.pri
   const run = (lines, extra) => {
     fs.writeFileSync(path.join(f.dir, "wrap.html"), card(extra));
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { from: 200, to: 500, step: 100, lines: [...LINES, ...lines], stories: [{ name: "wrap", url: "wrap.html" }] } }));
+    // Each case is a first round: the gate counts the rounds of one history.
+    fs.rmSync(path.join(f.dir, "out/history.jsonl"), { force: true });
     return check(f.dir);
   };
   const row = { name: "top row", pieces: [".sku", ".disks", ".price"] };
@@ -1558,6 +1569,8 @@ test("v23.1: a line reads what is seen: a hidden tip is not a wrap, a heading th
   const run = (html, lines, extra = {}) => {
     fs.writeFileSync(path.join(f.dir, "row.html"), `<!doctype html><meta charset="utf-8"><style>body{margin:0;font:14px/18px sans-serif}main{display:flex;gap:12px;padding:8px}.title{font-weight:600}.price{margin-inline-start:auto;white-space:nowrap}</style>${html}`);
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, ...extra, sweep: { from: 240, to: 400, step: 80, lines: [...LINES, ...lines], stories: [{ name: "row", url: "row.html" }] } }));
+    // Each case is a first round: the gate counts the rounds of one history.
+    fs.rmSync(path.join(f.dir, "out/history.jsonl"), { force: true });
     return check(f.dir);
   };
   const line = [{ name: "top row", pieces: [".title", ".price"] }];
@@ -1797,13 +1810,15 @@ test("v26: --quick sweeps every story at the frames' widths only, and is a parti
   // rounds says so on the quick round, and the complete check after them says stop.
   f.write("<main><span style=\"margin-left:30px\">Ready</span></main>");
   check(f.dir, "--quick");
-  check(f.dir, "--quick");
   const q = check(f.dir, "--quick");
-  assert.match(q.stdout, /^Verdict: fail — the first finding is unchanged for \d+ rounds: fix it or propose it on what this partial check measured$/m);
+  assert.match(q.stdout, /^Verdict: fail — the first finding has led 2 rounds: a third stops the check at the gate \(exit 4\) until it is fixed or proposed on what this partial check measured$/m);
   assert.doesNotMatch(q.stdout, /stop re-running|check again/);
+  // Draft 28.4: the third stops at the gate whatever the mode; proposed alone, the complete check after runs.
+  assert.equal(check(f.dir, "--quick").status, 4);
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "x", status: "proposed", reason: "the kit's indent" }]));
   const after = check(f.dir);
   assert.match(after.stdout, /scores start a new series here/);
-  assert.match(after.stdout, /^Verdict: fail — stop re-running/m);
+  assert.notEqual(after.status, 4, after.stdout);
 });
 
 test("v26: an acceptance row that names its story answers for that story, and says what failed", browser, () => {
@@ -2247,31 +2262,54 @@ test("draft 28.2: a first finding that stays first over two complete rounds stop
   const second = round(30, 14);
   assert.match(second.stdout, /^Since round 1: 0 fixed, 1 new \(frame: Go x\), \d+ unchanged\.$/m);
   assert.doesNotMatch(second.stdout, /stop re-running/);
+  assert.match(second.stdout, /a third stops the check at the gate/);
+  // Draft 28.4: the third round with "Ready" first stops at the gate, though each round had a new lowest score.
   const third = round(20, 0);
-  assert.match(third.stdout, /^Since round 2: 1 fixed \(frame: Go x\), 0 new, \d+ unchanged\.$/m);
-  assert.match(third.stdout, /^Verdict: fail — stop re-running: fix it, propose it with a reason, or report the check as blocked$/m);
+  assert.equal(third.status, 4, third.stdout);
+  assert.match(third.stdout, /^Round 3: blocked at the gate \(exit 4\)\. The same first finding has led 3 rounds: frame: Ready x: 0 → 20 \(\+20\)$/m);
   assert.ok(third.stdout.trimEnd().split("\n").length <= 15, third.stdout);
   const history = fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(history.map((h) => h.first), ["frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x", "frame\u0000Ready\u0000x"]);
   assert.ok(history[1].score < history[0].score && history[2].score < history[1].score, `each round a new lowest: ${history.map((h) => h.score)}`);
 });
 
+// Iteration 7's planted card on Sonnet (scratchpad/ab7): q quick, f complete, a letter the first finding, - none.
+// p2 was told three times that its first finding was unchanged and went on for 19 rounds, then cut the line out of its
+// own references. p1 and p3 proposed the line at round 3; p3 then led 8 rounds with the row below it (B), the line's
+// consequence, which the case counts as its second planted entry.
+const RECORDED = {
+  p1: "qA qA qB q- fC fD f- f- f-",
+  p2: "qA qA qA qA qA qA qA qA qA qA qA qA qA qA qA qA qA qA qA qB qC qC qC qC qC qC qD qD qC qE qF qG qH fH fH fH fH fH f- f-",
+  p3: "qA qA qB qB qB qB fB fB qB qB qC qD qD q- q- f- f- f-",
+};
+const gateReplay = (rounds) => {
+  const history = [], stops = [];
+  for (const [i, r] of rounds.split(" ").entries()) {
+    const first = r[1] === "-" ? null : r[1];
+    const gate = gateFor(history, first);
+    if (gate.blocked) stops.push([i + 1, first]);
+    history.push({ round: i + 1, first, quick: r[0] === "q", ...(gate.blocked ? { blocked: true, gate: first } : {}) });
+  }
+  return stops;
+};
+
 // Terra's 31 recorded rounds on draft 27 (research/…/32-checker-rounds.json): q quick, f complete; A the text width
 // finding (-16.69 px) first in 19 of rounds 1–21, B the -5.69 px one, C the sheet journey the check's own
 // transition:none broke, - where the record shows no first finding. Draft 28.2's rule matched the first finding only
 // within one basis and only on complete rounds, so it first spoke at round 31.
-test("draft 28.3: replayed on Terra's recorded rounds, an unchanged first finding speaks by round 4 and stops the first complete round after", () => {
-  const rounds = "qA qA qA qA qA fA fA qA fA fA qA q- qA q- qA q- qA qA qA qA qA qB qB qB qB qB q- fC fC q- fC".split(" ");
+test("draft 28.3: replayed on Terra's recorded rounds, an unchanged first finding speaks by round 2 and, from draft 28.4, stops at round 3", () => {
+  const rounds = "qA qA qA qA qA fA fA qA fA fA qA q- qA q- qA q- qA qA qA qA qA qB qB qB qB qB q- fC fC q- fC";
   const history = [], said = [];
-  for (const [i, r] of rounds.entries()) {
+  for (const [i, r] of rounds.split(" ").entries()) {
     const first = r[1] === "-" ? null : r[1], complete = r[0] === "f";
     const notice = rerunNotice({ complete, status: first ? "fail" : "pending", stalled: 0, streak: firstStreak(history, first) });
-    if (notice) said.push([i + 1, /stop re-running/.test(notice) ? "stop" : "unchanged"]);
+    if (notice) said.push(i + 1);
     history.push({ round: i + 1, first, quick: !complete });
   }
-  assert.deepEqual(said[0], [3, "unchanged"]);
-  assert.deepEqual(said.find(([, kind]) => kind === "stop"), [6, "stop"]);
-  assert.ok(said.some(([n]) => n === 24), "the second finding, first from round 22, speaks at round 24");
+  assert.equal(said[0], 2);
+  const stops = gateReplay(rounds);
+  assert.deepEqual(stops[0], [3, "A"]);
+  assert.ok(stops.some(([n, k]) => n === 24 && k === "B"), "the second finding, first from round 22, stops at round 24");
   assert.equal(rerunNotice({ complete: true, status: "pass", stalled: 5, streak: 5 }), "");
   assert.equal(firstStreak([{ first: "a" }, { first: "b" }, { first: "b" }], "b"), 3);
   assert.equal(firstStreak([{ first: "b" }, {}], "b"), 1);
@@ -2299,6 +2337,144 @@ test("draft 28.3: a step the ledger settles is not where to start, nor the first
   const settled = { ...frame, causes: frame.causes.slice(0, 1) };
   assert.doesNotMatch(renderSummary({ frames: [settled] }), /start here/);
   assert.match(renderSummary({ frames: [settled] }), /2\+ x: 137 → 155 \(\+18\)/);
+});
+
+// ------------------------------------------------------------------ draft 28.4: the gate, the reference, the shift
+
+test("draft 28.4: replayed on iteration 7's rounds, the gate stops p2 at round 3, never p1, and p3 at round 5 on the line's consequence", () => {
+  assert.deepEqual(gateReplay(RECORDED.p2)[0], [3, "A"]);
+  assert.deepEqual(gateReplay(RECORDED.p1), []);
+  assert.deepEqual(gateReplay(RECORDED.p3)[0], [5, "B"]);
+  // Terra's 31 rounds on draft 27: the -16.69 px finding stops the check at round 3.
+  assert.deepEqual(gateReplay("qA qA qA qA qA fA fA qA fA fA qA q- qA q- qA q- qA qA qA qA qA qB qB qB qB qB q- fC fC q- fC")[0], [3, "A"]);
+  // The round before says the next one stops; a pass is never stopped.
+  assert.match(rerunNotice({ complete: false, status: "fail", streak: 2 }), /a third stops the check at the gate \(exit 4\)/);
+  assert.equal(gateFor([{ first: "a", blocked: true }, { first: "a", blocked: true }], "b").trips, 2);
+});
+
+test("draft 28.4: a finding the gate stopped on is settled by an entry naming it alone, not by a list, a wildcard or a region", () => {
+  const issue = { landmark: "Выдача за 15 минут", property: "presence", expected: "present", actual: "missing", status: "pending", entries: [0] };
+  const frame = () => ({ frame: "card-764", pass: false, verdict: "pending", issues: [{ ...issue }] });
+  const gated = new Set(["card-764\u0000Выдача за 15 минут\u0000presence"]);
+  const list = [{ landmark: ["Выдача за 15 минут", "Выдача за 2 часа"], property: "presence", status: "proposed", reason: "the API sends no delivery time" }];
+  const one = [{ landmark: "Выдача за 15 минут", property: "presence", status: "proposed", reason: "the API sends no delivery time" }];
+  const held = frame();
+  holdGated({ frames: [held], ledger: list, gated });
+  assert.equal(held.issues[0].status, "fail");
+  assert.equal(held.verdict, "fail");
+  assert.match(held.issues[0].held, /propose this one finding/);
+  const settled = frame();
+  holdGated({ frames: [settled], ledger: one, gated });
+  assert.equal(settled.issues[0].status, "pending");
+  // Not stopped on, a list still covers it as before.
+  const free = frame();
+  holdGated({ frames: [free], ledger: list, gated: new Set() });
+  assert.equal(free.issues[0].status, "pending");
+  assert.equal(releasesGate({ landmark: "*", property: "presence", status: "proposed" }, issue), false);
+  assert.equal(releasesGate({ landmark: "Выдача за 15 минут", property: "*", status: "proposed" }, issue), false);
+  assert.equal(releasesGate({ landmark: ["a", "b"], property: "y", consequenceOf: "line", shift: -27, status: "proposed" }, { landmark: "a", property: "y" }), true);
+  assert.equal(releasesGate({ landmark: ["a", "b"], property: "presence", status: "accepted", decidedBy: "owner" }, issue), true);
+});
+
+test("draft 28.4: a consequence covers the shift it states; a piece moved 10 px more stays a finding (p1's ledger, planted)", () => {
+  // The planted line is missing: everything sits 27 px higher, and Title 10 px more than that.
+  const shift = { SKU: { dy: -27 }, New: { dy: -27 }, Title: { dy: -37 }, "1 499 €": { dy: -27 }, Buy: { dy: -27 } };
+  const all = ["SKU", "New", "Title", "1 499 €", "Buy"];
+  const line = { id: "line", landmark: "Выдача за 15 минут", property: "presence", status: "proposed", reason: "the API sends no delivery time" };
+  // p1's form: every piece listed, bounded only by size. It covers Title's own 10 px too, so it is now a ledger fault.
+  const blanket = [line, { landmark: all, property: "y", max: 30, status: "proposed", reason: "consequence of the missing line" }];
+  const before = compare(shift, { height: 173 }, blanket);
+  assert.equal(before.issues.find((i) => i.landmark === "Title" && i.property === "y")?.status, "pending");
+  assert.match(ledgerFaults(blanket).join(), /more than 3 pieces covers any offset of theirs/);
+  // The consequence form: one cause, the shift it explains.
+  const consequence = [line, { landmark: all, property: "y", consequenceOf: "line", shift: -27, status: "proposed", reason: "the missing line moves what is below it" }];
+  assert.deepEqual(ledgerFaults(consequence), []);
+  const after = compare(shift, { height: 173 }, consequence);
+  const title = after.issues.find((i) => i.landmark === "Title" && i.property === "y");
+  assert.equal(title.status, "fail", JSON.stringify(after.issues));
+  assert.equal(after.issues.find((i) => i.landmark === "SKU" && i.property === "y")?.status, "pending");
+  assert.equal(after.issues.find((i) => i.landmark === "Buy" && i.property === "y")?.status, "pending");
+  // Without the shift, or without the cause it names, the entry is a fault.
+  assert.match(ledgerFaults([{ ...consequence[1], shift: undefined, consequenceOf: "line" }, line]).join(), /gives the shift/);
+  assert.match(ledgerFaults([consequence[1]]).join(), /"consequenceOf" gives the id/);
+  assert.ok(ledgerEntryFor({ landmark: "SKU", property: "y", delta: -29 }, "f", consequence, { tolerance: 4 }));
+  assert.equal(ledgerEntryFor({ landmark: "SKU", property: "y", delta: -37 }, "f", consequence, { tolerance: 4 }), undefined);
+});
+
+test("draft 28.4: a reference cut after the first round is a finding of its own, first, until an entry for that frame says why (p2)", () => {
+  // p2's card-764 at round 1, and after it cut the 26 px band with the line out of the image and the spec.
+  const anchorSpec = { frame: { width: 764, height: 144 }, source: "image boxes", pieces: [{ n: 1, box: box(17, 15, 46, 12) }, { n: 2, box: box(17, 41, 53, 9) }, { n: 3, box: box(352, 45, 13, 10) }],
+    landmarks: [{ text: "Выдача за 15 минут", pieces: [1] }, { text: "BA-i201-B", pieces: [2] }, { selector: ".offer__help", pieces: [3] }] };
+  const cutSpec = { frame: { width: 764, height: 118 }, source: "image boxes", pieces: [{ n: 1, box: box(17, 15, 53, 9) }, { n: 2, box: box(352, 19, 13, 10) }],
+    landmarks: [{ text: "BA-i201-B", pieces: [1] }, { selector: ".offer__help", pieces: [2] }] };
+  const anchor = { round: 1, image: "aaaa", spec: "s1", outline: specOutline(anchorSpec) };
+  assert.deepEqual(anchor.outline.landmarks["BA-i201-B"], [17, 41, 53, 9]);
+  const change = referenceChange(anchor, { image: "bbbb", spec: "s2", outline: specOutline(cutSpec) }, 2);
+  assert.equal(change.round, 1);
+  assert.match(change.what.join("; "), /^the image; the frame's size, 764 × 144 → 764 × 118; gone from the spec: “Выдача за 15 минут”; moved in the spec: “BA-i201-B”, “.offer__help”$/);
+  const issue = referenceIssue("card-764", change, []);
+  assert.equal(issue.status, "fail");
+  assert.match(issue.actual, /^changed since round 1: /);
+  const frame = { frame: "card-764", pass: false, verdict: "fail", issues: [{ landmark: "BA-i201-B", property: "y", expected: 41, actual: 15, delta: -26, status: "fail" }, issue] };
+  assert.deepEqual([...findingKeys({ frames: [{ frame: "card-601", issues: [{ landmark: "root", property: "height", status: "fail" }] }, frame] }).keys()][0], "card-764\u0000reference\u0000reference");
+  // An entry for that frame settles it as a proposal; one for another frame, or without a frame, does not.
+  const entry = { frame: "card-764", property: "reference", status: "proposed", reason: "the band holds data the API does not send" };
+  assert.equal(referenceIssue("card-764", change, [entry]).status, "pending");
+  assert.equal(referenceIssue("card-764", change, [{ ...entry, frame: "card-601" }]).status, "fail");
+  assert.match(ledgerFaults([{ ...entry, frame: undefined }]).join(), /names the frame whose reference changed/);
+  assert.deepEqual(ledgerFaults([entry]), []);
+  // Naming more pieces after the first round is free; the same image and spec are no change.
+  const named = { ...anchorSpec, landmarks: [...anchorSpec.landmarks, { text: "16", box: box(400, 41, 12, 9) }] };
+  assert.equal(referenceChange(anchor, { image: "aaaa", spec: "s3", outline: specOutline(named) }, 2), null);
+  assert.equal(referenceChange(anchor, { image: "aaaa", spec: "s1", outline: anchor.outline }, 2), null);
+});
+
+test("draft 28.4: the same first finding over three rounds stops the check with exit 4; a list does not open it, quick rounds stop after two stops, one entry opens it", browser, () => {
+  const f = smallFrame();
+  f.write('<main><span style="margin-left:20px">Ready</span></main>');
+  const one = check(f.dir, "--quick");
+  assert.equal(one.status, 1, one.stdout);
+  const two = check(f.dir, "--quick");
+  assert.match(two.stdout, /a third stops the check at the gate \(exit 4\)/);
+  const three = check(f.dir, "--quick");
+  assert.equal(three.status, 4, three.stdout);
+  assert.match(three.stdout, /^Round 3: blocked at the gate \(exit 4\)\. The same first finding has led 3 rounds: frame: Ready x: 0 → 20 \(\+20\)$/m);
+  assert.match(three.stdout, /^Fix it, or propose this one finding in the ledger with a reason/m);
+  assert.ok(three.stdout.trim().split("\n").length <= 3, three.stdout);
+  const history = () => fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(history().map((h) => h.blocked ?? false), [false, false, true]);
+  assert.equal(history()[2].gate, "frame\u0000Ready\u0000x");
+  // A list covers Ready, but the gate stopped on it: it stays a failure, and the check stops again.
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: ["Ready", "Steady"], property: "x", status: "proposed", reason: "a wider font" }]));
+  const listed = check(f.dir, "--quick");
+  assert.equal(listed.status, 4, listed.stdout);
+  assert.match(listed.stdout, /second stop: from now on only complete checks run/);
+  const refused = check(f.dir, "--quick");
+  assert.equal(refused.status, 4);
+  assert.match(refused.stdout, /^Quick rounds are refused: the gate has stopped this check 2 times/m);
+  assert.equal(history().length, 4, "a refused quick round is no round");
+  // One entry naming the finding opens it: the complete check runs and waits for the owner.
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Ready", property: "x", status: "proposed", reason: "the kit's indent" }]));
+  const open = check(f.dir);
+  assert.equal(open.status, 3, open.stdout);
+  assert.equal(history().at(-1).blocked, undefined);
+});
+
+test("draft 28.4: an image replaced after the first round leads the check until an entry for its frame says why", browser, () => {
+  const f = smallFrame();
+  assert.equal(check(f.dir).status, 0);
+  const anchor = JSON.parse(fs.readFileSync(path.join(f.dir, "out/history.jsonl"), "utf8").trim().split("\n")[0]);
+  assert.ok(anchor.refs.frame.image && anchor.refs.frame.spec && anchor.refs.frame.outline, JSON.stringify(anchor.refs));
+  // The builder makes the page's own picture the reference: every pixel would then agree.
+  f.write('<main><span style="margin-left:20px">Ready</span></main>');
+  assert.equal(cli("snapshot", f.config, "--images", "--force").status, 0);
+  const changed = check(f.dir);
+  assert.equal(changed.status, 1, changed.stdout);
+  assert.equal(changed.result.frames[0].issues[0].property, "reference");
+  assert.match(changed.result.frames[0].issues[0].actual, /^changed since round 1: the image; moved in the spec: “Ready”/);
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ frame: "frame", property: "reference", status: "proposed", reason: "re-captured from the page" }]));
+  const proposed = check(f.dir);
+  assert.equal(proposed.status, 3, proposed.stdout);
 });
 
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
