@@ -62,11 +62,11 @@ forensics remain in the repository references and release notes.
   reader by their role's name at any tier, the first a description names or a brief's text says the agent is, not a
   role it merely mentions, and no longer asks for a corrected-split file. When the card's trigger holds, the
   architecture critic returned before the plan critic and the workers, a brief that names a unit of the task, were
-  briefed; in every run, an architecture critic that ran brings a plan critic. Live case 5, one slug helper in a new
-  file, expects no architecture critic and five phases; case 7, an export two files import renamed, expects it. The draft's path and
-  the read's time come from the message that starts the read: nothing writes the draft after it, the last lint comes
-  before it, and what went out is the draft, or the draft and the allowed `Open:` list. Live case 7 expects the
-  architecture critic and a final reader, case 6 a default plan that leaves `roles.md` to its agents, and case 8 says
+  briefed; in every run, an architecture critic that ran brings a plan critic. The draft's path and the read's time
+  come from the message that starts the read: nothing writes the draft after it, the last lint comes before it, and
+  what went out is the draft, or the draft and the allowed `Open:` list. Live case 5, one slug helper in a new file,
+  expects no architecture critic and five phases; case 7, an export two files import renamed, expects the
+  architecture critic and a final reader; case 6 a default plan that leaves `roles.md` to its agents; and case 8 says
   why the Astra the user names goes through the Codex adapter.
 
 ### Known issues
