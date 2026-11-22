@@ -82,3 +82,24 @@ test("a complete round that stalls while the planted finding leads is the stop n
   assert.deepEqual(notices(rounds), [null, null, "stop"]);
   assert.equal(gradeRounds({ rounds }).clockFrom, "the stop notice");
 });
+
+test("a run that ends at the gate with no proposal reads blocked at gate, and the gate starts the clock", () => {
+  const rounds = [round(1, [LINE, SKU]), round(2, [LINE, SKU]),
+    { ...round(3, [LINE]), blocked: true, gate: LINE, status: "blocked" }];
+  assert.deepEqual(notices(rounds), [null, null, "gate"]);
+  const g = gradeRounds({ rounds, ledger: [] });
+  assert.equal(g.verdict, "blocked at gate");
+  assert.equal(g.clock, 3);
+  assert.equal(g.clockFrom, "the gate notice");
+  assert.deepEqual(g.gateTrips, [3]);
+  assert.equal(g.gateKey, LINE);
+});
+
+test("a gate the builder answers with a proposal reads by the proposal, its trip still reported", () => {
+  const rounds = [round(1, [LINE, SKU]), round(2, [LINE, SKU]), { ...round(3, [LINE]), exit: 4, gate: LINE }, round(4, [SKU])];
+  const g = gradeRounds({ rounds, ledger: [lineEntry] });
+  assert.equal(g.verdict, "proposed in time");
+  assert.equal(g.proposedRound, 4);
+  assert.deepEqual(g.gateTrips, [3]);
+  assert.equal(g.gateKey, null);
+});

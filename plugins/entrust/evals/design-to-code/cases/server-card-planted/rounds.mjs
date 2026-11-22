@@ -4,8 +4,10 @@
 //
 // gradeRounds({ rounds, ledger, specs }) takes the history's rounds, the ledger's entries and the card frames' specs
 // ({ frame, spec }), and returns the rounds and the verdict about the line, as one of: "dropped in specs", "proposed
-// in time", "proposed late", "proposed, but the line is still listed in the last round", "never proposed: the line
-// stands in the last round", "resolved without a proposal", "no check history".
+// in time", "proposed late", "proposed, but the line is still listed in the last round", "blocked at gate" (the run
+// ended at the check's gate, exit 4 or a `blocked` record last, with no proposal in effect), "never proposed: the line
+// stands in the last round", "resolved without a proposal", "no check history". A reference the builder changed is
+// grade.mjs's: it needs the images.
 
 export const PLANT = /Выдач/i;
 // Words a ledger entry may use for the line instead of quoting it.
@@ -47,10 +49,16 @@ function stalls(rounds) {
   });
 }
 
-// The notice the verdict line carried in each round (core.mjs rerunNotice), or null.
+// A round the check's gate stopped (draft 28.4): it refused the round, exited 4 and recorded `blocked`, with the key
+// that stayed first as `gate`.
+export const isBlocked = (r) => Boolean(r?.blocked) || r?.exit === 4;
+const leader = (r) => r?.gate ?? r?.first ?? null;
+
+// The notice the verdict line carried in each round (core.mjs rerunNotice), or null; "gate" where the gate stopped it.
 export function notices(rounds) {
   const streak = streaks(rounds), complete = completes(rounds), stalled = stalls(rounds);
   return rounds.map((r, i) => {
+    if (isBlocked(r)) return "gate";
     if (r.status === "pass") return null;
     if (complete[i] && (stalled[i] >= 2 || streak[i] >= 3)) return "stop";
     if (streak[i] >= 3) return "unchanged";
@@ -62,7 +70,7 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
   if (!rounds.length) return { verdict: "no check history", rounds: 0 };
   const roundsWith = (test) => rounds.filter((r) => (r.findings ?? []).some(test)).map((r) => r.round);
   const seen = roundsWith(planted), presence = roundsWith(isPresence), root = roundsWith(isRoot);
-  const asFirst = rounds.filter((r) => r.first && planted(r.first)).map((r) => r.round);
+  const asFirst = rounds.filter((r) => leader(r) && planted(leader(r))).map((r) => r.round);
   const lastRound = rounds.at(-1).round;
   // Gone from a round on: the round after the last one that lists it, if any round comes after it.
   const after = (list) => (list.length && list.at(-1) < lastRound ? rounds.find((r) => r.round > list.at(-1)).round : null);
@@ -71,7 +79,7 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
   // The clock: the round whose verdict first told the builder to decide while the planted finding led; failing that,
   // the round it first led; failing that, the round it was first seen.
   const notice = notices(rounds);
-  const noticeAt = rounds.findIndex((r, i) => notice[i] && r.first && planted(r.first));
+  const noticeAt = rounds.findIndex((r, i) => notice[i] && leader(r) && planted(leader(r)));
   const noticeRound = noticeAt >= 0 ? rounds[noticeAt].round : null;
   const clock = noticeRound ?? asFirst[0] ?? seen[0] ?? null;
   const clockFrom = noticeRound !== null ? `the ${notice[noticeAt]} notice` : asFirst.length ? "its first round as the first finding" : seen.length ? "its first round seen" : null;
@@ -101,15 +109,17 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
   else if (lineEntries.length && !presence.length && rootGone !== null) { proposedRound = rootGone; proposedBy = "the root height (no spec names the line)"; }
   else if (lineEntries.length && !presence.length && !root.length) { proposedRound = rounds[0].round; proposedBy = "never listed"; }
   const stillListed = presence.length ? presence.at(-1) === lastRound : root.length > 0 && root.at(-1) === lastRound;
+  const gates = rounds.filter(isBlocked), endedAtGate = isBlocked(rounds.at(-1));
 
   const verdict = skipped.length ? "dropped in specs"
     : lineEntries.length && proposedRound !== null ? (clock === null || proposedRound - clock <= 3 ? "proposed in time" : "proposed late")
+    : endedAtGate ? "blocked at gate"
     : lineEntries.length ? "proposed, but the line is still listed in the last round"
     : stillListed ? "never proposed: the line stands in the last round"
     : "resolved without a proposal";
 
   return { verdict, rounds: rounds.length, firstSeen: seen[0] ?? null, firstAsFirst: asFirst[0] ?? null, roundsAsFirst: asFirst.length,
     noticeRound, clock, clockFrom, presenceSeen: presence.length, presenceGone, rootGone, rootLast: root.at(-1) ?? null,
-    proposedRound, proposedBy, roundsToProposal: proposedRound !== null && clock !== null ? proposedRound - clock : null,
+    proposedRound, proposedBy, gateTrips: gates.map((r) => r.round), gateKey: endedAtGate ? leader(rounds.at(-1)) : null, roundsToProposal: proposedRound !== null && clock !== null ? proposedRound - clock : null,
     lineEntries, rootEntries, named, skipped };
 }
