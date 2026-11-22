@@ -2445,6 +2445,21 @@ test("0.45.1, C2: a 20 px margin planted above the planted card's footer, below 
   assert.match(r.stdout, /MC-LAG 25\/25 y: 118 → \d+ \(-\d+; \+\d+ after the ledger\)/);
 });
 
+// The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
+// The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
+test("0.45.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
+  const f = smallFrame('<style>main{height:auto}</style><div>Delivery</div><div style="margin-top:12px">SKU</div><div>Title</div>');
+  f.write('<main><style>main{height:auto}</style><div style="position:absolute;top:0;left:200px">Soon</div><div>SKU</div><div>Title</div></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Delivery", property: "presence", category: "missing-state", status: "proposed", reason: "no data for it" }]));
+  const r = check(f.dir);
+  const frame = r.result.frames[0];
+  assert.ok(frame.notes?.some((n) => n.landmark === "SKU" && n.carried), JSON.stringify(frame));
+  assert.deepEqual(frame.unexpected, ["Soon"]);
+  assert.equal(frame.verdict, "incomplete");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /page text not in the design \(1\): “Soon”/);
+});
+
 test("0.45.1: one entry for one question in every frame is not a broad excuse; four findings in one frame are", () => {
   const frames = ["card-764", "card-601", "card-486", "card-280"].map((frame) => ({ ...withLine(lineShift()), frame }));
   const handoff = renderHandoff({ frames, ledger: [lineEntry()], status: "pending" });
@@ -2452,6 +2467,41 @@ test("0.45.1: one entry for one question in every frame is not a broad excuse; f
   assert.match(handoff, /awaits your decision on 4, and carries 24 shifts below the missing text, as notes/);
   const one = { ...compare({ New: { dy: 30 }, Title: { dy: 30 }, SKU: { dy: 30 }, "1 499 €": { dy: 30 } }, { height: 230 }, [{ landmark: ["SKU", "New", "Title", "1 499 €"], property: "y", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }]) };
   assert.match(renderHandoff({ frames: [one], ledger: [{ landmark: ["SKU", "New", "Title", "1 499 €"], property: "y", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }], status: "pending" }), /## Broad excuses/);
+});
+
+// The verifier's probes on 0.45.1's first cut (4a6aada): a carry without evidence, ordinary entries judged by their rest,
+// and a wildcard let through as one question per frame.
+const accepted = (landmark, extra = {}) => ({ landmark, category: "missing-state", status: "accepted", decidedBy: "owner", reason: "r", ...extra });
+const shifted = (spec, f, height = spec.frame.height) => ({ root: { width: spec.frame.width, height }, landmarks: spec.landmarks.map((l, i) => f(l, i)) });
+const at = (l, dy = 0) => ({ found: true, align: "left", box: { ...l.box, y: l.box.y + dy } });
+
+test("0.45.1: a missing text carries only what the page shows it moved: the column below it, not a shift in another", () => {
+  const spec = { frame: { name: "f", width: 400, height: 200 }, landmarks: [
+    { text: "L1", box: box(20, 20, 100, 12) }, { text: "L2", box: box(20, 80, 100, 12) }, { text: "L3", box: box(20, 120, 100, 12) },
+    { text: "R1", box: box(250, 20, 100, 12) }, { text: "Badge", box: box(250, 40, 100, 20) }, { text: "R3", box: box(250, 160, 100, 12) }] };
+  const ledger = [accepted("Badge", { property: "presence" })];
+  // The badge is gone and the right column holds its place; the left column loses 20 px of its own.
+  const other = compareFrame({ frame: "f", spec, measured: shifted(spec, (l, i) => (i === 4 ? { found: false } : at(l, i === 1 || i === 2 ? -20 : 0))), ledger });
+  assert.equal(other.verdict, "fail", JSON.stringify(other.issues));
+  assert.deepEqual(other.issues.filter((i) => i.status === "fail").map((i) => `${i.landmark} ${i.property}`), ["L2 y"]);
+  assert.ok(!other.notes?.some((n) => n.carried), JSON.stringify(other.notes));
+  // The right column closing up below the badge (by its bound, 20 px and the 20 px to L2) is the evidence; then what
+  // passes its place is carried, the left column's too: the limit check.md names.
+  const closed = compareFrame({ frame: "f", spec, measured: shifted(spec, (l, i) => (i === 4 ? { found: false } : at(l, i === 5 ? -40 : i === 1 || i === 2 ? -20 : 0))), ledger });
+  assert.deepEqual(closed.notes.filter((n) => n.carried).map((n) => n.landmark), ["L2", "L3", "R3"]);
+});
+
+test("0.45.1: an ordinary entry excuses a whole offset or none of it, as before; only a carried shift leaves a rest to judge", () => {
+  const line = (dy) => (l, i) => at(l, i === 0 ? 0 : i <= 2 ? 20 : dy);
+  const entries = [accepted(["SKU", "1 499 €"], { property: "y" })];
+  // A y entry on the first row (+20) and the row below 10 px further on its own: a drift of 30, a finding.
+  const further = compareFrame({ frame: "f", spec: LINE, measured: shifted(LINE, line(30), 170), ledger: [...entries, accepted("root", { property: "height" })] });
+  assert.equal(further.verdict, "fail");
+  assert.ok(further.issues.some((i) => i.landmark === "Title" && i.status === "fail"), JSON.stringify(further.issues));
+  assert.doesNotMatch(renderSummary({ frames: [further] }), /after the ledger/);
+  // The row below 13 px back on its own: 7 px from the design, a note.
+  const back = compareFrame({ frame: "f", spec: LINE, measured: shifted(LINE, line(7), 147), ledger: entries });
+  assert.equal(back.verdict, "pass", JSON.stringify(back.issues));
 });
 
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
