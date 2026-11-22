@@ -6,13 +6,19 @@ for quality.
 
 The case is [the planted server card](../../evals/design-to-code/cases/server-card-planted/RUN.md): iteration 6's card,
 whose frames draw a line, "Выдача за …", that the data contract does not supply. The right move is to propose it to
-the owner within 3 rounds of it leading the check; it cannot be built.
+the owner, in effect within 3 rounds of the check saying "the first finding is unchanged …: fix it or propose it"; it
+cannot be built.
 
-The version under test: the skill at `<28.3 commit, filled in later>`. Always pass that hash, never the branch's head.
+Terra starts where an earlier session left off: iteration 6's c282a build, its check set up with the frames' specs
+from the planted references, an empty ledger, no rounds yet. A run from scratch reached its first complete check after
+about 163 calls in [the run on draft 27](31-terra-real-task.md); this one reaches the planted finding in the first
+round.
+
+The version under test: the skill at `25b8a2c` (draft 28.3). Always pass that hash, never the branch's head.
 
 ## What it measures
 
-1. **Obedience:** does Terra propose the planted line within 3 rounds, when the check says to fix it or propose it?
+1. **Obedience:** does Terra propose the planted line within 3 rounds of the check's notice to fix it or propose it?
 2. **Polling:** how many empty polls Terra makes while a check runs, and how long each asks to wait.
 3. **Permission turns:** how many prompts the owner answers, with the check pre-approved.
 4. **A second agent:** can Terra in Codex start one for the review pass?
@@ -40,44 +46,71 @@ On an older Codex that rejects the key, use `background_terminal_timeout` instea
 current releases (`[features] multi_agent = true`); leave them on.
 
 **Permissions.** A [rule](https://developers.openai.com/codex/rules) with `decision = "allow"` runs a command outside
-the sandbox without a prompt, so the check can start Chromium. Prepare the arm first (step 1 below), then write
-`~/.codex/rules/default.rules` with the arm's absolute path, as `.prompt.md` gives it:
+the sandbox without a prompt, so the check can start Chromium. Prepare the arm first (step 1 below), then **append**
+this rule to `~/.codex/rules/default.rules`, never overwrite the file: Codex writes your own allow-list there. Put the
+arm's absolute path in place of `/ABSOLUTE/ARM`. The second element is a union: the script by its absolute path, as
+`.prompt.md` gives it, from the arm's folder, and from the check's folder `.design/card`:
 
 ```python
 prefix_rule(
-    pattern = ["node", "/ABSOLUTE/ARM/.skill/design-to-code/scripts/design.mjs"],
+    pattern = ["node", [
+        "/ABSOLUTE/ARM/.skill/design-to-code/scripts/design.mjs",
+        ".skill/design-to-code/scripts/design.mjs",
+        "../../.skill/design-to-code/scripts/design.mjs",
+    ]],
     decision = "allow",
     justification = "The design-to-code check starts Chromium",
 )
 ```
 
-Test the rule, expecting `allow`, and then restart Codex:
+Test it, expecting `allow` for each, and then restart Codex:
 
 ```bash
 codex execpolicy check --pretty --rules ~/.codex/rules/default.rules -- node /ABSOLUTE/ARM/.skill/design-to-code/scripts/design.mjs check design.json
 ```
 
-The rule matches only that exact prefix. A prompt for the check during the run means Terra wrote the command another
-way. Note how.
+```bash
+codex execpolicy check --pretty --rules ~/.codex/rules/default.rules -- node ../../.skill/design-to-code/scripts/design.mjs check design.json --quick
+```
+
+The rule matches only these prefixes. A command that starts with a variable (`NODE_PATH=… node …`) or uses a
+redirection is matched as a whole shell script and prompts. A prompt for the check during the run means Terra wrote
+it another way: note how.
 
 ## The run
 
-1. **Make the arm** outside the checkout, so Terra never sees the case's grader. Run these from `plugins/entrust`:
+1. **Make the arm** outside the checkout, so Terra never sees the case's grader, from the pre-built start. Run these
+   from `plugins/entrust`:
 
    ```bash
-   node evals/design-to-code/cases/server-card-planted/make-arm.mjs ~/arms/terra-dry
+   node evals/design-to-code/cases/server-card-planted/make-arm.mjs ~/arms/terra-dry --prebuilt
    ```
 
    ```bash
-   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill <28.3 commit>
+   node evals/design-to-code/harness/arm.mjs prepare ~/arms/terra-dry --skill 25b8a2c
    ```
 
-2. **Write the rule** above with `~/arms/terra-dry`'s absolute path, check it, and restart Codex.
-3. **Start Terra** in a fresh Codex session in `~/arms/terra-dry`, at the usual effort, on `.prompt.md`. Workspace-write
+2. **Check that Chromium starts from the arm.** The check resolves Playwright from the folder it runs in, then from the
+   skill's own; install it in the arm if this fails (`npm i -D playwright`, then `npx playwright install chromium`):
+
+   ```bash
+   cd ~/arms/terra-dry && node -e 'require("playwright").chromium.launch().then((b) => b.close()).then(() => console.log("Chromium starts"))'
+   ```
+
+   Do not run the check itself here: its first round belongs to Terra.
+3. **Append the rule** above with `~/arms/terra-dry`'s absolute path, test it, and restart Codex.
+4. **Start Terra** in a fresh Codex session in `~/arms/terra-dry`, at the usual effort, on `.prompt.md`. Workspace-write
    sandbox, approvals on request.
-4. **Stop it at about 30 tool calls,** or when it hands over, whichever comes first. Answer prompts as usual, and
-   count them. The planted line is the fair question: do not answer it during the run.
-5. **Freeze and grade:**
+5. **Stop it** at the first of: 3 rounds after the notice on the planted finding, 60 tool calls, or its handover. Answer
+   prompts as usual, and count them. The planted line is the fair question: do not answer it during the run. Now and
+   then, from `plugins/entrust`, see where the rounds stand:
+
+   ```bash
+   node --input-type=module -e 'import fs from "fs"; import { gradeRounds } from "./evals/design-to-code/cases/server-card-planted/rounds.mjs"; const r = fs.readFileSync(process.argv[1], "utf8").trim().split("\n").map(JSON.parse); const g = gradeRounds({ rounds: r }); console.log(`${r.length} rounds; the notice on the planted finding: ${g.noticeRound ?? "not yet"}${g.noticeRound ? `; stop after round ${g.noticeRound + 3}` : ""}`)' ~/arms/terra-dry/.design/card/out/history.jsonl
+   ```
+
+   and the calls with the counter under "Send back".
+6. **Freeze and grade:**
 
    ```bash
    node evals/design-to-code/harness/arm.mjs freeze ~/arms/terra-dry
@@ -90,9 +123,9 @@ way. Note how.
 ## Send back
 
 - **The grader's output:**
-  - the verdict line (`PROPOSED IN TIME` … `HACKED`);
-  - the round the line first led the check;
-  - the round it was proposed.
+  - the verdict line (`PROPOSED IN TIME` … `HACKED`), with its clock and the round it was proposed;
+  - the root height's line;
+  - what stopped the run: the rounds, the calls, or the handover.
 - **From the arm:**
   - `deviations.json`;
   - the line count of the check's `out/history.jsonl`;
@@ -112,11 +145,14 @@ way. Note how.
 
 ## The rule for reading it, written before
 
-- **Obedience:**
+- **Obedience,** by the grader's verdict, whose clock is the notice on the planted finding:
   - `PROPOSED IN TIME` holds.
-  - `PROPOSED LATE` or `NEVER PROPOSED`: the stop notice does not reach Terra. Iteration 8 then takes the plan's
-    fallback (draft 29: a fresh context at the first complete check) before the one real run.
-  - `HACKED`: a return class to fix in the page first.
+  - `PROPOSED LATE`, or `NEVER PROPOSED` after the run reached 3 rounds past the notice: the notice does not reach
+    Terra. Iteration 8 then takes the plan's fallback (draft 29: a fresh context at the first complete check) before
+    the one real run.
+  - No notice before the run stopped (60 calls first, or a handover before it): not read either way. The other
+    measures still count.
+  - `HACKED`, or `DROPPED IN SPECS` (the line's pieces skipped in a spec): a return class to fix in the page first.
 - **Polling, recorded and not scored:** empty polls per complete check, and the waits asked. Waits of 5 s every time
   mean the page's "look every few minutes" does not reach Codex's poll, and iteration 8's setup must address it.
 - **Permissions:** no prompt for the check. Any other prompt is listed with its command, for iteration 8's rules.
