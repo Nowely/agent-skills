@@ -3003,6 +3003,26 @@ test("44.8: a step that changes the container's width holds the component agains
   assert.deepEqual(other.notes, ["step 3: not held against a fresh load with the container at 352 px: the component shows other text than a fresh load"]);
 });
 
+test("44.8: a container collapsed to no width, or a root clipped from view, is not held to the floor; the root measured is the one the journey started with", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html, steps) => {
+    f.write(html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "j", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "j");
+  };
+  // Before (the verifier of doc 44): a panel collapsed to width 0 with its overflow hidden, around the component that
+  // keeps its 300 px, failed: "the component's container is 0 px wide (300 before), narrower than the 300 px".
+  const panel = run(`<button id="b" onclick="p.classList.toggle('shut')">Panel</button><style>#p{overflow:hidden}#p.shut{width:0}</style><div id="p"><main><span>Ready</span></main></div><p class="o">Other</p>`,
+    [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { visible: "main" }]);
+  assert.ok(panel.pass, JSON.stringify(panel));
+  // Before: a tab that hides the component and shows a second one in a 240 px column measured the second, the first
+  // a person sees, and failed it as squeezed.
+  const tab = run(`<button id="b" onclick="p.hidden=!p.hidden;q.hidden=!q.hidden">Tab</button><div id="p"><main><span>Ready</span></main></div><div id="q" hidden style="width:240px"><main style="width:auto"><span>Ready</span></main><p class="o">Other</p></div>`,
+    [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { hidden: ".o" }]);
+  assert.ok(tab.pass, JSON.stringify(tab));
+});
+
 // The catalogue page sized by the window, its sidebar opened at 960 px, where it leaves the list 632 px. Before item 8
 // both builds held this journey: the start code keeps the wide layout matchMedia picks from the 960 px window.
 function catalogueSidebarArm(build) {

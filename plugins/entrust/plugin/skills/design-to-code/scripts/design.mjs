@@ -1632,10 +1632,11 @@ async function sweep(browser, cfg, ledger) {
 }
 
 // The component's geometry as a person sees it: the root's place on the page, its size and scrolled width, and each
-// visible child's box within it; and the text it shows.
-const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
-  const visible = new Function(`return (${seen})`)();
-  const root = [...document.querySelectorAll(sel)].find(visible);
+// visible child's box within it; and the text it shows. The root is the one its page marked as it opened, while a
+// person sees it.
+const layoutOf = (page, selector) => page.evaluate(([sel, mark, seen]) => {
+  const visible = new Function(`return (${seen})`)(), marked = document.querySelector(`[${mark}]`);
+  const root = marked && visible(marked) ? marked : [...document.querySelectorAll(sel)].find(visible);
   if (!root) return null;
   const r = root.getBoundingClientRect();
   const kids = [...root.children].filter(visible).map((c) => {
@@ -1643,7 +1644,7 @@ const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
     return { name: c.className && typeof c.className === "string" ? `.${c.className.trim().split(/\s+/)[0]}` : c.localName, x: b.left - r.left, y: b.top - r.top, width: b.width, height: b.height };
   });
   return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height, scrollWidth: root.scrollWidth, kids, text: root.innerText.replace(/\s+/g, " ").trim() };
-}, [selector, seenIn.toString()]);
+}, [selector, MARK, seenIn.toString()]);
 // What differs between two such geometries, beyond the tolerance; without the root's place on the page when it sits
 // elsewhere by design (its container held in another window).
 function layoutDiff(a, b, tolerance = 1, { place = true } = {}) {
@@ -1693,13 +1694,23 @@ async function journeys(browser, cfg) {
   // scrolls sideways; a fresh load of the journey's page, once, for the container at the sweep's `from`, the narrowest
   // supported width; and the component in a fresh load whose container is held at a width, as the component's own
   // width holds it, in the window that leaves the page around the container as wide as the journey's start had it.
+  // The root is the one the journey's page marked as it opened, while it is on the page, and whether a person sees it:
+  // shown, and not clipped away by a box around it (a panel collapsed to no width).
   const from = cfg.sweep ? Number(cfg.sweep.from) : null;
   const roomOf = async (page) => ({
-    width: await page.evaluate(containerIn, [cfg.root, null, seenIn.toString(), null]).catch(() => null),
-    ...await page.evaluate(([sel, seen]) => {
-      const visible = new Function(`return (${seen})`)(), root = [...document.querySelectorAll(sel)].find(visible);
-      return { beyond: document.documentElement.scrollWidth - document.documentElement.clientWidth, root: root ? Math.max(root.getBoundingClientRect().width, root.scrollWidth) : null };
-    }, [cfg.root, seenIn.toString()]).catch(() => ({ beyond: 0, root: null })),
+    width: await container(page, cfg),
+    ...await page.evaluate(([sel, mark, seen]) => {
+      const visible = new Function(`return (${seen})`)();
+      const root = document.querySelector(`[${mark}]`) ?? [...document.querySelectorAll(sel)].find(visible);
+      let shown = Boolean(root && visible(root)), box = root?.getBoundingClientRect();
+      for (let p = root?.parentElement; p && shown; p = p.parentElement) {
+        const cs = getComputedStyle(p), b = p.getBoundingClientRect();
+        if (cs.overflowX !== "visible") box = { left: Math.max(box.left, b.left), right: Math.min(box.right, b.right), top: box.top, bottom: box.bottom };
+        if (cs.overflowY !== "visible") box = { ...box, top: Math.max(box.top, b.top), bottom: Math.min(box.bottom, b.bottom) };
+        shown = box.right > box.left && box.bottom > box.top;
+      }
+      return { beyond: document.documentElement.scrollWidth - document.documentElement.clientWidth, root: root ? Math.max(root.getBoundingClientRect().width, root.scrollWidth) : null, shown };
+    }, [cfg.root, MARK, seenIn.toString()]).catch(() => ({ beyond: 0, root: null, shown: false })),
   });
   const floors = new Map(), held = new Map();
   const floorOf = async (j) => {
@@ -1785,7 +1796,8 @@ async function journeys(browser, cfg) {
       // After a step: a container narrower than at the narrowest supported width, or a page that starts to scroll
       // sideways, fails it; a container whose width the step changed holds the component, as it is now, against a fresh
       // load whose container is held at that width, once the journey is over. Below the narrowest supported width
-      // nothing is held to it.
+      // nothing is held to it, nor where the container has no width or the root is not seen (a panel collapsed, a tab
+      // hidden): the component is not shown there.
       const roomAfter = async (i, step) => {
         const moved = (r) => r.width !== null && room.width !== null && Math.abs(r.width - room.width) > cfg.tolerance;
         const spills = (r) => r.beyond > cfg.tolerance && !(room.beyond > cfg.tolerance);
@@ -1795,8 +1807,8 @@ async function journeys(browser, cfg) {
         room = { width: now.width ?? room.width, beyond: now.beyond };
         if (around === null && now.width !== null) around = widths.at(-1) - now.width;
         if (from !== null && widths.at(-1) < from) return;
-        const px = (v) => Math.round(v);
-        if (changed && least > 0 && now.width < least - cfg.tolerance) {
+        const px = (v) => Math.round(v), seen = now.shown && now.width > 0;
+        if (changed && seen && least > 0 && now.width < least - cfg.tolerance) {
           throw new Error(`after it the component's container is ${px(now.width)} px wide (${px(before)} before), narrower than the ${px(least)} px it has at the narrowest supported width, ${from} px: what it opened takes the component's room; where there is no room beside, stack it above or below the component, or lay it over`);
         }
         if (spilled) {
@@ -1804,7 +1816,7 @@ async function journeys(browser, cfg) {
             ? `after it the page scrolls sideways: the component is ${px(now.root)} px wide in its ${px(now.width)} px container: lay it out by its own width whenever that changes (a container query, or an observer on the component), not by the window's or once on mount`
             : `after it the page scrolls sideways, its content ${px(now.beyond)} px wider than the window: keep what it opened inside the window, beside or over the component`);
         }
-        if (!changed) return;
+        if (!changed || !seen) return;
         const after = await layoutOf(page, cfg.root);
         if (after) toHold.push({ i, step, after, width: now.width, before, at: Math.max(1, Math.round(now.width + around)) });
       };
