@@ -42,4 +42,25 @@ branch. Pass the hash, never a branch's head.
 
 ## Results
 
-Not run yet.
+**S and P** are recorded by the owner in [42](42-collect-and-terra-p.md), and the explicit-wait probe in
+[43](43-explicit-wait-probe.md).
+
+- **S:** `collect` read the rerun's real log as 60 calls and 14 empty polls. Its token total missed the last response;
+  that is fixed (E160).
+- **P, against the rerun on 0.45.0:**
+
+  | | Rerun on 0.45.0 | P on 0.46.1 |
+  |---|---|---|
+  | Calls | 60 | 27 |
+  | Rounds | 5 | 3 |
+  | Ledger entries | 9 | 3 |
+  | Status | no handover | `pending`, in 3:40 |
+  | Grader | — | question surfaced, inputs intact |
+  | Cached input | 4.05M tokens | 1.58M tokens |
+
+  The case was fixed in between (`807d848`), so the fall is not the levers' alone. The Sonnet arms in 40 point the
+  same way.
+- **The polls missed their rule.** There were two no-output polls per complete check, where the rule allowed at most
+  one, so the wait wording was to be reverted. **The owner kept it, as a recorded departure.** It is no worse than
+  before, and seconds are not the goal. The explicit 30 s wait in 43 shows that one check fits in the starting call.
+- **A and B** have not run. The owner asked for a plan review first: practice before economy.
