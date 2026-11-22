@@ -37,8 +37,8 @@ new report. Each concurrent worker has a different session and starts its own pr
 server. A server is not a concurrency slot.
 
 Return [five fields](../../orchestrate/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
-driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements
-and raw artifacts. Attribute model, tool failures, callback decisions and unknown outcomes separately.
+driver validates them locally and allows one corrective turn. Give a fresh verifier what the orchestrate page's
+[Verification](../../orchestrate/SKILL.md#verification) says. Attribute model, tool failures, callback decisions and unknown outcomes separately.
 The advisor does not judge work it advised on.
 
 For a bulk batch, pilot the selected model and check quality/usage before widening the pool. A

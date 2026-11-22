@@ -5,7 +5,7 @@ description: >-
   work, and synthesise their evidence while this session keeps the plan, the decisions and a small context.
 disable-model-invocation: true
 metadata:
-  version: "0.46.1"
+  version: "0.46.2"
 license: MIT
 ---
 
@@ -22,8 +22,7 @@ user conversation and the synthesis; agents do the work.
 - You may write your card, briefs, decision log and draft under your temporary directory; read the agents'
   returns and summary artifacts; and read a cited file:line range of at most 40 lines to settle a conflict
   between returns or a claim you are about to relay.
-- Hand a worker's artifacts to the next agent by path, verbatim, never as your paraphrase. The verifier never
-  receives a writer's return.
+- Hand a worker's artifacts to the next agent by path, verbatim, never as your paraphrase.
 - Only the user's explicit word for a specific edit lets you make that edit. There is no solo lane: invoking this
   mode is the user's choice of coordinated work.
 
@@ -67,13 +66,12 @@ user conversation and the synthesis; agents do the work.
 | verifier | fresh, after the writes or a read-only task's findings | strong |
 
 You put the plan critic and the verifier on every card as the minimum; only the user's word drops or changes either,
-and whenever the architecture critic runs, the plan critic runs too, unless the user dropped it. Any other role joins
-only when the card names why.
+and an architecture critic stands in for neither. Any other role joins only when the card names why.
 
 ## Other providers
 
 A provider, model or route other than the host's own appears only when the user names it, in the conversation or
-in the user's or project's instructions (CLAUDE.md, AGENTS.md); several may be named at once. A named model the host runs natively is native. For any other, run
+the user's or project's instructions (CLAUDE.md, AGENTS.md). Each named model the host runs natively is native. For any other, run
 `node "<skill-dir>/scripts/adapter-status.mjs" --skip <the adapter of the host's own provider>` and route each named
 model through the adapter that lists it; then follow [external.md](references/external.md) and that adapter's page.
 Nothing proposes another provider unprompted, a cross-family second opinion included. The
@@ -99,12 +97,12 @@ counted; the host's capacity and the user's limits cap both further. Choose the 
 
 Before a fan-out, check one assembled brief's input paths, output rights and completion criteria. Verify with an
 agent that wrote nothing of what it checks: give it the requirements, the plan critic's acceptance checks (without
-one, the card's checks row) and the raw artifacts. Give it and the workers the resolved
+one, the card's checks row) and the raw artifacts, never a writer's return; on read-only work, the workers' findings
+as claims to re-derive, never a worker's judgement that they hold. Give it and the workers the resolved
 `<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
 `unknown`, not a refutation. Open one complete return before trusting a unanimous tally of verifiers: agreement may
-be evidence of one broken prompt or prerequisite. Fix and re-verify at most two
-rounds; then use a stronger reviewer or return the blocker to the user, and the same blocker in two rounds needs a
-revised plan.
+come from one broken prompt or prerequisite. Fix and re-verify at most two rounds; then use a stronger reviewer or
+return the blocker to the user, and the same blocker in two rounds needs a revised plan.
 
 ## The agent's return
 

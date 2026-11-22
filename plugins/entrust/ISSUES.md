@@ -37,7 +37,7 @@ case directory inside it as `${n}-${slug}`", and `:167-168` "the git clone insid
 and `:167-168` are comment lines of the process helper ("TERM before KILL, and to the GROUP"); the artifact directory is
 built at `:123`, the case directory at `:125` and the clone at `:196` and `:201`. The addresses were already stale at
 `def9f23` (`:87` the header's "Case 4 measures the agent", the builder at `:122`) and at `0665237`, the repository's
-first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3306-3307`, the 0.12.0 note,
+first commit (the builder at `:122`, `caseDir` at `:123`). `plugins/entrust/CHANGELOG.md:3389-3390`, the 0.12.0 note,
 quotes the same three addresses; that release predates the repository's first commit, so whether they held then cannot
 be checked here. Found by an implementer of the orchestrate rework's minimum team, 2026-11-22.
 
@@ -49,7 +49,7 @@ prints `123:`, `124:` and `201:`.
 **Issue text.** The comment in the cleanup script that explains which directory shapes a test suite writes under the
 temporary directory points at lines 87, 88-89 and 167-168 of the live orchestrate gate for the code that builds the
 artifact directory, the case directory and the scratch clone. Those lines hold header comments and a process helper;
-the code has sat 30 to 36 lines lower since the repository's first commit. A reader who follows the addresses to check
+the code has sat about 30 lines lower since the repository's first commit. A reader who follows the addresses to check
 the shape the cleanup matches finds unrelated text. Name the code the comment means (the artifact directory's
 `createTempDir` call, `caseDir`, the scratch clone) instead of its line numbers, or correct the numbers.
 
@@ -58,11 +58,11 @@ the shape the cleanup matches finds unrelated text. Name the code the comment me
 **Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
 returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
 which admits a worker briefed after the critic's brief and before its return, left `node evals/gate-checks.test.mjs`
-at 26 of 26. `:679` names a Claude return that arrived after the synthesis started; deleting that line left the suite
-at 26 of 26 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and `:629`), so the gaps
-predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its worker before the
-critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by an independent
-verifier of the orchestrate rework.
+at 26 of 26. `gate-checks.mjs:679` names a Claude return that arrived after the synthesis started; deleting that
+line left the suite at 26 of 26 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and
+`:629`), so the gaps predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its
+worker before the critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by
+an independent verifier of the orchestrate rework.
 
 **Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 26 passed`.
 
@@ -231,7 +231,7 @@ the shared file's writers, from `writesSeen` (`:330-343`), which reads only Writ
 and a Codex report's `filesTouched`; its own comment (`:329`) says "A write made through a shell command is not
 visible here." The orchestrate page asked the coordinator to check each brief against the file's owners until
 `cc7efbb` ("before a worker launches you check the files and interfaces its brief touches against the file's
-owners"); today it says "Launch within the approved ownership and the runtime's limits" (`orchestrate/SKILL.md:48`),
+owners"); today it says "Launch within the approved ownership and the runtime's limits" (`orchestrate/SKILL.md:47`),
 and the plan critic judges ownership and shared interfaces before any brief (`orchestrate/references/roles.md`, the
 plan critic), but no test stands behind a brief's files against their owners. Found by Fable H1.
 
@@ -278,7 +278,7 @@ lift the rest.
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
 transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
 1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
-cost tables that `orchestrate/references/plan.md:33` sends a plan to as comparables ("Estimate batches from comparable
+cost tables that `orchestrate/references/plan.md:76` sends a plan to as comparables ("Estimate batches from comparable
 runs") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by
 the harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
 
@@ -339,12 +339,12 @@ task list and its Stop on such a task.
 
 ## E103. In `dontAsk` mode the codex page, and the advisor page that loads it first, do not load, because the Codex status line it runs needs an allow rule the page cannot give
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:23` runs `scripts/status.mjs` through Claude Code's
-`` !`…` `` substitution as the page loads, and its frontmatter (`:11`) pre-approves it with
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:22` runs `scripts/status.mjs` through Claude Code's
+`` !`…` `` substitution as the page loads, and its frontmatter (`:10`) pre-approves it with
 `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; at `def9f23` `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolved its
 advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer said to load
 the page first); today the advisor reaches an adapter only for a named model the host does not run natively (`:12`),
-and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:73-80` loads an adapter's page only for a provider the user
+and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:71-78` loads an adapter's page only for a provider the user
 named. On 2026-09-29,
 Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
 call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
@@ -391,7 +391,7 @@ the rule in the model table and have the parity reference link it.
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:89-92` gives judgement to the top tier and the bulk tier
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:87-90` gives judgement to the top tier and the bulk tier
 "independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:11-17` names Luna
 for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review, refutation
 and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
@@ -473,7 +473,7 @@ then either make the two cases pass there or have the suite say that they cannot
 the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
 path") and the count ("Announce the unit count and how it was derived"), and `:71-72` the pilot ("define the
 acceptance rule and pilot representative work. Compare the same inputs with a stronger reference");
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:104-105` states the tally ("Open one complete return before
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:103-104` states the tally ("Open one complete return before
 trusting a unanimous tally of verifiers"), which the bulk row links.
 `plugins/entrust/plugin/skills/swarm/SKILL.md:24` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part

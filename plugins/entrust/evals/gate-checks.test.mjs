@@ -311,7 +311,7 @@ test("the architecture critic, when the card's trigger holds: it ran, and it ret
   });
 
 test("the minimum team in every run: a plan critic briefed before the first worker, a verifier briefed after the last worker returned that wrote none of what it checks, and either one left out only at the user's word",
-  "the owner's decision of 2026-11-22: the coordinator puts the plan critic and the verifier on every card and only the user's word drops either, so the card's own reason (\"the plan is too small\") and an architecture critic in its place (probe P1, 2026-11-22: a coordinator ran it and skipped the plan critic) are each red; a verifier briefed while a worker still runs, or one that is a worker, checks nothing independent",
+  "the owner's decision of 2026-11-22: the coordinator puts the plan critic and the verifier on every card and only the user's word drops either, so the card's own reason (\"the plan is too small\") and an architecture critic in its place (probe P1, 2026-11-22: a coordinator ran it and skipped the plan critic) are each red; a verifier briefed while a worker still runs, continued or not, or one that is a worker, checks nothing independent",
   () => {
     const plan = (s) => s.claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five());
     const work = (s, id = "W1") => s.claude(`Opus ${id}: write lib/slug.mjs`, "opus", "TASK: write lib/slug.mjs and its test.", five(), ["/work/lib/slug.mjs"]);
@@ -327,6 +327,22 @@ test("the minimum team in every run: a plan critic briefed before the first work
     const lost = plan(session());
     lost.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
     verify(lost);
+    // Two workers: a plan critic briefed after the first worker's brief and before the second's.
+    const two = { units: ["lib/slug.mjs", "lib/title.mjs"] };
+    const second = (s) => s.claude("Opus W2: write lib/title.mjs", "opus", "TASK: write lib/title.mjs and its test.", five(), ["/work/lib/title.mjs"]);
+    const between = verify(second(plan(work(session()))));
+    // Two workers: a verifier briefed after the first returned, while the second still runs.
+    const midway = work(plan(session()));
+    const w2 = midway.use("Agent", { description: "Opus W2: write lib/title.mjs", model: "opus", prompt: "TASK: write lib/title.mjs." });
+    verify(midway);
+    midway.result(w2, framed(five()));
+    // A Codex verifier briefed while the worker runs and continued after it returned: the continuation is that verifier again.
+    const resumed = plan(session());
+    const w3 = resumed.use("Agent", { description: "Opus W1: write lib/slug.mjs", model: "opus", prompt: "TASK: write lib/slug.mjs." });
+    resumed.newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: you are the verifier; run the suite.").codex("Codex Terra C1: verifier", "/d/run/C1/report.json");
+    resumed.result(w3, framed(five()));
+    resumed.newAgent("/d/run/C1-2/report.json", "RESUME: /d/run/C1/report.json\nMODEL: terra\nTASK: run the suite again.")
+      .codex("Codex Terra C1-2: verifier", "/d/run/C1-2/report.json");
     // A Codex verifier whose report touched the worker's file.
     const REPORTS = [{ id: "C1", report: { filesTouched: ["lib/slug.mjs"] } }];
     const codex = work(plan(session())).newAgent("/d/run/C1/report.json", "MODEL: terra\nTASK: you are the verifier; run the suite.")
@@ -341,6 +357,10 @@ test("the minimum team in every run: a plan critic briefed before the first work
       expectSome(check(early), /no verifier was briefed after the last worker returned/),
       expectSome(check(lost), /no verifier was briefed after the last worker returned/),
       expectNone(check(verify(work(work(plan(session()), "W2"))))),
+      expectNone(check(verify(second(work(plan(session())))), two)),
+      expectSome(check(between, two), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(midway, two), /no verifier was briefed after the last worker returned/),
+      expectSome(check(resumed), /no verifier was briefed after the last worker returned/),
       expectSome(check(verify(work(plan(session())), "W1")), /the verifier briefed after the last worker returned is a worker or wrote a worker's file: Opus W1: verifier/),
       // On read-only work the worker writes nothing, and the verifier that is that worker is red by its id alone.
       expectSome(check(verify(session().claude("Opus P1: plan critic", "opus", "You are the plan critic.", five())
