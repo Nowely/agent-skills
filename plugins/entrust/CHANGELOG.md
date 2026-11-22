@@ -49,8 +49,9 @@ forensics remain in the repository references and release notes.
 - The answer drops the manifest, its sha256 checks, the critic's copy with diff hunks and the three-read count. The
   verifier's thread, continued, reads the linted draft against the request, or a fresh final reader does when the
   card ran the architecture critic or no verifier, as when the user dropped it, or the answer is a publication: it
-  tags each claim by what backs it and lists what the draft does not answer. An answer gets at most two reads, and after the second only an `Open:` list quoting the
-  reader's gaps may be appended. `lint-draft.mjs --help` no longer speaks of a manifest.
+  tags each claim by what backs it and lists what the draft does not answer. An answer gets at most two reads, and
+  after the second only an `Open:` list quoting the reader's gaps may be appended. `lint-draft.mjs --help` no longer
+  speaks of a manifest.
 - The page's body is 7,997 characters, from 15,507. Skills per invocation, larger teams, profiles, usage windows and
   the substitution rule moved to `references/plan.md`, whose index says once when each section is read, the card and
   the composition rules with every plan; the advisor and the codex page link its substitution rule. The capture
