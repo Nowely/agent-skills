@@ -2316,7 +2316,7 @@ test("draft 28.5: a joined text a size larger is told by its width alone, wider 
   assert.deepEqual(type(64), [], "narrower: the box was drawn round an icon too");
 });
 
-// ------------------------------------------------------------------ 0.45.1: what a missing text carries
+// ------------------------------------------------------------------ 0.46.1: what a missing text carries
 
 // The planted card in small: a line at the top no data supplies (13 px high, 17 px above the first row), two rows and a
 // footer below it. A build without the line moves every row up by 30 px and the root by as much. The capped rerun wrote
@@ -2339,7 +2339,7 @@ const lineEntry = (extra = {}) => ({ landmark: ["Delivery in 15 minutes", "Deliv
   reason: "the frame draws a delivery time the API does not send", options: ["add the field to the API", "accept the card without it"], ...extra });
 const withLine = (page, ledger = [lineEntry()]) => compareFrame({ frame: "f", spec: LINE, measured: page, ledger });
 
-test("0.45.1: a presence entry for a text the page lacks carries the rows below it and the root's height, as notes naming it", () => {
+test("0.46.1: a presence entry for a text the page lacks carries the rows below it and the root's height, as notes naming it", () => {
   const without = withLine(lineShift(), []);
   assert.equal(without.verdict, "fail");
   assert.deepEqual(without.issues.filter((i) => i.status === "fail").map((i) => `${i.landmark} ${i.property}`).sort(),
@@ -2362,7 +2362,7 @@ test("0.45.1: a presence entry for a text the page lacks carries the rows below 
   assert.equal(withLine(lineShift(), [lineEntry({ frame: "card-280" })]).verdict, "fail");
 });
 
-test("0.45.1: what a missing text carries is bounded by its height and its gap, upward only, and hides no other shift", () => {
+test("0.46.1: what a missing text carries is bounded by its height and its gap, upward only, and hides no other shift", () => {
   // A 20 px margin planted above the footer: the footer sits 10 px above the design, a note on its own, but 20 px below
   // where the missing line puts it: a finding, as the planted margin is.
   const masked = withLine(lineShift({ rows: -30, footer: -10 }));
@@ -2404,7 +2404,7 @@ function plantedArm(css = "") {
 }
 const CARDS = ["card-764", "card-601", "card-486", "card-280"];
 
-test("0.45.1, C1: on the planted card the line's presence entry alone carries every row it moves and the root's height", browser, () => {
+test("0.46.1, C1: on the planted card the line's presence entry alone carries every row it moves and the root's height", browser, () => {
   const r = check(plantedArm());
   // Before: exit 1, 81 findings, 76 of them the rows below the line and the root's height (y and height).
   assert.equal(r.status, 1, r.stdout);
@@ -2427,7 +2427,7 @@ test("0.45.1, C1: on the planted card the line's presence entry alone carries ev
   assert.doesNotMatch(fs.readFileSync(path.join(r.dir, "out/handoff.md"), "utf8"), /## Broad excuses/);
 });
 
-test("0.45.1, C2: a 20 px margin planted above the planted card's footer, below the missing line, stays a finding", browser, () => {
+test("0.46.1, C2: a 20 px margin planted above the planted card's footer, below the missing line, stays a finding", browser, () => {
   const r = check(plantedArm('.card[data-mode="wide"] .card__foot { margin-top: 20px; }'), "--frame", "card-764");
   assert.equal(r.status, 1, r.stdout);
   const f = r.result.frames[0];
@@ -2440,7 +2440,7 @@ test("0.45.1, C2: a 20 px margin planted above the planted card's footer, below 
 
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
 // The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
-test("0.45.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
+test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
   const f = smallFrame('<style>main{height:auto}</style><div>Delivery</div><div style="margin-top:12px">SKU</div><div>Title</div>');
   f.write('<main><style>main{height:auto}</style><div style="position:absolute;top:0;left:200px">Soon</div><div>SKU</div><div>Title</div></main>');
   fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Delivery", property: "presence", category: "missing-state", status: "proposed", reason: "no data for it" }]));
@@ -2453,7 +2453,7 @@ test("0.45.1: a missing text that is on the page in other words leaves the frame
   assert.match(r.stdout, /page text not in the design \(1\): “Soon”/);
 });
 
-test("0.45.1: one entry for one question in every frame is not a broad excuse; four findings in one frame are", () => {
+test("0.46.1: one entry for one question in every frame is not a broad excuse; four findings in one frame are", () => {
   const frames = ["card-764", "card-601", "card-486", "card-280"].map((frame) => ({ ...withLine(lineShift()), frame }));
   const handoff = renderHandoff({ frames, ledger: [lineEntry()], status: "pending" });
   assert.doesNotMatch(handoff, /## Broad excuses/, handoff);
@@ -2462,13 +2462,13 @@ test("0.45.1: one entry for one question in every frame is not a broad excuse; f
   assert.match(renderHandoff({ frames: [one], ledger: [{ landmark: ["SKU", "New", "Title", "1 499 €"], property: "y", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }], status: "pending" }), /## Broad excuses/);
 });
 
-// The verifier's probes on 0.45.1's first cut (4a6aada): a carry without evidence, ordinary entries judged by their rest,
+// The verifier's probes on 0.46.1's first cut (4a6aada): a carry without evidence, ordinary entries judged by their rest,
 // and a wildcard let through as one question per frame.
 const accepted = (landmark, extra = {}) => ({ landmark, category: "missing-state", status: "accepted", decidedBy: "owner", reason: "r", ...extra });
 const shifted = (spec, f, height = spec.frame.height) => ({ root: { width: spec.frame.width, height }, landmarks: spec.landmarks.map((l, i) => f(l, i)) });
 const at = (l, dy = 0) => ({ found: true, align: "left", box: { ...l.box, y: l.box.y + dy } });
 
-test("0.45.1: a missing text carries only what the page shows it moved: the column below it, not a shift in another", () => {
+test("0.46.1: a missing text carries only what the page shows it moved: the column below it, not a shift in another", () => {
   const spec = { frame: { name: "f", width: 400, height: 200 }, landmarks: [
     { text: "L1", box: box(20, 20, 100, 12) }, { text: "L2", box: box(20, 80, 100, 12) }, { text: "L3", box: box(20, 120, 100, 12) },
     { text: "R1", box: box(250, 20, 100, 12) }, { text: "Badge", box: box(250, 40, 100, 20) }, { text: "R3", box: box(250, 160, 100, 12) }] };
@@ -2484,7 +2484,7 @@ test("0.45.1: a missing text carries only what the page shows it moved: the colu
   assert.deepEqual(closed.notes.filter((n) => n.carried).map((n) => n.landmark), ["L2", "L3", "R3"]);
 });
 
-test("0.45.1: an ordinary entry excuses a whole offset or none of it, as before; only a carried shift leaves a rest to judge", () => {
+test("0.46.1: an ordinary entry excuses a whole offset or none of it, as before; only a carried shift leaves a rest to judge", () => {
   const line = (dy) => (l, i) => at(l, i === 0 ? 0 : i <= 2 ? 20 : dy);
   const entries = [accepted(["SKU", "1 499 €"], { property: "y" })];
   // A y entry on the first row (+20) and the row below 10 px further on its own: a drift of 30, a finding.
@@ -2497,7 +2497,7 @@ test("0.45.1: an ordinary entry excuses a whole offset or none of it, as before;
   assert.equal(back.verdict, "pass", JSON.stringify(back.issues));
 });
 
-test("0.45.1: a wildcard entry is counted over every frame for a broad excuse; one naming its landmarks, per frame", () => {
+test("0.46.1: a wildcard entry is counted over every frame for a broad excuse; one naming its landmarks, per frame", () => {
   const spec = { frame: { name: "f", width: 300, height: 200 }, landmarks: [
     { text: "A", box: box(20, 10, 100, 10) }, { text: "B", box: box(20, 60, 100, 10) }, { text: "C", box: box(20, 110, 100, 10) }, { text: "D", box: box(20, 160, 100, 10) }] };
   const page = { root: { width: 300, height: 200 }, landmarks: spec.landmarks.map((l, i) => ({ found: true, align: "left", box: { ...l.box, x: l.box.x + (i < 3 ? 40 + i * 30 : 0) } })) };
