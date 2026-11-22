@@ -1252,7 +1252,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   if (journeys.some((j) => j.closed?.length)) out.push("An open–action–hidden sequence records the order observed. A timer or another event can also hide the content.");
   for (const j of journeys) {
     const spec = journeySpecs.find((x) => x.name === j.name) ?? { steps: [] };
-    const how = [spec.touch && "touch", j.widths?.length && `${j.widths.join(" → ")} px`].filter(Boolean).join(", ");
+    const how = [spec.touch && "touch", j.widths?.length && `${j.widths.join(" → ")} px`, j.asFresh?.length && `as a fresh load at ${j.asFresh.join(", ")} px`].filter(Boolean).join(", ");
     const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
     const notes = [opensOnly && "checks opening only, not closing", ...(j.notes ?? [])].filter(Boolean);
     out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `${j.status ? `disputed with the check (${j.status}), ` : ""}fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);

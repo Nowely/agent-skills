@@ -96,6 +96,7 @@ function loadConfig(file) {
   // The owner's past returns, one per line: .design/returns.md beside the task's folder unless design.json names one.
   const returns = cfg.returns ? at(cfg.returns) : path.join(dir, "..", "returns.md");
   if (cfg.static !== undefined && !(typeof cfg.static === "string" && cfg.static.trim())) throw new Error('design.json: "static" gives the reason no sweep or dense story applies');
+  if (cfg.lifecycle !== undefined && cfg.lifecycle !== false) throw new Error('design.json: "lifecycle" is false when the product can cause no lifecycle; otherwise leave it out and take each in a journey with "sameAsFresh": true');
   // The layout model's lines: pieces that share a row, in order, where the line holds (a width range, or a selector
   // the page shows in that layout mode).
   const lines = cfg.sweep?.lines ?? [];
@@ -1475,6 +1476,27 @@ async function journeys(browser, cfg) {
   // bottom edge, at the widest and the narrowest frame's width: an open popover must flip or shift to stay in the
   // window, wherever the component sits on the page and however narrow the window is.
   const narrowest = Math.min(...cfg.frames.map((f) => f.width));
+  // The component drawn by a fresh load of a journey's page at a width, measured once, to hold a journey's end against;
+  // the widths the component is drawn at (an overlay frame's is its own).
+  const frameWidths = [...new Set(cfg.frames.filter((f) => !f.root).map((f) => f.width))].sort((a, b) => b - a);
+  const fresh = new Map();
+  const freshDiff = async (page, j, at, when) => {
+    await finishMotion(page);
+    const after = await layoutOf(page, cfg.root);
+    const key = JSON.stringify([j.url, Boolean(j.touch), at]);
+    if (!fresh.has(key)) {
+      let opened;
+      try {
+        opened = await open(browser, cfg, { url: j.url, width: at, touch: Boolean(j.touch), still: false });
+        fresh.set(key, { layout: await layoutOf(opened.page, cfg.root) });
+      } catch (e) { fresh.set(key, { error: e.message.split("\n")[0] }); }
+      finally { await opened?.context.close(); }
+    }
+    const { layout, error } = fresh.get(key);
+    if (error) return `a fresh load at ${at} px to compare with: ${error}`;
+    const differs = layoutDiff(after, layout, cfg.tolerance);
+    return differs.length ? `${when}, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}` : undefined;
+  };
   const edged = [];
   const openers = new Set();
   for (const j of cfg.journeys) {
@@ -1509,7 +1531,7 @@ async function journeys(browser, cfg) {
         continue;
       }
     }
-    const widths = opened ? [j.width ?? width] : [];
+    const widths = opened ? [j.width ?? width] : [], asFresh = [];
     const seen = new Set(), notes = [], closed = new Set();
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
@@ -1606,23 +1628,27 @@ async function journeys(browser, cfg) {
           } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
         }
         // A state the steps went through and back must leave no trace: the component as a fresh load of the same page
-        // draws it at the same width (an observer left on removed elements, a layout not chosen again).
+        // draws it at the same width (an observer left on removed elements, a layout not chosen again). Then the check
+        // resizes the page itself through the frames' widths, each held against a fresh load at that width: a layout
+        // chosen once, or by an observer no longer on the element, shows at the next width.
         if (j.sameAsFresh && !edge && !failed) {
-          const at = widths.at(-1);
-          await finishMotion(page);
-          const after = await layoutOf(page, cfg.root);
-          let fresh;
-          try {
-            fresh = await open(browser, cfg, { url: j.url, width: at, touch: Boolean(j.touch), still: false });
-            const differs = layoutDiff(after, await layoutOf(fresh.page, cfg.root), cfg.tolerance);
-            if (differs.length) failed = `after its steps, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}`;
-          } catch (e) { failed = `a fresh load at ${at} px to compare with: ${e.message.split("\n")[0]}`; }
-          finally { await fresh?.context.close(); }
+          let now = widths.at(-1);
+          failed = await freshDiff(page, j, now, "after its steps");
+          asFresh.push(now);
+          for (const w of frameWidths) {
+            if (failed) break;
+            if (w === now) continue;
+            try { await setWidth(page, cfg, w, 900); await settle(page, cfg.root); }
+            catch (e) { failed = `after its steps, a resize to ${w} px: ${e.message.split("\n")[0]}`; break; }
+            now = w;
+            failed = await freshDiff(page, j, w, `after its steps and a resize to ${w} px`);
+            asFresh.push(w);
+          }
         }
       } finally { await opened.context.close(); }
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
-    results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
+    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
       acted: [...acted], closes });
   }
   return results;
@@ -1774,6 +1800,14 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     const pages = new Set([cfg.url, ...cfg.frames.map((f) => f.url)]);
     // A story on a frame's page brings data of its own by its setup; without one it is the frame again.
     for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.some((x) => !("wait" in x))) gaps.push(`the story ${st.name} is a frame's own page: a dense story's setup brings data of its own`);
+  }
+  // A lifecycle the product can cause (a remount, data emptied and refilled, a parent-width change) is taken through the
+  // consumer, in a journey that ends as a fresh load draws the component: on the page `url` names (whatever its query),
+  // or on a page of the journey's own that no frame or story shows. Unless design.json says the product has none.
+  const page = (u) => String(u).replace(/[?#].*$/, ""), storyPages = new Set([...cfg.frames.map((f) => f.url), ...(cfg.sweep?.stories ?? []).map((st) => st.url)].map(page));
+  const consumer = (j) => page(j.url) === page(cfg.url) || !storyPages.has(page(j.url));
+  if (cfg.lifecycle !== false && !cfg.journeys.some((j) => j.sameAsFresh === true && consumer(j))) {
+    gaps.push('no journey with "sameAsFresh": true runs on the consumer\'s page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent\'s width changed) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle": false in design.json if it can cause none');
   }
   // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
   // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.

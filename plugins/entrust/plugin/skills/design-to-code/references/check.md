@@ -27,6 +27,8 @@ incomplete when:
 - there is no sweep or no story, unless `design.json` gives `"static"` with its reason (one layout at one width,
   never frames at several);
 - a story on a frame's own URL has no setup but `wait`, so it is the frame again;
+- no journey with `"sameAsFresh": true` runs on the consumer's page (the page `url` names, whatever its query, or a
+  journey's own `url` that no frame or story shows), unless `design.json` gives `"lifecycle": false`;
 - a line of the owner's past returns (`.design/returns.md` beside the task's folder) is not quoted in an acceptance
   row;
 - a [candidate](#generated-conditions) is unanswered.
@@ -58,6 +60,7 @@ Paths are relative to the file.
 | `frames[]` | `name`, `width`, `spec`, `reference`; optionally `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `sweep` | `from`, `to`, `step` (default 8), `setup`, `stories`, `switches`, `align`, `lines`, `generate` |
 | `static`, `journeys` | why the page needs no sweep; [what a user does](#journeys) |
+| `lifecycle` | `false` when the product can cause no lifecycle (no remount, no data emptied and refilled, no change of the parent's width): no `sameAsFresh` journey is then asked for |
 
 `stories` are more data or states, `[{ "name": "dense", "url": "…", "setup": [] }]`; its acceptance row says what
 each adds. `switches` are the widths where the layout should switch, measured a pixel either side. `align` names
@@ -79,7 +82,8 @@ transitions and animations: what is running is brought to its end, its end event
 sheet that hides itself when its closing transition ends closes, and one that never closes fails. With
 `"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
-an observer left on removed elements or a layout not chosen again shows.
+an observer left on removed elements or a layout not chosen again shows. The check then resizes that page through the
+frames' widths and holds each against a fresh load at that width.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by

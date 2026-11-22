@@ -73,9 +73,10 @@ if (workerConfig.sweep) {
 write(path.join(dir, "design.json"), workerConfig);
 const answers = path.join(caseDir, "deviations.json");
 if (fs.existsSync(answers)) fs.copyFileSync(answers, path.join(judge, "deviations.json"));
+// The judge holds the page to the frames and the sweep: a lifecycle is the builder's to take, not the judge's.
 write(path.join(judge, "design.json"), {
   ...config(path.relative(judge, path.join(dir, "index.html")).split(path.sep).join("/"), "design"),
-  ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}),
+  ...(fs.existsSync(answers) ? { ledger: "deviations.json" } : {}), lifecycle: false,
 });
 // The judge's own pack needs no review of its own: its layout model and acceptance list are the case.
 write(path.join(judge, "review.md"), "# Judge\n\n## Layout model\n\n- the case's own: the reference is the layout\n\n## Acceptance list\n\n- judge inputs: pass — reference specs and images generated from the case\n");

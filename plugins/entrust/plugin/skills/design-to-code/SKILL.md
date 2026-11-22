@@ -90,8 +90,9 @@ evidence, an unanswered candidate); name it or record why not.
 - **Acceptance rows:** `- item: pass — evidence`.
 - **The consumer.** Load the artifact through its public import, in a consumer or a minimal host, and exercise
   the affected action; take each lifecycle the product can cause (mount and unmount, data emptied and refilled) or
-  parent-width change in a journey with `"sameAsFresh": true`. Where the contract keeps a state across a re-render (a
-  selection, an input, focus), a journey asserts it after the re-render; `sameAsFresh` cannot see it.
+  parent-width change in a journey with `"sameAsFresh": true` on the consumer's page; if it can cause none, design.json
+  says `"lifecycle": false`. Where the contract keeps a state across a re-render (a selection, an input, focus), a
+  journey asserts it after the re-render; `sameAsFresh` cannot see it.
 - **A second look:** where you can start a second agent, run [the review pass](references/review-pass.md) and fix
   what it returns.
 - **The owner's decisions,** in one list: each fair question (the design or contract silent or contradicting itself:

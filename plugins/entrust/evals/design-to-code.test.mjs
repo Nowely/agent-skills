@@ -383,7 +383,7 @@ function designDir() {
   design = tmp();
   fs.copyFileSync(path.join(CASE, "reference.html"), path.join(design, "page.html"));
   fs.writeFileSync(path.join(design, "design.json"), JSON.stringify({
-    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json",
+    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json", lifecycle: false,
     sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }], lines: [{ name: "badges", pieces: [".badge.new", ".badge:not(.new)"], from: 600 }] },
     frames: CONFIG.frames.map((f) => ({ ...f, spec: `design/${f.name}/spec.json`, reference: `design/${f.name}/reference.png` })),
   }));
@@ -425,7 +425,7 @@ function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   const write = (html) => fs.writeFileSync(page, markup(html));
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json",
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", lifecycle: false,
     frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })),
     sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES } }));
   const snap = cli("snapshot", config, "--images");
@@ -765,7 +765,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const run = (second, align, { tolerance, hideBelow } = {}) => {
     fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", lifecycle: false, frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
     return check(dir);
   };
   const v = [{ selector: ".v", edge: "left" }];
@@ -932,7 +932,7 @@ test("a frame of a state drawn outside the component names its own root", browse
 help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", lifecycle: false, frames: [
     { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
     sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
@@ -1532,7 +1532,7 @@ function boxCase(design, page, width = 320, { ledger = [] } = {}) {
   const dir = tmp(), config = path.join(dir, "design.json"), file = path.join(dir, "page.html");
   const wrap = (body) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fff}</style>${body}`;
   fs.writeFileSync(file, wrap(design));
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", lifecycle: false, frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(path.join(dir, "ledger.json"), JSON.stringify(ledger));
   assert.equal(cli("snapshot", config, "--images", "--scale", "2").status, 0);
@@ -2547,4 +2547,73 @@ test("draft 28.2: pending means proposals wait for the owner; a page snapshot us
   const snap = compareFrame({ frame: "card", spec: { ...SPEC, source: "page snapshot" }, measured: measured() });
   assert.match(renderHandoff({ frames: [snap], status: "pass" }), /^- card: pass — no findings.*\n  Its spec is a snapshot of the page \(`design\.mjs snapshot`\): outside a review it compares the page with itself/m);
   assert.doesNotMatch(renderHandoff({ frames: [compare({})], status: "pass" }), /compares the page with itself/);
+});
+
+// ------------------------------------------------------------------ 44: the return classes into the checker
+
+// Item 1: a complete check is incomplete until a journey on the consumer's page carries sameAsFresh, or design.json
+// says the product has no lifecycle.
+const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle": false in design\.json if it can cause none/;
+test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh, or design.json gives \"lifecycle\": false", browser, () => {
+  const f = smallFrame();
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  assert.equal(lifecycle, false, "the fixtures state it");
+  for (const name of ["consumer.html", "host.html"]) fs.copyFileSync(f.page, path.join(f.dir, name));
+  const run = (config) => { fs.writeFileSync(f.config, JSON.stringify(config)); return check(f.dir); };
+  const fresh = (extra = {}) => ({ name: "remounted", sameAsFresh: true, steps: [{ width: 300 }, { visible: "main" }], ...extra });
+  // None: incomplete, and the gap says what to do.
+  const none = run(cfg);
+  assert.equal(none.status, 2, none.stdout);
+  assert.match(none.stdout, LIFECYCLE);
+  assert.ok(none.result.gaps.some((g) => LIFECYCLE.test(g)), JSON.stringify(none.result.gaps));
+  // A journey without sameAsFresh, or one that says false, is not one.
+  assert.equal(run({ ...cfg, journeys: [{ ...fresh(), sameAsFresh: false }] }).status, 2);
+  // On the page `url` names, whatever its query: complete.
+  assert.equal(run({ ...cfg, journeys: [fresh({ url: "page.html?other" })] }).status, 0);
+  // The frames on a story page, `url` the consumer: a journey on the story page is not the consumer's; one on `url`,
+  // or on a page of its own no frame or story shows, is.
+  const story = { ...cfg, url: "consumer.html", frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })) };
+  assert.match(run({ ...story, journeys: [fresh({ url: "page.html" })] }).stdout, LIFECYCLE);
+  assert.equal(run({ ...story, journeys: [fresh()] }).status, 0);
+  assert.equal(run({ ...story, journeys: [fresh({ url: "host.html" })] }).status, 0);
+  // The product has none: "lifecycle": false, and nothing else.
+  assert.equal(run({ ...cfg, lifecycle: false }).status, 0);
+  for (const value of [true, "none"]) {
+    const bad = run({ ...cfg, lifecycle: value });
+    assert.equal(bad.status, 2);
+    assert.match(bad.stderr, /"lifecycle" is false when the product can cause no lifecycle/);
+  }
+  // A partial check asks for none.
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  assert.doesNotMatch(check(f.dir, "--quick").stdout, LIFECYCLE);
+});
+
+// A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer
+// lets go of the row leaving; `rewatch`: the row mounted again is observed.
+function listPage({ disconnect, rewatch }) {
+  const f = smallFrame(`<style>main{width:auto;max-width:600px;height:auto}.row{display:flex;gap:8px}.row[data-mode=stack]{flex-direction:column}</style>
+<div id="host"></div><button id="toggle">Toggle</button>
+<script>const host = document.getElementById("host"); let shown = true, observer;
+const render = () => { ${disconnect ? "observer?.disconnect(); " : ""}host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
+const watch = () => { const row = host.querySelector(".row"); if (row) (observer = new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; })).observe(row); };
+render(); watch();
+document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${rewatch ? "watch();" : ""} };</script>`, [{ name: "wide", width: 500 }, { name: "narrow", width: 320 }]);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  return (journey) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "emptied and restored", steps: [{ click: "#toggle" }, { visible: "main p" }, { click: "#toggle" }, { visible: ".row" }], ...journey }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "emptied and restored");
+  };
+}
+
+test("44.1: after a sameAsFresh journey the check resizes the page through the frames' widths, each held against a fresh load", browser, () => {
+  // The restored row is not observed: at the journey's width (500) it is drawn as fresh; resized to 320 it stays a line.
+  const once = listPage({ disconnect: true, rewatch: false })({ sameAsFresh: true });
+  assert.equal(once.pass, false, JSON.stringify(once));
+  assert.match(once.failed, /^after its steps and a resize to 320 px, the component differs from a fresh load at 320 px: /);
+  const kept = listPage({ disconnect: true, rewatch: true })({ sameAsFresh: true });
+  assert.ok(kept.pass, JSON.stringify(kept));
+  assert.deepEqual(kept.asFresh, [500, 320], "the journey's own width, then each other frame's");
+  // Without sameAsFresh, nothing is resized.
+  const plain = listPage({ disconnect: true, rewatch: false })({});
+  assert.ok(plain.pass && !plain.asFresh, JSON.stringify(plain));
 });
