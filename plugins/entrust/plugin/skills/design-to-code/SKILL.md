@@ -34,14 +34,21 @@ pack](references/pack.md#reviewing-an-implementation).
   of another size.
 - **A narrower frame is another design.** Build each as drawn: sizes, order, text formats. Where frames differ, ask
   the owner; do not unify them.
-- **A price and its period:** `white-space: nowrap` on the amount and on the period, an ordinary space between them,
-  and no cap on their block. "/ месяц" may move to the next line whole only when the whole price is wider than the
-  component; "₽ /" | "месяц" is always a finding. A value and its unit, an icon and its count, stay on one line.
+- **A price and its period:** `white-space: nowrap` on each, an ordinary space between, no cap on their block.
+  "/ месяц" moves to the next line whole only when the whole price is wider than the component; "₽ /" | "месяц" is always a finding. A value and its unit, an icon and its count, stay on one line.
 - **What repeats grows the component downward;** a fixed height takes an ellipsis or a clamp, the full text reachable.
 - **An open popover stays in the window:** the kit's popover, or CSS anchor positioning with fallbacks.
 - **Nothing nailed in place:** no negative margins, transforms or offsets moving text, fixed sizes around content
   that grows, or magic numbers per mode. A construct is a note that needs its reason: fix it, or give the reason in
   the handoff.
+- **Modes switch by container queries.** A script measuring widths is a construct, except for a content fit no query
+  expresses; its observer follows the mounted element and goes on unmount.
+
+## The code
+
+- **One element per thing shown,** not copies CSS swaps by mode: two prices, two disk lists, a chip twice.
+- **Hide visually:** a unit or label the layout hides keeps a visually-hidden class, not `display: none`.
+- **Selectors stay under the root;** never restyle a kit class or a bare one (`.card`, `.kit-badge`) page-wide.
 
 ## Check
 
@@ -54,11 +61,10 @@ Beside `review.md`, `design.json` names the page (`url`), the component's select
   pack](references/pack.md#screenshots-without-a-spec)).
 - **`sweep`:** `from` the narrowest supported width `to` the widest, and two `stories`:
   - `dense`: the longest values and every conditional piece at once;
-  - `many`: more entries than any frame shows.
+  - `many`: more entries than any frame shows; its acceptance row quotes the last one as seen at the narrowest width.
 - **`journeys`:** each control that opens something, opened and closed the ways it supports.
 
-The check adds longer texts, more rows and openers at the window's edges. A collision found only under them is a
-candidate: reproduce it with legal data in a story, or name under Candidates in `review.md` the contract's bound that
+A collision found only under the check's own longer texts, extra rows or openers at the window's edges is a candidate: reproduce it with legal data in a story, or name under Candidates in `review.md` the contract's bound that
 rules it out.
 
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
@@ -83,9 +89,8 @@ unanswered candidate. Name it or record why not, and check again.
   refilled) or a parent-width change in a journey with `"sameAsFresh": true`.
 - **A second look:** where a second agent can be started, run [the review pass](references/review-pass.md), which
   reads the code too, and fix what it returns.
-- **The owner's decisions,** in one list: each a fair question where the design or the contract is silent or
-  contradicts itself (a missing state, an unbounded value, frames that disagree, the kit against the drawing), with
-  options and costs, none repeating a ruling in `.design/returns.md` or `review.md`. What you could fix is fixed,
-  not proposed.
+- **The owner's decisions,** in one list: each a fair question where the design or contract is silent or contradicts
+  itself (a missing state, an unbounded value, frames that disagree, the kit against the drawing), with options and
+  costs, repeating no ruling in `.design/returns.md` or `review.md`. What you could fix is fixed, not proposed.
 - **The handoff:** each reference beside its final image; what the check passed; what differs and why; what you
-  could not check. With a screenshot alone and no tool to measure, judge by eye and name what went unmeasured.
+  could not check.
