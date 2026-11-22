@@ -54,7 +54,7 @@ batches, all within the orchestrate page's alive-at-once bound. The card recomme
 | Profile | Allocation |
 |---|---|
 | balanced (default) | the default team, with the bulk tier for scouting |
-| speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the review the consequences warrant. |
+| speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the [default team](../SKILL.md#the-default-team)'s minimum, the plan critic and the verifier, and any further review the consequences warrant. |
 | quality | The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
 
 ## Usage windows
