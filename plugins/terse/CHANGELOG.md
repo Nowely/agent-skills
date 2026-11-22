@@ -3,6 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+- The genre note for skill pages says that Claude Code re-attaches an invoked skill after a compaction only in the
+  process that invoked it: on 2.1.330 one process brought the skill back whole, and a session resumed in a new
+  process brought none. Before, it said only that the most recent invocation of each skill is re-attached.
+
 ## 0.7.0 — 2026-10-21
 
 ### Breaking
