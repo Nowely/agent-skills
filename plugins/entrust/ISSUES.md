@@ -90,21 +90,6 @@ Codex adapter, because only the claude adapter marks its agents native. A mixed 
 a native Codex subagent in the ordinary five-column form. Decide whether a row's nativeness should follow the host that
 runs the plan rather than the adapter manifest that lists the model.
 
-## E155. Two shared pages call the host "normally Luna", though the shared skills name no model
-
-**Evidence, level 1.** `proxy/SKILL.md:12`: "this host, normally Luna, transports messages and answers".
-`orchestrate/references/main-proxy.md:4`: "The host (normally Luna) relays messages and replies." The entry "The shared skills name no
-model (most of E122)" in `plugins/entrust/CHANGELOG.md`, under `## 0.26.0 — 2026-10-08`, moved model names to each
-adapter's `references/models.md`. `claude/SKILL.md:18` names Luna too; it is an adapter page, where a model name
-belongs. Found by Fable F12.
-
-**Check.** `grep -n 'Luna' plugins/entrust/plugin/skills/proxy/SKILL.md plugins/entrust/plugin/skills/orchestrate/references/main-proxy.md`
-prints both lines.
-
-**Issue text.** The proxy skill and orchestrate's main-proxy reference, both shared pages, call the transporting host
-"normally Luna", against the rule since 0.26.0 that the shared skills name no model and each adapter's models page maps
-tiers to models. Say "the host", or its tier, and leave Luna to the Codex adapter's models page.
-
 ## E153. The design-to-code review pass has not run where it counts
 
 **Evidence, level 3 for the harness, level 1 for the remedy.** `design-to-code/SKILL.md:92` asks for a second

@@ -1,7 +1,7 @@
 # The main conversation as transport
 
 The explicit [proxy skill](../../proxy/SKILL.md) activates a Claude Code session after the user's confirmation.
-Claude owns decisions, execution, verification and the answer. The host (normally Luna) relays messages and replies.
+Claude owns decisions, execution, verification and the answer. The host relays messages and replies.
 It runs no task commands for Claude and builds no tool catalogue. The mode continues across tasks until the user ends it.
 
 ## Every message

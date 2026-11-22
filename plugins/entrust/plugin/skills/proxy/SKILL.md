@@ -9,7 +9,7 @@ license: MIT
 ---
 
 The command names the model: `/entrust:proxy opus` in Claude Code, `$entrust:proxy opus` in Codex.
-With no model named, ask which. Claude does the work; this host, normally Luna, transports messages and answers.
+With no model named, ask which. Claude does the work; this host transports messages and answers.
 `<orchestrate-dir>` is the orchestrate skill's installed directory beside this one.
 
 ## Activate
