@@ -10,7 +10,7 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
-## E148. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
+## E156. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
 
 **Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
 returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
@@ -28,7 +28,7 @@ the plan critic is still running, and a return that came in after the synthesis 
 or removed with the suite still green, so a live run the gate should fail would pass it. Add a fixture for each: a
 worker's brief between the plan critic's brief and its return, and an agent's return after the coordinator's last text.
 
-## E146. Only the claude adapter declares its agents native, so a five-column plan row with a Codex model under a Codex host resolves to the external Codex adapter
+## E154. Only the claude adapter declares its agents native, so a five-column plan row with a Codex model under a Codex host resolves to the external Codex adapter
 
 **Evidence, level 2.** `claude/adapter.json:6` is the one adapter manifest whose `plan` carries `"native": true`;
 `codex/adapter.json:6` lists `["astra", "sol", "terra", "luna"]` and no `native`. `orchestrate/scripts/agent-run.mjs:552-553`
@@ -47,7 +47,7 @@ Codex adapter, because only the claude adapter marks its agents native. A mixed 
 a native Codex subagent in the ordinary five-column form. Decide whether a row's nativeness should follow the host that
 runs the plan rather than the adapter manifest that lists the model.
 
-## E147. Two shared pages call the host "normally Luna", though the shared skills name no model
+## E155. Two shared pages call the host "normally Luna", though the shared skills name no model
 
 **Evidence, level 1.** `proxy/SKILL.md:12`: "this host, normally Luna, transports messages and answers".
 `orchestrate/references/main-proxy.md:4`: "The host (normally Luna) relays messages and replies." The entry "The shared skills name no
