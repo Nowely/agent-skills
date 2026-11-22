@@ -2654,8 +2654,7 @@ test("44.3: a mode a ResizeObserver or matchMedia sets is a construct note that 
 
 // The catalogue card's reference build, with the design.json a builder following the skill writes (research note 35):
 // frames on the story page sized by the host, journeys on the consumer page.
-const CATALOGUE = path.join(HERE, "design-to-code/cases/catalogue-card");
-function catalogueArm(change = (js) => js) {
+function catalogueLifecycleArm(change = (js) => js) {
   const arm = path.join(tmp(), "arm");
   assert.equal(spawnSync(process.execPath, [path.join(CATALOGUE, "make-arm.mjs"), arm], { encoding: "utf8" }).status, 0);
   fs.writeFileSync(path.join(arm, "card.js"), change(fs.readFileSync(path.join(CATALOGUE, "reference/card.js"), "utf8")));
@@ -2678,7 +2677,7 @@ function catalogueArm(change = (js) => js) {
 }
 
 test("44, controls: the catalogue card's reference build gets no new finding; with its observers left on removed cards, the list journey fails", browser, () => {
-  const ref = check(catalogueArm());
+  const ref = check(catalogueLifecycleArm());
   // As before the change: every frame, the sweep and the journeys hold; the story page's Details opener has no sheet.
   assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
   assert.ok(ref.result.journeys.every((j) => j.pass), JSON.stringify(ref.result.journeys.filter((j) => !j.pass)));
@@ -2689,7 +2688,7 @@ test("44, controls: the catalogue card's reference build gets no new finding; wi
   assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
   // The stateful bench's stale-observer class: the cards leaving keep their observers.
   const unwatch = "    for (const card of host.querySelectorAll(\".card\")) unwatch(card);\n";
-  const stale = check(catalogueArm((js) => { assert.equal(js.split(unwatch).length, 2); return js.replace(unwatch, ""); }), "--no-sweep");
+  const stale = check(catalogueLifecycleArm((js) => { assert.equal(js.split(unwatch).length, 2); return js.replace(unwatch, ""); }), "--no-sweep");
   const failed = stale.result.journeys.filter((j) => !j.pass).map((j) => [j.name, j.failed]);
   assert.deepEqual(failed, [["list: emptied by the search and restored, the cards come back",
     "after its steps, a ResizeObserver still observes 3 elements removed from the page (article.card): disconnect it on unmount and observe what mounts"]]);
