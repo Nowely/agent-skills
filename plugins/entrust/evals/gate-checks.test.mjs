@@ -118,7 +118,7 @@ test("five fields: a template return parses and validates against the shipped sc
 
 const CARD = [
   "**Work:** add slug(title) to lib/slug.mjs with a test.",
-  "**Team:** one worker, Opus W1; two checking agents, Codex Terra C1 (verifier) and Opus K1 (final reader).",
+  "**Team:** Opus P1 (plan critic) before one worker, Opus W1; two checking agents, Codex Terra C1 (verifier) and Opus K1 (final reader).",
   "**Writes:** W1 writes lib/slug.mjs and test/slug.test.mjs in the live tree; C1 and K1 write nothing. Every agent reaches the network; reports land outside the repository.",
   "**Checks:** C1 runs node --test, K1 reads the answer.",
 ].join("\n");
@@ -142,17 +142,40 @@ test("the default team's minimum on the card: the team names the plan critic and
   "the plan critic and the verifier are on every card, and only the user's word drops either; a plan-only case runs no agent, so the card is the one place a missing minimum shows",
   () => {
     const team = (row) => CARD.replace(/^\*\*Team:\*\*.*$/m, `**Team:** ${row}`);
+    const both = team("Opus P1 (plan critic), then one worker, Opus W1, and Codex Terra C1 (verifier).");
+    const tableCard = (teamCell, checksCell) => `| | |\n|---|---|\n| **Work** | slug |\n| **Team** | ${teamCell} |\n| **Writes** | W1: lib/slug.mjs |\n| **Checks** | ${checksCell} |`;
+    const none = /names no plan critic and no verifier/;
     return all(
-      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic), then one worker, Opus W1, and Codex Terra C1 (verifier)."))),
-      expectSome(G.minimumCardProblems(CARD), /the card's team names no plan critic, the default/),
-      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1; the verifier dropped at your word."))),
-      // The verifier named only by the checks row is not on the team.
-      expectSome(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1.").replace("**Checks:** C1", "**Checks:** the verifier")),
-        /names no verifier/),
-      // Agents listed in a table of their own under the team row.
+      expectNone(G.minimumCardProblems(CARD)),
+      expectNone(G.minimumCardProblems(both)),
+      expectSome(G.minimumCardProblems(team("one worker, Opus W1, and Codex Terra C1 (verifier).")), /the card's team names no plan critic, the default/),
+      // Named only as denied or dropped: a minimum left out without the user's word, unless the case's user dropped it.
+      expectSome(G.minimumCardProblems(team("one worker, Opus W1; no plan critic or verifier, the change is one line.")), none),
+      expectSome(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1; the verifier dropped.")), /names no verifier/),
+      expectSome(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1; you dropped the verifier.")), /names no verifier/),
+      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1; the verifier dropped at your word."), { dropped: ["verifier"] })),
+      // A verifier that writes nothing is named, not denied: only a denial before the name counts.
+      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic), Opus W1, and Opus V1 as the verifier that does not write."))),
+      // The verifier named only by the checks row is not on the team, in either card shape.
+      expectSome(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1.").replace("**Checks:** C1", "**Checks:** the verifier")), /names no verifier/),
+      expectSome(G.minimumCardProblems(tableCard("Opus P1 (plan critic), Opus W1", "Opus V1, the verifier, runs node --test")), /names no verifier/),
+      expectNone(G.minimumCardProblems(tableCard("Opus P1 (plan critic), Opus W1, Opus V1 (verifier)", "V1 runs node --test"))),
+      // A list under the team label or a team heading, and agents in a table with a role column.
+      expectNone(G.minimumCardProblems("**Work:** slug\n**Team:**\n- Opus P1: plan critic\n- Opus W1: worker\n- Opus V1: verifier\n**Writes:** W1\n**Checks:** V1")),
+      expectNone(G.minimumCardProblems("### Work\nslug\n### Team\n1. Opus P1, plan critic\n2. Opus W1, worker\n3. Opus V1, verifier\n### Writes\nW1\n### Checks\nV1")),
       expectNone(G.minimumCardProblems(`${team("three agents, below.")}\n\n| Agent | Role |\n|---|---|\n| Opus P1 | plan critic |\n| Opus W1 | worker |\n| Opus V1 | verifier |`)),
-      expectNone(G.minimumCardProblems("| Работа | slug |\n| Команда | Opus P1 — критик плана, Opus W1, Opus V1 — проверяющий |\n| Права | W1 |\n| Проверки | V1 |")),
-      expectSome(G.minimumCardProblems(team("one worker, Opus W1.").replace(/verifier|final reader/g, "agent")), /names no plan critic and no verifier/),
+      // The section ends at a heading or a bold label that is no card row.
+      expectSome(G.minimumCardProblems("### Team\n- Opus P1: plan critic\n- Opus W1: worker\n### Options\n- add a verifier first"), /names no verifier/),
+      expectSome(G.minimumCardProblems("**Team:** Opus P1 (plan critic), Opus W1.\n**Options:** add a verifier first.\n**Writes:** W1"), /names no verifier/),
+      // Another table's mention is no team: an option to add them, a file named after one.
+      expectSome(G.minimumCardProblems(`${team("one worker, Opus W1.").replace(/verifier|final reader/g, "agent")}\n\n| Option | What |\n|---|---|\n| 1 | add a plan critic and a verifier first |`), none),
+      expectSome(G.minimumCardProblems(team("one worker, Opus W1, who updates `lib/verifier.mjs` and `src/verifier`.").replace(/\(verifier\)|final reader/g, "agent")), none),
+      // Case, a hyphen, and the Russian names; «проверяющий» is any checking agent, not the role.
+      expectNone(G.minimumCardProblems(team("Opus P1, Plan-critic; Opus W1; Codex Terra C1, Verifier."))),
+      expectNone(G.minimumCardProblems("| Работа | slug |\n| Команда | Opus P1 — критик плана, Opus W1, Opus V1 — верификатор |\n| Права | W1 |\n| Проверки | V1 |")),
+      expectSome(G.minimumCardProblems("| Работа | slug |\n| Команда | Opus P1 — критик плана, Opus W1, два проверяющих агента, Opus K1 — проверяющий ответ |\n| Права | W1 |\n| Проверки | K1 |"),
+        /names no verifier/),
+      expectSome(G.minimumCardProblems(team("one worker, Opus W1.").replace(/verifier|final reader/g, "agent")), none),
     );
   });
 
@@ -785,6 +808,7 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const missed = want.filter((re) => !bad.some((p) => re.test(p)));
     return all(
       ok.problems.length === 0 || `the good run failed: ${ok.problems.join("; ")}`,
+      expectNone([...G.cardProblems(s1.planText), ...G.minimumCardProblems(s1.planText)]),
       missed.length === 0 || `the pre-fix run passed ${missed.join(", ")}: ${JSON.stringify(bad)}`,
       expectSome(edited, /the coordinator wrote lib\/slug\.mjs in the working tree itself \(Edit\)/),
       expectSome(checked, /the coordinator ran a check itself/),

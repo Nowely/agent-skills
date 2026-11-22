@@ -19,10 +19,13 @@ forensics remain in the repository references and release notes.
 
 ### Live gate
 
-- Every case with a card checks that its team names the plan critic and the verifier, each on the team or as
-  dropped at the user's word, so a plan-only case, which runs no agent, still fails a card without the minimum. The
-  offline suite gains its cases: a card with both, one missing the plan critic, a dropped verifier, a verifier named
-  only by the checks row, agents in a table of their own, and a Russian card.
+- Every case with a card checks that its team names the plan critic and the verifier, so a plan-only case, which
+  runs no agent, still fails a card without the minimum. A role named only as denied or dropped ("no plan critic",
+  "the verifier dropped") counts as missing unless the case's user dropped it. The team is the team row with the
+  list or table under it, and any table with a role column; a mention in another table, a checks row or a path is no
+  team. The Russian names are «критик плана» and «верификатор», since «проверяющий» is the plain word for any
+  checking agent. The offline suite's good card now names a plan critic and passes both card checks, and the suite
+  gains a case for each of these readings.
 - The offline suite gains a worker briefed between the plan critic's brief and its return, and an agent's return
   after the coordinator's last text; weakening either check now turns the suite red (E156).
 

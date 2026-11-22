@@ -233,15 +233,45 @@ export function cardProblems(text, rows = null) {
   return problems;
 }
 
-// The default team's minimum on the card: the team names the plan critic and the verifier, each on the team or as
-// dropped at the user's word (references/plan.md's team row), so either name stands for both. The team is the team
-// row and any table row that is no other card row, since a card may list its agents in a table of their own. Apart
-// from cardProblems, whose legacy case-7 fixture predates the two roles.
-export function minimumCardProblems(text) {
-  const team = String(text).split("\n")
-    .filter((l) => { const c = cardLabelOf(l); return c === "team" || (!c && l.trim().startsWith("|")); }).join("\n");
-  const missing = [["plan critic", /plan critic|критик плана/i], ["verifier", /verifier|верификатор|проверяющ/i]]
-    .filter(([, re]) => !re.test(team)).map(([name]) => name);
+// The default team's minimum on the card (references/plan.md's team row): the team names the plan critic and the
+// verifier. A role the case's user dropped, passed in `dropped`, only has to be named; any other must be named in a
+// clause that neither denies it before the name ("no plan critic") nor drops it ("the verifier dropped"). The
+// team is the team row with the lines under it up to the next card row, heading or bold label (a list under `Team:`
+// or `### Team`), and any table with a role column. Role names in any case, with a space or a hyphen; in Russian
+// «критик плана» and «верификатор», not «проверяющий», the plain word for any checking agent
+// (review/scripts/labels.mjs). A name inside a path (`lib/verifier.mjs`) is no role. Kept apart from cardProblems,
+// whose legacy case-7 fixture predates the two roles.
+const MINIMUM = [["plan critic", /(?<![\p{L}/.-])(?:plan[\s-]+critic|критик[\s-]+плана|план[\s-]+критик)(?![\p{L}/-]|\.\p{L})/giu],
+  ["verifier", /(?<![\p{L}/.-])(?:verifier|верификатор)(?![\p{L}/-]|\.\p{L})/giu]];
+const DENIED_BEFORE = /(?<!\p{L})(?:no|not|without|нет|без|не)(?!\p{L})/iu;
+const DROPPED = /(?<!\p{L})(?:drop(?:s|ped)?|skip(?:s|ped)?|omit(?:s|ted)?|убран\p{L}*|пропущен\p{L}*|исключ\p{L}*)(?!\p{L})/iu;
+const CLAUSE_END = /[.;,:|()\[\]\n—–]/u;
+export function minimumCardProblems(text, { dropped = [] } = {}) {
+  const lines = String(text).split("\n");
+  const team = [];
+  lines.forEach((l, i) => {
+    if (cardLabelOf(l) !== "team") return;
+    team.push(l);
+    for (const next of lines.slice(i + 1)) {
+      const c = cardLabelOf(next);
+      if ((c && c !== "team") || /^\s*#{1,6}\s/.test(next) || /^\s*\*\*[^*]+\*\*/.test(next)) break;
+      team.push(next);
+    }
+  });
+  const isRow = (l) => l.trim().startsWith("|");
+  const roleColumn = (l) => l.split("|").some((c) => /^(?:role|роль)$/i.test(c.replace(/[*_`]/g, "").trim()));
+  for (let i = 0; i < lines.length; i++) {
+    if (!isRow(lines[i]) || (i > 0 && isRow(lines[i - 1])) || !roleColumn(lines[i])) continue;
+    for (let j = i; j < lines.length && isRow(lines[j]); j++) team.push(lines[j]);
+  }
+  const body = team.join("\n");
+  const named = (re, asDropped) => [...body.matchAll(re)].some((m) => {
+    if (asDropped) return true;
+    const before = body.slice(0, m.index).split(CLAUSE_END).pop();
+    const after = body.slice(m.index + m[0].length).split(CLAUSE_END)[0];
+    return !DENIED_BEFORE.test(before) && !DROPPED.test(before) && !DROPPED.test(after);
+  });
+  const missing = MINIMUM.filter(([name, re]) => !named(re, dropped.includes(name))).map(([name]) => name);
   return missing.length ? [`the card's team names no ${missing.join(" and no ")}, the default team's minimum`] : [];
 }
 
