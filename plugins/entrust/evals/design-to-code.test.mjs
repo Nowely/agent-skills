@@ -16,7 +16,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  causes, compareFrame, contextTexts, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
+  causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
   renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
@@ -2275,6 +2275,30 @@ test("draft 28.3: replayed on Terra's recorded rounds, an unchanged first findin
   assert.equal(rerunNotice({ complete: true, status: "pass", stalled: 5, streak: 5 }), "");
   assert.equal(firstStreak([{ first: "a" }, { first: "b" }, { first: "b" }], "b"), 3);
   assert.equal(firstStreak([{ first: "b" }, {}], "b"), 1);
+});
+
+// The planted server card: the builder proposed the line the API does not send and the 30 px it moves the first row;
+// the check went on leading with that step, which would drive the very loop the stop rule ends.
+test("draft 28.3: a step the ledger settles is not where to start, nor the first finding; the next unsettled one is", () => {
+  const frame = { frame: "card-764", pass: false, verdict: "fail", score: 3, images: {},
+    root: { spec: { width: 764, height: 200 }, page: { width: 764, height: 170 } },
+    issues: [
+      { landmark: "BA-i201-B", property: "y", expected: 16, actual: -14, delta: -30, status: "pending", entries: [0] },
+      { landmark: "EPYC 9374F", property: "y", expected: 40, actual: 10, delta: -30, status: "pending", inherited: true, entries: [0] },
+      { landmark: "2+", property: "x", expected: 137, actual: 155, delta: 18, status: "fail" },
+    ],
+    causes: [
+      { index: 1, axis: "y", after: "the top of the root", before: "BA-i201-B", step: -30, y: 16, x: 20 },
+      { index: 7, axis: "x", after: "MC-LAG 25/25", before: "2+", step: 18, y: 120, x: 137 },
+    ] };
+  const digest = renderSummary({ frames: [frame] });
+  assert.match(digest, /^card-764: fail, 1 findings, 2 awaiting a decision; start here: between “MC-LAG 25\/25” and “2\+” horizontally \+18 px/m, digest);
+  assert.match(renderReport({ frames: [frame], status: "fail" }), /^Start here: between “MC-LAG 25\/25” and “2\+” horizontally \+18 px\.$/m);
+  assert.deepEqual([...findingKeys({ frames: [frame] }).keys()], ["card-764\u00002+\u0000x"]);
+  // Where every step found is settled, no step is named: the findings left are listed as they are.
+  const settled = { ...frame, causes: frame.causes.slice(0, 1) };
+  assert.doesNotMatch(renderSummary({ frames: [settled] }), /start here/);
+  assert.match(renderSummary({ frames: [settled] }), /2\+ x: 137 → 155 \(\+18\)/);
 });
 
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say

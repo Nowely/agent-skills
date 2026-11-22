@@ -947,7 +947,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     out.push(`Root: page ${round(page.width)} × ${round(page.height)}, design ${spec.width} × ${spec.height}.`);
 
     // Where to start fixing: only for a frame with a finding, never for notes alone.
-    const shown = f.issues.some((i) => i.status === "fail") ? f.causes.filter((c) => !c.repeat) : [];
+    const shown = openCauses(f);
     if (shown.length) out.push(`Start here: ${sayCause(shown[0])}.`);
     if (shown.length > 1) out.push(`Then: ${shown.slice(1, 7).map(sayCause).join("; ")}${shown.length > 7 ? `; and ${shown.length - 7} more` : ""}.`);
     if (f.typeUnchecked) out.push(`${typeNote[0].toUpperCase()}${typeNote.slice(1)}.`);
@@ -995,6 +995,21 @@ export function findingKeys({ frames = [], sweep, journeys = [], acceptance = []
   for (const j of journeys.filter((x) => !x.pass && !x.status)) keys.set(`journey\u0000${j.name}`, `journey ${j.name}`);
   for (const r of acceptance.filter((x) => x.status === "fail")) keys.set(`acceptance\u0000${r.item}`, `acceptance “${r.item}”`);
   return keys;
+}
+
+// Where to start in a frame that fails: its first step of its own that the ledger has not settled. A step proposed or
+// accepted (the row a missing line moves up) waits on the owner, so leading with it would send the builder back to it
+// every round; the findings it explains are counted as awaiting a decision instead.
+export function startCause(f) { return openCauses(f)[0] ?? null; }
+function openCauses(f) {
+  const issues = f.issues ?? [];
+  if (!issues.some((i) => i.status === "fail")) return [];
+  const settled = (c) => {
+    const landmark = c.index === "root" ? "root" : c.before, property = c.axis === "size" ? c.kind : c.index === "root" ? "width" : c.axis;
+    const own = issues.filter((i) => i.landmark === landmark && i.property === property);
+    return own.length > 0 && own.every((i) => i.status === "pending" || i.status === "accepted");
+  };
+  return (f.causes ?? []).filter((c) => !c.repeat && !settled(c));
 }
 
 // How many rounds in a row, this one included, have had the same first finding. A finding is named by its key, which
@@ -1047,12 +1062,12 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
     const verdict = failing.length ? `fail, ${failing.length} findings${pending ? `, ${pending} awaiting a decision` : ""}`
       : f.verdict === "incomplete" ? "incomplete" : pending ? `awaiting a decision on ${pending}` : "pass";
     // Where to start, then the findings of its own (not inherited), the new ones first; the unchanged as a count.
-    const shown = failing.length ? f.causes.filter((c) => !c.repeat) : [];
+    const start = startCause(f);
     const mine = failing.filter((i) => !i.inherited), key = (i) => `${f.frame}\u0000${i.landmark}\u0000${i.property}`;
     const listed = [...mine.filter((i) => fresh(key(i))), ...(before && !mine.some((i) => fresh(key(i))) ? mine.slice(0, 1) : [])].slice(0, 3);
     const unchanged = failing.filter((i) => !fresh(key(i)) && !listed.includes(i)).length;
     const more = failing.length - listed.length - unchanged;
-    const parts = [f.unmeasured, f.otherData, shown.length && `start here: ${sayCause(shown[0])}`, ...listed.map(say),
+    const parts = [f.unmeasured, f.otherData, start && `start here: ${sayCause(start)}`, ...listed.map(say),
       more > 0 && `… ${more} more`, unchanged && `${unchanged} unchanged`,
       f.fontsMissing?.length && `fonts not available: ${f.fontsMissing.join(", ")}; their texts render in a fallback: load them before trusting the text findings`,
       f.imageOnly && imageOnlyNote(f), f.uncovered && uncoveredNote(f), f.typeUnchecked && typeNote,
@@ -1204,8 +1219,8 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
 export function renderGallery({ title = "Design check", frames, sweep, journeys = [], gaps = [], ledger = [] }) {
   const columns = [["design", "Design"], ["before", "Before"], ["after", "After"], ["diff", "Difference"]];
   const sections = frames.map((f) => {
-    const shown = f.result.issues.some((i) => i.status === "fail") ? f.result.causes.filter((c) => !c.repeat) : [];
-    const lines = [shown.length ? `Start here: ${esc(sayCause(shown[0]))}.` : "", f.result.imageOnly ? `${esc(imageOnlyNote(f.result))}.` : "", f.result.uncovered ? `${esc(uncoveredNote(f.result))}.` : "",
+    const start = startCause(f.result);
+    const lines = [start ? `Start here: ${esc(sayCause(start))}.` : "", f.result.imageOnly ? `${esc(imageOnlyNote(f.result))}.` : "", f.result.uncovered ? `${esc(uncoveredNote(f.result))}.` : "",
       f.result.unexpected?.length ? esc(notInDesign(f.result)) : "", f.result.pixels ? `Pixels: ${round(f.result.pixels.ratio * 100)} % differ.` : ""].filter(Boolean);
     const verdict = verdictOf(f.result);
     return `<section><h2>${esc(f.result.frame)} <span class="${verdict}">${verdict}</span></h2>

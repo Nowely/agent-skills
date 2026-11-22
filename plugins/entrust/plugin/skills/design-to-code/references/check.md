@@ -174,7 +174,9 @@ cut, a truncated text with no way to read it, an overlap, a covered control, an 
 alignment, a resize. What only a generated condition finds is a candidate (below).
 
 **Start here** names a frame's first cause from the top: an offset between two neighbours, or a landmark's width or
-height that carried them. An offset marked *inherited* goes with its cause.
+height that carried them. An offset marked *inherited* goes with its cause. A cause the ledger settles (proposed or
+accepted) is not named: what it explains is counted as awaiting a decision, and the first finding is the first one
+no entry covers.
 
 ## Generated conditions
 
