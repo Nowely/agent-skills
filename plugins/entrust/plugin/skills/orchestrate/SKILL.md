@@ -32,7 +32,7 @@ user conversation and the synthesis; agents do the work.
 1. Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`, `<skill-dir>` this skill's
    installed directory. Its JSON goes as `ENTRUST_TEMP_CONTEXT` into every native worker's and the verifier's
    brief, and its `scope` is your temporary directory. In Claude Code, load the
-   [claude adapter](../claude/SKILL.md) (`entrust:claude`) first: it owns how Claude Code runs agents.
+   [claude adapter](../claude/SKILL.md) (`entrust:claude`) first.
 2. Compose the [default team](#the-default-team) and show the card [plan.md](references/plan.md#the-card) defines,
    naming `<scope>/card.md` in it; plan.md's index says when each of its other sections is read.
    Wait for approval unless the user already authorised that scope and allocation. A model, route, scope or right
@@ -61,7 +61,7 @@ user conversation and the synthesis; agents do the work.
 | Role | When | Tier |
 | --- | --- | --- |
 | coordinator | this session, throughout | the user's model, unless the user asks otherwise |
-| architecture critic | once, after approval and before the plan critic, when the solution adds a concept (a module, mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or when the user asks; the card says whether it runs and which trigger holds | top |
+| architecture critic | once, after approval and before the plan critic, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or when the user asks; the card says whether it runs and which trigger holds | top |
 | plan critic | once, after approval and the architecture critic, before the first worker brief; the card leaves it out only by saying why the plan is too small to need it, never when the architecture critic runs | strong |
 | worker | after the critics; usually one, one per owned deliverable | strong; cheap for mechanical work |
 | verifier | fresh, after the writes | strong |
@@ -70,9 +70,8 @@ Any other role joins only when the card names why.
 
 ## Other providers
 
-Agents run on the host's own delegation and models. Another provider, model or route appears only when the user
-names it, in the conversation or in the user's or project's instructions (CLAUDE.md, AGENTS.md); several may be
-named at once. A named model the host runs natively is native. For any other, run
+A provider, model or route other than the host's own appears only when the user names it, in the conversation or
+in the user's or project's instructions (CLAUDE.md, AGENTS.md); several may be named at once. A named model the host runs natively is native. For any other, run
 `node "<skill-dir>/scripts/adapter-status.mjs" --skip <the adapter of the host's own provider>` and route each named
 model through the adapter that lists it; then follow [external.md](references/external.md) and that adapter's page.
 Nothing proposes another provider unprompted, a cross-family second opinion included. The

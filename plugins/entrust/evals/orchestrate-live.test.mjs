@@ -29,8 +29,8 @@
 //   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
 //   F6, Q3a      briefs only after the plan critic; the shared file has one writer                       5, 7
-//   approach     the architecture critic, its trigger met, returns before the plan critic and any worker  5, 7
-//   F4, P8b      the draft is read after its lint, by a final reader; nothing writes it after; it goes out 5, 7
+//   approach     the architecture critic runs first when its trigger holds (7), and not for one helper (5) 5, 7
+//   F4, P8b      the draft is read after its lint, after an architecture critic by a final reader; it goes out 5, 7
 //   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
 //   P13b, F20a   the draft linted first; the answer lints clean, names every agent, credits each fact right 5, 7
 //   F20b         every return, the reader's too, in the five fields against its schema, before synthesis  5, 7
@@ -104,8 +104,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/harness.mjs";
 import {
-  CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
-  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
+  CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, briefs, cardProblems, codexCalls,
+  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, roleOf, runProblems as checkRun,
   skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
@@ -941,12 +941,17 @@ test("the full run under Opus: plan, go, run",
       problems.push(`${reportPaths.length} report file(s) named by the agent calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
-    // A new lib/slug.mjs adds a module, the architecture critic's trigger: it runs first, then the plan critic, and
-    // lib/slug.mjs has one writer; with an architecture critic, a final reader reads the draft (runProblems).
-    problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
-    // The slug task's phases: the architecture critique, the plan critique, the fan-out's returns, the
-    // verification, the synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 6, architecture: { units: ["lib/slug.mjs", "test/slug.test.mjs"] } }));
+    // One helper in a new lib/slug.mjs is no new module, the page says, so no trigger of the architecture critic
+    // holds and none runs. The plan critic runs unless the card says why the plan is too small to need it; when it
+    // runs, no worker is briefed before it returns and lib/slug.mjs has one writer. The draft is read by the
+    // verifier's thread or a final reader (runProblems).
+    const roles = briefs(s2).map(roleOf);
+    if (roles.includes("architecture critic")) problems.push("an architecture critic ran, though no trigger holds for one helper in a new file");
+    if (roles.includes("plan critic"))
+      problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
+    // The slug task's phases: the plan critique when it runs, the fan-out's returns, the verification, the
+    // synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 5 }));
     return settle(dir, problems);
   });
 
