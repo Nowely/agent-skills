@@ -131,6 +131,7 @@ turns on stdin (`--input-format stream-json`, Sonnet), the session file after th
 attachments of two references it had read (`orchestrate/references/plan.md`, `claude/references/models.md`); its next
 answer named the coordinator's role. With each turn a process of its own (`claude -p --resume <id>`, Opus), the
 session file after the boundary carried no `invoked_skills` attachment, only `plan.md` as a file; the next turn
-still coordinated, launching its critic, worker and verifier and using the run's `card.md`, with nothing but the
-compaction summary to go on. The process that invoked a skill is what re-attaches it: in a resumed process, only the
-command typed again brings the page back.
+went on from the compaction summary and that re-attached `plan.md`, not the page, launched its critic, worker and
+verifier, used the run's `card.md`, and read further orchestrate files by their paths. Typing the command puts the
+page into the session: the first turn's did, 7,998 characters. Whether typing it again in a resumed process brings a
+run back to the page's steps was not measured.
