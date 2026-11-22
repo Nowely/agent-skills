@@ -421,7 +421,9 @@ test("the draft's read: the verifier's thread or a final reader reads the linted
         lint(s);
         return read(s, id);
       })())),
+      // No verifier ran, as when the user dropped it: a final reader's read stands, and with no read at all the run is red.
       expectNone(check(reader(lint(session())))),
+      expectSome(check(lint(session())), /neither the verifier's thread nor a final reader read a linted draft/),
       expectNone(G.draftReadProblems(codex.done(answer).parsed(), { finalText: answer, reportOf: (p) => REPORTS[p] ?? null })),
       expectNone(check(reader(lint(session().claude("Fable A1: architecture critic", "fable", "TASK", five()))))),
       expectSome(check((() => { const s = session().claude("Fable A1: architecture critic", "fable", "TASK", five()); const id = verifier(s); lint(s); return read(s, id); })()),

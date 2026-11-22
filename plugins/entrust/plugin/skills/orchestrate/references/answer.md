@@ -15,9 +15,9 @@ Recommend only what an analysis stands behind. For each item the user must decid
 ## The read
 
 One reader reads the linted draft before it goes out, never per return; a publication (a README, a changelog, a
-synthesis) is read the same way. The card decides who reads: when it ran the architecture critic, or the answer
-is a publication, a fresh [final reader](roles.md#other-roles), given only the request, the draft's path and the
-artifact paths; otherwise the verifier's thread, continued. Either reader:
+synthesis) is read the same way. The card decides who reads: when it ran the architecture critic or no verifier,
+or the answer is a publication, a fresh [final reader](roles.md#other-roles), given only the request, the draft's
+path and the artifact paths; otherwise the verifier's thread, continued. Either reader:
 
 1. re-reads the user's request verbatim;
 2. tags each claim of the draft as backed by a raw artifact, by its own earlier report only, or unbacked;
