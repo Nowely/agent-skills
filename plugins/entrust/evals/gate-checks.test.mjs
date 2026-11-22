@@ -265,6 +265,15 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
       expectSome(G.splitAdmissionProblems(unnamed, opts), /no plan critic ran/),
       expectNone(G.splitAdmissionProblems(verifier, opts)),
       expectSome(G.splitAdmissionProblems(s1, opts), /no plan critic ran/),
+      // A plan critic named only by the link to its section of roles.md.
+      expectNone(G.splitAdmissionProblems(worker(session().claude("Sonnet P1: judge the plan", "sonnet",
+        "TASK: judge this plan: unit a (lib/a.mjs), unit b (lib/b.mjs). Your row: /p/skills/orchestrate/references/roles.md#the-plan-critic", five()),
+        "W1", "lib/a.mjs", true).parsed(), opts)),
+      // The role a description names first, not the first of the list: a verifier of the plan critic's checks,
+      // briefed after the worker with no plan critic in the run, is no plan critic.
+      expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true)
+        .claude("Opus V1: verifier of the plan critic's checks", "opus", "TASK: run the suite over lib/a.mjs", five()).parsed(), opts), /no plan critic ran/),
+      G.roleOf({ description: "Opus V1: verifier of the plan critic's checks", text: "" }) === "verifier" || "the description's first role was not taken",
       G.roleOf({ description: "Opus V1: baseline the suite", text: VERIFIER_TEXT }) === "verifier" || "S1's brief is not read as the verifier",
       expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts), /no plan critic ran/),
     );
@@ -285,13 +294,21 @@ test("the architecture critic, when the card's trigger holds: it ran, a plan cri
     const b = scouted.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
     scouted.claude("Haiku S1: list the modules", "haiku", "TASK: list the modules under lib/ and their exports", five());
     scouted.result(b, framed(five()));
+    // A worker briefed while the critic runs, the plan critic after it returned.
+    const workedEarly = session();
+    const c = workedEarly.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
+    work(workedEarly);
+    workedEarly.result(c, framed(five()));
     const opts = { units: ["lib/slug.mjs"] };
     return all(
       expectNone(G.architectureProblems(work(plan(arch(session()))).parsed(), opts)),
       expectSome(G.architectureProblems(work(plan(session())).parsed(), opts), /no architecture critic ran, though the card's trigger holds/),
       expectSome(G.architectureProblems(work(parallel).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
       expectNone(G.architectureProblems(work(plan(scouted)).parsed(), opts)),
-      expectSome(G.architectureProblems(work(arch(session())).parsed(), opts), /the architecture critic ran and no plan critic did/),
+      expectSome(G.architectureProblems(plan(workedEarly).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
+      expectSome(G.criticPairProblems(work(arch(session())).parsed()), /the architecture critic ran and no plan critic did/),
+      expectNone(G.criticPairProblems(work(plan(arch(session()))).parsed())),
+      expectNone(G.criticPairProblems(work(plan(session())).parsed())),
       expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed(), opts), /never returned/),
     );
   });
@@ -629,9 +646,9 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const rows = G.planRecord("A1 | fable | architecture critic | nothing | 0\nP1 | opus | plan critic | nothing | 0\nW1 | opus | worker | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | final reader | nothing | 0");
     const c1 = `MODEL: terra\nOUTPUT_SCHEMA: ${SCHEMA_PATH}\nTASK: you are the verifier; check the slug helper.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`;
     const s1 = session().skill("entrust:codex").plan("/d/run", "W1 | opus | worker | live tree | 40000").say(CARD).parsed();
-    const run = (breach = (s) => s) => breach(session()
-      .claude("Fable A1: architecture critic", "fable", "You are the architecture critic. TASK: judge the approach, a new lib/slug.mjs.", five({ result: "Fable A1: keep." }))
-      .claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five({ result: "Opus P1: sound, no objections." }))
+    const planCritic = (s) => s.claude("Opus P1: plan critic", "opus", "You are the plan critic. TASK: judge the plan.", five({ result: "Opus P1: sound, no objections." }));
+    const run = (breach = (s) => s, critics = planCritic) => breach(critics(session()
+      .claude("Fable A1: architecture critic", "fable", "You are the architecture critic. TASK: judge the approach, a new lib/slug.mjs.", five({ result: "Fable A1: keep." })))
       .claude("Opus W1: write the slug helper", "opus", `TASK: write lib/slug.mjs and test/slug.test.mjs.\nCHECK: node ${runner} --label suite -- 'node --test'\nRETURN: the five fields.`,
         five({ evidence: ["ran `node --test` through the runner: EXIT=0, 5 of 5"] }), [path.join(dir, "lib", "slug.mjs"), path.join(dir, "test", "slug.test.mjs")])
       .newAgent("/d/run/C1/report.json", c1)
@@ -647,6 +664,8 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const ok = G.runProblems({ ...inputs, s2: run() });
     const edited = G.runProblems({ ...inputs, s2: run((s) => { s.result(s.use("Edit", { file_path: path.join(dir, "lib", "slug.mjs"), old_string: "a", new_string: "b" }), "ok"); return s; }) }).problems;
     const checked = G.runProblems({ ...inputs, s2: run((s) => s.bash(`node ${runner} --label suite -- 'node --test'`, "LABEL=suite\nEXIT=0")) }).problems;
+    // Probe P1: the architecture critic ran and the plan critic was skipped, in a case that asserts no trigger.
+    const unpaired = G.runProblems({ ...inputs, architecture: null, s2: run(undefined, (s) => s) }).problems;
     // The same run the way the saved pre-fix sessions ran it: no critics, no lint, no read, a bare suite and prose.
     const old = session()
       .claude("Opus W1: write the slug helper", "opus", "TASK: write lib/slug.mjs.\nCHECK: node --test passes.", "I wrote it and it works.", [path.join(dir, "lib", "slug.mjs")])
@@ -665,6 +684,7 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
       missed.length === 0 || `the pre-fix run passed ${missed.join(", ")}: ${JSON.stringify(bad)}`,
       expectSome(edited, /the coordinator wrote lib\/slug\.mjs in the working tree itself \(Edit\)/),
       expectSome(checked, /the coordinator ran a check itself/),
+      expectSome(unpaired, /the architecture critic ran and no plan critic did/),
     );
   });
 
