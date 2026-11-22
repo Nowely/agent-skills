@@ -35,9 +35,12 @@ test("the rollout: calls by name and by what they did, polls, agents, the first 
   // Empty polls: two outer write_stdin and one inside an exec cell, each asking 1,000 ms; the first brought nothing.
   assert.equal(r.polls.empty, 3);
   assert.deepEqual(r.polls.waitsAsked, [1000, 1000, 1000]);
-  assert.deepEqual(r.polls.list[0], { call: 3, tool: "write_stdin", nested: false, waitAsked: 1000, wall: 5.0012, newOutput: false });
+  assert.deepEqual(r.polls.list[0], { call: 3, tool: "write_stdin", nested: false, session: 7, waitAsked: 1000, wall: 5.0012, newOutput: false, ended: false });
   assert.equal(r.polls.list[2].nested, true);
-  assert.equal(r.polls.perCompleteCheck, 1.5);
+  // The terminal output shares a cell with both the launch and a poll. Its individual results are unattributed.
+  assert.equal(r.polls.perCompleteCheck, null);
+  assert.equal(r.polls.unknownOutput, 1);
+  assert.deepEqual(r.polls.unattributedVerdicts, [6]);
   assert.equal(r.spawnAgent, 1);
   // A quick check's verdict is partial; the first complete one is at call 6, read from the exec cell's output.
   assert.deepEqual(r.checks.verdicts.map((v) => [v.call, v.status, v.complete]), [[4, "fail", false], [6, "pending", true]]);
@@ -79,6 +82,87 @@ test("without Codex's per-response records, the token counts that move the total
   assert.equal(b.format.tokens, "token_count");
   assert.deepEqual(b.tokens, a.tokens);
   assert.deepEqual(b.list.map((c) => c.input), a.list.map((c) => c.input));
+});
+
+test("a response after the last cumulative count is included exactly once, with or without a thread snapshot", () => {
+  const log = fs.readFileSync(FIXTURE, "utf8");
+  const baseline = parseRollout(log).tokens;
+  const usage = { input_tokens: 120, cached_input_tokens: 90, output_tokens: 12, reasoning_output_tokens: 4 };
+  const full = { input_tokens: 353160, cached_input_tokens: 303962, output_tokens: 968, reasoning_output_tokens: 481 };
+  for (const thread of [full, undefined]) {
+    const row = JSON.stringify({ type: "token_usage_record", payload: { response_id: "last", usage, thread_token_usage: thread } });
+    const stale = log.split("\n").findLast((s) => s.includes('"type":"token_count"'));
+    const parsed = parseRollout([log, row, row, stale].join("\n")).tokens;
+    assert.deepEqual(parsed.total, { input: 353160, cached: 303962, uncached: 49198, output: 968, reasoning: 481 });
+    assert.equal(parsed.responses, baseline.responses + 1);
+    assert.equal(parsed.lastCallUsageMissing, false);
+  }
+});
+
+test("polls belong to the PTY that finished a full check, including a check that returned in the foreground", () => {
+  const rows = [];
+  const check = "node .skill/scripts/design.mjs check design.json";
+  const finish = "Round 1\nVerdict: pending\n";
+  const result = (output, state) => JSON.stringify({ output, ...state });
+  const cell = (source, ...parts) => {
+    const call_id = String(rows.length);
+    rows.push({ type: "custom_tool_call", name: "exec", input: source, call_id },
+      { type: "custom_tool_call_output", call_id, output: ["Script completed\nWall time 1.0 seconds\nOutput:\n", ...parts].map((text) => ({ type: "input_text", text })) });
+  };
+  const launch = (cmd, ...parts) => cell(`const r = await tools.exec_command({cmd: ${JSON.stringify(cmd)}}); text(r.output);`, ...parts);
+  const poll = (id, ...parts) => cell(`const r = await tools.write_stdin({session_id:${id},chars:""}); text(r.output);`, ...parts);
+  launch(check, result("", { session_id: 7 }));
+  launch(check + " --quick", "", "SESSION_ID=8");
+  launch("node consumer.mjs", "", "SESSION_ID=9");
+  launch(check, "", "SESSION_ID=10"); // interrupted
+  poll(10, "", "SESSION_ID=10");
+  poll(9, result("", { session_id: 9 }));
+  poll(8, result("Verdict: fail on what this partial check measured", { exit_code: 1 }));
+  poll(7, result("", { session_id: 7 }));
+  poll(7, "", "SESSION_ID=7");
+  poll(7, result(finish, { exit_code: 1 }));
+  poll(9, result(finish, { exit_code: 0 })); // a probe can print any text
+  launch(check, result(finish, { exit_code: 1 })); // completed at pending, zero polls
+  launch(check, result("failed to start Chromium", { exit_code: 1 }));
+  const parse = () => parseRollout(rows.map((r) => JSON.stringify(r)).join("\n")).polls;
+  let p = parse();
+  assert.deepEqual([p.emptyStdin, p.noOutput, p.unknownOutput], [7, 4, 0]);
+  assert.deepEqual(p.completedChecks, [{ startCall: 1, endCall: 10, session: 7, emptyWaits: 2 }, { startCall: 12, endCall: 12, session: null, emptyWaits: 0 }]);
+  assert.equal(p.perCompleteCheck, 1);
+  const compound = parseRollout(rows.map((r) => JSON.stringify(r)).join("\n") + "\n" + fs.readFileSync(FIXTURE, "utf8"));
+  assert.deepEqual(compound.polls.unattributedVerdicts, [19]);
+  assert.equal(compound.polls.perCompleteCheck, null);
+  launch(check, "", "SESSION_ID=12");
+  cell('await tools.write_stdin({session_id:12}); text("only the status");', "only the status");
+  poll(12, result(finish, { exit_code: 1 }));
+  p = parse();
+  assert.equal(p.unknownOutput, 1);
+  assert.equal(p.completedChecks.at(-1).emptyWaits, null);
+  assert.equal(p.perCompleteCheck, null);
+});
+
+test("a poll that delivers only exit status is useful; missing process status leaves an empty wait unknown", () => {
+  const rows = [];
+  const shell = (name, args, output) => {
+    const call_id = String(rows.length);
+    rows.push({ type: "function_call", name, arguments: JSON.stringify(args), call_id },
+      { type: "function_call_output", call_id, output: JSON.stringify(output) });
+  };
+  const start = (id) => shell("exec_command", { cmd: "node design.mjs check design.json" }, { output: "Verdict: pending", session_id: id });
+  const poll = (id, state) => shell("write_stdin", { session_id: id, chars: "" }, { output: "", ...state });
+  const parse = () => parseRollout(rows.map((r) => JSON.stringify(r)).join("\n")).polls;
+  start(7);
+  poll(7, { exit_code: 0 });
+  let p = parse();
+  assert.equal(p.exitOnly, 1);
+  assert.deepEqual([p.noOutput, p.list[0].ended, p.completedChecks[0].emptyWaits, p.perCompleteCheck], [1, true, 0, 0]);
+  start(9);
+  poll(9, {});
+  p = parse();
+  assert.deepEqual([p.noOutput, p.list.at(-1).ended, p.completedChecks.length, p.perCompleteCheck], [2, null, 1, null]);
+  poll(9, { exit_code: 1 });
+  p = parse();
+  assert.deepEqual([p.completedChecks.length, p.completedChecks[1].emptyWaits, p.perCompleteCheck], [2, null, null]);
 });
 
 test("any text reads without a throw: empty, not JSON, other shapes, an older log without envelopes, a handover after the last call", () => {
@@ -211,6 +295,16 @@ test("setup then collect on the planted card: inputs intact, a late check read a
     assert.equal(fs.existsSync(path.join(dir, "busy")), false);
   } finally { fake.kill(); }
 
+  const bin = path.join(dir, "bin"), unknown = path.join(dir, "unknown");
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "ps"), "#!/bin/sh\nexit 42\n", { mode: 0o755 });
+  const denied = spawnSync(process.execPath, [SCRIPT, "collect", project, "--baseline", baseline, "--rollout", rollout, "--out", unknown, "--wait", "0"], {
+    encoding: "utf8", env: { ...env(home), PATH: bin + path.delimiter + process.env.PATH },
+  });
+  assert.equal(denied.status, 3, denied.stdout + denied.stderr);
+  assert.match(denied.stderr, /Cannot verify whether a check is running: ps failed: exit 42. Nothing was frozen/);
+  assert.equal(fs.existsSync(unknown), false);
+
   const c = cli(home, "collect", project, "--rollout", rollout, "--baseline", baseline, "--out", path.join(dir, "out1"), "--wait", "10");
   assert.equal(c.status, 0, c.stdout + c.stderr);
   assert.match(c.stdout, /^INPUTS INTACT$/m);
@@ -218,7 +312,8 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.match(c.stdout, /^ {2}\.design\/card\/design\.json: tolerance 1 \(default 1\)$/m);
   assert.match(c.stdout, /^Handover: Status: fail .*\(checker-generated after the stop/m);
   assert.match(c.stdout, /1 written after the log's last line/);
-  assert.match(c.stdout, /^ {2}empty polls 3 \(1000 ms ×3\); spawn_agent 1; the first complete check's status at call 6 \(pending\)$/m);
+  assert.match(c.stdout, /^ {2}empty-stdin polls 3; no output 1 \(0 reported exit\); unknown output 1$/m);
+  assert.match(c.stdout, /^ {2}waits asked: 1000 ms ×3; spawn_agent 1; the first complete check's status at call 6 \(pending\)$/m);
   const record = JSON.parse(fs.readFileSync(path.join(dir, "out1", "record-A.json"), "utf8"));
   assert.equal(record.inputs.verdict, "INPUTS INTACT");
   assert.deepEqual(record.component.changed, [".design/card/deviations.json", "card.css"]);
@@ -232,7 +327,7 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.equal(record.fields["7 interventions and helpers"].approvalLineSent, true);
   assert.equal(record.fields["8 ledger"].proposed.length, 1);
   assert.equal(record.rollout.cwdMatchesProject, true);
-  assert.match(record.parser, /not yet run on a real Codex log/);
+  assert.match(record.parser, /unknown or unprinted poll results/);
   const listed = spawnSync("tar", ["-tf", path.join(dir, "out1", "real-run-A.tar")], { encoding: "utf8" }).stdout.split("\n");
   for (const f of ["real-run-A/record-A.json", "real-run-A/form-A.md", "real-run-A/baseline-A.json", "real-run-A/project/card.css", "real-run-A/project/.design/card/design.json",
     "real-run-A/project/.design/card/out/handoff.md", "real-run-A/project/.prompt.md", "real-run-A/originals/design/card-764/reference.png", "real-run-A/originals/README.md"]) assert.ok(listed.includes(f), f);

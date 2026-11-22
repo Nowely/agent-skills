@@ -3,6 +3,16 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Design-to-code evals
+
+- The real-run collector includes response usage recorded after the last cumulative token count (E160).
+  It reports empty-stdin polls, polls with no output and unreadable results separately. Its per-check count follows
+  each completed full check's shell session and counts only waits that returned no output while it was still running.
+  A poll that reports process exit delivers a result even when stdout is empty (E161).
+  If process enumeration fails, collection stops before writing the archive (E162).
+
 ## 0.46.2 — 2026-11-22
 
 ### Orchestrate
