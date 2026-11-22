@@ -354,3 +354,36 @@ page at 981 words.
   did not run, since the check was `fail`.
 
 ### The release decision
+
+The owner set a new goal after these runs: a stable version to release. Fable's rule, registered before 28.5's runs,
+said that if 28.5 failed on inputs the drafts stop adding and 28.3 plus the type fix is frozen. It failed on inputs
+(r2) and on cost (median 98 against 82).
+
+**What ships in entrust 0.45.0, marked experimental** (skill at `45cd42f`):
+- draft 28.3, the best-measured draft: in the blind review with controls, p3 was accepted as seen and as read, and
+  all three of its builds were accepted as read;
+- the joined-text type fix, shown on real misses with the clean builds silent;
+- one page line from 28.5: "A ledger entry records a question; it does not change the product. Write it when you
+  first see the gap, without asking, then go on." It answers the one behaviour the target reader showed (Terra
+  asking approval before writing the entry), and the Sonnet runs showed no cost from it. Fable allowed this one
+  exception because it is not an inputs mechanism.
+
+**What was dropped:**
+- the gate (draft 28.4): more rounds and trips, more bending, and its measure moved the wrong way;
+- consequence entries with a stated shift: proposals rose to 17 and 66;
+- the inputs record (draft 28.5): its in-run statements were accurate, but anchored at the first check it reads
+  "unchanged" after a change made before it, which is worse than no statement. It comes back only anchored to
+  originals the owner holds;
+- 28.5's two other page lines, since nothing showed they changed behaviour.
+
+**Verified on the assembly as shipped,** since it had not run as such: suite 129 of 129, skills 8 of 8,
+`package.test.mjs` 21 passed and 1 skipped (the tag), the card bench 14 of 15 with no clean build blocked, the
+stateful bench 2 of 3, and the page at 965 words.
+
+**Measured and not:**
+- measured on Sonnet: the card bench and the stateful bench, the catalogue case (4 of 4 accepted), the planted
+  card's question (every run surfaced it), the blind review as seen and as read;
+- not measured: the ledger line on Terra, the review pass where a second agent can start, and the owner's real task
+  on this assembly. These are the known issues E146–E153 in `plugins/entrust/ISSUES.md`, with the inputs a builder
+  can change unseen first.
+
