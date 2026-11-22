@@ -70,7 +70,8 @@ rules it out.
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
 complete check. Run it in the foreground; if it outlasts the wait, look every few minutes. View only the crop and
 reference that answer the current question; full pages at every width once, before handover. Keep probes in one
-parameterised script on disk, not inline. When the verdict says stop, stop re-running.
+parameterised script on disk, not inline. When a quick round says the first finding is unchanged, fix it or propose
+it; when a complete round says stop, stop re-running.
 
 A finding says what to fix: fix its first cause and check again. A note needs nothing. A finding you cannot fix goes in
 `deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. `incomplete` (exit 2)
