@@ -783,3 +783,10 @@ The prebuilt-case worker wrote a proposed entry with options by round 2, but rea
 handover or review. Its first archive had five rounds; an in-flight check wrote a sixth and a checker handoff after
 the stop. The grader failed to recognize the options array on the first archive (E158). [The run record](39-terra-045-rerun.md)
 keeps the two boundaries, costs and limits distinct. No regression count or first-submission acceptance can be inferred.
+
+## Explicit initial wait: a short Terra probe
+
+On the same prebuilt case and skill version as P, a fresh Terra session was explicitly instructed to run one full check
+with a 30-second initial tool wait. The check finished in 25.115 seconds in its starting call, with no polls. This is
+one narrow feasibility observation; the prompt and scope differ from P. [The record](43-explicit-wait-probe.md)
+separates the result, cost and limits. It is not another full implementation.

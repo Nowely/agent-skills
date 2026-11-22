@@ -212,6 +212,8 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   ledger options, grader false negative, snapshot race, role costs and post-boundary check separately.
 - [Collector replay and Terra prebuilt pass](42-collect-and-terra-p.md): S's token/poll accounting discrepancies,
   P's first handover and measured poll threshold, the missing-seed exception and process-list uncertainty.
+- [Explicit-wait probe](43-explicit-wait-probe.md): one full check with a specified 30-second initial wait, without
+  treating the probe as a completed UI implementation or a controlled full-task comparison.
 - [After entrust 0.45.0](38-after-the-release.md): the plan for the rest of the quota, written before the runs: the
   Terra rerun on the shipped skill, the real run as iteration 8, and the reserve.
 - [Service overhead, and the real runs in one sitting](40-overhead-and-one-sitting.md): written before the runs; the
