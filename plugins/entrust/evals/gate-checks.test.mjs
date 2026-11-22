@@ -237,6 +237,14 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
     const opts = { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs", reportOf: (p) => REPORTS[p] ?? null };
     const good = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     const early = critic(worker(session(), "W1", "lib/a.mjs", true)).parsed();
+    // E156: a worker briefed after the plan critic's brief and before its return is early too.
+    const midway = (() => {
+      const s = session();
+      const id = s.use("Agent", { description: "Opus P1: plan critic", subagent_type: "general-purpose", model: "opus",
+        prompt: "You are the plan critic. TASK: judge this plan: unit a (lib/a.mjs), unit b (lib/b.mjs)" });
+      worker(s, "W1", "lib/a.mjs", true);
+      return s.result(id, framed(five({ result: "Opus P1: sound, no objections." }))).parsed();
+    })();
     const twoWriters = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", true).parsed();
     const codexWriter = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false)
       .newAgent("/d/run/C3/report.json", "MODEL: terra\nTASK: tidy lib/shared.mjs")
@@ -258,6 +266,7 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
     return all(
       expectNone(G.splitAdmissionProblems(good, opts)),
       expectSome(G.splitAdmissionProblems(early, opts), /1 worker brief\(s\) written before the plan critic returned/),
+      expectSome(G.splitAdmissionProblems(midway, opts), /1 worker brief\(s\) written before the plan critic returned/),
       expectSome(G.splitAdmissionProblems(twoWriters, opts), /2 agents wrote lib\/shared\.mjs, and it has one owner/),
       expectSome(G.splitAdmissionProblems(codexWriter, opts), /2 agents wrote lib\/shared\.mjs/),
       expectSome(G.splitAdmissionProblems(noWriter, opts), /0 agents wrote lib\/shared\.mjs/),
@@ -496,12 +505,19 @@ test("every return admitted in five fields before the synthesis; a malformed one
     const good = session().claude("Opus W1: write", "opus", "TASK", five()).say("Opus W1 wrote it; Codex Terra C1 checked it.").parsed();
     const prose = session().claude("Opus W1: write", "opus", "TASK", "I wrote the helper and it works.").say("done").parsed();
     const repaired = session().claude("Opus W1: write", "opus", "TASK", "I wrote it.").claude("Opus W1: the five fields, please", "opus", "Return the five fields", five()).say("done").parsed();
+    // E156: a return that arrived after the coordinator's last text came after the synthesis started.
+    const late = (() => {
+      const s = session();
+      const id = s.use("Agent", { description: "Opus W1: write", subagent_type: "general-purpose", model: "opus", prompt: "TASK" });
+      return s.say("Opus W1 wrote it.").result(id, framed(five())).parsed();
+    })();
     return all(
       expectNone(G.fiveFieldProblems(good, { schema: SCHEMA, prompts, reports, finalText: "Opus W1 wrote it." })),
       expectSome(G.fiveFieldProblems(good, { schema: SCHEMA, prompts: [{ id: "C1", text: "MODEL: terra\nTASK: x" }] }), /C1's prompt declares no OUTPUT_SCHEMA/),
       expectSome(G.fiveFieldProblems(good, { schema: SCHEMA, reports: [{ id: "C1", report: { answerJson: { status: "ok" } } }] }), /C1: \$\.status is "ok"/),
       expectSome(G.fiveFieldProblems(prose, { schema: SCHEMA }), /Opus W1: write's return does not parse/),
       expectNone(G.fiveFieldProblems(repaired, { schema: SCHEMA })),
+      expectSome(G.fiveFieldProblems(late, { schema: SCHEMA }), /Opus W1: write returned after the synthesis started/),
       expectNone(G.fiveFieldProblems(session().claude("Opus W1: write", "opus", "TASK", "prose").claude("Opus W1: again", "opus", "the five fields", "prose again").say("done").parsed(),
         { schema: SCHEMA, finalText: "Opus W1's result is unknown: its return never parsed." })),
       expectSome(G.fiveFieldProblems(prose, { schema: SCHEMA, finalText: "Opus W1's result is unknown." }), /does not parse/),

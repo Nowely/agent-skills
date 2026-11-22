@@ -28,24 +28,6 @@ places correctly. The builder pays for it with ledger entries that excuse the ch
 `incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
 only contains it.
 
-## E156. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
-
-**Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
-returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
-which admits a worker briefed after the critic's brief and before its return, left `node evals/gate-checks.test.mjs`
-at 26 of 26. `gate-checks.mjs:679` names a Claude return that arrived after the synthesis started; deleting that
-line left the suite at 26 of 26 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and
-`:629`), so the gaps predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its
-worker before the critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by
-an independent verifier of the orchestrate rework.
-
-**Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 26 passed`.
-
-**Issue text.** Two of the live gate's checks have no offline case that fails when they break: a worker briefed while
-the plan critic is still running, and a return that came in after the synthesis started. Each check can be weakened
-or removed with the suite still green, so a live run the gate should fail would pass it. Add a fixture for each: a
-worker's brief between the plan critic's brief and its return, and an agent's return after the coordinator's last text.
-
 ## E154. Only the claude adapter declares its agents native, so a five-column plan row with a Codex model under a Codex host resolves to the external Codex adapter
 
 **Evidence, level 2.** `claude/adapter.json:6` is the one adapter manifest whose `plan` carries `"native": true`;

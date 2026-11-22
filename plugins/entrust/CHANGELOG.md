@@ -10,6 +10,11 @@ forensics remain in the repository references and release notes.
 - The proxy skill and orchestrate's `references/main-proxy.md`, both shared pages, call the transporting host "the
   host", no longer "normally Luna": the shared skills name no model since 0.26.0 (E155).
 
+### Live gate
+
+- The offline suite gains a worker briefed between the plan critic's brief and its return, and an agent's return
+  after the coordinator's last text; weakening either check now turns the suite red (E156).
+
 ### Cleanup
 
 - The comment on the shapes a suite writes under the temporary directory names the live gate's code that builds
