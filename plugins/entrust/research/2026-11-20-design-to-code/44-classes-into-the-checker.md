@@ -71,3 +71,44 @@ build reverts the item.
 - **E148, E150, E151, E152:** none of them returned a real task.
 
 A change that does not move its measure is reverted.
+
+## Results (2026-11-22)
+
+All on `design-to-code-after-0.46.1`; the head is `74f68b5`.
+
+| # | Commits | Control before → after |
+|---|---|---|
+| 1 | `4052cf3`, fixed in `4c9da76` | stateful `stale-observer` missed → caught by the fresh compare after its lifecycle journey; a `design.json` with no lifecycle journey → `incomplete`; the catalogue reference: no new finding |
+| 2 | `d5e9072`, `26ea95c`, fixed in `a3fe22f`, `44e6622` | the catalogue start code with frames sized by the window: 0 → 1 candidate (`window "card-375"`); the reference 0 → 0; the planted card 0 → 0; about 2 s per check |
+| 3 | `5679003`, fixed in `e814bed` | the stale observer is a construct note, not a finding; a mode set in an observer's or listener's callback is a note; a one-shot `.matches` is not |
+| 4 | `005a708` | one page line; read through the arms below |
+| 5 | `005a708` | rp44, six fresh reviewers on three blind targets: the two mutants named 4 of 4; the "clean" target returned once, for a real defect on the bench page (item 8) |
+| 6 | `bcf2021`, twin in `7908c4d` | card bench 14 → 15 of 15; `common-shift`, the clean twin, stays clean |
+| 7 | `6e28613` | the stock "1" paired with the "1" of "Выдача за 1 день" → paired with its own; a "1" displaced by 60 px still fails |
+| 8 | `594c762`, `3f23a75` | `squeezed-by-sidebar` (a 47 px container against 288 px at `from`) missed → caught; the catalogue start code with its sidebar open → fails; the reference holds; stateful bench 4 of 4 |
+| 9 | `d0858bc`, `1b64217` | frozen arm k3 `incomplete` on the story page's Details openers → `pass`; twins with another role or target stay `incomplete` |
+
+**The verifier's review of items 1–5 (Fable)** found:
+- **Item 2, masking:** a candidate answered by any line that held the frame's name.
+- **Item 2, false candidates:** page chrome, and a page-level root.
+- **Item 3, false failures:** an element kept detached, and a cleanup deferred.
+- **Item 1, a nominal gate:** a story-page journey that takes no lifecycle, and `"lifecycle": false` with no reason.
+- **The benches:** they judged by classes, not by status.
+
+All of these are fixed, each with a test that fails on the code before it.
+
+**Tests:** 155 of 155. The planted case 28. Benches, with every clean build at `pass`, or `incomplete`/`pending` only for the bench's own stand-ins and nothing blocked:
+- card: 15 of 15;
+- stateful: 4 of 4.
+
+**Sonnet arms on the catalogue card** (`d501762`, items 1–5), against the hidden judge:
+
+| Arm | Calls | Status | Judge | E152 |
+|---|---:|---|---|---|
+| k1 | 25 | `pass` | ACCEPTED | worked round it with a copy of `index.html` |
+| k2 | 27 | `pass` | ACCEPTED | moved the frames to `index.html` |
+| k3 | 20 | `incomplete` | ACCEPTED | stopped on it; item 9 now passes it |
+
+Each arm moved from `matchMedia` to a container query, kept the choice per host and id, and wrote its own `sameAsFresh` journey on the consumer page.
+
+**Known:** the catalogue's own `page.css` also squeezes the list at 375 px with the sidebar open. A journey there fails on the page, not the card: a fair question for the owner, one ledger entry.
