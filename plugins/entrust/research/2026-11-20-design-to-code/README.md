@@ -221,3 +221,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   with their measures, and the sitting: the prebuilt pass, then runs A and B.
 - [The sitting on 0.46.1](41-the-sitting.md): the protocol of the owner's one sitting, written before it runs: the
   `collect` check on the rerun's log, the prebuilt pass, and runs A and B; its results go there.
+- [The return classes into the checker](44-classes-into-the-checker.md): registered before the work, from the
+  owner's plan on #113 read practice-first: the lifecycle and own-width checks, script-set modes, what the contract
+  keeps, the review pass run, the column shift and E159, each with its failing control, then the Terra gate.
