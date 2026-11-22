@@ -2301,6 +2301,21 @@ test("draft 28.3: a step the ledger settles is not where to start, nor the first
   assert.match(renderSummary({ frames: [settled] }), /2\+ x: 137 → 155 \(\+18\)/);
 });
 
+// p2's footers, "MC-LAG 25/25" and "2+ PSU", set a class too large: 17–26 % wider in every frame. Their boxes are the
+// builder's (an icon joined to its label), so their height is not ink and the per-text rule skipped them.
+test("draft 28.5: a joined text a size larger is told by its width alone, wider only; narrower or a little wider stays silent", () => {
+  const spec = { frame: { name: "f", width: 300, height: 200 }, source: "image boxes", landmarks: [
+    { text: "SKU", box: box(20, 20, 60, 16) }, { text: "Title", box: box(20, 74, 120, 24) }, { text: "1 499 €", box: box(200, 20, 80, 28) },
+    { text: "Buy", box: box(200, 60, 80, 20) }, { text: "MC-LAG 25/25", box: box(20, 150, 80, 14), joined: true }] };
+  const page = (width) => ({ root: { width: 300, height: 200 }, landmarks: spec.landmarks.map((l) => ({ found: true, align: "left",
+    box: l.text === "MC-LAG 25/25" ? { ...l.box, width, height: 30 } : { ...l.box } })) });
+  const type = (width) => compareFrame({ frame: "f", spec, measured: page(width), tolerance: 4 }).issues.filter((i) => i.property === "type" && i.landmark === "MC-LAG 25/25");
+  assert.equal(type(94).length, 1);
+  assert.match(type(94)[0].actual, /^18 % larger than drawn, by its width against the frame's font: a size of another class/);
+  assert.deepEqual(type(86), [], "8 % and 6 px wider: control26's footers");
+  assert.deepEqual(type(64), [], "narrower: the box was drawn round an icon too");
+});
+
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
 
 test("draft 28.2: pending means proposals wait for the owner; a page snapshot used as the spec is named as comparing the page with itself", () => {

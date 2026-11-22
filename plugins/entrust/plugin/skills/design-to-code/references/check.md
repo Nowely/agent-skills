@@ -120,7 +120,9 @@ design's, with five texts or more: 10 % or more off is a `type` finding. One tex
 price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it). A
 size a step off (a price 2 px smaller) moves the ink by a pixel, as rounding does; it moves the width by ten times as
 many. So one text is also a `type` finding when it is 10 % and 6 px wider or narrower than the frame's font explains
-(the median of the texts' width ratios) and its ink is taller or lower the same way.
+(the median of the texts' width ratios) and its ink is taller or lower the same way. A text whose landmark gives its
+own box (an icon joined to it) has no ink height to read: it is a `type` finding when it is 10 % and 6 px wider than
+the font explains; narrower, its box may hold the icon too, and it stays a note.
 
 Either way, texts stacked on one left edge stay on it (`align`), an area outside the texts whose pixels differ is a
 `region`, and a font the page asks for that cannot draw its text is named.
