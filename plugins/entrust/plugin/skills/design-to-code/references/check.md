@@ -21,7 +21,7 @@ incomplete when:
 - an acceptance row in `review.md` is blank, unrecognised or unmeasured ([the list](review.md#the-acceptance-list));
   with no rows, nothing is assessed;
 - an opener (`aria-expanded`, `popovertarget`, `aria-haspopup`) or an overlay frame has no journey that opens and
-  closes it;
+  closes it ([on another page](#journeys) when its target is not on its own);
 - a `frames/<name>/reference.png` has no frame (context images go in `context/`);
 - a declared line never shows two of its pieces;
 - there is no sweep or no story, unless `design.json` gives `"static"` with its reason (one layout at one width,
@@ -99,9 +99,12 @@ to fix.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
-one that acts on the element its setup opened it from. Each journey that opens something also runs with the opener
-at the window's top and bottom edges, at the widest and narrowest frames' widths: the overlay it shows must be whole
-in the window and in every box that clips it. An opener in a fixed or sticky bar is not tried there.
+one that acts on the element its setup opened it from. An opener whose target is not on its page (a story page
+without the consumer's sheet) is covered by such a journey on another page that opens one by the same selector, with
+the same role, accessible name and target; the handoff names that journey. Each journey that opens something also
+runs with the opener at the window's top and bottom edges, at the widest and narrowest frames' widths: the overlay it
+shows must be whole in the window and in every box that clips it. An opener in a fixed or sticky bar is not tried
+there.
 
 ## Frames
 
