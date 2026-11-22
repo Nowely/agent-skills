@@ -22,16 +22,19 @@ forensics remain in the repository references and release notes.
   again after resuming in a new process, which loads the page again; what a run does after that was not measured.
   The claude adapter's incidents record the measurement (n=1 per mode).
 - The default team is the coordinator, usually one worker that writes its own tests, a plan critic before any write
-  and a fresh verifier after the writes. An architecture critic runs first when the solution adds a concept, a module
+  and a fresh verifier after the writes, or on read-only work (research, analysis, review) after the workers'
+  findings, each material claim of which it re-derives from the cited source or command, `not proven` where it
+  cannot. The plan critic and the verifier are the minimum: the coordinator puts both on every card, and only the
+  user's word drops or changes either. An architecture critic runs first when the solution adds a concept, a module
   meaning a new unit with a responsibility others will depend on (not a new file for one function or helper),
   changes or removes an existing contract other units consume (a new export or function does not), acts irreversibly
   or outward, leaves several approaches open, or the user asks, and the card says which trigger holds; whenever it
-  runs, the plan critic runs too. The plan critic replaces the split critic and judges the plan as written, each
-  objection citing a path or a consumer, its cost and the smallest fix; the architecture critic judges the approach
-  against the review's design standard, and a verdict other than `keep` goes to the user with both approaches. The
-  coordinator hands the verifier the requirements, the plan critic's acceptance checks and the writers' artifacts,
-  never their returns; a requirement without executed evidence is `not proven`, and one complete return is opened
-  before a unanimous tally of verifiers is trusted.
+  runs, the plan critic runs too, unless the user dropped it. The plan critic replaces the split critic and judges
+  the plan as written, each objection citing a path or a consumer, its cost and the smallest fix; the architecture
+  critic judges the approach against the review's design standard, and a verdict other than `keep` goes to the user
+  with both approaches. The coordinator hands the verifier the requirements, the plan critic's acceptance checks and
+  the writers' artifacts, never their returns; a requirement without executed evidence is `not proven`, and one
+  complete return is opened before a unanimous tally of verifiers is trusted.
 - Another provider, model or route comes in only when the user names it, in the conversation or in the user's or
   project's instructions; the coordinator then runs `adapter-status.mjs`, no longer on every plan and again before
   dispatch, and nothing proposes another provider unprompted. The codex page's "nothing" row is zero Codex agents,
@@ -48,7 +51,7 @@ forensics remain in the repository references and release notes.
   card ran the architecture critic or the answer is a publication: it tags each claim by what backs it and lists what
   the draft does not answer. An answer gets at most two reads, and after the second only an `Open:` list quoting the
   reader's gaps may be appended. `lint-draft.mjs --help` no longer speaks of a manifest.
-- The page's body is 7,993 characters, from 15,507. Skills per invocation, larger teams, profiles, usage windows and
+- The page's body is 7,997 characters, from 15,507. Skills per invocation, larger teams, profiles, usage windows and
   the substitution rule moved to `references/plan.md`, whose index says once when each section is read, the card and
   the composition rules with every plan; the advisor and the codex page link its substitution rule. The capture
   recipe moved to `references/roles.md`, where each agent reads its own row, and the consent, Codex-escalation and
@@ -62,12 +65,15 @@ forensics remain in the repository references and release notes.
   reader by their role's name at any tier, the first a description names or a brief's text says the agent is, not a
   role it merely mentions, and no longer asks for a corrected-split file. When the card's trigger holds, the
   architecture critic returned before the plan critic and the workers, a brief that names a unit of the task, were
-  briefed; in every run, an architecture critic that ran brings a plan critic. The draft's path and the read's time
-  come from the message that starts the read: nothing writes the draft after it, the last lint comes before it, and
-  what went out is the draft, or the draft and the allowed `Open:` list. Live case 5, one slug helper in a new file,
-  expects no architecture critic and five phases; case 7, an export two files import renamed, expects the
-  architecture critic and a final reader; case 6 a default plan that leaves `roles.md` to its agents; and case 8 says
-  why the Astra the user names goes through the Codex adapter.
+  briefed. In every run a plan critic is briefed before the first worker, and a verifier after the last worker
+  returned that is no worker and wrote no worker's file, unless the case declares that its user dropped one; the
+  coordinator's own reason drops neither, and an architecture critic does not stand in for the plan critic. The
+  draft's path and the read's time come from the message that starts the read: nothing writes the draft after it,
+  the last lint comes before it, and what went out is the draft, or the draft and the allowed `Open:` list. Live
+  case 5, one slug helper in a new file, expects no architecture critic, a plan critic before its worker and five
+  phases; case 7, an export two files import renamed, expects the architecture critic and a final reader; case 6 a
+  default plan that leaves `roles.md` to its agents; and case 8 says why the Astra the user names goes through the
+  Codex adapter.
 
 ### Known issues
 
