@@ -29,7 +29,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
-  anchorFor, describeFinding, gateFor, gatedKeys, gateWayOut, GATE_EXIT, holdGated, referenceChange, referenceIssue, specOutline,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -1712,17 +1711,6 @@ async function check(file, flags) {
   const frames = cfg.frames.filter((f) => !flags.frame || f.name === flags.frame);
   if (flags.frame && !frames.length) throw Object.assign(new Error(`no frame named ${flags.frame}`), { exit: 2 });
   const full = !flags.frame;
-  const historyFile = path.join(out, "history.jsonl");
-  const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
-  // After the gate has stopped this history twice, only a complete check runs: its journeys and full sweep are evidence.
-  // A refused round is recorded too, so the record shows every attempt.
-  if (flags.quick && gateFor(history, null).trips >= 2) {
-    const said = `Quick rounds are refused: the gate has stopped this check ${gateFor(history, null).trips} times. Run the complete check (without --quick), after fixing or proposing what it stopped on.`;
-    fs.mkdirSync(out, { recursive: true });
-    fs.appendFileSync(historyFile, `${JSON.stringify({ round: history.length + 1, time: new Date().toISOString(), quick: true, refused: true, frames: frames.map((f) => f.name) })}\n`);
-    console.log(said);
-    return GATE_EXIT;
-  }
   // --quick: every frame and story, swept at the frames' widths only, without journeys: for tuning, not for handover.
   if (flags.quick) cfg.quick = true;
   const browser = await (await chromium()).launch();
@@ -1739,29 +1727,6 @@ async function check(file, flags) {
     }
     const journeyResults = full && !flags.quick ? await journeys(browser, cfg) : [];
     answerCandidates(cfg, sweepResult);
-    // What each frame is compared with, against the first round that checked it: the image and the spec, apart. A
-    // reference rewritten after that (a band cut out, a landmark dropped) is a finding of its own, first of all, until
-    // a ledger entry for that frame says why.
-    const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
-    // Each frame's anchor is the first round that saw its spec, and the first that had its image; a frame renamed in
-    // design.json keeps its anchor through its files. Deleting history.jsonl, or a fresh --out, starts a new anchor.
-    const refs = {};
-    const rel = (file) => (file ? path.relative(cfg.dir, path.resolve(cfg.dir, file)) : null);
-    for (const f of frames) {
-      const files = { file: rel(f.reference), specFile: rel(f.spec) };
-      const anchor = anchorFor(history, f.name, { ...files, current: cfg.frames.map((x) => x.name) });
-      const now = { image: digest(f.reference)?.slice(0, 16) ?? null, spec: digest(f.spec)?.slice(0, 16) ?? null, outline: specOutline(readJson(f.spec)) };
-      refs[f.name] = anchor?.outline ? { image: now.image, spec: now.spec, ...files } : { ...now, ...files };
-      const change = anchor && referenceChange(anchor, now, Math.max(2, cfg.tolerance ?? 1));
-      const r = change && results.find((x) => x.frame === f.name);
-      if (!r) continue;
-      const issue = referenceIssue(f.name, change, ledger);
-      r.issues = [issue, ...(r.issues ?? [])];
-      if (issue.status === "fail") Object.assign(r, { pass: false, verdict: "fail" });
-      else if (r.verdict === "pass") Object.assign(r, { pass: false, verdict: "pending" });
-    }
-    // A finding the gate stopped on is settled only by an entry that names it alone.
-    holdGated({ frames: results, sweep: sweepResult, ledger, gated: gatedKeys(history) });
     // A journey the builder shows the check itself breaks, proposed with "cause": "checker", waits for the owner.
     for (const j of journeyResults) {
       if (j.pass) continue;
@@ -1786,18 +1751,19 @@ async function check(file, flags) {
     const pass = status === "pass";
     const score = totalScore(results, sweepResult, journeyResults);
     fs.mkdirSync(out, { recursive: true });
+    const historyFile = path.join(out, "history.jsonl");
+    const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
     // What the score was measured against: the frames' specs, the sweep and the journeys, quick or complete. A round
     // that changed them starts a new series, since its score says nothing about the page against the earlier ones.
+    const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
     const basis = createHash("sha256").update(JSON.stringify([cfg.tolerance, cfg.url, cfg.root, cfg.host ?? null, cfg.viewport ?? null,
       frames.map((f) => [f, fs.readFileSync(f.spec, "utf8"), digest(f.reference)]), sweepResult ? cfg.sweep : null, full && !flags.quick ? cfg.journeys : null, Boolean(flags.quick)])).digest("hex").slice(0, 12);
     // Each round also records what it cost (quick or complete, its duration and what it printed) and what it found, so
     // that the next round says what changed and sees a first finding that does not move.
     const keys = findingKeys({ frames: results, sweep: sweepResult, journeys: journeyResults, acceptance });
     const record = { round: n, time: new Date().toISOString(), frames: frames.map((f) => f.name), sweep: Boolean(sweepResult), basis, review: rows.length > 0, model: layoutModelRows(cfg), status, score, quick: Boolean(flags.quick),
-      journeys: journeyResults.length > 0, findings: [...keys.keys()], first: [...keys.keys()][0] ?? null, refs };
-    const gate = status === "pass" ? { blocked: false, trips: 0 } : gateFor(history, record.first);
-    if (gate.blocked) Object.assign(record, { blocked: true, gate: record.first });
+      findings: [...keys.keys()], first: [...keys.keys()][0] ?? null };
     // Progress is read against rounds measured the same way: the one before, the lowest, and how many rounds since it.
     const comparable = history.filter((h) => h.score != null && h.basis === basis);
     const series = score === null ? comparable : [...comparable, record];
@@ -1823,20 +1789,15 @@ async function check(file, flags) {
     // The same first finding over three rounds, quick or complete and whatever changed in the specs, or two complete
     // rounds without a new lowest score: the verdict itself says to decide rather than re-run.
     const notice = rerunNotice({ complete, status, stalled, streak: firstStreak(history, record.first) });
-    // The console is a digest of fifteen lines at most, the verdict's included. At the gate it is that one finding.
+    // The console is a digest of fifteen lines at most, the verdict's included.
     const tail = 2 + (status === "fail" && !notice ? 1 : 0);
-    const printed = gate.blocked ? [
-      `Round ${n}: blocked at the gate (exit ${GATE_EXIT}). The same first finding has led ${gate.streak} rounds: ${describeFinding({ frames: results, sweep: sweepResult, journeys: journeyResults, acceptance }, record.first)}`,
-      `Fix it, or ${gateWayOut(record.first, results.find((r) => r.frame === String(record.first).split("\u0000")[0])?.issues?.find((i) => i.property === "reference"))}. Full report: ${where}/report.md`,
-      ...(gate.trips + 1 >= 2 ? ["This is the gate's second stop: from now on only complete checks run, not --quick."] : []),
-    ].join("\n") : [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
+    const printed = [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
       `Verdict: ${status}${notice}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
       ...(status === "fail" && !notice ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
       complete ? `Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`
         : `A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`].join("\n");
     fs.appendFileSync(historyFile, `${JSON.stringify({ ...record, seconds: Math.round((Date.now() - started) / 100) / 10, bytes: Buffer.byteLength(`${printed}\n`) })}\n`);
     console.log(printed);
-    if (gate.blocked) return GATE_EXIT;
     return status === "pass" ? 0 : status === "incomplete" ? 2 : status === "pending" ? 3 : 1;
   } finally {
     await browser.close();
