@@ -11,7 +11,7 @@ A **complete check** runs every frame, the sweep and the journeys; only it write
 `--frame <name>` checks one frame, `--no-sweep` skips the sweep, and `--quick` sweeps at the frames' widths only,
 without journeys, for tuning.
 
-**Exit codes**, the first that applies: 1 a finding, a ledger fault, a failing journey or acceptance row; 2
+**Exit codes**, the first that applies: 4 [the gate](#the-gate) stopped the check; 1 a finding, a ledger fault, a failing journey or acceptance row; 2
 something not measured (a frame without its image or showing text its spec lacks, ink no named box holds, a root or
 setup that fails, a story or condition not swept, an alignment group never of two); 3 what remains awaits the owner
 (a proposal, a journey disputed with the check); 0 a pass. For a 2, name what is missing (the ink's landmark, the
@@ -35,12 +35,28 @@ incomplete when:
 console is a digest of fifteen lines at most: the round before and the lowest among rounds measured the same way, what
 changed since (findings fixed, new ones), each frame's new findings with where to start and the unchanged ones as a
 count; the full tables are in `report.md`. A finding is named by its key (frame, landmark, property), which neither
-`--quick` nor a change of the specs alters. When the same finding has come first in three rounds in a row, quick or
-complete, a quick round's verdict line says "the first finding is unchanged for N rounds: fix it or propose it"; a
-complete round's, and one after two complete rounds without a new lowest score, says "stop re-running: fix it, propose
+`--quick` nor a change of the specs alters. A round whose first finding has led two rounds says the next one stops at
+the gate; after two complete rounds without a new lowest score, the verdict line says "stop re-running: fix it, propose
 it with a reason, or report the check as blocked".
 Each line of `history.jsonl` records the round's status, score and findings, whether it was `quick`, its `seconds` and
-the `bytes` it printed.
+the `bytes` it printed, each frame's reference (`refs`: the image's and the spec's digests), and, at the gate,
+`blocked` with the finding's key in `gate`.
+
+### The gate
+
+When the same finding, by its key, has come first in three rounds in a row, quick or complete, the check prints that
+finding alone with what to do and exits 4. Two ways out: fix it, or propose that one finding in the ledger with a
+reason (its frame, landmark and property). A list of landmarks, `*` or a region does not settle a finding the gate
+stopped on: it stays a failure. After two stops in one history, `--quick` is refused and only the complete check
+runs.
+
+### The reference
+
+The first round that checks a frame records its reference: the image, and what the spec expects (its size, each
+landmark's box). A later round whose image differs, or whose spec drops a landmark, moves one or changes the frame's
+size, has a `reference` finding, "changed since round N", first of all, until a ledger entry for that frame
+(`"frame"`, `"property": "reference"`) says why. Naming more pieces is free; making the frames before the first check
+is too.
 **Before** is the page the first check saw; delete `out/before/` for a new baseline.
 
 ## design.json
@@ -209,6 +225,7 @@ list item each, the candidate as the check prints it and after a colon the contr
 | `region` | for `region`: `[x, y, width, height]` in the frame's CSS px |
 | `frame` | a frame's name or a list of them; absent or `*` for all |
 | `max` | the largest difference in px it covers, at each width; only one with a size |
+| `id`, `consequenceOf`, `shift` | an entry's name; a consequence of the entry with that `id` (the row a missing line moves up): for `x`, `y`, `width` or `height`, it covers a difference of `shift` px, within the tolerance, and no other |
 | `actual` | for `text`: the text the page shows, which the check then looks for |
 | `category` | optional: the cause, for the owner: `design-error`, `missing-state`, `platform`, `system`, `owner`, `ux` |
 | `cause` | `checker`: the check itself causes the finding, shown by a minimal reproduction in `review.md` |
@@ -224,8 +241,10 @@ the check". A refused entry is deleted and the difference fixed. An entry excuse
 An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
 status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
 without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text` without `actual` or with more
-than one design text. Entries of one cause that cover more than three findings are
-named first in the evidence, as broad excuses.
+than one design text; a consequence without its `shift` or without the entry it names; a `reference` entry without
+its frame; a proposed `x` or `y` entry for more than three landmarks without `shift`, since it would cover any offset
+of theirs. Entries of one cause that cover more than three findings are named first in the evidence, as broad
+excuses.
 
 ## Output
 

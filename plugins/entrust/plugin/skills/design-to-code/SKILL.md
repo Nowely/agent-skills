@@ -70,11 +70,12 @@ rules it out.
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
 complete check. Run it in the foreground; if it outlasts the wait, look every few minutes. View only the crop and
 reference that answer the current question; full pages at every width once, before handover. Keep probes in one
-parameterised script on disk, not inline. When a quick round says the first finding is unchanged, fix it or propose
-it; when a complete round says stop, stop re-running.
+parameterised script on disk, not inline. Exit 4 is the gate: the same first finding led three rounds. Fix it, or
+propose that one finding with a reason; nothing else opens it.
 
 A finding says what to fix: fix its first cause and check again. A note needs nothing. A finding you cannot fix goes in
-`deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. `incomplete` (exit 2)
+`deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. What it moves is one
+entry with its `shift`. The references stay as the first check saw them. `incomplete` (exit 2)
 means something went unmeasured: ink no landmark names, page text the spec lacks, a row without evidence, an
 unanswered candidate. Name it or record why not, and check again.
 
