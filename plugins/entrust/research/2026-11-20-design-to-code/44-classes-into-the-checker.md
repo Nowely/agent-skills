@@ -29,6 +29,15 @@ built.
 | 6 | **The column shift.** | checker | the card bench's `column-shift`, plus a new clean twin with a common shift | 15 of 15 caught; the twin clean | none |
 | 7 | **E159, the one-digit pairing.** Kept because it cost rounds in two of two Sonnet arms. | checker | the prebuilt arm with a `delivery` value (E159 "Check") | the "1" paired with its own text; a displaced "1" still fails | none |
 
+**Item 8, added before its work (found by the item-5 reviewers).** The stateful bench's page has a defect that its
+"clean" control carried unseen. At 375 px the open filters sidebar (280 px, not shrinking) leaves the list about 47 px,
+and titles break letter by letter. Two of six reviewers returned it. The check missed it: the sidebar journey asserts
+only that the sidebar shows and hides. This is the owner's "width while open" class.
+
+| # | Item | Where | Failing control first | Pass | Cost |
+|---|---|---|---|---|---|
+| 8 | **The component's width inside a journey.** After each journey step, the check measures the root's container. Below the sweep's `from` (the narrowest supported width), or with the page scrolling sideways, it is a finding. When the container's width changed in the step, the component is compared with a fresh load whose container is held at that width (item 2's hold). A difference is a finding. | checker | the bench page with the sidebar, kept as a new mutant `squeezed-by-sidebar`, and a fixed control whose sidebar stacks below a width; the catalogue's start code with its sidebar open | the mutant caught; the fixed control clean; the catalogue's start code caught while open, its reference clean; no clean build blocked on either bench | a fresh load per width-changing step |
+
 **Benches move into the repository:** the card bench and the stateful bench live in the session's scratchpad. They
 move under `evals/design-to-code/` so that their controls are tests that survive the session.
 
