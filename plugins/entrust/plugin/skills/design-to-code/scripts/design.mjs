@@ -1914,13 +1914,22 @@ function candidateAnswers(cfg) {
   }
   return out;
 }
-const plain = (t) => String(t).toLowerCase().replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim();
+// An answer names its candidate as the check prints it, at the head of its line: the landmark, or the property and the
+// landmark, then the condition in parentheses if it likes, then a colon and the bound. A landmark inside another line
+// or inside a reason ("1" in "at most 18 characters", a frame "narrow" in "holds in a narrow column") answers nothing.
+// The component's own width names a frame, so its key is the property and the quoted name: window “card-375”.
+const plain = (t) => String(t).toLowerCase().replace(/[*_`]/g, "").replace(/["«»“”„]/g, '"').replace(/\s+/g, " ").trim();
+const literal = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function answerCandidates(cfg, sweepResult) {
   const answers = candidateAnswers(cfg).map((a) => ({ text: plain(a), raw: a }));
   for (const i of sweepResult?.issues ?? []) {
     if (i.status !== "candidate") continue;
-    const name = plain(i.landmark), hit = answers.find((a) => a.text.includes(name) && a.text.slice(a.text.indexOf(name) + name.length).replace(/^[^:]*:/, "").trim());
-    if (hit) i.answer = hit.raw.slice(hit.raw.indexOf(":") + 1).trim();
+    const name = literal(plain(i.landmark).replace(/^"(.*)"$/, "$1")), property = literal(plain(i.property));
+    const key = i.story === OWN_WIDTH ? `${property} "${name}"` : `(?:${property} )?(?:${name}|"${name}")`;
+    const head = new RegExp(`^${key}(?: ?\\([^)]*\\))? ?:\\s*\\S`);
+    const hit = answers.map((a) => ({ a, m: a.text.match(head) })).find((x) => x.m);
+    // The bound is what follows the head's colon: the raw line split at as many colons as the head holds.
+    if (hit) i.answer = hit.a.raw.split(":").slice(hit.m[0].split(":").length - 1).join(":").trim();
   }
 }
 

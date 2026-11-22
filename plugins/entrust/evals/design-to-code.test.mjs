@@ -2511,6 +2511,51 @@ test("44.2: the component's own width: the catalogue's start code, laid out by t
   assert.ok(r.result.sweep.stories.some((st) => st.name === "the component's own width" && st.generated && !st.unmeasured), JSON.stringify(r.result.sweep.stories));
 });
 
+// A page with frames at 900 and 375 px, named "wide" and "narrow", sized by the window; `html` is the body's content.
+function windowFrames(html, { root = ".card", review = "" } = {}) {
+  const dir = tmp(), config = path.join(dir, "design.json");
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0;font:20px/24px monospace}.card{background:white}.row{display:flex;gap:8px}</style>${html}`);
+  fs.writeFileSync(path.join(dir, "review.md"), REVIEW + review);
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root, ledger: "ledger.json", lifecycle: false,
+    frames: [["wide", 900], ["narrow", 375]].map(([name, width]) => ({ name, width, spec: `${name}.json`, reference: `${name}.png` })),
+    sweep: { from: 375, to: 900, step: 100, stories: [{ name: "dense", url: "page.html?dense" }] } }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  return dir;
+}
+const MEDIA = "<style>@media (max-width: 600px) { .row { flex-direction: column } }</style>";
+const ROW = '<div class="row"><span>Ready</span><span>Steady</span></div>';
+const ownWidthOf = (r) => ({ candidates: r.result.sweep.issues.filter((i) => i.story === "the component's own width").map((i) => [i.property, i.landmark, i.status, i.answer ?? null]),
+  notes: r.result.sweep.stories.find((st) => st.name === "the component's own width").notes ?? [] });
+
+test("44.2: an own-width answer names its frame as the check prints it, window “<frame>”; a line that only holds the frame's name answers nothing", browser, () => {
+  const answer = (line) => ownWidthOf(check(windowFrames(`<main><div class="card">${MEDIA}${ROW}</div></main>`, { review: `\n## Candidates\n\n${line}\n` }), "--quick")).candidates;
+  // Before (the verifier): this answered the frame "narrow", the reason holding its name.
+  assert.deepEqual(answer("- Ready Re × Go G: the label is at most 8 characters, so it holds in a narrow column (api/types.ts)"), [["window", "narrow", "candidate", null]]);
+  for (const key of ["window “narrow”", 'window "narrow"', "`window “narrow”` (the component's own width, 375)"]) {
+    assert.deepEqual(answer(`- ${key}: the card is shown only in the 375 px column (layout.ts)`), [["window", "narrow", "candidate", "the card is shown only in the 375 px column (layout.ts)"]], key);
+  }
+});
+
+test("44.2: the generated conditions' answers name the candidate at the head of the line, not anywhere in it", browser, () => {
+  // An answer for another text that holds the landmark in its reason. Before: it answered the candidate.
+  const f = smallFrame('<div style="display:flex"><span style="flex:none">Ready steady go now</span></div>');
+  let r = check(f.dir, "--quick");
+  const [cand] = r.result.sweep.issues.filter((i) => i.status === "candidate" && i.property === "outside");
+  assert.ok(cand, JSON.stringify(r.result.sweep.issues));
+  const candidates = (line) => fs.writeFileSync(path.join(f.dir, "review.md"), `${REVIEW}\n## Candidates\n\n${line}\n`);
+  candidates(`- Price: unlike ${cand.landmark}, the price is at most 9 characters (api/types.ts)`);
+  r = check(f.dir, "--quick");
+  assert.ok(r.result.sweep.issues.filter((i) => i.landmark === cand.landmark && i.status === "candidate").every((i) => !i.answer), JSON.stringify(r.result.sweep.issues));
+  // The landmark at the head, or the property and the landmark as printed, with the condition in parentheses: answered.
+  for (const head of [cand.landmark, `outside “${cand.landmark}” (the frames' page, texts stretched, 300)`]) {
+    candidates(`- ${head}: the label is 19 characters at most (the contract's type)`);
+    r = check(f.dir, "--quick");
+    const answered = r.result.sweep.issues.find((i) => i.landmark === cand.landmark && i.status === "candidate");
+    assert.equal(answered.answer, "the label is 19 characters at most (the contract's type)", head);
+  }
+});
+
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
 // The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
 test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {

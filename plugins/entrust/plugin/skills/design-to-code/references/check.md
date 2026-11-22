@@ -230,7 +230,10 @@ What they find is a **candidate**, not a finding: it fails nothing and scores no
 complete check incomplete. Answer it by reproducing it with legal data (a story with a real long value, a supported
 locale, or a container narrower than the window: then the story's own finding counts), or under a heading that names
 candidates in `review.md`, one list item each, the candidate as the check prints it and after a colon the contract's
-bound that rules it out: `- Ready Re × Go G: the label is at most 8 characters (api/types.ts)`.
+bound that rules it out: `- Ready Re × Go G: the label is at most 8 characters (api/types.ts)`. The item starts with
+the candidate (its landmark, or its property and landmark, then the condition in parentheses if you like); a landmark
+elsewhere in the item answers nothing. The component's own width is answered by its property and the frame's name in
+quotes: `- window “card-375”: the card is shown only in the 375 px column (layout.ts)`.
 
 ## The ledger
 
