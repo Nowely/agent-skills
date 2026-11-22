@@ -1,0 +1,128 @@
+/* The offer card. Built from the kit's tokens and components (kit/kit.css).
+   card.js sets data-mode on .card from the card's own width: w (one row), m (two rows), n (blocks), s (one column).
+   The groups .g-top .g-spec .g-foot .g-buy dissolve into one grid in w and m; in n and s they are blocks. */
+.card { position: relative; box-sizing: border-box; padding: var(--s-3) var(--s-4); border-radius: var(--r-card);
+  background: var(--c-surface); box-shadow: var(--shadow-card); font-family: inherit; color: var(--c-text); }
+.card button { font-family: inherit; }
+.card__grid { display: grid; align-items: start; }
+.card .t-body, .card .g-spec, .card .c-stock { font-size: 15px; line-height: 20px; }
+.card .g-foot { font-size: 12px; line-height: 18px; }
+
+/* one text, several formats: each mode shows its own */
+[data-mode="n"] .if-wm, [data-mode="s"] .if-wm,
+[data-mode="w"] .if-ns, [data-mode="m"] .if-ns,
+[data-mode="s"] .if-wmn,
+[data-mode="w"] .if-s, [data-mode="m"] .if-s, [data-mode="n"] .if-s { display: none; }
+
+.sku { overflow-wrap: anywhere; }
+.badges { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
+.kit-badge { flex: none; }
+.model { overflow-wrap: anywhere; }
+.vendor { margin-top: var(--s-1); font-size: 13px; line-height: 16px; font-weight: 800; letter-spacing: .04em; color: var(--c-faint); }
+.c-freq, .c-cpus, .c-chip, .c-cores, .c-ram .ram-size, .disk, .price, .c-net, .c-psu, .c-stock { white-space: nowrap; }
+.sub { display: block; margin-top: 2px; font-size: 15px; line-height: 18px; }
+.c-ram { width: min-content; }
+.disk + .disk { margin-top: 2px; }
+.g-foot { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s-2); row-gap: var(--s-2); }
+[data-mode="n"] .g-foot, [data-mode="s"] .g-foot { column-gap: var(--s-4); }
+.c-net, .c-psu { display: inline-flex; align-items: center; gap: 2px; }
+.net-icon { margin-right: 4px; }
+.net-icon { flex: none; }
+.kit-help { position: relative; }
+.kit-help::after { content: ""; position: absolute; inset: -5px; }
+.kit-action { gap: var(--s-2); }
+.c-price { display: flex; align-items: center; gap: var(--s-2); }
+.price { font-size: 15px; line-height: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.c-stock { display: inline-flex; align-items: center; gap: var(--s-2); }
+.card button.kit-icon { padding: 0; border: 0; cursor: pointer; }
+.card button.kit-icon:focus-visible, .card .kit-help:focus-visible, .card .kit-action:focus-visible, .card .kit-link:focus-visible {
+  outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+/* popovers: the kit's look plus a tail pointing at the opener */
+.card .kit-popover { max-width: min(320px, calc(100vw - 16px)); padding: 12px 16px 14px; font-size: 15px; line-height: 18px; }
+.kit-popover__title { line-height: 20px; margin-bottom: 7px; }
+.pop-reserve { margin-top: 8px; line-height: 20px; }
+.kit-popover[hidden] { display: none; }
+.kit-popover::after { content: ""; position: absolute; left: var(--arrow-x, 20px); width: 14px; height: 8px; margin-left: -7px;
+  background: var(--c-surface); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.kit-popover[data-side="top"]::after { top: 100%; }
+.kit-popover[data-side="bottom"]::after { bottom: 100%; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.kit-popover s { color: var(--c-muted); }
+
+/* ---- w: one row, footer under it ---- */
+[data-mode="w"] .card__grid { column-gap: var(--s-2); row-gap: var(--s-4);
+  grid-template-columns: minmax(8rem, 127px) minmax(5.5rem, 110px) auto auto auto auto min-content auto minmax(max-content, 1fr);
+  grid-template-areas: "id model freq cpus chip cores ram disks price" "foot foot foot foot foot foot foot foot stock"; }
+[data-mode="m"] .card__grid { column-gap: var(--s-2); row-gap: var(--s-2);
+  grid-template-columns: minmax(8rem, 1fr) auto auto auto auto min-content auto;
+  grid-template-areas: "id freq cpus chip cores ram disks" "model . . . . ram price" "foot foot foot foot foot stock stock"; }
+[data-mode="w"] .g-top, [data-mode="w"] .g-spec, [data-mode="w"] .g-buy,
+[data-mode="m"] .g-top, [data-mode="m"] .g-spec, [data-mode="m"] .g-buy { display: contents; }
+[data-mode="w"] .c-id, [data-mode="m"] .c-id { grid-area: id; min-width: 0; }
+[data-mode="w"] .c-model, [data-mode="m"] .c-model { grid-area: model; min-width: 0; }
+[data-mode="w"] .c-freq, [data-mode="m"] .c-freq { grid-area: freq; margin-left: 15px; }
+[data-mode="w"] .c-cpus, [data-mode="m"] .c-cpus { grid-area: cpus; margin-left: var(--s-1); }
+[data-mode="w"] .c-chip, [data-mode="m"] .c-chip { grid-area: chip; }
+[data-mode="w"] .c-cores, [data-mode="m"] .c-cores { grid-area: cores; margin-left: var(--s-1); }
+[data-mode="w"] .c-ram, [data-mode="m"] .c-ram { grid-area: ram; margin-left: var(--s-3); }
+[data-mode="m"] .c-price { gap: var(--s-1); }
+[data-mode="w"] .c-disks, [data-mode="m"] .c-disks { grid-area: disks; margin-left: var(--s-3); }
+[data-mode="w"] .g-foot, [data-mode="m"] .g-foot { grid-area: foot; min-width: 0; }
+[data-mode="w"] .c-price { grid-area: price; justify-self: end; margin-left: var(--s-4); }
+[data-mode="w"] .c-stock { grid-area: stock; justify-self: end; margin-left: var(--s-4); }
+[data-mode="m"] .c-price { grid-area: price; justify-self: end; flex-direction: column-reverse; align-items: flex-end; margin-left: var(--s-4); }
+[data-mode="m"] .c-stock { grid-area: stock; justify-self: end; }
+
+/* ---- n: blocks ---- */
+[data-mode="n"] .card__grid { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-4); }
+[data-mode="n"] .g-top { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 10fr); column-gap: var(--s-3); }
+[data-mode="n"] .g-spec { display: grid; justify-content: start; align-items: start; column-gap: var(--s-2);
+  grid-template-columns: auto auto auto auto min-content auto;
+  grid-template-areas: "freq cpus chip cores ram disks"; }
+[data-mode="n"] .c-freq { grid-area: freq; }
+[data-mode="n"] .c-cpus { grid-area: cpus; margin-left: var(--s-4); }
+[data-mode="n"] .c-chip { grid-area: chip; margin-left: var(--s-1); }
+[data-mode="n"] .c-cores { grid-area: cores; margin-left: var(--s-1); }
+[data-mode="n"] .c-ram { grid-area: ram; margin-left: var(--s-4); }
+[data-mode="n"] .c-disks { grid-area: disks; margin-left: var(--s-4); }
+[data-mode="n"] .g-buy { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); }
+[data-mode="n"] .price { font-size: 17px; line-height: 22px; }
+
+/* ---- s: one column, larger type ---- */
+.card[data-mode="s"] { padding: var(--s-5); }
+[data-mode="s"] .card__grid { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-5); }
+.card[data-mode="s"] .t-body, .card[data-mode="s"] .g-spec, .card[data-mode="s"] .c-stock,
+[data-mode="s"] .sub { font-size: 17px; line-height: 20px; }
+.card[data-mode="s"] .g-foot { font-size: 15px; line-height: 20px; }
+.card[data-mode="s"] .sku { font-size: 15px; line-height: 18px; }
+[data-mode="s"] .disk + .disk { margin-top: 0; }
+[data-mode="s"] .kit-badge, [data-mode="s"] .kit-chip { height: 26px; padding: 0 var(--s-2); font-size: 17px; line-height: 26px; }
+[data-mode="s"] .g-top { display: flex; flex-direction: column; gap: var(--s-5); }
+[data-mode="s"] .badges { margin-top: var(--s-2); }
+[data-mode="s"] .g-spec { display: grid; justify-content: start; row-gap: var(--s-5); column-gap: var(--s-3);
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas: "freq freq freq" "cpus chip cores" "ram ram ram" "disks disks disks"; }
+[data-mode="s"] .c-freq { grid-area: freq; }
+[data-mode="s"] .c-cpus { grid-area: cpus; margin-top: 3px; }
+[data-mode="s"] .c-chip { grid-area: chip; }
+[data-mode="s"] .c-cores { grid-area: cores; margin-top: 3px; white-space: nowrap; }
+[data-mode="s"] .c-ram { grid-area: ram; width: auto; }
+[data-mode="s"] .c-ram .sub { display: inline; margin: 0 0 0 var(--s-1); }
+[data-mode="s"] .c-disks { grid-area: disks; }
+[data-mode="s"] .g-buy { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-5); }
+[data-mode="s"] .price { font-size: 17px; line-height: 22px; white-space: normal; }
+
+/* m is tighter between the specs: the SKU and the badges keep their column */
+[data-mode="m"] .c-freq, [data-mode="m"] .c-cpus, [data-mode="m"] .c-cores { margin-left: 0; }
+[data-mode="m"] .c-ram, [data-mode="m"] .c-disks { margin-left: var(--s-2); }
+[data-mode="m"] .c-price { margin-left: 0; }
+
+[data-mode="n"] .g-foot { margin-top: 6px; }
+[data-mode="n"] .g-buy { margin-top: 4px; }
+[data-mode="s"] .g-spec { row-gap: 19px; column-gap: var(--s-2); }
+[data-mode="s"] .c-ram { margin-top: 0; }
+[data-mode="w"] .disk .t-muted, [data-mode="m"] .disk .t-muted { margin-left: var(--s-1); }
+[data-mode="w"] .c-cpus { margin-left: 0; }
+
+[data-mode="s"][data-compact] .g-spec { grid-template-areas: "freq freq freq" "cpus chip chip" "cores cores cores" "ram ram ram" "disks disks disks"; }
+[data-mode="s"][data-compact] .c-cores { margin-top: 0; }

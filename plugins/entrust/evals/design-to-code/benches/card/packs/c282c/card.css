@@ -1,0 +1,121 @@
+/* Offer card. Its layout follows its own width (container queries on .card), not the window's:
+   base = narrowest (single column, drawn at 280), then 480+ (drawn at 486), 560+ (601), 720+ (764). */
+.card { container-type: inline-size; display: block; width: 100%; min-width: 0; background: var(--c-surface);
+  border-radius: var(--r-card); box-shadow: var(--shadow-card); color: var(--c-text); }
+.card, .card *, .card *::before, .card *::after { box-sizing: border-box; }
+.card__in { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--s-5); padding: var(--s-4);
+  grid-template-areas: "head" "specs" "foot" "price" "stock"; }
+
+.c-head { grid-area: head; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "sku" "badges" "cpu"; align-content: start; }
+.c-specs { grid-area: specs; display: flex; flex-wrap: wrap; gap: var(--s-4); align-items: flex-start; }
+.c-foot { grid-area: foot; }
+.c-price { grid-area: price; }
+.c-stock { grid-area: stock; }
+.c-id { display: contents; }
+.c-sku { grid-area: sku; overflow-wrap: anywhere; }
+.c-badges { grid-area: badges; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.c-cpu { grid-area: cpu; margin-top: var(--s-5); min-width: 0; }
+.c-model { overflow-wrap: anywhere; }
+.c-vendor { margin-top: 2px; font-size: 13px; line-height: 18px; font-weight: 700; letter-spacing: .04em; }
+.c-freq { grid-area: freq; }
+.c-cores { grid-area: cores; display: flex; align-items: center; gap: var(--s-2); }
+.c-thr { grid-area: thr; }
+.c-ram { grid-area: ram; }
+.c-disks { grid-area: disks; }
+
+.c-freq, .c-cnt, .c-thr > :first-child, .c-ram > :first-child, .d-cs, .d-sc, .c-price__text .nw, .c-stock span, .c-foot > * { white-space: nowrap; }
+.c-freq, .c-cores, .c-thr, .c-ram, .c-disks { min-width: 0; }
+.card .u { display: none; }
+.c-ram { display: flex; flex-wrap: wrap; column-gap: 6px; }
+.c-price__text { font-weight: 700; }
+.c-disk { display: flex; flex-wrap: wrap; column-gap: 6px; }
+.c-disk .d-cs { display: none; }
+
+/* Units and labels that the narrow frames spell out. */
+.c-freq .u, .c-cnt .u, .c-ram .u, .c-chip .u { display: inline; }
+.c-specs > .c-freq, .c-specs > .c-ram, .c-specs > .c-disks { flex: 1 1 100%; }
+
+.c-price { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s-2); min-width: 0; }
+.c-price__text { min-width: 0; }
+.c-price__text .nw { display: inline-block; }
+.c-deal { border: 0; padding: 0; cursor: pointer; position: relative; }
+.c-deal::before, .c-help::before { content: ""; position: absolute; inset: -4px; }
+.kit-help.c-help { position: relative; }
+.c-stock { display: flex; align-items: center; gap: var(--s-2); }
+.c-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.c-foot .item { display: inline-flex; align-items: center; gap: 6px; }
+.c-foot .item svg { flex: none; }
+.c-conf svg { flex: none; }
+.kit-action:focus-visible, .kit-help:focus-visible, .kit-icon:focus-visible, .kit-link:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+/* Below 480 (drawn at 280) the frame sets its type about 15 % larger than the kit's sizes elsewhere. */
+@container (max-width: 479.98px) {
+  .card__in { padding: 20px; row-gap: 22px; }
+  .card .t-caption { font-size: 15px; line-height: 20px; }
+  .card .t-body { font-size: 17px; line-height: 20px; }
+  .card .kit-badge { height: 26px; font-size: 17px; line-height: 26px; padding: 0 8px; }
+  .card .kit-chip { height: 24px; font-size: 16px; padding: 0 8px; }
+  .card .kit-action { font-size: 17px; }
+  .c-head { row-gap: 0; }
+  .c-foot .t-body, .c-foot .kit-action { font-size: 15px; }
+  .c-badges { margin-top: 8px; gap: 8px; }
+  .c-cpu { margin-top: 24px; }
+  .c-specs { gap: 24px 16px; }
+  .c-cnt { padding-right: 0; }
+}
+
+/* 480+: drawn at 486 */
+@container (min-width: 480px) {
+  .card__in { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head head" "specs specs" "foot foot" "price stock"; }
+  .c-head { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: var(--s-4); grid-template-areas: "sku cpu" "badges cpu"; }
+  .c-cpu { margin-top: 0; }
+  .c-specs { flex-wrap: wrap; gap: var(--s-4) var(--s-5); }
+  .c-specs > .c-freq, .c-specs > .c-ram, .c-specs > .c-disks { flex: 0 1 auto; }
+  .c-ram { flex-direction: column; width: min-content; }
+  .c-ram .u { display: none; }
+  .c-chip .u { display: none; }
+  .c-disk .d-sc { display: inline; }
+  .c-price { flex-wrap: nowrap; }
+}
+
+/* 560+: drawn at 601; the head and the specs join the card's grid. */
+@container (min-width: 600px) {
+  .card__in { column-gap: var(--s-4); row-gap: 0; grid-template-columns: minmax(min-content, 1fr) auto auto auto auto auto;
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-areas: "sku freq cores thr ram disks" "badges freq cores thr ram disks"
+      "cpu price price price price price" "foot foot foot foot stock stock"; }
+  .c-head, .c-specs { display: contents; }
+  .c-specs > * { align-self: start; }
+  .c-cpu { margin-top: 0; }
+  .c-freq .u, .c-cnt .u { display: none; }
+  .c-disk .d-sc { display: none; }
+  .c-disk .d-cs { display: inline; }
+  .c-price { gap: 0; flex-direction: column; align-items: flex-end; justify-self: end; align-self: end; text-align: right; }
+  .c-price .c-deal { order: -1; }
+  .c-foot, .c-stock { margin-top: var(--s-2); }
+  .c-stock { justify-self: end; }
+  .c-stock .kit-icon { order: -1; }
+}
+
+/* 720+: drawn at 764. One flowing row: what does not fit (a long price, many columns) wraps whole to the next row. */
+@container (min-width: 720px) {
+  .card__in { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: var(--s-5); row-gap: 6px; }
+  .card__in::after { content: ""; order: 1; flex: 1 0 100%; height: 0; }
+  .c-id { display: block; flex: 0 1 7.5rem; }
+  .c-cpu { margin-top: 0; flex: 1 1 auto; }
+  .c-specs > * { flex: none; }
+  .c-price { flex: none; flex-direction: row; flex-wrap: nowrap; align-self: flex-start; align-items: center; gap: 6px var(--s-2); margin-left: auto; }
+  .c-foot { order: 2; flex: 1 1 auto; margin-top: 0; }
+  .c-stock { order: 3; margin-top: 0; margin-left: auto; }
+}
+
+/* The popovers: the kit's look, in the top layer, placed against their icon by card.js. */
+.c-pop { position: fixed; inset: auto; margin: 0; border: 0; overflow: visible; font-family: inherit; }
+.c-pop[popover]:not(:popover-open) { display: none; }
+.c-pop::after { content: ""; position: absolute; left: calc(var(--arrow-x, 24px) - 8px); bottom: -8px; width: 16px; height: 8px;
+  background: var(--c-surface); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.c-pop--below::after { bottom: auto; top: -8px; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.c-pop__row + .c-pop__row { margin-top: 8px; }
+.c-pop s { color: var(--c-text); }
+.c-pop__v { color: var(--c-text); }
+.c-help::after { content: "?"; }

@@ -1,0 +1,904 @@
+[
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   162,
+   36,
+   36,
+   15
+  ],
+  "frame": "card-764",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".net-help",
+  "property": "region",
+  "region": [
+   117,
+   86,
+   18,
+   18
+  ],
+  "frame": "card-764",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".meta-icon",
+  "property": "region",
+  "region": [
+   14,
+   87,
+   15,
+   16
+  ],
+  "frame": "card-764",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".power-help",
+  "property": "region",
+  "region": [
+   186,
+   88,
+   18,
+   16
+  ],
+  "frame": "card-764",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   153,
+   36,
+   14,
+   15
+  ],
+  "frame": "card-764",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": "EPYC 9374F",
+  "property": "y",
+  "frame": "card-601",
+  "max": 10,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".kit-icon--deal",
+  "property": "y",
+  "frame": "card-601",
+  "max": 9,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".kit-icon--low",
+  "property": "x",
+  "frame": "card-601",
+  "max": 13,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "2+ PSU",
+  "property": "y",
+  "frame": "card-601",
+  "max": 11,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".net-help",
+  "property": "y",
+  "frame": "card-601",
+  "max": 9,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "2+ PSU",
+  "property": "x",
+  "frame": "card-601",
+  "max": 6,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".kit-icon--low",
+  "property": "region",
+  "region": [
+   479,
+   116,
+   25,
+   25
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".kit-icon--deal",
+  "property": "region",
+  "region": [
+   565,
+   61,
+   22,
+   17
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".kit-icon--deal",
+  "property": "region",
+  "region": [
+   565,
+   74,
+   22,
+   14
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".power-help",
+  "property": "region",
+  "region": [
+   177,
+   113,
+   23,
+   25
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".net-help",
+  "property": "region",
+  "region": [
+   114,
+   113,
+   21,
+   25
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   24,
+   94,
+   22,
+   9
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".meta-icon",
+  "property": "region",
+  "region": [
+   15,
+   114,
+   14,
+   14
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   43,
+   94,
+   13,
+   9
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   14,
+   94,
+   13,
+   9
+  ],
+  "frame": "card-601",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "x",
+  "frame": "card-486",
+  "max": 12,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "32 ядер",
+  "property": "x",
+  "frame": "card-486",
+  "max": 6,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "64 потока",
+  "property": "x",
+  "frame": "card-486",
+  "max": 6,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".kit-icon--low",
+  "property": "region",
+  "region": [
+   450,
+   192,
+   22,
+   24
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   249,
+   36,
+   41,
+   15
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".kit-icon--deal",
+  "property": "region",
+  "region": [
+   184,
+   191,
+   14,
+   22
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".power-help",
+  "property": "region",
+  "region": [
+   186,
+   156,
+   18,
+   17
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".net-help",
+  "property": "region",
+  "region": [
+   117,
+   156,
+   18,
+   17
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".meta-icon",
+  "property": "region",
+  "region": [
+   14,
+   157,
+   15,
+   14
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   287,
+   36,
+   13,
+   13
+  ],
+  "frame": "card-486",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--deal",
+   ".kit-icon--low"
+  ],
+  "property": "width",
+  "frame": "card-280",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": "High performance",
+  "property": "x",
+  "frame": "card-280",
+  "max": 7,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "64 потока",
+  "property": "x",
+  "frame": "card-280",
+  "max": 6,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": ".kit-icon--low",
+  "property": "region",
+  "region": [
+   104,
+   457,
+   29,
+   23
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".cpu-vendor",
+  "property": "region",
+  "region": [
+   14,
+   115,
+   58,
+   17
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".kit-icon--deal",
+  "property": "region",
+  "region": [
+   194,
+   416,
+   20,
+   22
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".net-help",
+  "property": "region",
+  "region": [
+   127,
+   377,
+   20,
+   17
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".power-help",
+  "property": "region",
+  "region": [
+   209,
+   377,
+   17,
+   17
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": ".meta-icon",
+  "property": "region",
+  "region": [
+   14,
+   379,
+   16,
+   14
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixels inside an icon or the vendor mark: the kit ships no network, vendor or settings glyphs, so each is an inline SVG that approximates the Figma glyph.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": "Скорость соединения сетевых карт",
+  "property": "y",
+  "frame": "network-popover",
+  "max": 10,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "root",
+  "property": "width",
+  "frame": "network-popover",
+  "max": 10,
+  "category": "design-error",
+  "status": "proposed",
+  "reason": "The reference image is the popover with its shadow margin (about 20 px) and its pointer; the root is the popover's own box, so the sizes differ by the margin. The text is also wider than the frame's font, so the popover is wider.",
+  "options": "accept; or crop the reference to the popover box"
+ },
+ {
+  "landmark": "root",
+  "property": "height",
+  "frame": "network-popover",
+  "max": 44,
+  "category": "design-error",
+  "status": "proposed",
+  "reason": "The reference image is the popover with its shadow margin (about 20 px) and its pointer; the root is the popover's own box, so the sizes differ by the margin. The text is also wider than the frame's font, so the popover is wider.",
+  "options": "accept; or crop the reference to the popover box"
+ },
+ {
+  "landmark": "25 Гбит/с",
+  "property": "region",
+  "region": [
+   10,
+   13,
+   288,
+   133
+  ],
+  "frame": "network-popover",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The popover's text sits at the kit's 22 px line pitch and 14 px padding, the frame at about 18 px and 10 px, and the page's font is wider, so the text pixels do not overlap; the shadow and the pointer are the kit's.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help"
+  ],
+  "property": "width",
+  "frame": "card-764",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help"
+  ],
+  "property": "height",
+  "frame": "card-764",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   "BA-i201-B",
+   "High performance",
+   "EPYC 9374F",
+   "3.33",
+   "16",
+   "×2",
+   "32 ядер",
+   "64 потока",
+   "256 ГБ",
+   "DDR3",
+   "ECC",
+   "2 × 838",
+   "SSD",
+   "125 898,00 ₽",
+   "MC-LAG 25/25",
+   "2+ PSU",
+   "Доступно 1"
+  ],
+  "property": "width",
+  "frame": "card-764",
+  "max": 15,
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's font (the kit's sans-serif, Inter here) is wider than the frame's: the text itself is wider, which moves what follows. This is one entry for the frame's texts: each text is up to about 15 px wider than the frame's, in proportion to its length.",
+  "options": "accept; or choose a narrower font for the kit (a kit change)"
+ },
+ {
+  "landmark": "Доступно 1",
+  "property": "x",
+  "frame": "card-764",
+  "max": 13,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".kit-icon--deal",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--low"
+  ],
+  "property": "width",
+  "frame": "card-601",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".kit-icon--deal",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--low"
+  ],
+  "property": "height",
+  "frame": "card-601",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   "BA-i201-B",
+   "New",
+   "High performance",
+   "EPYC 9374F",
+   "3.33",
+   "16",
+   "×2",
+   "32 ядер",
+   "64 потока",
+   "256 ГБ",
+   "DDR3",
+   "ECC",
+   "2 × 18626",
+   "NVME",
+   "125 898,00 ₽ / месяц",
+   "MC-LAG 25/25",
+   "2+ PSU",
+   "Доступно 1"
+  ],
+  "property": "width",
+  "frame": "card-601",
+  "max": 15,
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's font (the kit's sans-serif, Inter here) is wider than the frame's: the text itself is wider, which moves what follows. This is one entry for the frame's texts: each text is up to about 15 px wider than the frame's, in proportion to its length.",
+  "options": "accept; or choose a narrower font for the kit (a kit change)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--deal",
+   ".kit-icon--low"
+  ],
+  "property": "width",
+  "frame": "card-486",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--deal",
+   ".kit-icon--low"
+  ],
+  "property": "height",
+  "frame": "card-486",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   "BA-i201-B",
+   "New",
+   "High performance",
+   "EPYC 9374F",
+   "3.33 ГГц",
+   "16 ядер",
+   "×2",
+   "32 ядер",
+   "64 потока",
+   "256 ГБ",
+   "DDR3",
+   "ECC",
+   "5587 × 4",
+   "HDD",
+   "18626 × 4",
+   "HDD",
+   "838 × 2",
+   "SSD",
+   "MC-LAG 25/25",
+   "2+ PSU",
+   "125 898,00 ₽ / месяц",
+   "Доступно 1"
+  ],
+  "property": "width",
+  "frame": "card-486",
+  "max": 15,
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's font (the kit's sans-serif, Inter here) is wider than the frame's: the text itself is wider, which moves what follows. This is one entry for the frame's texts: each text is up to about 15 px wider than the frame's, in proportion to its length.",
+  "options": "accept; or choose a narrower font for the kit (a kit change)"
+ },
+ {
+  "landmark": "DDR3",
+  "property": "x",
+  "frame": "card-486",
+  "max": 6,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": [
+   ".cpu-vendor",
+   ".meta-icon",
+   ".net-help",
+   ".power-help",
+   ".kit-icon--deal",
+   ".kit-icon--low"
+  ],
+  "property": "height",
+  "frame": "card-280",
+  "max": 20,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The icons and the vendor mark are inline SVGs and the kit's own icon boxes: their size is the kit's (.kit-icon 20 px, .kit-help 14 px) or an approximation of the Figma glyph, where the frame draws about 18 px and 11 px; the pieces after them keep the frame's pitch by their gaps.",
+  "options": "accept; or draw the icons from Figma exports and size them to the frame (needs the assets)"
+ },
+ {
+  "landmark": [
+   "HA-a701-6N-4H-2X25G",
+   "New",
+   "High performance",
+   "EPYC 9374F",
+   "3.33 ГГц",
+   "16 ядер",
+   "×2 CPU",
+   "32 ядер",
+   "64 потока",
+   "256 ГБ RAM",
+   "DDR3 ECC",
+   "5587 × 4",
+   "HDD",
+   "18626 × 4",
+   "HDD",
+   "838 × 2",
+   "SSD",
+   "MC-LAG 25/25",
+   "2+ PSU",
+   "125 898,00 ₽ / месяц",
+   "Доступно 1"
+  ],
+  "property": "width",
+  "frame": "card-280",
+  "max": 15,
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's font (the kit's sans-serif, Inter here) is wider than the frame's: the text itself is wider, which moves what follows. This is one entry for the frame's texts: each text is up to about 15 px wider than the frame's, in proportion to its length.",
+  "options": "accept; or choose a narrower font for the kit (a kit change)"
+ },
+ {
+  "landmark": "New",
+  "property": "region",
+  "region": [
+   61,
+   42,
+   13,
+   30
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit badge's corner and edge pixels differ from the Figma badge.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": "New",
+  "property": "region",
+  "region": [
+   71,
+   43,
+   9,
+   28
+  ],
+  "frame": "card-280",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit badge's corner and edge pixels differ from the Figma badge.",
+  "options": "accept; or draw each icon from a Figma export (needs the assets)"
+ },
+ {
+  "landmark": [
+   "Скорость соединения сетевых карт",
+   "Приватная сеть:",
+   "25 Гбит/с",
+   "Публичная сеть:",
+   "25 Гбит/с",
+   "Резервирование через",
+   "MC-LAG"
+  ],
+  "property": "width",
+  "frame": "network-popover",
+  "max": 15,
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's font (the kit's sans-serif, Inter here) is wider than the frame's: the text itself is wider, which moves what follows. This is one entry for the frame's texts: each text is up to about 15 px wider than the frame's, in proportion to its length.",
+  "options": "accept; or choose a narrower font for the kit (a kit change)"
+ },
+ {
+  "landmark": "the root",
+  "property": "x",
+  "frame": "network-popover",
+  "max": 10,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ },
+ {
+  "landmark": "the bottom of the root",
+  "property": "y",
+  "frame": "network-popover",
+  "max": 35,
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit fixes the gaps (8/12/16/20 px tokens), line heights and the font where the frame has its own measured values; the step is that difference and each piece keeps its relation to its neighbours.",
+  "options": "accept; or tune the gaps per mode to the frame (a magic number per mode)"
+ }
+]

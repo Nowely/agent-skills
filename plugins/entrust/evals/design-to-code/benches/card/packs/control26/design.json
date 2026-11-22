@@ -1,0 +1,961 @@
+{
+ "url": "story.html?data=card-764",
+ "root": ".offer .card",
+ "host": "#host",
+ "viewport": 1280,
+ "tolerance": 1,
+ "ledger": "deviations.json",
+ "frames": [
+  {
+   "name": "card-764",
+   "width": 764,
+   "spec": "frames/card-764/spec.json",
+   "reference": "frames/card-764/reference.png",
+   "url": "story.html?data=card-764"
+  },
+  {
+   "name": "card-601",
+   "width": 601,
+   "spec": "frames/card-601/spec.json",
+   "reference": "frames/card-601/reference.png",
+   "url": "story.html?data=card-601"
+  },
+  {
+   "name": "card-486",
+   "width": 486,
+   "spec": "frames/card-486/spec.json",
+   "reference": "frames/card-486/reference.png",
+   "url": "story.html?data=card-486"
+  },
+  {
+   "name": "card-280",
+   "width": 280,
+   "spec": "frames/card-280/spec.json",
+   "reference": "frames/card-280/reference.png",
+   "url": "story.html?data=card-280"
+  },
+  {
+   "name": "network-popover",
+   "width": 764,
+   "spec": "frames/network-popover/spec.json",
+   "reference": "frames/network-popover/reference.png",
+   "url": "story.html?data=card-764&top=180",
+   "root": ".pop-net",
+   "setup": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "wait": 200
+    }
+   ]
+  }
+ ],
+ "sweep": {
+  "from": 240,
+  "to": 900,
+  "step": 8,
+  "switches": [
+   749,
+   500,
+   427,
+   264,
+   241
+  ],
+  "lines": [
+   {
+    "name": "wide: specs row",
+    "when": "[data-mode=wide]",
+    "pieces": [
+     ".sku",
+     ".cpu-model",
+     ".freq",
+     ".cc-n",
+     ".cc .kit-chip",
+     {
+      "selector": ".th",
+      "wraps": true
+     },
+     {
+      "selector": ".ram",
+      "wraps": true
+     },
+     {
+      "selector": ".disks",
+      "wraps": true
+     },
+     ".amount"
+    ]
+   },
+   {
+    "name": "wide: footer",
+    "when": "[data-mode=wide]",
+    "pieces": [
+     {
+      "selector": ".meta",
+      "wraps": true
+     },
+     ".stock span"
+    ]
+   },
+   {
+    "name": "mid: specs row",
+    "when": "[data-mode=mid]",
+    "pieces": [
+     ".sku",
+     ".freq",
+     ".cc-n",
+     ".cc .kit-chip",
+     {
+      "selector": ".th",
+      "wraps": true
+     },
+     {
+      "selector": ".ram",
+      "wraps": true
+     },
+     {
+      "selector": ".disks",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "mid: processor and price",
+    "when": "[data-mode=mid]",
+    "pieces": [
+     ".cpu-vendor",
+     ".amount"
+    ]
+   },
+   {
+    "name": "mid: footer",
+    "when": "[data-mode=mid]",
+    "pieces": [
+     {
+      "selector": ".meta",
+      "wraps": true
+     },
+     ".stock span"
+    ]
+   },
+   {
+    "name": "compact: top",
+    "when": "[data-mode=compact]",
+    "pieces": [
+     {
+      "selector": ".sku",
+      "wraps": true
+     },
+     ".cpu-model"
+    ]
+   },
+   {
+    "name": "compact: specs",
+    "when": "[data-mode=compact]",
+    "pieces": [
+     ".freq",
+     ".cc-n",
+     ".cc .kit-chip",
+     {
+      "selector": ".th",
+      "wraps": true
+     },
+     {
+      "selector": ".ram",
+      "wraps": true
+     },
+     {
+      "selector": ".disks",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "compact: price and stock",
+    "when": "[data-mode=compact]",
+    "pieces": [
+     ".amount",
+     ".stock span"
+    ]
+   },
+   {
+    "name": "narrow: cores",
+    "when": "[data-mode=narrow]",
+    "pieces": [
+     ".cc-n",
+     ".cc .kit-chip",
+     {
+      "selector": ".th",
+      "wraps": true
+     }
+    ],
+    "from": 266
+   }
+  ],
+  "stories": [
+   {
+    "name": "dense",
+    "url": "story.html?data=dense"
+   },
+   {
+    "name": "many",
+    "url": "story.html?data=many"
+   },
+   {
+    "name": "wide-full",
+    "url": "story.html?data=wide-full"
+   },
+   {
+    "name": "minimal",
+    "url": "story.html?data=minimal"
+   }
+  ]
+ },
+ "journeys": [
+  {
+   "name": "network help: hover opens it, leaving both closes it",
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "network help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "network help: keyboard focus opens it, Escape closes it",
+   "steps": [
+    {
+     "focus": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power help: hover opens it, leaving both closes it",
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "power help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "power help: keyboard focus opens it, Escape closes it",
+   "steps": [
+    {
+     "focus": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "discount: hover opens it, leaving both closes it",
+   "url": "story.html?data=wide-full",
+   "steps": [
+    {
+     "hover": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": ".pop-deal"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "discount: a tap toggles it",
+   "url": "story.html?data=wide-full",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "discount: keyboard focus opens it, Escape closes it",
+   "url": "story.html?data=wide-full",
+   "steps": [
+    {
+     "focus": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "network help: an open popover survives a resize",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "width": 300
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "network help: tap on the card elsewhere closes it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "tap": ".sku"
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "net popover on card-601: hover opens it, leaving closes it",
+   "url": "story.html?data=card-601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on card-601: hover opens it, leaving closes it",
+   "url": "story.html?data=card-601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "deal popover on card-601: hover opens it, leaving closes it",
+   "url": "story.html?data=card-601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": ".pop-deal"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "net popover on card-486: hover opens it, leaving closes it",
+   "url": "story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on card-486: hover opens it, leaving closes it",
+   "url": "story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "deal popover on card-486: hover opens it, leaving closes it",
+   "url": "story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": ".pop-deal"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "net popover on card-280: hover opens it, leaving closes it",
+   "url": "story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on card-280: hover opens it, leaving closes it",
+   "url": "story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "deal popover on card-280: hover opens it, leaving closes it",
+   "url": "story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": ".pop-deal"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "net popover on dense: hover opens it, leaving closes it",
+   "url": "story.html?data=dense",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on dense: hover opens it, leaving closes it",
+   "url": "story.html?data=dense",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "deal popover on dense: hover opens it, leaving closes it",
+   "url": "story.html?data=dense",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".deal-btn"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": ".pop-deal"
+    },
+    {
+     "visible": ".pop-deal"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-deal"
+    }
+   ]
+  },
+  {
+   "name": "net popover on many: hover opens it, leaving closes it",
+   "url": "story.html?data=many",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on many: hover opens it, leaving closes it",
+   "url": "story.html?data=many",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "net popover on minimal: hover opens it, leaving closes it",
+   "url": "story.html?data=minimal",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on minimal: hover opens it, leaving closes it",
+   "url": "story.html?data=minimal",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  },
+  {
+   "name": "net popover on wide-full: hover opens it, leaving closes it",
+   "url": "story.html?data=wide-full",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".net-help"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": ".pop-net"
+    },
+    {
+     "visible": ".pop-net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-net"
+    }
+   ]
+  },
+  {
+   "name": "power popover on wide-full: hover opens it, leaving closes it",
+   "url": "story.html?data=wide-full",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".power-help"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": ".pop-power"
+    },
+    {
+     "visible": ".pop-power"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".pop-power"
+    }
+   ]
+  }
+ ]
+}

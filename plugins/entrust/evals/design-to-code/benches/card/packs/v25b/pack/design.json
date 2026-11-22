@@ -1,0 +1,642 @@
+{
+ "url": "../story.html?data=card-764",
+ "root": ".card",
+ "host": "#host",
+ "viewport": 1000,
+ "tolerance": 1,
+ "ledger": "deviations.json",
+ "frames": [
+  {
+   "name": "card-764",
+   "width": 764,
+   "spec": "frames/card-764/spec.json",
+   "reference": "frames/card-764/reference.png",
+   "url": "../story.html?data=card-764"
+  },
+  {
+   "name": "card-601",
+   "width": 601,
+   "spec": "frames/card-601/spec.json",
+   "reference": "frames/card-601/reference.png",
+   "url": "../story.html?data=card-601"
+  },
+  {
+   "name": "card-486",
+   "width": 486,
+   "spec": "frames/card-486/spec.json",
+   "reference": "frames/card-486/reference.png",
+   "url": "../story.html?data=card-486"
+  },
+  {
+   "name": "card-280",
+   "width": 280,
+   "spec": "frames/card-280/spec.json",
+   "reference": "frames/card-280/reference.png",
+   "url": "../story.html?data=card-280"
+  },
+  {
+   "name": "network-popover",
+   "width": 266,
+   "spec": "frames/network-popover/spec.json",
+   "reference": "frames/network-popover/reference.png",
+   "url": "../story.html?data=card-764&top=150",
+   "root": ".kit-popover[id$=\"-net\"]",
+   "setup": [
+    {
+     "hover": ".c-net .kit-help"
+    }
+   ]
+  }
+ ],
+ "sweep": {
+  "from": 240,
+  "to": 800,
+  "step": 8,
+  "switches": [
+   735,
+   499,
+   465,
+   259
+  ],
+  "lines": [
+   {
+    "name": "w: top row",
+    "when": ".card[data-mode=w]",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     {
+      "selector": ".c-model",
+      "wraps": true
+     },
+     ".c-freq",
+     ".c-cpus",
+     ".c-chip",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     },
+     ".c-price"
+    ]
+   },
+   {
+    "name": "w: footer",
+    "when": ".card[data-mode=w]",
+    "pieces": [
+     {
+      "selector": ".g-foot",
+      "wraps": true
+     },
+     ".c-stock"
+    ]
+   },
+   {
+    "name": "m: top row",
+    "when": ".card[data-mode=m]",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     ".c-freq",
+     ".c-cpus",
+     ".c-chip",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "m: footer",
+    "when": ".card[data-mode=m]",
+    "pieces": [
+     {
+      "selector": ".g-foot",
+      "wraps": true
+     },
+     ".c-stock"
+    ]
+   },
+   {
+    "name": "n: top",
+    "when": ".card[data-mode=n]",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     {
+      "selector": ".c-model",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "n: specs",
+    "when": ".card[data-mode=n]",
+    "pieces": [
+     ".c-freq",
+     ".c-cpus",
+     ".c-chip",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "n: price and stock",
+    "when": ".card[data-mode=n]",
+    "pieces": [
+     ".c-price",
+     ".c-stock"
+    ]
+   },
+   {
+    "name": "s: cpus row",
+    "when": ".card[data-mode=s]:not([data-compact])",
+    "pieces": [
+     ".c-cpus",
+     ".c-chip",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     }
+    ]
+   }
+  ],
+  "align": [],
+  "stories": [
+   {
+    "name": "dense",
+    "url": "../story.html?data=dense"
+   },
+   {
+    "name": "many",
+    "url": "../story.html?data=many"
+   },
+   {
+    "name": "short",
+    "url": "../story.html?data=short"
+   },
+   {
+    "name": "configure",
+    "url": "../story.html?data=configure"
+   }
+  ]
+ },
+ "journeys": [
+  {
+   "name": "network help: leaving closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": ".kit-popover[id$='-net']"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "network help: Escape closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "focus": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "network help: a tap toggles it",
+   "url": "../story.html?data=card-601",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "power help: leaving closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": ".kit-popover[id$='-psu']"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "power help: Escape closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "focus": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "power help: a tap toggles it",
+   "url": "../story.html?data=card-601",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "discount: leaving closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": ".kit-popover[id$='-deal']"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-deal']"
+    }
+   ]
+  },
+  {
+   "name": "discount: Escape closes it",
+   "url": "../story.html?data=card-601",
+   "steps": [
+    {
+     "focus": ".c-deal"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".kit-popover[id$='-deal']"
+    }
+   ]
+  },
+  {
+   "name": "discount: a tap toggles it",
+   "url": "../story.html?data=card-601",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-deal"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-deal']"
+    }
+   ]
+  },
+  {
+   "name": "card-764 network help: leaving closes it",
+   "url": "../story.html?data=card-764",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": ".kit-popover[id$='-net']"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "card-764 power help: leaving closes it",
+   "url": "../story.html?data=card-764",
+   "width": 764,
+   "steps": [
+    {
+     "hover": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": ".kit-popover[id$='-psu']"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "card-486 network help: leaving closes it",
+   "url": "../story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": ".kit-popover[id$='-net']"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "card-486 power help: leaving closes it",
+   "url": "../story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": ".kit-popover[id$='-psu']"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "card-486 discount: leaving closes it",
+   "url": "../story.html?data=card-486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": ".kit-popover[id$='-deal']"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-deal']"
+    }
+   ]
+  },
+  {
+   "name": "card-280 network help: leaving closes it",
+   "url": "../story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".c-net .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": ".kit-popover[id$='-net']"
+    },
+    {
+     "visible": ".kit-popover[id$='-net']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-net']"
+    }
+   ]
+  },
+  {
+   "name": "card-280 power help: leaving closes it",
+   "url": "../story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".c-psu .kit-help"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": ".kit-popover[id$='-psu']"
+    },
+    {
+     "visible": ".kit-popover[id$='-psu']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-psu']"
+    }
+   ]
+  },
+  {
+   "name": "card-280 discount: leaving closes it",
+   "url": "../story.html?data=card-280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": ".kit-popover[id$='-deal']"
+    },
+    {
+     "visible": ".kit-popover[id$='-deal']"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".kit-popover[id$='-deal']"
+    }
+   ]
+  }
+ ]
+}

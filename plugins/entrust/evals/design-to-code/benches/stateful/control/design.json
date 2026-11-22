@@ -1,0 +1,31 @@
+{
+ "url": "index.html",
+ "root": ".card",
+ "tolerance": 1,
+ "ledger": "deviations.json",
+ "frames": [
+  { "name": "card-764", "width": 764, "spec": "frames/card-764/spec.json", "reference": "frames/card-764/reference.png" },
+  { "name": "card-375", "width": 375, "spec": "frames/card-375/spec.json", "reference": "frames/card-375/reference.png" }
+ ],
+ "sweep": {
+  "from": 320,
+  "to": 900,
+  "step": 8,
+  "switches": [672],
+  "stories": [
+   { "name": "dense", "url": "index.html?data=dense" },
+   { "name": "many", "url": "index.html?data=many" }
+  ]
+ },
+ "journeys": [
+  { "name": "sheet: Details opens it, Close closes it", "steps": [
+   { "width": 375 }, { "click": ".card .details" }, { "visible": "#sheet" }, { "click": ".sheet__close" }, { "hidden": "#sheet" } ] },
+  { "name": "sheet: a tap opens it, a tap on the backdrop closes it", "touch": true, "steps": [
+   { "width": 375 }, { "tap": ".card .details" }, { "visible": "#sheet" }, { "tap": [24, 120] }, { "hidden": "#sheet" } ] },
+  { "name": "list: emptied by the search and restored, the cards come back", "steps": [
+   { "width": 375 }, { "fill": ["#q", "zzz"] }, { "hidden": ".card" }, { "visible": ".empty" },
+   { "fill": ["#q", ""] }, { "visible": ".card" }, { "hidden": ".empty" } ] },
+  { "name": "sidebar: Filters opens it beside the list and closes it", "steps": [
+   { "click": "#filters" }, { "visible": "#sidebar" }, { "click": "#filters" }, { "hidden": "#sidebar" } ] }
+ ]
+}

@@ -1,0 +1,42 @@
+[
+ {
+  "landmark": [
+   ".c-vendor",
+   ".c-neticon",
+   ".c-nethelp",
+   ".c-powerhelp",
+   ".c-dealbtn",
+   ".c-lowicon",
+   "New",
+   "High performance",
+   "×2 CPU",
+   "64 потока"
+  ],
+  "property": "region",
+  "region": [
+   0,
+   0,
+   764,
+   520
+  ],
+  "category": "system",
+  "status": "proposed",
+  "reason": "Pixel residue of icons and glyphs: the kit has no AMD logo, so the vendor is a bold grey wordmark in text; the network, discount, low-stock and settings icons are inline SVG approximations of the drawn ones; the help glyph is the kit's. Positions and sizes of all of them are measured separately.",
+  "options": "A: accept as is (no asset dependency; the vendor string from data renders for any vendor). B: the owner supplies the logo SVGs and the exact icons, a small follow-up."
+ },
+ {
+  "landmark": [
+   "32 ядер",
+   "256 ГБ",
+   "DDR3 ECC",
+   "2 × 838"
+  ],
+  "property": "x",
+  "frame": "card-764",
+  "max": 14,
+  "category": "system",
+  "status": "proposed",
+  "reason": "At 764 px the frame's right columns (total cores, RAM, disks) sit 13 to 14 px left of where the card puts them: the frame leaves 25, 38, 26 and 36 px between its columns, the card uses a uniform 28 px column gap and the Inter metrics of the render font. Tried: wider gaps (30 and 32 px), margins before the RAM, disks and price columns, a right padding on the disks: the mode A then no longer fits 764 px with this data and the price column moved right instead (measured +14 to +24 px).",
+  "options": "A: accept the 13 to 14 px (this build). B: per-column gaps copied from the frame, which only hold for this data and would move mode A's switch above 764 px for the dense data. C: the owner supplies the design's column widths."
+ }
+]
