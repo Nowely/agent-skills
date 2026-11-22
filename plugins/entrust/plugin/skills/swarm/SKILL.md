@@ -2,7 +2,7 @@
 name: swarm
 description: >-
   Runs a swarm: up to fifty bulk agents over a file of units, launched by one script with a
-  concurrency cap, and reduced by one cheap agent to a single summary the orchestrator reads; shared
+  concurrency cap, and reduced by one cheap agent to a single summary the coordinator reads; shared
   state and free messaging between agents are experiment arms, never the default.
 disable-model-invocation: true
 metadata:

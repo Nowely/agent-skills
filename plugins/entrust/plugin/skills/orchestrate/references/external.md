@@ -60,7 +60,7 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
     CHECK: how the agent can tell it is right
     RETURN: exactly what to hand back
 
-Apply [skills per invocation](../SKILL.md#skills-per-invocation) to this prompt, including each `RESUME:`.
+Apply [skills per invocation](plan.md#skills-per-invocation) to this prompt, including each `RESUME:`.
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 

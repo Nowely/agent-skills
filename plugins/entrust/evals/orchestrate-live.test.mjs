@@ -465,9 +465,9 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
   // "no codex" is zero Codex agents: a plan that names one by model has not honoured it.
   if (!codexPlanned && (CODEX_SLUG.test(text) || /\bCodex\s+(Astra|Sol|Terra|Luna)\b/.test(text)))
     problems.push("an all-Claude plan names a Codex agent");
-  // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
-  // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
-  // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
+  // No Claude-agent requirement: the worker may be a Codex agent the user named. That the coordinator edits
+  // nothing itself is judged after "go" (runProblems), and whether every Claude Agent call that does run
+  // carries a tag is judged there too, on the calls themselves.
   if (codexPlanned && (!/\bCodex\b/.test(text)
       || !/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text)))
     problems.push("the plan announces no composition: the word Codex and a count or \"zero\"");
@@ -506,8 +506,9 @@ const SCHEMA_FILE = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fi
 const readJsonFile = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
 
 // What a run left: each agent's prompt file and report under the run directories, keyed by the agent's
-// directory name, which is the id the plan registered; and the receipts the coordinator's own runner
-// ledger holds, read from the --ledger its capture-check calls named.
+// directory name, which is the id the plan registered; and the receipts the ledgers hold that the
+// coordinator's lint of its draft took (--receipts, the workers' and the verifier's ledgers), with any
+// --ledger a root capture-check call named, which the gate also reports as the coordinator running a check.
 function runEvidence(dirs, s) {
   const prompts = [], reports = [];
   for (const run of dirs) {
@@ -523,9 +524,11 @@ function runEvidence(dirs, s) {
   // A ledger named through $TMPDIR (measured on the rerun of 2026-09-28: `--ledger $TMPDIR/v1-ledger.jsonl`
   // in a brief) is this machine's temporary directory, which the agents share.
   const tmp = (process.env.TMPDIR || os.tmpdir()).replace(/\/+$/, "");
-  const ledgers = new Set(s.toolUses.filter((u) => u.parent === null && /capture-check\.mjs/.test(String(u.input.command ?? "")))
-    .map((u) => /--ledger\s+"?([^"\s]+)"?/.exec(String(u.input.command))?.[1]).filter(Boolean)
-    .map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
+  const root = s.toolUses.filter((u) => u.parent === null).map((u) => String(u.input.command ?? ""));
+  const ledgers = new Set([
+    ...root.filter((c) => /capture-check\.mjs/.test(c)).map((c) => /--ledger\s+"?([^"\s]+)"?/.exec(c)?.[1]),
+    ...root.filter((c) => /lint-draft\.mjs/.test(c)).flatMap((c) => [...c.matchAll(/--receipts\s+"?([^"\s]+)"?/g)].map((m) => m[1])),
+  ].filter(Boolean).map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
   const ledger = [...ledgers].flatMap((f) => { try { return parseReceipts(fs.readFileSync(f, "utf8")); } catch { return []; } });
   return { prompts, reports, ledger, ledgers: [...ledgers] };
 }
@@ -949,8 +952,8 @@ const NO_CODEX_TASK =
   + "joins words with hyphens, with a test in test/slug.test.mjs. CHECK: node --test passes, run by an agent "
   + "that did not write the code. RETURN: the files and the test count.";
 
-test("plan only, no codex: the codex page is never loaded, nothing is registered, and the card still shows",
-  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the four rows",
+test("plan only, no codex: the codex page is never loaded, nothing is registered, the card still shows, and the role catalogue stays unread",
+  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference, for its card, is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the four rows; a reference is read when its step needs it, and each agent reads its own row of the role catalogue, so a default plan leaves roles.md to them",
   async () => {
     const dir = caseDir(6, "plan-no-codex");
     const scratch = scratchClone(dir);
@@ -967,9 +970,11 @@ test("plan only, no codex: the codex page is never loaded, nothing is registered
     if (wrong) problems.push(wrong);
     if (r.killed) problems.push("the session was killed at the timeout");
     problems.push(...planProblems({ s, scratch, head0, codexPlanned: false }));
-    // Native composition comes from the common plan reference without loading the external adapter.
-    const readIt = s.toolUses.some((u) => u.parent === null && /references[\\/]plan\.md/.test(JSON.stringify(u.input)));
-    if (!readIt) problems.push("the plan never read references/plan.md before composing");
+    // The card comes from the common plan reference without loading the external adapter; the role catalogue
+    // is the agents' to read, each its own row, so the coordinator of a default plan never opens it.
+    const reads = (file) => s.toolUses.some((u) => u.parent === null && new RegExp(`references[\\\\/]${file}\\.md`).test(JSON.stringify(u.input)));
+    if (!reads("plan")) problems.push("the plan never read references/plan.md, where its card is defined");
+    if (reads("roles")) problems.push("the coordinator of a default plan read references/roles.md, which its agents read for their own rows");
     return settle(dir, problems);
   });
 

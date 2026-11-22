@@ -13,13 +13,13 @@ when a reference is read as a plain file.
 
 - [Composition](#composition), [registering the plan](#registering-the-plan), [state](#state-and-artifacts)
 - [Models](#model-tiers), [bounds](#bounds), [Workflow](#a-workflow), [mechanism](#mechanism)
-- [Coordinator](#delegated-coordinator), [completion](#done-running-and-the-next-report-path), [result](#the-result)
+- [Foreman](#the-foreman), [completion](#done-running-and-the-next-report-path), [result](#the-result)
 - [Harvest](#a-worktree-agents-harvest), [collisions](#writers-collided), [request](#deciding-a-request), [rule](#the-rule), [synthesis](#the-synthesis)
 
 ## Composition
 The sibling's [composition table](../SKILL.md#composition) holds under this mode: an allocation or refusal the user states, the announcement, attribution, no backfill, no allow-rules. Implementers are not duplicated: one per task, split by ownership, and which side takes which is your call.
 
-Allocate inside the page's bounds by judgement, not to fill a band; [roles.md](../../orchestrate/references/roles.md) defines the responsibility, rights and return of each role seen so far, and a new one is named the same way. Run a decisive check before commissioning a panel. Keep dependent execution in one agent; keep its verification independent. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; work that collides anyway is repaired as [results.md](#writers-collided) says.
+Allocate inside the page's bounds by judgement, not to fill a band; [roles.md](../../orchestrate/references/roles.md) defines the responsibility, rights and return of each role seen so far, and a new one is named the same way. Run a decisive check before commissioning a panel. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; work that collides anyway is repaired as [results.md](#writers-collided) says.
 
 
 ## Registering the plan
@@ -82,11 +82,11 @@ Wait for background agents as the [claude adapter](../../claude/SKILL.md#waiting
 Never launch an agent under another state directory while an armed agent is alive: containment is the driver's own inode check against its one state directory, and a peer under another one is outside what that check can see.
 
 
-## Delegated coordinator
+## The foreman
 
 A foreman is launched as the [claude adapter](../../claude/SKILL.md#the-foreman) says. Give it the
 approved plan and quoted user authority, the generic foreman role and this adapter's paths and rules; it
-keeps the parent's user conversation out of its return. Its `entrust:relay` wrappers run in the
+keeps the coordinator's user conversation out of its return. Its `entrust:relay` wrappers run in the
 foreground like its Claude workers.
 
 ## DONE, RUNNING and the next report path

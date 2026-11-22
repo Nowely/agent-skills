@@ -11,7 +11,7 @@ const { cases: CASES, test } = registry();
 test("skills requests apply to each invocation with their stated scope",
   "task-wide requests must reach continuations, while one-off requests must not carry forward",
   () => {
-    const policy = fs.readFileSync(path.join(ROOT, "skills/orchestrate/SKILL.md"), "utf8");
+    const policy = fs.readFileSync(path.join(ROOT, "skills/orchestrate/references/plan.md"), "utf8");
     const external = fs.readFileSync(path.join(ROOT, "skills/orchestrate/references/external.md"), "utf8");
     const claude = fs.readFileSync(path.join(ROOT, "skills/claude/SKILL.md"), "utf8");
     const codex = fs.readFileSync(path.join(ROOT, "skills/codex/references/models.md"), "utf8");
@@ -22,7 +22,7 @@ test("skills requests apply to each invocation with their stated scope",
       && policy.includes("thread may still contain skills read earlier")
       && policy.includes("without inherited history") && policy.includes("omit `RESUME:`")
       && policy.includes("host's no-history fork") && codex.includes('fork_turns: "none"')
-      && external.includes("#skills-per-invocation") && claude.includes("#skills-per-invocation")
+      && external.includes("plan.md#skills-per-invocation") && claude.includes("orchestrate/references/plan.md#skills-per-invocation")
       || "per-invocation skills policy or its entry points are missing";
   });
 
