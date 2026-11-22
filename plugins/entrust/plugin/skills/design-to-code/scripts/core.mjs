@@ -509,7 +509,14 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // and a half of where that width puts it. A wider font changes every text's width alike and leaves the height; a
   // wordmark drawn in its own letters (a stand-in logo) is far narrower or wider than its ink says.
   if (boxesSpec) for (const h of heights) {
-    if (h.joined) continue;
+    // A text whose box the builder gave (an icon joined to its label): its height is not ink, so only its width tells,
+    // and only wider: a box drawn round an icon as well makes the page's text look narrower, never wider.
+    if (h.joined) {
+      if (!fontRatio || !(h.drawn?.width > 0)) continue;
+      const across = h.page.width / fontRatio / h.drawn.width, gap = h.page.width / fontRatio - h.drawn.width;
+      if (across - 1 >= 0.1 && gap >= 6) add(h.label, "type", "as drawn", `${sized(across)}, by its width against the frame's font: a size of another class; set the size the frame draws, or, if this is the kit's class for the role, propose it`, { delta: Math.round((across - 1) * 100) });
+      continue;
+    }
     if (Math.abs(h.ratio - 1) >= 0.2) {
       add(h.label, "type", "as drawn", `${sized(h.ratio)}, by its ink height: a size of another class; set the size the frame draws, or, if this is the kit's class for the role, propose it`, { delta: Math.round((h.ratio - 1) * 100) });
       continue;
