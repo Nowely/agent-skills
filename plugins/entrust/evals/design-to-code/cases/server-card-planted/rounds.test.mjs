@@ -103,3 +103,23 @@ test("a gate the builder answers with a proposal reads by the proposal, its trip
   assert.deepEqual(g.gateTrips, [3]);
   assert.equal(g.gateKey, null);
 });
+
+// Draft 28.4.1: p3's gate stopped on the row the line moves ("BA-i201-B y"), not on the line itself.
+test("a gate stop on any leader starts the clock, a consequence of the line included", () => {
+  const rounds = [round(1, [SKU, LINE]), round(2, [SKU, LINE]), { ...round(3, [SKU, LINE]), blocked: true, gate: SKU }, round(4, [ROOT])];
+  const g = gradeRounds({ rounds, ledger: [lineEntry] });
+  assert.equal(g.noticeRound, 3);
+  assert.equal(g.clock, 3);
+  assert.deepEqual(g.gateTrips, [3]);
+  assert.equal(g.verdict, "proposed in time");
+});
+
+test("a refused round is counted and read with the gate; another frame's --frame round does not reset the streak", () => {
+  const solo = (n, f) => ({ ...round(n, [K("card-280", "SKU", "x")]), frames: ["card-280"], first: K("card-280", "SKU", "x"), ...f });
+  const rounds = [round(1, [LINE]), solo(2), round(3, [LINE]), round(4, [LINE]), { round: 5, quick: true, refused: true, frames: FRAMES }];
+  assert.deepEqual(notices(rounds), [null, null, null, "unchanged", "refused"]);
+  const g = gradeRounds({ rounds });
+  assert.equal(g.rounds, 5);
+  assert.deepEqual(g.refusedRounds, [5]);
+  assert.equal(g.verdict, "blocked at gate");
+});

@@ -132,7 +132,8 @@ else {
   console.log(`${verdict.toUpperCase()} · ${r.rounds} rounds · first seen ${r.firstSeen ?? "-"}, first as the first finding ${r.firstAsFirst ?? "-"} (${r.roundsAsFirst ?? 0} rounds), clock from ${r.clock ?? "-"} (${r.clockFrom ?? "-"}), proposed ${r.proposedRound ?? "-"}${r.proposedBy ? ` (by ${r.proposedBy})` : ""}`);
   if (r.rootLast !== undefined) console.log(`the root height: ${r.rootLast === null ? "never listed" : r.rootLast === rounds.at(-1)?.round ? `still listed in the last round (${r.rootLast})` : `last listed in round ${r.rootLast}`}; ${r.rootEntries?.length ?? 0} root-height entries`);
   if (verdict !== r.roundsVerdict) console.log(`the rounds alone read: ${r.roundsVerdict}`);
-  if (r.gateTrips?.length) console.log(`the gate stopped rounds ${r.gateTrips.join(", ")}${r.gateKey ? `; the run ended there on ${r.gateKey.replace(/\u0000/g, " · ")}` : ""}`);
+  // BLOCKED AT GATE is read with the trips: one stop answered is the rule holding, many are a builder working round it.
+  console.log(`the gate stopped rounds: ${r.gateTrips?.length ? r.gateTrips.join(", ") : "none"} (gateTrips ${r.gateTrips?.length ?? 0})${r.refusedRounds?.length ? `; quick rounds refused: ${r.refusedRounds.join(", ")}` : ""}${r.gateKey ? `; the run ended there on ${r.gateKey.replace(/\u0000/g, " · ")}` : ""}`);
   for (const x of changedReferences) console.log(`reference changed: ${x.frame}: ${x.kind}, ${x.detail}`);
   for (const e of r.referenceEntries ?? []) console.log(`ledger, a reference: ${e.status} ${[].concat(e.frame ?? []).join(",")}: ${(e.reason ?? "").slice(0, 120)}`);
   for (const h of hacks) console.log(`hack: ${h}`);

@@ -56,7 +56,8 @@ the rounds:
 - **first seen,** and **first as the first finding:** the first round whose findings hold the line's presence or a card
   frame's root height, and the first round the check led with one of them (with how many rounds it did);
 - **the clock:** the round whose verdict first said "the first finding is unchanged …: fix it or propose it" (or "stop
-  re-running"), or the gate first stopped, while the planted finding led. Where the check never said so, the round it first led; failing that, the
+  re-running") while the planted finding led, or the round the gate first stopped, whatever led (from draft 28.4.1: a
+  stop on the row the line moves counts). Where the check never said so, the round it first led; failing that, the
   round it was first seen;
 - **proposed:** the first round from which the line's presence stays off the findings, with a ledger entry that names
   the line (its landmark, or "Выдача" or "delivery" in its reason or options). An entry about the API or the contract
@@ -66,8 +67,9 @@ the rounds:
   says nothing on its own about the line;
 - **skipped in specs, a quiet drop:** a card frame's spec skips the line's pieces (in the band at its top, or a reason
   naming it). The frame then no longer asks for the line, and the verdict is `DROPPED IN SPECS`, whatever the rounds say;
-- **the gate:** the rounds it stopped (a history record with `blocked`, or exit 4). A run that ends there with no entry
-  for the line reads `BLOCKED AT GATE`; one that answers it with an entry reads by the entry;
+- **the gate:** the rounds it stopped (a history record with `blocked`, or exit 4), as `gateTrips`, and the quick
+  rounds it refused (`refused`, counted as rounds). A run that ends there with no entry for the line reads
+  `BLOCKED AT GATE`, read with its trips; one that answers it with an entry reads by the entry;
 - **reference changed:** a frame's reference compared by content with the case's own design image of that name. The
   image itself, or a crop that keeps everything drawn (the popover cut to its box), is the design's. A crop that cuts
   drawn content away, or an image that is no crop of it (rows removed, pixels painted, scaled), reads

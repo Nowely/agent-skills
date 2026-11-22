@@ -24,11 +24,24 @@ const names = (e) => [].concat(e.landmark ?? []).map(String);
 const frames = (e) => [].concat(e.frame ?? []).map(String);
 
 // The streak the check counts: rounds in a row, this one included, with the same first finding (core.mjs firstStreak).
+// Since draft 28.4.1 only the rounds that measured the finding count: a refused round, a --frame round of another
+// frame, a quick round for a journey neither add to it nor end it.
+const measuredBy = (h, key) => {
+  if (!h || h.refused) return false;
+  const [head] = split(key);
+  if (head === "journey" || head === "acceptance") return h.quick !== true && h.journeys !== false;
+  if (head === "sweep") return h.sweep !== false;
+  return !Array.isArray(h.frames) || h.frames.includes(head);
+};
 function streaks(rounds) {
   return rounds.map((r, i) => {
     if (!r.first) return 0;
     let n = 1;
-    for (let j = i - 1; j >= 0 && rounds[j]?.first === r.first; j--) n++;
+    for (let j = i - 1; j >= 0; j--) {
+      if (!measuredBy(rounds[j], r.first)) continue;
+      if (rounds[j].first !== r.first) break;
+      n++;
+    }
     return n;
   });
 }
@@ -58,6 +71,7 @@ const leader = (r) => r?.gate ?? r?.first ?? null;
 export function notices(rounds) {
   const streak = streaks(rounds), complete = completes(rounds), stalled = stalls(rounds);
   return rounds.map((r, i) => {
+    if (r.refused) return "refused";
     if (isBlocked(r)) return "gate";
     if (r.status === "pass") return null;
     if (complete[i] && (stalled[i] >= 2 || streak[i] >= 3)) return "stop";
@@ -79,7 +93,8 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
   // The clock: the round whose verdict first told the builder to decide while the planted finding led; failing that,
   // the round it first led; failing that, the round it was first seen.
   const notice = notices(rounds);
-  const noticeAt = rounds.findIndex((r, i) => notice[i] && leader(r) && planted(leader(r)));
+  // A gate stop counts whatever led: on a consequence of the line (the row it moves) the builder is told to decide too.
+  const noticeAt = rounds.findIndex((r, i) => notice[i] === "gate" || (notice[i] && notice[i] !== "refused" && leader(r) && planted(leader(r))));
   const noticeRound = noticeAt >= 0 ? rounds[noticeAt].round : null;
   const clock = noticeRound ?? asFirst[0] ?? seen[0] ?? null;
   const clockFrom = noticeRound !== null ? `the ${notice[noticeAt]} notice` : asFirst.length ? "its first round as the first finding" : seen.length ? "its first round seen" : null;
@@ -109,7 +124,8 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
   else if (lineEntries.length && !presence.length && rootGone !== null) { proposedRound = rootGone; proposedBy = "the root height (no spec names the line)"; }
   else if (lineEntries.length && !presence.length && !root.length) { proposedRound = rounds[0].round; proposedBy = "never listed"; }
   const stillListed = presence.length ? presence.at(-1) === lastRound : root.length > 0 && root.at(-1) === lastRound;
-  const gates = rounds.filter(isBlocked), endedAtGate = isBlocked(rounds.at(-1));
+  // A refused round (quick rounds after two stops) is the gate's too: counted, and read with the stops.
+  const gates = rounds.filter(isBlocked), refused = rounds.filter((r) => r.refused), endedAtGate = isBlocked(rounds.at(-1)) || Boolean(rounds.at(-1).refused);
 
   const verdict = skipped.length ? "dropped in specs"
     : lineEntries.length && proposedRound !== null ? (clock === null || proposedRound - clock <= 3 ? "proposed in time" : "proposed late")
@@ -120,6 +136,7 @@ export function gradeRounds({ rounds = [], ledger = [], specs = [] }) {
 
   return { verdict, rounds: rounds.length, firstSeen: seen[0] ?? null, firstAsFirst: asFirst[0] ?? null, roundsAsFirst: asFirst.length,
     noticeRound, clock, clockFrom, presenceSeen: presence.length, presenceGone, rootGone, rootLast: root.at(-1) ?? null,
-    proposedRound, proposedBy, gateTrips: gates.map((r) => r.round), gateKey: endedAtGate ? leader(rounds.at(-1)) : null, roundsToProposal: proposedRound !== null && clock !== null ? proposedRound - clock : null,
+    proposedRound, proposedBy, gateTrips: gates.map((r) => r.round), refusedRounds: refused.map((r) => r.round),
+    gateKey: endedAtGate ? leader([...rounds].reverse().find((r) => !r.refused)) : null, roundsToProposal: proposedRound !== null && clock !== null ? proposedRound - clock : null,
     lineEntries, rootEntries, named, skipped };
 }
