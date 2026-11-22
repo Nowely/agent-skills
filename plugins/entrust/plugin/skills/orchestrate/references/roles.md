@@ -20,7 +20,7 @@ host transports user messages and Claude's replies.
 | worker | one deliverable by file ownership, in the live tree or a worktree, or the harvest of an approved worktree result; writes its own tests and runs its checks as [Checks](#checks) says | its owned files, or its worktree, harvested as a diff | the diff, with the counts of what ran and its ledger's path; commits only with existing authority and runtime permission |
 | plan critic | judges the plan as written, as [its section](#the-plan-critic) says | nothing | `result`: the verdict `sound`, `change` or `stop`, at most five ranked objections, and the acceptance checks the verifier should run |
 | architecture critic | challenges the chosen approach and the solution's architecture, as [its section](#the-architecture-critic) says | nothing | `result`: the verdict `keep`, `change approach` or `stop`; at most five ranked objections; on `change approach`, the alternative in a few lines, with what it removes or moves and who relies on it; and what evidence would change the verdict |
-| verifier | checks the final combined tree, or for read-only work the workers' findings, against the requirements, as [its section](#the-verifier) says | its ledger and logs under its temporary directory | `evidence`: a requirement → evidence table; `open`: the unverified parts |
+| verifier | checks the final combined tree, or for read-only work the claims of the workers' findings, against the requirements, as [its section](#the-verifier) says | its ledger and logs under its temporary directory | `evidence`: a requirement → evidence table; `open`: the unverified parts |
 
 ### The plan critic
 
@@ -47,11 +47,11 @@ asked; the judge, who picks among candidates; and the review's design direction,
 
 It works from its brief alone, which carries what the orchestrate page's [Verification](../SKILL.md#verification)
 gives it, and names its target and whole scope. Its target is the final combined tree or, for read-only work
-(research, analysis, review), the workers' findings. On a tree it runs the full relevant suite as [Checks](#checks)
-says and reports every failure with its command and output; a requirement with no executed evidence is `not proven`,
-never passed. On findings it re-derives each material claim from the cited source or command, and a claim it cannot
-re-derive is `not proven`. A verdict that rests on judgement alone, with no executed check, says so. Its thread may
-be continued to read the final draft, as [answer.md](answer.md) says.
+(research, analysis, review), the claims of the workers' findings. On a tree it runs the full relevant suite as
+[Checks](#checks) says and reports every failure with its command and output; a requirement with no executed
+evidence is `not proven`, never passed. On findings it re-derives each material claim from the cited source or
+command, and a claim it cannot re-derive is `not proven`. A verdict that rests on judgement alone, with no executed
+check, says so. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
 
 ## Other roles
 
