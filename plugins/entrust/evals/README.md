@@ -101,7 +101,7 @@ development validation passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) 
 subagents they spawn, two cheap Sonnet sessions for the activation pair, and Codex turns: one Astra turn,
 a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe, which checks the
 `subagentThreads` of an agent that took the invitation, and the Codex agents the plans of the full-run,
-split-critic and advisor cases choose. Its header lists the cases and what each spends. Without
+plan-critic and advisor cases choose. Its header lists the cases and what each spends. Without
 `ENTRUST_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.
 
 Publishing an already merged, versioned candidate reuses its recorded checks and required PR CI. It does not

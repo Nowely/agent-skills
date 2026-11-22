@@ -28,12 +28,13 @@
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
 //   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
-//   F6, Q3a      briefs only after the split critic, each naming its file; the shared file has one writer   7
-//   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
+//   F6, Q3a      briefs only after the plan critic; the shared file has one writer                       5, 7
+//   approach     the architecture critic, its trigger met, returns before the plan critic and any worker  5, 7
+//   F4, P8b      the draft is read after its lint, by a final reader; nothing writes it after; it goes out 5, 7
 //   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
 //   P13b, F20a   the draft linted first; the answer lints clean, names every agent, credits each fact right 5, 7
-//   F20b         every return, the critic's too, in the five fields against its schema, before synthesis  5, 7
-//   F9, F10, F15, F21  briefs name the runner, no check read inline whole, inline reads priced            5, 7
+//   F20b         every return, the reader's too, in the five fields against its schema, before synthesis  5, 7
+//   F9, F10, F15, F21  briefs name the runner, the coordinator runs no check and edits nothing, reads priced 5, 7
 //   F11, F19, P10a     a write agent's ENVIRONMENT: line says something and names paths that exist        5, 7
 // What it spends: sessions under Opus for cases 1 and 5 to 8, one under Fable for case 2, two cheap Sonnet
 // sessions for case 9, the subagents they spawn, and Codex turns: one Astra in case 4 (two with the
@@ -535,13 +536,13 @@ function runEvidence(dirs, s) {
 
 // Everything after "go" that the answer and its evidence must show (lib/gate-checks.mjs runProblems, one
 // delta each), and the measurements the page asks the plan to price, saved beside the case, never asserted.
-function runProblems({ s1, s2, dirs, dir, request, phases }) {
+function runProblems({ s1, s2, dirs, dir, request, phases, architecture = false }) {
   const { prompts, reports, ledger, ledgers } = runEvidence(dirs, s2);
   const reg = registeredPlan(path.join(dir, "scratch"));
   const schema = readJsonFile(SCHEMA_FILE);
   // The fixtures stage nothing and run no daemon, so the capsule's staged inputs and tools are empty here;
   // gate-checks.test.mjs pins that half against a staged fixture.
-  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, reportOf: readJsonFile,
+  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, architecture, reportOf: readJsonFile,
     cwd: path.join(dir, "scratch"), tmp: [os.tmpdir(), process.env.TMPDIR] });
   save(dir, "run-evidence.json", JSON.stringify({ plan: reg, agents: r.agents, receipts: r.receipts, ledgers,
     prompts: prompts.map((p) => p.id), reports: reports.map((x) => x.id) }, null, 2));
@@ -940,8 +941,12 @@ test("the full run under Opus: plan, go, run",
       problems.push(`${reportPaths.length} report file(s) named by the agent calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
-    // The slug task's phases: the fan-out's returns, the verification, the synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 4 }));
+    // A new lib/slug.mjs adds a module, the architecture critic's trigger: it runs first, then the plan critic, and
+    // lib/slug.mjs has one writer; with an architecture critic, a final reader reads the draft (runProblems).
+    problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
+    // The slug task's phases: the architecture critique, the plan critique, the fan-out's returns, the
+    // verification, the synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 6, architecture: true }));
     return settle(dir, problems);
   });
 
@@ -981,7 +986,7 @@ test("plan only, no codex: the codex page is never loaded, nothing is registered
 // --------------------------------------------------------------- 7
 
 // Two units that share one interface: the task changes the interface, so exactly one worker must own it,
-// and the split critic is what says so before any worker brief exists.
+// and the plan critic judges that before any worker brief exists.
 function splitProject(dir) {
   const s = path.join(dir, "scratch");
   const files = {
@@ -1009,10 +1014,10 @@ const SPLIT_TASK =
   + "both import it, one worker per file, with every test in test/ still passing. CHECK: node --test passes, run "
   + "by an agent that wrote none of it. RETURN: the files changed and the test count.";
 
-test("the split critic: no worker brief before it returns, each brief names its file, the shared interface has one owner",
-  "D12 (#16's acceptance check, #15 F6: T5 fanned out before its split critique finished): a brief is written from the critic's corrected split, so none can exist before it",
+test("the plan critic: no worker brief before it returns, the shared interface has one owner, and the architecture critic comes first",
+  "D12 (#16's acceptance check, #15 F6: T5 fanned out before its split critique finished): a brief is written from the plan the critic judged, so none can exist before it; the corrected-split file the split critic wrote, and each brief's naming of it, are no longer asserted, since the plan critic returns objections, not a split; renaming an export two files import changes a contract other units consume, so the architecture critic runs and a final reader reads the draft",
   async () => {
-    const dir = caseDir(7, "split-critic");
+    const dir = caseDir(7, "plan-critic");
     const scratch = splitProject(dir);
     const head0 = git(scratch, "rev-parse", "HEAD").trim();
     const sessionId = crypto.randomUUID();
@@ -1035,8 +1040,8 @@ test("the split critic: no worker brief before it returns, each brief names its 
     if (nodeTest.code !== 0) problems.push(`node --test in the scratch exited ${nodeTest.code}`);
     if (!/export const format\b/.test(fs.readFileSync(path.join(scratch, "lib", "shared.mjs"), "utf8"))) problems.push("lib/shared.mjs does not export format");
     if (git(scratch, "rev-parse", "HEAD").trim() !== head0) problems.push("HEAD moved, so the run committed");
-    // Split critique, fan-out, verification, synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 5 }));
+    // Architecture critique, plan critique, fan-out, verification, synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, architecture: true }));
     return settle(dir, problems);
   });
 

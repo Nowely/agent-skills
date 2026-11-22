@@ -11,14 +11,14 @@ Use it when grouping several workers reduces coordination work and the host allo
 Reserve slots for the foreman and its workers; if nested delegation is unavailable, the coordinator
 runs the same plan itself. Name that allocation in the approved plan.
 
-Give the foreman the approved plan, relevant user authorisation, the corrected split,
+Give the foreman the approved plan with the critics' objections as applied, relevant user authorisation,
 task-specific skills or references, artifact locations, writable roots and the runtime's constraints.
 Its return goes to the coordinator; it has no authority to publish or address the user on the
 coordinator's behalf.
 
 ## Running the plan
 
-Write each brief from the corrected split, with concrete inputs, ownership and what done looks like.
+Write each brief from the approved plan, with concrete inputs, ownership and what done looks like.
 Use the host's delegation, continuation and completion facilities; use an integration's adapter only
 for workers that actually require it. Group independent workers within the agreed capacity; keep a
 shared prerequisite with one owner. Workers and their verification follow

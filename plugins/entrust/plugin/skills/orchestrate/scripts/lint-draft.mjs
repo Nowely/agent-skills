@@ -8,7 +8,7 @@
 // path into user-facing text, and #15 F16 counted the same machinery in eight later sessions (agent ids,
 // report paths, exit mechanics, a RESUME id, a 3,000-word wall). A rule a reader applies to their own prose
 // is the rule that did not hold; a linter over the text needs no reading of intent. It checks what can be
-// checked mechanically and nothing more: the critic still reads the answer for what it means.
+// checked mechanically and nothing more: the draft's reader still reads it for what it means.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -26,9 +26,7 @@ Reads FILE (stdin when it is - or absent) and prints one line per hit:
   LINT=<rule>: <line number>: <the line, cut to 120 characters>
 then, always:
   WORDS=<words in the draft>
-  SHA256=<the draft digest: the sha256 of the bytes read. It is one line of
-          the critic's manifest; the manifest digest the critic returns is
-          another number, the sha256 of the manifest file itself>
+  SHA256=<the draft digest: the sha256 of the bytes read>
   HITS=<n>                   the last line
 Exit 0 with no hit, 1 with any, 2 when nothing was linted (ERROR=<reason>).
 

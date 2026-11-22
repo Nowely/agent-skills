@@ -14,7 +14,7 @@ quality only when it materially changes the allocation, with the approval that s
 | Row | Contents |
 | --- | --- |
 | work | deliverables, ownership, interfaces and completion criteria |
-| team | coordinator role and each agent's role, one model display name and policy coverage in one place; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
+| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; the plan critic, or why the plan is too small to need it; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
 | checks | who verifies what and which evidence decides; only when the plan has an external route, or a usage window is near its limit: the adapter status's source and freshness, the OpenCode model list's source (Desktop or the whole catalogue), the quota windows and the exact launch validation |
 
@@ -45,7 +45,7 @@ batches, all within the orchestrate page's alive-at-once bound. The card recomme
 
 | Profile | Allocation |
 |---|---|
-| balanced (default) | the bulk tier for scouting, the top tier for consequential planning or architecture, and an independent verifier for material findings |
+| balanced (default) | the default team, with the bulk tier for scouting |
 | speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the review the consequences warrant. |
 | quality | The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
 
