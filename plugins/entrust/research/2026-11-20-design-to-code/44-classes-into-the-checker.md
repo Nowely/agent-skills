@@ -38,6 +38,16 @@ only that the sidebar shows and hides. This is the owner's "width while open" cl
 |---|---|---|---|---|---|
 | 8 | **The component's width inside a journey.** After each journey step, the check measures the root's container. Below the sweep's `from` (the narrowest supported width), or with the page scrolling sideways, it is a finding. When the container's width changed in the step, the component is compared with a fresh load whose container is held at that width (item 2's hold). A difference is a finding. | checker | the bench page with the sidebar, kept as a new mutant `squeezed-by-sidebar`, and a fixed control whose sidebar stacks below a width; the catalogue's start code with its sidebar open | the mutant caught; the fixed control clean; the catalogue's start code caught while open, its reference clean; no clean build blocked on either bench | a fresh load per width-changing step |
 
+**Item 9, added before its work (E152, found again by a catalogue arm).** Arm k3 on `d501762` was ACCEPTED by the
+catalogue's hidden judge (width, choice, basics), in 20 calls, yet handed over `incomplete`. The Details openers on
+`story.html` have no journey there, because that page has no sheet. A journey on the consumer page opens and closes the
+same opener. This is the second catalogue arm stopped by it; c1 on 28.5 was the first. It is a failure the checker
+causes, which the success clause rules out, and the Terra gate on this case would meet it.
+
+| # | Item | Where | Failing control first | Pass | Cost |
+|---|---|---|---|---|---|
+| 9 | **An opener covered on another page.** An opener whose target is not on its page counts as covered when a journey on another checked page opens and closes an opener with the same selector, role and accessible name. A same-named opener with another role or target does not count. | checker | k3's frozen arm (`incomplete` today, on the Details openers alone); a negative twin: an unrelated opener that shares the text but not the role or target | k3 reads `pass` or `pending`; the negative twin stays `incomplete`; no clean build blocked | none |
+
 **Benches move into the repository:** the card bench and the stateful bench live in the session's scratchpad. They
 move under `evals/design-to-code/` so that their controls are tests that survive the session.
 
