@@ -96,6 +96,12 @@ or a drift up to 24 px carried from the pieces before, is a note; the type's siz
 texts or more, is a finding when it is 10 % or more off. Inspect typography and states against the screenshot, and
 report unobserved widths and interactions. Do not invent Figma metadata or imply an assumed scale is measured.
 
+## Reviewing an implementation
+
+The same check reviews built UI: snapshot it as the baseline (`design.mjs snapshot <a copy of design.json> --images`),
+rewrite the inside from tokens, flow and grid, and check against it: a visible change is a finding unless the owner
+accepts it.
+
 To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
 each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
 text widths, which a Figma spec does not. Outside a review it compares the page with itself, and the evidence says

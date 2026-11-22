@@ -12,7 +12,8 @@ license: MIT
 # Design to code
 
 Build the UI from its design so that the owner accepts the first submission. [The check](references/check.md) is how
-you show it is done; a claim without it is not.
+you show it is done; a claim without it is not. To review built UI instead, see [the
+pack](references/pack.md#reviewing-an-implementation).
 
 ## Before building
 
@@ -88,9 +89,3 @@ unanswered candidate. Name it or record why not, and check again.
   not proposed.
 - **The handoff:** each reference beside its final image; what the check passed; what differs and why; what you
   could not check. With a screenshot alone and no tool to measure, judge by eye and name what went unmeasured.
-
-## Reviewing an implementation
-
-The same check reviews built UI: snapshot it as the baseline (`design.mjs snapshot <a copy of design.json> --images`),
-rewrite the inside from tokens, flow and grid, and check against it: a visible change is a finding unless
-the owner accepts it.
