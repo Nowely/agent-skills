@@ -450,7 +450,7 @@ export function minimumTeamProblems(s, { units, reports = [], dropped = [] }) {
     problems.push("no plan critic was briefed before the first worker brief");
   if (dropped.includes("verifier")) return problems;
   const last = Math.max(...workers.map((w) => w.done ?? Infinity));
-  const verifiers = bs.filter((b) => roleOf(b) === "verifier" && b.seq > last);
+  const verifiers = bs.filter((b) => roleOf(b) === "verifier" && b.seq > last && !resumes(b));
   if (!verifiers.length) return [...problems, "no verifier was briefed after the last worker returned"];
   const rows = workers.filter((w) => w.id).map((w) => ({ id: w.id }));
   const seen = writesSeen(s, reports);
