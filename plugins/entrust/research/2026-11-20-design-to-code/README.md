@@ -198,3 +198,5 @@ history, and separates measured facts from speedup hypotheses. Anonymised machin
 round and analysis-cost data accompany it. No new UI implementation was run.
 - [Five more iterations](33-five-iterations-plan.md): the plan written before them, with what each must show and when
   to stop.
+- [Iteration 6](34-iteration-6.md): draft 28.2 against 28.1 on Sonnet, three runs each on two cases. No cost effect shown;
+  every card returned by a stricter reviewer as seen and as read, 28.2's first in both sets; four code faults recur.
