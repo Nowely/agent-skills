@@ -386,17 +386,21 @@ export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
 const escapeRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const FILE_RE = /(?<![\w/.-])((?:[\w.-]+\/)*[\w-]+\.(?:mjs|cjs|js|jsx|ts|tsx|py|rb|go|rs|java|c|h|sh|md|json|ya?ml|toml|txt|css|html))(?![\w/])/g;
 
-// The core roles the orchestrate page names, other than the worker and the coordinator. A brief is for one when
-// its description names the role, or else its text says the agent is one ("You are the verifier") or names
-// the role's row of roles.md. By name, never by tier: a plan may run any role on any tier. Heuristic over free text.
+// The core roles the orchestrate page names, other than the worker and the coordinator. A brief is for the role
+// its description names first, or else the one its text first says the agent is ("You are the verifier") or links
+// by its section of roles.md (roles.md#the-verifier); a role a brief merely mentions ("the plan critic's acceptance
+// checks") is not its own. By name, never by tier: a plan may run any role on any tier. Heuristic over free text.
 export const CORE_ROLES = ["architecture critic", "plan critic", "final reader", "verifier"];
 export function roleOf(b) {
-  const said = (text, re) => CORE_ROLES.find((r) => re(r).test(String(text ?? ""))) ?? null;
-  return said(b.description, (r) => new RegExp(`\\b${r}\\b`, "i"))
-    ?? said(b.text, (r) => new RegExp(`\\byou are (?:the |an? )?${r}\\b|roles\\.md\\S*[^\\n]{0,40}?\\b${r}\\b`, "i"));
+  const first = (text, re) => CORE_ROLES.map((r) => ({ r, m: re(r).exec(String(text ?? "")) })).filter((x) => x.m)
+    .sort((a, b) => a.m.index - b.m.index)[0]?.r ?? null;
+  return first(b.description, (r) => new RegExp(`\\b${r}\\b`, "i"))
+    ?? first(b.text, (r) => new RegExp(`\\byou are (?:the |an? )?${r}\\b|roles\\.md#the-${r.replace(/ /g, "-")}\\b`, "i"));
 }
 // A Codex brief that continues an earlier thread: it is that agent again, not a new worker.
 const resumes = (b) => (b.side === "codex" ? /^RESUME:\s*(\S+)/m.exec(b.text)?.[1] ?? null : null);
+// A worker's brief: one that names a unit of the task and is for none of the core roles, and no continuation.
+const workersOf = (bs, units) => bs.filter((b) => !roleOf(b) && !resumes(b) && units.some((u) => b.text.includes(u)));
 
 // No worker brief exists before the plan critic returns, and the shared interface has one owner, counted from
 // the agents seen writing it (#16's acceptance check, T5's bypass). The plan critic is found by its role's name
@@ -409,7 +413,7 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   const critic = bs.find((b) => roleOf(b) === "plan critic");
   if (!critic) return ["no plan critic ran"];
   if (critic.done === null) problems.push("the plan critic never returned");
-  const workers = bs.filter((b) => b !== critic && !roleOf(b) && !resumes(b) && [...units, shared].some((u) => b.text.includes(u)));
+  const workers = workersOf(bs, [...units, shared]);
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
   if (early.length) problems.push(`${early.length} worker brief(s) written before the plan critic returned`);
@@ -420,13 +424,14 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
 }
 
 // When a card's trigger for the architecture critic holds: it ran, and it returned before the plan critic's
-// brief and before any worker's, since a verdict other than `keep` changes the approach they would work from.
-export function architectureProblems(s) {
+// brief and before any worker's, since a verdict other than `keep` changes the approach they would work from. A
+// worker is a brief that names a unit of the task, as for the plan critic; a scout or a foreman is none.
+export function architectureProblems(s, { units }) {
   const bs = briefs(s);
   const critic = bs.find((b) => roleOf(b) === "architecture critic");
   if (!critic) return ["no architecture critic ran, though the card's trigger holds"];
   if (critic.done === null) return ["the architecture critic never returned"];
-  const early = bs.filter((b) => b !== critic && !resumes(b) && (roleOf(b) === "plan critic" || !roleOf(b)) && b.seq < critic.done);
+  const early = [...bs.filter((b) => roleOf(b) === "plan critic"), ...workersOf(bs, units)].filter((b) => b.seq < critic.done);
   return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
 }
 
@@ -843,9 +848,10 @@ export function activationRecord({ transcript = "", stream, skill }) {
 // streams and what the run left (prompt files, reports, the registered plan, the runner's ledger). Pure
 // over its inputs, so gate-checks.test.mjs can hand it one coherent good run and check that every check
 // passes it at once: checks that no run could satisfy together would fail every live run.
-// architecture: the card's trigger for the architecture critic holds, so it must have run first.
+// architecture: { units } when the card's trigger for the architecture critic holds, so it must have run first,
+// the units being what names a worker's brief.
 export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], ledger = [], schema, request = "", phases,
-  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [], architecture = false }) {
+  read = (p) => fs.readFileSync(p), reportOf = () => null, cwd = null, tmp = [], staged = [], tools = [], architecture = null }) {
   const problems = [];
   const finalText = s2.resultText;
   const receipts = receiptsFrom(s2, { reports: reports.map((r) => r.report), ledger });
@@ -858,7 +864,7 @@ export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], led
   problems.push(...runnerBriefProblems([...prompts, ...claudeBriefs]));
   const cost = inlineCost(s2);
   problems.push(...coordinatorProblems(s2, { cwd }));
-  if (architecture) problems.push(...architectureProblems(s2));
+  if (architecture) problems.push(...architectureProblems(s2, architecture));
   problems.push(...draftReadProblems(s2, { finalText, read, reportOf }));
   problems.push(...phaseProblems(s2, { max: phases, receipts, finalText }));
   problems.push(...lintCallProblems(s2));

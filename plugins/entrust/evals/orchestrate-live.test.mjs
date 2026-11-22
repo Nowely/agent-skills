@@ -536,7 +536,7 @@ function runEvidence(dirs, s) {
 
 // Everything after "go" that the answer and its evidence must show (lib/gate-checks.mjs runProblems, one
 // delta each), and the measurements the page asks the plan to price, saved beside the case, never asserted.
-function runProblems({ s1, s2, dirs, dir, request, phases, architecture = false }) {
+function runProblems({ s1, s2, dirs, dir, request, phases, architecture = null }) {
   const { prompts, reports, ledger, ledgers } = runEvidence(dirs, s2);
   const reg = registeredPlan(path.join(dir, "scratch"));
   const schema = readJsonFile(SCHEMA_FILE);
@@ -946,7 +946,7 @@ test("the full run under Opus: plan, go, run",
     problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
     // The slug task's phases: the architecture critique, the plan critique, the fan-out's returns, the
     // verification, the synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 6, architecture: true }));
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 6, architecture: { units: ["lib/slug.mjs", "test/slug.test.mjs"] } }));
     return settle(dir, problems);
   });
 
@@ -1041,7 +1041,7 @@ test("the plan critic: no worker brief before it returns, the shared interface h
     if (!/export const format\b/.test(fs.readFileSync(path.join(scratch, "lib", "shared.mjs"), "utf8"))) problems.push("lib/shared.mjs does not export format");
     if (git(scratch, "rev-parse", "HEAD").trim() !== head0) problems.push("HEAD moved, so the run committed");
     // Architecture critique, plan critique, fan-out, verification, synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, architecture: true }));
+    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, architecture: { units: ["lib/a.mjs", "lib/b.mjs", "lib/shared.mjs"] } }));
     return settle(dir, problems);
   });
 

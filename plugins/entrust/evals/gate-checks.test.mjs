@@ -220,6 +220,10 @@ test("the manifest: every launch is on the registered plan by id and model, an a
 
 // --------------------------------------------------------------- the critics
 
+// A verifier's brief as the probe of 2026-11-22 wrote one: it says what it is, then names its roles.md row and
+// mentions another core role after it.
+const VERIFIER_TEXT = "You are the verifier. Read your row in /p/skills/orchestrate/references/roles.md. The plan critic's acceptance checks: node --test passes for lib/a.mjs and lib/b.mjs.";
+
 test("the plan critic: no worker brief before it returns, and the shared interface has one writer",
   "D12 (#16, T5): twenty agents on a bad split agree and are all wrong, and T5's fan-out started before its critique had finished; the plan critic is found by its role's name at any tier, it writes no corrected split for a brief to name, and the owner is who wrote the file, not a brief that quotes the request",
   () => {
@@ -247,6 +251,10 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
     // A verifier briefed early names every unit and is no worker.
     const verifier = worker(critic(session().claude("Opus V1: verifier", "opus", "TASK: run the suite over lib/a.mjs and lib/b.mjs", five())),
       "W1", "lib/a.mjs", true).parsed();
+    // S1 (probe, 2026-11-22): a brief whose description names no role says it is the verifier and only mentions
+    // the plan critic's checks after its roles.md path; read as the plan critic, it made the order pass with none.
+    const s1 = worker(worker(session().claude("Opus V1: baseline the suite", "opus", VERIFIER_TEXT, five()),
+      "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     return all(
       expectNone(G.splitAdmissionProblems(good, opts)),
       expectSome(G.splitAdmissionProblems(early, opts), /1 worker brief\(s\) written before the plan critic returned/),
@@ -256,6 +264,8 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
       expectNone(G.splitAdmissionProblems(sonnet, opts)),
       expectSome(G.splitAdmissionProblems(unnamed, opts), /no plan critic ran/),
       expectNone(G.splitAdmissionProblems(verifier, opts)),
+      expectSome(G.splitAdmissionProblems(s1, opts), /no plan critic ran/),
+      G.roleOf({ description: "Opus V1: baseline the suite", text: VERIFIER_TEXT }) === "verifier" || "S1's brief is not read as the verifier",
       expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts), /no plan critic ran/),
     );
   });
@@ -270,11 +280,18 @@ test("the architecture critic, when the card's trigger holds: it ran, and return
     const a = parallel.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
     plan(parallel);
     parallel.result(a, framed(five()));
+    // A scout briefed beside the critic names no unit of the task and is no worker.
+    const scouted = session();
+    const b = scouted.use("Agent", { description: "Fable A1: architecture critic", model: "fable", prompt: "TASK: judge the approach" });
+    scouted.claude("Haiku S1: list the modules", "haiku", "TASK: list the modules under lib/ and their exports", five());
+    scouted.result(b, framed(five()));
+    const opts = { units: ["lib/slug.mjs"] };
     return all(
-      expectNone(G.architectureProblems(work(plan(arch(session()))).parsed())),
-      expectSome(G.architectureProblems(work(plan(session())).parsed()), /no architecture critic ran, though the card's trigger holds/),
-      expectSome(G.architectureProblems(work(parallel).parsed()), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
-      expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed()), /never returned/),
+      expectNone(G.architectureProblems(work(plan(arch(session()))).parsed(), opts)),
+      expectSome(G.architectureProblems(work(plan(session())).parsed(), opts), /no architecture critic ran, though the card's trigger holds/),
+      expectSome(G.architectureProblems(work(parallel).parsed(), opts), /1 plan critic or worker brief\(s\) written before the architecture critic returned/),
+      expectNone(G.architectureProblems(work(plan(scouted)).parsed(), opts)),
+      expectSome(G.architectureProblems(session().claude("Fable A1: architecture critic", "fable", "TASK").parsed(), opts), /never returned/),
     );
   });
 
@@ -331,6 +348,15 @@ test("the draft's read: the verifier's thread or a final reader reads the linted
     };
     return all(
       expectNone(check(run())),
+      // S2 (probe, 2026-11-22): the verifier's brief names no role in its description; read as the plan critic,
+      // its continued read of the draft was not found.
+      expectNone(check((() => {
+        const s = session();
+        const id = s.use("Agent", { description: "Opus V1: check the tree", model: "opus", prompt: VERIFIER_TEXT });
+        s.result(id, [{ type: "text", text: `${FRAME}${five().split("\n").map((l) => `  ${l}`).join("\n")}\nagentId: a23ff0b7ba0739d2e (use SendMessage)` }]);
+        lint(s);
+        return read(s, id);
+      })())),
       expectNone(check(reader(lint(session())))),
       expectNone(G.draftReadProblems(codex.done(answer).parsed(), { finalText: answer, reportOf: (p) => REPORTS[p] ?? null })),
       expectNone(check(reader(lint(session().claude("Fable A1: architecture critic", "fable", "TASK", five()))))),
@@ -616,7 +642,7 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
       .done(answer).parsed();
     const reports = [{ id: "C1", report: { answerJson: { status: "done", result: "Terra C1: done, 5 of 5.", evidence: ["node --test: EXIT=0"], artifacts: [], open: [] },
       commands: [{ command: `/bin/zsh -lc "node ${runner} --label suite -- 'node --test'"`, exitCode: 0 }] } }];
-    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP], architecture: true };
+    const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP], architecture: { units: ["lib/slug.mjs"] } };
     const ok = G.runProblems({ ...inputs, s2: run() });
     const edited = G.runProblems({ ...inputs, s2: run((s) => { s.result(s.use("Edit", { file_path: path.join(dir, "lib", "slug.mjs"), old_string: "a", new_string: "b" }), "ok"); return s; }) }).problems;
     const checked = G.runProblems({ ...inputs, s2: run((s) => s.bash(`node ${runner} --label suite -- 'node --test'`, "LABEL=suite\nEXIT=0")) }).problems;
