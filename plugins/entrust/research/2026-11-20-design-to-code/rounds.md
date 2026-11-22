@@ -769,6 +769,14 @@ agent for preliminary analysis, but the formal review pass did not happen. [The 
 contains the conditions, observed results and role costs. No product or skill changes were made. No gate regression
 count can be measured from this early handover.
 
+## Released 0.46.1: collector replay and Terra prebuilt pass
+
+The [S and P record](42-collect-and-terra-p.md) checks the old rollout and a new prebuilt first handover. S exposed
+incomplete aggregate token accounting and an ambiguous poll ratio. P handed over `pending` at 27 calls, but its two
+full checks each had two no-output polls, above the registered threshold. Setup flagged the fixture's missing owner
+returns; the owner approved proceeding without inventing them. A separate copy showed that failed process enumeration
+does not prevent collection. A/B and a real-task acceptance were not run.
+
 ## Released 0.45.0: capped Terra repeat
 
 The prebuilt-case worker wrote a proposed entry with options by round 2, but reached 60 calls without a final

@@ -10,6 +10,38 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E163. The registered prebuilt sitting cannot pass setup without an owner-returns file
+
+**Evidence, level 3.** `research/2026-11-20-design-to-code/41-the-sitting.md` names `make-arm.mjs --prebuilt` then
+`real-run.mjs setup` for P. The produced fixture has no `.design/returns.md`; `evals/design-to-code/harness/real-run.mjs:689`
+marks it missing and setup exits 1. The owner allowed this P to run without inventing returns; the setup warning and
+its impact are recorded in `research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
+
+## E162. Collect freezes when process enumeration failed
+
+**Evidence, level 3.** `evals/design-to-code/harness/real-run.mjs:186` returns an unknown process list when `ps`
+fails; `:213` treats no discovered processes and no recent output as quiet even when that list is unknown. In a
+separate copy with a temporary `ps` that exits 42, collect exited 0, printed that the check ended and wrote an
+archive while its record said `processList: "ps failed: "`. No writer was running in the control. See
+`research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
+
+## E161. The collector's poll ratio mixes unlike calls and starts
+
+**Evidence, level 3.** `evals/design-to-code/harness/real-run.mjs:492-498` cannot read new output from these nested
+JSON tool results, and `:527` divides every empty-stdin poll by every full-check start. On the real P log it prints
+8/2 = 4; four polls had no output, and the two completed full checks each had two of those, or 4/2 = 2. Quick and
+consumer-result polls are in the 8. Thus the printed ratio is not no-output polls per completed full check. See
+`research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
+
+## E160. The collector can omit the last response from total token usage
+
+**Evidence, level 3.** `evals/design-to-code/harness/real-run.mjs:445-450` reads both cumulative `token_count` and
+`token_usage_record`; `:469` prefers the former whenever present. In the stopped 60-call S log the cumulative
+`token_count` ends at 59, but the 60th `token_usage_record` has the complete turn total. The report prints
+78,832 / 3,954,176 / 14,101 instead of 79,452 / 4,048,000 / 14,494 uncached / cached / output, while also
+printing call 60's usage and `lastCallUsageMissing: false`. See
+`research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
+
 ## E159. The design check pairs a one-digit landmark with the same digit inside a longer page text
 
 **Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/prebuilt/.design/card/frames/card-486/spec.json:189`
