@@ -111,7 +111,7 @@ Read as done when:
 - the control in each blind set is accepted;
 - no failure the checker itself causes.
 
-**Part B, Terra in the owner's Codex:** a dry run on the planted card, capped at about 30 calls
+**Part B, Terra in the owner's Codex:** a dry run on the planted card, from a pre-built arm (an iteration 6 build, its check set up, an empty ledger), stopped 3 rounds after the notice or at 60 calls, after Fable found that 30 calls would end before the first full check
 ([36-terra-dry-run.md](36-terra-dry-run.md)). It tests:
 
 - whether Terra obeys the stop rule;
