@@ -2558,10 +2558,10 @@ test("44.2: the generated conditions' answers name the candidate at the head of 
   }
 });
 
-test("44.2: a root whose container is the page's body is not tried; where the hold cannot give the root its own width, the condition measures nothing there", browser, () => {
+test("44.2: the page itself in the page's body is not tried; where the hold cannot give the root its own width, the condition measures nothing there", browser, () => {
   // Before (the verifier): a page laid out by a media query, its root in the body, was a candidate at 375 px.
   let r = check(windowFrames(`<main class="card">${MEDIA}${ROW}</main>`, { root: "main" }), "--quick");
-  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root's container is the page's body, and a page is laid out by the window"] });
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window"] });
   // Before (the verifier): a container-query component on a page whose sidebar hides below 700 px. Its container held
   // at 375 px in the wide window, the sidebar came back and the root went from 375 to 135 px: a candidate.
   const sidebar = "<style>.shell{display:flex}.side{width:240px;flex:none}@media (max-width: 700px){.side{display:none}}main{container-type:inline-size;flex:1;min-width:0}@container (width < 600px){.row{flex-direction:column}}</style>";
@@ -2571,6 +2571,22 @@ test("44.2: a root whose container is the page's body is not tried; where the ho
   // The same component in a column of its own, laid out by the window: still a candidate.
   r = check(windowFrames(`<main><div class="card">${MEDIA}${ROW}</div></main>`), "--quick");
   assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+});
+
+test("44.2: a root whose own width follows the window is a candidate where the hold cannot give it its width; a component in the body is tried, the page itself is not", browser, () => {
+  // Before (the verifier of doc 44): a card laid out by a media query that also sets its own width by the window
+  // (600 px above 600, or at most 90vw) was not measured, as if a sidebar took its room. Nothing else is in its
+  // container: the window sets its width, which is the defect.
+  let r = check(windowFrames(`<main><div class="card">${MEDIA}<style>@media (min-width: 601px) { .card { width: 600px } }</style>${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+  r = check(windowFrames(`<main><div class="card" style="max-width: 90vw">${MEDIA}${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "wide", "candidate", null], ["window", "narrow", "candidate", null]], notes: [] });
+  // Before: a component placed directly in the body was not tried, as the page is not.
+  r = check(windowFrames(`<div class="card">${MEDIA}${ROW}</div>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+  // The page's top layout, which holds main, directly in the body: the page itself, not tried.
+  r = check(windowFrames(`<div class="app"><main class="card">${MEDIA}${ROW}</main></div>`, { root: ".app" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window"] });
 });
 
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.

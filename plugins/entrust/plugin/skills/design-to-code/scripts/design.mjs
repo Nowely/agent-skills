@@ -1373,26 +1373,35 @@ const STRESSED = ["overlap", "clipped", "outside", "covered"];
 // narrows, or another page's, holds it. A component laid out by its own width is the same in both; one that follows the
 // window (a media query, matchMedia, a script reading the window's width) is not.
 const WIDE_WINDOW = 1280, OWN_WIDTH = "the component's own width";
-// How far the root's own width may move under the hold before the condition measures nothing at that width.
+// How far the root's own width, and what its container lays beside it, may move under the hold before the condition
+// measures nothing at that width.
 const HELD = 3;
 // In the page: the content width of the root's container (its parent, past one that is display: contents or inline),
 // or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width. The
-// root is the marked one, or with no mark the first a person sees. Asked, "page" when that container is the page's
-// body: the root is the page, which the window lays out.
-function containerIn([selector, mark, seen, width, asPage = false]) {
+// root is the marked one, or with no mark the first a person sees. Asked for the component's own width: that width and
+// how wide what else the container lays on the root's row is (a sidebar), or "page" when the root is the page itself
+// in the page's body (main, or what holds it), which the window lays out.
+function containerIn([selector, mark, seen, width, own = false]) {
   const visible = new Function(`return (${seen})`)();
   const root = (mark && document.querySelector(`[${mark}]`)) || [...document.querySelectorAll(selector)].find(visible);
   let box = root?.parentElement;
   while (box?.parentElement && /^(contents|inline)$/.test(getComputedStyle(box).display)) box = box.parentElement;
   if (!box) return null;
-  if (asPage && (box === document.body || box === document.documentElement)) return "page";
+  const main = "main, [role=main]";
+  if (own && (box === document.body || box === document.documentElement) && (root === document.body || root.matches(main) || root.querySelector(main))) return "page";
   const cs = getComputedStyle(box), px = (k) => parseFloat(cs[k]) || 0;
   const edges = px("paddingLeft") + px("paddingRight") + px("borderLeftWidth") + px("borderRightWidth");
+  if (width === null && own) {
+    const r = root.getBoundingClientRect();
+    const beside = [...box.children].filter((c) => !c.contains(root) && visible(c) && !/^(absolute|fixed)$/.test(getComputedStyle(c).position))
+      .map((c) => c.getBoundingClientRect()).filter((b) => b.top < r.bottom && b.bottom > r.top).reduce((sum, b) => sum + b.width, 0);
+    return { width: box.getBoundingClientRect().width - edges, beside };
+  }
   if (width === null) return box.getBoundingClientRect().width - edges;
   for (const k of ["width", "min-width", "max-width"]) box.style.setProperty(k, `${cs.boxSizing === "border-box" ? width + edges : width}px`, "important");
   return width;
 }
-const container = (page, cfg, width = null, asPage = false) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width, asPage]).catch(() => null);
+const container = (page, cfg, width = null, own = false) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width, own]).catch(() => null);
 
 // What differs between the root in a window of its frame's width and in the wide window with its container held at
 // the same width: which texts share a row, its size, the spec's landmarks. Null when they agree within the tolerance.
@@ -1431,13 +1440,14 @@ async function ownWidth(browser, cfg, ledger, widths) {
         if (m.error) throw unmeasured(`${OWN_WIDTH} at ${width} px: ${m.error}`);
         return m;
       };
-      let narrow, wide, held;
+      let narrow, wide, box, beside;
       // In a window of the frame's width, as the frame is when the window sizes it.
       let opened = await open(browser, cfg, { ...at, width, viewport: width });
-      try { held = await container(opened.page, cfg, null, true); narrow = held === "page" ? null : await layout(opened.page); } finally { await opened.context.close(); }
-      // A root in the page's body is the page: the window lays it out, as it should.
-      if (held === "page") { pageRoot.push(width); continue; }
-      if (!(held > 0)) continue;
+      try { box = await container(opened.page, cfg, null, true); narrow = box === "page" ? null : await layout(opened.page); } finally { await opened.context.close(); }
+      // The page itself in the page's body: the window lays it out, as it should.
+      if (box === "page") { pageRoot.push(width); continue; }
+      if (!(box?.width > 0)) continue;
+      const held = box.width;
       // In the wide window, the container held before the setup acts and again once the page is set up; what the
       // component does on its container's change (an observer, a container query) is then done.
       const hold = (page) => container(page, cfg, held);
@@ -1447,11 +1457,13 @@ async function ownWidth(browser, cfg, ledger, widths) {
         for (let i = 0; i < 2; i++) await settle(opened.page, cfg.root);
         await markRoot(opened.page, cfg.root);
         wide = await layout(opened.page);
+        beside = (await container(opened.page, cfg, null, true))?.beside ?? box.beside;
       } finally { await opened.context.close(); }
-      // The hold gives the root's container its width, not always the root its own: beside it in the container, the
-      // page may lay out more in the wide window (a sidebar the narrow one hides). Then the condition compares two
-      // widths of the component, not two windows, and measures nothing at this width.
-      if (Math.abs(wide.root.width - narrow.root.width) > HELD) { unheld.push({ width, held, narrow: narrow.root.width, wide: wide.root.width }); continue; }
+      // The hold gives the root's container its width, not always the root its own. Where what the container lays
+      // beside the root moved too (a sidebar the narrow window hides), the condition compares two widths of the
+      // component, not two windows, and measures nothing at this width; where nothing beside it moved, the root's own
+      // width follows the window (a width a media query sets, vw), which is the candidate.
+      if (Math.abs(wide.root.width - narrow.root.width) > HELD && Math.abs(beside - box.beside) > HELD) { unheld.push({ width, held, narrow: narrow.root.width, wide: wide.root.width }); continue; }
       const issue = ownWidthIssue({ frame: frame.name, width, held, narrow, wide, labels: landmarks.map((l) => l.text ?? l.selector), tolerance: cfg.tolerance });
       probes.push({ width, issues: issue ? [issue] : [] });
     }
@@ -1463,7 +1475,7 @@ async function ownWidth(browser, cfg, ledger, widths) {
   // What it did not try, or could not measure: notes in the evidence, not gaps, since the page decides them.
   const r = Math.round, px = (list) => `${list.slice(0, -1).join(", ")}${list.length > 1 ? " and " : ""}${list.at(-1)} px`;
   const notes = [
-    ...(pageRoot.length ? [`not tried at ${px(pageRoot)}: the root's container is the page's body, and a page is laid out by the window`] : []),
+    ...(pageRoot.length ? [`not tried at ${px(pageRoot)}: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window`] : []),
     ...unheld.map((u) => `not measured at ${u.width} px: with its container held at ${r(u.held)} px in a ${WIDE_WINDOW} px window, the root is ${r(u.wide)} px wide, not the ${r(u.narrow)} it has at ${u.width}; what else the container holds there (a sidebar the narrower window hides) takes the rest`),
   ];
   return { issues, story: { name: OWN_WIDTH, generated: true, shots: [], ...(notes.length ? { notes } : {}) } };

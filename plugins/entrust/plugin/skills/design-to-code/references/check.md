@@ -231,10 +231,12 @@ page and setup in a window of that width, then in a 1280 px window with the root
 it had, by `width`, `min-width` and `max-width` on it, before the setup and after. Which texts share a row, the root's
 size and the spec's landmarks must agree within the tolerance. A layout bound to the window (a media query,
 `matchMedia`, a script reading the window's width) differs; one laid out by its container (a container query, an
-observer on the component) does not. A frame with its own root is not tried, nor a root whose container is the page's
-body: a page is laid out by the window. Where the hold does not give the root the width it had (within 3 px), as when
-the wide window shows a sidebar beside it in the container, the condition measures nothing at that width, and the
-evidence says so as a note.
+observer on the component) does not. A frame with its own root is not tried, nor the page itself in the page's body
+(a root that is `main` or holds it): a page is laid out by the window. A component placed directly in the body is
+tried. Where the hold does not give the root the width it had (within 3 px) because the wide window lays more beside
+it in the container (a sidebar the narrower window hides), the condition measures nothing at that width, and the
+evidence says so as a note. Where nothing beside it moved, the root's own width follows the window (a width a media
+query sets, `vw`): a candidate.
 
 What they find is a **candidate**, not a finding: it fails nothing and scores nothing, but an unanswered one leaves a
 complete check incomplete. Answer it by reproducing it with legal data (a story with a real long value, a supported
