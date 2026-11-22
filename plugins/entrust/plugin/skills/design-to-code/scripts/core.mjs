@@ -1186,9 +1186,11 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   };
   const handoverState = { pass: "done", pending: "proposals wait for the owner: hand over, naming each",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
-  // An excuse should be narrower than what it excuses: an entry that covers many findings in one frame (or the sweep)
-  // is named first. The same question in every frame, one finding in each, is one entry, not a broad one.
+  // An excuse should be narrower than what it excuses: an entry that covers many findings is named first. Entries that
+  // name their landmarks are counted per frame (or in the sweep): the same question in every frame, one finding in each,
+  // is one entry, not a broad one. A wildcard or a region is counted over every frame, as it names nothing.
   const covered = [...frames.flatMap((f) => f.issues.map((i) => ({ ...i, in: f.frame }))), ...(sweep?.issues ?? []).map((i) => ({ ...i, in: "the sweep" }))];
+  const named = (e) => e.property !== "*" && e.landmark !== undefined && ![].concat(e.landmark).includes("*");
   // Entries giving one cause are counted together: splitting a broad excuse into several does not hide it.
   const causesOf = new Map();
   ledger.forEach((e, index) => {
@@ -1198,7 +1200,8 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   });
   const coveredBy = (entries) => covered.filter((i) => i.entries?.some((x) => entries.includes(x)));
   const inOnePlace = (found) => Math.max(0, ...Object.values(found.reduce((c, i) => ({ ...c, [i.in]: (c[i.in] ?? 0) + 1 }), {})));
-  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)]).filter(([, , found]) => inOnePlace(found) > 3)
+  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)])
+    .filter(([, entries, found]) => (entries.every((x) => named(ledger[x])) ? inOnePlace(found) : found.length) > 3)
     .map(([e, entries, found]) => {
       const gaps = found.filter((i) => i.gap || i.box).length;
       return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${[e.category, e.status].filter(Boolean).join(", ")}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;

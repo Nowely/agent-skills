@@ -241,8 +241,9 @@ until an entry names it; check that the entry's question covers it.
 An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
 status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
 without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text` without `actual` or with more
-than one design text. Entries of one cause that cover more than three findings in one frame, or in the sweep, are
-named first in the evidence, as broad excuses; one question asked in every frame is one entry, not a broad one.
+than one design text. Entries of one cause that cover more than three findings are named first in the evidence, as
+broad excuses: over all frames for a `*` or a region, in one frame (or the sweep) for entries that name their
+landmarks, so one question asked in every frame is not a broad one.
 
 ## Output
 

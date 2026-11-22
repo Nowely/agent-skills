@@ -2504,6 +2504,20 @@ test("0.45.1: an ordinary entry excuses a whole offset or none of it, as before;
   assert.equal(back.verdict, "pass", JSON.stringify(back.issues));
 });
 
+test("0.45.1: a wildcard entry is counted over every frame for a broad excuse; one naming its landmarks, per frame", () => {
+  const spec = { frame: { name: "f", width: 300, height: 200 }, landmarks: [
+    { text: "A", box: box(20, 10, 100, 10) }, { text: "B", box: box(20, 60, 100, 10) }, { text: "C", box: box(20, 110, 100, 10) }, { text: "D", box: box(20, 160, 100, 10) }] };
+  const page = { root: { width: 300, height: 200 }, landmarks: spec.landmarks.map((l, i) => ({ found: true, align: "left", box: { ...l.box, x: l.box.x + (i < 3 ? 40 + i * 30 : 0) } })) };
+  const broad = (landmark) => {
+    const ledger = [accepted(landmark, { property: "x", reason: "wild" })];
+    const frames = "abcdefgh".split("").map((frame) => ({ ...compareFrame({ frame, spec, measured: page, ledger }), frame }));
+    assert.equal(frames[0].issues.length, 3);
+    return /## Broad excuses/.test(renderHandoff({ frames, ledger, status: "pass" }));
+  };
+  assert.equal(broad("*"), true, "3 findings in each of 8 frames: 24");
+  assert.equal(broad(["A", "B", "C"]), false, "3 named landmarks in each frame");
+});
+
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
 
 test("draft 28.2: pending means proposals wait for the owner; a page snapshot used as the spec is named as comparing the page with itself", () => {
