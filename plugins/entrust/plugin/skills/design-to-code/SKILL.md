@@ -5,7 +5,7 @@ description: >-
   states. Use for design-to-code, pixel-perfect layout or adaptive frontend work. Compare the implementation with
   the supplied references and verify the affected interactions and consumers before handing it over.
 metadata:
-  version: "0.46.0"
+  version: "0.46.1"
 license: MIT
 ---
 
@@ -68,14 +68,16 @@ A collision only under the check's generated texts, rows or edge openers is a ca
 story with legal data, or name under Candidates in `review.md` the bound that rules it out.
 
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
-complete check, in the foreground (if it outlasts the wait, look every few minutes). View only the crop and
-reference answering the current question; full pages at every width once, before handover. Keep probes in one
-parameterised script on disk. When a quick round says the first finding is unchanged, fix it or propose it; when a
-complete round says stop, stop re-running.
+complete check, in the foreground; if the shell returns first, wait in one call as long as the last complete check
+took (`seconds` in `out/history.jsonl`, else two minutes). View only the crop and reference answering the current
+question; full pages at every width once, before handover. Keep probes in one parameterised script on disk. When a
+quick round says the first finding is unchanged, fix it or propose it; when a complete round says stop, stop
+re-running.
 
 A finding says what to fix: fix its first cause and check again. A note needs nothing. A finding you cannot fix goes in
-`deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. A ledger entry records a
-question; it does not change the product. Write it when you first see the gap, without asking, then go on.
+`deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. One entry per cause: its
+texts in `landmark`, no `frame` if it holds everywhere. A ledger entry records a question; it does not change the
+product. Write it when you first see the gap, without asking, then go on.
 `incomplete` (exit 2): something went unmeasured (ink no landmark names, page text the spec lacks, a row without
 evidence, an unanswered candidate); name it or record why not.
 

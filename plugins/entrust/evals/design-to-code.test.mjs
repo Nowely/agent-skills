@@ -2316,6 +2316,201 @@ test("draft 28.5: a joined text a size larger is told by its width alone, wider 
   assert.deepEqual(type(64), [], "narrower: the box was drawn round an icon too");
 });
 
+// ------------------------------------------------------------------ 0.46.1: what a missing text carries
+
+// The planted card in small: a line at the top no data supplies (13 px high, 17 px above the first row), two rows and a
+// footer below it. A build without the line moves every row up by 30 px and the root by as much. The capped rerun wrote
+// nine entries for this one question; the presence entry alone now carries the shift, and only that far.
+const LINE = {
+  frame: { name: "f", width: 300, height: 140 },
+  landmarks: [
+    { text: "Delivery in 15 minutes", box: box(20, 15, 120, 13) },
+    { text: "SKU", box: box(20, 45, 60, 10) }, { text: "1 499 €", box: box(200, 45, 80, 12) },
+    { text: "Title", box: box(20, 70, 120, 12) },
+    { text: "Port", box: box(20, 110, 40, 10) }, { text: "In stock", box: box(200, 110, 60, 10) },
+  ],
+};
+const lineShift = ({ rows = -30, footer = rows, height = 140 + footer } = {}) => ({
+  root: { width: 300, height },
+  landmarks: LINE.landmarks.map((l, i) => (i === 0 ? { found: false }
+    : { found: true, align: l.box.x >= 200 ? "right" : "left", box: { ...l.box, y: l.box.y + (l.box.y >= 110 ? footer : rows) } })),
+});
+const lineEntry = (extra = {}) => ({ landmark: ["Delivery in 15 minutes", "Delivery in 2 hours"], property: "presence", category: "missing-state", status: "proposed",
+  reason: "the frame draws a delivery time the API does not send", options: ["add the field to the API", "accept the card without it"], ...extra });
+const withLine = (page, ledger = [lineEntry()]) => compareFrame({ frame: "f", spec: LINE, measured: page, ledger });
+
+test("0.46.1: a presence entry for a text the page lacks carries the rows below it and the root's height, as notes naming it", () => {
+  const without = withLine(lineShift(), []);
+  assert.equal(without.verdict, "fail");
+  assert.deepEqual(without.issues.filter((i) => i.status === "fail").map((i) => `${i.landmark} ${i.property}`).sort(),
+    ["1 499 € y", "Delivery in 15 minutes presence", "In stock y", "Port y", "SKU y", "Title y", "root height"]);
+  const r = withLine(lineShift());
+  assert.equal(r.verdict, "pending", JSON.stringify(r.issues));
+  assert.deepEqual(r.issues.map((i) => [i.landmark, i.property, i.status]), [["Delivery in 15 minutes", "presence", "pending"]]);
+  assert.deepEqual(r.notes.filter((n) => n.carried).map((n) => `${n.landmark} ${n.property} ${n.delta}`),
+    ["SKU y -30", "1 499 € y -30", "Title y -30", "Port y -30", "In stock y -30", "root height -30"]);
+  assert.ok(r.notes.every((n) => n.entries[0] === 0 && n.carried[0] === "Delivery in 15 minutes"));
+  assert.equal(r.score, 10, "the question counts once; what it carries counts nothing");
+  const digest = renderSummary({ frames: [r] });
+  assert.doesNotMatch(digest, /start here/, digest);
+  assert.match(digest, /6 shifts carried by the missing “Delivery in 15 minutes” \(ledger entry 1, pending\), at most 30 px/, digest);
+  assert.match(renderHandoff({ frames: [r], ledger: [lineEntry()], status: "pending" }), /awaits your decision on 1, and carries 6 shifts below the missing text, as notes/);
+  // Accepted, the same: the owner's decision is the presence; the shift needs none of its own.
+  const accepted = withLine(lineShift(), [lineEntry({ status: "accepted", decidedBy: "owner" })]);
+  assert.equal(accepted.verdict, "pass", JSON.stringify(accepted.issues));
+  // An entry for another frame carries nothing here.
+  assert.equal(withLine(lineShift(), [lineEntry({ frame: "card-280" })]).verdict, "fail");
+});
+
+test("0.46.1: what a missing text carries is bounded by its height and its gap, upward only, and hides no other shift", () => {
+  // A 20 px margin planted above the footer: the footer sits 10 px above the design, a note on its own, but 20 px below
+  // where the missing line puts it: a finding, as the planted margin is.
+  const masked = withLine(lineShift({ rows: -30, footer: -10 }));
+  assert.equal(masked.verdict, "fail");
+  assert.deepEqual(masked.issues.filter((i) => i.status === "fail").map((i) => [i.landmark, i.property, Math.round(i.delta), Math.round(i.unexcused)]),
+    [["Port", "y", -10, 20], ["In stock", "y", -10, 20]]);
+  assert.match(renderSummary({ frames: [masked] }), /Port y: 110 → 100 \(-10; \+20 after the ledger\)/);
+  // Past the bound (13 px and its 17 px gap), what is left is judged as any offset: 20 px more is a finding at the row
+  // it starts from; the rows below carry it as a drift.
+  const far = withLine(lineShift({ rows: -50 }));
+  assert.deepEqual(far.issues.filter((i) => i.status === "fail").map((i) => [i.landmark, Math.round(i.unexcused)]), [["SKU", -20], ["1 499 €", -20]]);
+  assert.ok(far.notes.some((n) => n.landmark === "Title" && !n.carried && n.delta === -20), JSON.stringify(far.notes));
+  // A row lower than drawn is no absence's doing: the entry carries nothing.
+  const lower = withLine(lineShift({ rows: 30, height: 140 }));
+  assert.ok(!lower.notes?.some((n) => n.carried), JSON.stringify(lower.notes));
+  assert.deepEqual(lower.issues.filter((i) => i.status === "fail").map((i) => i.landmark), withLine(lineShift({ rows: 30, height: 140 }), []).issues.filter((i) => i.status === "fail" && i.property === "y").map((i) => i.landmark));
+  // A missing text below every landmark carries the root's height alone: its height and its gap to the one above.
+  const foot = { frame: { name: "f", width: 300, height: 150 }, landmarks: [{ text: "SKU", box: box(20, 20, 60, 10) }, { text: "Title", box: box(20, 60, 120, 20) }, { text: "Note", box: box(20, 100, 100, 12) }] };
+  const page = (height) => ({ root: { width: 300, height }, landmarks: foot.landmarks.map((l, i) => (i === 2 ? { found: false } : { found: true, align: "left", box: { ...l.box } })) });
+  const entry = [{ landmark: "Note", property: "presence", category: "missing-state", status: "proposed", reason: "no data for the note" }];
+  const short = compareFrame({ frame: "f", spec: foot, measured: page(118), ledger: entry });
+  assert.equal(short.verdict, "pending", JSON.stringify(short.issues));
+  assert.deepEqual(short.notes.filter((n) => n.carried).map((n) => `${n.landmark} ${n.property} ${n.delta}`), ["root height -32"]);
+  assert.equal(compareFrame({ frame: "f", spec: foot, measured: page(88), ledger: entry }).issues.find((i) => i.landmark === "root").status, "fail");
+});
+
+// The planted card prebuilt (iteration 6's build, which does not render the line), with one ledger entry: the line's
+// presence, entry 1 of the capped rerun's frozen ledger (research note 39), naming the line in every frame.
+const PLANTED = path.join(HERE, "design-to-code/cases/server-card-planted");
+function plantedArm(css = "") {
+  const arm = path.join(tmp(), "arm");
+  assert.equal(spawnSync(process.execPath, [path.join(PLANTED, "make-arm.mjs"), arm, "--prebuilt"], { encoding: "utf8" }).status, 0);
+  if (css) fs.appendFileSync(path.join(arm, "card.css"), `\n${css}\n`);
+  fs.writeFileSync(path.join(arm, ".design/card/deviations.json"), JSON.stringify([{
+    landmark: ["Выдача за 15 минут", "Выдача за 2 часа", "Выдача за 1 день", "Выдача за 3 дня"], property: "presence", category: "missing-state", status: "proposed",
+    reason: "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it.",
+    options: ["Supply a delivery-time field and render it; requires an API contract change.", "Accept omission until the data is available; the card remains shorter than the frame."] }]));
+  return path.join(arm, ".design/card");
+}
+const CARDS = ["card-764", "card-601", "card-486", "card-280"];
+
+test("0.46.1, C1: on the planted card the line's presence entry alone carries every row it moves and the root's height", browser, () => {
+  const r = check(plantedArm());
+  // Before: exit 1, 81 findings, 76 of them the rows below the line and the root's height (y and height).
+  assert.equal(r.status, 1, r.stdout);
+  const cards = r.result.frames.filter((f) => CARDS.includes(f.frame));
+  assert.equal(cards.length, 4);
+  for (const f of cards) {
+    assert.deepEqual(f.issues.filter((i) => i.status === "pending").map((i) => [i.property, i.entries]), [["presence", [0]]], f.frame);
+    // What keeps the card from pending is the build's own: type sizes, nothing the line moves.
+    assert.deepEqual(f.issues.filter((i) => i.status === "fail" && ["y", "height"].includes(i.property)), [], `${f.frame}: ${JSON.stringify(f.issues)}`);
+    assert.ok(f.notes.filter((n) => n.carried).length >= 7, `${f.frame}: ${JSON.stringify(f.notes)}`);
+  }
+  // The root's height: carried at 764; at 280 the line's shift is carried and what is left (the stock line sits 12 px
+  // closer to the price than drawn) is a note.
+  assert.ok(cards[0].notes.some((n) => n.landmark === "root" && n.carried), JSON.stringify(cards[0].notes));
+  assert.ok(cards[3].notes.some((n) => n.landmark === "root" && !n.carried && Math.abs(n.delta) <= 24), JSON.stringify(cards[3].notes));
+  assert.deepEqual([...new Set(r.result.frames.flatMap((f) => f.issues.filter((i) => i.status === "fail").map((i) => i.property)))].sort(), ["type", "width"]);
+  assert.match(r.stdout, /shifts carried by the missing “Выдача за 15 минут” \(ledger entry 1, pending\)/);
+  assert.doesNotMatch(r.stdout, /start here: between “the top of the root”/);
+  // One entry for the question in every frame is no broad excuse.
+  assert.doesNotMatch(fs.readFileSync(path.join(r.dir, "out/handoff.md"), "utf8"), /## Broad excuses/);
+});
+
+test("0.46.1, C2: a 20 px margin planted above the planted card's footer, below the missing line, stays a finding", browser, () => {
+  const r = check(plantedArm('.card[data-mode="wide"] .card__foot { margin-top: 20px; }'), "--frame", "card-764");
+  assert.equal(r.status, 1, r.stdout);
+  const f = r.result.frames[0];
+  const moved = f.issues.filter((i) => i.status === "fail" && i.property === "y");
+  // Without the entry these sit 7–8 px above the design: notes. The line takes 30 px; the 20 px margin is left.
+  assert.deepEqual(moved.map((i) => i.landmark).sort(), [".ico--port", "1", "2+", "MC-LAG 25/25", "PSU", "Доступно"]);
+  for (const i of moved) assert.ok(i.unexcused >= 18 && i.unexcused <= 24 && Math.abs(i.delta) <= 12, JSON.stringify(i));
+  assert.match(r.stdout, /MC-LAG 25\/25 y: 118 → \d+ \(-\d+; \+\d+ after the ledger\)/);
+});
+
+// The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
+// The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
+test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
+  const f = smallFrame('<style>main{height:auto}</style><div>Delivery</div><div style="margin-top:12px">SKU</div><div>Title</div>');
+  f.write('<main><style>main{height:auto}</style><div style="position:absolute;top:0;left:200px">Soon</div><div>SKU</div><div>Title</div></main>');
+  fs.writeFileSync(path.join(f.dir, "ledger.json"), JSON.stringify([{ landmark: "Delivery", property: "presence", category: "missing-state", status: "proposed", reason: "no data for it" }]));
+  const r = check(f.dir);
+  const frame = r.result.frames[0];
+  assert.ok(frame.notes?.some((n) => n.landmark === "SKU" && n.carried), JSON.stringify(frame));
+  assert.deepEqual(frame.unexpected, ["Soon"]);
+  assert.equal(frame.verdict, "incomplete");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /page text not in the design \(1\): “Soon”/);
+});
+
+test("0.46.1: one entry for one question in every frame is not a broad excuse; four findings in one frame are", () => {
+  const frames = ["card-764", "card-601", "card-486", "card-280"].map((frame) => ({ ...withLine(lineShift()), frame }));
+  const handoff = renderHandoff({ frames, ledger: [lineEntry()], status: "pending" });
+  assert.doesNotMatch(handoff, /## Broad excuses/, handoff);
+  assert.match(handoff, /awaits your decision on 4, and carries 24 shifts below the missing text, as notes/);
+  const one = { ...compare({ New: { dy: 30 }, Title: { dy: 30 }, SKU: { dy: 30 }, "1 499 €": { dy: 30 } }, { height: 230 }, [{ landmark: ["SKU", "New", "Title", "1 499 €"], property: "y", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }]) };
+  assert.match(renderHandoff({ frames: [one], ledger: [{ landmark: ["SKU", "New", "Title", "1 499 €"], property: "y", category: "design-error", status: "proposed", reason: "the frame's padding is off the scale" }], status: "pending" }), /## Broad excuses/);
+});
+
+// The verifier's probes on 0.46.1's first cut (4a6aada): a carry without evidence, ordinary entries judged by their rest,
+// and a wildcard let through as one question per frame.
+const accepted = (landmark, extra = {}) => ({ landmark, category: "missing-state", status: "accepted", decidedBy: "owner", reason: "r", ...extra });
+const shifted = (spec, f, height = spec.frame.height) => ({ root: { width: spec.frame.width, height }, landmarks: spec.landmarks.map((l, i) => f(l, i)) });
+const at = (l, dy = 0) => ({ found: true, align: "left", box: { ...l.box, y: l.box.y + dy } });
+
+test("0.46.1: a missing text carries only what the page shows it moved: the column below it, not a shift in another", () => {
+  const spec = { frame: { name: "f", width: 400, height: 200 }, landmarks: [
+    { text: "L1", box: box(20, 20, 100, 12) }, { text: "L2", box: box(20, 80, 100, 12) }, { text: "L3", box: box(20, 120, 100, 12) },
+    { text: "R1", box: box(250, 20, 100, 12) }, { text: "Badge", box: box(250, 40, 100, 20) }, { text: "R3", box: box(250, 160, 100, 12) }] };
+  const ledger = [accepted("Badge", { property: "presence" })];
+  // The badge is gone and the right column holds its place; the left column loses 20 px of its own.
+  const other = compareFrame({ frame: "f", spec, measured: shifted(spec, (l, i) => (i === 4 ? { found: false } : at(l, i === 1 || i === 2 ? -20 : 0))), ledger });
+  assert.equal(other.verdict, "fail", JSON.stringify(other.issues));
+  assert.deepEqual(other.issues.filter((i) => i.status === "fail").map((i) => `${i.landmark} ${i.property}`), ["L2 y"]);
+  assert.ok(!other.notes?.some((n) => n.carried), JSON.stringify(other.notes));
+  // The right column closing up below the badge (by its bound, 20 px and the 20 px to L2) is the evidence; then what
+  // passes its place is carried, the left column's too: the limit check.md names.
+  const closed = compareFrame({ frame: "f", spec, measured: shifted(spec, (l, i) => (i === 4 ? { found: false } : at(l, i === 5 ? -40 : i === 1 || i === 2 ? -20 : 0))), ledger });
+  assert.deepEqual(closed.notes.filter((n) => n.carried).map((n) => n.landmark), ["L2", "L3", "R3"]);
+});
+
+test("0.46.1: an ordinary entry excuses a whole offset or none of it, as before; only a carried shift leaves a rest to judge", () => {
+  const line = (dy) => (l, i) => at(l, i === 0 ? 0 : i <= 2 ? 20 : dy);
+  const entries = [accepted(["SKU", "1 499 €"], { property: "y" })];
+  // A y entry on the first row (+20) and the row below 10 px further on its own: a drift of 30, a finding.
+  const further = compareFrame({ frame: "f", spec: LINE, measured: shifted(LINE, line(30), 170), ledger: [...entries, accepted("root", { property: "height" })] });
+  assert.equal(further.verdict, "fail");
+  assert.ok(further.issues.some((i) => i.landmark === "Title" && i.status === "fail"), JSON.stringify(further.issues));
+  assert.doesNotMatch(renderSummary({ frames: [further] }), /after the ledger/);
+  // The row below 13 px back on its own: 7 px from the design, a note.
+  const back = compareFrame({ frame: "f", spec: LINE, measured: shifted(LINE, line(7), 147), ledger: entries });
+  assert.equal(back.verdict, "pass", JSON.stringify(back.issues));
+});
+
+test("0.46.1: a wildcard entry is counted over every frame for a broad excuse; one naming its landmarks, per frame", () => {
+  const spec = { frame: { name: "f", width: 300, height: 200 }, landmarks: [
+    { text: "A", box: box(20, 10, 100, 10) }, { text: "B", box: box(20, 60, 100, 10) }, { text: "C", box: box(20, 110, 100, 10) }, { text: "D", box: box(20, 160, 100, 10) }] };
+  const page = { root: { width: 300, height: 200 }, landmarks: spec.landmarks.map((l, i) => ({ found: true, align: "left", box: { ...l.box, x: l.box.x + (i < 3 ? 40 + i * 30 : 0) } })) };
+  const broad = (landmark) => {
+    const ledger = [accepted(landmark, { property: "x", reason: "wild" })];
+    const frames = "abcdefgh".split("").map((frame) => ({ ...compareFrame({ frame, spec, measured: page, ledger }), frame }));
+    assert.equal(frames[0].issues.length, 3);
+    return /## Broad excuses/.test(renderHandoff({ frames, ledger, status: "pass" }));
+  };
+  assert.equal(broad("*"), true, "3 findings in each of 8 frames: 24");
+  assert.equal(broad(["A", "B", "C"]), false, "3 named landmarks in each frame");
+});
+
 // ------------------------------------------------------------------ draft 28.2, text: what the evidence and advice say
 
 test("draft 28.2: pending means proposals wait for the owner; a page snapshot used as the spec is named as comparing the page with itself", () => {

@@ -10,6 +10,24 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E159. The design check pairs a one-digit landmark with the same digit inside a longer page text
+
+**Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/prebuilt/.design/card/frames/card-486/spec.json:189`
+names the stock count as the landmark "1". The planted frame also draws "Выдача за 1 день". In two Sonnet arms on the
+prebuilt planted card, b1 on 0.45.0 and n1 on the 0.46.1 candidate `1f3684e`, the builder rendered that line. Both
+times the check paired the stock "1" with the header's "1": `x` -341 and a `y` gap of -216, both well placed on the page.
+Card-486 was left `incomplete`, and each builder wrote two `cause: checker` entries
+(`research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md`, "Results before the sitting").
+
+**Check.** Make the prebuilt arm (`make-arm.mjs <dir> --prebuilt`), add a `delivery` value to the 486 frame's data
+entry, render it above the SKU, and run the complete check. The 486 report pairs "1" with the header line.
+
+**Issue text.** When a landmark's text is a short token, such as one digit, that also occurs inside a longer text on
+the page, the design check can pair the landmark with the longer text. It then reports offsets for a piece the page
+places correctly. The builder pays for it with ledger entries that excuse the checker, and the frame can stay
+`incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
+only contains it.
+
 ## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
 
 **Evidence, level 1.** `cleanup/scripts/cleanup.mjs:54-56` says that `plugins/entrust/evals/orchestrate-live.test.mjs:87`
@@ -107,9 +125,17 @@ journey cannot be written there; the builder of c1 passed the same journeys on t
 ## E151. Design-to-code builders write ledger entries that name every landmark of a frame
 
 **Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:185`, `:320`).** When one missing line
-moves everything below it, builders carry the consequence as one entry per frame naming every piece, which would also
-excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft 28.4's entries with a stated shift fixed
-it but multiplied proposals, and went with the gate.
+moved everything below it, builders carried the consequence as one entry per frame naming every piece, which would
+also excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft 28.4's entries with a stated shift
+fixed it but multiplied proposals, and went with the gate.
+
+**Since 0.46.1, level 3 for the check, not established for builders.** The missing text's own `presence` entry
+carries that shift, within the text's height and its gap (`design-to-code/references/check.md:228-235`), so the case
+seen needs no such entry, and a 20 px shift planted below the line stays a finding (`evals/design-to-code.test.mjs:2407`,
+`:2430`). Still open: nothing refuses an every-landmark entry a builder writes anyway, and a vertical shift with
+another cause than a missing text is carried by nothing. On three harness arms on the candidate, entries fell from a
+median of 7 to 3, one per reason; what each named was not recorded
+(`research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md`, "Results before the sitting").
 
 ## E150. A single text's type size within about 10 % is not told apart at 1× references
 

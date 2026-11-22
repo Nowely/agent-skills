@@ -1,7 +1,7 @@
 // node --test evals/design-to-code/cases/server-card-planted/inputs.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compareData, findQuestion, frameDataChanges, historyReset, specChanges, toleranceChanges } from "./inputs.mjs";
+import { compareData, entryText, findQuestion, frameDataChanges, historyReset, specChanges, toleranceChanges } from "./inputs.mjs";
 
 test("the question: the line named as missing from the contract, with options for the owner", () => {
   const q = findQuestion([{ file: "review.md", text: "## Decisions\n\n1. The delivery caption has no field in the contract. A: leave it out; B: add an optional field and render it.\n" }]);
@@ -76,4 +76,14 @@ test("the specs: each card frame names the line and skips none of its pieces; th
 test("a history reset the builder states is reported; a removed listener is not one", () => {
   assert.equal(historyReset([{ file: "review.md", text: "12. The `out/` history was removed once, before any complete round." }])?.file, "review.md");
   assert.equal(historyReset([{ file: "h.md", text: "- listeners are removed on close and when the card was removed" }]), null);
+});
+
+test("a ledger entry whose options are an array of two is a question put to the owner (E158)", () => {
+  const entry = { landmark: "Выдача за 15 минут", status: "proposed",
+    reason: "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it.",
+    options: ["Supply a delivery-time field and render it; requires an API contract change.",
+      "Accept omission until the data is available; the card remains shorter than the frame."] };
+  assert.equal(findQuestion([{ file: "deviations.json", text: entryText(entry) }]).surfaced, true);
+  const one = { ...entry, options: ["Supply a delivery-time field and render it."] };
+  assert.equal(findQuestion([{ file: "deviations.json", text: entryText(one) }]).surfaced, false);
 });

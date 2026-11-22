@@ -3,6 +3,60 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.46.1 — 2026-11-22
+
+### Design to code
+
+- **Waiting for the check:** when the shell returns before a complete check ends, the page says to wait in one call as
+  long as the last complete check took (`seconds` in `out/history.jsonl`, else two minutes), not in short polls. The
+  rerun of 0.45.0 in the owner's Codex polled 14 times at 1 s. The harness builders' shell blocks and does not poll,
+  so the wait is read only in Codex, in the owner's sitting.
+- **One ledger entry per cause:** its texts listed in `landmark`, and no `frame` when it holds in every frame. Broad
+  excuses count the findings per frame (or in the sweep) for entries that name their landmarks, so one question asked
+  in every frame is not a broad one, and over every frame for a `*` or a region, as before.
+- **A missing text's `presence` entry carries the shift its absence causes.** Proposed or accepted, it carries, in each
+  frame it applies to, the upward `y` shifts below the text and the root's height, within the text's height plus its
+  gap to the next landmark below, both from the spec.
+  - It carries only on evidence: the nearest landmark below the text that shares some of its width (the root's bottom
+    when nothing is below) moved up past the text's place by that bound less 12 px, or more. Then each step down the
+    page past its place is carried, in any column; a collapse only in another column carries nothing.
+  - Only a carried shift leaves a rest to judge, in the usual bands, shown as `(-8; +22 after the ledger)`; an
+    ordinary entry still excuses an offset or a height whole or not at all.
+  - The carried shifts are notes naming the entry, and the handoff says how many each entry carries; the builder
+    writes no entry for them.
+  - Its limits are in `references/check.md`: a text on the page in other words is not matched, so it counts as
+    missing and its entry could carry a collapse with another cause; the reworded text is then page text the spec
+    lacks, which keeps the frame `incomplete` until an entry names it.
+- **Measured** on the prebuilt planted card. With only the line's presence entry, the check went from 81 findings, 73
+  of them rows' `y` and the root's height, to 8, all the build's own; a 20 px shift planted below the line stays a
+  finding, 21–22 px after the ledger. On three harness arms each, 0.45.0 against the candidate before a verifier's
+  fixes, ledger entries fell from a median of 7 to 3 and rounds to a handover from 23 to 10, calls from 41–54 to
+  30–34. `pending` came 2 of 3 on both sides, short of the carried shift's registered rule; the owner kept it as a
+  recorded departure. A line that opened a frame's `side.png` only when the numbers leave the question open did not
+  reduce views (a median of 4, then 5) and was reverted. [The research
+  record](https://github.com/Nowely/agent-skills/blob/c680af8/plugins/entrust/research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md)
+  holds the Codex rerun on 0.45.0 that set the baseline (doc 39), the measures written before the runs, and the
+  results (doc 40).
+
+### Design-to-code evals
+
+- The planted-card grader counts an `options` array of two or more as a question put to the owner; one option still
+  does not count (E158). It had read a proposed entry with two options as named but not asked.
+- The prebuilt planted specs' footer boxes, "MC-LAG 25/25" and "PSU" / "2+ PSU", sit under the planted line, where its
+  ink is. They were 30 px above it in all four card frames, so no build could settle them without editing the specs.
+- `evals/design-to-code/harness/real-run.mjs`, for the owner's real runs. `setup` installs the skill at a commit,
+  hashes the owner's originals into a baseline outside the project, checks the seeds, prints the Codex rule and the
+  first message, and starts Chromium from the project. `collect` waits until no check is in flight, freezes the run,
+  diffs the originals against the baseline, reads the Codex rollout log into the run's record, and writes the archive
+  and the owner's verdict form. Its rollout parser is tested on a synthetic log only.
+
+### Known issues
+
+- New open issue E159: the check can pair a one-digit landmark with the same digit inside a longer page text, report
+  offsets for a piece the page places correctly, and leave the frame `incomplete`. E146–E153 stay open, E151 narrowed
+  to what the carried shift does not cover. All are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.46.0 — 2026-11-22
 
 ### Orchestrate

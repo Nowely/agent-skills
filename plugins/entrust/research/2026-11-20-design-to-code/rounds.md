@@ -768,3 +768,10 @@ ledger entry the grader requires. Gate obedience is inconclusive; the check rema
 agent for preliminary analysis, but the formal review pass did not happen. [The run record](37-terra-28-4-dry-run.md)
 contains the conditions, observed results and role costs. No product or skill changes were made. No gate regression
 count can be measured from this early handover.
+
+## Released 0.45.0: capped Terra repeat
+
+The prebuilt-case worker wrote a proposed entry with options by round 2, but reached 60 calls without a final
+handover or review. Its first archive had five rounds; an in-flight check wrote a sixth and a checker handoff after
+the stop. The grader failed to recognize the options array on the first archive (E158). [The run record](39-terra-045-rerun.md)
+keeps the two boundaries, costs and limits distinct. No regression count or first-submission acceptance can be inferred.

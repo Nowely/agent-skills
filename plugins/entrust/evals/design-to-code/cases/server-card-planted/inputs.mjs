@@ -42,7 +42,9 @@ export function findQuestion(docs) {
 }
 
 // A ledger entry as the text the owner reads.
-export const entryText = (e) => [].concat(e.landmark ?? []).join(", ") + " — " + [e.reason, e.options && JSON.stringify(e.options)].filter(Boolean).join(" ");
+// An options array of two or more is a choice put to the owner, so it is labelled as one (E158).
+const optionsText = (o) => Array.isArray(o) ? (o.length >= 2 ? "Options: " : "") + JSON.stringify(o) : o;
+export const entryText = (e) => [].concat(e.landmark ?? []).join(", ") + " — " + [e.reason, e.options && optionsText(e.options)].filter(Boolean).join(" ");
 
 // data.js read as the story page reads it: window.OFFERS.
 // The context is its own `window`, as in a browser, so a file that sets `window.OFFERS` and then writes `OFFERS[…]`

@@ -394,27 +394,70 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // What of each landmark's offset the ledger accounts for: its own step, if excused, plus what it inherits from
   // the landmark it follows, if that was excused. An offset is a finding only by what is left.
   const byIndex = new Map(placed.map((p) => [p.index, p]));
+  // A design text the page lacks, its presence proposed or accepted in the ledger, carries what its absence moves: a
+  // step down the page that passes its place, upward, by at most its height and its gap to the next landmark below
+  // (else to the one above), both from the spec. Only where the page shows that the absence moved what follows: the
+  // nearest landmark below the text that shares some of its width (the root's bottom, when nothing is below) moved up
+  // past the text's place by the bound less the band, or more. A shift elsewhere, in another column, is not the
+  // absence's. The builder writes no entry for the shift.
+  const bottomOf = (b) => b.y + b.height;
+  const sharesWidth = (a, b) => Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 0;
+  const lowest = placed.find((p) => p.index === steps.lowest), bottom = steps.find((c) => c.index === "bottom");
+  const after = (p) => { const up = p.up && byIndex.get(p.up.index); return up ? bottomOf(up.l.box) : -Infinity; };
+  const gone = spec.landmarks.filter((l, index) => !byIndex.has(index) && l.box).flatMap((l) => {
+    const entry = excuse(landmarkLabel(l), "presence");
+    if (!entry) return [];
+    const top = l.box.y, others = spec.landmarks.filter((q) => q !== l && q.box);
+    const below = others.filter((q) => q.box.y >= bottomOf(l.box) - 1).map((q) => q.box.y - top);
+    const above = others.filter((q) => bottomOf(q.box) <= top + 1).map((q) => top - bottomOf(q.box));
+    const bound = below.length ? Math.min(...below) : l.box.height + (above.length ? Math.min(...above) : 0);
+    const next = placed.filter((p) => p.l.box.y >= bottomOf(l.box) - 1 && sharesWidth(p.l.box, l.box)).sort((a, b) => a.l.box.y - b.l.box.y)[0];
+    const moved = next ? (after(next) <= top + 1 ? own.get(`y\u0000${next.index}`)?.step : undefined)
+      : !below.length && lowest && bottomOf(lowest.l.box) <= top + 1 ? bottom?.step : undefined;
+    return moved < 0 && moved <= MODERATE - bound ? [{ label: landmarkLabel(l), entry, top, bottom: bottomOf(l.box), bound }] : [];
+  });
+  const carry = (from, to, step) => {
+    const passed = gone.filter((g) => g.top >= from - 1 && g.bottom <= to + 1);
+    if (!passed.length || step >= 0) return null;
+    return { amount: Math.max(step, -passed.reduce((s, g) => s + g.bound, 0)), entries: passed.map((g) => g.entry), by: passed.map((g) => g.label) };
+  };
+  // Each vertical step that passes a missing text's place, and whether that text explains all of it: a step it explains
+  // is not where to start.
+  const carries = new Map();
+  for (const p of placed) {
+    const step = own.get(`y\u0000${p.index}`), up = p.up && byIndex.get(p.up.index);
+    const c = step && carry(up ? bottomOf(up.l.box) : -Infinity, p.l.box.y, step.step);
+    if (c) { carries.set(step, c); if (!over(step.step - c.amount)) step.carried = true; }
+  }
   const memo = new Map();
+  const none = () => ({ amount: 0, status: "accepted", entries: [], by: [], direct: false, ownPart: 0 });
   const excused = (p, axis) => {
     const k = `${axis}\u0000${p.index}`;
     if (memo.has(k)) return memo.get(k);
-    memo.set(k, { amount: 0, status: "accepted", entries: [] });
+    memo.set(k, none());
     const link = p[axis === "y" ? "up" : "side"];
     const from = link && byIndex.get(link.index);
-    let result = from ? { ...excused(from, axis) } : { amount: 0, status: "accepted", entries: [] };
-    result = { ...result, entries: [...result.entries] };
+    let result = from ? { ...excused(from, axis) } : none();
+    result = { ...result, entries: [...result.entries], by: [...result.by], ownPart: 0 };
     // Named boxes from an image: a text before it that is wider or narrower in the page's font moves it, and that is the
     // font's; its own size is held by the "wider than the font explains" finding, and a changed gap stays a step.
     if (from && link.term === "width" && boxesSpec && from.l.text) result.amount += (link.sign ?? 1) * from.dw;
     else if (from && link.term) {
       const change = link.term === "height" ? from.dh : (link.sign ?? 1) * from.dw;
       const e = excuse(from.label, link.term, change);
-      if (e) { result.amount += change; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); }
+      if (e) { result.amount += change; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); result.direct = true; }
     }
     const step = own.get(k);
     if (step) {
-      const e = excuse(p.label, axis, step.step);
-      if (e) { result.amount += step.step; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); }
+      const e = excuse(p.label, axis, step.step), c = !e && carries.get(step);
+      if (e) { result.amount += step.step; result.ownPart = step.step; result.status = weaker(result.status, statusOf(e)); result.entries.push(e); result.direct = true; }
+      else if (c) {
+        result.amount += c.amount;
+        result.ownPart = c.amount;
+        for (const x of c.entries) result.status = weaker(result.status, statusOf(x));
+        result.entries.push(...c.entries);
+        result.by.push(...c.by);
+      }
     }
     memo.set(k, result);
     return result;
@@ -423,6 +466,9 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   const issues = [];
   // The band a moderate offset may sit in: what a token or another font explains.
   const band = MODERATE;
+  // What of a difference is judged: all of it, unless a missing text carried a part; then what it left. An ordinary
+  // entry excuses all of an offset or nothing of it, as it always has.
+  const rest = (i) => (i.carriedPart ? i.unexcused : i.delta) ?? 0;
   // Sizes are kept as measured, for the ledger's max and the score; only what a person reads is rounded.
   const shown = (v) => (typeof v === "number" ? round(v) : v);
   const add = (landmark, property, expected, actual, extra = {}) => issues.push({
@@ -434,11 +480,15 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     const left = delta - e.amount;
     const inherited = !own.has(`${axis}\u0000${p.index}`);
     const base = { expected: shown(expected), actual: shown(actual), delta, inherited, own: own.get(`${axis}\u0000${p.index}`)?.step ?? 0 };
+    // A shift only missing texts carry is a note that names them and their entry.
+    const carried = e.by.length && !e.direct ? { carried: [...new Set(e.by)] } : {};
     if (!over(left)) {
-      if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)) });
+      if (e.entries.length) issues.push({ landmark: p.label, property: axis, ...base, status: e.status, ledger: e.entries[0].id ?? e.entries[0].reason, entries: e.entries.map((x) => ledger.indexOf(x)), ...carried });
       return;
     }
-    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}), status: "fail" });
+    // Past what a missing text carries, the rest is judged as any offset: its own step less what was carried of it.
+    issues.push({ landmark: p.label, property: axis, ...base, ...(e.entries.length ? { unexcused: left } : {}),
+      ...(e.by.length ? { own: base.own - e.ownPart, carriedPart: true } : {}), status: "fail" });
   };
 
   if (over(pw - sw)) add("root", "width", sw, pw);
@@ -518,8 +568,8 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // nearly touch, whatever their edges keep. A piece already past the band names its own cause.
   // A drift carried from the pieces before is a note, not a cause: it does not hide a gap that closes after it.
   for (const [axis, pos, size, cross, crossSize, word] of [["x", "x", "width", "y", "height", "after"], ["y", "y", "height", "x", "width", "below"]]) {
-    const drift = (i) => Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band;
-    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && Math.abs(i.delta ?? 0) > band && !drift(i));
+    const drift = (i) => Math.abs(i.own ?? Infinity) <= band && Math.abs(rest(i)) <= 2 * band;
+    const past = (q) => issues.some((i) => i.landmark === q.label && i.property === axis && !i.carried && Math.abs(rest(i)) > band && !drift(i));
     for (const p of placed) {
       const next = placed.filter((q) => q !== p && q.l.box[pos] >= p.l.box[pos] + p.l.box[size] - 1
         && Math.min(p.l.box[cross] + p.l.box[crossSize], q.l.box[cross] + q.l.box[crossSize]) - Math.max(p.l.box[cross], q.l.box[cross]) >= 0.5 * Math.min(p.l.box[crossSize], q.l.box[crossSize]))
@@ -547,19 +597,23 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   }
   // The root's height is the lowest landmark's offset carried down plus the bottom step: excused as they are.
   const dH = measured.root.height - spec.frame.height;
+  // A missing text below the lowest landmark is carried by the bottom step.
+  const underLowest = bottom && lowest && carry(bottomOf(lowest.l.box), Infinity, bottom.step);
+  if (underLowest && !over(bottom.step - underLowest.amount)) bottom.carried = true;
   if (over(dH) && !placed.length) add("root", "height", spec.frame.height, measured.root.height);
   else if (over(dH)) {
-    const lowest = placed.find((p) => p.index === steps.lowest);
-    const chain = lowest ? excused(lowest, "y") : { amount: 0, status: "accepted", entries: [] };
+    const chain = lowest ? excused(lowest, "y") : none();
     const carriedEntry = lowest && excuse(lowest.label, "height", lowest.dh);
     const carried = carriedEntry ? lowest.dh : 0;
-    const bottom = steps.find((c) => c.index === "bottom");
     const rootEntry = bottom && excuse("root", "height", bottom.step);
-    const amount = chain.amount + carried + (bottom && rootEntry ? bottom.step : 0);
-    const entries = [...chain.entries, ...(carriedEntry ? [carriedEntry] : []), ...(rootEntry ? [rootEntry] : [])];
+    const gap = !rootEntry && underLowest;
+    const amount = chain.amount + carried + (bottom && rootEntry ? bottom.step : 0) + (gap ? gap.amount : 0);
+    const entries = [...chain.entries, ...(carriedEntry ? [carriedEntry] : []), ...(rootEntry ? [rootEntry] : []), ...(gap ? gap.entries : [])];
     const status = entries.reduce((s, e) => weaker(s, statusOf(e)), "accepted");
-    if (over(dH - amount)) add("root", "height", spec.frame.height, measured.root.height, { status: "fail" });
-    else add("root", "height", spec.frame.height, measured.root.height, { status, ledger: entries[0]?.id ?? entries[0]?.reason, entries: entries.map((x) => ledger.indexOf(x)) });
+    const by = [...chain.by, ...(gap ? gap.by : [])], direct = chain.direct || Boolean(carriedEntry || rootEntry);
+    if (over(dH - amount)) add("root", "height", spec.frame.height, measured.root.height, { status: "fail", ...(by.length ? { unexcused: dH - amount, carriedPart: true } : {}) });
+    else add("root", "height", spec.frame.height, measured.root.height, { status, ledger: entries[0]?.id ?? entries[0]?.reason, entries: entries.map((x) => ledger.indexOf(x)),
+      ...(by.length && !direct ? { carried: [...new Set(by)] } : {}) });
   }
   // An area that moved with a text is that text's finding already, excused or not with it.
   for (const r of regions.filter((x) => !x.movedWith)) {
@@ -577,11 +631,12 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   // The second tier: what the system or a font explains, or pixels alone, is a note, never a finding: an offset within
   // the band or a drift within twice it; a pixel region (a stand-in icon, a rendering); a text wider or narrower than
   // drawn (the type's size is its own finding); a height within twice the band; a column's lines within the band.
-  const note = (i) => ["fail", "pending"].includes(i.status) && !i.gap && (
-    (["x", "y"].includes(i.property) && (Math.abs(i.delta ?? 0) <= band || (Math.abs(i.own ?? Infinity) <= band && Math.abs(i.delta ?? 0) <= 2 * band)))
+  // What the ledger leaves of an offset or the root's height is judged, and a shift a missing text carries is a note.
+  const note = (i) => i.carried || (["fail", "pending"].includes(i.status) && !i.gap && (
+    (["x", "y"].includes(i.property) && (Math.abs(rest(i)) <= band || (Math.abs(i.own ?? Infinity) <= band && Math.abs(rest(i)) <= 2 * band)))
     || i.property === "region" || (i.property === "width" && i.landmark !== "root")
-    || (i.property === "height" && Math.abs(i.delta ?? 0) <= 2 * band)
-    || (i.property === "align" && Math.abs(i.delta ?? 0) <= band));
+    || (i.property === "height" && Math.abs(rest(i)) <= 2 * band)
+    || (i.property === "align" && Math.abs(i.delta ?? 0) <= band)));
   const notes = all.filter((i) => !extra(i) && note(i));
   const classified = all.filter((i) => !extra(i) && !note(i));
   const failing = classified.filter((i) => i.status === "fail");
@@ -602,7 +657,9 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
     frame, pass: verdict === "pass", verdict, otherData, imageOnly, ...(typeUnchecked ? { typeUnchecked } : {}), ...(spec.source === "page snapshot" ? { snapshot: true } : {}), ...(notNamed.length ? { uncovered: notNamed } : {}), ...(measured.skipped?.length ? { skipped: measured.skipped } : {}),
     ...(typeRatio ? { type: { ratio: round(typeRatio), heights: heights.map(({ drawn, page, ...h }) => ({ ...h, ratio: round(h.ratio) })) } } : {}),
     // A region has no size of its own to give, only its place.
-    ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.delta) }), ...(i.box ? { box: i.box } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
+    // A carried shift keeps its size and names the missing text and its entry; another note, what the ledger left of it.
+    ...(notes.length ? { notes: notes.map((i) => ({ landmark: i.landmark, property: i.property, ...(i.delta === undefined ? {} : { delta: round(i.carried ? i.delta : rest(i)) }), ...(i.box ? { box: i.box } : {}),
+      ...(i.carried ? { carried: i.carried, status: i.status, entries: i.entries } : {}) })), band } : {}), missingReference, fontsMissing: fonts, issues: classified, unexpected, causes: steps,
     score: round(unexpected.length * 10 + open.reduce((s, i) => s + (i.property === "region" ? Math.sqrt(i.area)
       : i.delta === undefined ? 10 : Math.max(0, Math.abs(i.unexcused ?? i.delta) - tolerance)), 0)),
     root: { spec: { width: spec.frame.width, height: spec.frame.height }, page: measured.root },
@@ -894,6 +951,8 @@ export function ranges(widths) {
 
 const cell = (v) => (v === undefined ? "" : String(v).replace(/\|/g, "\\|").replace(/\n/g, " "));
 const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
+// What a finding a missing text carries in part is judged by: the rest.
+const afterLedger = (i) => (!i.carriedPart ? "" : `; ${signed(round(i.unexcused))} after the ledger`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
 export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason || sweep?.stories?.some((st) => st.unmeasured) ? null
@@ -926,10 +985,14 @@ const candidateLine = (open) => `${open.length} candidate${open.length === 1 ? "
 const typeNote = "type sizes not compared: the spec gives no font sizes (`design.mjs spec … --context` reads them from the design context)";
 // The notes a frame keeps, in a line: offsets and drifts with the largest, then what else, by kind.
 const noteLine = (f) => {
-  const offsets = f.notes.filter((n) => ["x", "y"].includes(n.property)), rest = f.notes.filter((n) => !["x", "y"].includes(n.property));
+  const shifts = f.notes.filter((n) => n.carried), own = f.notes.filter((n) => !n.carried);
+  const offsets = own.filter((n) => ["x", "y"].includes(n.property)), rest = own.filter((n) => !["x", "y"].includes(n.property));
   const kinds = { region: "pixel regions", width: "texts wider or narrower than drawn", height: "heights", align: "column edges" };
   const counted = Object.entries(rest.reduce((c, n) => ({ ...c, [n.property]: (c[n.property] ?? 0) + 1 }), {})).map(([k, v]) => `${v} ${kinds[k] ?? k}`);
-  return [offsets.length && `${offsets.length} offsets of ${f.band} px or less, or drifts to ${2 * f.band} carried from the pieces before, at most ${Math.max(...offsets.map((n) => Math.abs(n.delta)))} px`, ...counted].filter(Boolean).join("; ");
+  // What a missing text's ledger entry carries: the rows below it moved up and the root's height, at most its bound.
+  const by = [...new Set(shifts.flatMap((n) => n.carried))], entries = [...new Set(shifts.flatMap((n) => n.entries ?? []))];
+  return [shifts.length && `${shifts.length} shifts carried by the missing ${listed(by, 3)} (ledger entry ${entries.map((x) => x + 1).join(", ")}, ${shifts[0].status}), at most ${Math.max(...shifts.map((n) => Math.abs(n.delta)))} px`,
+    offsets.length && `${offsets.length} offsets of ${f.band} px or less, or drifts to ${2 * f.band} carried from the pieces before, at most ${Math.max(...offsets.map((n) => Math.abs(n.delta)))} px`, ...counted].filter(Boolean).join("; ");
 };
 
 export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acceptance = [], ledgerProblems = [], round: n, status, missingReferences = [] }) {
@@ -966,7 +1029,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
     out.push("");
     if (f.issues.length) {
       out.push("| Landmark | Property | Design | Page | Δ | Status |", "|---|---|---:|---:|---:|---|");
-      for (const i of ordered(f.issues)) out.push(`| ${cell(i.landmark)} | ${i.property} | ${cell(i.expected)} | ${cell(i.actual)} | ${i.delta === undefined ? "" : `${signed(round(i.delta))}${i.inherited ? " (inherited)" : ""}`} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
+      for (const i of ordered(f.issues)) out.push(`| ${cell(i.landmark)} | ${i.property} | ${cell(i.expected)} | ${cell(i.actual)} | ${i.delta === undefined ? "" : `${signed(round(i.delta))}${i.inherited ? " (inherited)" : ""}${afterLedger(i)}`} | ${i.status}${i.ledger ? ` (${cell(i.ledger)})` : ""} |`);
       out.push("");
     }
   }
@@ -1016,7 +1079,7 @@ function openCauses(f) {
     const own = issues.filter((i) => i.landmark === landmark && i.property === property);
     return own.length > 0 && own.every((i) => i.status === "pending" || i.status === "accepted");
   };
-  return (f.causes ?? []).filter((c) => !c.repeat && !settled(c));
+  return (f.causes ?? []).filter((c) => !c.repeat && !c.carried && !settled(c));
 }
 
 // How many rounds in a row, this one included, have had the same first finding. A finding is named by its key, which
@@ -1062,7 +1125,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
   for (const row of acceptance.filter((r) => ["fail", "pending"].includes(r.status))) body.push(`Acceptance: ${acceptanceLine(row)}`);
   for (const g of gaps) body.push(`Not checked: ${g}.`);
   if (ledgerProblems.length) body.push(`Ledger: ${ledgerProblems.join("; ")}`);
-  const say = (i) => `${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}`;
+  const say = (i) => `${i.landmark} ${i.property}: ${i.expected} → ${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))}${afterLedger(i)})`}`;
   for (const f of frames) {
     const failing = ordered(f.issues.filter((i) => i.status === "fail"));
     const pending = f.issues.filter((i) => i.status === "pending").length;
@@ -1114,7 +1177,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   pictures = [], round: n, status, score, stamp = "", model }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
   const excused = (issues) => issues.filter((i) => i.status === "accepted").length;
-  const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
+  const say = (i) => `${where(i)} ${i.property}: ${i.expected === undefined ? "" : `${i.expected} → `}${i.actual}${i.delta === undefined ? "" : ` (${signed(round(i.delta))}${afterLedger(i)})`}${i.ranges ? ` at ${i.ranges}` : ""}`;
   const count = (issues) => {
     const failing = fails(issues), ok = excused(issues), noted = issues.filter((i) => i.status === "note");
     const cand = issues.filter((i) => i.status === "candidate"), open = cand.filter((i) => !i.answer);
@@ -1123,8 +1186,11 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   };
   const handoverState = { pass: "done", pending: "proposals wait for the owner: hand over, naming each",
     incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
-  // An excuse should be narrower than what it excuses: an entry that covers many findings is named first.
-  const covered = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
+  // An excuse should be narrower than what it excuses: an entry that covers many findings is named first. Entries that
+  // name their landmarks are counted per frame (or in the sweep): the same question in every frame, one finding in each,
+  // is one entry, not a broad one. A wildcard or a region is counted over every frame, as it names nothing.
+  const covered = [...frames.flatMap((f) => f.issues.map((i) => ({ ...i, in: f.frame }))), ...(sweep?.issues ?? []).map((i) => ({ ...i, in: "the sweep" }))];
+  const named = (e) => e.property !== "*" && e.landmark !== undefined && ![].concat(e.landmark).includes("*");
   // Entries giving one cause are counted together: splitting a broad excuse into several does not hide it.
   const causesOf = new Map();
   ledger.forEach((e, index) => {
@@ -1133,7 +1199,9 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     causesOf.get(k).entries.push(index);
   });
   const coveredBy = (entries) => covered.filter((i) => i.entries?.some((x) => entries.includes(x)));
-  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)]).filter(([, , found]) => found.length > 3)
+  const inOnePlace = (found) => Math.max(0, ...Object.values(found.reduce((c, i) => ({ ...c, [i.in]: (c[i.in] ?? 0) + 1 }), {})));
+  const broad = [...causesOf.values()].map(({ e, entries }) => [e, entries, coveredBy(entries)])
+    .filter(([, entries, found]) => (entries.every((x) => named(ledger[x])) ? inOnePlace(found) : found.length) > 3)
     .map(([e, entries, found]) => {
       const gaps = found.filter((i) => i.gap || i.box).length;
       return `- ${entries.length > 1 ? `${entries.length} entries with one cause cover` : "one entry covers"} ${found.length} findings: ${entries.length > 1 ? "" : `${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — `}${e.reason} (${[e.category, e.status].filter(Boolean).join(", ")}).${gaps ? ` ${gaps} of them are gaps or box sizes, which a font does not change.` : ""} Check that each finding it covers has that cause.`;
@@ -1196,8 +1264,10 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   const text = (v) => (v && typeof v === "object" ? JSON.stringify(v) : String(v));
   for (const [index, e] of ledger.entries()) {
     const uses = all.filter((i) => i.entries?.includes(index)).length;
+    // A missing text's entry also carries the shifts its absence causes: notes, shown so the owner sees what it moves.
+    const shifts = frames.flatMap((f) => f.notes ?? []).filter((n) => n.carried && n.entries?.includes(index)).length;
     const wildcard = [].concat(e.landmark).includes("*") || e.property === "*";
-    const use = !uses ? "matched nothing" : e.status === "accepted" ? `excuses ${uses}` : `awaits your decision on ${uses}`;
+    const use = `${!uses ? "matched nothing" : e.status === "accepted" ? `excuses ${uses}` : `awaits your decision on ${uses}`}${shifts ? `, and carries ${shifts} shifts below the missing text, as notes` : ""}`;
     const scope = [e.frame && `frame ${[].concat(e.frame).join(", ")}`, e.category, e.decidedBy && `decided by ${e.decidedBy}`, wildcard && "wildcard", use]
       .filter(Boolean).join(" · ");
     out.push(`- ${e.status}: ${[].concat(e.landmark ?? `region ${e.region}`).join(", ")} ${e.property} — ${e.reason} (${scope})${e.status === "proposed" && e.options ? `; options: ${[].concat(e.options).map(text).join("; ")}` : ""}`);

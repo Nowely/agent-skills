@@ -168,17 +168,19 @@ font explains, or pixels alone, shown for the owner's eye; a ledger entry for on
 - a text's `width`, wider or narrower than drawn (its size is the `type` finding's);
 - a `height` within 24 px;
 - a frame's column edge (`align`) within 12 px;
+- a shift a missing text's `presence` entry carries ([the ledger](#the-ledger));
 - in the sweep, a `switch`, and a `construct`, which needs its reason in the handoff.
 
 Everything else is a finding: an offset, a drift, a height or a column edge past these; a gap of 8 px or more that
 closes to under 4, whatever drift the pieces carry; the root's width; a presence, a text, a font, the type's size; a
 cut, a truncated text with no way to read it, an overlap, a covered control, an overflow, a line, a wrap, a sweep
-alignment, a resize. What only a generated condition finds is a candidate (below).
+alignment, a resize. What only a generated condition finds is a candidate (below). An entry excuses an offset or a
+height whole or not at all; only of a shift a missing text carries in part is the rest judged (below).
 
 **Start here** names a frame's first cause from the top: an offset between two neighbours, or a landmark's width or
 height that carried them. An offset marked *inherited* goes with its cause. A cause the ledger settles (proposed or
-accepted) is not named: what it explains is counted as awaiting a decision, and the first finding is the first one
-no entry covers.
+accepted), or a missing text carries, is not named: what it explains is counted as awaiting a decision, and the first
+finding is the first one no entry covers.
 
 ## Generated conditions
 
@@ -223,11 +225,25 @@ for the owner. An entry with `"cause": "checker"` may also name a failing journe
 as the landmark): the journey waits for the owner instead of failing, and the evidence lists it under "Disputed with
 the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
 
+A `presence` entry, proposed or accepted, for a design text the page lacks also carries, in each frame it applies to,
+what that absence moves: upward `y` shifts below the text, and the root's height, by at most the text's height and its
+gap to the next landmark below (to the one above when none is below), both from the spec. It carries only on evidence:
+the nearest landmark below the text that shares some of its width (the root's bottom, when nothing is below) moved up
+past the text's place by that bound less 12 px, or more. Then each step down the page that passes the text's place is
+carried, in any column. What it carries is a note that names the entry; no entry is written for the shift. Past the
+bound, the rest is judged as any offset, in the same bands: a `y` within 12 px (24 for a drift) and the root's height
+within 24 px are notes, and a finding shows the rest: `(-8; +22 after the ledger)`.
+
+The limit: a text on the page in other words is not matched, so it counts as missing, and its entry could carry a
+collapse that has another cause. The reworded text is then page text the spec lacks, which keeps the frame incomplete
+until an entry names it; check that the entry's question covers it.
+
 An entry is a fault, which fails the check, without a landmark (or a region), a reason, or a known property or
 status; with an unknown category or a `cause` other than `checker`; a journey entry without that cause; accepted
 without `decidedBy`; with `*` and not accepted; of `owner` and not accepted; for `text` without `actual` or with more
-than one design text. Entries of one cause that cover more than three findings are
-named first in the evidence, as broad excuses.
+than one design text. Entries of one cause that cover more than three findings are named first in the evidence, as
+broad excuses: over all frames for a `*` or a region, in one frame (or the sweep) for entries that name their
+landmarks, so one question asked in every frame is not a broad one.
 
 ## Output
 

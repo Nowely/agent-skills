@@ -1,0 +1,133 @@
+[
+  {
+    "frame": "card-764",
+    "landmark": "Выдача за 15 минут",
+    "property": "presence",
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it. The current card omits the label; the observed frame has it above the SKU.",
+    "options": [
+      "Supply a delivery-time field and render it; requires an API contract change.",
+      "Accept omission until the data is available; the card remains shorter than the frame."
+    ]
+  },
+  {
+    "frame": "card-601",
+    "landmark": "Выдача за 2 часа",
+    "property": "presence",
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it. The current card omits the label; the observed frame has it above the SKU.",
+    "options": [
+      "Supply a delivery-time field and render it; requires an API contract change.",
+      "Accept omission until the data is available; the card remains shorter than the frame."
+    ]
+  },
+  {
+    "frame": "card-486",
+    "landmark": "Выдача за 1 день",
+    "property": "presence",
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it. The current card omits the label; the observed frame has it above the SKU.",
+    "options": [
+      "Supply a delivery-time field and render it; requires an API contract change.",
+      "Accept omission until the data is available; the card remains shorter than the frame."
+    ]
+  },
+  {
+    "frame": "card-280",
+    "landmark": "Выдача за 3 дня",
+    "property": "presence",
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame shows a delivery time but README.md says the API sends exactly the listed fields and none supplies it. The current card omits the label; the observed frame has it above the SKU.",
+    "options": [
+      "Supply a delivery-time field and render it; requires an API contract change.",
+      "Accept omission until the data is available; the card remains shorter than the frame."
+    ]
+  },
+  {
+    "frame": "card-764",
+    "landmark": [
+      "BA-i201-B",
+      "EPYC 9374F",
+      "3.33",
+      "16",
+      "×2",
+      "32 ядер",
+      "256 ГБ",
+      "2 × 838",
+      "SSD",
+      "125 898,00 ₽"
+    ],
+    "property": "y",
+    "max": 35,
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame reserves a top row for the delivery time, which the API does not provide; omitting that row moves the content up. The first complete check measured a 28–32 px offset for the top content.",
+    "options": [
+      "Supply the delivery time so the row and its normal spacing can be rendered.",
+      "Accept the shorter card without the missing data."
+    ]
+  },
+  {
+    "frame": "card-486",
+    "landmark": [
+      "BA-i201-B",
+      "EPYC 9374F",
+      "256 ГБ"
+    ],
+    "property": "y",
+    "max": 35,
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame reserves a top row for the delivery time, which the API does not provide; omitting that row moves the content up. The first complete check measured a 28–32 px offset for the top content.",
+    "options": [
+      "Supply the delivery time so the row and its normal spacing can be rendered.",
+      "Accept the shorter card without the missing data."
+    ]
+  },
+  {
+    "frame": "card-280",
+    "landmark": [
+      "HA-a701-6N-4H-2X25G",
+      "3.33 ГГц"
+    ],
+    "property": "y",
+    "max": 35,
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The frame reserves a top row for the delivery time, which the API does not provide; omitting that row moves the content up. The first complete check measured a 28–32 px offset for the top content.",
+    "options": [
+      "Supply the delivery time so the row and its normal spacing can be rendered.",
+      "Accept the shorter card without the missing data."
+    ]
+  },
+  {
+    "frame": "card-764",
+    "landmark": "root",
+    "property": "height",
+    "max": 45,
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The missing delivery-time row also shortens the card; the first complete check measured 26 px at 764 and 43 px at 280.",
+    "options": [
+      "Supply the delivery time.",
+      "Accept the shorter card."
+    ]
+  },
+  {
+    "frame": "card-280",
+    "landmark": "root",
+    "property": "height",
+    "max": 45,
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "The missing delivery-time row also shortens the card; the first complete check measured 26 px at 764 and 43 px at 280.",
+    "options": [
+      "Supply the delivery time.",
+      "Accept the shorter card."
+    ]
+  }
+]

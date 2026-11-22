@@ -208,3 +208,10 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   rerun on draft 28.5 with the plan's approval in the task prompt as a changed condition.
 - [Terra dry run on draft 28.4](37-terra-28-4-dry-run.md): the first handover stopped before the gate; the result is
   inconclusive for gate obedience, with the worker's approval request, observed checks and role costs recorded.
+- [Terra rerun on released 0.45.0](39-terra-045-rerun.md): stopped at 60 calls without a worker handover; records the
+  ledger options, grader false negative, snapshot race, role costs and post-boundary check separately.
+- [After entrust 0.45.0](38-after-the-release.md): the plan for the rest of the quota, written before the runs: the
+  Terra rerun on the shipped skill, the real run as iteration 8, and the reserve.
+- [Service overhead, and the real runs in one sitting](40-overhead-and-one-sitting.md): written before the runs; the
+  owner's decisions, the review-pass control that failed, the rerun as the overhead baseline, 0.46.1's four levers
+  with their measures, and the sitting: the prebuilt pass, then runs A and B.
