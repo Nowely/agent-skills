@@ -18,11 +18,12 @@ test("advisor remains explicit-only and concise",
     || "frontmatter or concise-page bound failed");
 
 test("advisor model selection follows user authority",
-  "a named model wins, and an unavailable choice is not silently replaced: the plan reference owns that rule, so the page links it instead of restating it",
+  "a named model wins, and an unavailable choice is not silently replaced: the plan reference owns that rule, so the page links it instead of restating it; a restatement needs the rule's own words (a fallback, the alternatives, the unavailable model again), which the page otherwise never uses",
   () => text.includes("Use the model the user named")
     && text.includes("unless they delegated the choice")
     && /If the chosen model is unavailable, \[[^\]]+\]\(\.\.\/orchestrate\/references\/plan\.md#composition\)/.test(text)
-    && !/authorized fallback/.test(text)
+    && !/fallback|alternatives/i.test(text)
+    && (text.match(/unavailable/gi) ?? []).length === 1
     || "advisor selection policy is missing, or the unavailable-model rule is restated beside its link");
 
 test("the external adapter owns transport details",
