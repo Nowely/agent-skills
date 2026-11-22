@@ -15,13 +15,13 @@ before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) 
 **Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
 returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
 which admits a worker briefed after the critic's brief and before its return, left `node evals/gate-checks.test.mjs`
-at 25 of 25. `:659` names a Claude return that arrived after the synthesis started; deleting that line left the suite
-at 25 of 25 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and `:629`), so the gaps
+at 26 of 26. `:679` names a Claude return that arrived after the synthesis started; deleting that line left the suite
+at 26 of 26 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and `:629`), so the gaps
 predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its worker before the
 critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by an independent
 verifier of the orchestrate rework.
 
-**Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 25 passed`.
+**Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 26 passed`.
 
 **Issue text.** Two of the live gate's checks have no offline case that fails when they break: a worker briefed while
 the plan critic is still running, and a return that came in after the synthesis started. Each check can be weakened
@@ -293,7 +293,7 @@ task list and its Stop on such a task.
 `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; at `def9f23` `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolved its
 advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer said to load
 the page first); today the advisor reaches an adapter only for a named model the host does not run natively (`:12`),
-and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:71-78` loads an adapter's page only for a provider the user
+and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:73-80` loads an adapter's page only for a provider the user
 named. On 2026-09-29,
 Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
 call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
@@ -340,7 +340,7 @@ the rule in the model table and have the parity reference link it.
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:87-90` gives judgement to the top tier and the bulk tier
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:89-92` gives judgement to the top tier and the bulk tier
 "independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:11-17` names Luna
 for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review, refutation
 and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
@@ -422,7 +422,7 @@ then either make the two cases pass there or have the suite say that they cannot
 the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
 path") and the count ("Announce the unit count and how it was derived"), and `:71-72` the pilot ("define the
 acceptance rule and pilot representative work. Compare the same inputs with a stronger reference");
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-103` states the tally ("Open one complete return before
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:104-105` states the tally ("Open one complete return before
 trusting a unanimous tally of verifiers"), which the bulk row links.
 `plugins/entrust/plugin/skills/swarm/SKILL.md:24` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
