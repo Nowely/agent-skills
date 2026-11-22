@@ -3,6 +3,32 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Orchestrate
+
+- The page's Verification, which owns what the verifier is given, says it once: on write work the verifier never
+  receives a writer's return, and on read-only work (research, analysis, review) it receives the workers' findings as
+  claims to re-derive, never a worker's judgement that they hold. The contract's sentence on a writer's return moved
+  there, and `references/roles.md`'s verifier row and section name the claims of the workers' findings as its target.
+  Three sentences were tightened to keep the page's body at 7,996 characters, under 8,000.
+- The speed profile in `references/plan.md` keeps the default team's minimum, the plan critic and the verifier, and
+  any further review the consequences warrant; it asked for "a targeted check" and named neither role.
+- On a card, a role the user dropped is named as dropped at the user's word: `references/plan.md`'s team row has said
+  so since 0.46.0, whose notes did not mention it.
+
+### Live gate
+
+- The minimum-team check no longer counts a verifier's Codex continuation (`RESUME:`) as the verifier briefed after
+  the last worker returned, as its own comment said: a verifier briefed while the worker still ran and resumed after
+  it returned is red. The offline suite gains that case and two with two workers, a plan critic briefed between the
+  workers' briefs and a verifier briefed between their returns, so a check that reads only the last worker's brief or
+  the first worker's return turns it red.
+
+### Known issues
+
+- No new issues; the open ones, E154 to E157 among them, are described in
+
 ## 0.46.1 — 2026-11-22
 
 ### Design to code
