@@ -41,6 +41,10 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | [codex](skills/codex/SKILL.md) | the assistant, in Claude Code, when you name Codex | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
 | [opencode](skills/opencode/SKILL.md) | the assistant, when you name OpenCode or a model it serves | OpenCode workers |
 
+Claude Code re-attaches the orchestrate page after a compaction only in the process that invoked it (measured on
+2.1.330). After you resume a session in a new process, type `/entrust:orchestrate` again: the coordinator re-reads its
+approved card and continues the work without planning it again.
+
 Every external run goes through a relay agent that decides nothing: `entrust:relay` in Claude Code, a native
 subagent on the host's smallest model elsewhere, a fresh one for each run of the launcher.
 
