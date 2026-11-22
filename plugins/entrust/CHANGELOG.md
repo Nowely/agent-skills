@@ -12,6 +12,8 @@ forensics remain in the repository references and release notes.
   claims to re-derive, never a worker's judgement that they hold. The contract's sentence on a writer's return moved
   there, and `references/roles.md`'s verifier row and section name the claims of the workers' findings as its target.
   Three sentences were tightened to keep the page's body at 7,996 characters, under 8,000.
+- The OpenCode adapter's orchestration page links the orchestrate page's Verification for what a fresh verifier is
+  given, instead of naming only the requirements and the raw artifacts.
 - The speed profile in `references/plan.md` keeps the default team's minimum, the plan critic and the verifier, and
   any further review the consequences warrant; it asked for "a targeted check" and named neither role.
 - On a card, a role the user dropped is named as dropped at the user's word: `references/plan.md`'s team row has said
