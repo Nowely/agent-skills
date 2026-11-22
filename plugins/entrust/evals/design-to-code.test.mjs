@@ -2438,6 +2438,34 @@ test("0.46.1, C2: a 20 px margin planted above the planted card's footer, below 
   assert.match(r.stdout, /MC-LAG 25\/25 y: 118 → \d+ \(-\d+; \+\d+ after the ledger\)/);
 });
 
+// ------------------------------------------------------------------ 44, item 2: the component's own width
+
+// The catalogue card with its frames sized by the window (no host): each frame on story.html in a container of its
+// width, as a builder who sizes the frames by the window writes it. The start code picks its layout by matchMedia.
+const CATALOGUE = path.join(HERE, "design-to-code/cases/catalogue-card");
+function catalogueArm(build) {
+  const dir = tmp();
+  fs.cpSync(path.join(CATALOGUE, "project"), dir, { recursive: true });
+  if (build === "reference") for (const f of ["card.js", "card.css"]) fs.copyFileSync(path.join(CATALOGUE, "reference", f), path.join(dir, f));
+  const frames = [["card-764", 764], ["card-375", 375]].map(([name, width]) => ({ name, width, url: `story.html?w=${width}`,
+    spec: path.join(CATALOGUE, "pack", name, "spec.json"), reference: path.join(CATALOGUE, "pack", name, "reference.png") }));
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "story.html?w=764", root: ".card", frames, sweep: { from: 375, to: 764 } }));
+  return dir;
+}
+
+test("44.2: the component's own width: the catalogue's start code, laid out by the window, is a candidate at 375 px; the reference, by its own width, is none", browser, () => {
+  // Before: the start code raised no candidate with frames sized by the window, since the window and the card's
+  // container are one there; in a 1280 px window with its container held at 375 px, matchMedia picks the wide layout.
+  let r = check(catalogueArm("start"), "--quick");
+  const own = r.result.sweep.issues.filter((i) => i.story === "the component's own width");
+  assert.deepEqual(own.map((i) => [i.property, i.landmark, i.ranges, i.status]), [["window", "card-375", "375", "candidate"]], JSON.stringify(r.result.sweep.issues));
+  assert.match(own[0].actual, /^laid out by the window, not by its own width: in a 1280 px window, its container held at the 375 px it had at 375, another layout/);
+  assert.match(r.stdout, /unanswered: window “card-375” \(the component's own width, 375\)/);
+  r = check(catalogueArm("reference"), "--quick");
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.status === "candidate"), [], JSON.stringify(r.result.sweep.issues));
+  assert.ok(r.result.sweep.stories.some((st) => st.name === "the component's own width" && st.generated && !st.unmeasured), JSON.stringify(r.result.sweep.stories));
+});
+
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
 // The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
 test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
