@@ -21,7 +21,7 @@ quality only when it materially changes the allocation, with the approval that s
 | Row | Contents |
 | --- | --- |
 | work | deliverables, ownership, interfaces and completion criteria |
-| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; the plan critic, or why the plan is too small to need it; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
+| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; always the plan critic and the verifier, one the user dropped named as dropped at the user's word; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
 | checks | who verifies what and which evidence decides; only when the plan has an external route, or a usage window is near its limit: the adapter status's source and freshness, the OpenCode model list's source (Desktop or the whole catalogue), the quota windows and the exact launch validation |
 

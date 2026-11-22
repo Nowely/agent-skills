@@ -34,14 +34,14 @@ user conversation and the synthesis; agents do the work.
    brief, and its `scope` is your temporary directory. In Claude Code, load the
    [claude adapter](../claude/SKILL.md) (`entrust:claude`) first.
 2. Compose the [default team](#the-default-team) and show the card [plan.md](references/plan.md#the-card) defines,
-   naming `<scope>/card.md` in it; plan.md's index says when each of its other sections is read.
+   naming `<scope>/card.md` in it; plan.md's index says when to read its other sections.
    Wait for approval unless the user already authorised that scope and allocation. A model, route, scope or right
    outside the approved card needs a new decision; commits and publication need their own authority.
-3. At approval write the approved card to `card.md`, then append each decision with its reason. Name that path in
+3. At approval write the card to `card.md`, then append each decision with its reason. Name that path in
    every phase report except the final answer. On a re-invocation, or when the approved card is no longer in
    context, re-read this contract and `card.md` and continue the approved work without planning it again; if the
    path is lost, ask the user.
-4. Run the critics the card names, then brief the workers. Every brief names its row in
+4. Run the card's critics, then brief the workers. Every brief names its row in
    [roles.md](references/roles.md) by path, and the agent reads that row. Apply or overrule each objection, with the
    reason in the decision log. A change of scope or allocation goes to the user, and so does an architecture
    verdict other than `keep`, with both approaches, before anyone else starts.
@@ -52,7 +52,7 @@ user conversation and the synthesis; agents do the work.
 6. Read every return and compare each launch's model and effort with the card, the effective ones as the host
    reports them, else `unknown`; reconcile a deviation before going on. At each phase, tell the user what is
    verified, pending and blocked, in their language.
-7. After the verifier, draft the answer, and have it read, as [answer.md](references/answer.md) says. Lint the draft
+7. After the verifier, draft the answer and have it read as [answer.md](references/answer.md) says. Lint the draft
    with `node "<skill-dir>/scripts/lint-draft.mjs" --agents "<Model> <id>, …" --receipts <ledger> <draft>`, the
    workers' and the verifier's ledgers as receipts (`--help` defines them).
 
@@ -61,12 +61,14 @@ user conversation and the synthesis; agents do the work.
 | Role | When | Tier |
 | --- | --- | --- |
 | coordinator | this session, throughout | the user's model, unless the user asks otherwise |
-| architecture critic | once, after approval and before the plan critic, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or when the user asks; the card says whether it runs and which trigger holds | top |
-| plan critic | once, after approval and the architecture critic, before the first worker brief; the card leaves it out only by saying why the plan is too small to need it, never when the architecture critic runs | strong |
+| architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks | top |
+| plan critic | once, after approval and the architecture critic, before the first worker brief | strong |
 | worker | after the critics; usually one, one per owned deliverable | strong; cheap for mechanical work |
-| verifier | fresh, after the writes | strong |
+| verifier | fresh, after the writes or a read-only task's findings | strong |
 
-Any other role joins only when the card names why.
+You put the plan critic and the verifier on every card as the minimum; only the user's word drops or changes either,
+and whenever the architecture critic runs, the plan critic runs too, unless the user dropped it. Any other role joins
+only when the card names why.
 
 ## Other providers
 
@@ -97,7 +99,7 @@ counted; the host's capacity and the user's limits cap both further. Choose the 
 
 Before a fan-out, check one assembled brief's input paths, output rights and completion criteria. Verify with an
 agent that wrote nothing of what it checks: give it the requirements, the plan critic's acceptance checks (without
-a plan critic, the card's checks row) and the raw artifacts. Give it and the workers the resolved
+one, the card's checks row) and the raw artifacts. Give it and the workers the resolved
 `<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
 `unknown`, not a refutation. Open one complete return before trusting a unanimous tally of verifiers: agreement may
 be evidence of one broken prompt or prerequisite. Fix and re-verify at most two
