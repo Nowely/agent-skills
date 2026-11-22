@@ -1,8 +1,9 @@
 # Five more iterations: the plan, written before them
 
 The owner gave a quota of five more iterations. This plan is written before them, so that the results are read
-against it and not fitted to it. It was revised once, before the first of them ended, after Fable's review of the
-goal, the measures and the critic's timing.
+against it and not fitted to it. It was revised twice: before the first of them ended, after Fable's review of the
+goal, the measures and the critic's timing; and after iteration 6, by the critic's and Fable's reading
+([35-iteration-7.md](35-iteration-7.md)).
 
 ## The goal
 
@@ -66,6 +67,8 @@ No new detectors. Three things, in this order:
 
 Separate roles are a hypothesis, tested only if rules are not enough.
 
+Steps inside the approved plan go ahead without waiting for approval; only the owner's own actions wait for him.
+
 ## The measures
 
 Each run records the eight fields in [30-terra-run.md](30-terra-run.md#the-record-every-run-keeps), and with them:
@@ -86,13 +89,13 @@ Each run records the eight fields in [30-terra-run.md](30-terra-run.md#the-recor
 | 5 (in progress) | Can the measurement be trusted? | Draft 28.2, mechanics first, then text (see below) | Both benches: the clean builds pass and every known class is caught; the full suite passes |
 | 6 | Do the rules cut the cost? | Sonnet A/B, 28.2 against 28.1, on the server card and the listing, three runs each; a blind review that also reads the code | Responses and tokens per round down by at least 30 %, the ranges not overlapping; quality, as seen and as read, no worse; no failure the checker itself causes |
 | — | The architecture critic | Once, after iteration 6, before choosing iteration 7 | Its reading decides between more rules and a change of approach |
-| 7 | Does the consumer-path check work? | Sonnet on the stateful case, with one lifecycle or parent-width mutant it has not seen before | The builder finds both defects itself before handing over |
+| 7 | Do the consumer paths and the stop rule work, and does Terra obey? | Draft 28.3 ([35-iteration-7.md](35-iteration-7.md)). Part A: Sonnet, three runs each on the stateful case with a defect it has not seen, and on the server card with a planted first finding it cannot fix. Part B: a Terra dry run in the owner's Codex, capped at about 30 calls | The builder finds the unseen defect itself and proposes the planted finding within three rounds, 3 of 3; the control in each blind set is accepted; part B's numbers register iteration 8 |
 | 8 | Does it hold on the real task? | The owner's one pinned Terra run through a real consumer, registered before: the budget, the criteria, the record, the environment and permissions set up beforehand | The owner's verdict on the first checkpoint, as seen and as read, and its full cost |
 | 9 | Reserve | A second Terra run if the first was accepted; otherwise fix what Terra showed, or stop | — |
 
-**If iteration 6 shows that the loop still dominates the cost,** and the critic agrees, iteration 7 instead tests
-restarting the builder in a fresh context at the first full check with a short handover, or a check-runner role. That
-would be draft 29. Draft 28.2 holds only fixes to draft 28.
+**After iteration 6,** the critic and Fable chose more rules over a change of approach: draft 28.3 holds fixes to
+28.2. Draft 29, restarting the builder in a fresh context at the first full check with a short handover, comes before
+iteration 8 only if Terra ignores the stop rule in part B.
 
 **The critic out of schedule,** on any of these:
 - a second failure that the checker itself causes;

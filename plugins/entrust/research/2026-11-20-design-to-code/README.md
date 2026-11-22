@@ -200,3 +200,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   to stop.
 - [Iteration 6](34-iteration-6.md): draft 28.2 against 28.1 on Sonnet, three runs each on two cases. No cost effect shown;
   every card returned by a stricter reviewer as seen and as read, 28.2's first in both sets; four code faults recur.
+- [Iteration 7](35-iteration-7.md): the architecture critic's and Fable's reading of iteration 6, and the plan it chose:
+  draft 28.3, Sonnet on the stateful case and a card with a planted finding, and a capped Terra dry run.
