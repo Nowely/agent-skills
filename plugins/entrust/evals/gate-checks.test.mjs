@@ -138,6 +138,24 @@ test("the card: four required rows, no models/cost rows, and every registered ag
       || `planRecord read ${JSON.stringify(G.planRecord("A1 | opus | worker | live tree | unknown"))}`,
   ));
 
+test("the default team's minimum on the card: the team names the plan critic and the verifier, on it or dropped at the user's word",
+  "the plan critic and the verifier are on every card, and only the user's word drops either; a plan-only case runs no agent, so the card is the one place a missing minimum shows",
+  () => {
+    const team = (row) => CARD.replace(/^\*\*Team:\*\*.*$/m, `**Team:** ${row}`);
+    return all(
+      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic), then one worker, Opus W1, and Codex Terra C1 (verifier)."))),
+      expectSome(G.minimumCardProblems(CARD), /the card's team names no plan critic, the default/),
+      expectNone(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1; the verifier dropped at your word."))),
+      // The verifier named only by the checks row is not on the team.
+      expectSome(G.minimumCardProblems(team("Opus P1 (plan critic) and one worker, Opus W1.").replace("**Checks:** C1", "**Checks:** the verifier")),
+        /names no verifier/),
+      // Agents listed in a table of their own under the team row.
+      expectNone(G.minimumCardProblems(`${team("three agents, below.")}\n\n| Agent | Role |\n|---|---|\n| Opus P1 | plan critic |\n| Opus W1 | worker |\n| Opus V1 | verifier |`)),
+      expectNone(G.minimumCardProblems("| Работа | slug |\n| Команда | Opus P1 — критик плана, Opus W1, Opus V1 — проверяющий |\n| Права | W1 |\n| Проверки | V1 |")),
+      expectSome(G.minimumCardProblems(team("one worker, Opus W1.").replace(/verifier|final reader/g, "agent")), /names no plan critic and no verifier/),
+    );
+  });
+
 // The live gate's case 7 plan of 2026-09-28, verbatim (its artifact plan.txt), and the rows its --plan call
 // registered: the gate failed it on two heuristics, not on the coordinator, so it is the fixture that passes.
 const CASE7_PLAN = "The plan is registered below. Nothing has been launched yet, and I'm waiting for your word.\n\n**Scouting:** `fmt` appears in exactly 3 places: its definition on `lib/shared.mjs:1`, and the import plus one call in each of `lib/a.mjs` and `lib/b.mjs`. The tests don't mention it. There are 2 test files.\n\n**Assumptions:**\n- \"One worker per file\" means three workers, one each for `shared.mjs`, `a.mjs` and `b.mjs`.\n- It's a straight rename: no `fmt` alias is kept, and the output of `labelA` and `labelB` doesn't change.\n\nOne worker doing all three edits would be cheaper and never leave the tree half-renamed. I'm keeping the split you asked for.\n\n| | |\n|---|---|\n| **Work** | Rename `fmt` to `format` in `shared.mjs`, then change the import and call in `a.mjs` and `b.mjs` to match, and run `node --test` on the finished result. |\n| **Who** | 6 agents: 3 do the work, 3 check it. **Codex Astra S1** checks how the task is split and settles what the three files must agree on before anyone edits. **Sonnet W1, W2, W3** each edit one file: `shared.mjs`, `a.mjs`, `b.mjs`. **Codex Sol V1** runs the tests and reviews the combined change; it writes nothing. **Opus C1** reads my final answer before you get it. Two of the three checkers are Codex. None of the editors are, because only one Codex agent may write in a given folder, and all three files are in `lib/`. |\n| **Writes** | Each Sonnet worker changes only its own one file, in your working copy. There are no commits. S1, V1 and C1 change nothing in the repo; they only write scratch files in the temp folder. Every agent can reach the network, and I'm not blocking any of them. Reports go outside the repository. No worktree is created. |\n| **Cost** | All agents: `unknown`, because I have no measured run of this shape to compare with. Astra will use its configured default effort, which may be high for a job this small. Sol runs on medium effort. My own work so far: 3 quick reads (a file listing, a search, the test imports). |\n| **Checks** | S1 checks the split, and the worker instructions are written only from its corrected version. V1 has written none of the code; it runs `node --test` on all three edits together and reports how many tests ran and passed, and it also reviews the changes. C1 reads my final answer, which lists the changed files and the test count. |\n\n**Limits:** my own model is Opus 5.5. At most one Fable and one Astra agent run at a time, and at most 6 agents at once.\n\n**Options:**\n1. **(Recommended)** I launch the three workers myself, all at the same time, after S1 returns. Then V1 checks, then C1 reads.\n2. The same, but an Opus supervisor launches the workers and V1, so you see one card per worker instead of every step. It adds one Opus agent to coordinate what are three one-line edits. It would be added to the plan, and I'd show you that change first.\n\n\"go\" means option 1.";

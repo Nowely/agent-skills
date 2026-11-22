@@ -233,6 +233,18 @@ export function cardProblems(text, rows = null) {
   return problems;
 }
 
+// The default team's minimum on the card: the team names the plan critic and the verifier, each on the team or as
+// dropped at the user's word (references/plan.md's team row), so either name stands for both. The team is the team
+// row and any table row that is no other card row, since a card may list its agents in a table of their own. Apart
+// from cardProblems, whose legacy case-7 fixture predates the two roles.
+export function minimumCardProblems(text) {
+  const team = String(text).split("\n")
+    .filter((l) => { const c = cardLabelOf(l); return c === "team" || (!c && l.trim().startsWith("|")); }).join("\n");
+  const missing = [["plan critic", /plan critic|критик плана/i], ["verifier", /verifier|верификатор|проверяющ/i]]
+    .filter(([, re]) => !re.test(team)).map(([name]) => name);
+  return missing.length ? [`the card's team names no ${missing.join(" and no ")}, the default team's minimum`] : [];
+}
+
 // How many agents of one top-row model (Fable, Astra) a plan names, per wave when its table has a wave
 // column. An agent counts where it is named as one: "<Model> <id>" anywhere outside the card's work,
 // writes, cost and checks rows, and in the team row or an agent table's row by the model's name alone.

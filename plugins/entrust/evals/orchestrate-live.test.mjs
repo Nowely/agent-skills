@@ -27,6 +27,7 @@
 //   F2, P14a     a slash command first expands the page; the command last is recorded, not judged          9
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
 //   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
+//   minimum      the card's team names the plan critic and the verifier, on it or dropped             1, 2, 5, 6, 7
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
 //   F6, Q3a      briefs only after the plan critic; the shared file has one writer                       5, 7
 //   approach     the architecture critic runs first when its trigger holds (7), and not for one helper (5) 5, 7
@@ -105,7 +106,8 @@ import { pathToFileURL } from "node:url";
 import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/harness.mjs";
 import {
   CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, briefs, cardProblems, codexCalls,
-  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, roleOf, runProblems as checkRun,
+  codexCommand, codexLoadProblems, isCodexCall, isTierModel, minimumCardProblems, parseStream, planRecord, roleOf,
+  runProblems as checkRun,
   skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
@@ -448,8 +450,9 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
   const reg = registeredPlan(scratch);
   if (codexPlanned && !reg) problems.push("a plan with a Codex agent registered nothing with the launcher's --plan");
   if (!codexPlanned && reg) problems.push(`an all-Claude plan registered ${reg.file}`);
-  // D6/D9: the card of four rows and every registered agent on it.
+  // D6/D9: the card of four rows and every registered agent on it; its team names the default team's minimum.
   problems.push(...cardProblems(text, reg?.rows ?? null));
+  problems.push(...minimumCardProblems(text));
   // The plan no longer prints the run directory. A resolved path is machinery aimed at the one reader who
   // cannot act on it, and the page now asks for the fact in ordinary words instead, so there is nothing
   // language-independent left to match: measured, every natural phrasing of "outside the repository" fails

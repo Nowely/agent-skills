@@ -19,6 +19,10 @@ forensics remain in the repository references and release notes.
 
 ### Live gate
 
+- Every case with a card checks that its team names the plan critic and the verifier, each on the team or as
+  dropped at the user's word, so a plan-only case, which runs no agent, still fails a card without the minimum. The
+  offline suite gains its cases: a card with both, one missing the plan critic, a dropped verifier, a verifier named
+  only by the checks row, agents in a table of their own, and a Russian card.
 - The offline suite gains a worker briefed between the plan critic's brief and its return, and an agent's return
   after the coordinator's last text; weakening either check now turns the suite red (E156).
 
