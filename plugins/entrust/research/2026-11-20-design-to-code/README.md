@@ -215,3 +215,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 - [Service overhead, and the real runs in one sitting](40-overhead-and-one-sitting.md): written before the runs; the
   owner's decisions, the review-pass control that failed, the rerun as the overhead baseline, 0.46.1's four levers
   with their measures, and the sitting: the prebuilt pass, then runs A and B.
+- [The sitting on 0.46.1](41-the-sitting.md): the protocol of the owner's one sitting, written before it runs: the
+  `collect` check on the rerun's log, the prebuilt pass, and runs A and B; its results go there.
