@@ -43,14 +43,6 @@ Each line of `history.jsonl` records the round's status, score and findings, whe
 the `bytes` it printed.
 **Before** is the page the first check saw; delete `out/before/` for a new baseline.
 
-**The owner's inputs.** The first check records, in `design.inputs.json` beside design.json, a digest of each frame's
-reference image, its spec's texts and boxes, the data the frame renders (the entry a page global holds under a value
-of the frame's URL, `?data=card-764`), the data contract (`contract` in design.json, or `README.md` beside it) and the
-check's settings (`tolerance`, `root`, `host`, `viewport`, each frame's width). Later rounds compare with it, and any
-difference opens the digest and the handoff: "Input changed since round N: …". It is evidence for the owner, not a
-finding, and leaves the status as it is. The record only grows by a frame or file it had not seen; deleting `out/`
-does not reset it, and a record missing while rounds are recorded is named.
-
 ## design.json
 
 Paths are relative to the file.
@@ -62,7 +54,6 @@ Paths are relative to the file.
 | `host`, `viewport` | the element given each frame's width, when the container sizes the component, and the viewport then (default 1280) |
 | `tolerance` | how far a position may differ, in CSS px; default 1 |
 | `ledger` | the ledger's file; `deviations.json` beside design.json when not given |
-| `contract` | the data contract's file or files, for the record of the owner's inputs; `README.md` beside design.json when not given |
 | `kit` | the UI kit's class prefixes, `["Mui", "ant-"]`: its negative gutters and offsets are not constructs |
 | `frames[]` | `name`, `width`, `spec`, `reference`; optionally `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
 | `sweep` | `from`, `to`, `step` (default 8), `setup`, `stories`, `switches`, `align`, `lines`, `generate` |
