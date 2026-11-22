@@ -27,7 +27,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  compareFrame, compareInputs, findingKeys, inputsLine, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -1034,6 +1034,66 @@ function beforeFrame(out, frame, settings, shot, absent) {
   return { ...(hasImage ? { image: dataUrl(first) } : { reason: first.toString("utf8") }), comparison };
 }
 
+// The values a frame's URL passes (story.html?data=card-764): the one a page global holds as a key is its data.
+function queryValues(url) {
+  try { return [...new URL(url, "http://frame.local/").searchParams.values()].filter((v) => v && !/^\d+$/.test(v)); } catch { return []; }
+}
+
+// In the page: the entry a plain object on window holds under one of the URL's values, as JSON; null where none does.
+function frameDataIn(values) {
+  for (const key of Object.keys(window)) {
+    let v;
+    try { v = window[key]; } catch { continue; }
+    if (!v || typeof v !== "object" || Array.isArray(v) || Object.getPrototypeOf(v) !== Object.prototype) continue;
+    for (const value of values) if (Object.prototype.hasOwnProperty.call(v, value)) {
+      try { return JSON.stringify(v[value]); } catch { return null; }
+    }
+  }
+  return null;
+}
+
+// The owner's inputs as this round sees them (see compareInputs in core.mjs).
+function inputsNow(cfg, frames, results) {
+  const digest = (buf) => createHash("sha256").update(buf).digest("hex").slice(0, 16);
+  const file = (f) => (f && fs.existsSync(f) ? digest(fs.readFileSync(f)) : null);
+  const now = { references: {}, specs: {}, data: {}, contract: {}, config: { tolerance: cfg.tolerance, root: cfg.root, host: cfg.host ?? null, viewport: cfg.viewport ?? null } };
+  for (const f of frames) {
+    now.references[f.name] = file(f.reference);
+    now.config[`${f.name} width`] = f.width;
+    try {
+      const spec = readJson(f.spec);
+      now.specs[f.name] = { texts: [...new Set(spec.landmarks.map((l) => l.text ?? l.selector).filter(Boolean))],
+        boxes: digest(JSON.stringify([spec.frame, spec.landmarks.map((l) => [l.box ?? null, l.pieces ?? null]), spec.pieces ?? null, spec.skip ?? null])) };
+    } catch { /* an unreadable spec is the check's own finding */ }
+    const r = results.find((x) => x.frame === f.name);
+    if (r?.frameData) now.data[f.name] = r.frameData;
+  }
+  const contract = cfg.contract === undefined ? (fs.existsSync(path.join(cfg.dir, "README.md")) ? ["README.md"] : []) : [].concat(cfg.contract);
+  for (const c of contract) now.contract[c] = file(path.resolve(cfg.dir, c));
+  return now;
+}
+
+// Compares this round's inputs with the record beside design.json, writes the record at the first round, and adds to it
+// only what it had not seen (a frame, a file); a recorded value is never rewritten.
+function checkInputs(cfg, frames, results, roundsBefore, round) {
+  const file = path.join(cfg.dir, "design.inputs.json");
+  const now = inputsNow(cfg, frames, results);
+  const recorded = fs.existsSync(file) ? readJson(file) : null;
+  if (!recorded) {
+    writeJson(file, { round, roundsBefore, ...now });
+    return roundsBefore ? inputsLine({ missing: roundsBefore }) : "";
+  }
+  const changes = compareInputs(recorded, now);
+  let grew = false;
+  for (const part of ["references", "specs", "data", "contract", "config"]) for (const [k, v] of Object.entries(now[part] ?? {})) {
+    recorded[part] ??= {};
+    if (!(k in recorded[part]) && v !== null) { recorded[part][k] = v; grew = true; }
+  }
+  if (grew) writeJson(file, recorded);
+  const late = recorded.roundsBefore ? `Input record made at round ${recorded.round}, after ${recorded.roundsBefore} round${recorded.roundsBefore === 1 ? "" : "s"} without one: what changed before it is not seen` : "";
+  return [inputsLine({ changes, since: recorded.round }), late].filter(Boolean).join(". ");
+}
+
 async function measureFrames(browser, cfg, frames, ledger, out) {
   const scratch = await (await browser.newContext()).newPage();
   const results = [];
@@ -1105,6 +1165,8 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       continue;
     }
     const { context, page } = opened;
+    // The data this frame renders, for the record of the owner's inputs: the entry of a page global its URL names.
+    const frameData = await page.evaluate(frameDataIn, queryValues(frame.url)).catch(() => null);
     // An overlay frame (its own root) records the element its setup opened it from, for the journey that must close it.
     const setupTargets = [];
     if (frame.root && frame.root !== cfg.root) for (const st of frame.setup ?? []) {
@@ -1167,6 +1229,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
       } };
+      result.frameData = frameData && createHash("sha256").update(frameData).digest("hex").slice(0, 16);
       results.push(result);
     } finally {
       await context.close();
@@ -1754,6 +1817,8 @@ async function check(file, flags) {
     const historyFile = path.join(out, "history.jsonl");
     const history = fs.existsSync(historyFile) ? fs.readFileSync(historyFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
     const n = history.length + 1;
+    // The owner's inputs against the record the first check made of them: a change is evidence, not a finding.
+    const inputs = checkInputs(cfg, frames, results, history.length, n);
     // What the score was measured against: the frames' specs, the sweep and the journeys, quick or complete. A round
     // that changed them starts a new series, since its score says nothing about the page against the earlier ones.
     const digest = (file) => (file && fs.existsSync(file) ? createHash("sha256").update(fs.readFileSync(file)).digest("hex") : null);
@@ -1771,7 +1836,7 @@ async function check(file, flags) {
     const best = series.reduce((a, h) => (!a || h.score < a.score ? h : a), null);
     const stalled = score === null ? 0 : series.length - 1 - series.indexOf(best);
     const restarted = history.length > 0 && !comparable.length;
-    const data = { quick: Boolean(flags.quick), frames: results, sweep: sweepResult, journeys: journeyResults, acceptance, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
+    const data = { inputs, quick: Boolean(flags.quick), frames: results, sweep: sweepResult, journeys: journeyResults, acceptance, gaps, ledgerProblems, round: n, previous, best, stalled, restarted, status, missingReferences, imageOnlyFrames };
     fs.writeFileSync(path.join(out, "report.md"), `${renderReport(data)}\n`);
     if (complete) {
       const git = (...args) => spawnSync("git", args, { cwd: cfg.dir, encoding: "utf8" });

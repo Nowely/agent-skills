@@ -16,8 +16,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
-  causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
-  renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
+  causes, compareFrame, compareInputs, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
+  inputsLine, renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2299,6 +2299,64 @@ test("draft 28.3: a step the ledger settles is not where to start, nor the first
   const settled = { ...frame, causes: frame.causes.slice(0, 1) };
   assert.doesNotMatch(renderSummary({ frames: [settled] }), /start here/);
   assert.match(renderSummary({ frames: [settled] }), /2\+ x: 137 → 155 \(\+18\)/);
+});
+
+// ------------------------------------------------------------------ draft 28.5: the owner's inputs as the first check saw them
+
+// What iteration 7's builders changed to clear a contradiction the design draws: p2 cut the line out of its references
+// and specs, q3's specs never named it, q1 added a field to the frames' data, q2 raised the tolerance to 5 px.
+test("draft 28.5: a change to the owner's inputs is named against the record; a frame or a story added is not", () => {
+  const first = { round: 1, references: { "card-764": "a1" }, specs: { "card-764": { texts: ["Выдача за 15 минут", "BA-i201-B"], boxes: "b1" } },
+    data: { "card-764": "d1" }, contract: { "README.md": "c1" }, config: { tolerance: 1, root: ".offer", "card-764 width": 764 } };
+  const gone = "card-764's spec: texts gone: “Выдача за 15 минут”";
+  assert.deepEqual(compareInputs(first, { ...first, references: { "card-764": "a2" }, specs: { "card-764": { texts: ["BA-i201-B"], boxes: "b2" } } }),
+    ["card-764's reference image", gone], "p2: the band cut out of the image and the spec");
+  assert.deepEqual(compareInputs(first, { ...first, specs: { "card-764": { texts: ["BA-i201-B"], boxes: "b2" } } }), [gone], "q3: the spec without the line");
+  assert.deepEqual(compareInputs(first, { ...first, data: { "card-764": "d2" } }), ["card-764's data"], "q1: a field added to the frame's data");
+  assert.deepEqual(compareInputs(first, { ...first, config: { ...first.config, tolerance: 5 } }), ["tolerance 1 → 5"], "q2: the tolerance raised");
+  assert.deepEqual(compareInputs(first, { ...first, contract: { "README.md": "c2" } }), ["the contract README.md"]);
+  assert.deepEqual(compareInputs(first, { ...first, specs: { "card-764": { ...first.specs["card-764"], boxes: "b2" } } }), ["card-764's spec: its boxes"]);
+  // A frame the record has not seen, a round of one frame (--frame), a story's data: nothing is said.
+  assert.deepEqual(compareInputs(first, { ...first, references: { ...first.references, extra: "x" }, config: { ...first.config, "extra width": 300 } }), []);
+  assert.deepEqual(compareInputs(first, { references: {}, specs: {}, data: {}, contract: {}, config: { tolerance: 1, root: ".offer" } }), []);
+  assert.deepEqual(compareInputs(null, first), []);
+  assert.match(inputsLine({ changes: ["tolerance 1 → 5"], since: 1 }), /^Input changed since round 1: tolerance 1 → 5\. These are the owner's inputs/);
+  assert.equal(inputsLine({ changes: [] }), "");
+  assert.match(inputsLine({ missing: 3 }), /^Input record missing: 3 rounds are recorded but design\.inputs\.json is not/);
+});
+
+test("draft 28.5: the first check records the inputs beside design.json; a later change opens the digest and the handoff, a deleted history does not reset it", browser, () => {
+  const data = (extra = "") => `<span>Ready</span><script>window.DATA = { frame: { title: "Ready"${extra} } }</script>`;
+  const f = smallFrame(data(), [{ name: "frame", url: "page.html?data=frame" }]);
+  const first = check(f.dir);
+  const record = JSON.parse(fs.readFileSync(path.join(f.dir, "design.inputs.json"), "utf8"));
+  assert.equal(record.round, 1);
+  assert.ok(record.data.frame && record.references.frame && record.specs.frame.texts.includes("Ready"), JSON.stringify(record));
+  assert.doesNotMatch(first.stdout, /Input/);
+  // A story added (a clean build's own data) says nothing.
+  const cfg = () => JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg(), sweep: { ...cfg().sweep, stories: [...cfg().sweep.stories, { name: "many", url: "page.html?many" }] } }));
+  assert.doesNotMatch(check(f.dir).stdout, /Input/);
+  // q1: a field added to the data the frame renders.
+  f.write(`<main>${data(', delivery: "15 минут"')}</main>`);
+  assert.match(check(f.dir).stdout, /^Input changed since round 1: frame's data\./m);
+  // q2: the tolerance raised; the handoff opens with it, under its status line.
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg(), tolerance: 5 }));
+  const raised = check(f.dir);
+  assert.match(raised.stdout, /^Input changed since round 1: frame's data; tolerance 1 → 5\./m);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: [^\n]+\nInput changed since round 1: frame's data; tolerance 1 → 5\./);
+  // p2: the reference and its spec made again from another page; the record keeps what the first check saw.
+  f.write("<main><span>Steady</span></main>");
+  const again = cli("snapshot", f.config, "--images", "--force");
+  assert.equal(again.status, 0, again.stdout + again.stderr);
+  assert.match(check(f.dir).stdout, /frame's reference image; frame's spec: texts gone: “Ready”; texts added: “Steady”/);
+  // A deleted history leaves the record: the change is still named.
+  fs.rmSync(path.join(f.dir, "out"), { recursive: true });
+  assert.match(check(f.dir).stdout, /^Input changed since round 1: frame's reference image/m);
+  // A deleted record, with rounds recorded, is named, and stays named once it is made again.
+  fs.rmSync(path.join(f.dir, "design.inputs.json"));
+  assert.match(check(f.dir).stdout, /^Input record missing: 1 round is recorded but design\.inputs\.json is not/m);
+  assert.match(check(f.dir).stdout, /Input record made at round 2, after 1 round without one/);
 });
 
 // p2's footers, "MC-LAG 25/25" and "2+ PSU", set a class too large: 17–26 % wider in every frame. Their boxes are the
