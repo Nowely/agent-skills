@@ -347,6 +347,32 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "design-test-"));
 const cli = (...args) => spawnSync(process.execPath, [DESIGN, ...args], { encoding: "utf8" });
 const CONFIG = JSON.parse(fs.readFileSync(path.join(CASE, "case.json"), "utf8"));
 
+// A launch that cannot start is not a verdict: it says why in one line and exits 2, before it reads a file. Asking for
+// help is not a failure: the usage, exit 0, wherever --help stands.
+test("a launch that cannot start says why in one line and exits 2; --help prints the usage and exits 0", () => {
+  for (const args of [["check", "--help"], ["--help"], ["boxes", "ref.png", "--help"]]) {
+    const r = cli(...args);
+    assert.equal(r.status, 0, args.join(" "));
+    assert.match(r.stdout, /node design\.mjs check <design\.json>/, args.join(" "));
+  }
+  const missing = path.join(os.tmpdir(), "no-such-dir-design-test", "design.json");
+  for (const [args, reason] of [
+    [["check"], /check needs a design\.json/],
+    [["check", missing], /no file at .*no-such-dir-design-test/],
+    [["check", "design.json", "--frame"], /--frame needs a value/],
+    [["check", "design.json", "--quik"], /check does not take --quik/],
+    [["check", "design.json", "--width", "300"], /check does not take --width/],
+    [["bogus", "design.json"], /unknown command bogus/],
+  ]) {
+    const r = cli(...args);
+    assert.equal(r.status, 2, args.join(" "));
+    assert.equal(r.stderr.trim().split("\n").length, 1, `${args.join(" ")}: ${r.stderr}`);
+    assert.match(r.stderr, reason, args.join(" "));
+    assert.doesNotMatch(r.stderr, /ENOENT/, args.join(" "));
+  }
+});
+
+
 // The reference card rendered once as the design: its specs and 2× images, in a directory a test copies.
 let design;
 // What a check expects of every pack before it can pass: the acceptance list in review.md.

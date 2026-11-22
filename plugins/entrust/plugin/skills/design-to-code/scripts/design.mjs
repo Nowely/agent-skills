@@ -33,15 +33,36 @@ import {
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
 
+// What each command takes: a flag with a value, or a switch. A flag outside its command's list, or a value flag without
+// its value, stops the launch before any file is read, so a typo is not a check that quietly measured something else.
+const COMMANDS = {
+  figma: { out: "value", scale: "value" },
+  spec: { context: "value", frame: "value", coords: "value", out: "value" },
+  check: { frame: "value", "no-sweep": "switch", quick: "switch", out: "value" },
+  snapshot: { frame: "value", images: "switch", scale: "value", force: "switch" },
+  boxes: { width: "value", out: "value", force: "switch" },
+};
+const launchFault = (message) => Object.assign(new Error(message), { exit: 2 });
+
 function parseArgs(argv) {
+  if (argv.includes("--help")) return { help: true };
   const [command, file, ...rest] = argv;
+  if (!command) return { help: true, fault: true };
+  const takes = COMMANDS[command];
+  if (!takes) throw launchFault(`unknown command ${command}; the commands are ${Object.keys(COMMANDS).join(", ")} (--help for the usage)`);
+  if (!file || file.startsWith("--")) throw launchFault(`${command} needs ${command === "check" || command === "snapshot" ? "a design.json" : command === "figma" ? "a Figma link" : command === "spec" ? "a metadata.xml" : "a reference.png"} as its first argument (--help for the usage)`);
   const flags = {};
   for (let i = 0; i < rest.length; i++) {
     const m = rest[i].match(/^--([\w-]+)$/);
-    if (!m) throw new Error(`unexpected argument ${rest[i]}`);
+    if (!m) throw launchFault(`unexpected argument ${rest[i]}`);
+    if (!takes[m[1]]) throw launchFault(`${command} does not take --${m[1]}; it takes ${Object.keys(takes).map((k) => `--${k}`).join(", ")}`);
     const next = rest[i + 1];
-    flags[m[1]] = next === undefined || next.startsWith("--") ? true : (i++, next);
+    if (takes[m[1]] === "switch") { flags[m[1]] = true; continue; }
+    if (next === undefined || next.startsWith("--")) throw launchFault(`--${m[1]} needs a value`);
+    flags[m[1]] = next; i++;
   }
+  // A file the command reads must be there; figma takes a link, not a file.
+  if (command !== "figma" && !fs.existsSync(file)) throw launchFault(`no file at ${path.resolve(file)}`);
   return { command, file, flags };
 }
 
@@ -1896,8 +1917,8 @@ async function figma(url, flags) {
 }
 
 async function main(argv) {
-  const { command, file, flags } = parseArgs(argv);
-  if (!command || !file || flags.help) { console.log(USAGE); return command ? 0 : 2; }
+  const { command, file, flags, help, fault } = parseArgs(argv);
+  if (help) { console.log(USAGE); return fault ? 2 : 0; }
   if (command === "figma") return figma(file, flags);
   if (command === "spec") {
     let spec = specFromMetadata(fs.readFileSync(file, "utf8"), { frame: flags.frame, coords: flags.coords ?? "auto" });
@@ -1915,9 +1936,7 @@ async function main(argv) {
   }
   if (command === "check") return check(file, flags);
   if (command === "snapshot") return snapshot(file, flags);
-  if (command === "boxes") return boxes(file, flags);
-  console.log(USAGE);
-  return 2;
+  return boxes(file, flags);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
