@@ -69,6 +69,13 @@ const FROZEN = [
   { name: "frozen-control", pack: CONTROL, config: "design.json", expect: [], carry: true },
 ];
 
+// The bench judges the frames, the sweep and the journeys: a lifecycle is the builder's to take, not the bench's. The
+// frozen packs predate the lifecycle journey, so they are held to it no more than to the narrower sweep.
+const LIFECYCLE = "the bench judges the frames, the sweep and the journeys; a lifecycle is the builder's to take";
+// What the bench's own config leaves unchecked on the control's builds, whatever the checker does: their journeys run
+// on the frames' page without each frame's width in the url, so the openers the frames show read as unchecked.
+const OWN_GAPS = [/^\d+ controls? opens? something with no journey that opens and closes/];
+
 const control = JSON.parse(fs.readFileSync(path.join(CONTROL, "design.json"), "utf8"));
 const benchConfig = {
   url: "story.html?data=card-764", root: control.root, host: control.host, viewport: control.viewport, tolerance: 1, ledger: "deviations.json",
@@ -77,6 +84,7 @@ const benchConfig = {
   sweep: { ...control.sweep, from: 280, stories: [{ name: "dense", url: "story.html?data=dense" }, { name: "many", url: "story.html?data=many" }] },
   // The journeys on the frames' page: the control's others open its own stories, whose data the judge's file lacks.
   journeys: control.journeys.filter((j) => !j.url),
+  lifecycle: LIFECYCLE,
 };
 
 function prepareMutant(m) {
@@ -105,7 +113,9 @@ function prepareFrozen(f) {
   fs.cpSync(f.pack, dir, { recursive: true, filter: (p) => !p.includes(`${path.sep}.skill`) });
   // The contract's narrowest width is 280; a pack that swept below it is held to the contract.
   const config = path.join(dir, f.config), c = JSON.parse(fs.readFileSync(config, "utf8"));
-  if (c.sweep) { c.sweep.from = Math.max(280, c.sweep.from); fs.writeFileSync(config, JSON.stringify(c, null, 1)); }
+  if (c.sweep) c.sweep.from = Math.max(280, c.sweep.from);
+  c.lifecycle ??= LIFECYCLE;
+  fs.writeFileSync(config, JSON.stringify(c, null, 1));
   if (f.carry) {
     const ledger = path.join(path.dirname(config), c.ledger ?? "deviations.json");
     const own = fs.existsSync(ledger) ? JSON.parse(fs.readFileSync(ledger, "utf8")) : [];
@@ -128,7 +138,22 @@ function run({ dir, config }) {
     p.on("close", (code) => { clearTimeout(t); fs.writeFileSync(path.join(dir, "check.txt"), out); resolve(code); });
   });
 }
-function read(config, unexpectedIsText = true) {
+// The corpus leaves stand-in icons unnamed ("AMD", "?"): their texts are not a finding here, nor what keeps a frame
+// incomplete.
+const STAND_IN = /^(AMD|\?)$/;
+// What keeps a complete check from handing over, beyond what the bench's own corpus and config cause: its status fail,
+// or incomplete for a frame, the sweep, or another gap (an unanswered candidate, a story not swept). A clean build
+// blocked this way is blocked as surely as by a finding.
+function holds(r, own = []) {
+  if (r.status === "fail") return ["status fail"];
+  if (r.status !== "incomplete") return [];
+  const frameHeld = (f) => f.verdict === "incomplete" && (f.unmeasured || f.imageOnly || f.missingReference || f.uncovered?.length
+    || (f.unexpected ?? []).some((t) => !STAND_IN.test(t)));
+  return [...(r.frames ?? []).filter(frameHeld).map((f) => `frame ${f.frame} incomplete`),
+    ...(r.sweep?.verdict === "incomplete" ? [`sweep: ${r.sweep.reason ?? "incomplete"}`] : []),
+    ...(r.gaps ?? []).filter((g) => !own.some((re) => re.test(g))).map((g) => `gap: ${g.slice(0, 120)}`)];
+}
+function read(config, unexpectedIsText = true, own = []) {
   const file = path.join(path.dirname(config), "out", "result.json");
   if (!fs.existsSync(file)) return { error: "no result" };
   const r = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -136,17 +161,17 @@ function read(config, unexpectedIsText = true) {
   const note = (cls, what) => { if (!found.has(cls)) found.set(cls, []); found.get(cls).push(what); };
   for (const f of r.frames ?? []) {
     for (const i of f.issues.filter((i) => i.status === "fail" && i.property !== "region")) note(classOf(i), `${f.frame} ${i.landmark} ${i.property}${i.delta !== undefined ? ` ${Math.round(i.delta)}` : ""}`);
-    // The corpus leaves stand-in icons unnamed ("AMD", "?"): their texts are not a finding here.
-    const unexpected = (f.unexpected ?? []).filter((t) => !/^(AMD|\?)$/.test(t));
+    const unexpected = (f.unexpected ?? []).filter((t) => !STAND_IN.test(t));
     if (unexpectedIsText && unexpected.length) note("text", `${f.frame} not in the design: ${unexpected.slice(0, 3).join(" | ")}`);
   }
   for (const i of (r.sweep?.issues ?? []).filter((i) => i.status === "fail")) note(classOf(i), `sweep ${i.story ?? "page"} ${i.landmark} ${i.property} at ${i.ranges ?? ""}`);
   for (const j of (r.journeys ?? []).filter((j) => !j.pass)) note("journey", `${j.name}: ${String(j.failed).slice(0, 90)}`);
-  return { found };
+  return { found, status: r.status, holds: holds(r, own) };
 }
 
 const jobs = [
-  ...MUTANTS.filter((m) => !only.length || only.includes(m.name)).map((m) => ({ ...m, ...prepareMutant(m), unexpectedIsText: true })),
+  // A mutant of the control has the bench's journeys; one built from other files keeps its own pack's gaps in view.
+  ...MUTANTS.filter((m) => !only.length || only.includes(m.name)).map((m) => ({ ...m, ...prepareMutant(m), unexpectedIsText: true, own: OWN_GAPS })),
   ...FROZEN.filter((f) => !only.length || only.includes(f.name)).map((f) => ({ ...f, ...prepareFrozen(f), unexpectedIsText: false })),
 ];
 const results = [];
@@ -156,7 +181,7 @@ await Promise.all(Array.from({ length: 3 }, async () => {
     const job = queue.shift();
     const started = Date.now();
     await run(job);
-    const r = read(job.config, job.unexpectedIsText);
+    const r = read(job.config, job.unexpectedIsText, job.own);
     results.push({ job, r, seconds: Math.round((Date.now() - started) / 1000) });
     process.stderr.write(`${job.name} done in ${Math.round((Date.now() - started) / 1000)} s\n`);
   }
@@ -169,9 +194,12 @@ for (const { job, r } of results.sort((a, b) => jobs.indexOf(a.job) - jobs.index
   const hit = job.expect.every((c) => classes.includes(c));
   const extra = classes.filter((c) => !job.expect.includes(c));
   if (job.expect.length) { expected++; if (hit) caught++; }
-  else if (classes.length) falseBlocks++;
-  lines.push(`${job.name.padEnd(16)} expect [${job.expect.join(", ")}] · ${job.expect.length ? (hit ? "CAUGHT" : "MISSED") : classes.length ? "BLOCKED (false)" : "clean"} · raised [${classes.join(", ")}]${extra.length && job.expect.length ? ` (also ${extra.join(", ")})` : ""}`);
+  // A clean build is blocked by a class it raises, or by a status that keeps it from handing over.
+  const blocked = !job.expect.length && (classes.length > 0 || r.holds.length > 0);
+  if (blocked) falseBlocks++;
+  lines.push(`${job.name.padEnd(16)} expect [${job.expect.join(", ")}] · ${job.expect.length ? (hit ? "CAUGHT" : "MISSED") : blocked ? "BLOCKED (false)" : "clean"} · raised [${classes.join(", ")}]${extra.length && job.expect.length ? ` (also ${extra.join(", ")})` : ""} · status ${r.status}`);
   for (const [cls, list] of r.found) lines.push(`    ${cls}: ${list.length} — ${list.slice(0, 2).join(" ; ")}`);
+  if (!job.expect.length) for (const h of r.holds) lines.push(`    holds it: ${h}`);
 }
 lines.push(`\ncaught ${caught} of ${expected} expected classes; ${falseBlocks} clean builds blocked`);
 console.log(lines.join("\n"));

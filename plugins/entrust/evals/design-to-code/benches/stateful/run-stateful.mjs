@@ -103,7 +103,7 @@ function run({ dir, config }) {
     p.on("close", (code) => { clearTimeout(t); fs.writeFileSync(path.join(dir, "check.txt"), out); resolve(code); });
   });
 }
-function read(config) {
+function read(config, own) {
   const file = path.join(path.dirname(config), "out", "result.json");
   if (!fs.existsSync(file)) return { error: "no result" };
   const r = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -116,7 +116,17 @@ function read(config) {
   for (const i of (r.sweep?.issues ?? []).filter((i) => i.status === "fail")) note(classOf(i), `sweep ${i.story ?? "page"} ${i.landmark} ${i.property} at ${i.ranges ?? ""}`);
   for (const j of (r.journeys ?? []).filter((j) => !j.pass)) note(journeyClass(j), `${j.name}: ${String(j.failed).slice(0, 90)}`);
   for (const i of (r.journeys ?? []).flatMap((j) => (j.issues ?? []).map((i) => ({ ...i, journey: j.name }))).filter((i) => i.status === "fail")) note(classOf(i), `${i.journey}: ${i.landmark} ${i.property}`);
-  return { found, status: r.status };
+  return { found, status: r.status, holds: holds(r, own) };
+}
+// What keeps a complete check from handing over, beyond the gaps a build's own config causes by design (`own`, a list
+// of patterns): its status fail, or incomplete for a frame, the sweep, or another gap (an unanswered candidate, a story
+// not swept). A clean build blocked this way is blocked as surely as by a finding.
+function holds(r, own = []) {
+  if (r.status === "fail") return ["status fail"];
+  if (r.status !== "incomplete") return [];
+  return [...(r.frames ?? []).filter((f) => f.verdict === "incomplete").map((f) => `frame ${f.frame} incomplete`),
+    ...(r.sweep?.verdict === "incomplete" ? [`sweep: ${r.sweep.reason ?? "incomplete"}`] : []),
+    ...(r.gaps ?? []).filter((g) => !own.some((re) => re.test(g))).map((g) => `gap: ${g.slice(0, 120)}`)];
 }
 
 const jobs = BUILDS.filter((b) => !only.length || only.includes(b.name)).map((b) => ({ ...b, ...prepare(b) }));
@@ -127,7 +137,7 @@ await Promise.all(Array.from({ length: 3 }, async () => {
     const job = queue.shift();
     const started = Date.now();
     await run(job);
-    results.push({ job, r: read(job.config) });
+    results.push({ job, r: read(job.config, job.own) });
     process.stderr.write(`${job.name} done in ${Math.round((Date.now() - started) / 1000)} s\n`);
   }
 }));
@@ -141,9 +151,12 @@ for (const { job, r } of results.sort((a, b) => jobs.indexOf(a.job) - jobs.index
   const hit = job.expect.every((e) => met(e, classes));
   const extra = classes.filter((c) => !job.expect.some((e) => [].concat(e).includes(c)));
   if (job.expect.length) { expected++; if (hit) caught++; }
-  else if (classes.length) falseBlocks++;
-  lines.push(`${job.name.padEnd(16)} expect [${job.expect.map(shown).join(", ")}] · ${job.expect.length ? (hit ? "CAUGHT" : "MISSED") : classes.length ? "BLOCKED (false)" : "clean"} · raised [${classes.join(", ")}]${extra.length && job.expect.length ? ` (also ${extra.join(", ")})` : ""} · status ${r.status}`);
+  // A clean build is blocked by a class it raises, or by a status that keeps it from handing over.
+  const blocked = !job.expect.length && (classes.length > 0 || r.holds.length > 0);
+  if (blocked) falseBlocks++;
+  lines.push(`${job.name.padEnd(16)} expect [${job.expect.map(shown).join(", ")}] · ${job.expect.length ? (hit ? "CAUGHT" : "MISSED") : blocked ? "BLOCKED (false)" : "clean"} · raised [${classes.join(", ")}]${extra.length && job.expect.length ? ` (also ${extra.join(", ")})` : ""} · status ${r.status}`);
   for (const [cls, list] of r.found) lines.push(`    ${cls}: ${list.length} — ${list.slice(0, 2).join(" ; ")}`);
+  if (!job.expect.length) for (const h of r.holds) lines.push(`    holds it: ${h}`);
 }
 lines.push(`\ncaught ${caught} of ${expected} expected classes; ${falseBlocks} clean builds blocked`);
 console.log(lines.join("\n"));

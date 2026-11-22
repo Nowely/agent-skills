@@ -4,7 +4,11 @@ What it measures: whether the design-to-code checker (`design.mjs check`) raises
 to, and stays quiet on a clean build. Each build is checked with its own pack; the classes it should raise are matched
 against the classes the checker raised (a journey that fails counts as `journey`; a finding's property or gap as its
 class). A class is CAUGHT when every expected class is raised, MISSED when not. A build with nothing expected that
-raises anything is a clean build blocked.
+raises anything is a clean build blocked; so is one whose complete status is `fail`, or `incomplete` for anything but
+what the bench's own corpus and config leave: the corpus's unnamed stand-in icons ("AMD", "?"), and the frames' openers,
+which read as unchecked because the bench's journeys run on the frames' page without each frame's width in the url.
+Each clean build's status is printed, with what holds it. The bench's config and the frozen packs give `"lifecycle"` a
+reason: the bench judges the frames, the sweep and the journeys.
 
 The control is an accepted offer card (`packs/control26`), with its kit, its frames, and the judge's data
 (`corpus/data.js`, frames in `corpus/`). Mutants copy its `card.js`, `card.css`, `story.html` and `kit/`, add one change
@@ -29,7 +33,7 @@ It writes `out/<label>/<build>/` (`check.txt`, `out/result.json`) and `out/<labe
 ENTRUST_BENCHES=1 node --test evals/design-to-code/benches/card/card.test.mjs
 ```
 
-The test asserts minimums: caught at least 14, no clean build blocked. Raise the minimum when a fix lands.
+The test asserts minimums: caught at least 15, no clean build blocked. Raise the minimum when a fix lands.
 
 ## Builds
 
@@ -61,26 +65,27 @@ specs and references the mutants are checked against.
 
 ## Today's result
 
-Fresh run, `node run.mjs --label fresh`, 3 min 30 s, the skill at this branch:
+Fresh run, `ENTRUST_BENCHES=1 node --test card.test.mjs` (label `test`), 4 min, the skill at this branch, the verdict lines:
 
 ```
-control          expect [] · clean · raised []
-price-capped     expect [wrap] · CAUGHT · raised [offset, type, size, wrap, line] (also offset, type, size, line)
-popover-noflip   expect [journey] · CAUGHT · raised [type, journey] (also type)
-small-type       expect [type] · CAUGHT · raised [offset, type] (also offset)
-dropped-disk     expect [text] · CAUGHT · raised [text, offset] (also offset)
-overlap          expect [overlap] · CAUGHT · raised [offset, text, size, cut, overlap] (also offset, text, size, cut)
-column-shift     expect [offset] · MISSED · raised []
-order-swap       expect [offset] · CAUGHT · raised [offset]
-disk-format      expect [text] · CAUGHT · raised [text]
-cut-sku          expect [cut] · CAUGHT · raised [cut]
-c282c-price      expect [type] · CAUGHT · raised [offset, type] (also offset)
-large-type       expect [type] · CAUGHT · raised [offset, type, size, text, align] (also offset, size, text, align)
-frozen-25.1A     expect [journey] · CAUGHT · raised [type, journey] (also type)
-frozen-25.1B     expect [wrap] · CAUGHT · raised [wrap]
-frozen-26.1      expect [wrap] · CAUGHT · raised [type, wrap] (also type)
-frozen-27        expect [type] · CAUGHT · raised [type]
-frozen-control   expect [] · clean · raised []
+control          expect [] · clean · raised [] · status incomplete
+price-capped     expect [wrap] · CAUGHT · raised [offset, type, size, wrap, line] (also offset, type, size, line) · status fail
+popover-noflip   expect [journey] · CAUGHT · raised [type, journey] (also type) · status fail
+small-type       expect [type] · CAUGHT · raised [offset, type] (also offset) · status fail
+dropped-disk     expect [text] · CAUGHT · raised [text, offset] (also offset) · status fail
+overlap          expect [overlap] · CAUGHT · raised [offset, text, size, cut, overlap] (also offset, text, size, cut) · status fail
+column-shift     expect [offset] · CAUGHT · raised [offset] · status fail
+common-shift     expect [] · clean · raised [] · status incomplete
+order-swap       expect [offset] · CAUGHT · raised [offset] · status fail
+disk-format      expect [text] · CAUGHT · raised [text] · status fail
+cut-sku          expect [cut] · CAUGHT · raised [cut] · status fail
+c282c-price      expect [type] · CAUGHT · raised [offset, type] (also offset) · status fail
+large-type       expect [type] · CAUGHT · raised [offset, type, size, text, align] (also offset, size, text, align) · status fail
+frozen-25.1A     expect [journey] · CAUGHT · raised [type, journey] (also type) · status fail
+frozen-25.1B     expect [wrap] · CAUGHT · raised [wrap] · status fail
+frozen-26.1      expect [wrap] · CAUGHT · raised [type, wrap] (also type) · status fail
+frozen-27        expect [type] · CAUGHT · raised [type] · status fail
+frozen-control   expect [] · clean · raised [] · status pending
 
-caught 14 of 15 expected classes; 0 clean builds blocked
+caught 15 of 15 expected classes; 0 clean builds blocked
 ```
