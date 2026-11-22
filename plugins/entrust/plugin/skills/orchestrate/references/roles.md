@@ -45,8 +45,8 @@ asked; the judge, who picks among candidates; and the review's design direction,
 
 ### The verifier
 
-It gets the requirements, the plan critic's acceptance checks (without a plan critic, the card's checks row) and
-the writers' artifacts by path, never a writer's return or conclusions. It runs the full relevant suite on the
+It works from its brief alone, which carries what the orchestrate page's [Verification](../SKILL.md#verification)
+gives it. It runs the full relevant suite on the
 final combined tree as [Checks](#checks) says, reports every failure with its command and output, and names its
 target and whole scope. A requirement with no executed evidence is `not proven`, never passed; a verdict that
 rests on judgement alone, with no executed check, says so. Its thread may be continued to read the final draft,
