@@ -3,6 +3,63 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Orchestrate
+
+- **Breaking:** `/entrust:orchestrate` makes this session the coordinator of the whole task, unconditionally: it
+  plans, briefs, decides, talks with the user and synthesises, and never reads sources whole, edits the tree or runs
+  the project's checks, tests or builds. Its own commands name a brief's inputs in at most 20 lines, and it reads a
+  cited range of at most 40 lines only to settle a conflict between returns or a claim it is about to relay; only the
+  user's word for a specific edit lets it make one. The contract is the page's first screen, which Claude Code
+  re-attaches after a compaction, and at approval the coordinator writes the card, then each decision, to `card.md`
+  in the run's temporary directory: a re-invocation, or a card no longer in context, re-reads both and continues the
+  approved work without planning it again.
+- The default team is the coordinator, usually one worker that writes its own tests, a plan critic before any write
+  and a fresh verifier after the writes. An architecture critic runs first when the solution adds a concept, changes
+  a contract other units consume, acts irreversibly or outward, leaves several approaches open, or the user asks, and
+  the card says which trigger holds. The plan critic replaces the split critic and judges the plan as written, each
+  objection citing a path or a consumer, its cost and the smallest fix; the architecture critic judges the approach
+  against the review's design standard, and a verdict other than `keep` goes to the user with both approaches. The
+  verifier gets the requirements, the plan critic's acceptance checks and the writers' artifacts, never their
+  returns, and a requirement without executed evidence is `not proven`.
+- Another provider, model or route comes in only when the user names it, in the conversation or in the user's or
+  project's instructions; the coordinator then runs `adapter-status.mjs`, no longer on every plan and again before
+  dispatch, and nothing proposes another provider unprompted. The codex page's "nothing" row is zero Codex agents,
+  its description applies only when the user asks for Codex or names a Codex model, and the rule that made half the
+  judging agents Codex and reversed cross-review is gone. The advisor runs on the host's top-tier model unless the
+  user names another. The card's checks row shows adapter status, the OpenCode list's source and quota windows only
+  for an external route or a usage window near its limit, and an experiment's judge is the user or one the user names.
+- The role catalogue opens with the five core roles, what each does, may write and returns; every other role has a
+  trigger and is read when the card names it. The advisor's two rows are one with two modes, the final reviewer is
+  the last cross-review, the bulk verifier and the swarm are one row, the completeness critic is gone, and a final
+  reader joins.
+- The answer drops the manifest, its sha256 checks, the critic's copy with diff hunks and the three-read count. The
+  verifier's thread, continued, reads the linted draft against the request, or a fresh final reader does when the
+  card ran the architecture critic or the answer is a publication: it tags each claim by what backs it and lists what
+  the draft does not answer. An answer gets at most two reads, and after the second only an `Open:` list quoting the
+  reader's gaps may be appended. `lint-draft.mjs --help` no longer speaks of a manifest.
+- The page's body is 7,758 characters, from 15,507. Skills per invocation, larger teams, profiles, usage windows and
+  the substitution rule moved to `references/plan.md`, the capture recipe to `references/roles.md`, where each
+  agent reads its own row, and the consent, Codex-escalation and temporary-directory text for external runs to
+  `references/external.md`. The foreman's page is titled Foreman, and "coordinator" names only the main session.
+
+### Live gate
+
+- The gate's reading of a session checks the coordinator's contract: no Edit or Write under the working tree and no
+  project check at the root, through `capture-check.mjs` or not. It finds the plan critic, the verifier and the final
+  reader by their role's name at any tier and no longer asks for a corrected-split file; when the card's trigger
+  holds, the architecture critic returned before the plan critic and the workers were briefed. The draft's path and
+  the read's time come from the message that starts the read: nothing writes the draft after it, the last lint comes
+  before it, and what went out is the draft, or the draft and the allowed `Open:` list. Live cases 5 and 7 expect the
+  architecture critic and a final reader, case 6 a default plan that leaves `roles.md` to its agents, and case 8 says
+  why the Astra the user names goes through the Codex adapter.
+
+### Known issues
+
+- New open issues E146 and E147 are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.45.0 — 2026-11-22
 
 ### Design to code
