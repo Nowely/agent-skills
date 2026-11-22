@@ -10,6 +10,24 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E148. The gate's offline suite has no case for a worker briefed while the plan critic still runs, nor for a return that came after the synthesis started
+
+**Evidence, level 3.** `evals/lib/gate-checks.mjs:418` counts a worker's brief as early while the plan critic has not
+returned (`critic.done === null || w.seq < critic.done`); on 2026-11-22, replacing that with `w.seq < critic.seq`,
+which admits a worker briefed after the critic's brief and before its return, left `node evals/gate-checks.test.mjs`
+at 25 of 25. `:655` names a Claude return that arrived after the synthesis started; deleting that line left the suite
+at 25 of 25 too. Both changes left the suite green at `def9f23` as well (24 of 24, at `:405` and `:629`), so the gaps
+predate the plan critic. The suite's early case (`evals/gate-checks.test.mjs:239`) briefs its worker before the
+critic is briefed at all, and no case returns an agent after the coordinator's last text. Found by an independent
+verifier of the orchestrate rework.
+
+**Check.** Make either change and run `node plugins/entrust/evals/gate-checks.test.mjs`: it still prints `all 25 passed`.
+
+**Issue text.** Two of the live gate's checks have no offline case that fails when they break: a worker briefed while
+the plan critic is still running, and a return that came in after the synthesis started. Each check can be weakened
+or removed with the suite still green, so a live run the gate should fail would pass it. Add a fixture for each: a
+worker's brief between the plan critic's brief and its return, and an agent's return after the coordinator's last text.
+
 ## E146. Only the claude adapter declares its agents native, so a five-column plan row with a Codex model under a Codex host resolves to the external Codex adapter
 
 **Evidence, level 2.** `claude/adapter.json:6` is the one adapter manifest whose `plan` carries `"native": true`;
@@ -32,8 +50,8 @@ runs the plan rather than the adapter manifest that lists the model.
 ## E147. Two shared pages call the host "normally Luna", though the shared skills name no model
 
 **Evidence, level 1.** `proxy/SKILL.md:12`: "this host, normally Luna, transports messages and answers".
-`orchestrate/references/main-proxy.md:4`: "The host (normally Luna) relays messages and replies." The 0.26.0 entry
-of `plugins/entrust/CHANGELOG.md:1336`, "The shared skills name no model (most of E122)", moved model names to each
+`orchestrate/references/main-proxy.md:4`: "The host (normally Luna) relays messages and replies." The entry "The shared skills name no
+model (most of E122)" in `plugins/entrust/CHANGELOG.md`, under `## 0.26.0 — 2026-10-08`, moved model names to each
 adapter's `references/models.md`. `claude/SKILL.md:18` names Luna too; it is an adapter page, where a model name
 belongs. Found by Fable F12.
 
