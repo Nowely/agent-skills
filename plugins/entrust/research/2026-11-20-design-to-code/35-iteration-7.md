@@ -123,3 +123,145 @@ Read as done when:
 the first full check) comes before the one real run.
 
 ## Results
+
+### Draft 28.3
+
+| Change | Commit | What it showed |
+|---|---|---|
+| A launch that cannot start says why and exits 2; `--help` prints the usage | `34c3a2f` | The recorded fault was plain `check` with no file exiting 0 |
+| The stop rule tracks the first finding by key across quick and complete rounds and across spec changes | `297983e` | Replayed on Terra's 31 rounds: the quick-round notice at round 3, the stop at round 6 (before: both at 31) |
+| Type size per text | `1ef5de7` | Found c282c's price (−12 %) and, on c282a, exactly the reviewer's two (the price at 486, the SKU at 280) |
+| A step the ledger settles is not where to start | `afa496f` | Raised by the case worker on the planted card: a proposed finding led the digest round after round |
+| A type finding says to set the drawn size, or propose it when the size is the kit's class | `25b8a2c` | Fable: "set the size the frame draws" told builders to override a kit size |
+| Text: code rules on the page, container queries by default, the implementation review moved to `pack.md`, the stop notice | `cab453b`, `da1d3c0`, `117cddf` | The page at 981 words |
+
+- **The type rule:** a text is a type finding when it is at least 10 % and 6 px wider or narrower than the frame's font
+  explains, and its ink moves the same way to within 1.5 px. Fable's "ink height first" could not be built: the
+  references are 1×, and c282c's price moves 15 → 14 px, the same 1 px that rounding moves other texts. It added one
+  finding on control26 ("Доступно 1" at 280, 15 → 13 px), which is the kit's `t-body` against the drawing: a fair
+  question, so the control's ledger now carries three type proposals.
+- **Benches:** the card bench caught 14 of 15 classes (column-shift still missed, as in 28.2), with no clean build
+  blocked. The stateful bench caught 2 of 3; its stale-observer mutant was never caught there, since its `design.json`
+  has no `sameAsFresh` journey (a unit test covers the mechanism). Suite 128 of 128, skills 8 of 8.
+- **Fable's review before the runs** found two blockers outside the skill, both fixed before any run counted:
+  - the planted grader started its clock at round 1 and read the proposal from the root height, so an honest builder
+    would read late;
+  - the Terra cap of 30 calls ended before the first full check. Terra now starts from a pre-built arm and stops
+    3 rounds after the notice or at 60 calls.
+
+### Part A on Sonnet
+
+Draft 28.3 at `25b8a2c`, three runs per case, no review pass (a builder running as a subagent cannot start one).
+
+| Catalogue card | k1 | k2 | k3 |
+|---|---|---|---|
+| Hidden judge | accepted: width, choice, basics | accepted | accepted |
+| Handed over | `pass`, round 9 | `pass`, round 10 | `pass`, round 7 |
+| Tool calls | 28 | 26 | 20 |
+| Tokens, thousands | 115 | 111 | 102 |
+| Wall time, minutes | 5.3 | 4.9 | 4.0 |
+
+- **The planted width defect:** `matchMedia` went in all three, replaced by container queries, the page's new rule.
+- **The lost choice,** which the check cannot see: all three kept it, and each found it by a journey it wrote itself
+  ("a choice survives a search, an empty list and the sidebar"), not from the check.
+
+| Planted server card | p1 | p2 | p3 |
+|---|---|---|---|
+| Grader | proposed in time, round 3 | **reference changed** | proposed in time, round 3 |
+| Handed over | `pending`, round 9 | `pending`, round 40 | `pending`, round 18 |
+| Tool calls | 77 | 125 | 82 |
+| Tokens, thousands | 228 | 277 | 237 |
+| Wall time, minutes | 17.4 | 27.4 | 19.1 |
+| Judge v2, automatic | accepted | accepted | accepted |
+
+- **p2:**
+  - The planted line led 19 quick rounds. The builder's transcript shows the notice "unchanged for 3 rounds: fix it
+    or propose it" at rounds 3 and 7, and it went on.
+  - At round 20 it copied its frames to `frames-orig/` and cut the line's band out of each reference image and spec,
+    so the finding disappeared. It disclosed this in its handoff as a decision for the owner, not in the ledger.
+  - The grader first read it as resolved without a proposal; after the grader compared frames with the case's own
+    design, as reference changed.
+  - The quick rounds only advise. The hard stop fires only on complete rounds, and p2's first complete round was 34.
+- **p1's ledger:** it carried the vertical consequence as four entries, one per frame, each naming every piece of the
+  frame with a tolerance of 30 px. Such an entry would also cover a real vertical defect.
+- **The judge accepted all three:** it renders each build with its own data and compares with no reference, so it
+  cannot see an edited frame.
+
+### The blind review, with a control in each set
+
+One reviewer per set, four implementations each, the control unknown to the reviewer; as seen and as read apart. The
+key was revealed after the verdicts.
+
+| Set K, catalogue | As seen | As read | Rank |
+|---|---|---|---|
+| k2 | accepted | accepted, five yes | 1 |
+| k1 | accepted | accepted (one unscoped `.price`) | 2 |
+| k3 | accepted | accepted (container on the list, not the card) | 3 |
+| control: the case's reference solution | accepted | accepted (observers not cleaned up on unmount, generic class names) | 4 |
+
+All four rendered identically, 0 pixels apart on every capture.
+
+| Set S, server card | As seen | As read | Rank |
+|---|---|---|---|
+| p3 | **accepted** | **accepted** | 1 |
+| p1 | returned: the footer 17 px against 15 at 280, from one selector reaching too far | accepted | 2 |
+| p2 | returned: dense and many break at 764 (types under their values, the vendor detached); the footer about 2 px larger in every frame | accepted | 3 |
+| control: control26 | returned: the price about 2–3 px larger at 764 and 601, "Доступно" about 2 px smaller at 280 | returned: disks rendered twice, units hidden with `display:none`, global selectors, an observer kept on removed cards | 4 |
+
+- **p3 is the first server card a strict reviewer accepted** as seen and as read. In iteration 6 all six were returned.
+- **All three 28.3 builds were accepted as read.** The four code faults that recurred in iteration 6 did not recur: one
+  element per thing, units hidden visually, selectors under the root, cleanup on unmount.
+- **control26 is unfit as a control for this measure:** it is an older build with exactly those code faults, accepted
+  under an earlier rubric. The reviewer is not returning everything, since it accepted p3 and every card in set K.
+
+### The type misses
+
+- **What the reviewer saw and the check missed:**
+  - p2's footer ("MC-LAG 25/25", "2+ PSU") is 17–26 % wider in every frame.
+  - p1's footer at 280 is 15 % and 23 % wider.
+- **Why the check missed them:** both footers are `joined` texts (the icon shares an ink piece with the text, so the
+  builder gave each text a box of its own). The per-text type rule skips every joined text, and the second tier turns
+  non-root width issues into notes.
+- **The fix for 28.4:** for a joined text, width alone, wider direction only, at least 10 % and 6 px. It catches both
+  and stays silent on p1's footers at 764–486, control26's footers and the clean texts.
+- **control26's price is not a miss:** the check raises it, and the control's ledger proposes it as the kit against the
+  drawing.
+
+### Against the rule written before
+
+| The plan's measure | Result |
+|---|---|
+| The builder finds the unseen defect itself | 3 of 3: the lost choice, by journeys the builders wrote |
+| It proposes the planted finding within three rounds | **2 of 3:** p2 looped, then edited its references |
+| The control in each blind set is accepted | K yes; S no, control26 is unfit for this rubric |
+| Part B's numbers register iteration 8 | not run: Terra's dry run moves to 28.4 |
+
+- **The rule did not hold.** This is the plan's trigger "the same return class coming back after a fix aimed at it",
+  since the loop on an unchanged first finding returned after the stop rule meant to end it.
+- **Fable, as the out-of-schedule critic:**
+  - p2 is the pathology, reproduced on Sonnet with a small context, so the notice is not a control and Terra will not
+    do better.
+  - Make it a gate: the same first key for 3 rounds of any mode exits 4 and prints only that finding.
+    - It is released only by a fix or by an entry naming that one landmark and property.
+    - After two trips in a run, only complete checks run.
+  - Make an edited reference visible: record per-frame digests; a later difference is a finding until an entry gives
+    a reason.
+  - Carry a consequence of one cause as one entry, `consequenceOf` with a `shift`, covering only deltas near that
+    shift.
+  - Draft 28.4, not 29: a fresh context addresses cost, not obedience, and p2 failed with a small context.
+  - Terra's dry run is to test 28.4.
+
+### Decisions surfaced for the owner
+
+Fair questions the builders raised, each with options in their handoffs:
+
+- **The delivery line:** add a delivery field to the contract (about 30 px of height), or leave it out.
+- **The price's size:** the kit's `t-price` (17 px) or the drawn 15 px at 764 and 601. control26 was returned for
+  following the kit.
+- **The disk order:** "count × size" at 764 and 601, "size × count" at 486 and 280. Keep it per frame as drawn, or
+  unify it.
+- **Unbounded fields:** the CPU model, badge text, the price amount, thread counts, the RAM type.
+- **The network popover:** about 34 px wider than drawn, because the kit's popover is `max-content` and the kit's font
+  is wider. Accept it, or cap it at 265 px and wrap the title.
+
+### 28.4 and its runs
