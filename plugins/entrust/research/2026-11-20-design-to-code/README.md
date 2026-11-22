@@ -202,3 +202,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   every card returned by a stricter reviewer as seen and as read, 28.2's first in both sets; four code faults recur.
 - [Iteration 7](35-iteration-7.md): the architecture critic's and Fable's reading of iteration 6, and the plan it chose:
   draft 28.3, Sonnet on the stateful case and a card with a planted finding, and a capped Terra dry run.
+- [Terra dry run on draft 28.4](37-terra-28-4-dry-run.md): the first handover stopped before the gate; the result is
+  inconclusive for gate obedience, with the worker's approval request, observed checks and role costs recorded.
