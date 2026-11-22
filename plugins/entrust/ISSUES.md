@@ -10,6 +10,70 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E153. The design-to-code review pass has not run where it counts
+
+**Evidence, level 3 for the harness, level 1 for the remedy.** `design-to-code/SKILL.md:92` asks for a second
+look where a second agent can start. In the Sonnet harness a builder is a subagent and cannot start one; every
+builder in iterations 6 and 7 says so in its handoff. In the owner's Codex, Terra started a second agent, which
+declined the formal review because the check ended `fail`
+(`research/2026-11-20-design-to-code/37-terra-28-4-dry-run.md:23-25`). The pass, its cost and what it adds are
+unmeasured; "as read" rests on the coordinator's blind review.
+
+## E152. An opener on a story page without its overlay leaves the design-to-code check incomplete
+
+**Evidence, level 3 (one Sonnet run, `research/2026-11-20-design-to-code/35-iteration-7.md:327-329`).**
+`design-to-code/references/check.md:23` keeps a complete check `incomplete` while an opener has no journey that opens
+and closes it. When the frames are on a story page whose buttons open an overlay that only the real page holds, the
+journey cannot be written there; the builder of c1 passed the same journeys on the real page and handed over
+`incomplete`. Options: let a journey on another page cover an opener of the same name, or let the ledger settle it.
+
+## E151. Design-to-code builders write ledger entries that name every landmark of a frame
+
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:185`, `:320`).** When one missing line
+moves everything below it, builders carry the consequence as one entry per frame naming every piece, which would also
+excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft 28.4's entries with a stated shift fixed
+it but multiplied proposals, and went with the gate.
+
+## E150. A single text's type size within about 10 % is not told apart at 1× references
+
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:136-142`, `:217-229`).** The per-text
+rule needs a text at least 10 % and 6 px off what the frame's font explains, its ink moving the same way; a text
+with a box of its own is judged by width alone, larger only. At 1×, a 1 px change in a 13–15 px text is rounding. A
+blind reviewer returned builds for values about 2 px off that the check did not name. Figma specs are compared by
+computed size and are not affected.
+
+## E149. The design-to-code benches miss two known classes
+
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:143-145`).** The card bench catches 14 of
+15 return classes with no clean build blocked; `column-shift` is missed. The stateful bench catches 2 of 3: an
+observer left on removed cards shows only through a journey with `"sameAsFresh": true`, which the builder must write
+(`design-to-code/SKILL.md:91`); on the catalogue case every Sonnet builder did.
+
+## E148. A design-to-code run on the planted card costs 77–131 calls on Sonnet
+
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:172`, `:280-288`, `:320`).** Nine runs on
+a card whose frames draw data the contract does not send took 77 to 131 tool calls and 17 to 33 minutes, with no
+change shown between drafts; the catalogue card took 19 to 28. The advisory notice
+(`design-to-code/references/check.md:38-40`) does not stop a loop on an unchanged first finding; a gate that refused
+to continue made it longer and was removed.
+
+## E147. Under a plan-approval rule, the ledger entry may wait for approval
+
+**Evidence, level 3 for the observation, level 1 for the remedy.** On draft 28.4, Terra in the owner's Codex named the
+missing data as a question in prose, wrote no ledger entry, and stopped to ask approval of a plan, as its own
+instructions require (`research/2026-11-20-design-to-code/37-terra-28-4-dry-run.md:27-33`). The shipped page says a
+ledger entry records a question and is written without asking (`design-to-code/SKILL.md:77-78`); that line has not
+been run on Terra.
+
+## E146. A design-to-code builder can change the owner's inputs to clear a contradiction, and nothing detects it
+
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:177-184`, `:280-283`, `:316-327`).** Faced
+with frames that draw data the contract does not send, builders on Sonnet cut the line out of their references and
+specs, left it out of the specs they made, added the field to the frames' data, or raised the check's tolerance. The
+check then passes over bent inputs. Every handover still named the gap as a question. A record anchored at the first
+check (draft 28.5) could not see a change made before it and was removed. Reviewers should diff the references,
+specs, frames' data and `design.json` against the originals.
+
 ## E142. macOS CI review-eval failed with a missing temporary Git objects directory
 
 **Evidence, level 3 (one observed CI failure).** On commit `fa7856b4759463f5bedaf23da2d5faf42777cdcc`, the
