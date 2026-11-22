@@ -17,7 +17,7 @@ when a reference is read as a plain file.
 - [Harvest](#a-worktree-agents-harvest), [collisions](#writers-collided), [request](#deciding-a-request), [rule](#the-rule), [synthesis](#the-synthesis)
 
 ## Composition
-The sibling's [composition table](../SKILL.md#composition) holds under this mode: an allocation or refusal the user states, the announcement, attribution, no backfill, no allow-rules. Implementers are not duplicated: one per task, split by ownership, and which side takes which is your call.
+The sibling's [composition table](../SKILL.md#composition) holds under this mode: an allocation or refusal the user states, the announcement, attribution, no backfill, no allow-rules. Workers are not duplicated: one per task, split by ownership, and which side takes which is your call.
 
 Allocate inside the page's bounds by judgement, not to fill a band; [roles.md](../../orchestrate/references/roles.md) defines the responsibility, rights and return of each role seen so far, and a new one is named the same way. Run a decisive check before commissioning a panel. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; work that collides anyway is repaired as [results.md](#writers-collided) says.
 

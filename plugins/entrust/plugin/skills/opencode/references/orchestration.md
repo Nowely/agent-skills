@@ -16,7 +16,7 @@ The common launcher accepts an extended plan alongside existing five-column Code
 
 ```text
 id | adapter | model | role | writes | tokens
-W1 | opencode | <provider/model from status> | implementer | worktree | unknown
+W1 | opencode | <provider/model from status> | worker | worktree | unknown
 R1 | opencode | <second provider/model from status> | verifier | nothing | unknown
 ```
 

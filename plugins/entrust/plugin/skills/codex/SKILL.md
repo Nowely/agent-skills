@@ -38,9 +38,9 @@ Apply all six rules:
 5. Never add allow-rules on the user's behalf.
 6. Compose from the Codex status the codex page printed as it loaded: a `CODEX=` line and, when it reads
    `ready`, one `MODEL=` line per model the account lists.
-   - `ready`: every Codex agent's `MODEL:` resolves to a listed model. If the selected model is unavailable,
-     report it and propose available alternatives. Use a replacement only when the approved standing policy
-     names that fallback or the user approves the amended plan; nearest-model order alone grants no authority.
+   - `ready`: every Codex agent's `MODEL:` resolves to a listed model. An unavailable selected model goes as
+     [orchestrate's plan reference](../orchestrate/references/plan.md#composition) says; nearest-model order alone
+     grants no authority.
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
      signed in, not installed, or lists no model.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:

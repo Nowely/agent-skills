@@ -76,7 +76,7 @@ Read a row when the card names its role.
 | dedup-and-rank | merges a wave's returns into clusters of one claim each, keeps every origin on its cluster, ranks, and names the mechanical prerequisites (a build, a suite) the refuters share; the coordinator synthesises from it | its report in a temporary file | a ranked, attributed list of clusters | before the refutation of a wave's claims, and a wave wider than the coordinator can read whole | top for a wide wave, else strong |
 | surveyor | one lens of a field survey: sources fetched, claims as rows with quotes and conditions; no mapping, no ranking | its table in a temporary file | the rows and a coverage table | a survey, one agent per lens | strong |
 | measurer | a script over inputs fixed by path and digest, re-runnable by anyone who has them; numbers with the method stated, and `unknown` for what the inputs do not hold | its script and tables in a temporary file | the table and the method's caveats | a claim needs a number | strong |
-| final reader | reads the final draft fresh: only the user's request, the draft and the artifact paths, by [answer.md](answer.md)'s protocol | nothing | `result`: [answer.md](answer.md)'s three lists | the card ran the architecture critic, or the answer is a publication | strong |
+| final reader | reads the final draft fresh, with the inputs and protocol of [the read](answer.md#the-read) | nothing | `result`: the read's three lists | when [the read](answer.md#the-read) says | strong |
 
 ## Checks
 

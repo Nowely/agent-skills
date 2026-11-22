@@ -1,10 +1,17 @@
 # The plan
 
-Read [the card](#the-card) for every plan; the other sections when the step that needs them says so:
-[composition](#composition), [larger teams and profiles](#larger-teams-and-profiles),
-[usage windows](#usage-windows), [model fit](#model-fit-and-estimates), [worktrees](#environment-and-worktrees),
-[a bulk row](#a-bulk-row), [an experiment](#an-experiment-on-these-rules) and
-[skills per invocation](#skills-per-invocation).
+When to read each section:
+
+- [The card](#the-card) and [composition](#composition): for every plan.
+- [Larger teams and profiles](#larger-teams-and-profiles): when the work needs more than the default team, or a
+  profile other than balanced.
+- [Usage windows](#usage-windows): when the host reports a usage window.
+- [Model fit](#model-fit-and-estimates): for a role/model pairing without comparable evidence, and for every batch.
+- [Environment and worktrees](#environment-and-worktrees): when an agent works in a worktree or outside the
+  coordinator's working directory.
+- [A bulk row](#a-bulk-row): when independent units fan out on the bulk tier.
+- [An experiment](#an-experiment-on-these-rules): when the user asks to measure a rule or a composition.
+- [Skills per invocation](#skills-per-invocation): when the user asks for an invocation without skills.
 
 ## The card
 

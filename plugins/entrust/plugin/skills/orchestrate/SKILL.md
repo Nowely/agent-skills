@@ -34,7 +34,7 @@ user conversation and the synthesis; agents do the work.
    brief, and its `scope` is your temporary directory. In Claude Code, load the
    [claude adapter](../claude/SKILL.md) (`entrust:claude`) first: it owns how Claude Code runs agents.
 2. Compose the [default team](#the-default-team) and show the card [plan.md](references/plan.md#the-card) defines,
-   naming `<scope>/card.md` in it; read plan.md's other sections only when its index says the work needs them.
+   naming `<scope>/card.md` in it; plan.md's index says when each of its other sections is read.
    Wait for approval unless the user already authorised that scope and allocation. A model, route, scope or right
    outside the approved card needs a new decision; commits and publication need their own authority.
 3. At approval write the approved card to `card.md`, then append each decision with its reason. Name that path in
