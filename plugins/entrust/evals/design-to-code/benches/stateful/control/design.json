@@ -22,7 +22,7 @@
    { "width": 375 }, { "click": ".card .details" }, { "visible": "#sheet" }, { "click": ".sheet__close" }, { "hidden": "#sheet" } ] },
   { "name": "sheet: a tap opens it, a tap on the backdrop closes it", "touch": true, "steps": [
    { "width": 375 }, { "tap": ".card .details" }, { "visible": "#sheet" }, { "tap": [24, 120] }, { "hidden": "#sheet" } ] },
-  { "name": "list: emptied by the search and restored, the cards come back", "steps": [
+  { "name": "list: emptied by the search and restored, the cards come back", "sameAsFresh": true, "steps": [
    { "width": 375 }, { "fill": ["#q", "zzz"] }, { "hidden": ".card" }, { "visible": ".empty" },
    { "fill": ["#q", ""] }, { "visible": ".card" }, { "hidden": ".empty" } ] },
   { "name": "sidebar: Filters opens it beside the list and closes it", "steps": [

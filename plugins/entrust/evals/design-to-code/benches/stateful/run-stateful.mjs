@@ -35,13 +35,19 @@ const PAGE = ["index.html", "cards.css", "cards.js", "data.js"];
 
 const css = (rule) => ({ css: rule });
 const js = (...pairs) => ({ js: pairs });
+// A change to the stylesheet's own rules, where a rule added after them cannot take one back.
+const restyle = (...pairs) => ({ restyle: pairs });
+// The page's fix for its sidebar, as control/cards.css words it: below 640 px it stacks above the list.
+const STACKED = "/* Below 640 px there is no room beside the list: the sidebar stacks above it, and the list keeps the window's width. */\n"
+  + "@media (max-width: 639px) { .page { flex-direction: column; align-items: stretch; } .sidebar { flex: none; } }\n";
 // A journey's class names the journey (the word before its colon), so that one journey failing for the checker's own
 // reason does not count as another's catch. An expected entry that is a list is met by any one of its classes.
 const SHEET = (j) => j.name.startsWith("sheet:");
 const BUILDS = [
   { name: "control", expect: [] },
-  // The clean sheet alone, closed by its transition, by button and by a tap on the backdrop: it must pass.
-  { name: "transition-close", expect: [], config: (c) => ({ ...c, sweep: undefined, journeys: c.journeys.filter(SHEET) }) },
+  // The clean sheet alone, closed by its transition, by button and by a tap on the backdrop: it must pass. With the
+  // lifecycle journey and a coarse sweep, which a complete check asks for.
+  { name: "transition-close", expect: [], config: (c) => ({ ...c, sweep: { ...c.sweep, step: 580 }, journeys: c.journeys.filter((j) => SHEET(j) || j.sameAsFresh) }) },
   // After the list is emptied and restored, the observers stay on the removed cards and the new ones are never
   // observed: at 375 px the card keeps its wide layout and its content runs past it. A journey, or a finding that the
   // page after the journey differs from a fresh load at that width; today's checker has neither.
@@ -54,6 +60,10 @@ const BUILDS = [
   // In the compact layout (the 375 frame), three 10 px sizes drawn at 0, 30, 48 render at 10, 49, 60: the 8 px gap
   // closes to 1 px while every offset stays within the drift allowance. The wide layout is untouched.
   { name: "collapsed-gap", expect: ["gap"], change: css('.card[data-layout="compact"] .sizes { padding-left: 10px; } .card[data-layout="compact"] .size:first-child { margin-right: 29px; } .card[data-layout="compact"] .size:nth-child(2) { margin-right: 1px; }') },
+  // The control as it was until item 8 (research note 44): the open sidebar (280 px, not shrinking) stays beside the
+  // list at every width, so at 375 px it leaves the list 47 px and the titles break letter by letter. The sidebar
+  // journey asserted only that the sidebar shows and hides.
+  { name: "squeezed-by-sidebar", expect: ["journey:sidebar"], change: restyle([STACKED, ""]) },
 ];
 
 const control = JSON.parse(fs.readFileSync(path.join(CONTROL, "design.json"), "utf8"));
@@ -64,12 +74,12 @@ function prepare(b) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   for (const f of PAGE) fs.copyFileSync(path.join(CONTROL, f), path.join(dir, f));
-  if (b.change?.css) fs.appendFileSync(path.join(dir, "cards.css"), `\n${b.change.css}\n`);
-  for (const [from, to] of b.change?.js ?? []) {
-    const file = path.join(dir, "cards.js"), src = fs.readFileSync(file, "utf8");
+  for (const [name, pairs] of [["cards.css", b.change?.restyle], ["cards.js", b.change?.js]]) for (const [from, to] of pairs ?? []) {
+    const file = path.join(dir, name), src = fs.readFileSync(file, "utf8");
     if (src.split(from).length !== 2) throw new Error(`${b.name}: the change does not apply once: ${from.trim()}`);
     fs.writeFileSync(file, src.replace(from, to));
   }
+  if (b.change?.css) fs.appendFileSync(path.join(dir, "cards.css"), `\n${b.change.css}\n`);
   const config = path.join(dir, "design.json");
   fs.writeFileSync(config, JSON.stringify(b.config ? b.config(benchConfig) : benchConfig, null, 1));
   fs.writeFileSync(path.join(dir, "deviations.json"), "[]");

@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const MIN_CAUGHT = 2; // of 3; stale-observer is missed today
+const MIN_CAUGHT = 4; // of 4: every expected class
 const playwright = (() => {
   for (const name of ["playwright", "@playwright/test", "playwright-core"]) {
     try { createRequire(path.join(process.cwd(), "noop.js")).resolve(name); return true; } catch { /* next */ }
