@@ -95,7 +95,8 @@ in the window and in every box that clips it. An opener in a fixed or sticky bar
 ## Frames
 
 A spec landmark is a text, found whatever its spaces, case and markup, or a `selector` for an element without text,
-with its `box` in the design.
+with its `box` in the design. Its place across is read from the edge its alignment holds, or from the other edge or
+its centre when that moved less by more than the tolerance (what is anchored right, when the root narrows).
 
 **From Figma**, `design.mjs figma` (with `FIGMA_TOKEN`) or `design.mjs spec … --context` (from Figma MCP, which reads
 each text's `text-[Npx]` and `leading-[Npx]` by node id) writes the spec. Texts are compared by position, height and

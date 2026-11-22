@@ -356,18 +356,20 @@ const sameColour = (a, b) => { const x = channels(a), y = channels(b); return x.
 // root's right, or its centre from the root's centre, whichever moved least. A text holds the edge its alignment
 // holds when its width changes, and a box the side it is anchored to when the root narrows, so the reading that
 // barely moved is the one that tells; a narrower root is then a finding of the root, not of everything anchored
-// right. On a tie the design's alignment, then the page's, decides.
+// right. Within the tolerance it is a tie, which the design's alignment, then the page's, decides: columns moved 15 px
+// together read 16 px off from the left and 15 from the right, and a reading switched on that pixel compares them
+// only with the side where the page's wider font explains the shift, never with the column they moved away from.
 const READINGS = {
   left: (b) => b.x,
   right: (b, w) => b.x + b.width - w,
   center: (b, w) => b.x + b.width / 2 - w / 2,
 };
-function reading(l, m, sw, pw) {
+function reading(l, m, sw, pw, tolerance) {
   const prefer = [l.align, m.align, "left", "right", "center"].filter((a, i, all) => a && all.indexOf(a) === i);
   let best;
   for (const align of prefer) {
     const ex = READINGS[align](l.box, sw), ax = READINGS[align](m.box, pw);
-    if (!best || Math.abs(ax - ex) < Math.abs(best.ax - best.ex) - 0.01) best = { align, ex, ax };
+    if (!best || Math.abs(ax - ex) < Math.abs(best.ax - best.ex) - tolerance) best = { align, ex, ax };
   }
   return best;
 }
@@ -379,7 +381,7 @@ export function compareFrame({ frame, spec, measured, tolerance = 1, ledger = []
   spec.landmarks.forEach((l, index) => {
     const m = measured.landmarks[index];
     if (!m?.found) return;
-    const { align, ex, ax } = reading(l, m, sw, pw);
+    const { align, ex, ax } = reading(l, m, sw, pw, tolerance);
     placed.push({ index, label: landmarkLabel(l), l, m, align, ex, ax, dx: ax - ex, dy: m.box.y - l.box.y, dh: m.box.height - l.box.height,
       dw: m.box.width - l.box.width });
   });

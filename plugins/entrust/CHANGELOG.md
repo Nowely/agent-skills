@@ -5,6 +5,16 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Design to code
+
+- **Columns that move together are a finding** (E149, its column shift). A landmark's place across was read from
+  whichever edge moved least, by any margin. In the card bench's `column-shift`, a 30 px margin before the RAM column
+  moves the four columns before it 15 px left: the frequency is 16 px off from the left and 15 from the right, so it
+  was read from the right on that pixel, where the page's wider texts explain the shift as a drift, and its place
+  against the processor was never compared. Another edge now takes over from the one the text's alignment holds only
+  when it moved less by more than the tolerance. The card bench catches 15 of 15 classes; a new clean twin that moves
+  every piece of the row 10 px stays clean, and no clean build is blocked.
+
 ### Design-to-code evals
 
 - The real-run collector includes response usage recorded after the last cumulative token count (E160).

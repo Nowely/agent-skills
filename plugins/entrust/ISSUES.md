@@ -152,12 +152,12 @@ with a box of its own is judged by width alone, larger only. At 1×, a 1 px chan
 blind reviewer returned builds for values about 2 px off that the check did not name. Figma specs are compared by
 computed size and are not affected.
 
-## E149. The design-to-code benches miss two known classes
+## E149. The design-to-code stateful bench misses an observer left on removed cards
 
-**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:143-145`).** The card bench catches 14 of
-15 return classes with no clean build blocked; `column-shift` is missed. The stateful bench catches 2 of 3: an
-observer left on removed cards shows only through a journey with `"sameAsFresh": true`, which the builder must write
-(`design-to-code/SKILL.md:91`); on the catalogue case every Sonnet builder did.
+**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:143-145`).** The stateful bench catches 2
+of 3: an observer left on removed cards shows only through a journey with `"sameAsFresh": true`, which the builder
+must write (`design-to-code/SKILL.md:91`); on the catalogue case every Sonnet builder did. The card bench's
+`column-shift`, the entry's other class, is caught since the change the changelog's Unreleased section names.
 
 ## E148. A design-to-code run on the planted card costs 77–131 calls on Sonnet
 

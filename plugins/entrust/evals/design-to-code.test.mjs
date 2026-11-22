@@ -1989,6 +1989,49 @@ test("draft 28.2: a gap that closes up is a finding though each offset alone is 
   }
 });
 
+// The card bench's 764 frame as the check measured it: each landmark's box in the design, then on the page of the
+// control, of the column shift (a 30 px margin before the RAM column moves the four columns before it 15 px left,
+// between the processor and the RAM) and of its clean twin (the row's padding moved 10 px right, every piece with it).
+const CARD_764 = [
+  ["BA-i201-B", [17, 16, 53, 9], [17, 16, 57, 9], [17, 16, 57, 9], [27, 16, 57, 9]],
+  ["EPYC 9374F", [159, 16, 74, 10], [157, 17, 85, 10], [157, 17, 85, 10], [167, 17, 85, 10]],
+  ["3.33", [277, 16, 26, 10], [275, 17, 27, 10], [261, 17, 27, 10], [285, 17, 27, 10]],
+  ["16", [321, 16, 14, 10], [320, 17, 15, 10], [306, 17, 15, 10], [330, 17, 15, 10]],
+  ["×2", [352, 15, 13, 10], [355, 17, 12, 9], [341, 17, 12, 9], [365, 17, 12, 9]],
+  ["32 ядер", [388, 16, 48, 13], [387, 17, 53, 13], [373, 17, 53, 13], [397, 17, 53, 13]],
+  ["64 потока", [387, 38, 62, 10], [387, 38, 66, 10], [373, 38, 66, 10], [397, 38, 66, 10]],
+  ["256 ГБ", [474, 16, 42, 10], [470, 17, 46, 10], [470, 17, 46, 10], [480, 17, 46, 10]],
+  ["DDR3", [475, 38, 35, 10], [471, 38, 39, 10], [471, 38, 39, 10], [481, 38, 39, 10]],
+  ["ECC", [475, 56, 25, 10], [471, 56, 30, 10], [471, 56, 30, 10], [481, 56, 30, 10]],
+  ["2 × 838", [542, 16, 46, 10], [542, 17, 48, 10], [542, 17, 48, 10], [552, 17, 48, 10]],
+  ["SSD", [602, 16, 25, 10], [597, 16, 29, 11], [597, 16, 29, 11], [607, 16, 29, 11]],
+  ["125 898,00 ₽", [663, 16, 82, 12], [648, 15, 99, 15], [648, 15, 99, 15], [658, 15, 99, 15]],
+  ["High performance", [23, 41, 96, 11], [23, 41, 101, 11], [23, 41, 101, 11], [33, 41, 101, 11]],
+  ["MC-LAG 25/25", [33, 88, 78, 12], [31, 91, 85, 9], [31, 91, 85, 9], [41, 91, 85, 9]],
+  ["2+ PSU", [137, 88, 37, 12], [141, 91, 44, 9], [141, 91, 44, 9], [151, 91, 44, 9]],
+  ["Доступно 1", [671, 88, 72, 13], [670, 91, 77, 13], [670, 91, 77, 13], [680, 91, 77, 13]],
+];
+const card764 = (page) => compareFrame({ frame: "card-764", tolerance: 4,
+  ledger: [{ landmark: "125 898,00 ₽", property: "type", status: "proposed", category: "system", reason: "the kit's class for the price" }],
+  spec: { frame: { width: 764, height: 114 }, source: "image boxes",
+    landmarks: CARD_764.map(([text, b]) => ({ text, box: box(...b), ...(/MC-LAG|PSU/.test(text) ? { joined: true } : {}) })) },
+  measured: { root: { width: 764, height: 118 }, landmarks: CARD_764.map((row) => ({ found: true, box: box(...row[page]), align: "left" })) } });
+
+test("doc 44, item 6: columns moved together are read from their own edge, against the column they moved away from; a common shift is not a step", () => {
+  const offsets = (r) => r.issues.filter((i) => ["x", "y"].includes(i.property) && i.status === "fail").map((i) => `${i.landmark} ${i.property} ${Math.round(i.delta)}`);
+  const control = card764(2), shifted = card764(3), common = card764(4);
+  assert.equal(control.verdict, "pending", JSON.stringify(control.issues));
+  // The frequency is 16 px off from the root's left and 15 from its right. Read from the right on that pixel, the four
+  // columns drifted with the page's wider texts, as notes; from its own left edge, it moved 14 px from the processor.
+  assert.equal(shifted.verdict, "fail", JSON.stringify(shifted.notes));
+  assert.deepEqual(offsets(shifted), ["3.33 x -16"]);
+  assert.ok(shifted.causes.some((c) => c.axis === "x" && c.before === "3.33" && c.after === "EPYC 9374F" && Math.round(c.step) === -14), JSON.stringify(shifted.causes));
+  // Every piece 10 px to the right keeps each relation between them: notes, and the verdict the control has.
+  assert.equal(common.verdict, "pending", JSON.stringify(common.issues));
+  assert.deepEqual(offsets(common), []);
+  assert.ok(common.notes.some((n) => n.landmark === "2+ PSU" && n.property === "x" && n.delta === 14), JSON.stringify(common.notes));
+});
+
 // Six texts of a screenshot's spec, each with its ink height in the design and the page.
 const inked = (heights, joined = []) => {
   const texts = ["Server", "32 cores", "128 GB", "2 × 838", "Frankfurt", "1 234 € / month"];
