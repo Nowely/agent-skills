@@ -229,3 +229,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   results, two baseline-reproduced open anomalies and the unrun Terra gate.
 - [Catalogue Terra gate](46-catalogue-terra-gate.md): one preregistered run on `a21e92f`; the hidden judge accepted width
   and choice, while the builder handed over at `fail` on the fixed consumer's narrow Filters layout.
+
+- [External blocker and judge scope](47-external-blocker-and-judge-scope.md): the post-gate Astra discussion, the
+  observed contract mismatch and a proposed plan with deterministic controls; no skill change or new model run.

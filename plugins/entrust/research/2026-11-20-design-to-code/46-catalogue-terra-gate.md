@@ -1,6 +1,6 @@
 # Catalogue card: one Terra gate at a21e92f
 
-The hidden judge returned **ACCEPTED**, with width, choice and basics holding. Terra's own first and final handover was **`fail`**: in the consumer at a 375 px window, opening Filters leaves a 47 px card column, below the check's 288 px minimum. The fixed page owns that sidebar; changing it was outside the brief. Both results can hold: the judge checks the card at several usable container widths, including the open sidebar at 700–960 px, while the skill's journey also checks the page at 375 px with the sidebar open. The judge does not establish that this page-level narrow state works. Nor is its ACCEPTED an acceptance by the owner. Under the PR request the gate also needs the owner's acceptance; that is still open.
+The hidden judge returned **ACCEPTED**, with width, choice and basics holding. Terra's own first and final handover was **`fail`**: in the consumer at a 375 px window, opening Filters leaves a 47 px card column, below the check's 288 px floor. The checker calculated that floor from a fresh page at the 320 px sweep start Terra chose because the contract gave no narrower bound; 288 px is not an owner-stated requirement, and the closed-page floor is not established as a product invariant for the open sidebar. The fixed page owns that sidebar; changing it was outside the brief. Both results can hold: the judge checks the card at several usable container widths, including the open sidebar at 700–960 px, while the skill's journey also checks the page at 375 px with the sidebar open. The judge does not establish that this page-level narrow state works. Nor is its ACCEPTED an acceptance by the owner. Under the PR request the gate also needs the owner's acceptance; that is still open.
 
 ## Conditions and boundary
 
@@ -27,6 +27,11 @@ The attached synthetic case pictures show the original reference at left, the fi
 - [375 px](46-catalogue-gate-frames/card-375.png)
 - [375 px, M selected](46-catalogue-gate-frames/size-chosen-375.png)
 - [Judge capture: sidebar open at 960 px](46-catalogue-gate-frames/sidebar-960.png)
+
+A [375 px open-Filters view](46-catalogue-gate-frames/reproduced-filters-open-375.png) was reproduced **after** the
+gate from the frozen full-arm archive (SHA-256 `a6572f1b029bb4ee423d7e7a3e3d83fce59d61f80a247929a7ab8d3ec4411df5`);
+it is not a historical gate frame. The six extracted page, card and data files match that archive byte for byte. The
+PNG is 388 px wide; the reproduced viewport was configured at 375 px. It shows the synthetic case, not an owner verdict.
 
 On visual inspection the wide and compact placements and the selected M state correspond to the references. The submitted text appears heavier and the compact price, stock and Details spacing differs; the pixel differences are visible in the attached comparisons. The checker reported unavailable Inter, and these pictures cannot distinguish font-substitution effects from other visual differences. They do not show the failing 375 px open-sidebar state. No owner visual or code verdict is claimed.
 

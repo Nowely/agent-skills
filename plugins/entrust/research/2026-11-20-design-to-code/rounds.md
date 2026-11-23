@@ -798,3 +798,10 @@ coordinator reported no blocking finding from the independent critic's 19 scenar
 The production routing change was then reviewed separately; the final candidate adds a routing test. Two local
 failures also reproduced on the baseline are tracked as E164 and E165. A whole-change regression count is not
 established. The Terra gate and real A/B were not run; the next gate must pin the newly checked commit.
+
+## Catalogue gate: external blocker discussion
+
+The [post-gate record](47-external-blocker-and-judge-scope.md) separates the card judge, failed consumer state and
+owner decision, then records Astra's proposed bounded-blocker handoff and controls. It corrects the source of the
+288 px floor in the gate record and links a post-gate reproduction, not a historical frame. No implementation or new
+model run was made; a regression count for the proposed change is not available.
