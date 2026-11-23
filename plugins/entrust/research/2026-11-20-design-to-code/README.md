@@ -239,3 +239,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   passed, while the complete consumer check remained failed and Terra handed over an evidenced blocker.
 - [Gate record corrections](51-catalogue-gate-corrections.md): standalone Details omitted from the handoff, corrected
   first-helper call count, Guardian telemetry and the boundary and isolation limits.
+
+- [Reviewer return and handoff](52-review-return-and-handoff.md): the observed coverage omission, unknown cause,
+  service-tier evidence and a proposed blind check of the final reconciliation.

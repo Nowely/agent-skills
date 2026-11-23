@@ -812,3 +812,9 @@ model run was made; a regression count for the proposed change is not available.
 evidence-backed external blocker in the owner's report. The future generated prompt changed; historical registrations
 and results remain unchanged, so a new run under that prompt has a different condition. No model run was performed in
 this round and no model-behavior regression count is available.
+
+## Review return and handoff reconciliation
+
+[Record 52](52-review-return-and-handoff.md) separates the observed missing standalone coverage from the unknown
+reason it was omitted, adds a final reconciliation step and registers the scope and limits of one future blind check.
+No model run or model-behavior regression count is reported in this record.
