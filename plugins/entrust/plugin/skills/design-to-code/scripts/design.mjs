@@ -1758,7 +1758,7 @@ async function journeys(browser, cfg) {
     }
     const widths = opened ? [j.width ?? width] : [], asFresh = [], resized = [];
     const seen = new Set(), notes = [], closed = new Set(), closers = [];
-    let lastInput, checkpoint;
+    let lastInput, checkpoint, widthMayContinue = false;
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
     const observed = new Map();
@@ -1823,8 +1823,15 @@ async function journeys(browser, cfg) {
           try {
             const [action] = Object.keys(step), arg = step[action];
             if (!EXPECT.includes(action) && action !== "wait") {
+              // If a control is used during an outstanding viewport transition, its independent effect on
+              // the container cannot be distinguished. Keep the action on time and withhold lifecycle credit.
+              if (action === "width") widthMayContinue = true;
+              else if (widthMayContinue) {
+                widthMayContinue = !await motionSettled(page, cfg.root, 0, false);
+                if (!widthMayContinue) await roomAfter(i - 1);
+              }
+              lastInput = action === "width" || !widthMayContinue ? action : undefined;
               checkpoint = null;
-              lastInput = action;
             }
             if (targets.length && !EXPECT.includes(action) && action !== "wait") {
               visibleBefore = new Set();

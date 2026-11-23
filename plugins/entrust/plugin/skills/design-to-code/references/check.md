@@ -114,6 +114,8 @@ or a root clipped from view (a panel collapsed, a tab hidden), shows no componen
 comparison holds it. A width step sets the test width; its following expectations specify what must hold there.
 When a user action changes the parent width, assert the relationship in the live component before the next action,
 for example `{ "visible": ".price:below(.title)" }` while a sidebar is open. The check reports that placement only.
+If an action overlaps unfinished motion from a window resize, it provides no independent evidence of a parent-width
+lifecycle. Exercise that action once the viewport has settled when the product supports it.
 It recognizes Playwright's `:above`, `:below`, `:left-of`, `:right-of` and `:near` on a visible component element,
 with a single selector on either side. A declared `sameAsFresh` endpoint compares the component at the frame widths.
 The check reports unmeasured widths. An independent change of parent width in the configured journey leaves the check

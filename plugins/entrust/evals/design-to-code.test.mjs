@@ -3011,18 +3011,20 @@ test("44.1: a step that resizes the component's container takes a lifecycle; a w
 
 test("a viewport transition completing during a passive expectation cannot supply a parent lifecycle", browser, () => {
   const f = smallFrame();
-  f.write(`<style>#column{width:100%;transition:width .6s linear}@media(min-width:400px){#column{width:400px}}</style>
-<div id="column"><main><span>Ready</span></main></div><button id="side">Side</button>
+  f.write(`<style>#column{width:300px;transition:width .6s linear .2s}@media(min-width:400px){#column{width:400px}}</style>
+<div id="column"><main><span>Ready</span></main></div><button id="side">Side</button><button id="noop">No change</button>
 <script>document.querySelector("#side").onclick = () => document.querySelector("#column").style.width = "380px";</script>`);
   const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  const run = (extra) => {
+  const run = (extra, first = [{ visible: "main" }]) => {
     fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "resize", sameAsFresh: true,
-      steps: [{ width: 450 }, { visible: "main" }, ...extra] }] }));
+      steps: [{ width: 450 }, ...first, ...extra] }] }));
     return check(f.dir).result;
   };
   const viewport = run([]);
   assert.deepEqual(viewport.journeys[0].lifecycle, []);
   assert.ok(viewport.gaps.some((g) => /took no lifecycle/.test(g)), JSON.stringify(viewport.gaps));
+  const noop = run([{ click: "#noop" }, { wait: 900 }, { visible: "main" }], []);
+  assert.deepEqual(noop.journeys[0].lifecycle, []);
   const byUser = run([{ click: "#side" }, { visible: "main" }]);
   assert.ok(byUser.journeys[0].lifecycle.includes("parent width"), JSON.stringify(byUser.journeys[0]));
 });
