@@ -90,7 +90,9 @@ an observer left on removed elements or a layout not chosen again shows. The che
 frames' widths and holds each against a fresh load at that width. After any journey, a `ResizeObserver` still observing
 an element its steps removed (the root, one inside it or one around it; not one the page removed while it loaded) is
 a construct note on the journey: disconnect it on unmount, or give its reason (a tab pane kept to be shown again, a
-cleanup deferred).
+cleanup deferred). A script-set mode can be attributed to a size-query listener registered with
+`addEventListener` or `addListener`. Assignments to `MediaQueryList.onchange` keep native behavior and are outside
+that attribution.
 
 **The component's width.** After each step, at a width the sweep covers, the check measures the root's container (its
 parent), for the root the journey started with while it is on the page. The step fails the journey when the container

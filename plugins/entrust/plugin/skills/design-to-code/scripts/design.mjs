@@ -229,10 +229,7 @@ function watchScripts(rootSelector) {
     list.removeEventListener = function (type, listener, options) { return remove.call(this, type, type === "change" && listener ? wrapped.get(listener) ?? listener : listener, options); };
     list.addListener = function (listener) { return add.call(this, "change", wrap(listener)); };
     list.removeListener = function (listener) { return remove.call(this, "change", (listener && wrapped.get(listener)) ?? listener); };
-    // A one-shot read of `.matches` is not wrapped: the component's own width (a generated condition) shows a layout
-    // it picks, and a read for anything else (a flag, a hint) would be named as a mode.
-    const onchange = Object.getOwnPropertyDescriptor(list, "onchange");
-    if (onchange?.set) Object.defineProperty(list, "onchange", { ...onchange, set(listener) { onchange.set.call(this, typeof listener === "function" ? wrap(listener) : listener); } });
+    // The native onchange property retains its callback identity, including conditional cleanup by the page.
   }
   Object.defineProperty(window, "__designCheck", { configurable: true, value: {
     modes: () => [...modes].flatMap(([el, attrs]) => [...attrs].map(([attr, from]) => ({ el, attr, source: from }))),

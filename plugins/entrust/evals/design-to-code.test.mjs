@@ -2967,6 +2967,28 @@ test("44.3: a mode a ResizeObserver or a matchMedia change listener sets is a co
   assert.deepEqual(modes('row.classList.toggle("calm", matchMedia("(prefers-reduced-motion: reduce)").matches);'), []);
 });
 
+test("MediaQueryList.onchange keeps the callback the page assigned and removes it on null", browser, () => {
+  const f = smallFrame(`<output>waiting</output><script>
+const q = matchMedia("(min-width: 400px)"), out = document.querySelector("output");
+function replaced() { out.textContent = "replaced callback ran"; }
+function current(event) {
+  if (this !== q || event.target !== q || event.type !== "change") return;
+  if (q.onchange !== current) { out.textContent = "callback identity lost"; return; }
+  q.onchange = null;
+  out.textContent = q.onchange === null ? "clean" : "cleanup failed";
+  if (!q.matches) out.textContent = "called after cleanup";
+}
+q.onchange = replaced;
+if (q.onchange === replaced) q.onchange = current;
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change and clean up", steps: [
+    { width: 450 }, { text: ["output", "clean"] }, { width: 300 }, { text: ["output", "clean"] },
+  ] }] }));
+  const result = check(f.dir, "--no-sweep").result.journeys[0];
+  assert.ok(result.pass, JSON.stringify(result));
+});
+
 // The catalogue card's reference build, with the design.json a builder following the skill writes (research note 35):
 // frames on the story page sized by the host, journeys on the consumer page.
 function catalogueLifecycleArm(change = (js) => js) {
