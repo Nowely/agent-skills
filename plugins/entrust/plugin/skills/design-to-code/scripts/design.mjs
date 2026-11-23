@@ -28,7 +28,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
-  rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
+  rerunNotice, snapshotIdentity, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -253,16 +253,10 @@ function watchScripts(rootSelector) {
 // measurements come from the same element. A popover kept hidden in the page is not the one open.
 const MARK = "data-design-root";
 const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
-// Run on the frame root (inventory) or the target of a gesture (one opener). Equal labels on different
-// controls must stay distinct across the fresh pages used for frames and journeys. Each also says its role, its page
-// without the query, whether its target is missing from that page and, in the inventory, which of the journeys'
-// selectors pick it out (it or something inside it). Given `nth`, the inventory's opener at that place itself.
+// Find the control itself, not the descendant a journey happened to address. Names and roles come from
+// Playwright's accessibility tree below; DOM attributes alone do not compute an accessible name.
 function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [], nth } = {}) {
   const selector = "[aria-expanded], [popovertarget], [aria-haspopup]";
-  const label = (o) => (o.getAttribute("aria-label") || o.title || o.textContent || o.localName).replace(/\s+/g, " ").trim();
-  const role = (o) => o.getAttribute("role")?.trim().split(/\s+/)[0].toLowerCase()
-    || (o.localName === "button" || o.localName === "summary" || (o.localName === "input" && /^(button|submit|reset|image)$/i.test(o.type)) ? "button"
-      : /^(a|area)$/.test(o.localName) && o.hasAttribute("href") ? "link" : o.localName);
   const picks = (o, s) => { try { return o.matches(s) || Boolean(o.querySelector(s)); } catch { return false; } };
   const controls = [...document.querySelectorAll(selector)].filter((o) => o.hasAttribute("aria-expanded") || o.hasAttribute("popovertarget")
     || !/^(false|)$/i.test((o.getAttribute("aria-haspopup") ?? "").trim()));
@@ -271,14 +265,37 @@ function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [], 
     : [controls.findLast((o) => o.contains(target))].filter(Boolean);
   if (nth !== undefined) return matches[nth];
   return matches.map((o) => {
-    const name = label(o);
     const ids = [o.getAttribute("aria-controls"), o.getAttribute("popovertarget")].filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
-    // Across data variants on one page, a named control linked to the same popup has an explicit identity.
-    const page = o.id && ids.length ? location.origin + location.pathname + location.hash : location.href;
-    const key = JSON.stringify([page, name, ...(o.id ? ["id", o.id, ...ids] : ["index", controls.filter((c) => label(c) === name).indexOf(o)])]);
-    return { key, name, ids, role: role(o), page: location.href.replace(/[?#].*$/, ""), away: ids.length > 0 && ids.every((id) => !document.getElementById(id)),
+    return { id: o.id, index: controls.indexOf(o), ids, page: location.href.replace(/[?#].*$/, ""),
+      variant: o.id && ids.length ? location.origin + location.pathname + location.hash : location.href,
+      targetPresent: ids.length > 0 && ids.every((id) => Boolean(document.getElementById(id))),
       ...(inventory ? { answers: selectors.filter((s) => picks(o, s)) } : {}) };
   });
+}
+
+// The snapshot is produced by Playwright's accessibility implementation. If it cannot identify the control, an
+// unknown name/role cannot establish identity or cover another control.
+async function openerInfo(page, root, options) {
+  const info = await root.evaluate(openerInfoIn, options, { timeout: 2000 });
+  const candidates = page.locator("[aria-expanded], [popovertarget], [aria-haspopup]");
+  for (const [i, o] of info.entries()) {
+    const handle = await root.evaluateHandle(openerInfoIn, { ...options, nth: i }, { timeout: 2000 });
+    try {
+      const candidate = candidates.nth(o.index);
+      // `index` excludes aria-haspopup=false; locate by element when excluded candidates precede it.
+      let locator = candidate;
+      if (!await candidate.evaluate((e, h) => e === h, handle, { timeout: 2000 }).catch(() => false)) {
+        locator = null;
+        for (const c of await candidates.all()) if (await c.evaluate((e, h) => e === h, handle, { timeout: 2000 }).catch(() => false)) { locator = c; break; }
+      }
+      const identity = locator && snapshotIdentity(await locator.ariaSnapshot({ timeout: 2000 }));
+      if (identity) Object.assign(o, identity);
+    } catch { /* Unknown accessibility identity stays uncovered. */ }
+    finally { await handle.dispose(); }
+    if (o.role !== undefined && o.name !== undefined) o.key = JSON.stringify([o.variant, o.id ? ["id", o.id] : ["index", o.index], o.name, o.role, o.ids]);
+    delete o.variant;
+  }
+  return info;
 }
 // An element's identity across fresh pages of the same story, whatever its markup: its id, or its path of positions.
 const elementKey = (el) => {
@@ -293,33 +310,6 @@ const elementKey = (el) => {
 async function rootOf(page, selector) {
   const marked = page.locator(`[${MARK}]`);
   return (await marked.count()) ? marked.first() : page.locator(selector).filter({ visible: true }).first();
-}
-// Whether the inventory's opener at `nth`, whose target is not on its page, leaves it so when clicked there: the click
-// throws nothing, mounts no target and shows nothing else, as on a story page without the consumer's sheet. A target
-// mounted only on open ({open && <Sheet/>}) is on its page, and so is one that cannot be told (the click fails, the
-// page goes elsewhere). What else it shows counts only as a dialog, popover or menu: a tooltip or a log does not.
-async function staysAway(page, selector, nth, ids) {
-  const errors = [], onError = (e) => errors.push(e);
-  page.on("pageerror", onError);
-  try {
-    const opener = (await (await rootOf(page, selector)).evaluateHandle(openerInfoIn, { inventory: true, nth })).asElement();
-    if (!opener) return false;
-    const before = await page.evaluateHandle(([o, seen]) => {
-      const visible = new Function(`return (${seen})`)();
-      return { expanded: o.getAttribute("aria-expanded") === "true", shown: new Set([...document.querySelectorAll("body *")].filter(visible)) };
-    }, [opener, seenIn.toString()]);
-    await opener.click({ timeout: 2000 });
-    await page.mouse.move(-5, -5);
-    // The click's own focus shows a `:focus` tooltip: let go of it before judging.
-    await page.evaluate(() => document.activeElement?.blur());
-    const opened = () => page.evaluate(([o, ids, was, seen]) => {
-      const visible = new Function(`return (${seen})`)();
-      return ids.some((id) => document.getElementById(id)) || (!was.expanded && o.getAttribute("aria-expanded") === "true")
-        || [...document.querySelectorAll("body *")].some((e) => visible(e) && !was.shown.has(e) && !o.contains(e)
-          && e.matches('dialog, [popover], [aria-modal="true"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'));
-    }, [opener, ids, before, seenIn.toString()]);
-    return !(await until(page, async () => errors.length > 0 || await opened()));
-  } catch { return false; } finally { page.off("pageerror", onError); }
 }
 const markRoot = (page, selector) => page.evaluate(([sel, mark, seen]) => {
   const visible = new Function(`return (${seen})`)();
@@ -1329,16 +1319,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (before.reason) result.beforeUnavailable = before.reason;
       if (before.comparison) result.beforeComparison = before.comparison;
       const selectors = [...new Set(cfg.journeys.flatMap((j) => j.steps.map((st) => st.hover ?? st.focus ?? st.tap ?? st.click ?? st.move)).filter((s) => typeof s === "string"))];
-      result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true, selectors });
-      // An opener whose target is absent is clicked here, once for each name, role and target: is the target on this
-      // page only once opened? The frame is measured; the page closes after.
-      const tried = new Map();
-      for (const [i, o] of result.openers.entries()) {
-        if (!o.away) continue;
-        const k = JSON.stringify([o.name, o.role, o.ids]);
-        if (!tried.has(k)) tried.set(k, await staysAway(page, fcfg.root, i, o.ids));
-        o.away = tried.get(k);
-      }
+      result.openers = await openerInfo(page, await rootOf(page, fcfg.root), { inventory: true, selectors });
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -1844,7 +1825,7 @@ async function journeys(browser, cfg) {
               if (["hover", "click", "tap", "focus", "move", "press"].includes(action)) {
                 const point = Array.isArray(arg) ? arg : undefined;
                 const locator = page.locator(point || action === "press" ? "html" : arg).first();
-                [trigger] = await locator.evaluate(openerInfoIn, { point, keyboard: action === "press" }, { timeout: 2000 }).catch(() => []);
+                [trigger] = await openerInfo(page, locator, { point, keyboard: action === "press" }).catch(() => []);
                 if (trigger && !point && action !== "press") trigger.selector = arg;
               }
             }
@@ -2104,21 +2085,24 @@ function layoutModelRows(cfg) {
 function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   const gaps = [];
   for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
-  const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o])));
+  const openers = new Map();
+  for (const r of results) for (const [i, o] of (r.openers ?? []).entries()) {
+    const key = o.key ?? `${r.frame}:${i}`, previous = openers.get(key);
+    openers.set(key, previous ? { ...o, targetPresent: previous.targetPresent && o.targetPresent,
+      answers: o.answers?.filter((s) => previous.answers?.includes(s)) } : o);
+  }
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
-  // An opener whose target is not on its page, even once clicked there (a story page without the consumer's sheet), is
-  // covered by a passing journey on another page that opened and closed one by the same selector, with the same role,
-  // name and target.
-  // A same-named opener of another role or target is not. The covering journey's line in the handoff names it.
+  // Across pages require the same linked target to exist on the measured page, and the journey to have actually
+  // opened and closed it. An absent target could be mounted on action, so it proves no cross-page identity.
   const closers = journeyResults.filter((j) => j.pass).flatMap((j) => (j.closers ?? []).map((c) => ({ c, j })));
   const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
   const shown = (u) => (u.startsWith("file:") ? path.relative(cfg.dir, fileURLToPath(u)) : u);
   const unchecked = [];
   for (const o of openers.values()) {
-    if (closed.has(o.key)) continue;
-    const by = o.away && closers.find(({ c }) => c.page !== o.page && c.name === o.name && c.role === o.role && sameIds(c.ids, o.ids) && o.answers?.includes(c.selector));
-    if (!by) { unchecked.push(o.name); continue; }
-    const note = `covers “${o.name}” on ${shown(o.page)}, whose target ${o.ids.map((id) => `#${id}`).join(", ")} is not on that page`;
+    if (o.key && closed.has(o.key)) continue;
+    const by = o.key && o.name && o.targetPresent && closers.find(({ c }) => c.key && c.page !== o.page && c.name === o.name && c.role === o.role && sameIds(c.ids, o.ids) && o.answers?.includes(c.selector));
+    if (!by) { unchecked.push(o.name || "unknown"); continue; }
+    const note = `covers “${o.name}” on ${shown(o.page)}, linked to ${o.ids.map((id) => `#${id}`).join(", ")}`;
     if (!by.j.notes?.includes(note)) (by.j.notes ??= []).push(note);
   }
   if (unchecked.length) gaps.push(`${unchecked.length} control${unchecked.length === 1 ? "" : "s"} open${unchecked.length === 1 ? "s" : ""} something with no journey that opens and closes ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.slice(0, 4).map((o) => `“${o}”`).join(", ")}${unchecked.length > 4 ? ", …" : ""}`);

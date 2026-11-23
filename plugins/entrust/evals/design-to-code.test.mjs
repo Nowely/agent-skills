@@ -12,12 +12,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
   causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
-  renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
+  renderSummary, rerunNotice, snapshotIdentity, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -327,6 +327,14 @@ test("draft 28: a proposed entry of any category leaves a finding pending, for t
   // The owner's own call is recorded as accepted; a text entry names what the page shows.
   assert.match(ledgerFaults([entry("owner")]).join(), /"owner" is the owner's own call/);
   assert.match(ledgerFaults([{ landmark: "New", property: "text", category: "design-error", status: "proposed", reason: "a word form" }]).join(), /names the page's text in "actual"/);
+});
+
+test("ARIA snapshot identity uses the computed name and rejects unfamiliar output", () => {
+  assert.deepEqual(snapshotIdentity('- button "Actual name" [expanded=false]: fallback'), { role: "button", name: "Actual name" });
+  assert.deepEqual(snapshotIdentity(`- button ${JSON.stringify('Say "yes"')}`), { role: "button", name: 'Say "yes"' });
+  assert.deepEqual(snapshotIdentity('- button'), { role: "button", name: "" });
+  assert.equal(snapshotIdentity('unexpected'), null);
+  assert.equal(snapshotIdentity('- button "unterminated'), null);
 });
 
 // ------------------------------------------------------------------ in the browser
@@ -1337,6 +1345,65 @@ test("a journey on another data variant covers the same explicitly linked contro
   r = run("#other");
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+});
+
+test("cross-page coverage uses the accessible name and an existing linked target", browser, () => {
+  const f = smallFrame('<span id="a-name" hidden>Details</span><button class="d" aria-labelledby="a-name" popovertarget="panel">More</button><div id="panel" popover>Content</div>');
+  const other = path.join(f.dir, "other.html"), cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const page = fs.readFileSync(f.page, "utf8").replaceAll("a-name", "different-internal-id");
+  const run = (html, target = "#panel") => {
+    fs.writeFileSync(other, html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "toggle", url: "other.html", steps: [
+      { click: ".d" }, { visible: target }, { click: ".d" }, { hidden: target },
+    ] }] }));
+    return check(f.dir);
+  };
+  let r = run(page);
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.result.journeys[0].notes.join(), /covers “Details” on page.html, linked to #panel/);
+  r = run(page.replace(">Details</span>", ">Other name</span>"));
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+  r = run(page.replaceAll('panel', 'other-panel'), '#other-panel');
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+  fs.appendFileSync(f.page, `<script>if (location.search === '?variant') document.getElementById('a-name').textContent = 'Other name';</script>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "variant", url: "page.html?variant", steps: [
+    { click: ".d" }, { visible: "#panel" }, { click: ".d" }, { hidden: "#panel" },
+  ] }] }));
+  r = check(f.dir);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+});
+
+test("frame, quick and full never act on an unspecified opener; an explicit journey may open a lazy target", browser, async () => {
+  const f = smallFrame(`<button class="d" aria-expanded="false" aria-controls="panel">Details</button>
+<script>document.querySelector('.d').onclick = () => { fetch('/hit', { method: 'POST' }); let panel = document.getElementById('panel');
+if (panel) { panel.remove(); } else { panel = document.createElement('div'); panel.id = 'panel'; panel.textContent = 'Panel'; document.body.append(panel); } };</script>`);
+  const count = path.join(f.dir, "posts"), cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(count, "");
+  const script = `const http = require('node:http'), fs = require('node:fs');
+http.createServer((req, res) => { if (req.method === 'POST') { fs.appendFileSync(process.argv[2], 'x'); res.end('ok'); }
+else { res.setHeader('content-type', 'text/html'); res.end(fs.readFileSync(process.argv[1])); } }).listen(0, '127.0.0.1', function () { console.log(this.address().port); });`;
+  const server = spawn(process.execPath, ["-e", script, f.page, count], { stdio: ["ignore", "pipe", "pipe"] });
+  try {
+    const port = await new Promise((resolve, reject) => { server.stdout.once("data", (v) => resolve(Number(String(v).trim()))); server.once("error", reject); server.once("exit", (code) => reject(new Error(`server exited ${code}`))); });
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, url: `http://127.0.0.1:${port}/page`, sweep: { ...cfg.sweep, stories: [{ name: "dense", url: `http://127.0.0.1:${port}/page?dense` }] } }));
+    for (const args of [["--frame", "frame"], ["--quick"], []]) {
+      const r = check(f.dir, ...args);
+      assert.ok(r.result, r.stderr);
+      assert.equal(fs.readFileSync(count, "utf8"), "", args.join(" "));
+      if (!args.length) assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+    }
+    const configured = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...configured, journeys: [{ name: "lazy", steps: [
+      { click: ".d" }, { visible: "#panel" }, { click: ".d" }, { hidden: "#panel" },
+    ] }] }));
+    const r = check(f.dir);
+    assert.ok(r.result.journeys.find((j) => j.name === "lazy").pass, r.stdout);
+    assert.ok(fs.readFileSync(count, "utf8").length >= 2);
+    assert.doesNotMatch(r.stdout, /no journey that opens and closes it/);
+  } finally { server.kill(); }
 });
 
 test("the acceptance verdict distinguishes evidence, missing measurements, decisions and failures", browser, () => {
@@ -2866,18 +2933,14 @@ function catalogueLifecycleArm(change = (js) => js) {
   return dir;
 }
 
-test("44, controls: the catalogue card's reference build gets no new finding; its observers left on removed cards are a note on the list journey", browser, () => {
+test("44, controls: the catalogue card's absent target is incomplete; its observers left on removed cards are a note", browser, () => {
   const ref = check(catalogueLifecycleArm());
   // As before the change: every frame, the sweep and the journeys hold.
   assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
   assert.ok(ref.result.journeys.every((j) => j.pass), JSON.stringify(ref.result.journeys.filter((j) => !j.pass)));
-  // Item 9 (E152): the story page's Details opener, whose sheet only the consumer's page holds, is covered by the
-  // sheet's journey there, which opens and closes the same opener; before, it alone left the check incomplete.
-  assert.deepEqual(ref.result.gaps, []);
-  assert.equal(ref.status, 0, ref.stdout);
-  const cover = "covers “Details” on ../story.html, whose target #sheet is not on that page";
-  assert.deepEqual(ref.result.journeys.filter((j) => j.notes?.includes(cover)).map((j) => j.name), ["sheet: Details opens it, Close closes it"]);
-  assert.match(fs.readFileSync(path.join(ref.dir, "out/handoff.md"), "utf8"), /^- sheet: Details opens it, Close closes it \([^)]*\): holds; covers “Details” on \.\.\/story\.html, whose target #sheet is not on that page$/m);
+  // The story omits the target; without acting there the check cannot know whether it is mounted lazily.
+  assert.deepEqual(ref.result.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"]);
+  assert.equal(ref.status, 2, ref.stdout);
   // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
   assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
   assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
@@ -3047,7 +3110,7 @@ test("44.8, controls: the catalogue's start code fails its sidebar journey where
 // ------------------------------------------------------------------ 44, item 9: an opener covered on another page
 
 test("44.9: the story page's Details, whose sheet is only on the consumer's page, is not covered there by a same-named opener of another role or target", browser, () => {
-  // The twins of the catalogue's reference arm (covered in the test above): the story page's Details shares its text
+  // The twins of the catalogue's reference arm: the story page's Details shares its text
   // with the consumer's, which the sheet's journey opens and closes, but not its role or its target.
   const twin = (attr, value) => {
     const dir = catalogueLifecycleArm();
@@ -3070,7 +3133,7 @@ test("44.9: the story page's Details, whose sheet is only on the consumer's page
   }
 });
 
-test("44.9: an opener whose click on its own page mounts its target, or throws, needs a journey there; one whose click opens nothing is covered from another page", browser, () => {
+test("44.9: an absent target is not evidence of cross-page identity", browser, () => {
   // Page a mounts the sheet only on open ({open && <Sheet/>}), and its journey opens and closes it. Page b shows the
   // same card with the same Details opener, and `b` is its script.
   const card = `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${MARKERS}</div></div>`;
@@ -3098,15 +3161,14 @@ if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = docu
     assert.deepEqual(r.gaps, [gap], `${what}: ${JSON.stringify(r.gaps)}`);
     assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), `${what}: ${JSON.stringify(r.journeys)}`);
   }
-  // A click that opens nothing there, as on a story page without the sheet: covered by a's journey, which says so.
+  // Even an inert page cannot be classified without the unconfigured action.
   const r = run("");
-  assert.deepEqual(r.gaps, [], JSON.stringify(r.gaps));
-  assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, ["covers “Details” on b.html, whose target #sheet is not on that page"]);
+  assert.deepEqual(r.gaps, [gap], JSON.stringify(r.gaps));
+  assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))));
 });
 
-test("44.9: a click that only shows a :focus tooltip or logs outside the root still leaves the opener covered from another page", browser, () => {
-  // Page b's inert Details (a story page without the consumer's sheet): before, any new visible node counted as opening
-  // something else, and left the opener a gap needing a journey on page b.
+test("44.9: an absent target remains unchecked regardless of what a click would do", browser, () => {
+  // None of these possible effects can be observed without an explicit action on page b.
   const card = (x = "") => `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${x}${MARKERS}</div></div>`;
   const css = ".card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}#sheet{position:fixed;left:20px;top:100px;background:#eee}.tip{display:none;position:absolute}.d:focus+.tip{display:block}";
   const mounts = `<script>const b = document.querySelector(".d"); b.onclick = () => { let s = document.getElementById("sheet");
@@ -3125,14 +3187,14 @@ if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = docu
     assert.equal(snap.status, 0, snap.stderr);
     return check(dir).result;
   };
-  const covered = ["covers “Details” on b.html, whose target #sheet is not on that page"];
+  const gap = ["1 control opens something with no journey that opens and closes it: “Details”"];
   for (const [what, b] of [["a :focus tooltip inside the root", card('<span class="tip">More about it</span>')],
     ["a callback log outside the root", card() + '<pre id="log"></pre><script>document.querySelector(".d").onclick = () => { log.textContent += "onDetails()\\n"; };</script>']]) {
     const r = run(b);
-    assert.deepEqual(r.gaps, [], `${what}: ${JSON.stringify(r.gaps)}`);
-    assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, covered, what);
+    assert.deepEqual(r.gaps, gap, `${what}: ${JSON.stringify(r.gaps)}`);
+    assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), what);
   }
-  // A dialog it opens is something else shown: a gap.
+  // A dialog it would open is likewise unknown.
   const r = run(card() + '<script>document.querySelector(".d").onclick = () => { const d = document.createElement("div"); d.setAttribute("role", "dialog"); d.textContent = "Other"; document.body.append(d); };</script>');
   assert.deepEqual(r.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"], JSON.stringify(r.gaps));
 });

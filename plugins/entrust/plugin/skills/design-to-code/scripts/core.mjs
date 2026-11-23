@@ -13,6 +13,13 @@ export const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 // them ("1 499 €" is found in `1 499<span>€</span>`, "NEW" in a `text-transform: uppercase` "New").
 export const key = (s) => String(s).replace(/[\s\u200b]+/g, "").toLocaleLowerCase();
 
+// Parse only the root node of a Playwright ARIA snapshot. Unrecognized output is not an identity.
+export function snapshotIdentity(snapshot) {
+  const match = snapshot?.split("\n")[0].match(/^- ([\w-]+)(?: ("(?:\\.|[^"\\])*"))?(?= *[:\[]|$)/);
+  if (!match) return null;
+  try { return { role: match[1], name: match[2] ? JSON.parse(match[2]) : "" }; } catch { return null; }
+}
+
 // ------------------------------------------------------------------ XML
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
