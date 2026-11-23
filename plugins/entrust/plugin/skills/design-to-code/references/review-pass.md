@@ -79,3 +79,8 @@ Fix each "fix" in scope and run the current complete check last; if it cannot ru
 unchecked. For an evidenced external blocker, retain the actual failure and hand over blocked as the skill says. In
 the handover, list the review's findings with what you did about each, and each "no" of the six questions with its
 place. A finding you disagree with is not dropped: say why, for the owner to decide.
+
+After receiving the full review and before the final answer, compare each material result claim with the review and
+the final state. Verify the reviewer's observations against evidence; tell the owner any confirmed material remaining
+limitation, its source and scope. Distinguish an existing limitation from a proven regression; reporting a limitation
+does not by itself change the check's verdict.
