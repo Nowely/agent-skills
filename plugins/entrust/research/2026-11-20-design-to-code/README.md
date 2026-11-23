@@ -237,3 +237,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   external-blocker instructions, judge scope and the changed future-run prompt and comparison boundary.
 - [Blocked-handoff catalogue gate](50-catalogue-blocked-handoff-gate.md): one preregistered Terra run; the card judge
   passed, while the complete consumer check remained failed and Terra handed over an evidenced blocker.
+- [Gate record corrections](51-catalogue-gate-corrections.md): standalone Details omitted from the handoff, corrected
+  first-helper call count, Guardian telemetry and the boundary and isolation limits.
