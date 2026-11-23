@@ -31,9 +31,10 @@ incomplete when:
   `"lifecycle"` with its reason. The consumer's page is a journey's own `url` that no frame or story shows, or the
   page `url` names, unless the frames are drawn there by `host`. URLs include query and fragment: either can select
   a different page state. A journey takes a lifecycle when a step shows, hides, removes or replaces its root, changes
-  its container's width, or a `text` expectation observes changed text in a declared `dataFields` field that was visible
-  before the journey and did not already contain the expected text. Other text or DOM mutations alone do not establish
-  a data change; a `width` step is the window's, and alone takes none;
+  its container's width, or a `text` expectation observes changed text in a declared `dataFields` field visible before
+  the journey. No matching field may already contain the expected text; the same visible elements must remain in the
+  same order. Replacements, reorderings and a swap of their texts are ambiguous and do not count. Other
+  text or DOM mutations alone do not establish a data change; a `width` step is the window's, and alone takes none;
 - a line of the owner's past returns (`.design/returns.md` beside the task's folder) is not quoted in an acceptance
   row;
 - a [candidate](#generated-conditions) is unanswered.

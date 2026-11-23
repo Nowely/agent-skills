@@ -2956,6 +2956,34 @@ tip.onclick = () => { const popup = document.getElementById("popup"); if (popup)
   assert.deepEqual(noop.result.journeys[0].lifecycle, []);
 });
 
+test("44.1: a data field with multiple matches observes the same elements without guessing identity", browser, () => {
+  const f = smallFrame('<div class="number">Quantity 1</div><div class="number" id="n">Quantity 2</div>');
+  fs.appendFileSync(f.page, `<button id="change">Change</button><button id="noop">Noop</button><button id="reorder">Reorder</button><button id="swap">Swap</button><button id="replace">Replace</button>
+<script>
+const rows = () => [...document.querySelectorAll(".number")];
+document.getElementById("change").onclick = () => { const n = document.getElementById("n"); n.textContent = n.textContent === "Quantity 2" ? "Quantity 3" : "Quantity 2"; };
+document.getElementById("noop").onclick = () => { const n = document.getElementById("n"); n.textContent = n.textContent; };
+document.getElementById("reorder").onclick = () => { const [a, b] = rows(); a.before(b); };
+document.getElementById("swap").onclick = () => { const [a, b] = rows(), x = a.textContent; a.textContent = b.textContent; b.textContent = x; };
+document.getElementById("replace").onclick = () => { const n = document.getElementById("n"), next = n.cloneNode(true); next.textContent = n.textContent === "Quantity 2" ? "Quantity 3" : "Quantity 2"; n.replaceWith(next); };
+</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (steps) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, generate: false }, journeys: [{ name: "rows", sameAsFresh: true, dataFields: [".number"], steps }] })); return check(f.dir); };
+  const expect = (value) => ({ text: [".number", value] });
+  const clean = run([expect("Quantity 2")]);
+  assert.equal(clean.status, 2, clean.stdout);
+  assert.deepEqual(clean.result.journeys[0].lifecycle, []);
+  const changed = run([{ click: "#change" }, expect("Quantity 3"), { click: "#change" }, expect("Quantity 2")]);
+  assert.equal(changed.status, 0, changed.stdout);
+  assert.deepEqual(changed.result.journeys[0].lifecycle, ["data"]);
+  for (const action of ["noop", "reorder", "swap", "replace"]) {
+    const value = action === "replace" ? "Quantity 3" : "Quantity 2";
+    const result = run([{ click: `#${action}` }, expect(value), { click: `#${action}` }, expect("Quantity 2")]);
+    assert.equal(result.status, 2, `${action}: ${result.stdout}`);
+    assert.deepEqual(result.result.journeys[0].lifecycle, [], action);
+  }
+});
+
 test("44.1: visibility changes of the root count, and losing a choice fails its expectation", browser, () => {
   const f = smallFrame('<span>Ready</span>');
   f.write(`<main><span id="choice">Ready</span></main><button id="toggle">Toggle</button><button id="choose">Choose</button><button id="refresh">Refresh</button>

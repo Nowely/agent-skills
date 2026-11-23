@@ -169,7 +169,7 @@ async function waitForMotion(page, selector, repeating = false) {
 // with the observer kept; the sweep asks for the modes set by script.
 function watchScripts(rootSelector) {
   if (window.__designCheck) return;
-  const modes = new Map(), targets = new Set(), left = new WeakMap();
+  const modes = new Map(), targets = new Set(), left = new WeakMap(), dataFields = new Map();
   const isMode = (name) => name === "class" || name === "style" || (name.startsWith("data-") && !name.startsWith("data-design-"));
   let source = null, token = 0;
   const credit = (records) => {
@@ -252,6 +252,14 @@ function watchScripts(rootSelector) {
   }
   Object.defineProperty(window, "__designCheck", { configurable: true, value: {
     modes: () => [...modes].flatMap(([el, attrs]) => [...attrs].map(([attr, from]) => ({ el, attr, source: from }))),
+    rememberData: (selector, elements) => dataFields.set(selector, elements.map((el) => ({ el, text: el.innerText.replace(/\s+/g, " ").trim() }))),
+    changedData: (selector, elements, expected) => {
+      const before = dataFields.get(selector);
+      if (!before?.length || before.length !== elements.length || before.some((b, i) => b.el !== elements[i] || b.text.includes(expected))) return false;
+      const after = elements.map((el) => el.innerText.replace(/\s+/g, " ").trim());
+      if (JSON.stringify(before.map((b) => b.text).sort()) === JSON.stringify([...after].sort())) return false;
+      return before.some((b, i) => b.text !== after[i] && after[i].includes(expected));
+    },
     // Where a journey's steps start: what came before (the page's own load) is not theirs.
     mark: () => { flush(); since = stamp; changed.mount = 0; observedRoot = document.querySelector("[data-design-root]"); },
     changed: () => { flush(); return { ...changed }; },
@@ -1800,14 +1808,14 @@ async function journeys(browser, cfg) {
         checkpoint = { i, width: now.width, byWidth: lastInput === "width" };
         resized.push(checkpoint);
       };
-      // Only a declared data field with a text expectation can witness a data change.
-      const textBefore = new Map();
-      const readText = async (selector) => page.locator(selector).evaluateAll((els, [root, seen]) => {
+      // Match the same visible field elements across observations; replacement and reordering are ambiguous.
+      const dataSelectors = new Set(j.dataFields ?? []);
+      const dataText = (selector, expected = null) => page.locator(selector).evaluateAll((els, [root, seen, selector, expected]) => {
         const visible = new Function(`return (${seen})`)();
-        const el = els.find((e) => e.closest(root) && visible(e));
-        return el ? el.innerText.replace(/\s+/g, " ").trim() : null;
-      }, [cfg.root, seenIn.toString()]).catch(() => null);
-      for (const selector of new Set(j.dataFields ?? [])) textBefore.set(selector, await readText(selector));
+        const fields = els.filter((e) => e.closest(root) && visible(e));
+        return expected === null ? window.__designCheck?.rememberData(selector, fields) : window.__designCheck?.changedData(selector, fields, expected);
+      }, [cfg.root, seenIn.toString(), selector, expected]).catch(() => false);
+      for (const selector of dataSelectors) await dataText(selector);
       const rootSeen = () => page.evaluate(([sel, seen]) => [...document.querySelectorAll(sel)].some(new Function(`return (${seen})`)()), [cfg.root, seenIn.toString()]).catch(() => null);
       let hadRoot = edge ? null : await rootSeen();
       const rootAfter = async () => {
@@ -1866,10 +1874,7 @@ async function journeys(browser, cfg) {
             if (pair) await waitForMotion(page, pair, true);
             await runStep(page, step);
             await rootAfter();
-            if (step.text && textBefore.has(step.text[0])) {
-              const before = textBefore.get(step.text[0]), after = await readText(step.text[0]);
-              if (before !== null && after !== null && before !== after && !before.includes(step.text[1]) && after.includes(step.text[1])) took.add("data");
-            }
+            if (step.text && dataSelectors.has(step.text[0]) && await dataText(step.text[0], step.text[1])) took.add("data");
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             if (step.visible) await waitForMotion(page, pair ?? step.visible, Boolean(pair));
             await roomAfter(i);
