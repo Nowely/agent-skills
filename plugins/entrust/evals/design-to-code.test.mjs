@@ -2300,6 +2300,50 @@ test("geometry still moving at the journey timeout is incomplete", browser, () =
   assert.equal(r.result.journeys[0].failed, undefined);
 });
 
+test("a placement holds after both participants settle, while a text step can still observe the transition", browser, () => {
+  const f = smallFrame(`<style>body:has(main.start){width:90%}.a,.b{position:relative;display:block;width:20px;height:15px}
+main.start .a{animation:shift 1.35s steps(1,end) forwards}
+@keyframes shift{from{top:0}to{top:40px}}
+main[data-mode=temporary].start .a{animation-direction:reverse}
+main[data-mode=anchor] .a{top:40px}
+main[data-mode=anchor].start .a{animation:none}
+main[data-mode=anchor].start .b{animation:shift .7s steps(1,end) forwards}
+</style><i class="a">A</i><i class="b">B</i><output>Ready</output><script>
+const root=document.querySelector('main'), out=document.querySelector('output');
+root.dataset.mode = location.search.slice(1);
+document.onkeydown=()=>{root.classList.add('start');out.textContent='Moving';};
+root.onanimationend=()=>{out.textContent='Settled';};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["final", "temporary", "anchor"].map((mode) => ({ name: mode, url: "page.html?" + mode, steps: [
+    { press: "Enter" }, { text: ["output", "Moving"] }, { visible: ".a:below(.b)" },
+  ] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, from: 200 }, journeys }));
+  const [final, temporary, anchor] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(final.pass, JSON.stringify(final));
+  for (const wrong of [temporary, anchor]) assert.match(wrong.failed, /step 3.*no .a:below\(.b\) is visible/);
+});
+
+test("a sheet may close on a slow transitionend; a finished broken close fails and unfinished motion is unmeasured", browser, () => {
+  const f = smallFrame(`<style>aside{width:40px;height:20px;transition:opacity 1.35s}main.slow aside{transition-duration:30s}</style>
+<aside>Sheet</aside><script>
+const sheet=document.querySelector('aside'), mode=location.search.slice(1);
+document.querySelector('main').className=mode;
+document.onkeydown=()=>{sheet.style.opacity='.4';};
+sheet.ontransitionend=()=>{if(mode!=='broken')sheet.hidden=true;};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["closes", "broken", "slow"].map((mode) => ({ name: mode, url: "page.html?" + mode, steps: [
+    { press: "Escape" }, { hidden: "aside" },
+  ] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const [closed, broken, slow] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(closed.pass, JSON.stringify(closed));
+  assert.match(broken.failed, /aside is still visible/);
+  assert.equal(slow.failed, undefined);
+  assert.match(slow.unmeasured, /unfinished motion after 1.5 seconds/);
+});
+
 test("a focused screenshot distinguishes a temporary flash with identical settled frames", browser, async () => {
   const { chromium } = createRequire(import.meta.url)(playwright), browser = await chromium.launch();
   try {

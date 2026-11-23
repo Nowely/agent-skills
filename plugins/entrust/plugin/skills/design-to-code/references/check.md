@@ -80,8 +80,8 @@ fails in 5 seconds.
 ## Journeys
 
 Each journey opens the page afresh at the widest frame's width (by touch with `"touch": true`, on its own `url` if it
-gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations, each given a second to come true
-as a person sees it: `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
+gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations evaluated on the page:
+`visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
 journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. When a
 journey tests a change of product data inside a stable root, the builder declares the field selectors in that journey,
 for example `"dataFields": ["#quantity"]`, and asserts the changed value with `"text": ["#quantity", "2"]`. The
@@ -89,7 +89,10 @@ builder identifies fields from the product contract: the checker cannot distingu
 status message by markup or text alone. Without this declaration, an ordinary `text` expectation still checks its text
 but cannot establish a data lifecycle; if no other lifecycle is observed, the complete check is incomplete. The
 first step that does not hold fails it. Journeys use the browser's natural motion preference. A sheet can close on its
-own `transitionend`; finite motion on the measured target has up to 1.5 seconds to settle for geometry. For visible
+own `transitionend`. A hidden expectation has 1.5 seconds for the target to disappear. If it remains visible with
+unfinished motion at that deadline, closing is unmeasured. Other expectations have a second to match. A placement
+checks both participants after motion settles, with a 1.5-second bound. Put a text expectation for a required
+intermediate state immediately after the input that enters it. For visible
 continuity required by the design, capture the affected region during the ordinary transition with animations enabled,
 and again at the end. Record the frames sampled and any interval you could not observe. A DOM animation-frame callback
 measures layout only. Frames and width sweeps capture settled states. With

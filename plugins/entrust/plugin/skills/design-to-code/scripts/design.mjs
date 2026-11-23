@@ -139,23 +139,27 @@ async function chromium() {
 // Frames and the sweep only: a journey keeps the page's transitions, since a control may finish its work on one (a sheet
 // that hides itself when its closing transition ends).
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
-// Read geometry after the target's finite motion ends naturally. Other controls keep their timers and event order.
-async function waitForMotion(page, selector) {
-  const done = await page.locator(selector).evaluateAll(async (elements) => {
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const el = elements.find((e) => e.getBoundingClientRect().width > 0);
-    if (!el) return true;
-    const animations = el.getAnimations({ subtree: true });
-    for (let p = el.parentElement; p; p = p.parentElement) animations.push(...p.getAnimations());
-    const running = animations.filter((a) => a.playState === "running" && Number.isFinite(a.effect?.getComputedTiming().endTime));
-    if (!running.length) return true;
-    let timer;
-    try {
-      return await Promise.race([Promise.allSettled(running.map((a) => a.finished)).then(() => true),
-        new Promise((resolve) => { timer = setTimeout(() => resolve(false), 1500); })]);
-    } finally { clearTimeout(timer); }
-  });
-  if (!done) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
+const MOTION_MS = 1500;
+// Observe the selected elements, their children and their ancestors. A zero budget inspects motion at the deadline.
+const motionSettled = (page, selector, timeout, repeating) => page.locator(selector).evaluateAll(async (elements, [timeout, repeating]) => {
+  if (timeout) await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const animations = new Set();
+  for (const el of elements) {
+    if (!el.getBoundingClientRect().width) continue;
+    for (const a of el.getAnimations({ subtree: true })) animations.add(a);
+    for (let p = el.parentElement; p; p = p.parentElement) for (const a of p.getAnimations()) animations.add(a);
+  }
+  const active = [...animations].filter((a) => ["running", "paused"].includes(a.playState) && (repeating || Number.isFinite(a.effect?.getComputedTiming().endTime)));
+  if (!active.length) return true;
+  if (!timeout) return false;
+  let timer;
+  try {
+    return await Promise.race([Promise.allSettled(active.map((a) => a.finished)).then(() => true),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeout); })]);
+  } finally { clearTimeout(timer); }
+}, [timeout, repeating]);
+async function waitForMotion(page, selector, repeating = false) {
+  if (!await motionSettled(page, selector, MOTION_MS, repeating)) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
 }
 
 // Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
@@ -395,7 +399,13 @@ async function runStep(page, step) {
   if (action === "tap") return point ? page.touchscreen.tap(arg[0], arg[1]) : page.locator(arg).first().tap();
   // What a journey expects, given a second to come true: any match seen, none seen, one seen with the text.
   if (action === "visible" && !(await until(page, () => anySeen(page, arg)))) throw new Error(`no ${arg} is visible`);
-  if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg))))) throw new Error(`${arg} is still visible`);
+  if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg)), MOTION_MS))) {
+    const settled = await motionSettled(page, arg, 0, true);
+    if (await anySeen(page, arg)) {
+      if (!settled) throw unmeasured(`${arg} is still visible with unfinished motion after 1.5 seconds; closing was not measured`);
+      throw new Error(`${arg} is still visible`);
+    }
+  }
   if (action === "text" && !(await until(page, () => anySeen(page, arg[0], arg[1])))) throw new Error(`no visible ${arg[0]} shows “${arg[1]}”`);
   if (action === "focused" && !(await until(page, () => page.locator(arg).evaluateAll((els) => els.some((e) => e.contains(document.activeElement)))))) throw new Error(`${arg} does not have the focus`);
   if (EXPECT.includes(action)) return;
@@ -1766,6 +1776,9 @@ async function journeys(browser, cfg) {
       const least = room.width !== null && widths[0] > from && room.width <= floor + cfg.tolerance ? null : floor;
       // A visible component needs its supported room. An interaction may change its state as well as its width.
       const roomAfter = async (i) => {
+        // Read an explicitly requested intermediate state before waiting on the geometry its input changed.
+        const next = j.steps[i + 1];
+        if (next?.text || next?.focused) return;
         const moved = (r) => r.width !== null && room.width !== null && Math.abs(r.width - room.width) > cfg.tolerance;
         const spills = (r) => r.beyond > cfg.tolerance && !(room.beyond > cfg.tolerance);
         let now = await roomOf(page);
@@ -1839,6 +1852,11 @@ async function journeys(browser, cfg) {
               await roomAfter(i);
               continue;
             }
+            // A spatial relation can match for a single instant while either participant moves. Look up both
+            // independently of whether the relationship is currently true.
+            const placement = step.visible?.match(/^([^(),]+):(?:below|above|left-of|right-of|near)\(([^(),]+)\)$/);
+            const pair = placement && `${placement[1]}, ${placement[2]}`;
+            if (pair) await waitForMotion(page, pair, true);
             await runStep(page, step);
             await rootAfter();
             if (step.text && textBefore.has(step.text[0])) {
@@ -1846,10 +1864,11 @@ async function journeys(browser, cfg) {
               if (before !== null && after !== null && before !== after && !before.includes(step.text[1]) && after.includes(step.text[1])) took.add("data");
             }
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
-            if (step.visible) await waitForMotion(page, step.visible);
+            if (step.visible) await waitForMotion(page, pair ?? step.visible, Boolean(pair));
             await roomAfter(i);
+            if (pair && !(await anySeen(page, step.visible))) throw new Error(`no ${step.visible} is visible after motion settled`);
             if (step.visible) {
-              if (checkpoint && /^[^(),]+:(below|above|left-of|right-of|near)\([^(),]+\)$/.test(step.visible)) {
+              if (checkpoint && pair) {
                 const inComponent = await page.locator(step.visible).evaluateAll((els, mark) => {
                   const root = document.querySelector(`[${mark}]`);
                   return els.some((el) => root?.contains(el) && el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width > 0);
