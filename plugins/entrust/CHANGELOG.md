@@ -12,21 +12,31 @@ forensics remain in the repository references and release notes.
   moves the four columns before it 15 px left: the frequency is 16 px off from the left and 15 from the right, so it
   was read from the right on that pixel, where the page's wider texts explain the shift as a drift, and its place
   against the processor was never compared. Another edge now takes over from the one the text's alignment holds only
-  when it moved less by more than the tolerance. The card bench catches 15 of 15 classes; a new clean twin that moves
-  every piece of the row 10 px stays clean, and no clean build is blocked.
+  when it moved less by more than the tolerance.
 - **A one-digit landmark is paired with its own text** (E159). On a screenshot's spec, a text was paired with the
   page's first match in reading order, so on the prebuilt planted card with its delivery line rendered at 486, the
   stock's "1" was paired with the "1" of "Выдача за 1 день" (`x` -352, `y` -212) and its own "1" was page text not in
   the design. A text no other landmark repeats is now paired with the match nearest its box; repeated labels keep
-  reading order. The frame then shows only the build's own findings, and a stock moved 60 px still fails.
+  reading order.
 - **A lifecycle journey is required.** A complete check is `incomplete` until a `sameAsFresh` journey on the
-  consumer's page takes a lifecycle, or `design.json` gives `"lifecycle"` with its reason. After it, the check resizes
-  through the frames' widths against fresh loads.
+  consumer's page takes a lifecycle, or `design.json` gives `"lifecycle"` with its reason. Data-only changes can be
+  established with optional `dataFields` and a `text` expectation on a stable field; undeclared or ambiguous changes
+  do not establish a data lifecycle. A separate consumer page uses its own viewport, not the frame's `host`.
 - **The component's own width** is a generated condition: a layout that follows the window is a candidate.
 - **A journey step that squeezes the component** below its width at the sweep's `from`, or makes the page scroll
-  sideways, fails. A step that changes the container's width is held against a fresh load.
-- **Script-set modes, and observers kept on removed elements,** are construct notes.
-- **An opener whose target is not on its page** is covered by a journey on another page (E152).
+  sideways, fails. An independent parent-width change requires an explicit placement or equivalent `sameAsFresh`
+  endpoint; without evidence its geometry remains unmeasured. A window-width step sets the test width and its
+  following expectations specify what must hold; `sameAsFresh` compares the endpoint and frame widths to fresh loads.
+- **Script-set modes, and observers kept on removed elements,** are construct notes. Attribution covers media-query
+  listeners registered with `addEventListener` or `addListener`; `MediaQueryList.onchange` keeps native behavior and
+  is outside attribution.
+- **Opener coverage** uses Playwright's accessibility snapshot for role and accessible name; measurement clicks
+  only through configured setup and journeys. Another page or URL variant can cover a matching opener when its linked
+  target exists on the measured page. An absent target requires a journey on its page; unknown accessibility identity
+  cannot establish coverage.
+- **Natural motion** is retained for journeys. Expectations and placement use bounded settling checks; motion still
+  running at the deadline can leave the result unmeasured, and later timers or visual continuity between samples need
+  separate observation.
 - **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
 - **The card and stateful benches** moved into evals.
 
