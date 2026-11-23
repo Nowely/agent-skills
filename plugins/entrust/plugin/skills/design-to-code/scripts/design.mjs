@@ -1723,13 +1723,20 @@ function layoutDiff(a, b, tolerance = 1) {
   return out;
 }
 
+// A frame or a declared sweep story identifies its page by the entire URL. The configured base URL is the
+// consumer unless the checker draws a frame there using its host.
+function storyPageUrls(cfg) {
+  const urls = new Set([...cfg.frames, ...(cfg.sweep?.stories ?? [])].map((page) => page.url));
+  if (!cfg.host || !cfg.frames.some((f) => f.url === cfg.url)) urls.delete(cfg.url);
+  return urls;
+}
+
 // Each journey on its own fresh page, at the widest frame's width unless it names one: its steps in order, the
 // first that does not hold failing it.
 async function journeys(browser, cfg) {
   const width = Math.max(...cfg.frames.map((f) => f.width));
-  // A host sizes frames on their story pages, not a separate consumer page.
-  const framePages = new Set(cfg.frames.map((f) => f.url));
-  const journeyConfig = (j) => cfg.host && !framePages.has(j.url) ? { ...cfg, host: undefined } : cfg;
+  const stories = storyPageUrls(cfg);
+  const journeyConfig = (j) => cfg.host && !stories.has(j.url) ? { ...cfg, host: undefined } : cfg;
   const results = [];
   // Each journey that opens something from an opener runs again with the opener at the window's top edge and at its
   // bottom edge, at the widest and the narrowest frame's width: an open popover must flip or shift to stay in the
@@ -2239,12 +2246,10 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   // there by a host the check sizes), only the latter is the consumer's. The journey must take
   // a lifecycle: a step that changed the component's data, mounted or unmounted it, or changed its parent's width; a
   // width step alone is the window's. Unless design.json gives the reason the product has none.
-  const storyPages = new Set([...cfg.frames.map((f) => f.url), ...(cfg.sweep?.stories ?? []).map((st) => st.url)]);
-  const storyUrl = Boolean(cfg.host && cfg.frames.some((f) => f.url === cfg.url));
-  const consumer = (j) => (!storyUrl && j.url === cfg.url) || !storyPages.has(j.url);
-  const onConsumer = cfg.journeys.filter((j) => j.sameAsFresh === true && consumer(j));
+  const stories = storyPageUrls(cfg);
+  const onConsumer = cfg.journeys.filter((j) => j.sameAsFresh === true && !stories.has(j.url));
   const took = (j) => journeyResults.find((r) => r.name === j.name)?.lifecycle?.length;
-  const where = storyUrl ? "on a consumer page of its own `url` that no frame or story shows (the page `url` names draws the frames, a story page)" : "on the page `url` names or a consumer page of its own `url`";
+  const where = stories.has(cfg.url) ? "on a consumer page of its own `url` that no frame or story shows (the page `url` names draws the frames, a story page)" : "on the page `url` names or a consumer page of its own `url`";
   const exit = 'or give "lifecycle" in design.json with the reason the product can cause none';
   if (typeof cfg.lifecycle !== "string" && !onConsumer.length) {
     gaps.push(`no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent's width changed) in one, ${where}, ${exit}`);

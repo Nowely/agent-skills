@@ -83,8 +83,9 @@ fails in 5 seconds.
 Each journey opens the page afresh at the widest frame's width (by touch with `"touch": true`, on its own `url` if it
 gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations evaluated on the page:
 `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
-journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. When a
-journey tests a change of product data inside a stable root, the builder declares the field selectors in that journey,
+journey with no expectation is an error. A consumer journey uses its own viewport. Other journeys on URLs from `frames` or
+`sweep.stories` use the configured `host` and viewport. When a journey tests a change of product data inside a stable root,
+the builder declares the field selectors in that journey,
 for example `"dataFields": ["#quantity"]`, and asserts the changed value with `"text": ["#quantity", "2"]`. The
 builder identifies fields from the product contract: the checker cannot distinguish data from a control label or a
 status message by markup or text alone. Without this declaration, an ordinary `text` expectation still checks its text
