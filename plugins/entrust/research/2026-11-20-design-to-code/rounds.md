@@ -769,9 +769,52 @@ agent for preliminary analysis, but the formal review pass did not happen. [The 
 contains the conditions, observed results and role costs. No product or skill changes were made. No gate regression
 count can be measured from this early handover.
 
+## Released 0.46.1: collector replay and Terra prebuilt pass
+
+The [S and P record](42-collect-and-terra-p.md) checks the old rollout and a new prebuilt first handover. S exposed
+incomplete aggregate token accounting and an ambiguous poll ratio. P handed over `pending` at 27 calls, but its two
+full checks each had two no-output polls, above the registered threshold. Setup flagged the fixture's missing owner
+returns; the owner approved proceeding without inventing them. A separate copy showed that failed process enumeration
+does not prevent collection. A/B and a real-task acceptance were not run.
+
 ## Released 0.45.0: capped Terra repeat
 
 The prebuilt-case worker wrote a proposed entry with options by round 2, but reached 60 calls without a final
 handover or review. Its first archive had five rounds; an in-flight check wrote a sixth and a checker handoff after
 the stop. The grader failed to recognize the options array on the first archive (E158). [The run record](39-terra-045-rerun.md)
 keeps the two boundaries, costs and limits distinct. No regression count or first-submission acceptance can be inferred.
+
+## Explicit initial wait: a short Terra probe
+
+On the same prebuilt case and skill version as P, a fresh Terra session was explicitly instructed to run one full check
+with a 30-second initial tool wait. The check finished in 25.115 seconds in its starting call, with no polls. This is
+one narrow feasibility observation; the prompt and scope differ from P. [The record](43-explicit-wait-probe.md)
+separates the result, cost and limits. It is not another full implementation.
+
+## Seven review fixes after the checker review
+
+The approved fixes and their boundaries are recorded in [45-seven-review-fixes.md](45-seven-review-fixes.md). The
+coordinator reported no blocking finding from the independent critic's 19 scenarios and 15 targeted verifier runs.
+The production routing change was then reviewed separately; the final candidate adds a routing test. Two local
+failures also reproduced on the baseline are tracked as E164 and E165. A whole-change regression count is not
+established. The Terra gate and real A/B were not run; the next gate must pin the newly checked commit.
+
+## Catalogue gate: external blocker discussion
+
+The [post-gate record](47-external-blocker-and-judge-scope.md) separates the card judge, failed consumer state and
+owner decision, then records Astra's proposed bounded-blocker handoff and controls. It corrects the source of the
+288 px floor in the gate record and links a post-gate reproduction, not a historical frame. No implementation or new
+model run was made; a regression count for the proposed change is not available.
+
+## Bounded blocked handoff
+
+[The implementation record](48-blocked-handoff-implementation.md) preserves the checker failure while allowing an
+evidence-backed external blocker in the owner's report. The future generated prompt changed; historical registrations
+and results remain unchanged, so a new run under that prompt has a different condition. No model run was performed in
+this round and no model-behavior regression count is available.
+
+## Review return and handoff reconciliation
+
+[Record 52](52-review-return-and-handoff.md) separates the observed missing standalone coverage from the unknown
+reason it was omitted, adds a final reconciliation step and registers the scope and limits of one future blind check.
+No model run or model-behavior regression count is reported in this record.

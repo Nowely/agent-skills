@@ -1,0 +1,518 @@
+{
+ "url": "story.html?data=card-764&w=764",
+ "root": ".card",
+ "host": "#host",
+ "viewport": 1000,
+ "tolerance": 1,
+ "ledger": "deviations.json",
+ "frames": [
+  {
+   "name": "card-764",
+   "width": 764,
+   "spec": "frames/card-764/spec.json",
+   "reference": "frames/card-764/reference.png",
+   "url": "story.html?data=card-764&w=764"
+  },
+  {
+   "name": "card-601",
+   "width": 601,
+   "spec": "frames/card-601/spec.json",
+   "reference": "frames/card-601/reference.png",
+   "url": "story.html?data=card-601&w=601"
+  },
+  {
+   "name": "card-486",
+   "width": 486,
+   "spec": "frames/card-486/spec.json",
+   "reference": "frames/card-486/reference.png",
+   "url": "story.html?data=card-486&w=486"
+  },
+  {
+   "name": "card-280",
+   "width": 280,
+   "spec": "frames/card-280/spec.json",
+   "reference": "frames/card-280/reference.png",
+   "url": "story.html?data=card-280&w=280"
+  },
+  {
+   "name": "network-popover",
+   "width": 265,
+   "spec": "frames/network-popover/spec.json",
+   "reference": "frames/network-popover/reference.png",
+   "url": "story.html?data=card-764&w=764&top=140",
+   "root": ".card__popover--net",
+   "setup": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "wait": 300
+    }
+   ]
+  }
+ ],
+ "journeys": [
+  {
+   "name": "network help: hover, stay over the popover, leave closes",
+   "steps": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "move": ".card__popover--net"
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".card__popover--net"
+    }
+   ]
+  },
+  {
+   "name": "network help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".card__popover--net"
+    }
+   ]
+  },
+  {
+   "name": "network help: Escape closes it",
+   "steps": [
+    {
+     "focus": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".card__popover--net"
+    }
+   ]
+  },
+  {
+   "name": "power help: hover opens, leaving closes",
+   "steps": [
+    {
+     "hover": ".foot__power .kit-help"
+    },
+    {
+     "visible": ".foot__power .card__popover"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".foot__power .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "network help at 601: hover opens, leaving closes",
+   "url": "story.html?data=card-601&w=601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".foot__net .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__net .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "power help at 601: hover opens, leaving closes",
+   "url": "story.html?data=card-601&w=601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".foot__power .kit-help"
+    },
+    {
+     "visible": ".foot__power .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__power .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "discount help at 601: hover opens, leaving closes",
+   "url": "story.html?data=card-601&w=601",
+   "width": 601,
+   "steps": [
+    {
+     "hover": ".price__deal"
+    },
+    {
+     "visible": ".price .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".price .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "network help at 486: hover opens, leaving closes",
+   "url": "story.html?data=card-486&w=486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".foot__net .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__net .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "power help at 486: hover opens, leaving closes",
+   "url": "story.html?data=card-486&w=486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".foot__power .kit-help"
+    },
+    {
+     "visible": ".foot__power .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__power .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "discount help at 486: hover opens, leaving closes",
+   "url": "story.html?data=card-486&w=486",
+   "width": 486,
+   "steps": [
+    {
+     "hover": ".price__deal"
+    },
+    {
+     "visible": ".price .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".price .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "network help at 280: hover opens, leaving closes",
+   "url": "story.html?data=card-280&w=280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".foot__net .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__net .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "power help at 280: hover opens, leaving closes",
+   "url": "story.html?data=card-280&w=280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".foot__power .kit-help"
+    },
+    {
+     "visible": ".foot__power .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".foot__power .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "discount help at 280: hover opens, leaving closes",
+   "url": "story.html?data=card-280&w=280",
+   "width": 280,
+   "steps": [
+    {
+     "hover": ".price__deal"
+    },
+    {
+     "visible": ".price .card__popover"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".price .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "discount: Escape closes it",
+   "url": "story.html?data=card-601&w=601",
+   "width": 601,
+   "steps": [
+    {
+     "focus": ".price__deal"
+    },
+    {
+     "visible": ".price .card__popover"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".price .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "power help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".foot__power .kit-help"
+    },
+    {
+     "visible": ".foot__power .card__popover"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".foot__power .card__popover"
+    }
+   ]
+  },
+  {
+   "name": "popover survives a resize",
+   "steps": [
+    {
+     "hover": ".foot__net .kit-help"
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "width": 500
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "width": 764
+    },
+    {
+     "visible": ".card__popover--net"
+    },
+    {
+     "move": [
+      2,
+      2
+     ]
+    },
+    {
+     "hidden": ".card__popover--net"
+    }
+   ]
+  }
+ ],
+ "sweep": {
+  "from": 280,
+  "to": 900,
+  "step": 8,
+  "switches": [],
+  "lines": [
+   {
+    "name": "wide: the row",
+    "when": "[data-mode=wide]",
+    "pieces": [
+     {
+      "selector": ".card__id",
+      "wraps": true
+     },
+     ".card__cpu",
+     ".spec--freq",
+     ".spec--cores",
+     ".spec--threads",
+     {
+      "selector": ".spec--ram",
+      "wraps": true
+     },
+     {
+      "selector": ".spec--disks",
+      "wraps": true
+     },
+     ".card__price"
+    ]
+   },
+   {
+    "name": "wide: footer",
+    "when": "[data-mode=wide]",
+    "pieces": [
+     ".card__foot",
+     ".card__stock"
+    ]
+   },
+   {
+    "name": "medium: top row",
+    "when": "[data-mode=medium]",
+    "pieces": [
+     {
+      "selector": ".card__id",
+      "wraps": true
+     },
+     ".spec--freq",
+     ".spec--cores",
+     {
+      "selector": ".spec--threads",
+      "wraps": true
+     },
+     {
+      "selector": ".spec--ram",
+      "wraps": true
+     },
+     {
+      "selector": ".spec--disks",
+      "wraps": true
+     }
+    ]
+   },
+   {
+    "name": "medium: footer",
+    "when": "[data-mode=medium]",
+    "pieces": [
+     ".card__foot",
+     ".card__stock"
+    ]
+   },
+   {
+    "name": "narrow: top",
+    "when": "[data-mode=narrow]",
+    "pieces": [
+     {
+      "selector": ".card__id",
+      "wraps": true
+     },
+     ".card__cpu"
+    ]
+   },
+   {
+    "name": "narrow: bottom",
+    "when": "[data-mode=narrow]",
+    "pieces": [
+     {
+      "selector": ".card__price",
+      "wraps": true
+     },
+     ".card__stock"
+    ]
+   }
+  ],
+  "align": [],
+  "stories": [
+   {
+    "name": "dense",
+    "url": "story.html?data=dense&w=764"
+   },
+   {
+    "name": "plain",
+    "url": "story.html?data=plain&w=764"
+   },
+   {
+    "name": "many",
+    "url": "story.html?data=many&w=764"
+   }
+  ]
+ }
+}

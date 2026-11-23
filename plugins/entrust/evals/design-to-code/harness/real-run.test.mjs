@@ -12,12 +12,16 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { APPROVAL, classify, diffFiles, execCellOps, lineDelta, literal, nestedCalls, parseRollout } from "./real-run.mjs";
+import { FAIL_GUIDANCE } from "../../../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, "real-run.mjs");
 const FIXTURE = path.join(HERE, "fixtures", "codex-rollout.jsonl");
 const MAKE_ARM = path.join(HERE, "../cases/server-card-planted/make-arm.mjs");
+const ARM = path.join(HERE, "arm.mjs");
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "real-run-test-"));
+// This frozen synthetic rollout predates the current generated approval.
+const HISTORIC_APPROVAL = "The owner has approved this plan: run the check, fix what is fixable in the component's files, record ledger entries, hand over at `pass`, `pending` or the budget; the fixed inputs are not yours to change.";
 
 // ------------------------------------------------------------------ the rollout parser
 
@@ -35,9 +39,12 @@ test("the rollout: calls by name and by what they did, polls, agents, the first 
   // Empty polls: two outer write_stdin and one inside an exec cell, each asking 1,000 ms; the first brought nothing.
   assert.equal(r.polls.empty, 3);
   assert.deepEqual(r.polls.waitsAsked, [1000, 1000, 1000]);
-  assert.deepEqual(r.polls.list[0], { call: 3, tool: "write_stdin", nested: false, waitAsked: 1000, wall: 5.0012, newOutput: false });
+  assert.deepEqual(r.polls.list[0], { call: 3, tool: "write_stdin", nested: false, session: 7, waitAsked: 1000, wall: 5.0012, newOutput: false, ended: false });
   assert.equal(r.polls.list[2].nested, true);
-  assert.equal(r.polls.perCompleteCheck, 1.5);
+  // The terminal output shares a cell with both the launch and a poll. Its individual results are unattributed.
+  assert.equal(r.polls.perCompleteCheck, null);
+  assert.equal(r.polls.unknownOutput, 1);
+  assert.deepEqual(r.polls.unattributedVerdicts, [6]);
   assert.equal(r.spawnAgent, 1);
   // A quick check's verdict is partial; the first complete one is at call 6, read from the exec cell's output.
   assert.deepEqual(r.checks.verdicts.map((v) => [v.call, v.status, v.complete]), [[4, "fail", false], [6, "pending", true]]);
@@ -64,7 +71,7 @@ test("the rollout: calls by name and by what they did, polls, agents, the first 
   assert.deepEqual(r.wall, { first: "2026-01-15T14:53:32.500Z", last: "2026-01-15T15:00:26.500Z", seconds: 414 });
   assert.deepEqual([r.session.model, r.session.effort], ["worker-model", "xhigh"]);
   assert.equal(r.user.messages, 1);
-  assert.ok(r.user.first.includes(APPROVAL));
+  assert.ok(r.user.first.includes(HISTORIC_APPROVAL));
   assert.deepEqual(r.lastCall, { call: 10, at: "2026-01-15T15:00:26.500Z", outputAt: null, category: "check-complete" });
   assert.equal(r.final, null);
   // What it does not know is counted, not fatal.
@@ -79,6 +86,87 @@ test("without Codex's per-response records, the token counts that move the total
   assert.equal(b.format.tokens, "token_count");
   assert.deepEqual(b.tokens, a.tokens);
   assert.deepEqual(b.list.map((c) => c.input), a.list.map((c) => c.input));
+});
+
+test("a response after the last cumulative count is included exactly once, with or without a thread snapshot", () => {
+  const log = fs.readFileSync(FIXTURE, "utf8");
+  const baseline = parseRollout(log).tokens;
+  const usage = { input_tokens: 120, cached_input_tokens: 90, output_tokens: 12, reasoning_output_tokens: 4 };
+  const full = { input_tokens: 353160, cached_input_tokens: 303962, output_tokens: 968, reasoning_output_tokens: 481 };
+  for (const thread of [full, undefined]) {
+    const row = JSON.stringify({ type: "token_usage_record", payload: { response_id: "last", usage, thread_token_usage: thread } });
+    const stale = log.split("\n").findLast((s) => s.includes('"type":"token_count"'));
+    const parsed = parseRollout([log, row, row, stale].join("\n")).tokens;
+    assert.deepEqual(parsed.total, { input: 353160, cached: 303962, uncached: 49198, output: 968, reasoning: 481 });
+    assert.equal(parsed.responses, baseline.responses + 1);
+    assert.equal(parsed.lastCallUsageMissing, false);
+  }
+});
+
+test("polls belong to the PTY that finished a full check, including a check that returned in the foreground", () => {
+  const rows = [];
+  const check = "node .skill/scripts/design.mjs check design.json";
+  const finish = "Round 1\nVerdict: pending\n";
+  const result = (output, state) => JSON.stringify({ output, ...state });
+  const cell = (source, ...parts) => {
+    const call_id = String(rows.length);
+    rows.push({ type: "custom_tool_call", name: "exec", input: source, call_id },
+      { type: "custom_tool_call_output", call_id, output: ["Script completed\nWall time 1.0 seconds\nOutput:\n", ...parts].map((text) => ({ type: "input_text", text })) });
+  };
+  const launch = (cmd, ...parts) => cell(`const r = await tools.exec_command({cmd: ${JSON.stringify(cmd)}}); text(r.output);`, ...parts);
+  const poll = (id, ...parts) => cell(`const r = await tools.write_stdin({session_id:${id},chars:""}); text(r.output);`, ...parts);
+  launch(check, result("", { session_id: 7 }));
+  launch(check + " --quick", "", "SESSION_ID=8");
+  launch("node consumer.mjs", "", "SESSION_ID=9");
+  launch(check, "", "SESSION_ID=10"); // interrupted
+  poll(10, "", "SESSION_ID=10");
+  poll(9, result("", { session_id: 9 }));
+  poll(8, result("Verdict: fail on what this partial check measured", { exit_code: 1 }));
+  poll(7, result("", { session_id: 7 }));
+  poll(7, "", "SESSION_ID=7");
+  poll(7, result(finish, { exit_code: 1 }));
+  poll(9, result(finish, { exit_code: 0 })); // a probe can print any text
+  launch(check, result(finish, { exit_code: 1 })); // completed at pending, zero polls
+  launch(check, result("failed to start Chromium", { exit_code: 1 }));
+  const parse = () => parseRollout(rows.map((r) => JSON.stringify(r)).join("\n")).polls;
+  let p = parse();
+  assert.deepEqual([p.emptyStdin, p.noOutput, p.unknownOutput], [7, 4, 0]);
+  assert.deepEqual(p.completedChecks, [{ startCall: 1, endCall: 10, session: 7, emptyWaits: 2 }, { startCall: 12, endCall: 12, session: null, emptyWaits: 0 }]);
+  assert.equal(p.perCompleteCheck, 1);
+  const compound = parseRollout(rows.map((r) => JSON.stringify(r)).join("\n") + "\n" + fs.readFileSync(FIXTURE, "utf8"));
+  assert.deepEqual(compound.polls.unattributedVerdicts, [19]);
+  assert.equal(compound.polls.perCompleteCheck, null);
+  launch(check, "", "SESSION_ID=12");
+  cell('await tools.write_stdin({session_id:12}); text("only the status");', "only the status");
+  poll(12, result(finish, { exit_code: 1 }));
+  p = parse();
+  assert.equal(p.unknownOutput, 1);
+  assert.equal(p.completedChecks.at(-1).emptyWaits, null);
+  assert.equal(p.perCompleteCheck, null);
+});
+
+test("a poll that delivers only exit status is useful; missing process status leaves an empty wait unknown", () => {
+  const rows = [];
+  const shell = (name, args, output) => {
+    const call_id = String(rows.length);
+    rows.push({ type: "function_call", name, arguments: JSON.stringify(args), call_id },
+      { type: "function_call_output", call_id, output: JSON.stringify(output) });
+  };
+  const start = (id) => shell("exec_command", { cmd: "node design.mjs check design.json" }, { output: "Verdict: pending", session_id: id });
+  const poll = (id, state) => shell("write_stdin", { session_id: id, chars: "" }, { output: "", ...state });
+  const parse = () => parseRollout(rows.map((r) => JSON.stringify(r)).join("\n")).polls;
+  start(7);
+  poll(7, { exit_code: 0 });
+  let p = parse();
+  assert.equal(p.exitOnly, 1);
+  assert.deepEqual([p.noOutput, p.list[0].ended, p.completedChecks[0].emptyWaits, p.perCompleteCheck], [1, true, 0, 0]);
+  start(9);
+  poll(9, {});
+  p = parse();
+  assert.deepEqual([p.noOutput, p.list.at(-1).ended, p.completedChecks.length, p.perCompleteCheck], [2, null, 1, null]);
+  poll(9, { exit_code: 1 });
+  p = parse();
+  assert.deepEqual([p.completedChecks.length, p.completedChecks[1].emptyWaits, p.perCompleteCheck], [2, null, null]);
 });
 
 test("any text reads without a throw: empty, not JSON, other shapes, an older log without envelopes, a handover after the last call", () => {
@@ -196,10 +284,19 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   fs.writeFileSync(path.join(pack, "deviations.json"), JSON.stringify([{ landmark: "Выдача за 15 минут", property: "presence", category: "missing-state", status: "proposed", reason: "the frames draw it; the contract has no field", options: ["drop the line", "add an optional field"] }]));
   const round = (n, time, quick, status, score) => JSON.stringify({ round: n, time, frames: ["card-764", "card-601", "card-486", "card-280", "network-popover"], basis: quick ? "q" : "c", status, score, quick });
   fs.writeFileSync(path.join(out, "history.jsonl"), [round(1, "2026-01-15T14:54:20.000Z", true, "fail", 12), round(2, "2026-01-15T14:55:05.000Z", false, "pending", 3), round(3, "2026-01-15T15:00:50.000Z", false, "fail", 4), ""].join("\n"));
-  fs.writeFileSync(path.join(out, "handoff.md"), "Status: fail — fix the first cause and check again\n");
+  fs.writeFileSync(path.join(out, "handoff.md"), `Status: fail — ${FAIL_GUIDANCE}\n`);
+  const frozen = spawnSync(process.execPath, [ARM, "freeze", project], { encoding: "utf8" });
+  assert.equal(frozen.status, 0, frozen.stderr);
+  const frozenMeta = fs.readdirSync(dir).find((name) => /^card\..*\.tar\.json$/.test(name));
+  const frozenRecord = JSON.parse(fs.readFileSync(path.join(dir, frozenMeta), "utf8"));
+  assert.equal(frozenRecord.handedOverOnFail, true);
+  assert.equal(frozenRecord.status, `Status: fail — ${FAIL_GUIDANCE}`);
   for (const f of ["history.jsonl", "handoff.md"]) fs.utimesSync(path.join(out, f), at("2026-01-15T15:00:50Z"), at("2026-01-15T15:00:50Z"));
   const rollout = path.join(dir, "rollout.jsonl");
   fs.writeFileSync(rollout, fs.readFileSync(FIXTURE, "utf8").replaceAll("/ABSOLUTE/PROJECT", project));
+  // Replaying a historical run uses that run's recorded line, not today's generated prompt.
+  fs.writeFileSync(baseline, JSON.stringify({ ...b, approval: HISTORIC_APPROVAL,
+    firstMessage: b.firstMessage.replace(APPROVAL, HISTORIC_APPROVAL) }));
 
   // A check still running in the project: nothing is frozen.
   const fake = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)", path.join(project, ".skill/design-to-code/scripts/design.mjs"), "check", "design.json"], { stdio: "ignore" });
@@ -211,6 +308,16 @@ test("setup then collect on the planted card: inputs intact, a late check read a
     assert.equal(fs.existsSync(path.join(dir, "busy")), false);
   } finally { fake.kill(); }
 
+  const bin = path.join(dir, "bin"), unknown = path.join(dir, "unknown");
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "ps"), "#!/bin/sh\nexit 42\n", { mode: 0o755 });
+  const denied = spawnSync(process.execPath, [SCRIPT, "collect", project, "--baseline", baseline, "--rollout", rollout, "--out", unknown, "--wait", "0"], {
+    encoding: "utf8", env: { ...env(home), PATH: bin + path.delimiter + process.env.PATH },
+  });
+  assert.equal(denied.status, 3, denied.stdout + denied.stderr);
+  assert.match(denied.stderr, /Cannot verify whether a check is running: ps failed: exit 42. Nothing was frozen/);
+  assert.equal(fs.existsSync(unknown), false);
+
   const c = cli(home, "collect", project, "--rollout", rollout, "--baseline", baseline, "--out", path.join(dir, "out1"), "--wait", "10");
   assert.equal(c.status, 0, c.stdout + c.stderr);
   assert.match(c.stdout, /^INPUTS INTACT$/m);
@@ -218,7 +325,8 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.match(c.stdout, /^ {2}\.design\/card\/design\.json: tolerance 1 \(default 1\)$/m);
   assert.match(c.stdout, /^Handover: Status: fail .*\(checker-generated after the stop/m);
   assert.match(c.stdout, /1 written after the log's last line/);
-  assert.match(c.stdout, /^ {2}empty polls 3 \(1000 ms ×3\); spawn_agent 1; the first complete check's status at call 6 \(pending\)$/m);
+  assert.match(c.stdout, /^ {2}empty-stdin polls 3; no output 1 \(0 reported exit\); unknown output 1$/m);
+  assert.match(c.stdout, /^ {2}waits asked: 1000 ms ×3; spawn_agent 1; the first complete check's status at call 6 \(pending\)$/m);
   const record = JSON.parse(fs.readFileSync(path.join(dir, "out1", "record-A.json"), "utf8"));
   assert.equal(record.inputs.verdict, "INPUTS INTACT");
   assert.deepEqual(record.component.changed, [".design/card/deviations.json", "card.css"]);
@@ -232,7 +340,7 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.equal(record.fields["7 interventions and helpers"].approvalLineSent, true);
   assert.equal(record.fields["8 ledger"].proposed.length, 1);
   assert.equal(record.rollout.cwdMatchesProject, true);
-  assert.match(record.parser, /not yet run on a real Codex log/);
+  assert.match(record.parser, /unknown or unprinted poll results/);
   const listed = spawnSync("tar", ["-tf", path.join(dir, "out1", "real-run-A.tar")], { encoding: "utf8" }).stdout.split("\n");
   for (const f of ["real-run-A/record-A.json", "real-run-A/form-A.md", "real-run-A/baseline-A.json", "real-run-A/project/card.css", "real-run-A/project/.design/card/design.json",
     "real-run-A/project/.design/card/out/handoff.md", "real-run-A/project/.prompt.md", "real-run-A/originals/design/card-764/reference.png", "real-run-A/originals/README.md"]) assert.ok(listed.includes(f), f);
@@ -243,6 +351,9 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   // A frozen run is never written over.
   assert.equal(cli(home, "collect", project, "--rollout", rollout, "--baseline", baseline, "--out", path.join(dir, "out1")).status, 2);
 
+  // A newly registered run uses the new line, while the old frozen rollout above remains unchanged.
+  fs.writeFileSync(baseline, JSON.stringify(b));
+  fs.writeFileSync(rollout, fs.readFileSync(rollout, "utf8").replaceAll(HISTORIC_APPROVAL, APPROVAL));
   // One reference edited; the log found by itself under $CODEX_HOME, from the session opened in the project.
   fs.appendFileSync(path.join(project, "design", "card-764", "reference.png"), Buffer.from([0]));
   const day = path.join(home, ".codex", "sessions", "2026", "01", "15");
@@ -253,6 +364,15 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.match(c2.stdout, /^INPUTS CHANGED$\n^ {2}changed: design\/card-764\/reference\.png$/m);
   const r2 = JSON.parse(fs.readFileSync(path.join(dir, "out2", "record-A.json"), "utf8"));
   assert.deepEqual([r2.inputs.verdict, r2.inputs.changed, r2.inputs.removed, r2.inputs.added], ["INPUTS CHANGED", ["design/card-764/reference.png"], [], []]);
+  assert.equal(r2.fields["7 interventions and helpers"].approvalLineSent, true);
+  // A baseline predating the approval field provides no evidence: do not backfill it from the current constant.
+  const { approval: omitted, ...withoutApproval } = b;
+  fs.writeFileSync(baseline, JSON.stringify(withoutApproval));
+  const missing = cli(home, "collect", project, "--baseline", baseline, "--out", path.join(dir, "out3"));
+  assert.equal(missing.status, 0, missing.stdout + missing.stderr);
+  const r3 = JSON.parse(fs.readFileSync(path.join(dir, "out3", "record-A.json"), "utf8"));
+  assert.equal(r3.fields["7 interventions and helpers"].approvalLineSent, null);
+  assert.equal('approval' in JSON.parse(fs.readFileSync(baseline, 'utf8')), false);
   assert.equal(r2.rollout.file, "rollout-2026-01-15T14-53-32-0199a213-81c0-7800-8aa1-bbab2a035a55.jsonl");
   assert.ok(r2.component.changed.includes("design/card-764/reference.png"), "the changed original goes in the archive");
   // Beside it, the original as recorded, for the blind review.

@@ -1,0 +1,127 @@
+/* The offer card: four layouts chosen by card.js from its own width and content (data-mode on .offer-card). */
+.offer-card { width: 100%; min-width: 0; --fs: 15px; --lh: 20px; --pad-x: var(--s-4); --pad-y: var(--s-3); }
+.offer-card *, .offer-card *::before, .offer-card *::after { box-sizing: border-box; }
+.card {
+  display: grid; position: relative; align-items: start;
+  padding: var(--pad-y) var(--pad-x); column-gap: var(--s-5); row-gap: var(--s-3);
+  background: var(--c-surface); border-radius: var(--r-card); box-shadow: var(--shadow-card);
+}
+.card .t-body, .card .spec__sub, .card .ram__type { font-size: var(--fs); line-height: var(--lh); }
+.card .spec__sub, .card .ram__type { line-height: 18px; }
+.card .spec__sub { margin-top: 2px; }
+.card .nowrap, .card .price__amount, .card .price__period, .card .stock__text { white-space: nowrap; }
+
+.card__left { display: contents; }
+.card__id { grid-area: id; max-width: 14rem; }
+[data-mode="narrow"] .card__id, [data-mode="stack"] .card__id { max-width: none; }
+.card__sku { overflow-wrap: anywhere; }
+.card__badges { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: 6px; }
+.card__cpu { grid-area: cpu; }
+.cpu__vendor { margin-top: 6px; font: 800 13px/14px sans-serif; letter-spacing: .08em; color: var(--c-faint); text-transform: uppercase; }
+.card__specs { display: contents; }
+.spec { margin: 0; padding: 0; list-style: none; }
+.spec--freq { grid-area: freq; }
+.spec--cores { grid-area: cores; display: flex; align-items: center; gap: var(--s-2); white-space: nowrap; }
+.spec--threads { grid-area: threads; }
+.spec--ram { grid-area: ram; width: min-content; }
+.spec--disks { grid-area: disks; }
+.card .kit-chip { height: 20px; font-size: 13px; }
+.ram__type { display: block; margin-top: 2px; }
+.card .u { display: none; }
+.disk { display: flex; align-items: baseline; gap: var(--s-2); white-space: nowrap; }
+.disk + .disk { margin-top: 2px; }
+.disk__sc { display: none; }
+
+.card__price { grid-area: price; justify-self: end; text-align: right; }
+.price { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-1) var(--s-1); }
+.price__text { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; column-gap: .3em; }
+.card__foot { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) 6px; }
+.foot__item { font-size: 13px; line-height: 18px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.card__net-icon { flex: none; margin-right: 0; color: var(--c-faint); }
+.card__configure { color: var(--c-accent); }
+.card__stock { grid-area: stock; justify-self: end; display: flex; align-items: center; gap: var(--s-2); white-space: nowrap; }
+.stock__low { order: 1; }
+.card button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; border-radius: var(--r-chip); }
+.card .kit-icon { border: 0; padding: 0; cursor: pointer; }
+
+/* popovers (kit-popover look), anchored to their icon, flipping to stay in the window */
+.card__popover { position: fixed; inset: auto; margin: 0; border: 0; overflow: visible;
+  position-area: top span-right; margin-bottom: 12px; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; }
+.card__popover::after { content: ""; position: absolute; left: var(--arrow-x, 20px); width: 12px; height: 12px; margin-left: -6px;
+  background: var(--c-surface); transform: rotate(45deg); bottom: -5px; border-radius: 0 0 2px 0; }
+.card__popover[data-side="bottom"]::after { bottom: auto; top: -5px; border-radius: 2px 0 0 0; }
+.card__popover:not([data-side="top"]):not([data-side="bottom"])::after { display: none; }
+.card__popover { padding: 12px 16px; line-height: 18px; }
+.card__popover .kit-popover__title { margin-bottom: 4px; line-height: 22px; }
+.pop__reserve { margin-top: 8px; }
+
+/* wide and medium keep every piece on its own line: when that does not fit, card.js picks the next layout */
+[data-mode="wide"] .card, [data-mode="medium"] .card { white-space: nowrap; }
+[data-mode="wide"] .card__id, [data-mode="medium"] .card__id, .spec--ram { white-space: normal; }
+[data-mode="wide"] .price, [data-mode="wide"] .price__text { flex-wrap: nowrap; }
+
+/* wide: one row. The gaps between the columns are flexible tracks (a minimum, then shares of the free width in the
+   design's proportions), so the row keeps its rhythm at any width where it fits */
+[data-mode="wide"] .card {
+  column-gap: 0; row-gap: 12px;
+  grid-template-columns: max-content minmax(8px, 1.1fr) auto minmax(8px, 1.3fr) auto minmax(8px, .6fr) auto minmax(8px, .5fr) auto minmax(8px, .8fr) min-content minmax(8px, .8fr) auto minmax(8px, 1.1fr) auto;
+  grid-template-areas: "id . cpu . freq . cores . threads . ram . disks . price" "foot foot foot foot foot foot foot foot foot foot foot . stock stock stock";
+}
+
+/* medium: the specs on the top row; id and processor stacked on the left, the price under the specs */
+[data-mode="medium"] .card {
+  column-gap: 0; row-gap: 0;
+  grid-template-columns: minmax(max-content, 1fr) minmax(8px, .8fr) auto minmax(8px, .6fr) auto minmax(8px, .5fr) auto minmax(8px, .7fr) min-content minmax(8px, .7fr) auto;
+  grid-template-areas: "left . freq . cores . threads . ram . disks" "left . . . . . . . price price price" "foot foot foot foot foot foot foot foot stock stock stock";
+}
+[data-mode="medium"] .card__left { grid-area: left; display: flex; flex-direction: column; gap: var(--s-3); }
+[data-mode="medium"] .card__id, [data-mode="medium"] .card__cpu { grid-area: auto; }
+[data-mode="medium"] .card__foot, [data-mode="medium"] .card__stock { margin-top: 4px; }
+[data-mode="medium"] .card__price { align-self: end; justify-self: end; }
+[data-mode="medium"] .price { flex-direction: column; align-items: flex-end; gap: 6px; }
+[data-mode="medium"] .price__deal { order: -1; }
+[data-mode="medium"] .stock__low { order: -1; }
+[data-mode="medium"] .card__stock { align-self: center; }
+
+/* narrow: id and processor side by side, the specs wrap in a row */
+[data-mode="narrow"] .card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "id cpu" "specs specs" "foot foot" "price stock";
+  column-gap: 18px; row-gap: 20px;
+}
+[data-mode="narrow"] .card__specs { display: flex; flex-wrap: wrap; grid-area: specs; gap: var(--s-3) 16px; align-items: flex-start; justify-content: space-between; }
+[data-mode="narrow"] .card__price { justify-self: start; text-align: left; }
+[data-mode="narrow"] .price, [data-mode="stack"] .price { justify-content: flex-start; }
+[data-mode="narrow"] .price__text, [data-mode="stack"] .price__text { justify-content: flex-start; }
+[data-mode="narrow"] .card__cpu { padding-top: 0; }
+[data-mode="narrow"] .u, [data-mode="stack"] .u { display: inline; }
+[data-mode="narrow"] .spec--cores .u, [data-mode="stack"] .spec--cores .u { display: inline; }
+[data-mode="narrow"] .cpu__count .u, [data-mode="medium"] .cpu__count .u, [data-mode="wide"] .cpu__count .u { display: none; }
+[data-mode="narrow"] .ram__size .u, [data-mode="medium"] .ram__size .u, [data-mode="wide"] .ram__size .u { display: none; }
+[data-mode="narrow"] .disk__cs, [data-mode="stack"] .disk__cs { display: none; }
+[data-mode="narrow"] .disk__sc, [data-mode="stack"] .disk__sc { display: inline; }
+
+/* stack: a single column, larger type */
+[data-mode="stack"] { --fs: 17px; --lh: 22px; --pad-x: var(--s-5); --pad-y: var(--s-5); }
+[data-mode="stack"] .card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "id" "cpu" "specs" "foot" "price" "stock";
+  row-gap: 16px;
+}
+[data-mode="stack"] .card__specs { display: flex; flex-wrap: wrap; grid-area: specs; gap: 20px 16px; align-items: flex-start; }
+[data-mode="stack"] .spec--freq, [data-mode="stack"] .spec--ram, [data-mode="stack"] .spec--disks { flex-basis: 100%; }
+[data-mode="stack"] .spec--cores { gap: var(--s-2); }
+[data-mode="stack"] .cpu__vendor { font-size: 17px; line-height: 18px; }
+[data-mode="stack"] .spec--ram { width: auto; }
+[data-mode="stack"] .ram__type { display: inline; margin: 0; }
+[data-mode="stack"] .card__price, [data-mode="stack"] .card__stock { justify-self: start; text-align: left; }
+[data-mode="stack"] .t-caption, [data-mode="stack"] .foot__item { font-size: 15px; line-height: 20px; }
+[data-mode="stack"] .card__badges { margin-top: 8px; }
+[data-mode="stack"] .kit-badge { height: 26px; padding: 0 8px; font-size: 17px; border-radius: var(--s-2); }
+[data-mode="stack"] .kit-chip { height: 26px; font-size: 17px; padding: 0 6px; }
+[data-mode="stack"] .t-price { font-size: 18px; line-height: 24px; }
+[data-mode="stack"] .disk + .disk { margin-top: 0; }
+[data-mode="stack"] .stock__low { order: 1; }
+/* narrow and stack: the discount icon stays beside the price, whose groups wrap inside their own box */
+[data-mode="narrow"] .price, [data-mode="stack"] .price { flex-wrap: nowrap; align-items: flex-start; }
+[data-mode="narrow"] .price__deal, [data-mode="stack"] .price__deal { flex: none; }

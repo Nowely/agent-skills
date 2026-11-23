@@ -6,7 +6,7 @@ description: >-
   state and free messaging between agents are experiment arms, never the default.
 disable-model-invocation: true
 metadata:
-  version: "0.46.2"
+  version: "0.47.0"
 license: MIT
 ---
 

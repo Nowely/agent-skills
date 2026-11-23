@@ -5,7 +5,7 @@ description: >-
   states. Use for design-to-code, pixel-perfect layout or adaptive frontend work. Compare the implementation with
   the supplied references and verify the affected interactions and consumers before handing it over.
 metadata:
-  version: "0.46.2"
+  version: "0.47.0"
 license: MIT
 ---
 
@@ -21,8 +21,9 @@ pack](references/pack.md#reviewing-an-implementation).
   one, or context.
 - **The product.** Find the closest working UI (its kit components, tokens, assets) and who calls what you change.
 - **The data's limits.** Each field's longest legal value and who says so; how many entries repeat; the narrowest
-  supported width. Where nothing bounds a field, ask the owner; test a value too long for its line at the
-  narrowest width.
+  supported width and its contract or owner source. If the minimum is not stated, record it as unknown and ask; choose
+  a test width from the available evidence without presenting it as a product bound. Where nothing bounds a field,
+  ask the owner; test a value too long for its line at the chosen width.
 - **Past returns.** Each line of `.design/returns.md` is an acceptance row in `review.md`, quoted.
 
 ## Build from logic, not to the pixel
@@ -59,13 +60,14 @@ Beside `review.md`, `design.json` names the page (`url`), the component's select
   `design.mjs spec <metadata> --context <design context>` (Figma MCP) writes the spec. From a screenshot,
   `design.mjs boxes <reference.png> --width <px>`; name each landmark from its pieces ([the
   pack](references/pack.md#screenshots-without-a-spec)).
-- **`sweep`:** `from` the narrowest supported width `to` the widest, and two `stories`:
+- **`sweep`:** `from` the chosen narrow test width `to` the widest, and two `stories`; record the source of a
+  supported minimum separately, or mark it unknown:
   - `dense`: the longest values and every conditional piece;
-  - `many`: more entries than any frame shows; its acceptance row quotes the last one at the narrowest width.
+  - `many`: more entries than any frame shows; its acceptance row quotes the last one at the chosen narrow test width.
 - **`journeys`:** each control that opens something, opened and closed the ways it supports.
 
-A collision only under the check's generated texts, rows or edge openers is a candidate: reproduce it in a
-story with legal data, or name under Candidates in `review.md` the bound that rules it out.
+A collision only under the check's generated texts, rows or edge openers, or a layout that follows the window, is a
+candidate: reproduce it in a story with legal data, or name under Candidates in `review.md` the bound that rules it out.
 
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
 complete check, in the foreground; if the shell returns first, wait in one call as long as the last complete check
@@ -74,10 +76,11 @@ question; full pages at every width once, before handover. Keep probes in one pa
 quick round says the first finding is unchanged, fix it or propose it; when a complete round says stop, stop
 re-running.
 
-A finding says what to fix: fix its first cause and check again. A note needs nothing. A finding you cannot fix goes in
-`deviations.json` as `proposed`, with what you tried and measured; only the owner accepts it. One entry per cause: its
-texts in `landmark`, no `frame` if it holds everywhere. A ledger entry records a question; it does not change the
-product. Write it when you first see the gap, without asking, then go on.
+A finding says what to fix: fix its first cause and check again. A note needs nothing. Propose a finding you cannot fix
+in `deviations.json` when its real cause is expressible there; only the owner accepts it. An entry with property
+`journey` disputes a checker-caused break, not an external product defect. Record an external blocker in `review.md` as below. One entry per
+cause: its texts in `landmark`, no `frame` if it holds everywhere. A ledger entry records a question; it does not change
+the product. Write it when you first see the gap, without asking, then go on.
 `incomplete` (exit 2): something went unmeasured (ink no landmark names, page text the spec lacks, a row without
 evidence, an unanswered candidate); name it or record why not.
 
@@ -86,13 +89,23 @@ evidence, an unanswered candidate); name it or record why not.
 - **At the first complete check,** write a handover note in `review.md`: decisions, state map, paths, open
   findings.
 - **The complete check runs last.** `out/handoff.md` opens with the status: `pass` is done; `pending` means proposals
-  wait for the owner. Never hand over at `fail`.
+  wait for the owner. At `fail`, fix what is in scope. A verified external blocker may be handed over as blocked, not
+  done, with the actual `fail` and its evidence intact. Use the current complete check; if it cannot run, say why and
+  what remains unchecked. `--quick`, `--frame` and `--no-sweep` are partial, never complete evidence.
+- **An external blocker:** in `review.md` name the action and state, measured result, source of the expected value
+  (or unknown), cause and the brief's boundary preventing the fix. When responsibility is uncertain, compare the
+  original and candidate in the same consumer, route, data, viewport and state; if unavailable, say so and leave
+  attribution unknown. Report other failures and unmeasured coverage separately, and give the owner the options.
+  Do not accept a finding yourself or call an external defect `cause: "checker"`.
 - **Acceptance rows:** `- item: pass — evidence`.
 - **The consumer.** Load the artifact through its public import, in a consumer or a minimal host, and exercise
   the affected action; take each lifecycle the product can cause (mount and unmount, data emptied and refilled) or
-  parent-width change in a journey with `"sameAsFresh": true`.
+  parent-width change in a journey with `"sameAsFresh": true` on the consumer's page; if it can cause none, design.json
+  gives `"lifecycle"` with the reason. Where the contract keeps a state across a re-render (a selection, an input,
+  focus), a journey asserts it after the re-render; `sameAsFresh` cannot see it.
 - **A second look:** where you can start a second agent, run [the review pass](references/review-pass.md) and fix
-  what it returns.
+  what it returns. On a documented external blocker, a bounded component review can be requested; name its scope and
+  what it could not review.
 - **The owner's decisions,** in one list: each fair question (the design or contract silent or contradicting itself:
   a missing state, an unbounded value, frames that disagree, the kit against the drawing), with options and costs, and
   no ruling already in `.design/returns.md` or `review.md`. What you could fix is fixed.

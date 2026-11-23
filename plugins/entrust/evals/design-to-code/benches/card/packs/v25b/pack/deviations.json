@@ -1,0 +1,736 @@
+[
+ {
+  "landmark": [
+   "EPYC 9374F",
+   "2+ PSU",
+   "MC-LAG 25/25",
+   "256 ГБ RAM",
+   "×2 CPU",
+   "3.33 ГГц",
+   "16 ядер",
+   "125 898,00 ₽ / месяц",
+   "125 898,00 ₽",
+   "Доступно 1",
+   "High performance"
+  ],
+  "property": "width",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The page's sans-serif (Inter here) is about 10 % wider than the design's face: the same text is 5 to 12 px wider (measured +5 to +11); the type sizes are those of the kit.",
+  "max": 14,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": [
+   ".vendor",
+   "Доступно 1",
+   "x2",
+   "32 ядер",
+   "64 потока",
+   "256 ГБ",
+   "DDR3 ECC",
+   "2 × 838",
+   "2 × 18626",
+   "NVME",
+   "18626 × 4",
+   "HDD",
+   "838 × 2",
+   "SSD"
+  ],
+  "property": "x",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Columns of the spec row follow each other with the kit's gap tokens (s-2 8 px, s-3 12 px); the page's sans-serif (Inter here) is about 10 % wider than the design's face, so each column starts up to 12 px further right than the frame (measured +5 to +12).",
+  "max": 14,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": [
+   ".c-net .kit-help",
+   ".c-psu .kit-help"
+  ],
+  "property": "x",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The help icon follows its text at a 4 px gap; the text is 7 px wider in the page's font than in the frame (measured +12).",
+  "max": 14,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": [
+   ".c-deal",
+   ".kit-icon--low"
+  ],
+  "property": "x",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The deal icon follows a price that is wider in the page's font (measured +10).",
+  "max": 14,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": [
+   ".c-deal",
+   ".kit-icon--low"
+  ],
+  "property": "y",
+  "category": "system",
+  "status": "proposed",
+  "reason": "The kit's kit-icon is 20 x 20 px, the frame draws 18 x 18; it is centred in its 20 px row so it sits up to 9 px lower than the frame (measured +5 to +9).",
+  "max": 14,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": "root",
+  "property": "width",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The popover is as wide as its longest line; the page font makes it 33 px wider than the frame's, the title stays on one line.",
+  "frame": "network-popover",
+  "max": 34,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "landmark": [
+   "25 Гбит/с",
+   "MC-LAG"
+  ],
+  "property": "x",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Measured from the popover's right edge, which is 33 px further right (the popover is wider in the page font); from the left edge the values are 5 px off.",
+  "frame": "network-popover",
+  "max": 6,
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)"
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   151,
+   37,
+   36,
+   12
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   114,
+   90,
+   15,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   15,
+   88,
+   13,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   186,
+   37,
+   11,
+   11
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   182,
+   87,
+   10,
+   16
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   127,
+   35,
+   5,
+   19
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-764",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   179,
+   87,
+   8,
+   12
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   3,
+   143,
+   595,
+   5
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   478,
+   110,
+   25,
+   26
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   30,
+   88,
+   25,
+   14
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   15,
+   115,
+   13,
+   14
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   179,
+   114,
+   13,
+   15
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   15,
+   88,
+   11,
+   14
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   569,
+   67,
+   13,
+   10
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   114,
+   118,
+   15,
+   11
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   25,
+   88,
+   8,
+   14
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   115,
+   114,
+   11,
+   10
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   564,
+   63,
+   4,
+   18
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-601",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   50,
+   34,
+   5,
+   17
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   449,
+   193,
+   22,
+   23
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   269,
+   37,
+   30,
+   12
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   185,
+   192,
+   12,
+   20
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   114,
+   160,
+   15,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   15,
+   158,
+   13,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   190,
+   157,
+   10,
+   16
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   187,
+   157,
+   8,
+   12
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   261,
+   39,
+   9,
+   10
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-486",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   50,
+   34,
+   5,
+   17
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   112,
+   456,
+   25,
+   23
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   19,
+   117,
+   26,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   196,
+   414,
+   21,
+   21
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   64,
+   43,
+   10,
+   28
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   45,
+   117,
+   13,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   19,
+   379,
+   13,
+   13
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   198,
+   420,
+   14,
+   12
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   57,
+   117,
+   14,
+   14
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Badge or card edge: the page font sets the badge width by 1 to 3 px; the card outline is the kit's 1 px shadow.",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   77,
+   47,
+   8,
+   25
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   138,
+   378,
+   12,
+   15
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   194,
+   418,
+   18,
+   19
+  ]
+ },
+ {
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in glyph: the kit has no network, deal, low-stock or vendor icons and the design's assets were not exported (inline SVG, the vendor name as bold text, kit-icon 20 px against 18 px drawn).",
+  "frame": "card-280",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   57,
+   121,
+   10,
+   10
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Shadow and tail of the popover (kit shadow, a 14 x 8 px tail) and the page font's glyph shapes.",
+  "frame": "network-popover",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   24,
+   110,
+   243,
+   8
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Shadow and tail of the popover (kit shadow, a 14 x 8 px tail) and the page font's glyph shapes.",
+  "frame": "network-popover",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   2,
+   -1,
+   265,
+   5
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Shadow and tail of the popover (kit shadow, a 14 x 8 px tail) and the page font's glyph shapes.",
+  "frame": "network-popover",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   1,
+   111,
+   23,
+   7
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Shadow and tail of the popover (kit shadow, a 14 x 8 px tail) and the page font's glyph shapes.",
+  "frame": "network-popover",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   290,
+   109,
+   10,
+   9
+  ]
+ },
+ {
+  "property": "region",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Shadow and tail of the popover (kit shadow, a 14 x 8 px tail) and the page font's glyph shapes.",
+  "frame": "network-popover",
+  "options": "accept as is; or the owner supplies the font or the asset (cost: a font file or an exported asset in the kit)",
+  "region": [
+   292,
+   -1,
+   8,
+   9
+  ]
+ }
+]

@@ -31,8 +31,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ARM = path.join(HERE, "arm.mjs");
 const REPO = path.resolve(HERE, "../../../../..");
 
-// The owner's approval of the way of working, word for word in the first message (36-terra-dry-run.md, step 4).
-export const APPROVAL = "The owner has approved this plan: run the check, fix what is fixable in the component's files, record ledger entries, hand over at `pass`, `pending` or the budget; the fixed inputs are not yours to change.";
+// The current approved plan; setup records the exact line so collection can check a run against its own prompt.
+export const APPROVAL = "The owner has approved this plan: run the check, fix what is fixable in the component's files, record ledger entries, hand over at `pass`, `pending` or the budget, or report an evidenced external blocker as blocked with the actual `fail` and without claiming done; the fixed inputs are not yours to change.";
 // The brief's closing sentence (30-terra-run.md, section 3), up to its last word: a brief may go on after it, as the
 // planted case's does.
 const CLOSING = "Work on your own: there is no one to ask, so make reasonable decisions and note them. When you are done, your final message is your handoff to the product owner";
@@ -183,7 +183,7 @@ function processCwd(pid) {
 // be read is counted too: freezing beside a check is the mistake this guards against (39-terra-045-rerun.md).
 export function runningChecks(project) {
   const r = spawnSync("ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" });
-  if (r.status !== 0 || r.error) return { procs: [], unknown: `ps failed: ${r.error?.message ?? r.stderr.trim()}` };
+  if (r.status !== 0 || r.error) return { procs: [], unknown: `ps failed: ${r.error?.message || r.stderr?.trim() || (r.signal ? `signal ${r.signal}` : `exit ${r.status}`)}` };
   const roots = [...new Set([path.resolve(project), real(project)])];
   const inside = (p) => roots.some((root) => p === root || p.startsWith(root + path.sep));
   const procs = [];
@@ -210,7 +210,8 @@ function waitQuiet(project, waitSeconds, quietSeconds) {
   for (;;) {
     const state = inFlight(project, quietSeconds);
     for (const p of state.procs) seen.set(p.pid, p);
-    if (!state.procs.length && !state.recent) return { ok: true, waited: Math.round((Date.now() - started) / 100) / 10, seen: [...seen.values()], unknown: state.unknown };
+    if (state.unknown) return { ok: false, state };
+    if (!state.procs.length && !state.recent) return { ok: true, waited: Math.round((Date.now() - started) / 100) / 10, seen: [...seen.values()] };
     if (Date.now() - started >= waitSeconds * 1000) return { ok: false, state };
     if (!said) { console.log(`A check is in flight (${describeFlight(state)}): waiting up to ${waitSeconds} s for it to end`); said = true; }
     sleep(1000);
@@ -351,6 +352,10 @@ const WRITES = [/\bsed\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*i\b/, /\bperl\s+-[a-zA-Z]*i
 const PROBE = /\bnode\s+(?:-e|--eval|-p|--print|--input-type|-\s|<<)|\bnode\s+(?!\S*design\.mjs)\S+\.(?:m?js|cjs)\b|\bnpx\s+playwright\s+(?!install)|require\(["']playwright|from\s+["']playwright|chromium\.launch|\bpython3?\s|\bcurl\s|design\.mjs['"]?\s+(?:boxes|snapshot|spec|figma)\b/;
 const READS = /(?:^|[\s;&|(])(?:cat|sed|head|tail|less|nl|rg|grep|ls|find|wc|jq|stat|file|tree|du|diff|xxd|od|git\s+(?:diff|status|log|show))\s/;
 const CHECK_IMAGE = /(?:^|[/\s"'`])out\/\S*\.(?:png|jpe?g|webp)|boxes\.png/;
+function verdict(text) {
+  const match = /^Verdict: (pass|pending|fail|incomplete)\b([^\n]*)/m.exec(text);
+  return match ? { status: match[1], complete: !/partial check/.test(match[2]) } : null;
+}
 const CHECK_TEXT = /^(?:Verdict: |Start here: )|Gallery \(design, before, after\)|A partial check \(/m;
 
 export function classify(op) {
@@ -371,8 +376,90 @@ export function classify(op) {
   return { cats, ...flags };
 }
 
+// Recognize the shell's own result, including a code cell that printed it as JSON.
+function shellResult(value) {
+  if (typeof value === "string") {
+    const process = /^Process (?:running with session ID (\d+)|exited with code -?\d+)\n(?:Original token count: \d+\n)?(?:Final )?Output:\n?([\s\S]*)$/mi.exec(value);
+    if (process) return { session: process[1] ? Number(process[1]) : null, ended: !process[1], output: process[2] };
+    try { value = JSON.parse(value); } catch { return null; }
+  }
+  if (typeof value?.output !== "string") return null;
+  const ended = value.exit_code != null || value.metadata?.exit_code != null ? true : value.session_id != null ? false : null;
+  return { session: value.session_id ?? null, ended, output: value.output };
+}
+
+function shellOutput(call, output) {
+  if (!Array.isArray(output)) return shellResult(output);
+  const parts = output.map((p) => p?.text);
+  if (parts.length === 1) return shellResult(parts[0]);
+  if (!/^Script completed\nWall time [\d.]+ seconds\nOutput:\n$/.test(parts[0])) return null;
+  if (parts.length === 2) {
+    const wrapped = shellResult(parts[1]);
+    if (wrapped) return wrapped;
+  }
+  // A cell may forward stdout and the still-running session separately. A silent cell tells us nothing.
+  const forward = /\btext\(\s*([\w$]+)\.output\s*\)/.exec(call.source);
+  if (!forward || typeof parts[1] !== "string") return null;
+  if (parts.length === 2) {
+    // If the cell prints the returned session id whenever it exists, its absence also reports exit.
+    const marker = /if\s*\(\s*([\w$]+)\.session_id\s*\)\s*text\(\s*`SESSION_ID=\$\{\1\.session_id\}`\s*\)/.exec(call.source);
+    return { session: null, ended: marker?.[1] === forward[1] ? true : null, output: parts[1] };
+  }
+  const id = parts.length === 3 && /^SESSION_ID=(\d+)$/.exec(parts[2]);
+  return id ? { session: Number(id[1]), ended: false, output: parts[1] } : null;
+}
+
+// Count only waits for a full check whose own command or PTY returned a full verdict.
+function polling(calls) {
+  const list = [], completedChecks = [], active = new Map(), awaitingExit = new Set();
+  for (const c of calls) for (const op of c.ops) {
+    const result = c.shell, session = Number.isSafeInteger(op.session) ? op.session : null;
+    let check = op.tool === "write_stdin" ? active.get(session) : null;
+    if (op.cats.includes("check-complete")) {
+      check = { startCall: c.n, session: result?.session ?? null, emptyWaits: 0 };
+      if (result?.session != null) active.set(result.session, check);
+    } else if (SHELL.has(op.tool) && result?.session != null) active.delete(result.session);
+
+    if (op.cats.includes("poll")) {
+      const wall = c.ops.length === 1 && /Wall time:? ([\d.]+) seconds/.exec(c.text);
+      const newOutput = result ? result.output !== "" : null;
+      const ended = result?.ended ?? null;
+      list.push({ call: c.n, tool: op.tool, nested: Boolean(op.nested), session, waitAsked: op.yield ?? null, wall: wall ? Number(wall[1]) : null, newOutput, ended });
+      if (check && newOutput !== true && ended !== true) {
+        if (newOutput === null || ended === null) check.emptyWaits = null;
+        else if (check.emptyWaits !== null) check.emptyWaits++;
+      }
+    }
+    if (op.tool === "write_stdin" && (op.empty || op.charsUnread) && session === null) {
+      for (const possible of active.values()) possible.emptyWaits = null;
+    } else if (op.charsUnread && check) check.emptyWaits = null;
+    if (!check || !result) continue;
+    if (verdict(result.output)?.complete) {
+      check.verdict = true;
+      awaitingExit.add(check.startCall);
+    }
+    if (result.ended !== true) continue;
+    if (check.verdict) {
+      completedChecks.push({ startCall: check.startCall, endCall: c.n, session: check.session, emptyWaits: check.emptyWaits });
+      awaitingExit.delete(check.startCall);
+    }
+    active.delete(check.session);
+  }
+  const stdin = list.filter((p) => p.tool === "write_stdin");
+  // A compound cell can print a check's verdict without identifying which operation produced it.
+  const unattributedVerdicts = calls.filter((c) => c.ops.length > 1 && c.ops.some((o) => o.cats.includes("check-complete") || o.tool === "write_stdin")
+    && verdict(c.text)?.complete).map((c) => c.n);
+  const perCompleteCheck = !awaitingExit.size && !unattributedVerdicts.length && completedChecks.length && completedChecks.every((c) => c.emptyWaits !== null)
+    ? completedChecks.reduce((n, c) => n + c.emptyWaits, 0) / completedChecks.length : null;
+  // "empty" is the historical count of all poll sites, including code-cell waits.
+  return { empty: list.length, emptyStdin: stdin.length, noOutput: stdin.filter((p) => p.newOutput === false).length,
+    exitOnly: stdin.filter((p) => p.newOutput === false && p.ended === true).length,
+    unknownOutput: stdin.filter((p) => p.newOutput === null).length, completedChecks, unconfirmedExit: [...awaitingExit], unattributedVerdicts, perCompleteCheck, waitsAsked: list.map((p) => p.waitAsked), list };
+}
+
 function addOutput(call, output, at, note) {
   call.bytes += Buffer.byteLength(JSON.stringify(output ?? ""));
+  if (call.ops.length === 1 && (SHELL.has(call.ops[0].tool) || call.ops[0].tool === "write_stdin")) call.shell = shellOutput(call, output);
   call.outputAt ??= at;
   const take = (o) => {
     if (typeof o === "string") {
@@ -406,7 +493,7 @@ const textOfContent = (c) => (typeof c === "string" ? c : Array.isArray(c) ? c.m
 export function parseRollout(text) {
   const unknown = new Map(), note = (k) => unknown.set(k, (unknown.get(k) ?? 0) + 1);
   const calls = [], byId = new Map(), records = [], counts = [], userTexts = [], events = new Map();
-  let first = null, last = null, broken = 0, lines = 0, session = {}, lastInfo = null, aborted = 0, assistant = null, complete = null, n = 0;
+  let first = null, last = null, broken = 0, lines = 0, session = {}, aborted = 0, assistant = null, complete = null, n = 0;
   for (const raw of String(text).split("\n")) {
     n++;
     if (!raw.trim()) continue;
@@ -429,7 +516,7 @@ export function parseRollout(text) {
       const type = item.type;
       if (OUTER.has(type)) {
         const ops = opsOf(item).map((op) => ({ ...op, ...classify(op) }));
-        const call = { n: calls.length + 1, line: n, at: time, name: type === "local_shell_call" ? "local_shell" : item.name ?? type, ops, bytes: 0, images: 0, imageBytes: 0, text: "", outputAt: null };
+        const call = { n: calls.length + 1, line: n, at: time, name: type === "local_shell_call" ? "local_shell" : item.name ?? type, ops, source: item.input ?? item.arguments ?? "", bytes: 0, images: 0, imageBytes: 0, text: "", outputAt: null };
         calls.push(call);
         byId.set(item.call_id ?? item.id ?? `line ${n}`, call);
       } else if (OUTPUTS.has(type)) {
@@ -442,7 +529,7 @@ export function parseRollout(text) {
     } else if (kind === "event_msg") {
       const type = item.type;
       events.set(type, (events.get(type) ?? 0) + 1);
-      if (type === "token_count") { if (item.info) { counts.push({ line: n, at: time, total: item.info.total_token_usage, last: item.info.last_token_usage }); lastInfo = item.info; } }
+      if (type === "token_count") { if (item.info) counts.push({ line: n, at: time, total: item.info.total_token_usage, last: item.info.last_token_usage }); }
       else if (type === "user_message") userTexts.push({ event: String(item.message ?? "") });
       else if (type === "turn_aborted") aborted++;
       else if (type === "agent_message" && !assistant) assistant = { line: n, at: time, text: String(item.message ?? ""), event: true };
@@ -454,21 +541,32 @@ export function parseRollout(text) {
 
   // One entry per model response: Codex's own per-response record when the log has it, else each token count that
   // moved the total (a rate-limit update repeats the last one).
-  let responses;
-  if (records.length) {
-    const ids = new Set();
-    responses = records.filter((r) => r.usage && (!r.id || !ids.has(r.id)) && (ids.add(r.id), true)).map((r) => ({ line: r.line, at: r.at, ...r.usage }));
-  } else {
-    let prev = null;
-    responses = counts.filter((c) => { const k = JSON.stringify(c.total); const moved = k !== prev; prev = k; return moved && c.last; }).map((c) => ({ line: c.line, at: c.at, ...usageOf(c.last) }));
-  }
+  const ids = new Set();
+  const unique = records.filter((r) => {
+    if (r.id && ids.has(r.id)) return false;
+    if (r.id) ids.add(r.id);
+    return true;
+  });
+  const advances = counts.filter((c, i) => c.total && (!i || JSON.stringify(c.total) !== JSON.stringify(counts[i - 1].total)));
+  const responses = unique.length
+    ? unique.filter((r) => r.usage).map((r) => ({ line: r.line, at: r.at, ...r.usage }))
+    : advances.filter((c) => c.last).map((c) => ({ line: c.line, at: c.at, ...usageOf(c.last) }));
   // A call's response is the first one recorded after it: the response that asked for it.
   let k = 0;
   for (const c of calls) { while (k < responses.length && responses[k].line < c.line) k++; c.usage = responses[k] ?? null; }
 
-  const total = usageOf(lastInfo?.total_token_usage) ?? records.at(-1)?.thread ?? (responses.length ? responses.reduce((a, r) => ({ input: a.input + r.input, cached: a.cached + r.cached, output: a.output + r.output, reasoning: a.reasoning + r.reasoning }), { input: 0, cached: 0, output: 0, reasoning: 0 }) : null);
+  // Both snapshots are cumulative. Only add distinct responses logged after the newest snapshot.
+  const count = advances.at(-1), thread = unique.findLast((r) => r.thread);
+  const snapshot = thread && (!count || thread.line > count.line) ? { line: thread.line, total: thread.thread }
+    : count ? { line: count.line, total: usageOf(count.total) } : null;
+  let total = snapshot?.total ?? null;
+  for (const r of unique) {
+    if (!r.usage || r.line <= (snapshot?.line ?? 0)) continue;
+    total ??= { input: 0, cached: 0, output: 0, reasoning: 0 };
+    for (const key of Object.keys(total)) total[key] += r.usage[key];
+  }
   const byName = {}, nestedByName = {}, byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, { calls: 0, ops: 0, bytes: 0, images: 0 }]));
-  const polls = [], verdicts = [];
+  const verdicts = [];
   let spawned = 0, skillDocs = 0, checkImages = 0, sideViews = 0;
   for (const c of calls) {
     byName[c.name] = (byName[c.name] ?? 0) + 1;
@@ -489,17 +587,9 @@ export function parseRollout(text) {
       if (o.skillDocs) skillDocs++;
       if (o.checkImage) checkImages++;
       if (o.tool === "view_image" && /side\.png/.test(o.text ?? "")) sideViews++;
-      if (o.cats.includes("poll")) {
-        // In a call that is only this poll: its wait (the exec tool's "Wall time: …", else a code cell's own) and
-        // whether the process printed anything new.
-        const single = c.ops.length === 1;
-        const wall = single ? (/Wall time: ([\d.]+) seconds/.exec(c.text) ?? /Wall time ([\d.]+) seconds/.exec(c.text))?.[1] : null;
-        const after = single ? /Process (?:running with session ID \S+|exited with code -?\d+)\n(?:Original token count: \d+\n)?Output:\n?([\s\S]*)$/.exec(c.text)?.[1] : null;
-        polls.push({ call: c.n, tool: o.tool, nested: Boolean(o.nested), waitAsked: o.yield ?? null, wall: wall ? Number(wall) : null, newOutput: after == null ? null : after.trim().length > 0 });
-      }
     }
-    const v = /^Verdict: (pass|pending|fail|incomplete)\b([^\n]*)/m.exec(c.text);
-    if (v) verdicts.push({ call: c.n, status: v[1], complete: !/partial check/.test(v[2]) });
+    const v = verdict(c.shell?.output ?? c.text);
+    if (v) verdicts.push({ call: c.n, ...v });
   }
   const started = { complete: 0, quick: 0 };
   for (const c of calls) for (const o of c.ops) { if (o.cats.includes("check-complete")) started.complete++; if (o.cats.includes("check-quick")) started.quick++; }
@@ -524,7 +614,7 @@ export function parseRollout(text) {
     session, wall: { first: iso(first), last: iso(last), seconds: first !== null ? Math.round(last - first) / 1000 : null },
     calls: { total: calls.length, byName, nestedByName, byCategory, skillDocReads: skillDocs, checkImageViews: checkImages, sidePngViews: sideViews,
       toHandover: final?.turnComplete ? calls.length : null },
-    polls: { empty: polls.length, perCompleteCheck: started.complete ? Math.round((polls.length / started.complete) * 10) / 10 : null, waitsAsked: polls.map((p) => p.waitAsked), list: polls },
+    polls: polling(calls),
     spawnAgent: spawned,
     checks: { started, verdicts, firstComplete, firstCompleteStarted },
     tokens: { total: total ? { ...total, uncached: total.input - total.cached } : null, responses: responses.length, firstRequestInput: responses[0]?.input ?? null,
@@ -811,7 +901,8 @@ function collect(project, flags) {
   // 1. Nothing is frozen beside a check in flight.
   const quiet = waitQuiet(project, Number(flags.wait ?? 300), Number(flags.quiet ?? 10));
   if (!quiet.ok) {
-    console.error(`A design.mjs check is still running for ${project} (${describeFlight(quiet.state)}).\nNothing was frozen. Let it end, or stop it, then run collect again; a round it writes after the worker stopped is recorded as the checker's, not the worker's.`);
+    if (quiet.state.unknown) console.error(`Cannot verify whether a check is running: ${quiet.state.unknown}. Nothing was frozen.`);
+    else console.error(`A design.mjs check is still running for ${project} (${describeFlight(quiet.state)}).\nNothing was frozen. Let it end, or stop it, then run collect again; a round it writes after the worker stopped is recorded as the checker's, not the worker's.`);
     process.exit(3);
   }
   if (quiet.waited) say(`The check ended; waited ${quiet.waited} s.`);
@@ -861,7 +952,8 @@ function collect(project, flags) {
   const parsed = parseRollout(readRollout(worker));
   const helperRuns = helpers.map((f) => { const p = parseRollout(readRollout(f)); return { file: path.basename(f), model: p.session.model ?? null, effort: p.session.effort ?? null, calls: p.calls.total, tokens: p.tokens.total, seconds: p.wall.seconds }; });
   const cwdMatches = parsed.session.cwd ? [path.resolve(project), real(project)].includes(parsed.session.cwd) || real(parsed.session.cwd) === real(project) : null;
-  const sentApproval = parsed.user.first ? parsed.user.first.replace(/\s+/g, " ").includes(APPROVAL) : null;
+  const expectedApproval = typeof baseline.approval === "string" && baseline.approval.trim() ? baseline.approval.replace(/\s+/g, " ").trim() : null;
+  const sentApproval = parsed.user.first && expectedApproval ? parsed.user.first.replace(/\s+/g, " ").includes(expectedApproval) : null;
   const bound = boundary(parsed, main?.latestRound ?? null, main?.handoff ?? null, main?.roundTimes ?? []);
   const handoffReading = !main?.handoff ? "no evidence file: the complete check was not run last" : bound.handoff.reading;
 
@@ -886,7 +978,7 @@ function collect(project, flags) {
   const callList = parsed.list;
   const record = {
     kind: "design-to-code real-run record", run, project: path.basename(project), collected: frozenAt,
-    parser: "built from Codex's source (openai/codex: codex-rs/history, rollout, protocol, code-mode-protocol); not yet run on a real Codex log",
+    parser: "Codex rollout parser; unknown or unprinted poll results are reported as unknown",
     fields: {
       "1 revision": { skill: baseline.skill.commit, case: `${path.basename(project)}, run ${run}`, inputsHash: baseline.inputsHash, model: parsed.session.model ?? null, effort: parsed.session.effort ?? null, codex: parsed.session.cliVersion ?? null },
       "2 first checkpoint": { verdict: null, class: null, foundBy: null, from: `form-${run}.md` },
@@ -901,7 +993,7 @@ function collect(project, flags) {
     component: { git: baseline.git ? { head: baseline.git.head, headNow, moved: Boolean(headNow && headNow !== baseline.git.head) } : null, changed, removed: removedFiles },
     boundary: bound,
     originalsCopy: pristine ? "in the archive under originals/, byte-identical to the baseline's hashes" : "missing or altered: the archive carries no originals",
-    freeze: { at: frozenAt, waitedSeconds: quiet.waited, checksSeen: quiet.seen.map((p) => p.pid), ...(quiet.unknown ? { processList: quiet.unknown } : {}) },
+    freeze: { at: frozenAt, waitedSeconds: quiet.waited, checksSeen: quiet.seen.map((p) => p.pid) },
     checks: states.map(({ ledger, latestRound, handoff, roundTimes, ...s }) => ({ ...s, handoff: handoff ? { ...handoff, mtime: iso(handoff.mtime) } : null })),
     rollout: { file: path.basename(worker), cwdMatchesProject: cwdMatches, format: parsed.format, wall: parsed.wall, calls: parsed.calls, polls: parsed.polls, spawnAgent: parsed.spawnAgent,
       checks: parsed.checks, tokens: parsed.tokens, largest: parsed.largest, lastCall: parsed.lastCall, list: callList },
@@ -958,7 +1050,9 @@ function collect(project, flags) {
   say(`Calls: ${parsed.calls.total} (${Object.entries(parsed.calls.byName).map(([k, v]) => `${k} ${v}`).join(", ")}${Object.keys(parsed.calls.nestedByName).length ? `; inside exec: ${Object.entries(parsed.calls.nestedByName).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""})`);
   say(`  by what they did: ${cats || "—"}`);
   const waits = [...new Set(parsed.polls.waitsAsked.map(String))].map((w) => `${w === "null" ? "none asked" : `${w} ms`} ×${parsed.polls.waitsAsked.filter((x) => String(x) === w).length}`).join(", ");
-  say(`  empty polls ${parsed.polls.empty}${waits ? ` (${waits})` : ""}; spawn_agent ${parsed.spawnAgent}; the first complete check's status at call ${parsed.checks.firstComplete ? `${parsed.checks.firstComplete.call} (${parsed.checks.firstComplete.status})` : "— (none)"}`);
+  say(`  empty-stdin polls ${parsed.polls.emptyStdin}; no output ${parsed.polls.noOutput} (${parsed.polls.exitOnly} reported exit); unknown output ${parsed.polls.unknownOutput}`);
+  say(`  still-running polls without output per completed full check: ${parsed.polls.perCompleteCheck ?? "unknown"} (${parsed.polls.completedChecks.length} matched; counts: ${parsed.polls.completedChecks.map((c) => c.emptyWaits ?? "?").join(", ") || "none"}; unmatched verdicts: ${parsed.polls.unattributedVerdicts.length}; unconfirmed exits: ${parsed.polls.unconfirmedExit.length})`);
+  say(`  waits asked: ${waits || "none"}; spawn_agent ${parsed.spawnAgent}; the first complete check's status at call ${parsed.checks.firstComplete ? `${parsed.checks.firstComplete.call} (${parsed.checks.firstComplete.status})` : "— (none)"}`);
   const t = parsed.tokens.total;
   say(`Tokens: ${t ? `uncached ${num(t.uncached)}, cached ${num(t.cached)}, output ${num(t.output)}` : "no token count in the log"}${parsed.tokens.lastCallUsageMissing ? "; the last call's usage was not recorded" : ""}`);
   say(`  input per call: ${parsed.tokens.inputAt.map((i) => `${i.call}${i.last ? " (last)" : i.lastRecorded ? " (last recorded)" : ""}: ${i.unavailable ? "unavailable" : num(i.input)}`).join(", ") || "—"}; the first request ${num(parsed.tokens.firstRequestInput)}`);

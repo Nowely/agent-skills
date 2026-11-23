@@ -210,8 +210,39 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   inconclusive for gate obedience, with the worker's approval request, observed checks and role costs recorded.
 - [Terra rerun on released 0.45.0](39-terra-045-rerun.md): stopped at 60 calls without a worker handover; records the
   ledger options, grader false negative, snapshot race, role costs and post-boundary check separately.
+- [Collector replay and Terra prebuilt pass](42-collect-and-terra-p.md): S's token/poll accounting discrepancies,
+  P's first handover and measured poll threshold, the missing-seed exception and process-list uncertainty.
+- [Explicit-wait probe](43-explicit-wait-probe.md): one full check with a specified 30-second initial wait, without
+  treating the probe as a completed UI implementation or a controlled full-task comparison.
 - [After entrust 0.45.0](38-after-the-release.md): the plan for the rest of the quota, written before the runs: the
   Terra rerun on the shipped skill, the real run as iteration 8, and the reserve.
 - [Service overhead, and the real runs in one sitting](40-overhead-and-one-sitting.md): written before the runs; the
   owner's decisions, the review-pass control that failed, the rerun as the overhead baseline, 0.46.1's four levers
   with their measures, and the sitting: the prebuilt pass, then runs A and B.
+- [The sitting on 0.46.1](41-the-sitting.md): the protocol of the owner's one sitting, written before it runs: the
+  `collect` check on the rerun's log, the prebuilt pass, and runs A and B; its results go there.
+- [The return classes into the checker](44-classes-into-the-checker.md): registered before the work, from the
+  owner's plan on #113 read practice-first: the lifecycle and own-width checks, script-set modes, what the contract
+  keeps, the review pass run, the column shift and E159, each with its failing control, then the Terra gate.
+
+- [Seven review fixes](45-seven-review-fixes.md): the approved corrections, independent-review reports, local and CI
+  results, two baseline-reproduced open anomalies and the unrun Terra gate.
+- [Catalogue Terra gate](46-catalogue-terra-gate.md): one preregistered run on `a21e92f`; the hidden judge accepted width
+  and choice, while the builder handed over at `fail` on the fixed consumer's narrow Filters layout.
+
+- [External blocker and judge scope](47-external-blocker-and-judge-scope.md): the post-gate Astra discussion, the
+  observed contract mismatch and a proposed plan with deterministic controls; no skill change or new model run.
+
+- [Blocked-handoff implementation](48-blocked-handoff-implementation.md): the preserved checker status, bounded
+  external-blocker instructions, judge scope and the changed future-run prompt and comparison boundary.
+- [Blocked-handoff catalogue gate](50-catalogue-blocked-handoff-gate.md): one preregistered Terra run; the card judge
+  passed, while the complete consumer check remained failed and Terra handed over an evidenced blocker.
+- [Gate record corrections](51-catalogue-gate-corrections.md): standalone Details omitted from the handoff, corrected
+  first-helper call count, Guardian telemetry and the boundary and isolation limits.
+
+- [Reviewer return and handoff](52-review-return-and-handoff.md): the observed coverage omission, unknown cause,
+  service-tier evidence and a proposed blind check of the final reconciliation.
+- [Review-return probe](54-review-return-probe.md): one simulated-review sample conveyed the material limitation and
+  rejected a stale claim, then requested approval before completing its handoff.
+- [Approved probe continuation](55-review-probe-approved-continuation.md): the same session finished after explicit
+  approval; the preregistered first-response outcome remains unknown.

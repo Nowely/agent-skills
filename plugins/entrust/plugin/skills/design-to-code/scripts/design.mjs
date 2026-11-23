@@ -27,8 +27,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
-  rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
+  compareFrame, FAIL_GUIDANCE, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  rerunNotice, snapshotIdentity, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 8).map((l) => l.slice(3)).join("\n");
@@ -78,7 +78,8 @@ function loadConfig(file) {
   const at = (p) => (p ? path.resolve(dir, p) : p);
   // A file path may carry a query or a fragment (a story's arguments): only the path is a file.
   const url = (u) => {
-    if (!u || /^[a-z][\w+.-]*:/i.test(u)) return u;
+    if (!u) return u;
+    if (/^[a-z][\w+.-]*:/i.test(u)) return new URL(u).href;
     const [, file, rest] = u.match(/^([^?#]*)(.*)$/);
     return pathToFileURL(path.resolve(dir, file)).href + rest;
   };
@@ -87,6 +88,9 @@ function loadConfig(file) {
   const stories = cfg.sweep?.stories ?? [], journeys = cfg.journeys ?? [];
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
   if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps) || !j.steps.length)) throw new Error("design.json: each journey needs a name and steps");
+  // Only the builder can identify product data: a text expectation alone can also be an overlay or a control label.
+  for (const j of journeys) if (j.dataFields !== undefined && !(Array.isArray(j.dataFields) && j.dataFields.every((s) => typeof s === "string" && s.trim())))
+    throw new Error(`design.json: the journey "${j.name}" dataFields must be an array of selectors for its product data`);
   // A journey that expects nothing cannot fail, so its "holds" would prove nothing.
   for (const j of journeys) if (!j.steps.some((step) => EXPECT.some((k) => step && k in step))) throw new Error(`design.json: the journey "${j.name}" expects nothing: add a visible, hidden, text or focused step`);
   const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? [])];
@@ -96,6 +100,8 @@ function loadConfig(file) {
   // The owner's past returns, one per line: .design/returns.md beside the task's folder unless design.json names one.
   const returns = cfg.returns ? at(cfg.returns) : path.join(dir, "..", "returns.md");
   if (cfg.static !== undefined && !(typeof cfg.static === "string" && cfg.static.trim())) throw new Error('design.json: "static" gives the reason no sweep or dense story applies');
+  // An exit from the lifecycle journey gives its reason, which the handoff prints for the owner.
+  if (cfg.lifecycle !== undefined && !(typeof cfg.lifecycle === "string" && cfg.lifecycle.trim())) throw new Error('design.json: "lifecycle" gives the reason the product can cause no lifecycle, as "static" gives its: "lifecycle": "no data changes: the card renders once"; otherwise leave it out and take each lifecycle in a journey with "sameAsFresh": true');
   // The layout model's lines: pieces that share a row, in order, where the line holds (a width range, or a selector
   // the page shows in that layout mode).
   const lines = cfg.sweep?.lines ?? [];
@@ -133,36 +139,238 @@ async function chromium() {
 // Frames and the sweep only: a journey keeps the page's transitions, since a control may finish its work on one (a sheet
 // that hides itself when its closing transition ends).
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
-// What runs is brought to its end before a journey looks: its end events fire, as they would a moment later.
-const finishMotion = (page) => page.evaluate(async () => {
-  for (const a of document.getAnimations()) {
-    try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
+const MOTION_MS = 1500;
+// At each checkpoint, inspect only the measured boxes and what can resize them. A flex/grid peer's paint
+// does not take room; a transition of its size can change the column before the next user action.
+const motionSettled = (page, selector, timeout, mode = "geometry") => page.locator(selector).evaluateAll(async (elements, [timeout, mode]) => {
+  const paint = /^(offset|computedOffset|easing|composite|color|background.*|.*Color|boxShadow|textShadow|filter)$/;
+  const outOfFlow = /^(opacity|transform|transformOrigin|translate|rotate|scale)$/;
+  const changesBox = (a, own) => a.effect.getKeyframes().some((frame) =>
+    Object.keys(frame).some((k) => !paint.test(k) && (own || !outOfFlow.test(k))));
+  // An item's intrinsic size can come from any depth in its content. Follow that contribution up to the
+  // flex/grid item, stopping where a box leaves the flow or contains its descendants' size.
+  const contributesTo = (effect, peer) => {
+    const target = effect.target;
+    const outside = (style) => style.display === "none" || /^(absolute|fixed)$/.test(style.position);
+    if (effect.pseudoElement && outside(getComputedStyle(target, effect.pseudoElement))) return false;
+    for (let el = target; el; el = el.assignedSlot ?? el.parentElement ?? el.getRootNode().host) {
+      const style = getComputedStyle(el);
+      if (outside(style)) return false;
+      if ((el !== target || effect.pseudoElement) && /(^| )(size|strict)( |$)/.test(style.contain + " " + style.containerType)) return false;
+      if (el === peer) return true;
+    }
+    return false;
+  };
+  const active = () => {
+    const found = new Set(), family = new Set();
+    const add = (a, role, peer) => {
+      if (!["running", "paused"].includes(a.playState)) return;
+      if (role === "flow" && (!changesBox(a, false) || (peer && !contributesTo(a.effect, peer)))) return;
+      const finite = Number.isFinite(a.effect?.getComputedTiming().endTime);
+      if (!finite && role !== "flow") {
+        if (role !== "target" || !["hidden", "placement"].includes(mode) || !changesBox(a, true)) return;
+      }
+      found.add(a);
+    };
+    for (const el of elements) {
+      if (!el.getBoundingClientRect().width) continue;
+      for (const a of el.getAnimations({ subtree: true })) {
+        const direct = a.effect?.target === el;
+        if (direct && mode !== "container") add(a, "target");
+        else add(a, mode === "hidden" ? "content" : "flow");
+      }
+      for (let child = el, parent; (parent = child.parentElement); child = parent) {
+        for (const a of parent.getAnimations()) add(a, mode === "container" ? "flow" : "target");
+        if (mode === "hidden" || family.has(parent) || !/flex|grid/.test(getComputedStyle(parent).display)) continue;
+        family.add(parent);
+        for (const peer of parent.children) {
+          if (peer === child) continue;
+          for (const a of peer.getAnimations({ subtree: true })) add(a, "flow", peer);
+        }
+      }
+    }
+    return [...found];
+  };
+  if (!timeout) return !active().length;
+  const boxes = () => elements.flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    return [r.x, r.y, r.width, r.height, el.parentElement?.getBoundingClientRect().width];
+  });
+  let timer, raf;
+  const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeout); });
+  const nextFrame = () => new Promise((resolve) => { raf = requestAnimationFrame(() => resolve(true)); });
+  try {
+    let previous;
+    while (await Promise.race([nextFrame(), deadline])) {
+      const running = active();
+      if (running.length) {
+        previous = undefined;
+        // An end handler can immediately start another transition. Re-read the effects at the next rendering
+        // opportunity, under the same deadline, before treating either box as settled.
+        if (!await Promise.race([Promise.allSettled(running.map((a) => a.finished)).then(() => true), deadline])) return false;
+        continue;
+      }
+      const now = boxes();
+      if (previous && now.every((v, i) => v === previous[i])) return true;
+      previous = now;
+    }
+    return false;
+  } finally { clearTimeout(timer); cancelAnimationFrame(raf); }
+}, [timeout, mode]);
+async function waitForMotion(page, selector, mode) {
+  if (!await motionSettled(page, selector, MOTION_MS, mode)) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
+}
+
+// Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
+// component (the root, inside it or around it), whether the journey removed its root, and what a ResizeObserver callback or a window-size matchMedia listener sets on an element (a class, a
+// data- attribute, a style) from then until the next frame, by which a framework has rendered the state it set. A
+// journey marks where its steps start, then asks what they changed and which of the component's targets they removed
+// with the observer kept; the sweep asks for the modes set by script.
+function watchScripts(rootSelector) {
+  if (window.__designCheck) return;
+  const modes = new Map(), targets = new Set(), left = new WeakMap(), dataFields = new Map();
+  const isMode = (name) => name === "class" || name === "style" || (name.startsWith("data-") && !name.startsWith("data-design-"));
+  let source = null, token = 0;
+  const credit = (records) => {
+    if (!source) return;
+    for (const r of records) {
+      if (r.type !== "attributes" || !isMode(r.attributeName)) continue;
+      if (!modes.has(r.target)) modes.set(r.target, new Map());
+      if (!modes.get(r.target).has(r.attributeName)) modes.get(r.target).set(r.attributeName, source);
+    }
+  };
+  const mutations = new MutationObserver(credit);
+  mutations.observe(document, { attributes: true, subtree: true });
+  // Each batch of changes is stamped, so a journey counts only what its steps did, not the page's own load.
+  let stamp = 0, since = 0, observedRoot = null;
+  const changed = { mount: 0 };
+  const read = (fn) => { try { return fn(); } catch { return false; /* a selector the page cannot read */ } };
+  const holdsRoot = (n) => n.nodeType === 1 && observedRoot && (n === observedRoot || n.contains(observedRoot));
+  const onChange = (records) => {
+    stamp++;
+    for (const r of records) {
+      if (r.type === "characterData") continue;
+      const nodes = [...r.addedNodes, ...r.removedNodes];
+      if (nodes.some(holdsRoot)) changed.mount++;
+      // An observed element removed with what holds it: from the component if it is a root, holds one, or sat in one.
+      for (const n of r.removedNodes) {
+        if (n.nodeType !== 1) continue;
+        for (const set of targets) for (const t of set) {
+          if (t !== n && !n.contains(t)) continue;
+          if (read(() => t.matches(rootSelector) || t.querySelector(rootSelector) || t.closest(rootSelector) || r.target.closest?.(rootSelector))) left.set(t, stamp);
+        }
+      }
+    }
+  };
+  const removals = new MutationObserver(onChange);
+  removals.observe(document, { childList: true, subtree: true, characterData: true });
+  const flush = () => onChange(removals.takeRecords());
+  const open = (what) => {
+    credit(mutations.takeRecords());
+    source = what;
+    const mine = ++token;
+    requestAnimationFrame(() => { credit(mutations.takeRecords()); if (token === mine) source = null; });
+  };
+  const run = (what, fn, self, args) => {
+    open(what);
+    try { return fn.apply(self, args); } finally { credit(mutations.takeRecords()); }
+  };
+  const Native = window.ResizeObserver;
+  if (Native) {
+    const own = new WeakMap();
+    window.ResizeObserver = class ResizeObserver extends Native {
+      constructor(callback) {
+        if (typeof callback !== "function") super(callback);
+        else super(function (...args) { return run("a ResizeObserver callback", callback, this, args); });
+        own.set(this, new Set());
+        targets.add(own.get(this));
+      }
+      observe(target, options) { super.observe(target, options); own.get(this)?.add(target); }
+      unobserve(target) { super.unobserve(target); own.get(this)?.delete(target); }
+      disconnect() { super.disconnect(); own.get(this)?.clear(); }
+    };
   }
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-}).catch(() => {});
+  const list = window.MediaQueryList?.prototype;
+  if (list) {
+    const sized = (media) => /width|height|aspect-ratio|orientation/.test(media ?? "");
+    const wrapped = new WeakMap();
+    const wrap = (listener) => {
+      if (!listener || (typeof listener !== "function" && typeof listener.handleEvent !== "function")) return listener;
+      if (!wrapped.has(listener)) wrapped.set(listener, function (e) {
+        const fn = typeof listener === "function" ? listener : listener.handleEvent, self = typeof listener === "function" ? this : listener;
+        return sized(this.media) ? run(`a matchMedia("${this.media}") listener`, fn, self, [e]) : fn.call(self, e);
+      });
+      return wrapped.get(listener);
+    };
+    const { addEventListener: add, removeEventListener: remove } = EventTarget.prototype;
+    list.addEventListener = function (type, listener, options) { return add.call(this, type, type === "change" ? wrap(listener) : listener, options); };
+    list.removeEventListener = function (type, listener, options) { return remove.call(this, type, type === "change" && listener ? wrapped.get(listener) ?? listener : listener, options); };
+    list.addListener = function (listener) { return add.call(this, "change", wrap(listener)); };
+    list.removeListener = function (listener) { return remove.call(this, "change", (listener && wrapped.get(listener)) ?? listener); };
+    // The native onchange property retains its callback identity, including conditional cleanup by the page.
+  }
+  Object.defineProperty(window, "__designCheck", { configurable: true, value: {
+    modes: () => [...modes].flatMap(([el, attrs]) => [...attrs].map(([attr, from]) => ({ el, attr, source: from }))),
+    rememberData: (selector, elements) => dataFields.set(selector, elements.map((el) => ({ el, text: el.innerText.replace(/\s+/g, " ").trim() }))),
+    changedData: (selector, elements, expected) => {
+      const before = dataFields.get(selector);
+      if (!before?.length || before.length !== elements.length || before.some((b, i) => b.el !== elements[i] || b.text.includes(expected))) return false;
+      const after = elements.map((el) => el.innerText.replace(/\s+/g, " ").trim());
+      if (JSON.stringify(before.map((b) => b.text).sort()) === JSON.stringify([...after].sort())) return false;
+      return before.some((b, i) => b.text !== after[i] && after[i].includes(expected));
+    },
+    // Where a journey's steps start: what came before (the page's own load) is not theirs.
+    mark: () => { flush(); since = stamp; changed.mount = 0; observedRoot = document.querySelector("[data-design-root]"); },
+    changed: () => { flush(); return { ...changed }; },
+    stale: () => { flush(); return [...targets].flatMap((set) => [...set]).filter((t) => !t.isConnected && left.get(t) > since); },
+  } });
+}
 
 // The component's root: the first match the user can see, opacity included; open() marks it, so the picture and the
 // measurements come from the same element. A popover kept hidden in the page is not the one open.
 const MARK = "data-design-root";
 const seenIn = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); };
-// Run on the frame root (inventory) or the target of a gesture (one opener). Equal labels on different
-// controls must stay distinct across the fresh pages used for frames and journeys.
-function openerInfoIn(el, { inventory = false, point, keyboard } = {}) {
+// Find the control itself, not the descendant a journey happened to address. Names and roles come from
+// Playwright's accessibility tree below; DOM attributes alone do not compute an accessible name.
+function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [], nth } = {}) {
   const selector = "[aria-expanded], [popovertarget], [aria-haspopup]";
-  const label = (o) => (o.getAttribute("aria-label") || o.title || o.textContent || o.localName).replace(/\s+/g, " ").trim();
+  const picks = (o, s) => { try { return o.matches(s) || Boolean(o.querySelector(s)); } catch { return false; } };
   const controls = [...document.querySelectorAll(selector)].filter((o) => o.hasAttribute("aria-expanded") || o.hasAttribute("popovertarget")
     || !/^(false|)$/i.test((o.getAttribute("aria-haspopup") ?? "").trim()));
   const target = point ? document.elementFromPoint(...point) : keyboard ? document.activeElement : el;
   const matches = inventory ? controls.filter((o) => el.contains(o) && o.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
     : [controls.findLast((o) => o.contains(target))].filter(Boolean);
+  if (nth !== undefined) return matches[nth];
   return matches.map((o) => {
-    const name = label(o);
     const ids = [o.getAttribute("aria-controls"), o.getAttribute("popovertarget")].filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
-    // Across data variants on one page, a named control linked to the same popup has an explicit identity.
-    const page = o.id && ids.length ? location.origin + location.pathname + location.hash : location.href;
-    const key = JSON.stringify([page, name, ...(o.id ? ["id", o.id, ...ids] : ["index", controls.filter((c) => label(c) === name).indexOf(o)])]);
-    return { key, name, ids };
+    return { id: o.id, index: controls.indexOf(o), ids, page: location.href,
+      targetPresent: ids.length > 0 && ids.every((id) => Boolean(document.getElementById(id))),
+      ...(inventory ? { answers: selectors.filter((s) => picks(o, s)) } : {}) };
   });
+}
+
+// The snapshot is produced by Playwright's accessibility implementation. If it cannot identify the control, an
+// unknown name/role cannot establish identity or cover another control.
+async function openerInfo(page, root, options) {
+  const info = await root.evaluate(openerInfoIn, options, { timeout: 2000 });
+  const candidates = page.locator("[aria-expanded], [popovertarget], [aria-haspopup]");
+  for (const [i, o] of info.entries()) {
+    const handle = await root.evaluateHandle(openerInfoIn, { ...options, nth: i }, { timeout: 2000 });
+    try {
+      const candidate = candidates.nth(o.index);
+      // `index` excludes aria-haspopup=false; locate by element when excluded candidates precede it.
+      let locator = candidate;
+      if (!await candidate.evaluate((e, h) => e === h, handle, { timeout: 2000 }).catch(() => false)) {
+        locator = null;
+        for (const c of await candidates.all()) if (await c.evaluate((e, h) => e === h, handle, { timeout: 2000 }).catch(() => false)) { locator = c; break; }
+      }
+      const identity = locator && snapshotIdentity(await locator.ariaSnapshot({ timeout: 2000 }));
+      if (identity) Object.assign(o, identity);
+    } catch { /* Unknown accessibility identity stays uncovered. */ }
+    finally { await handle.dispose(); }
+    if (o.role !== undefined && o.name !== undefined) o.key = JSON.stringify([o.page, o.id ? ["id", o.id] : ["index", o.index], o.name, o.role, o.ids]);
+  }
+  return info;
 }
 // An element's identity across fresh pages of the same story, whatever its markup: its id, or its path of positions.
 const elementKey = (el) => {
@@ -186,11 +394,11 @@ const markRoot = (page, selector) => page.evaluate(([sel, mark, seen]) => {
   return Boolean(el);
 }, [selector, MARK, seenIn.toString()]);
 
-async function settle(page, selector) {
-  await (await rootOf(page, selector)).evaluate(async (root) => {
+async function settle(page, selector, still = true) {
+  await (await rootOf(page, selector)).evaluate(async (root, still) => {
     await document.fonts.ready;
     // Animations a script started end too: content it fades in is captured as it ends.
-    for (const a of document.getAnimations()) {
+    if (still) for (const a of document.getAnimations()) {
       try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
     }
     const images = root.matches("img") ? [root] : root.querySelectorAll("img");
@@ -208,7 +416,7 @@ async function settle(page, selector) {
       })]);
     } finally { clearTimeout(timer); }
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  });
+  }, still);
 }
 
 async function setWidth(page, cfg, width, viewportHeight) {
@@ -258,7 +466,13 @@ async function runStep(page, step) {
   if (action === "tap") return point ? page.touchscreen.tap(arg[0], arg[1]) : page.locator(arg).first().tap();
   // What a journey expects, given a second to come true: any match seen, none seen, one seen with the text.
   if (action === "visible" && !(await until(page, () => anySeen(page, arg)))) throw new Error(`no ${arg} is visible`);
-  if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg))))) throw new Error(`${arg} is still visible`);
+  if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg)), MOTION_MS))) {
+    const settled = await motionSettled(page, arg, 0, "hidden");
+    if (await anySeen(page, arg)) {
+      if (!settled) throw unmeasured(`${arg} is still visible with unfinished motion after 1.5 seconds; closing was not measured`);
+      throw new Error(`${arg} is still visible`);
+    }
+  }
   if (action === "text" && !(await until(page, () => anySeen(page, arg[0], arg[1])))) throw new Error(`no visible ${arg[0]} shows “${arg[1]}”`);
   if (action === "focused" && !(await until(page, () => page.locator(arg).evaluateAll((els) => els.some((e) => e.contains(document.activeElement)))))) throw new Error(`${arg} does not have the focus`);
   if (EXPECT.includes(action)) return;
@@ -269,15 +483,16 @@ async function runStep(page, step) {
 // A page that could not be put in its state: the frame, story or journey is reported, the rest of the check goes on.
 const unmeasured = (message) => Object.assign(new Error(message), { unmeasured: true, exit: 2 });
 
-function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
+function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale = 1, touch = false, still = true }) {
   const viewportWidth = viewport ?? (cfg.host ? Math.max(cfg.viewport ?? 1280, width) : width);
   const hasTouch = touch || setup.some((step) => "tap" in step);
-  return { viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch };
+  return { viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, ...(still ? { reducedMotion: "reduce" } : {}), hasTouch };
 }
 
 async function open(browser, cfg, target) {
-  const { url, width, setup = [], height = 900, still = true } = target;
+  const { url, width, setup = [], height = 900, still = true, prepare } = target;
   const context = await browser.newContext(contextOptions(cfg, target));
+  await context.addInitScript(watchScripts, cfg.root);
   const page = await context.newPage();
   // A step on something that never appears fails in seconds, not in Playwright's default half minute.
   page.setDefaultTimeout(5000);
@@ -286,6 +501,8 @@ async function open(browser, cfg, target) {
   await page.mouse.move(-5, -5);
   if (still) await page.addStyleTag({ content: STILL });
   if (!cfg.host || (setup.length && await page.locator(cfg.host).count())) await setWidth(page, cfg, width, height);
+  // What a condition sets before the setup acts: the root's container held at a width.
+  if (prepare) await prepare(page);
   try {
     for (const step of setup) await runStep(page, step);
     await page.locator(cfg.root).first().waitFor({ state: "attached", timeout: 15000 });
@@ -303,7 +520,7 @@ async function open(browser, cfg, target) {
   }
   if (cfg.host) await setWidth(page, cfg, width, height);
   await markRoot(page, cfg.root);
-  await settle(page, cfg.root);
+  await settle(page, cfg.root, still);
   return { context, page };
 }
 
@@ -406,6 +623,12 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     range.setEnd(n, n.data.trimEnd().length);
     return range;
   };
+  // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
+  // wraps keeps its first line's place, so wrapping inside one layout does not count.
+  const rowsOf = (nodes) => {
+    const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
+    return tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
+  };
   // Every text's line boxes relative to the root: the areas the pixel comparison leaves to the text checks.
 
   if (command === "measure") {
@@ -478,7 +701,11 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
           const lines = lineBoxes(r.range, r.el);
           return lines.length ? { r, b: boxOf(lines) } : null;
         }).filter(Boolean).sort((a, b) => (Math.abs(a.b.y - b.b.y) > Math.min(a.b.height, b.b.height) / 2 ? a.b.y - b.b.y : a.b.x - b.b.x));
-        const pick = placed[l.nth ?? 0];
+        // A text no other landmark repeats is the hit nearest its box: a short one (a count, "1") also sits inside
+        // longer texts ("Выдача за 1 день"), and the first of them in reading order is not it.
+        const alone = landmarks.filter((x) => x.text !== undefined && key(x.text) === key(l.text)).length === 1;
+        const away = (h) => Math.hypot(h.b.x - l.near.x, h.b.y - l.near.y);
+        const pick = alone ? [...placed].sort((a, b) => away(a) - away(b))[0] : placed[l.nth ?? 0];
         return pick ? match(pick.r.range, pick.r.el, pick.r.start) : { found: false };
       }
       const hit = ranges[l.nth ?? 0];
@@ -534,7 +761,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       })) missing.add(first);
     }
     const textLines = nodes.filter((n) => !glyphNodes.has(n)).flatMap((n) => lineBoxes(trimmed(n), n.parentElement).map((line) => ({ text: norm(n.data), box: boxOf([line]) })));
-    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected };
+    return { root: { width: rr.width, height: rr.height }, landmarks: found, fonts: [...missing], textBoxes: textLines.map((l) => l.box), textLines, unexpected, rows: rowsOf(nodes) };
   }
 
   if (command === "snapshot") {
@@ -821,10 +1048,7 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
       }
     }
   }
-  // Which texts share a row, in document order: a change between two widths is a change of layout. A text that
-  // wraps keeps its first line's place, so wrapping inside one layout does not count.
-  const tops = nodes.map((n) => lineBoxes(trimmed(n), n.parentElement)[0]?.top ?? 0);
-  const rows = tops.map((t, i) => (i && Math.abs(t - tops[i - 1]) <= 2 ? "=" : i && t < tops[i - 1] ? "^" : "v")).join("");
+  const rows = rowsOf(nodes);
   // A control the pointer cannot fully reach: another element lies over part of it, as an action laid over a help
   // icon. Its centre and four inner points are tried, the window scrolled to it; a point on the control's own label,
   // or cut away by a clipping ancestor, does not count.
@@ -896,6 +1120,14 @@ async function inPage({ command, root: rootSelector, landmarks = [], align = [],
     if (!ofKit && cs.animationName === "none") for (const [how, dx, dy] of [["a transform", tx, ty], ["the translate property", tr[0], tr[1] ?? 0], ["a relative offset", rel[0], rel[1]]]) {
       if (nudge(dx, dy)) issues.push({ landmark: label(el.textContent), property: "construct", kind: "nudge", actual: `${how} moves it ${Math.round(dx)}, ${Math.round(dy)} px: lay it out instead` });
     }
+  }
+  // A mode set by script: a class, data- attribute or style written in a ResizeObserver callback or a window-size
+  // matchMedia change listener (the init script saw it). A layout it decides is a container query's to switch; a fit
+  // to content (a font shrunk to fit, "+3 more") is the script's, with its reason.
+  for (const { el, attr, source } of window.__designCheck?.modes() ?? []) {
+    if (!el.isConnected || !root.contains(el) || overlay(el)) continue;
+    issues.push({ landmark: el === root ? "root" : label(el.textContent) || el.localName, property: "construct", kind: "script-set mode",
+      actual: `${source} sets its ${attr}: if it decides the layout, switch it by a container query; if it fits content, give its reason` });
   }
   // The longest texts shown: what a story tested, for the owner to see in the evidence.
   const longest = [...new Set(nodes.map((n) => n.data.trim().replace(/\s+/g, " ")))].sort((a, b) => b.length - a.length).slice(0, 4);
@@ -1034,6 +1266,14 @@ function beforeFrame(out, frame, settings, shot, absent) {
   return { ...(hasImage ? { image: dataUrl(first) } : { reason: first.toString("utf8") }), comparison };
 }
 
+// What the page measures for a spec's landmarks: a text, found as the spec says it (or as the ledger's text entry
+// replaces it), or a selector; a named box from an image near its place in the design.
+function landmarkTargets(spec, frame, ledger) {
+  const near = (l) => (spec.source === "image boxes" && l.box ? { x: l.box.x, y: l.box.y } : undefined);
+  return spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth, near: near(l) }
+    : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot", near: near(l) }));
+}
+
 async function measureFrames(browser, cfg, frames, ledger, out) {
   const scratch = await (await browser.newContext()).newPage();
   const results = [];
@@ -1114,10 +1354,7 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (key) setupTargets.push({ selector: st[act], key });
     }
     try {
-      const near = (l) => (spec.source === "image boxes" && l.box ? { x: l.box.x, y: l.box.y } : undefined);
-      const targets = spec.landmarks.map((l) => (l.selector ? { selector: l.selector, nth: l.nth, near: near(l) }
-        : { text: l.text, alternate: pageText(l, frame.name, ledger), nth: l.nth, documentOrder: spec.source === "page snapshot", near: near(l) }));
-      const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: targets });
+      const measured = await page.evaluate(inPage, { command: "measure", root: fcfg.root, landmarks: landmarkTargets(spec, frame, ledger) });
       if (measured.error) throw Object.assign(new Error(`${frame.name}: ${measured.error}`), { exit: 2 });
       const shot = await (await rootOf(page, fcfg.root)).screenshot({ animations: "disabled", caret: "hide" });
       const dir = path.join(out, frameKey(frame.name));
@@ -1162,7 +1399,8 @@ async function measureFrames(browser, cfg, frames, ledger, out) {
       if (setupTargets.length) result.setupTargets = setupTargets;
       if (before.reason) result.beforeUnavailable = before.reason;
       if (before.comparison) result.beforeComparison = before.comparison;
-      result.openers = await (await rootOf(page, fcfg.root)).evaluate(openerInfoIn, { inventory: true });
+      const selectors = [...new Set(cfg.journeys.flatMap((j) => j.steps.map((st) => st.hover ?? st.focus ?? st.tap ?? st.click ?? st.move)).filter((s) => typeof s === "string"))];
+      result.openers = await openerInfo(page, await rootOf(page, fcfg.root), { inventory: true, selectors });
       result.gallery = { width: spec.frame.width, images: {
         design: dataUrl(reference), before: before.image, after: dataUrl(shot),
         diff: reference ? dataUrl(fs.readFileSync(path.join(dir, "diff.png"))) : undefined,
@@ -1228,6 +1466,119 @@ const STRESS = {
 };
 // What counts on a generated condition: a collision or a cut, not a wrap or a line of texts that are not the product's.
 const STRESSED = ["overlap", "clipped", "outside", "covered"];
+
+// The component's own width, a generated condition: at each frame's width, the frame's page in a window of that width,
+// and again in a 1280 px window with the root's container held at the content width it had, as a column a sidebar
+// narrows, or another page's, holds it. A component laid out by its own width is the same in both; one that follows the
+// window (a media query, matchMedia, a script reading the window's width) is not.
+const WIDE_WINDOW = 1280, OWN_WIDTH = "the component's own width";
+// How far the root's own width, and what its container lays beside it, may move under the hold before the condition
+// measures nothing at that width.
+const HELD = 3;
+// In the page: the content width of the root's container (its parent, past one that is display: contents or inline),
+// or, given a width, that box held at it by width, min-width and max-width, as `host` gives each frame its width. The
+// root is the marked one, or with no mark the first a person sees. Asked for the component's own width: that width and
+// how wide what else the container lays on the root's row is (a sidebar), or "page" when the root is the page itself
+// in the page's body (main, or what holds it), which the window lays out.
+function containerIn([selector, mark, seen, width, own = false]) {
+  const visible = new Function(`return (${seen})`)();
+  const root = (mark && document.querySelector(`[${mark}]`)) || [...document.querySelectorAll(selector)].find(visible);
+  let box = root?.parentElement;
+  while (box?.parentElement && /^(contents|inline)$/.test(getComputedStyle(box).display)) box = box.parentElement;
+  if (!box) return null;
+  const main = "main, [role=main]";
+  if (own && (box === document.body || box === document.documentElement) && (root === document.body || root.matches(main) || root.querySelector(main))) return "page";
+  const cs = getComputedStyle(box), px = (k) => parseFloat(cs[k]) || 0;
+  const edges = px("paddingLeft") + px("paddingRight") + px("borderLeftWidth") + px("borderRightWidth");
+  if (width === null && own) {
+    const r = root.getBoundingClientRect();
+    const beside = [...box.children].filter((c) => !c.contains(root) && visible(c) && !/^(absolute|fixed)$/.test(getComputedStyle(c).position))
+      .map((c) => c.getBoundingClientRect()).filter((b) => b.top < r.bottom && b.bottom > r.top).reduce((sum, b) => sum + b.width, 0);
+    return { width: box.getBoundingClientRect().width - edges, beside };
+  }
+  if (width === null) return box.getBoundingClientRect().width - edges;
+  for (const k of ["width", "min-width", "max-width"]) box.style.setProperty(k, `${cs.boxSizing === "border-box" ? width + edges : width}px`, "important");
+  return width;
+}
+const container = (page, cfg, width = null, own = false) => page.evaluate(containerIn, [cfg.root, MARK, seenIn.toString(), width, own]).catch(() => null);
+
+// What differs between the root in a window of its frame's width and in the wide window with its container held at
+// the same width: which texts share a row, its size, the spec's landmarks. Null when they agree within the tolerance.
+function ownWidthIssue({ frame, width, held, narrow, wide, labels, tolerance }) {
+  const r = Math.round, moved = [];
+  let delta = 0;
+  const differ = (d) => Math.abs(d) > tolerance && (delta = Math.max(delta, Math.abs(d)), true);
+  if (narrow.rows !== wide.rows) moved.push("another layout (the texts share rows differently)");
+  if ([differ(wide.root.width - narrow.root.width), differ(wide.root.height - narrow.root.height)].some(Boolean)) {
+    moved.push(`the root ${r(narrow.root.width)} × ${r(narrow.root.height)} px → ${r(wide.root.width)} × ${r(wide.root.height)}`);
+  }
+  narrow.landmarks.forEach((a, i) => {
+    const b = wide.landmarks[i];
+    if (Boolean(a?.found) !== Boolean(b?.found)) moved.push(`“${labels[i]}” ${a?.found ? "hidden" : "shown"}`);
+    else if (a?.found && ["x", "y", "width", "height"].map((k) => differ(b.box[k] - a.box[k])).some(Boolean)) {
+      moved.push(`“${labels[i]}” ${r(a.box.x)}, ${r(a.box.y)} → ${r(b.box.x)}, ${r(b.box.y)}${r(a.box.width) !== r(b.box.width) ? `, ${r(a.box.width)} → ${r(b.box.width)} px wide` : ""}`);
+    }
+  });
+  if (!moved.length) return null;
+  return { landmark: frame, property: "window", delta, actual: `laid out by the window, not by its own width: in a ${WIDE_WINDOW} px window, its container held at the ${r(held)} px it had at ${width}, ${moved.slice(0, 4).join("; ")}${moved.length > 4 ? `; and ${moved.length - 4} more` : ""}` };
+}
+
+async function ownWidth(browser, cfg, ledger, widths) {
+  // Each width once, on the first frame of the component's own root drawn at it.
+  const frames = new Map();
+  for (const f of cfg.frames) if ((!f.root || f.root === cfg.root) && widths.has(f.width) && f.width !== WIDE_WINDOW && !frames.has(f.width)) frames.set(f.width, f);
+  const probes = [], pageRoot = [], unheld = [];
+  try {
+    for (const [width, frame] of frames) {
+      const spec = frame.spec && fs.existsSync(frame.spec) ? readJson(frame.spec) : {};
+      const landmarks = (spec.landmarks ?? []).filter((l) => String(l.text ?? "").trim() || String(l.selector ?? "").trim());
+      const targets = landmarkTargets({ ...spec, landmarks }, frame, ledger);
+      const at = { url: frame.url, setup: frame.setup ?? [] };
+      const layout = async (page) => {
+        const m = await page.evaluate(inPage, { command: "measure", root: cfg.root, landmarks: targets });
+        if (m.error) throw unmeasured(`${OWN_WIDTH} at ${width} px: ${m.error}`);
+        return m;
+      };
+      let narrow, wide, box, beside;
+      // In a window of the frame's width, as the frame is when the window sizes it.
+      let opened = await open(browser, cfg, { ...at, width, viewport: width });
+      try { box = await container(opened.page, cfg, null, true); narrow = box === "page" ? null : await layout(opened.page); } finally { await opened.context.close(); }
+      // The page itself in the page's body: the window lays it out, as it should.
+      if (box === "page") { pageRoot.push(width); continue; }
+      if (!(box?.width > 0)) continue;
+      const held = box.width;
+      // In the wide window, the container held before the setup acts and again once the page is set up; what the
+      // component does on its container's change (an observer, a container query) is then done.
+      const hold = (page) => container(page, cfg, held);
+      opened = await open(browser, cfg, { ...at, ...(cfg.host ? { width, viewport: WIDE_WINDOW } : { width: WIDE_WINDOW }), prepare: hold });
+      try {
+        await hold(opened.page);
+        for (let i = 0; i < 2; i++) await settle(opened.page, cfg.root);
+        await markRoot(opened.page, cfg.root);
+        wide = await layout(opened.page);
+        beside = (await container(opened.page, cfg, null, true))?.beside ?? box.beside;
+      } finally { await opened.context.close(); }
+      // The hold gives the root's container its width, not always the root its own. Where what the container lays
+      // beside the root moved too (a sidebar the narrow window hides), the condition compares two widths of the
+      // component, not two windows, and measures nothing at this width; where nothing beside it moved, the root's own
+      // width follows the window (a width a media query sets, vw), which is the candidate.
+      if (Math.abs(wide.root.width - narrow.root.width) > HELD && Math.abs(beside - box.beside) > HELD) { unheld.push({ width, held, narrow: narrow.root.width, wide: wide.root.width }); continue; }
+      const issue = ownWidthIssue({ frame: frame.name, width, held, narrow, wide, labels: landmarks.map((l) => l.text ?? l.selector), tolerance: cfg.tolerance });
+      probes.push({ width, issues: issue ? [issue] : [] });
+    }
+  } catch (e) {
+    if (!e.unmeasured) throw e;
+    return { issues: [], story: { name: OWN_WIDTH, generated: true, unmeasured: e.message.split("\n")[0], shots: [] } };
+  }
+  const issues = sweepIssues(probes, ledger).map((i) => ({ ...i, story: OWN_WIDTH, ...(i.status === "accepted" ? {} : { status: "candidate" }) }));
+  // What it did not try, or could not measure: notes in the evidence, not gaps, since the page decides them.
+  const r = Math.round, px = (list) => `${list.slice(0, -1).join(", ")}${list.length > 1 ? " and " : ""}${list.at(-1)} px`;
+  const notes = [
+    ...(pageRoot.length ? [`not tried at ${px(pageRoot)}: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window`] : []),
+    ...unheld.map((u) => `not measured at ${u.width} px: with its container held at ${r(u.held)} px in a ${WIDE_WINDOW} px window, the root is ${r(u.wide)} px wide, not the ${r(u.narrow)} it has at ${u.width}; what else the container holds there (a sidebar the narrower window hides) takes the rest`),
+  ];
+  return { issues, story: { name: OWN_WIDTH, generated: true, shots: [], ...(notes.length ? { notes } : {}) } };
+}
 
 async function sweep(browser, cfg, ledger) {
   const s = cfg.sweep;
@@ -1320,6 +1671,11 @@ async function sweep(browser, cfg, ledger) {
     issues.push(...sweepIssues(these, ledger).map((i) => ({ ...i, story: story.name, ...(i.status === "accepted" ? {} : { status: "candidate" }) })));
     stories.push({ name: story.name, generated: true, shots: [] });
   }
+  if (s.generate !== false) {
+    const own = await ownWidth(browser, cfg, ledger, frameWidths);
+    issues.push(...own.issues);
+    stories.push(own.story);
+  }
   // The second tier: a construct (a negative margin, a nudge) and a layout switch where the model did not say are notes
   // for the owner's eye, not findings. What collides, is cut, wraps with room or leaves its line is.
   for (const i of issues) if (["construct", "switch"].includes(i.property) && i.status === "fail") i.status = "note";
@@ -1341,10 +1697,11 @@ async function sweep(browser, cfg, ledger) {
 }
 
 // The component's geometry as a person sees it: the root's place on the page, its size and scrolled width, and each
-// visible child's box within it.
-const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
-  const visible = new Function(`return (${seen})`)();
-  const root = [...document.querySelectorAll(sel)].find(visible);
+// visible child's box within it. The root is the one its page marked as it opened, while a
+// person sees it.
+const layoutOf = (page, selector) => page.evaluate(([sel, mark, seen]) => {
+  const visible = new Function(`return (${seen})`)(), marked = document.querySelector(`[${mark}]`);
+  const root = marked && visible(marked) ? marked : [...document.querySelectorAll(sel)].find(visible);
   if (!root) return null;
   const r = root.getBoundingClientRect();
   const kids = [...root.children].filter(visible).map((c) => {
@@ -1352,8 +1709,7 @@ const layoutOf = (page, selector) => page.evaluate(([sel, seen]) => {
     return { name: c.className && typeof c.className === "string" ? `.${c.className.trim().split(/\s+/)[0]}` : c.localName, x: b.left - r.left, y: b.top - r.top, width: b.width, height: b.height };
   });
   return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height, scrollWidth: root.scrollWidth, kids };
-}, [selector, seenIn.toString()]);
-// What differs between two such geometries, beyond the tolerance.
+}, [selector, MARK, seenIn.toString()]);
 function layoutDiff(a, b, tolerance = 1) {
   if (!a || !b) return [a ? "the fresh load shows no root" : "the root is not shown"];
   const out = [];
@@ -1367,15 +1723,77 @@ function layoutDiff(a, b, tolerance = 1) {
   return out;
 }
 
+// A frame or a declared sweep story identifies its page by the entire URL. The configured base URL is the
+// consumer unless the checker draws a frame there using its host.
+function storyPageUrls(cfg) {
+  const urls = new Set([...cfg.frames, ...(cfg.sweep?.stories ?? [])].map((page) => page.url));
+  if (!cfg.host || !cfg.frames.some((f) => f.url === cfg.url)) urls.delete(cfg.url);
+  return urls;
+}
+
 // Each journey on its own fresh page, at the widest frame's width unless it names one: its steps in order, the
 // first that does not hold failing it.
 async function journeys(browser, cfg) {
   const width = Math.max(...cfg.frames.map((f) => f.width));
+  const stories = storyPageUrls(cfg);
+  const journeyConfig = (j) => cfg.host && !stories.has(j.url) ? { ...cfg, host: undefined } : cfg;
   const results = [];
   // Each journey that opens something from an opener runs again with the opener at the window's top edge and at its
   // bottom edge, at the widest and the narrowest frame's width: an open popover must flip or shift to stay in the
   // window, wherever the component sits on the page and however narrow the window is.
   const narrowest = Math.min(...cfg.frames.map((f) => f.width));
+  // The component drawn by a fresh load of a journey's page at a width, measured once, to hold a journey's end against;
+  // the widths the component is drawn at (an overlay frame's is its own).
+  const frameWidths = [...new Set(cfg.frames.filter((f) => !f.root).map((f) => f.width))].sort((a, b) => b - a);
+  const fresh = new Map();
+  const freshDiff = async (page, j, at, when) => {
+    await waitForMotion(page, cfg.root);
+    const after = await layoutOf(page, cfg.root);
+    const key = JSON.stringify([j.url, Boolean(j.touch), at]);
+    if (!fresh.has(key)) {
+      let opened;
+      try {
+        opened = await open(browser, journeyConfig(j), { url: j.url, width: at, touch: Boolean(j.touch), still: false });
+        await waitForMotion(opened.page, cfg.root);
+        fresh.set(key, { layout: await layoutOf(opened.page, cfg.root) });
+      } catch (e) { fresh.set(key, { error: e.message.split("\n")[0] }); }
+      finally { await opened?.context.close(); }
+    }
+    const { layout, error } = fresh.get(key);
+    if (error) throw unmeasured(`no fresh load at ${at} px to compare with: ${error}`);
+    const differs = layoutDiff(after, layout, cfg.tolerance);
+    return differs.length ? `${when}, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}` : undefined;
+  };
+  // The component's container after each step, along with the space a fresh page provides at the supported floor.
+  // The root is the one the journey's page marked as it opened, while it is on the page, and whether a person sees it:
+  // shown, and not inside a box around it that is collapsed to no width or height (a panel); one scrolled out of view is seen.
+  const from = cfg.sweep ? Number(cfg.sweep.from) : null;
+  const roomOf = async (page) => ({
+    width: await container(page, cfg),
+    ...await page.evaluate(([sel, mark, seen]) => {
+      const visible = new Function(`return (${seen})`)();
+      const root = document.querySelector(`[${mark}]`) ?? [...document.querySelectorAll(sel)].find(visible);
+      let shown = Boolean(root && visible(root));
+      for (let p = root?.parentElement; p && shown; p = p.parentElement) {
+        const cs = getComputedStyle(p), b = p.getBoundingClientRect();
+        shown = !((cs.overflowX !== "visible" && b.width <= 0) || (cs.overflowY !== "visible" && b.height <= 0));
+      }
+      return { beyond: document.documentElement.scrollWidth - document.documentElement.clientWidth, root: root ? Math.max(root.getBoundingClientRect().width, root.scrollWidth) : null, shown };
+    }, [cfg.root, MARK, seenIn.toString()]).catch(() => ({ beyond: 0, root: null, shown: false })),
+  });
+  const floors = new Map();
+  const floorOf = async (j) => {
+    const key = JSON.stringify([j.url, Boolean(j.touch)]);
+    if (!floors.has(key)) {
+      let opened;
+      try {
+        opened = await open(browser, journeyConfig(j), { url: j.url, width: from, touch: Boolean(j.touch), still: false });
+        floors.set(key, await container(opened.page, cfg));
+      } catch { floors.set(key, null); }
+      finally { await opened?.context.close(); }
+    }
+    return floors.get(key);
+  };
   const edged = [];
   const openers = new Set();
   for (const j of cfg.journeys) {
@@ -1388,8 +1806,10 @@ async function journeys(browser, cfg) {
   }
   for (const { j: base, edge, opener, at } of edged) {
     const j = edge ? { ...base, width: at, name: `${base.name} (at the window's ${edge} edge${at !== (base.width ?? width) ? `, ${at} px` : ""})` } : base;
-    let opened, failed, overlaySeen = false, openerDone = false;
-    try { opened = await open(browser, cfg, { url: j.url, width: j.width ?? width, touch: Boolean(j.touch), still: false }); }
+    let opened, failed, missing, overlaySeen = false, openerDone = false;
+    // Taken before the journey's page opens, as the held loads are taken after it closes: the journey keeps its pace.
+    const floor = from !== null ? await floorOf(j) : null;
+    try { opened = await open(browser, journeyConfig(j), { url: j.url, width: j.width ?? width, touch: Boolean(j.touch), still: false }); }
     catch (e) { if (!e.unmeasured) throw e; failed = e.message; }
     if (opened && edge) {
       // Room to scroll at both ends, then the opener against the edge, found as the journey's own steps find it. An
@@ -1410,21 +1830,83 @@ async function journeys(browser, cfg) {
         continue;
       }
     }
-    const widths = opened ? [j.width ?? width] : [];
-    const seen = new Set(), notes = [], closed = new Set();
+    const widths = opened ? [j.width ?? width] : [], asFresh = [], resized = [];
+    const seen = new Set(), notes = [], closed = new Set(), closers = [];
+    let lastInput, checkpoint, widthMayContinue = false;
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
     const observed = new Map();
     let trigger, visibleBefore = new Set();
     const acted = new Set(), openSeen = new Set(), actedOn = new Set();
     let closes = false;
+    // The lifecycle the steps took, from what they did to the component: a root mounted or unmounted, its content
+    // observed changed text, or its container's width changed by a step that is not the window's width.
+    const took = new Set(), constructs = [];
     if (opened) {
       const { page } = opened;
+      // The container as the journey starts. The floor holds where the container narrows
+      // with the width (a host the page's flex row widens again does not).
+      let room = await roomOf(page);
+      const least = room.width !== null && widths[0] > from && room.width <= floor + cfg.tolerance ? null : floor;
+      // A visible component needs its supported room. An interaction may change its state as well as its width.
+      const roomAfter = async (i) => {
+        // Read an explicitly requested intermediate state before waiting on the geometry its input changed.
+        const next = j.steps[i + 1];
+        if (next?.text || next?.focused) return;
+        const moved = (r) => r.width !== null && room.width !== null && Math.abs(r.width - room.width) > cfg.tolerance;
+        const spills = (r) => r.beyond > cfg.tolerance && !(room.beyond > cfg.tolerance);
+        let now = await roomOf(page);
+        if (moved(now) || spills(now)) { await waitForMotion(page, cfg.root); now = await roomOf(page); }
+        const before = room.width, changed = moved(now), spilled = spills(now);
+        room = { width: now.width ?? room.width, beyond: now.beyond };
+        if (changed && !edge && lastInput && lastInput !== "width") took.add("parent width");
+        if (from !== null && widths.at(-1) < from) return;
+        const px = (v) => Math.round(v), seen = now.shown && now.width > 0;
+        if (changed && seen && least > 0 && now.width < least - cfg.tolerance) {
+          throw new Error(`after it the component's container is ${px(now.width)} px wide (${px(before)} before), narrower than the ${px(least)} px measured on a fresh page at the sweep's starting width, ${from} px: what it opened takes the component's room; check the supported minimum and the consumer's behavior against their source`);
+        }
+        if (spilled) {
+          throw new Error(now.root !== null && now.width !== null && now.root > now.width + cfg.tolerance
+            ? `after it the page scrolls sideways: the component is ${px(now.root)} px wide in its ${px(now.width)} px container: lay it out by its own width whenever that changes (a container query, or an observer on the component), not by the window's or once on mount`
+            : `after it the page scrolls sideways, its content ${px(now.beyond)} px wider than the window: keep what it opened inside the window, beside or over the component`);
+        }
+        if (!changed || !seen) return;
+        checkpoint = { i, width: now.width, byWidth: lastInput === "width" };
+        resized.push(checkpoint);
+      };
+      // Match the same visible field elements across observations; replacement and reordering are ambiguous.
+      const dataSelectors = new Set(j.dataFields ?? []);
+      const dataText = (selector, expected = null) => page.locator(selector).evaluateAll((els, [root, seen, selector, expected]) => {
+        const visible = new Function(`return (${seen})`)();
+        const fields = els.filter((e) => e.closest(root) && visible(e));
+        return expected === null ? window.__designCheck?.rememberData(selector, fields) : window.__designCheck?.changedData(selector, fields, expected);
+      }, [cfg.root, seenIn.toString(), selector, expected]).catch(() => false);
+      for (const selector of dataSelectors) await dataText(selector);
+      const rootSeen = () => page.evaluate(([sel, seen]) => [...document.querySelectorAll(sel)].some(new Function(`return (${seen})`)()), [cfg.root, seenIn.toString()]).catch(() => null);
+      let hadRoot = edge ? null : await rootSeen();
+      const rootAfter = async () => {
+        if (edge) return;
+        const now = await rootSeen();
+        if (now !== null && hadRoot !== null && now !== hadRoot) took.add("mount");
+        if (now !== null) hadRoot = now;
+      };
+      await page.evaluate(() => window.__designCheck?.mark()).catch(() => {});
       try {
         for (const [i, step] of j.steps.entries()) {
           if (failed) break;
           try {
             const [action] = Object.keys(step), arg = step[action];
+            if (!EXPECT.includes(action) && action !== "wait") {
+              // If a control is used during an outstanding viewport transition, its independent effect on
+              // the container cannot be distinguished. Keep the action on time and withhold lifecycle credit.
+              if (action === "width") widthMayContinue = true;
+              else if (widthMayContinue) {
+                widthMayContinue = !await motionSettled(page, cfg.root, 0, "container");
+                if (!widthMayContinue) await roomAfter(i - 1);
+              }
+              lastInput = action === "width" || !widthMayContinue ? action : undefined;
+              checkpoint = null;
+            }
             if (targets.length && !EXPECT.includes(action) && action !== "wait") {
               visibleBefore = new Set();
               for (const t of targets) if (await anySeen(page, t)) {
@@ -1435,7 +1917,8 @@ async function journeys(browser, cfg) {
               if (["hover", "click", "tap", "focus", "move", "press"].includes(action)) {
                 const point = Array.isArray(arg) ? arg : undefined;
                 const locator = page.locator(point || action === "press" ? "html" : arg).first();
-                [trigger] = await locator.evaluate(openerInfoIn, { point, keyboard: action === "press" }, { timeout: 2000 }).catch(() => []);
+                [trigger] = await openerInfo(page, locator, { point, keyboard: action === "press" }).catch(() => []);
+                if (trigger && !point && action !== "press") trigger.selector = arg;
               }
             }
             if (["hover", "click", "tap", "focus", "move"].includes(action) && typeof arg === "string") {
@@ -1444,15 +1927,32 @@ async function journeys(browser, cfg) {
             }
             if (!EXPECT.includes(action) && action !== "wait") for (const t of openSeen) actedOn.add(t);
             if ("width" in step) {
-              await setWidth(page, cfg, step.width, 900);
-              await settle(page, cfg.root);
+              await setWidth(page, journeyConfig(j), step.width, 900);
+              await settle(page, cfg.root, false);
               widths.push(step.width);
+              await roomAfter(i);
               continue;
             }
-            if (EXPECT.includes(action)) await finishMotion(page);
+            // A spatial relation can match for a single instant while either participant moves. Look up both
+            // independently of whether the relationship is currently true.
+            const placement = step.visible?.match(/^([^(),]+):(?:below|above|left-of|right-of|near)\(([^(),]+)\)$/);
+            const pair = placement && `${placement[1]}, ${placement[2]}`;
+            if (pair) await waitForMotion(page, pair, "placement");
             await runStep(page, step);
+            await rootAfter();
+            if (step.text && dataSelectors.has(step.text[0]) && await dataText(step.text[0], step.text[1])) took.add("data");
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
+            if (step.visible) await waitForMotion(page, pair ?? step.visible, pair ? "placement" : "geometry");
+            await roomAfter(i);
+            if (pair && !(await anySeen(page, step.visible))) throw new Error(`no ${step.visible} is visible after motion settled`);
             if (step.visible) {
+              if (checkpoint && pair) {
+                const inComponent = await page.locator(step.visible).evaluateAll((els, mark) => {
+                  const root = document.querySelector(`[${mark}]`);
+                  return els.some((el) => root?.contains(el) && el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width > 0);
+                }, MARK);
+                if (inComponent) checkpoint.placement = step.visible;
+              }
               // What opens must be in view, whole: a popover cut by the window's edge, or by a box that scrolls or
               // clips it, is a failure. An overlay only (positioned out of the flow, or a popup's role, or the nearest
               // such ancestor of what the step names), the first match a person sees; the page's own content may
@@ -1492,39 +1992,73 @@ async function journeys(browser, cfg) {
               if (observed.has(shown)) observed.get(shown).acted = false;
               if (trigger && targets.includes(shown) && !visibleBefore.has(shown)
                 && (!trigger.ids.length || await anySeen(page, shown, step.text?.[1], trigger.ids))) {
-                observed.set(shown, { key: trigger.key, acted: false });
+                observed.set(shown, { key: trigger.key, acted: false, opener: trigger });
               }
             }
             if ("hidden" in step) {
               const open = observed.get(arg);
-              if (open?.acted) closed.add(open.key);
+              if (open?.acted) { closed.add(open.key); closers.push(open.opener); }
               else if (!seen.has(arg)) notes.push(`${arg} was never seen open before it was expected hidden`);
               else if (open) notes.push(`${arg} was not seen open before a closing action`);
               observed.delete(arg);
               seen.delete(arg);
               trigger = null;
             }
-          } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
+          } catch (e) {
+            const message = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`;
+            if (e.unmeasured) missing = message; else failed = message;
+            break;
+          }
+        }
+        if (!edge) {
+          const { mount } = await page.evaluate(() => window.__designCheck?.changed()).catch(() => null) ?? {};
+          if (mount) took.add("mount");
+        }
+        // An observer the steps left on elements they removed is a construct note, not a finding: an element detached
+        // and kept (a tab pane cached to be shown again) or a cleanup deferred is fine; a layout the stale observer
+        // keeps shows in the fresh comparison after a sameAsFresh journey.
+        if (!edge && !failed) {
+          const stale = await page.evaluate(() => window.__designCheck?.stale().map((t) => `${t.localName}${t.classList[0] ? `.${t.classList[0]}` : ""}`) ?? []).catch(() => []);
+          if (stale.length) constructs.push({ landmark: [...new Set(stale)].slice(0, 3).join(", "), property: "construct", kind: "stale observer", status: "note",
+            actual: `after its steps, a ResizeObserver still observes ${stale.length === 1 ? "an element" : `${stale.length} elements`} removed from the page: disconnect it on unmount, or give its reason` });
         }
         // A state the steps went through and back must leave no trace: the component as a fresh load of the same page
-        // draws it at the same width (an observer left on removed elements, a layout not chosen again).
-        if (j.sameAsFresh && !edge && !failed) {
-          const at = widths.at(-1);
-          await finishMotion(page);
-          const after = await layoutOf(page, cfg.root);
-          let fresh;
-          try {
-            fresh = await open(browser, cfg, { url: j.url, width: at, touch: Boolean(j.touch), still: false });
-            const differs = layoutDiff(after, await layoutOf(fresh.page, cfg.root), cfg.tolerance);
-            if (differs.length) failed = `after its steps, the component differs from a fresh load at ${at} px: ${differs.slice(0, 4).join("; ")}${differs.length > 4 ? "; …" : ""}`;
-          } catch (e) { failed = `a fresh load at ${at} px to compare with: ${e.message.split("\n")[0]}`; }
-          finally { await fresh?.context.close(); }
+        // draws it at the same width (an observer left on removed elements, a layout not chosen again). Then the check
+        // resizes the page itself through the frames' widths, each held against a fresh load at that width: a layout
+        // chosen once, or by an observer no longer on the element, shows at the next width.
+        if (j.sameAsFresh && !edge && !failed && !missing) {
+          let now = widths.at(-1);
+          failed = await freshDiff(page, j, now, "after its steps");
+          asFresh.push(now);
+          for (const w of frameWidths) {
+            if (failed) break;
+            if (w === now) continue;
+            try { await setWidth(page, journeyConfig(j), w, 900); await settle(page, cfg.root, false); }
+            catch (e) { failed = `after its steps, a resize to ${w} px: ${e.message.split("\n")[0]}`; break; }
+            now = w;
+            failed = await freshDiff(page, j, w, `after its steps and a resize to ${w} px`);
+            asFresh.push(w);
+          }
         }
+      } catch (e) {
+        if (!e.unmeasured) throw e;
+        missing = e.message;
       } finally { await opened.context.close(); }
+      for (const change of resized) {
+        const where = `step ${change.i + 1}, container ${Math.round(change.width)} px`;
+        if (change.placement) notes.push(`${where}: checked the placement ${change.placement}`);
+        else if (!(j.sameAsFresh && !edge && asFresh.length && change === checkpoint)) {
+          const reason = `${where}: layout was not measured; a fresh page has no established equivalent state`;
+          // A width step sets test conditions; the explicit steps say what must hold there. An interaction
+          // that independently narrowed or widened the container needs an assertion while it is in that state.
+          if (change.byWidth || edge || missing) notes.push(reason);
+          else missing = `${reason}; assert the expected placement in the resized component`;
+        }
+      }
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
-    results.push({ name: j.name, widths, pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
-      acted: [...acted], closes });
+    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), pass: !failed && !missing, ...(failed ? { failed } : {}), ...(missing && !failed ? { unmeasured: missing } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
+      acted: [...acted], closes, closers, ...(edge ? {} : { lifecycle: [...took] }), ...(constructs.length ? { issues: constructs } : {}) });
   }
   return results;
 }
@@ -1587,13 +2121,22 @@ function candidateAnswers(cfg) {
   }
   return out;
 }
-const plain = (t) => String(t).toLowerCase().replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim();
+// An answer names its candidate as the check prints it, at the head of its line: the landmark, or the property and the
+// landmark, then the condition in parentheses if it likes, then a colon and the bound. A landmark inside another line
+// or inside a reason ("1" in "at most 18 characters", a frame "narrow" in "holds in a narrow column") answers nothing.
+// The component's own width names a frame, so its key is the property and the quoted name: window “card-375”.
+const plain = (t) => String(t).toLowerCase().replace(/[*_`]/g, "").replace(/["«»“”„]/g, '"').replace(/\s+/g, " ").trim();
+const literal = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function answerCandidates(cfg, sweepResult) {
   const answers = candidateAnswers(cfg).map((a) => ({ text: plain(a), raw: a }));
   for (const i of sweepResult?.issues ?? []) {
     if (i.status !== "candidate") continue;
-    const name = plain(i.landmark), hit = answers.find((a) => a.text.includes(name) && a.text.slice(a.text.indexOf(name) + name.length).replace(/^[^:]*:/, "").trim());
-    if (hit) i.answer = hit.raw.slice(hit.raw.indexOf(":") + 1).trim();
+    const name = literal(plain(i.landmark).replace(/^"(.*)"$/, "$1")), property = literal(plain(i.property));
+    const key = i.story === OWN_WIDTH ? `${property} "${name}"` : `(?:${property} )?(?:${name}|"${name}")`;
+    const head = new RegExp(`^${key}(?: ?\\([^)]*\\))? ?:\\s*\\S`);
+    const hit = answers.map((a) => ({ a, m: a.text.match(head) })).find((x) => x.m);
+    // The bound is what follows the head's colon: the raw line split at as many colons as the head holds.
+    if (hit) i.answer = hit.a.raw.split(":").slice(hit.m[0].split(":").length - 1).join(":").trim();
   }
 }
 
@@ -1651,9 +2194,30 @@ function layoutModelRows(cfg) {
 function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   const gaps = [];
   for (const r of rows) if (r.status === "incomplete") gaps.push(`acceptance “${r.item}”: ${r.reason}`);
-  const openers = new Map(results.flatMap((r) => (r.openers ?? []).map((o) => [o.key, o.name])));
+  const openers = new Map();
+  for (const r of results) for (const [i, o] of (r.openers ?? []).entries()) {
+    const key = o.key ?? `${r.frame}:${i}`, previous = openers.get(key);
+    openers.set(key, previous ? { ...o, targetPresent: previous.targetPresent && o.targetPresent,
+      answers: o.answers?.filter((s) => previous.answers?.includes(s)) } : o);
+  }
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
-  const unchecked = [...openers].filter(([key]) => !closed.has(key)).map(([, name]) => name);
+  // Across pages and URL variants require the same linked target to exist on the measured page, and the journey to
+  // have opened and closed it. An absent target could be mounted on action, so it proves no cross-page identity.
+  const closers = journeyResults.filter((j) => j.pass).flatMap((j) => (j.closers ?? []).map((c) => ({ c, j })));
+  const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+  const shown = (u) => {
+    if (!u.startsWith("file:")) return u;
+    const url = new URL(u);
+    return path.relative(cfg.dir, fileURLToPath(url)) + url.search + url.hash;
+  };
+  const unchecked = [];
+  for (const o of openers.values()) {
+    if (o.key && closed.has(o.key)) continue;
+    const by = o.key && o.name && o.targetPresent && closers.find(({ c }) => c.key && c.page !== o.page && c.name === o.name && c.role === o.role && sameIds(c.ids, o.ids) && o.answers?.includes(c.selector));
+    if (!by) { unchecked.push(o.name || "unknown"); continue; }
+    const note = `covers “${o.name}” on ${shown(o.page)}, linked to ${o.ids.map((id) => `#${id}`).join(", ")}`;
+    if (!by.j.notes?.includes(note)) (by.j.notes ??= []).push(note);
+  }
   if (unchecked.length) gaps.push(`${unchecked.length} control${unchecked.length === 1 ? "" : "s"} open${unchecked.length === 1 ? "s" : ""} something with no journey that opens and closes ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.slice(0, 4).map((o) => `“${o}”`).join(", ")}${unchecked.length > 4 ? ", …" : ""}`);
   const dir = path.join(cfg.dir, "frames");
   const framed = new Set(cfg.frames.map((f) => f.reference && path.resolve(f.reference)));
@@ -1676,6 +2240,22 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     // A story on a frame's page brings data of its own by its setup; without one it is the frame again.
     for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.some((x) => !("wait" in x))) gaps.push(`the story ${st.name} is a frame's own page: a dense story's setup brings data of its own`);
   }
+  // A lifecycle the product can cause (a remount, data emptied and refilled, a parent-width change) is taken through the
+  // consumer, in a journey that ends as a fresh load draws the component: on the page `url` names,
+  // or on a page of the journey's own that no frame or story shows. When `url` is a story page (the frames are drawn
+  // there by a host the check sizes), only the latter is the consumer's. The journey must take
+  // a lifecycle: a step that changed the component's data, mounted or unmounted it, or changed its parent's width; a
+  // width step alone is the window's. Unless design.json gives the reason the product has none.
+  const stories = storyPageUrls(cfg);
+  const onConsumer = cfg.journeys.filter((j) => j.sameAsFresh === true && !stories.has(j.url));
+  const took = (j) => journeyResults.find((r) => r.name === j.name)?.lifecycle?.length;
+  const where = stories.has(cfg.url) ? "on a consumer page of its own `url` that no frame or story shows (the page `url` names draws the frames, a story page)" : "on the page `url` names or a consumer page of its own `url`";
+  const exit = 'or give "lifecycle" in design.json with the reason the product can cause none';
+  if (typeof cfg.lifecycle !== "string" && !onConsumer.length) {
+    gaps.push(`no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent's width changed) in one, ${where}, ${exit}`);
+  } else if (typeof cfg.lifecycle !== "string" && !onConsumer.some(took)) {
+    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps observed changed data in a declared dataFields text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
+  }
   // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
   // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.
   const closing = journeyResults.filter((j) => j.pass && j.closes).flatMap((j) => j.acted ?? []);
@@ -1686,7 +2266,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   }
   // A candidate of the generated conditions stays open until review.md answers it.
   const open = (sweepResult?.issues ?? []).filter((i) => i.status === "candidate" && !i.answer);
-  if (open.length) gaps.push(`${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story})`).join(", ")}${open.length > 4 ? ", …" : ""}: reproduce each with legal data (a story with a real long value, a supported locale), or name in review.md, under Candidates, the contract's bound that rules it out`);
+  if (open.length) gaps.push(`${open.length} candidate${open.length === 1 ? "" : "s"} from the generated conditions, unanswered: ${open.slice(0, 4).map((i) => `${i.property} “${i.landmark}” (${i.story})`).join(", ")}${open.length > 4 ? ", …" : ""}: reproduce each with legal data (a story with a real long value, a supported locale, a container narrower than the window), or name in review.md, under Candidates, the contract's bound that rules it out`);
   // Each past return the owner recorded is a line of the acceptance list.
   if (fs.existsSync(cfg.returnsFile)) {
     const norm = (t) => t.toLowerCase().replace(/\\\|/g, "|").replace(/[*_`"'«»“”„]/g, "").replace(/\s+/g, " ").trim().replace(/[.!?;:,]+$/, "");
@@ -1727,10 +2307,11 @@ async function check(file, flags) {
     }
     const journeyResults = full && !flags.quick ? await journeys(browser, cfg) : [];
     answerCandidates(cfg, sweepResult);
-    // A journey the builder shows the check itself breaks, proposed with "cause": "checker", waits for the owner.
+    // Invalid entries remain ledger faults, but must not mark an individual failed journey as disputed or accepted.
+    const validJourneyLedger = ledger.filter((e) => ledgerFaults([e]).length === 0);
     for (const j of journeyResults) {
-      if (j.pass) continue;
-      const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", ledger)).find(Boolean);
+      if (!j.failed) continue;
+      const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", validJourneyLedger)).find(Boolean);
       if (e) Object.assign(j, { status: e.status === "accepted" ? "accepted" : "pending", ledger: e.reason, entries: [ledger.indexOf(e)] });
     }
     // A complete check (every frame, the sweep) is the evidence for a handoff; --frame, --no-sweep and --quick are partial.
@@ -1738,13 +2319,14 @@ async function check(file, flags) {
     const rows = acceptanceRows(cfg);
     const acceptance = complete ? rows.map((row) => assessRow(row, sweepResult)) : [];
     const gaps = complete ? acceptanceGaps(cfg, acceptance, sweepResult, results, journeyResults) : [];
+    for (const j of journeyResults) if (j.unmeasured) gaps.push(`journey ${j.name}: ${j.unmeasured}`);
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending") || acceptance.some((row) => row.status === "pending") || journeyResults.some((j) => j.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured?.some((u) => !u.story);
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
-    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass && !j.status) || acceptance.some((row) => row.status === "fail");
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => j.failed && !j.status) || acceptance.some((row) => row.status === "fail");
     const status = failed ? "fail"
       : results.some((r) => r.verdict === "incomplete") || unmeasured || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
         : pending ? "pending" : passed ? "pass" : "fail";
@@ -1780,7 +2362,7 @@ async function check(file, flags) {
       const pictures = [...results.map((r) => r.images?.page && path.join(path.dirname(r.images.page), "side.png")).filter((p) => p && fs.existsSync(path.join(out, p))), "gallery.html"];
       const modelRound = [...history, record].find((h) => h.model >= 1)?.round;
       const model = { rows: record.model, firstRound: modelRound, predicted: cfg.sweep?.switches ?? [], measured: sweepResult?.switches ?? [] };
-      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, stamp, pictures, model })}\n`);
+      fs.writeFileSync(handoff, `${renderHandoff({ ...data, ledger, score, journeySpecs: cfg.journeys, lifecycle: cfg.lifecycle, stamp, pictures, model })}\n`);
     }
     writeJson(path.join(out, "result.json"), { pass, score, round: n, ...data, frames: results.map(({ gallery, ...r }) => r) });
     // The gallery is the record to hand over: written only by a complete check.
@@ -1793,7 +2375,7 @@ async function check(file, flags) {
     const tail = 2 + (status === "fail" && !notice ? 1 : 0);
     const printed = [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
       `Verdict: ${status}${notice}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
-      ...(status === "fail" && !notice ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
+      ...(status === "fail" && !notice ? [`Fail: ${FAIL_GUIDANCE}.`] : []),
       complete ? `Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`
         : `A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`].join("\n");
     fs.appendFileSync(historyFile, `${JSON.stringify({ ...record, seconds: Math.round((Date.now() - started) / 100) / 10, bytes: Buffer.byteLength(`${printed}\n`) })}\n`);

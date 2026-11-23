@@ -10,23 +10,33 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
-## E159. The design check pairs a one-digit landmark with the same digit inside a longer page text
+## E165. The card bench blocks two clean builds on a type finding
 
-**Evidence, level 3.** `evals/design-to-code/cases/server-card-planted/prebuilt/.design/card/frames/card-486/spec.json:189`
-names the stock count as the landmark "1". The planted frame also draws "Выдача за 1 день". In two Sonnet arms on the
-prebuilt planted card, b1 on 0.45.0 and n1 on the 0.46.1 candidate `1f3684e`, the builder rendered that line. Both
-times the check paired the stock "1" with the header's "1": `x` -341 and a `y` gap of -216, both well placed on the page.
-Card-486 was left `incomplete`, and each builder wrote two `cause: checker` entries
-(`research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md`, "Results before the sitting").
+**Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the card bench at
+`f4f570f` caught 15 of 15 expected classes but reported `control` and `common-shift` as blocked: both raised
+`card-280 Доступно 1 type -15`. Its assertion that no clean build is blocked is
+`evals/design-to-code/benches/card/card.test.mjs:29`. Running these two controls on baseline
+`f668204b50a120ae0184df3c2b0f562295792389` produced the same two blocked findings. The cause is not established.
 
-**Check.** Make the prebuilt arm (`make-arm.mjs <dir> --prebuilt`), add a `delivery` value to the 486 frame's data
-entry, render it above the SKU, and run the complete check. The 486 report pairs "1" with the header line.
+**Issue text.** The card bench's zero-clean-blocks assertion fails locally for `control` and `common-shift` on the
+same `Доступно 1 type -15` finding, including on the baseline. Investigate its cause before choosing a remedy.
 
-**Issue text.** When a landmark's text is a short token, such as one digit, that also occurs inside a longer text on
-the page, the design check can pair the landmark with the longer text. It then reports offsets for a piece the page
-places correctly. The builder pays for it with ledger entries that excuse the checker, and the frame can stay
-`incomplete`. Prefer a page text that equals the landmark's text, or the one nearest its spec box, before a text that
-only contains it.
+## E164. The v25 boxes assertion fails on a 16.5 px column shift
+
+**Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the v25 boxes test at
+`evals/design-to-code.test.mjs:1713` requires `Math.round(i.delta) === 16` for `32 ядер` x; its observed finding is
++16.5 and the assertion fails. The same test at baseline `f668204b50a120ae0184df3c2b0f562295792389`,
+`evals/design-to-code.test.mjs:1597`, produced the same +16.5 and failure. The cause is not established.
+
+**Issue text.** The v25 boxes test fails locally when the reported `32 ядер` x delta is +16.5, while it expects the
+rounded value 16. The same failure occurs on the baseline. Investigate the source of the delta before choosing a remedy.
+
+## E163. The registered prebuilt sitting cannot pass setup without an owner-returns file
+
+**Evidence, level 3.** `research/2026-11-20-design-to-code/41-the-sitting.md` names `make-arm.mjs --prebuilt` then
+`real-run.mjs setup` for P. The produced fixture has no `.design/returns.md`; `evals/design-to-code/harness/real-run.mjs:779`
+marks it missing and setup exits 1. The owner allowed this P to run without inventing returns; the setup warning and
+its impact are recorded in `research/2026-11-20-design-to-code/42-collect-and-terra-p.md`.
 
 ## E157. The cleanup script cites three lines of the live gate for the directories the gate builds, and none of them holds that code
 
@@ -112,7 +122,7 @@ look where a second agent can start. In the Sonnet harness a builder is a subage
 builder in iterations 6 and 7 says so in its handoff. In the owner's Codex, Terra started a second agent, which
 declined the formal review because the check ended `fail`
 (`research/2026-11-20-design-to-code/37-terra-28-4-dry-run.md:23-25`). The pass, its cost and what it adds are
-unmeasured; "as read" rests on the coordinator's blind review.
+unmeasured; "as read" rests on the coordinator's blind review. rp44 (doc 44, item 5) ran it on three blind targets; no builder has run it at `pass` or `pending`.
 
 ## E152. An opener on a story page without its overlay leaves the design-to-code check incomplete
 
@@ -120,7 +130,7 @@ unmeasured; "as read" rests on the coordinator's blind review.
 `design-to-code/references/check.md:23` keeps a complete check `incomplete` while an opener has no journey that opens
 and closes it. When the frames are on a story page whose buttons open an overlay that only the real page holds, the
 journey cannot be written there; the builder of c1 passed the same journeys on the real page and handed over
-`incomplete`. Options: let a journey on another page cover an opener of the same name, or let the ledger settle it.
+`incomplete`. Since doc 44's item 9, a journey on another page covers it if a click on its own page shows nothing. Still open: an opener on a second consumer page that silently does nothing is covered too.
 
 ## E151. Design-to-code builders write ledger entries that name every landmark of a frame
 
@@ -130,7 +140,7 @@ also excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft
 fixed it but multiplied proposals, and went with the gate.
 
 **Since 0.46.1, level 3 for the check, not established for builders.** The missing text's own `presence` entry
-carries that shift, within the text's height and its gap (`design-to-code/references/check.md:228-235`), so the case
+carries that shift, within the text's height and its gap (`design-to-code/references/check.md:275-282`), so the case
 seen needs no such entry, and a 20 px shift planted below the line stays a finding (`evals/design-to-code.test.mjs:2407`,
 `:2430`). Still open: nothing refuses an every-landmark entry a builder writes anyway, and a vertical shift with
 another cause than a missing text is carried by nothing. On three harness arms on the candidate, entries fell from a
@@ -145,19 +155,12 @@ with a box of its own is judged by width alone, larger only. At 1×, a 1 px chan
 blind reviewer returned builds for values about 2 px off that the check did not name. Figma specs are compared by
 computed size and are not affected.
 
-## E149. The design-to-code benches miss two known classes
-
-**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:143-145`).** The card bench catches 14 of
-15 return classes with no clean build blocked; `column-shift` is missed. The stateful bench catches 2 of 3: an
-observer left on removed cards shows only through a journey with `"sameAsFresh": true`, which the builder must write
-(`design-to-code/SKILL.md:91`); on the catalogue case every Sonnet builder did.
-
 ## E148. A design-to-code run on the planted card costs 77–131 calls on Sonnet
 
 **Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:172`, `:280-288`, `:320`).** Nine runs on
 a card whose frames draw data the contract does not send took 77 to 131 tool calls and 17 to 33 minutes, with no
 change shown between drafts; the catalogue card took 19 to 28. The advisory notice
-(`design-to-code/references/check.md:38-40`) does not stop a loop on an unchanged first finding; a gate that refused
+(`design-to-code/references/check.md:43-46`) does not stop a loop on an unchanged first finding; a gate that refused
 to continue made it longer and was removed.
 
 ## E147. Under a plan-approval rule, the ledger entry may wait for approval

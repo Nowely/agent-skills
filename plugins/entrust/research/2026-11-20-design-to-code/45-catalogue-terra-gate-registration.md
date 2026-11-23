@@ -1,0 +1,11 @@
+# Catalogue Terra gate: registration
+
+Registered before the builder starts. One fresh `gpt-6.1-terra` session at `xhigh`, no baseline or A/B, and no repair after its first handover. The owner approved the synthetic case's missing `.design/returns.md` exception. The owner selected the pinned revision below, replacing the older pin in the PR request.
+
+- Repository, case, harness and skill revision: `a21e92f0a0b032f7b88e9ef111215cea703e96e3`.
+- Git tree objects at that revision: skill `567a0928584e69502756d87b664b0a9820a504a3`, case project `a849249a0f7b48f1650e0f1978f7147ad9a7d`, design pack `0a9403eee77c6c137dce38174b9a8a1f268366ca`; brief blob `518f146ac0697e324e4de4a7eaf51bfdbe38ed35`; real-run harness blob `13b4d677b63c7054ea2c82568932858b85929154`. These are Git object IDs, not SHA-256.
+- Make one arm with `make-arm.mjs`, set it up with `real-run.mjs setup` and the PR's original inputs, and use its first message and approval line in a fresh Codex session. `setup` invokes `arm.mjs prepare` as in the case protocol. Give the builder only the arm and its prompt; do not disclose the hidden judge, reference implementation, or planted defects.
+- Wait for the first handover; do not impose an arbitrary call or time cap. Confirm the builder and checks have ended, collect the rollout and freeze its archive with SHA-256, then run the hidden judge. Retain raw logs and archives privately.
+- Record the judge's width, choice and basics verdicts, the handover, rounds, ledger, calls, polling, tokens, wall time and unknowns. For width and choice separately, distinguish what the builder named from which frame, sweep, journey or code reading exposed the defect. Compare available rendered frames with the supplied originals. `ACCEPTED` is the judge's verdict; the owner has not thereby accepted the work.
+- Report setup limitations separately from the later harness results. Do not fabricate a returns file. No global rules or configuration are changed for this run.
+- Runtime: Node 24.15.0 and an existing local Playwright installation supplied via `NODE_PATH`; Chromium's launch was checked during setup. Start Codex with workspace-write and automatic approval review, without changing the global rule file. Record denied prompts or environmental limits if they occur.

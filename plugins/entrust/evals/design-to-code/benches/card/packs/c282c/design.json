@@ -1,0 +1,482 @@
+{
+ "url": "story.html?data=card-764",
+ "root": ".card",
+ "host": "#host",
+ "viewport": 1280,
+ "kit": [
+  "kit-"
+ ],
+ "frames": [
+  {
+   "name": "card-764",
+   "width": 764,
+   "spec": "frames/card-764/spec.json",
+   "reference": "frames/card-764/reference.png",
+   "url": "story.html?data=card-764"
+  },
+  {
+   "name": "card-601",
+   "width": 601,
+   "spec": "frames/card-601/spec.json",
+   "reference": "frames/card-601/reference.png",
+   "url": "story.html?data=card-601"
+  },
+  {
+   "name": "card-486",
+   "width": 486,
+   "spec": "frames/card-486/spec.json",
+   "reference": "frames/card-486/reference.png",
+   "url": "story.html?data=card-486"
+  },
+  {
+   "name": "card-280",
+   "width": 280,
+   "spec": "frames/card-280/spec.json",
+   "reference": "frames/card-280/reference.png",
+   "url": "story.html?data=card-280"
+  },
+  {
+   "name": "network-popover",
+   "width": 764,
+   "spec": "frames/network-popover/spec.json",
+   "reference": "frames/network-popover/reference.png",
+   "url": "story.html?data=card-764",
+   "root": ".c-pop",
+   "setup": [
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "wait": 300
+    }
+   ]
+  }
+ ],
+ "sweep": {
+  "from": 280,
+  "to": 900,
+  "step": 8,
+  "stories": [
+   {
+    "name": "dense",
+    "url": "story.html?data=dense"
+   },
+   {
+    "name": "many",
+    "url": "story.html?data=many"
+   }
+  ],
+  "switches": [
+   480,
+   600,
+   720
+  ]
+ },
+ "journeys": [
+  {
+   "name": "network popover: hover opens, leaving closes",
+   "url": "story.html?data=card-764",
+   "steps": [
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "network popover: keyboard focus opens, Escape closes",
+   "url": "story.html?data=card-764",
+   "steps": [
+    {
+     "focus": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "power popover: hover opens, Escape closes",
+   "url": "story.html?data=card-764",
+   "steps": [
+    {
+     "hover": ".c-psu .c-help"
+    },
+    {
+     "visible": "#card-pop-2"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": "#card-pop-2"
+    }
+   ]
+  },
+  {
+   "name": "popover by touch: tap toggles, tap elsewhere closes",
+   "url": "story.html?data=card-764",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "tap": ".c-net .c-help"
+    },
+    {
+     "hidden": "#card-pop-1"
+    },
+    {
+     "tap": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "tap": ".c-sku"
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "discount popover: hover opens, leaving closes",
+   "url": "story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": "#card-pop-3"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-3"
+    }
+   ]
+  },
+  {
+   "name": "popover stays while the pointer is on it",
+   "url": "story.html?data=card-764",
+   "steps": [
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "hover": "#card-pop-1 .kit-link"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "narrow then wide again",
+   "url": "story.html?data=dense",
+   "sameAsFresh": true,
+   "steps": [
+    {
+     "width": 280
+    },
+    {
+     "visible": ".card"
+    },
+    {
+     "width": 764
+    },
+    {
+     "visible": ".c-conf"
+    }
+   ]
+  },
+  {
+   "name": "open popover survives a width change",
+   "url": "story.html?data=card-764",
+   "sameAsFresh": true,
+   "steps": [
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "width": 300
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "width": 764
+    }
+   ]
+  },
+  {
+   "name": "configure action only on configurable offers",
+   "url": "story.html?data=plain",
+   "steps": [
+    {
+     "visible": ".c-conf"
+    }
+   ]
+  },
+  {
+   "name": "601: network popover",
+   "url": "story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "601: power popover",
+   "url": "story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-psu .c-help"
+    },
+    {
+     "visible": "#card-pop-2"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-2"
+    }
+   ]
+  },
+  {
+   "name": "601: discount popover",
+   "url": "story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": "#card-pop-3"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-3"
+    }
+   ]
+  },
+  {
+   "name": "486: network popover",
+   "url": "story.html?data=card-486",
+   "steps": [
+    {
+     "width": 486
+    },
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "486: power popover",
+   "url": "story.html?data=card-486",
+   "steps": [
+    {
+     "width": 486
+    },
+    {
+     "hover": ".c-psu .c-help"
+    },
+    {
+     "visible": "#card-pop-2"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-2"
+    }
+   ]
+  },
+  {
+   "name": "486: discount popover",
+   "url": "story.html?data=card-486",
+   "steps": [
+    {
+     "width": 486
+    },
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": "#card-pop-3"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-3"
+    }
+   ]
+  },
+  {
+   "name": "280: network popover",
+   "url": "story.html?data=card-280",
+   "steps": [
+    {
+     "width": 280
+    },
+    {
+     "hover": ".c-net .c-help"
+    },
+    {
+     "visible": "#card-pop-1"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-1"
+    }
+   ]
+  },
+  {
+   "name": "280: power popover",
+   "url": "story.html?data=card-280",
+   "steps": [
+    {
+     "width": 280
+    },
+    {
+     "hover": ".c-psu .c-help"
+    },
+    {
+     "visible": "#card-pop-2"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-2"
+    }
+   ]
+  },
+  {
+   "name": "280: discount popover",
+   "url": "story.html?data=card-280",
+   "steps": [
+    {
+     "width": 280
+    },
+    {
+     "hover": ".c-deal"
+    },
+    {
+     "visible": "#card-pop-3"
+    },
+    {
+     "move": [
+      1200,
+      800
+     ]
+    },
+    {
+     "hidden": "#card-pop-3"
+    }
+   ]
+  }
+ ]
+}

@@ -3,6 +3,94 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.47.0 — 2026-11-23
+
+**Compatibility:** A complete design check now needs a qualifying consumer lifecycle journey or an explicit reason
+there is none. A data-only lifecycle can use optional `dataFields` with an assertion on a stable field; ambiguous or
+undeclared data changes do not establish the lifecycle. Changed opener coverage and resized-state evidence can also
+leave a previously passing check incomplete. Review existing `design.json` journeys and record the needed evidence.
+
+### Design to code
+
+- **Columns that move together are a finding** (E149, its column shift). A landmark's place across was read from
+  whichever edge moved least, by any margin. In the card bench's `column-shift`, a 30 px margin before the RAM column
+  moves the four columns before it 15 px left: the frequency is 16 px off from the left and 15 from the right, so it
+  was read from the right on that pixel, where the page's wider texts explain the shift as a drift, and its place
+  against the processor was never compared. Another edge now takes over from the one the text's alignment holds only
+  when it moved less by more than the tolerance.
+- **A one-digit landmark is paired with its own text** (E159). On a screenshot's spec, a text was paired with the
+  page's first match in reading order, so on the prebuilt planted card with its delivery line rendered at 486, the
+  stock's "1" was paired with the "1" of "Выдача за 1 день" (`x` -352, `y` -212) and its own "1" was page text not in
+  the design. A text no other landmark repeats is now paired with the match nearest its box; repeated labels keep
+  reading order.
+- **A lifecycle journey is required.** A complete check is `incomplete` until a `sameAsFresh` journey on the
+  consumer's page takes a lifecycle, or `design.json` gives `"lifecycle"` with its reason. Data-only changes can be
+  established with optional `dataFields` and a `text` expectation on a stable field; undeclared or ambiguous changes
+  do not establish a data lifecycle. A separate consumer page uses its own viewport, not the frame's `host`.
+- **The component's own width** is a generated condition: a layout that follows the window is a candidate.
+- **A journey step that squeezes the component** below its width at the sweep's `from`, or makes the page scroll
+  sideways, fails. An independent parent-width change requires an explicit placement or equivalent `sameAsFresh`
+  endpoint; without evidence its geometry remains unmeasured. A window-width step sets the test width and its
+  following expectations specify what must hold; `sameAsFresh` compares the endpoint and frame widths to fresh loads.
+- **Script-set modes, and observers kept on removed elements,** are construct notes. Attribution covers media-query
+  listeners registered with `addEventListener` or `addListener`; `MediaQueryList.onchange` keeps native behavior and
+  is outside attribution.
+- **Opener coverage** uses Playwright's accessibility snapshot for role and accessible name; measurement clicks
+  only through configured setup and journeys. Another page or URL variant can cover a matching opener when its linked
+  target exists on the measured page. An absent target requires a journey on its page; unknown accessibility identity
+  cannot establish coverage.
+- **Natural motion** is retained for journeys. Expectations and placement use bounded settling checks; motion still
+  running at the deadline can leave the result unmeasured, and later timers or visual continuity between samples need
+  separate observation.
+- **A documented external blocker** can be handed to the owner without calling the work done or changing a measured
+  `fail`, exit code or JSON result. A current complete check supplies the evidence, or the handoff says why it could
+  not run; partial checks stay partial. The report separates the action, measurement, expected value and its source,
+  cause, scope boundary, other findings and decisions. The checker is not named as the cause of an external defect.
+  Previously an invalid journey ledger entry still marked that journey `pending` or `accepted` even while its ledger
+  fault kept the overall check failed. Invalid entries no longer mark journeys; valid checker-tagged entries still
+  match. The existing owner-accepted wildcard can also match journeys without `cause: "checker"` and is unchanged.
+- **Test widths and the product minimum** are distinct: `sweep.from` is a selected test width, not proof of the
+  supported minimum. Record its contract or owner source, or unknown; the numeric checker calculation is unchanged.
+  The human-readable width diagnostic, including its `journeys[].failed` text in JSON, now names the sweep start;
+  consumers that match the old sentence must update. An independent reviewer reads the source rather than treating
+  the builder's selected width as the product contract.
+- **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
+  After the full review, the handoff checks material claims against its observations and the final state; unverified
+  material claims stay marked as such, and verified material limitations are reported with source and scope. An
+  existing limitation is not called a regression; the check's verdict does not change automatically.
+- **The card and stateful benches** moved into evals.
+
+### Design-to-code evals
+
+- The future generated run prompt permits an evidenced external blocker to be reported with the actual `fail` rather
+  than claimed done. Collection checks the approval line recorded in each run's baseline; an older baseline without
+  that line leaves the result unknown. Historical runs used a different prompt, so direct comparisons need that caveat.
+- The catalogue judge's human-readable verdict names its card-contract scope. Consumer status and the owner's
+  decision stay in the existing handoff and verdict form; the judge's checks, JSON and exit are unchanged.
+- The real-run collector includes response usage recorded after the last cumulative token count (E160).
+  It reports empty-stdin polls, polls with no output and unreadable results separately. Its per-check count follows
+  each completed full check's shell session and counts only waits that returned no output while it was still running.
+  A poll that reports process exit delivers a result even when stdout is empty (E161).
+  If process enumeration fails, collection stops before writing the archive (E162).
+
+### Known issues
+
+- [E164: v25 boxes assertion](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e164-the-v25-boxes-assertion-fails-on-a-165-px-column-shift): on macOS 26.7.2 with Playwright 1.65.1 and Chromium 159, a local test received a +16.5 px delta while its assertion expects `Math.round(delta) === 16`. The same failure occurred on baseline `f668204`; its cause is not established.
+- [E165: card bench clean controls](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e165-the-card-bench-blocks-two-clean-builds-on-a-type-finding): the local `control` and `common-shift` cases were blocked by the same `Доступно 1 type -15` finding, also observed on `f668204`. The cause is not established. The bench caught its 15 expected classes; both blocks remain failures.
+- Other open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+### Gate and limits
+
+- One synthetic catalogue gate at `a21e92f` had the judge accept width, choice and basics, while the builder's first
+  and final handover was `fail`: at a 375 px window the open sidebar leaves the card 47 px, below the check's 288 px
+  minimum. The judge did not assess that narrow state. The owner's acceptance remains open; the two verdicts cover
+  different evidence. [The gate record](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/2026-11-20-design-to-code/46-catalogue-terra-gate.md) gives the limits.
+- The current PR CI on `a21e92f` had four successful jobs; the macOS design-to-code suite skipped 135 browser tests
+  because Playwright was unavailable. CI on the release head is separate. The full local design suite had one failure
+  (E164); the local card bench blocked two clean builds (E165). A snapshot does not establish continuity between frames.
+- The gate used codex-cli 0.171.0-alpha.13. Node.js v24.15.0 was available during preparation. No real-task A/B or
+  live orchestrate release gate was run.
+
 ## 0.46.2 — 2026-11-22
 
 ### Orchestrate

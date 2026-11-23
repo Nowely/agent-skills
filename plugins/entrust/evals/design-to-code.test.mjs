@@ -12,12 +12,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
   causes, compareFrame, contextTexts, findingKeys, firstStreak, joinContext, ledgerFaults, pageText, parseFigmaUrl, parseXml, ranges, renderHandoff, renderReport,
-  renderSummary, rerunNotice, specFromMetadata, specFromRest, sweepIssues, switches,
+  renderSummary, rerunNotice, snapshotIdentity, specFromMetadata, specFromRest, sweepIssues, switches,
 } from "../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -329,12 +329,27 @@ test("draft 28: a proposed entry of any category leaves a finding pending, for t
   assert.match(ledgerFaults([{ landmark: "New", property: "text", category: "design-error", status: "proposed", reason: "a word form" }]).join(), /names the page's text in "actual"/);
 });
 
+test("ARIA snapshot identity uses the computed name and rejects unfamiliar output", () => {
+  assert.deepEqual(snapshotIdentity('- button "Actual name" [expanded=false]: fallback'), { role: "button", name: "Actual name" });
+  assert.deepEqual(snapshotIdentity(`- button ${JSON.stringify('Say "yes"')}`), { role: "button", name: 'Say "yes"' });
+  assert.deepEqual(snapshotIdentity('- button'), { role: "button", name: "" });
+  assert.equal(snapshotIdentity('unexpected'), null);
+  assert.equal(snapshotIdentity('- button "unterminated'), null);
+  assert.deepEqual(snapshotIdentity(`- 'button "Details: quantity"': More`), { role: "button", name: "Details: quantity" });
+  assert.deepEqual(snapshotIdentity(`- 'button "Details: quantity" [expanded=false]': More`), { role: "button", name: "Details: quantity" });
+  assert.deepEqual(snapshotIdentity(`- 'button "Bob''s: #1"': More`), { role: "button", name: "Bob's: #1" });
+  assert.deepEqual(snapshotIdentity(`- 'button ${JSON.stringify(`Bob's: "quoted" #1`).replaceAll("'", "''")}': More`), { role: "button", name: `Bob's: "quoted" #1` });
+  assert.equal(snapshotIdentity(`- 'button "unterminated': More`), null);
+  assert.equal(snapshotIdentity(`- 'button "Details: quantity"' garbage`), null);
+  assert.equal(snapshotIdentity(`- 'button "Bob's: #1"': More`), null);
+});
+
 // ------------------------------------------------------------------ in the browser
 
 const playwright = (() => {
   for (const base of [path.join(process.cwd(), "noop.js"), DESIGN]) {
     for (const name of ["playwright", "@playwright/test", "playwright-core"]) {
-      try { createRequire(base).resolve(name); return true; } catch { /* next */ }
+      try { return createRequire(base).resolve(name); } catch { /* next */ }
     }
   }
   return false;
@@ -383,7 +398,7 @@ function designDir() {
   design = tmp();
   fs.copyFileSync(path.join(CASE, "reference.html"), path.join(design, "page.html"));
   fs.writeFileSync(path.join(design, "design.json"), JSON.stringify({
-    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json",
+    url: "page.html", root: CONFIG.root, host: CONFIG.host, ledger: "deviations.json", lifecycle: "a fixture: one render, no data changes",
     sweep: { ...CONFIG.sweep, stories: [{ name: "page", url: "page.html?dense" }], lines: [{ name: "badges", pieces: [".badge.new", ".badge:not(.new)"], from: 600 }] },
     frames: CONFIG.frames.map((f) => ({ ...f, spec: `design/${f.name}/spec.json`, reference: `design/${f.name}/reference.png` })),
   }));
@@ -425,7 +440,7 @@ function smallFrame(body = "<span>Ready</span>", frames = [{ name: "frame" }]) {
   const write = (html) => fs.writeFileSync(page, markup(html));
   write(`<main>${body}</main>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json",
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
     frames: frames.map((f, i) => ({ width: 300, spec: `${i}.json`, reference: `${i}.png`, ...f })),
     sweep: { from: 300, to: 300, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES } }));
   const snap = cli("snapshot", config, "--images");
@@ -765,7 +780,7 @@ test("alignment is the spread as laid out against the tolerance; a group short o
   const run = (second, align, { tolerance, hideBelow } = {}) => {
     fs.writeFileSync(path.join(dir, "page.html"), page(second, hideBelow));
     fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
+    fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "page.html", root: "#root", lifecycle: "a fixture: one render, no data changes", frames: [], ...(tolerance ? { tolerance } : {}), sweep: { from: 300, to: 340, step: 20, align, lines: LINES, stories: [{ name: "page", url: "page.html?dense" }] } }));
     return check(dir);
   };
   const v = [{ selector: ".v", edge: "left" }];
@@ -932,7 +947,7 @@ test("a frame of a state drawn outside the component names its own root", browse
 help.onmouseleave = () => { document.querySelector(".pop").hidden = true; };</script>`;
   fs.writeFileSync(path.join(dir, "page.html"), page("Was 10, now 8"));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", frames: [
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", lifecycle: "a fixture: one render, no data changes", frames: [
     { name: "popover", width: 300, root: ".pop", setup: [{ hover: "#help" }], spec: "pop.json", reference: "pop.png" }],
     sweep: { from: 300, to: 300, lines: LINES, stories: [{ name: "dense", url: "page.html?dense" }] }, journeys: [{ name: "help opens and closes", steps: [{ hover: "#help" }, { visible: ".pop" }, { move: [290, 600] }, { hidden: ".pop" }] }] }));
   const snap = cli("snapshot", config, "--images");
@@ -1339,6 +1354,107 @@ test("a journey on another data variant covers the same explicitly linked contro
   assert.match(r.stdout, /no journey that opens and closes it: “More”/);
 });
 
+test("a journey on a data variant cannot cover an absent target on the measured page", browser, () => {
+  const f = smallFrame('<button id="more" popovertarget="panel">More</button>');
+  fs.appendFileSync(f.page, `<script>if (location.search) document.querySelector('main').insertAdjacentHTML('beforeend', '<div id="panel" popover>Details</div>');</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "variant", url: "page.html?variant", steps: [
+    { click: "#more" }, { visible: "#panel" }, { click: "#more" }, { hidden: "#panel" },
+  ] }] }));
+  let r = check(f.dir);
+  assert.ok(r.result.journeys.find((j) => j.name === "variant").pass, r.stdout);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+  fs.writeFileSync(f.page, fs.readFileSync(f.page, "utf8").replace("if (location.search)", "if (!location.search)"));
+  const configured = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...configured, frames: [{ ...configured.frames[0], url: "page.html?variant" }],
+    journeys: [{ ...configured.journeys[0], url: "page.html" }] }));
+  r = check(f.dir);
+  assert.ok(r.result.journeys.find((j) => j.name === "variant").pass, r.stdout);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+});
+
+test("cross-page coverage uses the accessible name and an existing linked target", browser, () => {
+  const f = smallFrame('<span id="a-name" hidden>Details</span><button class="d" aria-labelledby="a-name" popovertarget="panel">More</button><div id="panel" popover>Content</div>');
+  const other = path.join(f.dir, "other.html"), cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const page = fs.readFileSync(f.page, "utf8").replaceAll("a-name", "different-internal-id");
+  const run = (html, target = "#panel") => {
+    fs.writeFileSync(other, html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "toggle", url: "other.html", steps: [
+      { click: ".d" }, { visible: target }, { click: ".d" }, { hidden: target },
+    ] }] }));
+    return check(f.dir);
+  };
+  let r = run(page);
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.result.journeys[0].notes.join(), /covers “Details” on page.html, linked to #panel/);
+  r = run(page.replace(">Details</span>", ">Other name</span>"));
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+  r = run(page.replaceAll('panel', 'other-panel'), '#other-panel');
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+  fs.appendFileSync(f.page, `<script>if (location.search === '?variant') document.getElementById('a-name').textContent = 'Other name';</script>`);
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "variant", url: "page.html?variant", steps: [
+    { click: ".d" }, { visible: "#panel" }, { click: ".d" }, { hidden: "#panel" },
+  ] }] }));
+  r = check(f.dir);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+});
+
+test("ARIA names with YAML punctuation keep identical and different controls distinct", browser, () => {
+  const name = `Bob's: "volume" #1`;
+  const f = smallFrame(`<span id="label" hidden>${name}</span><button id="more" aria-labelledby="label" popovertarget="panel">More</button><div id="panel" popover>Details</div>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const other = path.join(f.dir, "other.html"), original = fs.readFileSync(f.page, "utf8");
+  const run = (html) => {
+    fs.writeFileSync(other, html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "open and close", url: "other.html", steps: [
+      { click: "#more" }, { visible: "#panel" }, { click: "#more" }, { hidden: "#panel" },
+    ] }] }));
+    return check(f.dir);
+  };
+  let r = run(original.replaceAll('id="label"', 'id="other-label"').replaceAll('aria-labelledby="label"', 'aria-labelledby="other-label"'));
+  assert.equal(r.status, 0, r.stdout);
+  assert.equal(r.result.frames[0].openers[0].name, name);
+  assert.equal(r.result.journeys[0].closers[0].name, name);
+  r = run(original.replace(name, `Bob's: "other" #1`));
+  assert.equal(r.status, 2, r.stdout);
+  assert.ok(r.result.gaps.some((gap) => gap.includes(name)), r.stdout);
+});
+
+test("frame, quick and full never act on an unspecified opener; an explicit journey may open a lazy target", browser, async () => {
+  const f = smallFrame(`<button class="d" aria-expanded="false" aria-controls="panel">Details</button>
+<script>document.querySelector('.d').onclick = () => { fetch('/hit', { method: 'POST' }); let panel = document.getElementById('panel');
+if (panel) { panel.remove(); } else { panel = document.createElement('div'); panel.id = 'panel'; panel.textContent = 'Panel'; document.body.append(panel); } };</script>`);
+  const count = path.join(f.dir, "posts"), cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(count, "");
+  const script = `const http = require('node:http'), fs = require('node:fs');
+http.createServer((req, res) => { if (req.method === 'POST') { fs.appendFileSync(process.argv[2], 'x'); res.end('ok'); }
+else { res.setHeader('content-type', 'text/html'); res.end(fs.readFileSync(process.argv[1])); } }).listen(0, '127.0.0.1', function () { console.log(this.address().port); });`;
+  const server = spawn(process.execPath, ["-e", script, f.page, count], { stdio: ["ignore", "pipe", "pipe"] });
+  try {
+    const port = await new Promise((resolve, reject) => { server.stdout.once("data", (v) => resolve(Number(String(v).trim()))); server.once("error", reject); server.once("exit", (code) => reject(new Error(`server exited ${code}`))); });
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, url: `http://127.0.0.1:${port}/page`, sweep: { ...cfg.sweep, stories: [{ name: "dense", url: `http://127.0.0.1:${port}/page?dense` }] } }));
+    for (const args of [["--frame", "frame"], ["--quick"], []]) {
+      const r = check(f.dir, ...args);
+      assert.ok(r.result, r.stderr);
+      assert.equal(fs.readFileSync(count, "utf8"), "", args.join(" "));
+      if (!args.length) assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+    }
+    const configured = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...configured, journeys: [{ name: "lazy", steps: [
+      { click: ".d" }, { visible: "#panel" }, { click: ".d" }, { hidden: "#panel" },
+    ] }] }));
+    const r = check(f.dir);
+    assert.ok(r.result.journeys.find((j) => j.name === "lazy").pass, r.stdout);
+    assert.ok(fs.readFileSync(count, "utf8").length >= 2);
+    assert.doesNotMatch(r.stdout, /no journey that opens and closes it/);
+  } finally { server.kill(); }
+});
+
 test("the acceptance verdict distinguishes evidence, missing measurements, decisions and failures", browser, () => {
   const f = smallFrame();
   const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
@@ -1420,14 +1536,14 @@ test("v21: a story on a frame's page whose setup only waits is the frame again",
   assert.match(check(f.dir).stdout, /the story same is a frame's own page/);
 });
 
-test("v21: the evidence file starts with the handover status, a fail says to keep working, and other data is named", browser, () => {
+test("v21: the evidence starts with the status, a fail can be reported as blocked, and other data is named", browser, () => {
   const f = smallFrame('<span>Ready</span> <b>Steady</b> <i>Go</i>');
   f.write('<main><span>Alpha</span> <b>Beta</b> <i>Gamma</i></main>');
   const r = check(f.dir);
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /A fail is not a state to hand over in: fix the first cause and check again/);
+  assert.match(r.stdout, /Fail: fix what is in scope; an evidenced external blocker may be handed over as blocked/);
   assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — fix what is in scope; an evidenced external blocker may be handed over as blocked/m);
 });
 
 // ------------------------------------------------------------------ v22: predicting where the layout breaks
@@ -1532,7 +1648,7 @@ function boxCase(design, page, width = 320, { ledger = [] } = {}) {
   const dir = tmp(), config = path.join(dir, "design.json"), file = path.join(dir, "page.html");
   const wrap = (body) => `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#fff}</style>${body}`;
   fs.writeFileSync(file, wrap(design));
-  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", ledger: "ledger.json", static: "one frame", lifecycle: "a fixture: one render, no data changes", frames: [{ name: "frame", width, spec: "snap.json", reference: "ref.png" }] }));
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(path.join(dir, "ledger.json"), JSON.stringify(ledger));
   assert.equal(cli("snapshot", config, "--images", "--scale", "2").status, 0);
@@ -1919,7 +2035,7 @@ test("draft 28: the generated conditions find an overlap only longer texts cause
   r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style>${list("")}`).dir);
   assert.equal(r.status, 0, r.stdout);
   assert.deepEqual(r.result.sweep.issues, []);
-  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "the component's own width"]);
 });
 
 test("draft 28: a block as narrow as its longest word and a row of chips wrap as drawn; a block of a width of its own and a chip's own text wrap with room", browser, () => {
@@ -1987,6 +2103,49 @@ test("draft 28.2: a gap that closes up is a finding though each offset alone is 
     const kept = row3([10, 40, 58], source);
     assert.equal(kept.verdict, "pass", `${source}: ${JSON.stringify(kept.issues)}`);
   }
+});
+
+// The card bench's 764 frame as the check measured it: each landmark's box in the design, then on the page of the
+// control, of the column shift (a 30 px margin before the RAM column moves the four columns before it 15 px left,
+// between the processor and the RAM) and of its clean twin (the row's padding moved 10 px right, every piece with it).
+const CARD_764 = [
+  ["BA-i201-B", [17, 16, 53, 9], [17, 16, 57, 9], [17, 16, 57, 9], [27, 16, 57, 9]],
+  ["EPYC 9374F", [159, 16, 74, 10], [157, 17, 85, 10], [157, 17, 85, 10], [167, 17, 85, 10]],
+  ["3.33", [277, 16, 26, 10], [275, 17, 27, 10], [261, 17, 27, 10], [285, 17, 27, 10]],
+  ["16", [321, 16, 14, 10], [320, 17, 15, 10], [306, 17, 15, 10], [330, 17, 15, 10]],
+  ["×2", [352, 15, 13, 10], [355, 17, 12, 9], [341, 17, 12, 9], [365, 17, 12, 9]],
+  ["32 ядер", [388, 16, 48, 13], [387, 17, 53, 13], [373, 17, 53, 13], [397, 17, 53, 13]],
+  ["64 потока", [387, 38, 62, 10], [387, 38, 66, 10], [373, 38, 66, 10], [397, 38, 66, 10]],
+  ["256 ГБ", [474, 16, 42, 10], [470, 17, 46, 10], [470, 17, 46, 10], [480, 17, 46, 10]],
+  ["DDR3", [475, 38, 35, 10], [471, 38, 39, 10], [471, 38, 39, 10], [481, 38, 39, 10]],
+  ["ECC", [475, 56, 25, 10], [471, 56, 30, 10], [471, 56, 30, 10], [481, 56, 30, 10]],
+  ["2 × 838", [542, 16, 46, 10], [542, 17, 48, 10], [542, 17, 48, 10], [552, 17, 48, 10]],
+  ["SSD", [602, 16, 25, 10], [597, 16, 29, 11], [597, 16, 29, 11], [607, 16, 29, 11]],
+  ["125 898,00 ₽", [663, 16, 82, 12], [648, 15, 99, 15], [648, 15, 99, 15], [658, 15, 99, 15]],
+  ["High performance", [23, 41, 96, 11], [23, 41, 101, 11], [23, 41, 101, 11], [33, 41, 101, 11]],
+  ["MC-LAG 25/25", [33, 88, 78, 12], [31, 91, 85, 9], [31, 91, 85, 9], [41, 91, 85, 9]],
+  ["2+ PSU", [137, 88, 37, 12], [141, 91, 44, 9], [141, 91, 44, 9], [151, 91, 44, 9]],
+  ["Доступно 1", [671, 88, 72, 13], [670, 91, 77, 13], [670, 91, 77, 13], [680, 91, 77, 13]],
+];
+const card764 = (page) => compareFrame({ frame: "card-764", tolerance: 4,
+  ledger: [{ landmark: "125 898,00 ₽", property: "type", status: "proposed", category: "system", reason: "the kit's class for the price" }],
+  spec: { frame: { width: 764, height: 114 }, source: "image boxes",
+    landmarks: CARD_764.map(([text, b]) => ({ text, box: box(...b), ...(/MC-LAG|PSU/.test(text) ? { joined: true } : {}) })) },
+  measured: { root: { width: 764, height: 118 }, landmarks: CARD_764.map((row) => ({ found: true, box: box(...row[page]), align: "left" })) } });
+
+test("doc 44, item 6: columns moved together are read from their own edge, against the column they moved away from; a common shift is not a step", () => {
+  const offsets = (r) => r.issues.filter((i) => ["x", "y"].includes(i.property) && i.status === "fail").map((i) => `${i.landmark} ${i.property} ${Math.round(i.delta)}`);
+  const control = card764(2), shifted = card764(3), common = card764(4);
+  assert.equal(control.verdict, "pending", JSON.stringify(control.issues));
+  // The frequency is 16 px off from the root's left and 15 from its right. Read from the right on that pixel, the four
+  // columns drifted with the page's wider texts, as notes; from its own left edge, it moved 14 px from the processor.
+  assert.equal(shifted.verdict, "fail", JSON.stringify(shifted.notes));
+  assert.deepEqual(offsets(shifted), ["3.33 x -16"]);
+  assert.ok(shifted.causes.some((c) => c.axis === "x" && c.before === "3.33" && c.after === "EPYC 9374F" && Math.round(c.step) === -14), JSON.stringify(shifted.causes));
+  // Every piece 10 px to the right keeps each relation between them: notes, and the verdict the control has.
+  assert.equal(common.verdict, "pending", JSON.stringify(common.issues));
+  assert.deepEqual(offsets(common), []);
+  assert.ok(common.notes.some((n) => n.landmark === "2+ PSU" && n.property === "x" && n.delta === 14), JSON.stringify(common.notes));
 });
 
 // Six texts of a screenshot's spec, each with its ink height in the design and the page.
@@ -2082,6 +2241,12 @@ test("draft 28.2: a generated condition's collision is a candidate: no finding, 
   assert.match(renderHandoff({ frames: [], sweep: { ...sweep, issues: [], generate: false }, status: "pass" }), /^- the generated conditions \(sweep\.generate is false\)/m);
 });
 
+test("a passing journey's handoff names the gap in transition coverage", () => {
+  const handoff = renderHandoff({ status: "pass", journeys: [{ name: "sheet closes", pass: true }] });
+  const limits = handoff.slice(handoff.indexOf("## Not checked by the script"));
+  assert.match(limits, /^- visual continuity during transitions, including brief flashes between sampled states$/m);
+});
+
 test("draft 28.2: a finding the check itself causes is proposed with cause checker, a journey too, and the evidence lists it as disputed with the check", () => {
   const entry = { landmark: "the sheet", property: "journey", cause: "checker", status: "proposed", reason: "the check's own style keeps the sheet from closing: review.md, Checker reproduction" };
   assert.deepEqual(ledgerFaults([entry]), []);
@@ -2138,6 +2303,152 @@ test("draft 28.2: wraps with room needs the text on one line once lifted, inside
   assert.ok(run('<div style="max-width:100px">Dedicated server BA-i201</div>').some((i) => i.landmark === "Dedicated server BA-i201"));
 });
 
+test("a width journey keeps the natural motion preference, animation clock and end event", browser, () => {
+  const f = smallFrame(`<style>aside{position:fixed;top:0;left:0;width:2px;height:2px}
+@media (min-width:400px) and (prefers-reduced-motion:no-preference){aside{animation:blink .3s}}
+@keyframes blink{from{opacity:0}to{opacity:1}}</style>
+<aside></aside><span>Ready</span><output></output><script>
+let started;
+const moving = document.querySelector("aside"), out = document.querySelector("output");
+moving.onanimationstart = () => { started = performance.now(); };
+moving.onanimationend = () => { out.textContent = performance.now() - started >= 200 ? "completed naturally" : "fast-forwarded"; };
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "responsive transition", steps: [
+    { width: 450 }, { text: ["output", "completed naturally"] },
+  ] }] }));
+  const journey = check(f.dir, "--no-sweep").result.journeys[0];
+  assert.ok(journey.pass, JSON.stringify(journey));
+});
+
+test("geometry still moving at the journey timeout is incomplete", browser, () => {
+  const f = smallFrame(`<style>@media (min-width:400px) {main{animation:grow 30s linear}}
+@keyframes grow{from{height:80px}to{height:180px}}</style><span>Ready</span>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "growing", steps: [
+    { width: 450 }, { visible: "main" },
+  ] }] }));
+  const r = check(f.dir, "--no-sweep");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.result.journeys[0].unmeasured, /still running after 1.5 seconds/);
+  assert.equal(r.result.journeys[0].failed, undefined);
+});
+
+test("a placement holds after both participants settle, while a text step can still observe the transition", browser, () => {
+  const f = smallFrame(`<style>body:has(main.start){width:90%}.a,.b{position:relative;display:block;width:20px;height:15px}
+main.start .a{animation:shift 1.35s steps(1,end) forwards}
+@keyframes shift{from{top:0}to{top:40px}}
+main[data-mode=temporary].start .a{animation-direction:reverse}
+main[data-mode=anchor] .a{top:40px}
+main[data-mode=anchor].start .a{animation:none}
+main[data-mode=anchor].start .b{animation:shift .7s steps(1,end) forwards}
+</style><i class="a">A</i><i class="b">B</i><output>Ready</output><script>
+const root=document.querySelector('main'), out=document.querySelector('output');
+root.dataset.mode = location.search.slice(1);
+document.onkeydown=()=>{root.classList.add('start');out.textContent='Moving';};
+root.onanimationend=()=>{out.textContent='Settled';};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["final", "temporary", "anchor"].map((mode) => ({ name: mode, url: "page.html?" + mode, steps: [
+    { press: "Enter" }, { text: ["output", "Moving"] }, { visible: ".a:below(.b)" },
+  ] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, from: 200 }, journeys }));
+  const [final, temporary, anchor] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(final.pass, JSON.stringify(final));
+  for (const wrong of [temporary, anchor]) assert.match(wrong.failed, /step 3.*no .a:below\(.b\) is visible/);
+});
+
+test("a placement waits for chained natural animations under one deadline and ignores a decorative loop", browser, () => {
+  const f = smallFrame(`<style>.key,.anchor{position:relative;display:block;width:30px;height:10px}
+.spark{position:absolute;width:2px;height:2px;animation:spin .2s linear infinite}@keyframes spin{to{transform:rotate(1turn)}}
+</style><i class="key">A<b class="spark"></b></i><i class="anchor">B</i><script>
+const key=document.querySelector(".key"), root=document.querySelector("main"), mode=location.search.slice(1);
+const startsBelow=mode!=="correct";
+key.style.top=startsBelow?"40px":"0px";
+document.onkeydown=async()=>{
+  for (let i=0;i<2;i++) await root.animate({opacity:[1,.99]},mode==="slow"?600:200).finished;
+  key.animate({top:[key.style.top,startsBelow?"0px":"40px"]},{duration:550,easing:"steps(1,end)",fill:"forwards"});
+};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["correct", "wrong", "slow"].map((mode) => ({ name: mode, url: "page.html?" + mode,
+    steps: [{ press: "Enter" }, { visible: ".key:below(.anchor)" }] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const [correct, wrong, slow] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(correct.pass, JSON.stringify(correct));
+  assert.match(wrong.failed, /no .key:below\(.anchor\) is visible/);
+  assert.equal(slow.failed, undefined);
+  assert.match(slow.unmeasured, /after 1.5 seconds/);
+});
+
+test("a sheet may close on a slow transitionend; a finished broken close fails and unfinished motion is unmeasured", browser, () => {
+  const f = smallFrame(`<style>aside{width:40px;height:20px;transition:opacity 1.35s}main.slow aside{transition-duration:30s}
+aside b{display:inline-block;animation:turn .2s infinite}@keyframes turn{to{transform:rotate(1turn)}}</style>
+<aside>Sheet<b>*</b></aside><script>
+const sheet=document.querySelector('aside'), mode=location.search.slice(1);
+document.querySelector('main').className=mode;
+document.onkeydown=()=>{sheet.style.opacity='.4';};
+sheet.ontransitionend=()=>{if(mode!=='broken')sheet.hidden=true;};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["closes", "broken", "slow"].map((mode) => ({ name: mode, url: "page.html?" + mode, steps: [
+    { press: "Escape" }, { hidden: "aside" },
+  ] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const [closed, broken, slow] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(closed.pass, JSON.stringify(closed));
+  assert.match(broken.failed, /aside is still visible/);
+  assert.equal(slow.failed, undefined);
+  assert.match(slow.unmeasured, /unfinished motion after 1.5 seconds/);
+});
+
+test("a focused screenshot distinguishes a temporary flash with identical settled frames", browser, async () => {
+  const { chromium } = createRequire(import.meta.url)(playwright), browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    const sample = async () => {
+      const png = await page.screenshot({ clip: { x: 20, y: 20, width: 1, height: 1 }, animations: "allow" });
+      return page.evaluate(async (base64) => {
+        const image = new Image();
+        image.src = "data:image/png;base64," + base64;
+        await image.decode();
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      }, png.toString("base64"));
+    };
+    // Bracket the screenshot with the chart's own clock. A white final frame cannot serve as an intermediate capture.
+    const phase = () => {
+      const chart = document.querySelector("#chart");
+      const animation = chart.getAnimations().find((a) => a.animationName === "redraw");
+      if (chart.dataset.done || animation?.currentTime >= 750) return "missed";
+      return animation?.playState === "running" && animation.currentTime >= 150 ? "moving" : false;
+    };
+    const sampleMoving = async () => {
+      const observed = await page.waitForFunction(phase, undefined, { polling: "raf", timeout: 2000 });
+      if (await observed.jsonValue() !== "moving") return null;
+      const pixel = await sample();
+      return await page.evaluate(phase) === "moving" ? pixel : null;
+    };
+    for (const flash of [false, true]) {
+      await page.setViewportSize({ width: 300, height: 100 });
+      await page.setContent(`<style>body{margin:0}#chart{height:50px;background:white}
+@keyframes redraw{0%,85%{background:${flash ? "red" : "white"}}100%{background:white}}
+@media(min-width:400px) and (prefers-reduced-motion:no-preference){#chart{animation:redraw 1s steps(1,end)}}
+</style><div id="chart"></div><script>
+document.querySelector("#chart").addEventListener("animationend", (e) => { e.currentTarget.dataset.done = "yes"; }, { once: true });
+</script>`);
+      await page.setViewportSize({ width: 450, height: 100 });
+      const moving = await sampleMoving();
+      assert.notEqual(moving, null, "The intermediate PNG missed the capture window.");
+      assert.deepEqual(moving, flash ? [255, 0, 0] : [255, 255, 255]);
+      await page.waitForFunction(() => document.querySelector("#chart").dataset.done, undefined, { timeout: 2000 });
+      assert.equal(await sampleMoving(), null, "A late capture must remain unmeasured.");
+      assert.deepEqual(await sample(), [255, 255, 255]);
+    }
+  } finally { await browser.close(); }
+});
+
 test("draft 28.2: journeys keep the page's transitions: a sheet that hides itself when its closing transition ends closes; one that never closes fails", browser, () => {
   let f;
   const run = (closes, ledger = []) => {
@@ -2167,7 +2478,7 @@ test("draft 28.2: the generated conditions double a list's rows, nested ones too
   // Buttons side by side are not a list: doubled, they would run out of the card.
   let r = check(smallFrame('<div style="display:flex;gap:8px"><button class="btn" style="white-space:nowrap">Configure</button><button class="btn" style="white-space:nowrap">Order</button></div>').dir);
   assert.deepEqual(r.result.sweep.issues.filter((i) => i.story === "the frames' page, entries doubled"), [], JSON.stringify(r.result.sweep.issues));
-  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled"]);
+  assert.deepEqual(r.result.sweep.stories.filter((st) => st.generated).map((st) => st.name), ["the frames' page, texts stretched", "the frames' page, entries doubled", "the component's own width"]);
   // Rows of a list, each with its disks in a box of two lines: doubled, each row's disks are doubled too, and cut.
   const disks = '<div style="height:48px;overflow:hidden"><div class="disk">A</div><div class="disk">B</div></div>';
   r = check(smallFrame(`<style>main{height:auto;min-height:80px}</style><div class="row">${disks}</div><div class="row">${disks}</div>`).dir);
@@ -2206,13 +2517,14 @@ test("draft 28.2: with no ledger named, deviations.json beside design.json is th
 });
 
 test("draft 28.2: a journey with sameAsFresh ends as a fresh load draws the component; an observer left on removed elements does not", browser, () => {
-  // A row that stacks below 400 px by a ResizeObserver; emptied and restored, it is observed again, or not.
+  // A row that stacks below 400 px by a ResizeObserver; emptied and restored, it is observed again, or not. 44.3: the
+  // kept build lets go of the row leaving (an observer left on it fails the journey, below).
   const run = (rewatch) => {
     const f = smallFrame(`<div id="host"></div><button id="toggle">Toggle</button>
 <style>.row{display:flex;gap:8px}.row[data-mode=stack]{flex-direction:column}</style>
-<script>const host = document.getElementById("host"); let shown = true;
-const render = () => { host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
-const watch = () => { const row = host.querySelector(".row"); if (row) new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row); };
+<script>const host = document.getElementById("host"); let shown = true, observer;
+const render = () => { ${rewatch ? "observer?.disconnect(); " : ""}host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
+const watch = () => { const row = host.querySelector(".row"); if (row) (observer = new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; })).observe(row); };
 render(); watch();
 document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${rewatch ? "watch();" : ""} };</script>`);
     const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
@@ -2222,7 +2534,10 @@ document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${
   const kept = run(true);
   assert.ok(kept.length === 1 && kept[0].pass, JSON.stringify(kept));
   const stale = run(false);
-  assert.ok(!stale[0].pass && /^after its steps, the component differs from a fresh load at 300 px: .*height/.test(stale[0].failed), JSON.stringify(stale));
+  // The restored row is never observed, so it keeps the line where a fresh load stacks it; the observer left on the
+  // removed row is a note beside it (44.3).
+  assert.ok(!stale[0].pass && /^after its steps, the component differs from a fresh load at 300 px: div height 24, fresh 56/.test(stale[0].failed), JSON.stringify(stale));
+  assert.deepEqual(stale[0].issues.map((i) => [i.landmark, i.kind, i.status]), [["div.row", "stale observer", "note"]]);
 });
 
 test("draft 28.2: the console is a digest of fifteen lines at most: what changed since the round before, each frame's new findings first, the rest as a count", () => {
@@ -2438,6 +2753,110 @@ test("0.46.1, C2: a 20 px margin planted above the planted card's footer, below 
   assert.match(r.stdout, /MC-LAG 25\/25 y: 118 → \d+ \(-\d+; \+\d+ after the ledger\)/);
 });
 
+// ------------------------------------------------------------------ 44, item 2: the component's own width
+
+// The catalogue card with its frames sized by the window (no host): each frame on story.html in a container of its
+// width, as a builder who sizes the frames by the window writes it. The start code picks its layout by matchMedia.
+const CATALOGUE = path.join(HERE, "design-to-code/cases/catalogue-card");
+function catalogueArm(build) {
+  const dir = tmp();
+  fs.cpSync(path.join(CATALOGUE, "project"), dir, { recursive: true });
+  if (build === "reference") for (const f of ["card.js", "card.css"]) fs.copyFileSync(path.join(CATALOGUE, "reference", f), path.join(dir, f));
+  const frames = [["card-764", 764], ["card-375", 375]].map(([name, width]) => ({ name, width, url: `story.html?w=${width}`,
+    spec: path.join(CATALOGUE, "pack", name, "spec.json"), reference: path.join(CATALOGUE, "pack", name, "reference.png") }));
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "story.html?w=764", root: ".card", frames, sweep: { from: 375, to: 764 } }));
+  return dir;
+}
+
+test("44.2: the component's own width: the catalogue's start code, laid out by the window, is a candidate at 375 px; the reference, by its own width, is none", browser, () => {
+  // Before: the start code raised no candidate with frames sized by the window, since the window and the card's
+  // container are one there; in a 1280 px window with its container held at 375 px, matchMedia picks the wide layout.
+  let r = check(catalogueArm("start"), "--quick");
+  const own = r.result.sweep.issues.filter((i) => i.story === "the component's own width");
+  assert.deepEqual(own.map((i) => [i.property, i.landmark, i.ranges, i.status]), [["window", "card-375", "375", "candidate"]], JSON.stringify(r.result.sweep.issues));
+  assert.match(own[0].actual, /^laid out by the window, not by its own width: in a 1280 px window, its container held at the 375 px it had at 375, another layout/);
+  assert.match(r.stdout, /unanswered: window “card-375” \(the component's own width, 375\)/);
+  r = check(catalogueArm("reference"), "--quick");
+  assert.deepEqual(r.result.sweep.issues.filter((i) => i.status === "candidate"), [], JSON.stringify(r.result.sweep.issues));
+  assert.ok(r.result.sweep.stories.some((st) => st.name === "the component's own width" && st.generated && !st.unmeasured), JSON.stringify(r.result.sweep.stories));
+});
+
+// A page with frames at 900 and 375 px, named "wide" and "narrow", sized by the window; `html` is the body's content.
+function windowFrames(html, { root = ".card", review = "" } = {}) {
+  const dir = tmp(), config = path.join(dir, "design.json");
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0;font:20px/24px monospace}.card{background:white}.row{display:flex;gap:8px}</style>${html}`);
+  fs.writeFileSync(path.join(dir, "review.md"), REVIEW + review);
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root, ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+    frames: [["wide", 900], ["narrow", 375]].map(([name, width]) => ({ name, width, spec: `${name}.json`, reference: `${name}.png` })),
+    sweep: { from: 375, to: 900, step: 100, stories: [{ name: "dense", url: "page.html?dense" }] } }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  return dir;
+}
+const MEDIA = "<style>@media (max-width: 600px) { .row { flex-direction: column } }</style>";
+const ROW = '<div class="row"><span>Ready</span><span>Steady</span></div>';
+const ownWidthOf = (r) => ({ candidates: r.result.sweep.issues.filter((i) => i.story === "the component's own width").map((i) => [i.property, i.landmark, i.status, i.answer ?? null]),
+  notes: r.result.sweep.stories.find((st) => st.name === "the component's own width").notes ?? [] });
+
+test("44.2: an own-width answer names its frame as the check prints it, window “<frame>”; a line that only holds the frame's name answers nothing", browser, () => {
+  const answer = (line) => ownWidthOf(check(windowFrames(`<main><div class="card">${MEDIA}${ROW}</div></main>`, { review: `\n## Candidates\n\n${line}\n` }), "--quick")).candidates;
+  // Before (the verifier): this answered the frame "narrow", the reason holding its name.
+  assert.deepEqual(answer("- Ready Re × Go G: the label is at most 8 characters, so it holds in a narrow column (api/types.ts)"), [["window", "narrow", "candidate", null]]);
+  for (const key of ["window “narrow”", 'window "narrow"', "`window “narrow”` (the component's own width, 375)"]) {
+    assert.deepEqual(answer(`- ${key}: the card is shown only in the 375 px column (layout.ts)`), [["window", "narrow", "candidate", "the card is shown only in the 375 px column (layout.ts)"]], key);
+  }
+});
+
+test("44.2: the generated conditions' answers name the candidate at the head of the line, not anywhere in it", browser, () => {
+  // An answer for another text that holds the landmark in its reason. Before: it answered the candidate.
+  const f = smallFrame('<div style="display:flex"><span style="flex:none">Ready steady go now</span></div>');
+  let r = check(f.dir, "--quick");
+  const [cand] = r.result.sweep.issues.filter((i) => i.status === "candidate" && i.property === "outside");
+  assert.ok(cand, JSON.stringify(r.result.sweep.issues));
+  const candidates = (line) => fs.writeFileSync(path.join(f.dir, "review.md"), `${REVIEW}\n## Candidates\n\n${line}\n`);
+  candidates(`- Price: unlike ${cand.landmark}, the price is at most 9 characters (api/types.ts)`);
+  r = check(f.dir, "--quick");
+  assert.ok(r.result.sweep.issues.filter((i) => i.landmark === cand.landmark && i.status === "candidate").every((i) => !i.answer), JSON.stringify(r.result.sweep.issues));
+  // The landmark at the head, or the property and the landmark as printed, with the condition in parentheses: answered.
+  for (const head of [cand.landmark, `outside “${cand.landmark}” (the frames' page, texts stretched, 300)`]) {
+    candidates(`- ${head}: the label is 19 characters at most (the contract's type)`);
+    r = check(f.dir, "--quick");
+    const answered = r.result.sweep.issues.find((i) => i.landmark === cand.landmark && i.status === "candidate");
+    assert.equal(answered.answer, "the label is 19 characters at most (the contract's type)", head);
+  }
+});
+
+test("44.2: the page itself in the page's body is not tried; where the hold cannot give the root its own width, the condition measures nothing there", browser, () => {
+  // Before (the verifier): a page laid out by a media query, its root in the body, was a candidate at 375 px.
+  let r = check(windowFrames(`<main class="card">${MEDIA}${ROW}</main>`, { root: "main" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window"] });
+  // Before (the verifier): a container-query component on a page whose sidebar hides below 700 px. Its container held
+  // at 375 px in the wide window, the sidebar came back and the root went from 375 to 135 px: a candidate.
+  const sidebar = "<style>.shell{display:flex}.side{width:240px;flex:none}@media (max-width: 700px){.side{display:none}}main{container-type:inline-size;flex:1;min-width:0}@container (width < 600px){.row{flex-direction:column}}</style>";
+  r = check(windowFrames(`${sidebar}<div class="shell"><aside class="side">Filters</aside><main class="card">${ROW}</main></div>`, { root: "main" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not measured at 375 px: with its container held at 375 px in a 1280 px window, the root is 135 px wide, not the 375 it has at 375; what else the container holds there (a sidebar the narrower window hides) takes the rest"] });
+  assert.ok(!r.result.sweep.stories.find((st) => st.name === "the component's own width").unmeasured, "a note, not a story unmeasured: the page decides it");
+  // The same component in a column of its own, laid out by the window: still a candidate.
+  r = check(windowFrames(`<main><div class="card">${MEDIA}${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+});
+
+test("44.2: a root whose own width follows the window is a candidate where the hold cannot give it its width; a component in the body is tried, the page itself is not", browser, () => {
+  // Before (the verifier of doc 44): a card laid out by a media query that also sets its own width by the window
+  // (600 px above 600, or at most 90vw) was not measured, as if a sidebar took its room. Nothing else is in its
+  // container: the window sets its width, which is the defect.
+  let r = check(windowFrames(`<main><div class="card">${MEDIA}<style>@media (min-width: 601px) { .card { width: 600px } }</style>${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+  r = check(windowFrames(`<main><div class="card" style="max-width: 90vw">${MEDIA}${ROW}</div></main>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "wide", "candidate", null], ["window", "narrow", "candidate", null]], notes: [] });
+  // Before: a component placed directly in the body was not tried, as the page is not.
+  r = check(windowFrames(`<div class="card">${MEDIA}${ROW}</div>`), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [["window", "narrow", "candidate", null]], notes: [] });
+  // The page's top layout, which holds main, directly in the body: the page itself, not tried.
+  r = check(windowFrames(`<div class="app"><main class="card">${MEDIA}${ROW}</main></div>`, { root: ".app" }), "--quick");
+  assert.deepEqual(ownWidthOf(r), { candidates: [], notes: ["not tried at 900 and 375 px: the root is the page itself, main or what holds it in the page's body, and a page is laid out by the window"] });
+});
+
 // The limit: a text on the page in other words is unmatched, so its entry could carry a collapse with another cause.
 // The reworded text is page text the spec lacks, which keeps the frame incomplete until an entry names it.
 test("0.46.1: a missing text that is on the page in other words leaves the frame incomplete, whatever it carries", browser, () => {
@@ -2519,4 +2938,932 @@ test("draft 28.2: pending means proposals wait for the owner; a page snapshot us
   const snap = compareFrame({ frame: "card", spec: { ...SPEC, source: "page snapshot" }, measured: measured() });
   assert.match(renderHandoff({ frames: [snap], status: "pass" }), /^- card: pass — no findings.*\n  Its spec is a snapshot of the page \(`design\.mjs snapshot`\): outside a review it compares the page with itself/m);
   assert.doesNotMatch(renderHandoff({ frames: [compare({})], status: "pass" }), /compares the page with itself/);
+});
+
+// ------------------------------------------------------------------ 44: the return classes into the checker
+
+// Item 1: a complete check is incomplete until a journey on the consumer's page carries sameAsFresh and takes a
+// lifecycle, or design.json gives the reason the product has none.
+const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle" in design\.json with the reason the product can cause none/;
+const STORY_URL = /no journey with "sameAsFresh": true runs on the consumer's page: .* in one, on a consumer page of its own `url` that no frame or story shows \(the page `url` names draws the frames, a story page\)/;
+const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps observed changed data in a declared dataFields text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's/;
+test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh and takes a lifecycle, or design.json gives the reason there is none", browser, () => {
+  // A button replaces the component root.
+  const f = smallFrame('<div id="c"><span>Ready</span></div><button id="again">Again</button><script>document.getElementById("again").onclick = () => { const root = document.querySelector("main"); root.outerHTML = root.outerHTML; };</script>');
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  assert.equal(typeof lifecycle, "string", "the fixtures state their reason");
+  for (const name of ["consumer.html", "host.html"]) fs.copyFileSync(f.page, path.join(f.dir, name));
+  const run = (config) => { fs.writeFileSync(f.config, JSON.stringify(config)); return check(f.dir); };
+  const fresh = (extra = {}) => ({ name: "remounted", sameAsFresh: true, steps: [{ width: 300 }, { click: "#again" }, { visible: "main span" }], ...extra });
+  // None: incomplete, and the gap says what to do.
+  const none = run(cfg);
+  assert.equal(none.status, 2, none.stdout);
+  assert.match(none.stdout, LIFECYCLE);
+  assert.ok(none.result.gaps.some((g) => LIFECYCLE.test(g)), JSON.stringify(none.result.gaps));
+  // A journey without sameAsFresh, or one that says false, is not one.
+  assert.equal(run({ ...cfg, journeys: [{ ...fresh(), sameAsFresh: false }] }).status, 2);
+  // On the page `url` names, whatever its query, taking a lifecycle: complete; the journey says what it took.
+  const taken = run({ ...cfg, journeys: [fresh({ url: "page.html?other" })] });
+  assert.equal(taken.status, 0, taken.stdout);
+  assert.deepEqual(taken.result.journeys.find((j) => j.name === "remounted").lifecycle, ["mount"]);
+  // Before (the verifier of doc 44): a journey that only sets the window's width and sees the component counted.
+  const idle = run({ ...cfg, journeys: [fresh({ steps: [{ width: 300 }, { visible: "main" }] })] });
+  assert.equal(idle.status, 2, idle.stdout);
+  assert.deepEqual(idle.result.journeys[0].lifecycle, []);
+  assert.ok(idle.result.gaps.some((g) => UNTAKEN.test(g)), JSON.stringify(idle.result.gaps));
+  // The frames on a story page, `url` the consumer: a journey on the story page is not the consumer's; one on `url`,
+  // or on a page of its own no frame or story shows, is.
+  const story = { ...cfg, url: "consumer.html", frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })) };
+  assert.match(run({ ...story, journeys: [fresh({ url: "page.html" })] }).stdout, LIFECYCLE);
+  assert.equal(run({ ...story, journeys: [fresh()] }).status, 0);
+  assert.equal(run({ ...story, journeys: [fresh({ url: "host.html" })] }).status, 0);
+  // Before (the verifier): `url` itself a story page, the frames drawn there by a url of their own or by a host, and a
+  // journey on it counted. Now only a page of the journey's own that no frame or story shows does.
+  for (const onStory of [{ ...cfg, host: "main" }, { ...cfg, host: "main", frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })) }]) {
+    const r = run({ ...onStory, journeys: [fresh()] });
+    assert.equal(r.status, 2, r.stdout);
+    assert.ok(r.result.gaps.some((g) => STORY_URL.test(g)), JSON.stringify(r.result.gaps));
+    const own = run({ ...onStory, journeys: [fresh({ url: "host.html" })] });
+    assert.equal(own.status, 0, own.stdout);
+  }
+  // An explicit frame URL equal to the inherited one does not change its meaning.
+  assert.equal(run({ ...cfg, frames: cfg.frames.map((fr) => ({ ...fr, url: "page.html" })), journeys: [fresh()] }).status, 0);
+  // The product has none: "lifecycle" gives the reason, and the handoff prints it for the owner.
+  assert.equal(run({ ...cfg, lifecycle: "no data changes: the card renders once" }).status, 0);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^- a lifecycle in a journey \(mount and unmount, data emptied and refilled, the parent's width changed\): design\.json says the product can cause none: “no data changes: the card renders once”$/m);
+  // Before: "lifecycle": false was the exit, with no reason. Now it, true or an empty reason stops the launch.
+  for (const value of [false, true, " "]) {
+    const bad = run({ ...cfg, lifecycle: value });
+    assert.equal(bad.status, 2);
+    assert.match(bad.stderr, /"lifecycle" gives the reason the product can cause no lifecycle, as "static" gives its: "lifecycle": "no data changes: the card renders once"/);
+  }
+  // A partial check asks for none.
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  assert.doesNotMatch(check(f.dir, "--quick").stdout, LIFECYCLE);
+});
+
+test("44.1: only a declared data field with changed text establishes a data lifecycle", browser, () => {
+  const f = smallFrame(`<span id="record">Quantity <b>1</b></span><button id="refresh">Refresh</button><button id="tip">Show tip</button><span id="status">Idle</span>
+<script>
+const record = document.querySelector("#record b"), tip = document.getElementById("tip"), status = document.getElementById("status");
+document.getElementById("refresh").onclick = () => { record.textContent = record.textContent === "1" ? "2" : "1"; };
+tip.onclick = () => { const popup = document.getElementById("popup"); if (popup) { popup.remove(); tip.textContent = "Show tip"; status.textContent = "Idle"; } else { tip.insertAdjacentHTML("afterend", '<main id="popup">Hint</main>'); tip.textContent = "Hide tip"; status.textContent = "Showing"; } };
+</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (steps, dataFields) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change", sameAsFresh: true, steps, ...(dataFields ? { dataFields } : {}) }] })); return check(f.dir); };
+  const tip = run([{ click: "#tip" }, { text: ["#tip", "Hide tip"] }, { text: ["#status", "Showing"] }, { visible: "#popup" }, { click: "#tip" }, { hidden: "#popup" }]);
+  assert.equal(tip.status, 2, tip.stdout);
+  assert.deepEqual(tip.result.journeys[0].lifecycle, []);
+  const steps = [{ click: "#refresh" }, { text: ["#record", "Quantity 2"] }, { click: "#refresh" }, { text: ["#record", "Quantity 1"] }];
+  const undeclared = run(steps);
+  assert.equal(undeclared.status, 2, undeclared.stdout);
+  assert.deepEqual(undeclared.result.journeys[0].lifecycle, []);
+  const data = run(steps, ["#record"]);
+  assert.equal(data.status, 0, data.stdout);
+  assert.deepEqual(data.result.journeys[0].lifecycle, ["data"]);
+  const html = fs.readFileSync(f.page, "utf8").replace('record.textContent = record.textContent === "1" ? "2" : "1";', 'record.innerHTML = record.innerHTML;');
+  fs.writeFileSync(f.page, html);
+  const noop = run([{ click: "#refresh" }, { text: ["#record", "Quantity 1"] }], ["#record"]);
+  assert.equal(noop.status, 2, noop.stdout);
+  assert.deepEqual(noop.result.journeys[0].lifecycle, []);
+});
+
+test("44.1: a data field with multiple matches observes the same elements without guessing identity", browser, () => {
+  const f = smallFrame('<div class="number">Quantity 1</div><div class="number" id="n">Quantity 2</div>');
+  fs.appendFileSync(f.page, `<button id="change">Change</button><button id="noop">Noop</button><button id="reorder">Reorder</button><button id="swap">Swap</button><button id="replace">Replace</button>
+<script>
+const rows = () => [...document.querySelectorAll(".number")];
+document.getElementById("change").onclick = () => { const n = document.getElementById("n"); n.textContent = n.textContent === "Quantity 2" ? "Quantity 3" : "Quantity 2"; };
+document.getElementById("noop").onclick = () => { const n = document.getElementById("n"); n.textContent = n.textContent; };
+document.getElementById("reorder").onclick = () => { const [a, b] = rows(); a.before(b); };
+document.getElementById("swap").onclick = () => { const [a, b] = rows(), x = a.textContent; a.textContent = b.textContent; b.textContent = x; };
+document.getElementById("replace").onclick = () => { const n = document.getElementById("n"), next = n.cloneNode(true); next.textContent = n.textContent === "Quantity 2" ? "Quantity 3" : "Quantity 2"; n.replaceWith(next); };
+</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (steps) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, generate: false }, journeys: [{ name: "rows", sameAsFresh: true, dataFields: [".number"], steps }] })); return check(f.dir); };
+  const expect = (value) => ({ text: [".number", value] });
+  const clean = run([expect("Quantity 2")]);
+  assert.equal(clean.status, 2, clean.stdout);
+  assert.deepEqual(clean.result.journeys[0].lifecycle, []);
+  const changed = run([{ click: "#change" }, expect("Quantity 3"), { click: "#change" }, expect("Quantity 2")]);
+  assert.equal(changed.status, 0, changed.stdout);
+  assert.deepEqual(changed.result.journeys[0].lifecycle, ["data"]);
+  for (const action of ["noop", "reorder", "swap", "replace"]) {
+    const value = action === "replace" ? "Quantity 3" : "Quantity 2";
+    const result = run([{ click: `#${action}` }, expect(value), { click: `#${action}` }, expect("Quantity 2")]);
+    assert.equal(result.status, 2, `${action}: ${result.stdout}`);
+    assert.deepEqual(result.result.journeys[0].lifecycle, [], action);
+  }
+});
+
+test("44.1: visibility changes of the root count, and losing a choice fails its expectation", browser, () => {
+  const f = smallFrame('<span>Ready</span>');
+  f.write(`<main><span id="choice">Ready</span></main><button id="toggle">Toggle</button><button id="choose">Choose</button><button id="refresh">Refresh</button>
+<script>
+const root = document.querySelector("main"), choice = document.getElementById("choice");
+document.getElementById("toggle").onclick = () => root.hidden = !root.hidden;
+document.getElementById("choose").onclick = () => choice.textContent = "Selected";
+document.getElementById("refresh").onclick = () => choice.textContent = "Ready";
+</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (steps) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change", sameAsFresh: true, steps }] })); return check(f.dir, "--no-sweep").result.journeys[0]; };
+  const toggled = run([{ click: "#toggle" }, { hidden: "main" }, { click: "#toggle" }, { visible: "main" }]);
+  assert.equal(toggled.pass, true, JSON.stringify(toggled));
+  assert.deepEqual(toggled.lifecycle, ["mount"]);
+  const lost = run([{ click: "#choose" }, { text: ["#choice", "Selected"] }, { click: "#refresh" }, { text: ["#choice", "Selected"] }]);
+  assert.equal(lost.pass, false, JSON.stringify(lost));
+  assert.match(lost.failed, /Selected/);
+});
+
+test("44.1: story host stays on the frame page; consumer journeys use their viewport", browser, () => {
+  const f = smallFrame('<span>Ready</span><button id="again">Again</button><script>document.getElementById("again").onclick = () => { const root = document.querySelector("main"); root.outerHTML = root.outerHTML; };</script>');
+  const consumer = fs.readFileSync(f.page, "utf8");
+  fs.writeFileSync(path.join(f.dir, "consumer.html"), consumer);
+  fs.writeFileSync(f.page, consumer.replace("<main>", '<div id="story-host"><main>').replace("</main>", "</main></div>"));
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journey = { name: "consumer", url: "consumer.html", sameAsFresh: true, steps: [{ click: "#again" }, { visible: "main span" }] };
+  const run = (c) => { fs.writeFileSync(f.config, JSON.stringify(c)); return check(f.dir); };
+  const story = { ...cfg, host: "#story-host" };
+  const result = run({ ...story, journeys: [journey] });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(result.result.journeys[0].lifecycle, ["mount"]);
+  assert.equal(run({ ...story, journeys: [{ ...journey, url: "page.html" }] }).status, 2);
+  // Hash and query can render a different route on the same HTML file.
+  fs.writeFileSync(f.page, consumer.replace("</main>", `</main><script>if (location.hash !== "#consumer" && location.search !== "?consumer") { const host = document.createElement("div"); host.id = "story-host"; document.body.append(host); host.append(document.querySelector("main")); }</script>`));
+  for (const url of ["page.html#consumer", "page.html?consumer"]) {
+    const routed = run({ ...story, journeys: [{ ...journey, url, steps: [{ width: 300 }, ...journey.steps] }] });
+    assert.equal(routed.status, 0, routed.stdout + routed.stderr);
+    assert.deepEqual(routed.result.journeys[0].lifecycle, ["mount"]);
+  }
+});
+
+test("a journey on a registered sweep URL sizes the host; separate consumer routes and clipped popovers retain their checks", browser, () => {
+  const dir = tmp(), config = path.join(dir, "design.json"), story = "page.html?view=dense#story";
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0}#host{width:500px}
+#tip{position:fixed;left:0;top:-16px;width:40px;height:32px}</style>
+<div id="host"><main>Ready<output></output><aside role="tooltip" id="tip" hidden>Tip</aside></main></div>
+<script>
+if (location.hash === "#consumer" || location.search === "?view=consumer") document.querySelector("#host").removeAttribute("id");
+document.onkeydown = (e) => {
+  if (e.key === "c") document.querySelector("#tip").hidden = false;
+  else document.querySelector("output").textContent = innerWidth + "/" + (document.querySelector("#host")?.clientWidth ?? "none");
+};
+</script>`);
+  const size = (expected) => [{ press: "p" }, { text: ["output", expected] }];
+  const journeys = [
+    { name: "hosted story", url: story, steps: [...size("700/300"), { width: 400 }, ...size("700/400")] },
+    ...["page.html?view=dense#consumer", "page.html?view=consumer#story"].map((url) => ({
+      name: url, url, steps: [...size("300/none"), { width: 400 }, ...size("400/none")],
+    })),
+    { name: "clipped tooltip", url: story, steps: [{ press: "c" }, { visible: "#tip" }] },
+  ];
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", host: "#host", viewport: 700,
+    frames: [{ name: "default", width: 300, spec: "frame.json", reference: "frame.png" }],
+    sweep: { from: 300, to: 400, stories: [{ name: "dense", url: story }] }, journeys }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const r = check(dir, "--no-sweep");
+  const [hosted, hashConsumer, queryConsumer, clipped] = r.result.journeys;
+  for (const j of [hosted, hashConsumer, queryConsumer]) assert.ok(j.pass, JSON.stringify(j));
+  assert.match(clipped.failed, /#tip is open but 16 px of it is outside the window/);
+});
+
+// Item 1: the parent's width changed by a step (a sidebar opened) is a lifecycle; the window's width is not.
+test("44.1: a step that resizes the component's container takes a lifecycle; a width step alone does not", browser, () => {
+  const f = smallFrame('<style>main{width:auto;max-width:300px}#col{width:100%}#col.narrow{width:150px}</style><div id="col"><div class="card"><span>Ready</span></div></div><button id="side">Side</button><script>document.getElementById("side").onclick = () => document.getElementById("col").classList.toggle("narrow");</script>');
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const took = (steps) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, root: ".card", journeys: [{ name: "side", sameAsFresh: true, steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "side").lifecycle;
+  };
+  assert.deepEqual(took([{ click: "#side" }, { visible: ".card" }, { click: "#side" }, { visible: ".card" }]), ["parent width"]);
+  assert.deepEqual(took([{ width: 200 }, { visible: ".card" }, { width: 300 }, { visible: ".card" }]), []);
+});
+
+test("a viewport transition completing during a passive expectation cannot supply a parent lifecycle", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>#column{width:300px;transition:width .6s linear .2s}@media(min-width:400px){#column{width:400px}}</style>
+<div id="column"><main><span>Ready</span></main></div><button id="side">Side</button><button id="noop">No change</button>
+<script>document.querySelector("#side").onclick = () => document.querySelector("#column").style.width = "380px";</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (extra, first = [{ visible: "main" }]) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "resize", sameAsFresh: true,
+      steps: [{ width: 450 }, ...first, ...extra] }] }));
+    return check(f.dir).result;
+  };
+  const viewport = run([]);
+  assert.deepEqual(viewport.journeys[0].lifecycle, []);
+  assert.ok(viewport.gaps.some((g) => /took no lifecycle/.test(g)), JSON.stringify(viewport.gaps));
+  const noop = run([{ click: "#noop" }, { wait: 900 }, { visible: "main" }], []);
+  assert.deepEqual(noop.journeys[0].lifecycle, []);
+  const byUser = run([{ click: "#side" }, { visible: "main" }]);
+  assert.ok(byUser.journeys[0].lifecycle.includes("parent width"), JSON.stringify(byUser.journeys[0]));
+});
+
+test("a flex sidebar can resize the column from the viewport or from a control; its decorative loop does neither", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>.layout{display:flex}.column{flex:1;min-width:0}aside{flex:none;width:0;transition:width .4s linear .3s}
+@media(min-width:400px){aside{width:60px}}aside.open{width:90px}
+aside{animation:pulse .2s infinite alternate}@keyframes pulse{from{opacity:.8}to{opacity:1}}
+main span{display:block;height:12px}</style><div class="layout"><div class="column"><main><span class="a">A</span>
+<span class="b">B</span></main></div><aside></aside></div><button id="noop">Nothing</button><button id="side">Side</button>
+<script>side.onclick=()=>document.querySelector("aside").classList.toggle("open")</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const atWidth = { width: 450 }, placement = { visible: ".b:below(.a)" };
+  const journeys = [
+    { name: "no independent resize", sameAsFresh: true, steps: [atWidth, { click: "#noop" }, { wait: 800 }, placement] },
+    { name: "sidebar resized", sameAsFresh: true, steps: [atWidth, placement, { click: "#side" }, { wait: 800 }, placement,
+      { click: "#side" }, { wait: 800 }, placement] },
+  ];
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const result = check(f.dir, "--no-sweep").result.journeys;
+  const noop = result.find((j) => j.name === journeys[0].name), side = result.find((j) => j.name === journeys[1].name);
+  assert.ok(noop.pass, JSON.stringify(noop));
+  assert.deepEqual(noop.lifecycle, []);
+  assert.ok(side.pass, JSON.stringify(side));
+  assert.deepEqual(side.lifecycle, ["parent width"]);
+});
+
+test("nested sidebar content sets its intrinsic width; viewport-only, noop and actual toggles stay distinct", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>.layout{display:flex}.col{flex:1;min-width:0}.sidebar{flex:none}.inner{width:50px;height:10px;transition:width .6s linear .2s}
+@media(min-width:400px){.inner{width:150px}}.inner.open{width:200px}main{width:100%}main span{display:block}
+.floating{position:absolute}.contained{contain:size;height:0;overflow:hidden}.decoration{height:1px;animation:pulse 20s linear infinite}
+.spinner{display:inline-block;animation:spin 20s linear infinite}@keyframes spin{to{transform:rotate(1turn)}}
+@keyframes pulse{from{width:1px}to{width:100px}}</style>
+<div class="layout"><div class="col"><main><span class="a">One</span><span class="b">Two</span></main></div>
+<aside class="sidebar"><div><div class="inner"></div><b class="spinner">*</b></div>
+<div class="floating"><div class="decoration"></div></div><div class="contained"><div class="decoration"></div></div></aside></div>
+<button id="noop">No change</button><button id="side">Side</button>
+<script>side.onclick=()=>document.querySelector(".inner").classList.toggle("open")</script>`);
+  const { frames, root, url } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const cfg = { url, root, frames, static: "one reference" };
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  const snap = cli("snapshot", f.config, "--images", "--force");
+  assert.equal(snap.status, 0, snap.stderr);
+  const placement = { visible: ".b:below(.a)" }, relax = { wait: 900 };
+  const viewport = (after) => [{ width: 450 }, ...after, relax, placement, { width: 300 }, relax, placement];
+  const cases = [
+    ["viewport only", viewport([]), 2, []],
+    ["viewport and noop", viewport([{ click: "#noop" }]), 2, []],
+    ["real side change", [{ click: "#side" }, relax, placement, { click: "#side" }, relax, placement], 0, ["parent width"]],
+  ];
+  for (const [name, steps, status, lifecycle] of cases) {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name, steps, sameAsFresh: true }] }));
+    const r = check(f.dir);
+    assert.equal(r.status, status, r.stdout);
+    assert.ok(r.result.journeys[0].pass, JSON.stringify(r.result.journeys[0]));
+    assert.deepEqual(r.result.journeys[0].lifecycle, lifecycle);
+    if (status === 2) assert.match(r.result.gaps.join(" "), /took no lifecycle/);
+  }
+});
+
+// A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer
+// lets go of the row leaving; `rewatch`: the row mounted again is observed.
+function listPage({ disconnect, rewatch }) {
+  const f = smallFrame(`<style>main{width:auto;max-width:600px;height:auto}.row{display:flex;gap:8px}.row[data-mode=stack]{flex-direction:column}</style>
+<div id="host"></div><button id="toggle">Toggle</button>
+<script>const host = document.getElementById("host"); let shown = true, observer;
+const render = () => { ${disconnect ? "observer?.disconnect(); " : ""}host.innerHTML = shown ? '<div class="row" data-mode="line"><span>Ready</span><span>Steady</span></div>' : "<p>None</p>"; };
+const watch = () => { const row = host.querySelector(".row"); if (row) (observer = new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; })).observe(row); };
+render(); watch();
+document.getElementById("toggle").onclick = () => { shown = !shown; render(); ${rewatch ? "watch();" : ""} };</script>`, [{ name: "wide", width: 500 }, { name: "narrow", width: 320 }]);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  return (journey) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "emptied and restored", steps: [{ click: "#toggle" }, { visible: "main p" }, { click: "#toggle" }, { visible: ".row" }], ...journey }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "emptied and restored");
+  };
+}
+
+test("44.1: after a sameAsFresh journey the check resizes the page through the frames' widths, each held against a fresh load", browser, () => {
+  // The restored row is not observed: at the journey's width (500) it is drawn as fresh; resized to 320 it stays a line.
+  const once = listPage({ disconnect: true, rewatch: false })({ sameAsFresh: true });
+  assert.equal(once.pass, false, JSON.stringify(once));
+  assert.match(once.failed, /^after its steps and a resize to 320 px, the component differs from a fresh load at 320 px: /);
+  const kept = listPage({ disconnect: true, rewatch: true })({ sameAsFresh: true });
+  assert.ok(kept.pass, JSON.stringify(kept));
+  assert.deepEqual(kept.asFresh, [500, 320], "the journey's own width, then each other frame's");
+  // Without sameAsFresh, nothing is resized.
+  const plain = listPage({ disconnect: true, rewatch: false })({});
+  assert.ok(plain.pass && !plain.asFresh, JSON.stringify(plain));
+});
+
+// Item 3: ResizeObserver and matchMedia are wrapped in an init script on the checked pages.
+const KEPT = "after its steps, a ResizeObserver still observes an element removed from the page: disconnect it on unmount, or give its reason";
+test("44.3: an observer left on an element a journey removed is a construct note, not a finding; the layout it keeps fails the fresh comparison", browser, () => {
+  // Before (the verifier): this failed the journey. The restored row is observed again, so the layout is right at
+  // every width; the old observer still holds the old row: a note that needs its reason.
+  const stale = listPage({ disconnect: false, rewatch: true })({});
+  assert.ok(stale.pass, JSON.stringify(stale));
+  assert.deepEqual(stale.issues, [{ landmark: "div.row", property: "construct", kind: "stale observer", status: "note", actual: KEPT }]);
+  assert.ok(!listPage({ disconnect: true, rewatch: true })({}).issues);
+  // The behaviour it hints at, the restored row never observed, is the fresh comparison's (item 1).
+  const lost = listPage({ disconnect: false, rewatch: false })({ sameAsFresh: true });
+  assert.equal(lost.pass, false, JSON.stringify(lost));
+  assert.match(lost.failed, /^after its steps and a resize to 320 px, the component differs from a fresh load at 320 px: /);
+  const journey = (body, steps) => {
+    const f = smallFrame(body);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "j", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "j");
+  };
+  // Before (the verifier): a keep-alive tab pane, detached and cached with its observer, failed; so did a cleanup
+  // deferred 150 ms. Both hold, with the note.
+  const tabs = `<div id="host"></div><button id="a">A</button><button id="b">B</button><style>.row{display:flex}.row[data-mode=stack]{flex-direction:column}</style>
+<script>const host = document.getElementById("host"); const A = document.createElement("div"); A.className = "row pa"; A.innerHTML = "<span>Ready</span>";
+const B = document.createElement("p"); B.className = "pb"; B.textContent = "Other";
+new ResizeObserver(() => { A.dataset.mode = A.clientWidth < 200 ? "stack" : "line"; }).observe(A);
+const show = (el) => host.replaceChildren(el); show(A); document.getElementById("a").onclick = () => show(A); document.getElementById("b").onclick = () => show(B);</script>`;
+  for (const j of [journey(tabs, [{ click: "#b" }, { visible: ".pb" }, { hidden: ".pa" }]),
+    journey(`<div id="host"></div><button id="toggle">Toggle</button><script>const host = document.getElementById("host"); let ob;
+host.innerHTML = '<div class="row"><span>Ready</span></div>'; (ob = new ResizeObserver(() => {})).observe(host.firstChild);
+document.getElementById("toggle").onclick = () => { const o = ob; host.innerHTML = "<p>None</p>"; setTimeout(() => o.disconnect(), 150); };</script>`, [{ click: "#toggle" }, { visible: "main p" }, { hidden: ".row" }])]) {
+    assert.ok(j.pass, JSON.stringify(j));
+    assert.deepEqual(j.issues?.map((i) => [i.kind, i.status, i.actual]), [["stale observer", "note", KEPT]], JSON.stringify(j));
+  }
+  // An observer on an element outside the component is not the component's.
+  assert.ok(!journey(`<button id="drop">Drop</button><script>const aside = document.createElement("aside"); aside.textContent = "x"; document.body.append(aside);
+new ResizeObserver(() => {}).observe(aside); document.getElementById("drop").onclick = () => aside.remove();</script>`, [{ click: "#drop" }, { hidden: "aside" }]).issues);
+  // Before (the verifier, on check.md's "an element the steps removed"): an element the page itself removed while it
+  // loaded counted as one the steps removed. Only what the steps remove counts.
+  const early = journey(`<button id="noop">Noop</button><script>const r = document.createElement("div"); r.textContent = "x"; document.querySelector("main").append(r);
+new ResizeObserver(() => {}).observe(r); r.remove();</script>`, [{ click: "#noop" }, { visible: "#noop" }]);
+  assert.ok(early.pass && !early.issues, JSON.stringify(early));
+});
+
+test("44.3: a mode a ResizeObserver or a matchMedia change listener sets is a construct note that needs its reason; a one-shot read or a container query's is not", browser, () => {
+  const modes = (script, style = "", sweep = {}) => {
+    const f = smallFrame(`<style>.row{display:flex}${style}</style><div class="row"><span>Ready</span></div>${script ? `<script>const row = document.querySelector(".row");${script}</script>` : ""}`);
+    const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, ...sweep } }));
+    const r = check(f.dir);
+    assert.equal(r.status, 0, r.stdout);
+    // The frames' page; its dense story is the same page, with the same note.
+    return r.result.sweep.issues.filter((i) => i.kind === "script-set mode" && !i.story).map((i) => [i.landmark, i.status, i.actual]);
+  };
+  // Before (the verifier): "switch it by a container query instead", wrong for a fit to content.
+  const fits = "if it decides the layout, switch it by a container query; if it fits content, give its reason";
+  assert.deepEqual(modes('new ResizeObserver(() => { row.dataset.mode = row.clientWidth < 400 ? "stack" : "line"; }).observe(row);'),
+    [["Ready", "note", `a ResizeObserver callback sets its data-mode: ${fits}`]]);
+  // A change listener, fired as the sweep crosses 400 px.
+  assert.deepEqual(modes('const q = matchMedia("(min-width: 400px)"); const lay = () => { row.dataset.mode = q.matches ? "line" : "stack"; }; lay(); q.addEventListener("change", lay);', "", { to: 500, step: 100 }),
+    [["Ready", "note", `a matchMedia("(min-width: 400px)") listener sets its data-mode: ${fits}`]]);
+  // Before (the verifier): a one-shot read named the next class a script set as its mode. The component's own width
+  // (item 2) shows a layout a read picks.
+  assert.deepEqual(modes('window.isDesktop = matchMedia("(min-width: 1024px)").matches; row.classList.add("is-ready");'), []);
+  assert.deepEqual(modes("", "main{container-type:inline-size}@container (width < 400px){.row{flex-direction:column}}"), []);
+  // A query that is not the window's size decides no layout mode.
+  assert.deepEqual(modes('row.classList.toggle("calm", matchMedia("(prefers-reduced-motion: reduce)").matches);'), []);
+});
+
+test("MediaQueryList.onchange keeps the callback the page assigned and removes it on null", browser, () => {
+  const f = smallFrame(`<style>body{width:300px}</style><output>waiting</output><script>
+const q = matchMedia("(min-width: 400px)"), out = document.querySelector("output");
+function replaced() { out.textContent = "replaced callback ran"; }
+function current(event) {
+  if (this !== q || event.target !== q || event.type !== "change") return;
+  if (q.onchange !== current) { out.textContent = "callback identity lost"; return; }
+  q.onchange = null;
+  out.textContent = q.onchange === null ? "clean" : "cleanup failed";
+  if (!q.matches) out.textContent = "called after cleanup";
+}
+q.onchange = replaced;
+if (q.onchange === replaced) q.onchange = current;
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change and clean up", steps: [
+    { width: 450 }, { text: ["output", "clean"] }, { width: 300 }, { text: ["output", "clean"] },
+  ] }] }));
+  const result = check(f.dir, "--no-sweep").result.journeys[0];
+  assert.ok(result.pass, JSON.stringify(result));
+});
+
+// The catalogue card's reference build, with the design.json a builder following the skill writes (research note 35):
+// frames on the story page sized by the host, journeys on the consumer page.
+function catalogueLifecycleArm(change = (js) => js) {
+  const arm = path.join(tmp(), "arm");
+  assert.equal(spawnSync(process.execPath, [path.join(CATALOGUE, "make-arm.mjs"), arm], { encoding: "utf8" }).status, 0);
+  fs.writeFileSync(path.join(arm, "card.js"), change(fs.readFileSync(path.join(CATALOGUE, "reference/card.js"), "utf8")));
+  fs.copyFileSync(path.join(CATALOGUE, "reference/card.css"), path.join(arm, "card.css"));
+  const dir = path.join(arm, "check");
+  fs.mkdirSync(dir);
+  const frame = (name, width, extra = {}) => ({ name, width, spec: `../design/${name}/spec.json`, reference: `../design/${name}/reference.png`, ...extra });
+  const list = { name: "list: emptied by the search and restored, the cards come back", url: "../index.html", sameAsFresh: true, steps: [
+    { width: 375 }, { fill: ["#q", "zzz"] }, { hidden: ".card" }, { visible: ".empty" }, { fill: ["#q", ""] }, { visible: ".card" }, { hidden: ".empty" }] };
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "../story.html", root: ".card", host: "#host", viewport: 1280,
+    frames: [frame("card-764", 764), frame("card-375", 375), frame("size-chosen-375", 375, { setup: [{ click: ".card .size:nth-child(2)" }] })],
+    sweep: { from: 320, to: 900, step: 40, switches: [640], stories: [{ name: "dense", url: "../story.html?data=dense" }, { name: "many", url: "../story.html?data=many" }] },
+    journeys: [
+      { name: "sheet: Details opens it, Close closes it", url: "../index.html", steps: [{ width: 375 }, { click: ".card .details" }, { visible: "#sheet" }, { click: ".sheet__close" }, { hidden: "#sheet" }] },
+      list,
+      { name: "sidebar: Filters opens it beside the list and closes it", url: "../index.html", sameAsFresh: true, steps: [{ width: 960 }, { click: "#filters" }, { visible: "#sidebar" }, compactCard, { click: "#filters" }, { hidden: "#sidebar" }, wideCard] }] }));
+  fs.writeFileSync(path.join(dir, "deviations.json"), "[]");
+  fs.writeFileSync(path.join(dir, "review.md"), "## Acceptance\n\n- frames: pass — the check\n");
+  return dir;
+}
+
+test("44, controls: the catalogue card's absent target is incomplete; its observers left on removed cards are a note", browser, () => {
+  const ref = check(catalogueLifecycleArm());
+  // As before the change: every frame, the sweep and the journeys hold.
+  assert.deepEqual([...ref.result.frames.flatMap((f) => f.issues), ...ref.result.sweep.issues].filter((i) => i.status === "fail"), [], ref.stdout);
+  assert.ok(ref.result.journeys.every((j) => j.pass), JSON.stringify(ref.result.journeys.filter((j) => !j.pass)));
+  // The story omits the target; without acting there the check cannot know whether it is mounted lazily.
+  assert.deepEqual(ref.result.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"]);
+  assert.equal(ref.status, 2, ref.stdout);
+  // Its two sameAsFresh journeys were resized through the frames' widths; its observer-set layout is a note.
+  assert.deepEqual(ref.result.journeys.filter((j) => j.asFresh).map((j) => j.asFresh), [[375, 764, 375], [960, 764, 375]]);
+  assert.ok(ref.result.sweep.issues.some((i) => i.kind === "script-set mode" && i.status === "note" && /^a ResizeObserver callback sets its data-layout/.test(i.actual)), JSON.stringify(ref.result.sweep.issues));
+  // The list journey on the consumer page took its lifecycle: the cards unmounted and mounted again.
+  assert.ok(ref.result.journeys.find((j) => j.name.startsWith("list:")).lifecycle.includes("mount"), JSON.stringify(ref.result.journeys));
+  const edit = (js, from, to) => { assert.equal(js.split(from).length, 2, from); return js.replace(from, to); };
+  const unwatch = "    for (const card of host.querySelectorAll(\".card\")) unwatch(card);\n";
+  // The cards leaving keep their observers, and the cards mounted are observed: the layout is right, so it is a
+  // construct note on the list journey. Before (the verifier of doc 44): it failed the journey.
+  const kept = check(catalogueLifecycleArm((js) => edit(js, unwatch, "")), "--no-sweep");
+  assert.ok(kept.result.journeys.every((j) => j.pass), JSON.stringify(kept.result.journeys.filter((j) => !j.pass)));
+  assert.deepEqual(kept.result.journeys.filter((j) => j.issues).map((j) => [j.name, j.issues.map((i) => [i.landmark, i.status, i.actual])]), [["list: emptied by the search and restored, the cards come back",
+    [["article.card", "note", "after its steps, a ResizeObserver still observes 3 elements removed from the page: disconnect it on unmount, or give its reason"]]]]);
+  // The class where the cards mounted again are not observed is the fresh comparison's: the stateful bench's
+  // stale-observer and 44.3's list page. Not here: the consumer page's host grows to fill its row (flex: 1), so the
+  // journey's width steps and the resizes after it leave the cards at the row's width.
+});
+
+// E159: a one-digit landmark, the stock count "1", with the same digit inside a longer text drawn above it; two "HDD"
+// beside "4 TB" for labels that do repeat.
+const STOCK = ({ stock = 16, whole = false, order = "row" } = {}) => `<main style="position:relative;width:420px;height:90px;font:14px/18px sans-serif;color:#111">
+<div style="position:absolute;left:16px;top:12px">Выдача за 1 день</div>
+<div style="position:absolute;left:16px;top:40px;display:flex;gap:40px;flex-direction:${order}"><span>HDD</span><span>4 TB</span><span>HDD</span></div>
+<div style="position:absolute;right:${stock}px;top:64px">${whole ? "Доступно 1" : "<span>Доступно</span> <span>1</span>"}</div></main>`;
+
+test("doc 44, item 7 (E159): a text no other landmark repeats is the hit nearest its box, not the same digit inside a longer text; repeated labels pair by place", browser, () => {
+  // Before, the "1" was paired with the delivery line's (x -307, y -51) and its own was page text not in the design.
+  let r = boxCase(STOCK(), STOCK(), 420);
+  assert.deepEqual(r.spec.landmarks.map((l) => l.text), ["Выдача за 1 день", "HDD", "4 TB", "HDD", "Доступно", "1"]);
+  assert.equal(r.frame.verdict, "pass", r.stdout);
+  // The page in one text node, "Доступно 1", where the design draws two pieces; the labels in another DOM order.
+  for (const page of [STOCK({ whole: true }), STOCK({ order: "row-reverse" })]) {
+    r = boxCase(STOCK(), page, 420);
+    assert.equal(r.frame.verdict, "pass", r.stdout);
+  }
+  // A "1" that is displaced still fails, with its label.
+  r = boxCase(STOCK(), STOCK({ stock: 76 }), 420);
+  const moved = r.frame.issues.filter((i) => i.status === "fail" && i.property === "x");
+  assert.deepEqual(moved.map((i) => i.landmark), ["Доступно", "1"], r.stdout);
+  assert.ok(moved.every((i) => i.delta <= -50), JSON.stringify(moved));
+  assert.deepEqual(r.frame.unexpected, []);
+});
+
+test("doc 44, item 7 (E159): on the prebuilt planted card with its delivery line rendered at 486, the stock's “1” is its own", browser, () => {
+  const deliver = (dir) => {
+    const arm = path.dirname(path.dirname(dir));
+    const edit = (file, from, to) => { const f = path.join(arm, file), s = fs.readFileSync(f, "utf8"); assert.ok(s.includes(from), file); fs.writeFileSync(f, s.replace(from, to)); };
+    edit("data.js", '"card-486": { id: "o-486",', '"card-486": { id: "o-486", delivery: "Выдача за 1 день",');
+    edit("card.js", "return `<div class=\"card__grid\">", 'return `${o.delivery ? `<div class="delivery t-caption">${esc(o.delivery)}</div>` : ""}<div class="card__grid">');
+    return dir;
+  };
+  // Before: "1" x -352 and y -212, paired with the delivery line's "1", and the stock's own "1" was page text not in
+  // the design.
+  let f = check(deliver(plantedArm()), "--frame", "card-486").result.frames[0];
+  assert.deepEqual(f.issues.filter((i) => i.landmark === "1"), [], JSON.stringify(f.issues));
+  assert.deepEqual(f.unexpected, []);
+  // The stock 60 px from its place: its "1" goes with it, a finding.
+  f = check(deliver(plantedArm('.card[data-mode="narrow"] .stock { margin-inline-end: 60px; }')), "--frame", "card-486").result.frames[0];
+  const one = f.issues.find((i) => i.landmark === "1" && i.property === "x");
+  assert.ok(one?.status === "fail" && one.delta <= -50, JSON.stringify(f.issues));
+});
+
+
+// ------------------------------------------------------------------ 44, item 8: the component's width inside a journey
+
+// A page whose Filters button opens a 200 px sidebar beside the component's column (16 px of padding each side, a
+// 16 px gap). The component is a row of two texts that stacks below 360 px: by a container query on its column
+// (`own`), by a media query on the window that takes the column for the window less its padding (`window`), or once,
+// from its own width on load (`once`). With `stacked` the sidebar stacks above the column below 600 px. `#more` adds a
+// text to the row; `#wide` puts a 2000 px block on the page.
+function sidebarPage({ mode = "own", stacked = false } = {}) {
+  const f = smallFrame();
+  const switched = { own: ".col{container-type:inline-size}@container (width < 360px){.row{flex-direction:column}}",
+    window: "@media (max-width: 391px){.row{flex-direction:column}}", once: "main[data-mode=stack] .row{flex-direction:column}" }[mode];
+  f.write(`<style>.page{display:flex;gap:16px;padding:0 16px}aside{flex:0 0 200px}aside[hidden]{display:none}.col{flex:1 1 auto;min-width:0}
+main{width:auto;height:auto}.row{display:flex;gap:8px}${switched}${stacked ? "@media (max-width: 599px){.page{flex-direction:column}aside{flex:none}}" : ""}</style>
+<button id="filters">Filters</button><button id="more">More</button><button id="wide">Wide</button>
+<div class="page"><aside id="sidebar" hidden>Filters</aside><div class="col"><main><div class="row"><span>Ready</span><span>Steady</span></div></main></div></div>
+<script>const main = document.querySelector("main"), sidebar = document.getElementById("sidebar");
+${mode === "once" ? 'main.dataset.mode = main.clientWidth < 360 ? "stack" : "line";' : ""}
+document.getElementById("filters").onclick = () => { sidebar.hidden = !sidebar.hidden; };
+document.getElementById("more").onclick = () => main.querySelector(".row").insertAdjacentHTML("beforeend", "<span>Go</span>");
+document.getElementById("wide").onclick = () => document.body.insertAdjacentHTML("beforeend", '<div style="width:2000px;height:1px"></div>');</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  return (...steps) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "sidebar", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "sidebar");
+  };
+}
+const OPEN = [{ click: "#filters" }, { visible: "#sidebar" }];
+const compactCard = { visible: ".card:first-child .sizes:below(.card:first-child .card__main)" };
+const wideCard = { visible: ".card:first-child .sizes:right-of(.card:first-child .card__main)" };
+
+test("44.8: after each step, a container narrower than at the sweep's from, or a page that starts to scroll sideways, fails the step", browser, () => {
+  // At 400 px the column is 368 px; the sidebar leaves it 152, and a fresh load gives it 268 at the sweep's 300.
+  const squeezed = sidebarPage()({ width: 400 }, ...OPEN);
+  assert.equal(squeezed.pass, false, JSON.stringify(squeezed));
+  assert.equal(squeezed.failed, 'step 2, {"click":"#filters"}: after it the component\'s container is 152 px wide (368 before), narrower than the 268 px measured on a fresh page at the sweep\'s starting width, 300 px: what it opened takes the component\'s room; check the supported minimum and the consumer\'s behavior against their source');
+  // Stacked above the column there, the sidebar leaves it its width; below the sweep start nothing is held.
+  const stacked = sidebarPage({ stacked: true })({ width: 400 }, ...OPEN);
+  assert.ok(stacked.pass, JSON.stringify(stacked));
+  assert.match(stacked.notes.join(" "), /368 px: layout was not measured/);
+  assert.ok(sidebarPage()({ width: 280 }, ...OPEN).pass);
+  const wide = sidebarPage()({ click: "#wide" }, { visible: "main" });
+  assert.equal(wide.pass, false, JSON.stringify(wide));
+  assert.match(wide.failed, /^step 1, \{"click":"#wide"\}: after it the page scrolls sideways, its content \d+ px wider than the window: keep what it opened inside the window, beside or over the component$/);
+});
+
+test("44.8: a width change and the open sidebar are checked in their own states", browser, () => {
+  // At 600 px the column is 568; with the sidebar open, 352. A fresh load with its column held at 352 stacks the row.
+  const stack = { visible: ".row span:last-child:below(.row span:first-child)" };
+  const line = { visible: ".row span:last-child:right-of(.row span:first-child)" };
+  const journey = [{ width: 600 }, line, ...OPEN, stack, { click: "#filters" }, { hidden: "#sidebar" }, line];
+  const own = sidebarPage()(...journey);
+  assert.ok(own.pass, JSON.stringify(own));
+  assert.match(own.notes.join(" "), /568 px.*right-of/);
+  assert.match(own.notes.join(" "), /352 px.*below/);
+  // Bound to the window, the row stays on one line in the narrowed column.
+  const bound = sidebarPage({ mode: "window" })(...journey);
+  assert.equal(bound.pass, false, JSON.stringify(bound));
+  assert.match(bound.failed, /no .*:below\(.* is visible/);
+  // Chosen once on load, at the frame's 268 px, it stays stacked when the window widens.
+  const once = sidebarPage({ mode: "once" })(...journey);
+  assert.match(once.failed, /no .*:right-of\(.* is visible/);
+  // The same interaction without a placement expectation cannot establish the state of the narrowed row.
+  for (const steps of [[{ width: 600 }, ...OPEN], [{ width: 600 }, { click: "#more" }, ...OPEN]]) {
+    const other = sidebarPage({ mode: "window" })(...steps);
+    assert.equal(other.pass, false);
+    assert.match(other.unmeasured, /352 px.*no established equivalent state/);
+    assert.equal(other.failed, undefined);
+  }
+});
+
+test("expanding a chart checks its specified height at the narrowed width, or reports the missing comparison", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (expands, expectation) => {
+    f.write(`<style>#host{width:300px}main{width:100%;height:auto}#chart{height:40px;background:#ddd}
+.axis{position:absolute;top:135px;width:1px;height:1px}.legend{display:block}</style>
+<div id="host"><main><div id="chart"></div><span class="legend">Chart</span><i class="axis"></i><button id="expand">Expand</button></main></div>
+<script>document.querySelector("#expand").onclick=()=>{
+document.querySelector("#host").style.width="250px";document.querySelector("#chart").style.height="${expands ? 140 : 40}px";
+};</script>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, from: 200 },
+      journeys: [{ name: "expanded", steps: [{ click: "#expand" }, expectation] }] }));
+    const snap = cli("snapshot", f.config, "--images", "--force");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(f.dir, "--no-sweep");
+  };
+  const placement = { visible: ".legend:below(.axis)" };
+  const clean = run(true, placement);
+  assert.equal(clean.status, 0, clean.stdout);
+  assert.match(clean.result.journeys[0].notes.join(" "), /250 px.*below/);
+  const broken = run(false, placement);
+  assert.equal(broken.status, 1);
+  assert.match(broken.result.journeys[0].failed, /no .legend:below.* is visible/);
+  for (const expands of [false, true]) {
+    const unknown = run(expands, { visible: "#chart" });
+    assert.equal(unknown.status, 2, unknown.stdout);
+    assert.match(unknown.result.journeys[0].unmeasured, /250 px.*no established equivalent state/);
+    assert.equal(unknown.result.journeys[0].failed, undefined);
+  }
+});
+
+test("44.8: a container collapsed to no width, or a root clipped from view, is not held to the floor; the root measured is the one the journey started with", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (html, steps) => {
+    f.write(html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "j", steps }] }));
+    return check(f.dir, "--no-sweep").result.journeys.find((j) => j.name === "j");
+  };
+  // Before (the verifier of doc 44): a panel collapsed to width 0 with its overflow hidden, around the component that
+  // keeps its 300 px, failed: "the component's container is 0 px wide (300 before), narrower than the 300 px".
+  const panel = run(`<button id="b" onclick="p.classList.toggle('shut')">Panel</button><style>#p{overflow:hidden}#p.shut{width:0}</style><div id="p"><main><span>Ready</span></main></div><p class="o">Other</p>`,
+    [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { visible: "main" }]);
+  assert.equal(panel.failed, undefined, JSON.stringify(panel));
+  // Before: a tab that hides the component and shows a second one in a 240 px column measured the second, the first
+  // a person sees, and failed it as squeezed.
+  const tab = run(`<button id="b" onclick="p.hidden=!p.hidden;q.hidden=!q.hidden">Tab</button><div id="p"><main><span>Ready</span></main></div><div id="q" hidden style="width:240px"><main style="width:auto"><span>Ready</span></main><p class="o">Other</p></div>`,
+    [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { hidden: ".o" }]);
+  assert.equal(tab.failed, undefined, JSON.stringify(tab));
+});
+
+// The catalogue page sized by the window, its sidebar opened at 960 px, where it leaves the list 632 px. Before item 8
+// both builds held this journey: the start code keeps the wide layout matchMedia picks from the 960 px window.
+function catalogueSidebarArm(build) {
+  const dir = catalogueArm(build);
+  const frames = [["card-764", 796], ["card-375", 407]].map(([name, width]) => ({ name, width,
+    spec: path.join(CATALOGUE, "pack", name, "spec.json"), reference: path.join(CATALOGUE, "pack", name, "reference.png") }));
+  fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "index.html", root: ".card", frames, sweep: { from: 407, to: 1280 },
+    journeys: [{ name: "sidebar: Filters opens it beside the list and closes it", steps: [{ width: 960 }, ...OPEN, compactCard, { click: "#filters" }, { hidden: "#sidebar" }, wideCard] }] }));
+  return dir;
+}
+
+test("44.8, controls: the catalogue's start code fails its sidebar journey where the sidebar opens; the reference holds", browser, () => {
+  const sidebar = "sidebar: Filters opens it beside the list and closes it";
+  const start = check(catalogueSidebarArm("start"), "--no-sweep").result.journeys.find((j) => j.name === sidebar);
+  assert.equal(start.pass, false, JSON.stringify(start));
+  assert.match(start.failed, /no .*:below\(.* is visible/);
+  const ref = check(catalogueSidebarArm("reference"), "--no-sweep");
+  assert.deepEqual(ref.result.journeys.filter((j) => !j.pass), [], ref.stdout);
+  assert.match(ref.result.journeys.find((j) => j.name === sidebar).notes.join(" "), /632 px: checked the placement .*:below/);
+});
+
+// ------------------------------------------------------------------ 44, item 9: an opener covered on another page
+
+test("44.9: the story page's Details, whose sheet is only on the consumer's page, is not covered there by a same-named opener of another role or target", browser, () => {
+  // The twins of the catalogue's reference arm: the story page's Details shares its text
+  // with the consumer's, which the sheet's journey opens and closes, but not its role or its target.
+  const twin = (attr, value) => {
+    const dir = catalogueLifecycleArm();
+    const story = path.join(dir, "../story.html"), render = '  renderCards(host, window.CATALOGUE[params.get("data") || "default"]);\n';
+    const html = fs.readFileSync(story, "utf8");
+    assert.equal(html.split(render).length, 2);
+    fs.writeFileSync(story, html.replace(render, `${render}  for (const b of host.querySelectorAll(".details")) b.setAttribute("${attr}", "${value}");\n`));
+    // What decides the cover only: the frames, the sheet's journey and a sweep of the frames' widths.
+    const file = path.join(dir, "design.json"), c = JSON.parse(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(file, JSON.stringify({ ...c, lifecycle: "a fixture: one render, no data changes", sweep: { ...c.sweep, from: 375, to: 764, step: 389, switches: [] }, journeys: [c.journeys[0]] }));
+    return check(dir);
+  };
+  for (const [attr, value] of [["role", "link"], ["aria-controls", "notes"]]) {
+    const r = twin(attr, value);
+    const sheet = r.result.journeys.find((j) => j.name === "sheet: Details opens it, Close closes it");
+    assert.ok(sheet.pass && sheet.closers.some((c) => c.name === "Details" && c.role === "button" && c.ids.join() === "sheet"), JSON.stringify(sheet));
+    assert.ok(r.result.gaps.includes("1 control opens something with no journey that opens and closes it: “Details”"), `${attr}: ${JSON.stringify(r.result.gaps)}`);
+    assert.ok(!r.result.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), JSON.stringify(r.result.journeys));
+    assert.equal(r.status, 2, r.stdout);
+  }
+});
+
+test("44.9: an absent target is not evidence of cross-page identity", browser, () => {
+  // Page a mounts the sheet only on open ({open && <Sheet/>}), and its journey opens and closes it. Page b shows the
+  // same card with the same Details opener, and `b` is its script.
+  const card = `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${MARKERS}</div></div>`;
+  const mounts = `<script>const b = document.querySelector(".d"); b.onclick = () => { let s = document.getElementById("sheet");
+if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = document.createElement("div"); s.id = "sheet"; s.textContent = "Sheet"; document.body.append(s); b.setAttribute("aria-expanded", "true"); } };</script>`;
+  const run = (b) => {
+    const dir = tmp(), config = path.join(dir, "design.json");
+    const page = (html) => `<!doctype html><style>body{margin:0}.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}#sheet{position:fixed;left:20px;top:100px;background:#eee}</style>${html}`;
+    fs.writeFileSync(path.join(dir, "a.html"), page(card + mounts));
+    fs.writeFileSync(path.join(dir, "b.html"), page(card + b));
+    fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+    fs.writeFileSync(config, JSON.stringify({ url: "a.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+      frames: [{ name: "a", width: 600, spec: "a.json", reference: "a.png" }, { name: "b", width: 600, url: "b.html", spec: "b.json", reference: "b.png" }],
+      sweep: { from: 600, to: 600, stories: [{ name: "dense", url: "a.html?dense" }], lines: LINES },
+      journeys: [{ name: "details", steps: [{ click: ".d" }, { visible: "#sheet" }, { click: ".d" }, { hidden: "#sheet" }] }] }));
+    const snap = cli("snapshot", config, "--images");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(dir).result;
+  };
+  const gap = "1 control opens something with no journey that opens and closes it: “Details”";
+  // Before (the verifier of doc 44): its target absent until a click, b's opener was covered by a's journey, also
+  // where its handler throws (the consumer forgot the sheet's provider) or mounts the sheet as a's does.
+  for (const [what, b] of [["throws", '<script>document.querySelector(".d").onclick = () => { throw new Error("no sheet provider"); };</script>'], ["mounts its target", mounts]]) {
+    const r = run(b);
+    assert.deepEqual(r.gaps, [gap], `${what}: ${JSON.stringify(r.gaps)}`);
+    assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), `${what}: ${JSON.stringify(r.journeys)}`);
+  }
+  // Even an inert page cannot be classified without the unconfigured action.
+  const r = run("");
+  assert.deepEqual(r.gaps, [gap], JSON.stringify(r.gaps));
+  assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))));
+});
+
+test("44.9: an absent target remains unchecked regardless of what a click would do", browser, () => {
+  // None of these possible effects can be observed without an explicit action on page b.
+  const card = (x = "") => `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${x}${MARKERS}</div></div>`;
+  const css = ".card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}#sheet{position:fixed;left:20px;top:100px;background:#eee}.tip{display:none;position:absolute}.d:focus+.tip{display:block}";
+  const mounts = `<script>const b = document.querySelector(".d"); b.onclick = () => { let s = document.getElementById("sheet");
+if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = document.createElement("div"); s.id = "sheet"; s.textContent = "Sheet"; document.body.append(s); b.setAttribute("aria-expanded", "true"); } };</script>`;
+  const run = (b) => {
+    const dir = tmp(), config = path.join(dir, "design.json");
+    const page = (html) => `<!doctype html><style>body{margin:0}${css}</style>${html}`;
+    fs.writeFileSync(path.join(dir, "a.html"), page(card() + mounts));
+    fs.writeFileSync(path.join(dir, "b.html"), page(b));
+    fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+    fs.writeFileSync(config, JSON.stringify({ url: "a.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+      frames: [{ name: "a", width: 600, spec: "a.json", reference: "a.png" }, { name: "b", width: 600, url: "b.html", spec: "b.json", reference: "b.png" }],
+      sweep: { from: 600, to: 600, stories: [{ name: "dense", url: "a.html?dense" }], lines: LINES },
+      journeys: [{ name: "details", steps: [{ click: ".d" }, { visible: "#sheet" }, { click: ".d" }, { hidden: "#sheet" }] }] }));
+    const snap = cli("snapshot", config, "--images");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(dir).result;
+  };
+  const gap = ["1 control opens something with no journey that opens and closes it: “Details”"];
+  for (const [what, b] of [["a :focus tooltip inside the root", card('<span class="tip">More about it</span>')],
+    ["a callback log outside the root", card() + '<pre id="log"></pre><script>document.querySelector(".d").onclick = () => { log.textContent += "onDetails()\\n"; };</script>']]) {
+    const r = run(b);
+    assert.deepEqual(r.gaps, gap, `${what}: ${JSON.stringify(r.gaps)}`);
+    assert.ok(!r.journeys.some((j) => j.notes?.some((n) => n.startsWith("covers"))), what);
+  }
+  // A dialog it would open is likewise unknown.
+  const r = run(card() + '<script>document.querySelector(".d").onclick = () => { const d = document.createElement("div"); d.setAttribute("role", "dialog"); d.textContent = "Other"; document.body.append(d); };</script>');
+  assert.deepEqual(r.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"], JSON.stringify(r.gaps));
+});
+
+test("44.8: a window-bound component below the fold still fails its expected placement", browser, () => {
+  // An app shell (`height:100vh; overflow:auto`) with the card below the fold: the card is scrolled out of view, not
+  // gone. Before, it counted as unseen and a card squeezed by the sidebar, laid out by the window, passed.
+  const dir = tmp(), config = path.join(dir, "design.json");
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0}html,body{height:100%}.shell{height:100vh;overflow:auto}
+.page{display:flex}.side{width:0;overflow:hidden;flex:none}.page.open .side{width:300px}.col{flex:1;min-width:0}
+.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}.thumb{width:200px;height:40px;background:#ccc;flex:none}.card{position:relative}.limit{position:absolute;left:150px;width:1px;height:1px}
+@media (max-width:800px){.thumb{width:100px}}</style>
+<div class="shell"><button id="tog" onclick="document.querySelector('.page').classList.toggle('open')">Filters</button><div style="height:3000px"></div>
+<div class="page"><aside class="side"><p class="f">Filter</p></aside><div class="col"><div class="card"><div class="thumb"></div><i class="limit"></i><span class="t">Title here</span>${MARKERS}</div></div></div></div>`);
+  fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+    frames: [{ name: "narrow", width: 400, spec: "0.json", reference: "0.png" }, { name: "wide", width: 1000, spec: "1.json", reference: "1.png" }],
+    sweep: { from: 400, to: 1000, step: 100, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES },
+    journeys: [{ name: "filters", steps: [{ click: "#tog" }, { visible: ".f" }, { visible: ".thumb:left-of(.limit)" }, { click: "#tog" }, { hidden: ".f" }] }] }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const j = check(dir, "--no-sweep").result.journeys.find((x) => x.name === "filters");
+  assert.equal(j.pass, false, JSON.stringify(j));
+  assert.match(j.failed, /no .thumb:left-of.* is visible/);
+});
+
+// A second consumer, unrelated to the catalogue's selectors: a dock narrows a canvas, and a separate refresh
+// journey can independently lose a chosen value. Both pages use the same inputs, viewport and action sequence.
+function blockerConsumer() {
+  const f = smallFrame();
+  const page = (dock, losesChoice) => `<style>body{margin:0}.workspace{display:flex;width:100%}.dock{flex:0 0 ${dock}px}.dock[hidden]{display:none}
+.stage{flex:1 1 auto;min-width:0}main{width:100%;height:80px}.choice{white-space:nowrap}</style>
+<button id="dock-toggle">Dock</button><button id="refresh-view">Refresh</button>
+<div class="workspace"><aside class="dock" hidden>Panel</aside><div class="stage"><main><span>Document</span>
+<button id="select-choice">Choose</button><span class="choice">none</span></main></div></div>
+<script>document.querySelector('#dock-toggle').onclick=()=>{const d=document.querySelector('.dock');d.hidden=!d.hidden};
+document.querySelector('#select-choice').onclick=()=>{document.querySelector('.choice').textContent='selected'};
+document.querySelector('#refresh-view').onclick=()=>{if(${losesChoice})document.querySelector('.choice').textContent='none'};</script>`;
+  f.write(page(170, false));
+  fs.copyFileSync(f.page, path.join(f.dir, 'original.html'));
+  const original = fs.readFileSync(f.page, 'utf8');
+  const config = JSON.parse(fs.readFileSync(f.config, 'utf8'));
+  const squeeze = { name: 'open dock', width: 400, steps: [{ click: '#dock-toggle' }, { visible: '.dock' }] };
+  const selection = { name: 'choice survives refresh', steps: [{ click: '#select-choice' }, { text: ['.choice', 'selected'] },
+    { click: '#refresh-view' }, { text: ['.choice', 'selected'] }] };
+  fs.writeFileSync(f.config, JSON.stringify({ ...config, url: 'original.html' }));
+  const snap = cli('snapshot', f.config, '--images', '--force');
+  assert.equal(snap.status, 0, snap.stderr);
+  const run = ({ url = 'page.html', dock = 170, losesChoice = false, order = [squeeze, selection], minimum = 'unknown', baselineMissing = false, ledger = [], flags = [] } = {}) => {
+    f.write(page(dock, losesChoice));
+    const source = minimum === 'unknown' ? 'supported minimum: unknown; no owner or contract source' : `supported minimum: ${minimum} px; contract.md`;
+    fs.writeFileSync(path.join(f.dir, 'contract.md'), minimum === 'unknown' ? 'No minimum supplied.\n' : `Supported component minimum: ${minimum} px.\n`);
+    if (baselineMissing) fs.rmSync(path.join(f.dir, 'original.html'));
+    fs.writeFileSync(path.join(f.dir, 'review.md'), REVIEW + `\n## External blocker\n\nopen dock: measured ${400 - dock} px; sweep start: 300 px in design.json; ${source}; baseline comparison not recorded, attribution unknown. The consumer page is outside the edit boundary.\n`);
+    fs.writeFileSync(path.join(f.dir, 'ledger.json'), JSON.stringify(ledger));
+    fs.writeFileSync(f.config, JSON.stringify({ ...config, url, journeys: order }));
+    const result = check(f.dir, ...flags);
+    if (!baselineMissing) assert.equal(fs.readFileSync(path.join(f.dir, 'original.html'), 'utf8'), original);
+    return result;
+  };
+  return { ...f, run, squeeze, selection };
+}
+
+test('an external blocker preserves the measured failure across original and changed consumers', browser, () => {
+  const f = blockerConsumer();
+  const original = f.run({ url: 'original.html' });
+  const same = f.run();
+  const worsened = f.run({ dock: 210 });
+  const failure = (r) => r.result.journeys.find((j) => j.name === 'open dock');
+  for (const r of [original, same, worsened]) {
+    assert.equal(r.status, 1, r.stdout);
+    assert.equal(r.result.status, 'fail');
+    assert.equal(r.result.pass, false);
+    assert.match(r.stdout, /sweep's starting width, 300 px/);
+    assert.doesNotMatch(failure(r).failed, /narrowest supported width/);
+  }
+  assert.match(failure(original).failed, /230 px wide/);
+  assert.match(failure(same).failed, /230 px wide/);
+  assert.match(failure(worsened).failed, /190 px wide/);
+  assert.ok(same.result.journeys.find((j) => j.name === 'choice survives refresh').pass);
+  assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+});
+
+test('a separate choice regression stays visible with an external blocker in either journey order', browser, () => {
+  const f = blockerConsumer();
+  for (const order of [[f.squeeze, f.selection], [f.selection, f.squeeze]]) {
+    const r = f.run({ losesChoice: true, order });
+    assert.equal(r.status, 1, r.stdout);
+    assert.equal(r.result.status, 'fail');
+    const dock = r.result.journeys.find((j) => j.name === 'open dock');
+    const choice = r.result.journeys.find((j) => j.name === 'choice survives refresh');
+    assert.match(dock.failed, /230 px wide/);
+    assert.match(choice.failed, /no visible .* shows “selected”/);
+    assert.match(r.stdout, /journey fails: .*open dock/);
+    assert.match(r.stdout, /journey fails: .*choice survives refresh/);
+    assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+  }
+});
+
+test('an external journey cannot be converted to pending by an unclassified ledger entry', browser, () => {
+  const f = blockerConsumer();
+  const r = f.run({ ledger: [{ landmark: 'open dock', property: 'journey', status: 'proposed', reason: 'the page is outside the edit scope' }] });
+  assert.equal(r.status, 1, r.stdout);
+  assert.equal(r.result.status, 'fail');
+  assert.match(r.result.ledgerProblems.join(' '), /a journey entry disputes a journey the check itself breaks/);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, undefined);
+});
+
+test('invalid journey entries do not mark a failed journey, and a valid checker-tagged entry still matches', browser, () => {
+  const f = blockerConsumer();
+  const invalid = { landmark: 'open dock', property: 'journey', status: 'proposed', reason: 'outside the edit scope' };
+  const valid = { ...invalid, cause: 'checker', reason: 'synthetic checker-tagged entry; this case tests matching only' };
+  const acceptedWithoutOwner = { ...valid, status: 'accepted' };
+  let r = f.run({ ledger: [acceptedWithoutOwner] });
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.result.ledgerProblems.join(' '), /an accepted entry names who decided it/);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, undefined);
+  r = f.run({ ledger: [invalid, valid] });
+  assert.equal(r.status, 1, r.stdout); // the invalid entry is still a fault
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'pending');
+  assert.deepEqual(r.result.journeys.find((j) => j.name === 'open dock').entries, [1]);
+  r = f.run({ ledger: [valid] });
+  assert.equal(r.status, 3, r.stdout);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'pending');
+  assert.deepEqual(r.result.ledgerProblems, []);
+  // A valid owner-accepted wildcard has always matched journeys without a checker tag; preserve that behavior.
+  const wildcard = { landmark: '*', property: '*', status: 'accepted', decidedBy: 'fixture owner', reason: 'synthetic owner decision' };
+  r = f.run({ ledger: [wildcard] });
+  assert.deepEqual(r.result.ledgerProblems, []);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'accepted');
+});
+
+test('an unavailable baseline leaves attribution unknown and does not turn failure into pending', browser, () => {
+  const f = blockerConsumer();
+  const r = f.run({ baselineMissing: true });
+  assert.equal(r.status, 1, r.stdout);
+  assert.equal(r.result.status, 'fail');
+  assert.match(r.result.journeys.find((j) => j.name === 'open dock').failed, /230 px wide/);
+  assert.match(fs.readFileSync(path.join(f.dir, 'review.md'), 'utf8'), /baseline comparison not recorded, attribution unknown/);
+  assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+});
+
+test('a test width does not establish an unknown or sourced product minimum; partial checks stay partial', browser, () => {
+  const f = blockerConsumer();
+  for (const minimum of ['unknown', 280]) {
+    const r = f.run({ minimum });
+    assert.equal(r.status, 1, r.stdout);
+    const fail = r.result.journeys.find((j) => j.name === 'open dock');
+    assert.match(fail.failed, /sweep's starting width, 300 px/);
+    assert.doesNotMatch(fail.failed, /narrowest supported width/);
+    const review = fs.readFileSync(path.join(f.dir, 'review.md'), 'utf8');
+    assert.ok(review.includes(minimum === 'unknown' ? 'minimum: unknown' : '280 px; contract.md'));
+    assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+  }
+  for (const flags of [['--quick'], ['--frame', 'frame'], ['--no-sweep']]) {
+    const r = f.run({ flags });
+    assert.match(r.stdout, /partial check/i);
+    assert.ok(!fs.existsSync(path.join(f.dir, 'out/handoff.md')), flags.join(' '));
+  }
+});
+
+test('the catalogue judge labels its card scope without changing the historic verdict and groups', browser, () => {
+  const judge = path.join(CATALOGUE, 'judge/judge.mjs');
+  const cases = [
+    { name: 'reference', verdict: 'ACCEPTED', groups: { width: true, choice: true, basics: true } },
+    { name: 'start', verdict: 'RETURNED', groups: { width: false, choice: false, basics: false } },
+    { name: 'width only', verdict: 'RETURNED', groups: { width: false, choice: true, basics: true },
+      from: 'card.dataset.layout = width >= WIDE ? "wide" : "compact"',
+      to: 'card.dataset.layout = matchMedia("(min-width: 672px)").matches ? "wide" : "compact"' },
+    { name: 'choice only', verdict: 'RETURNED', groups: { width: true, choice: false, basics: true },
+      from: 'window.renderCards = function renderCards(host, items) {',
+      to: 'window.renderCards = function renderCards(host, items) { chosen.clear();' },
+  ];
+  for (const c of cases) {
+    const arm = catalogueArm(c.name === 'start' ? 'start' : 'reference'), out = path.join(tmp(), 'judge');
+    if (c.from) {
+      const file = path.join(arm, 'card.js'), source = fs.readFileSync(file, 'utf8');
+      assert.equal(source.split(c.from).length, 2, c.name);
+      fs.writeFileSync(file, source.replace(c.from, c.to));
+    }
+    const r = spawnSync(process.execPath, [judge, arm, out], { encoding: 'utf8', timeout: 120000 });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, new RegExp(`^${c.verdict} · width `));
+    assert.match(r.stdout, /Scope: card contract only; consumer status: see the complete check's handoff; owner decision: see the existing verdict form, unknown if not recorded/);
+    const result = JSON.parse(fs.readFileSync(path.join(out, 'judge.json'), 'utf8'));
+    assert.equal(result.verdict, c.verdict, c.name);
+    assert.deepEqual(Object.keys(result), ['verdict', 'groups', 'checks']);
+    assert.deepEqual(Object.keys(result.groups), ['width', 'choice', 'basics']);
+    assert.deepEqual(result.groups, c.groups, c.name);
+    assert.equal(result.checks.length, 18);
+    if (c.name === 'reference') assert.ok(result.checks.every((x) => x.pass), JSON.stringify(result));
+  }
+});
+
+test('the review brief distinguishes the selected test width from an independently sourced minimum', () => {
+  const file = path.join(HERE, '../plugin/skills/design-to-code/references/review-pass.md');
+  const page = fs.readFileSync(file, 'utf8'), prompt = page.split('```text\n')[1]?.split('\n```')[0];
+  assert.ok(prompt, 'the actual reviewer prompt exists');
+  assert.match(prompt, /product contract or owner requirement for the component's minimum width: <source path, or unknown>/);
+  assert.match(prompt, /sweep\.from.*test width/);
+  assert.match(prompt, /if no source is available, say unknown/);
+  assert.match(prompt, /Do not treat the builder's selected test width or\n  assertions as independently verified product requirements/);
+  assert.match(page, /do not\s+give it `review\.md`'s reasons, the ledger's reasons or your notes/i);
 });
