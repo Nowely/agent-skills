@@ -964,7 +964,7 @@ const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
 const afterLedger = (i) => (!i.carriedPart ? "" : `; ${signed(round(i.unexcused))} after the ledger`);
 const sayCause = (c) => (c.kind ? `the ${c.kind} of “${c.after}” changes by ${signed(round(c.step))} px`
   : `between “${c.after}” and “${c.before}” ${c.axis === "y" ? "vertically" : "horizontally"} ${signed(round(c.step))} px`);
-export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || sweep?.reason || sweep?.stories?.some((st) => st.unmeasured) ? null
+export const totalScore = (frames, sweep, journeys = []) => frames.some((f) => f.unmeasured) || journeys.some((j) => j.unmeasured) || sweep?.reason || sweep?.stories?.some((st) => st.unmeasured) ? null
   : round(frames.reduce((s, f) => s + f.score, 0) + (sweep?.score ?? 0) + journeys.filter((j) => !j.pass && j.status !== "accepted").length * 10);
 const counts = (frames, sweep) => {
   const all = [...frames.flatMap((f) => f.issues), ...(sweep?.issues ?? [])];
@@ -980,6 +980,7 @@ const listed = (texts, limit = 8) => `${texts.slice(0, limit).map((t) => `“${t
 const notInDesign = (f) => `page text not in the design (${f.unexpected.length}): ${listed(f.unexpected)}`;
 const where = (i) => `${i.landmark}${i.story ? ` (${i.story})` : ""}`;
 
+const journeyVerdict = (j) => j.pass ? "holds" : j.unmeasured ? "not measured" : "fails";
 const journeyLine = (journeys) => `journeys: ${journeys.length ? `${journeys.filter((j) => j.pass).length} of ${journeys.length} hold` : "none defined"}`;
 const alignmentName = (group) => group.story ? `${group.selector} (story ${group.story})` : group.selector;
 const sweepCoverage = (sweep) => !sweep ? "Width sweep and additional stories were not run." : !sweep.stories?.length ? "No additional stories were swept." : "";
@@ -1044,7 +1045,7 @@ export function renderReport({ frames = [], sweep, journeys = [], gaps = [], acc
   }
   if (journeys.length) {
     out.push("## Journeys", "");
-    for (const j of journeys) out.push(`- ${j.pass ? "holds" : "fails"}: ${j.name}${j.failed ? ` (${j.failed})` : ""}${(j.issues ?? []).map((i) => `; a note, not a finding: ${i.actual} (${i.landmark})`).join("")}`);
+    for (const j of journeys) out.push(`- ${journeyVerdict(j)}: ${j.name}${j.failed || j.unmeasured ? ` (${j.failed ?? j.unmeasured})` : ""}${(j.issues ?? []).map((i) => `; a note, not a finding: ${i.actual} (${i.landmark})`).join("")}`);
     out.push("");
   }
   if (sweep) {
@@ -1072,7 +1073,7 @@ export function findingKeys({ frames = [], sweep, journeys = [], acceptance = []
   const keys = new Map();
   for (const f of frames) for (const i of ordered(f.issues.filter((x) => x.status === "fail"))) keys.set(`${f.frame}\u0000${i.landmark}\u0000${i.property}`, `${f.frame}: ${i.landmark} ${i.property}`);
   for (const i of (sweep?.issues ?? []).filter((x) => x.status === "fail")) keys.set(`sweep\u0000${i.story ?? ""}\u0000${i.landmark}\u0000${i.property}\u0000${i.kind ?? ""}`, `${i.property} ${where(i)}`);
-  for (const j of journeys.filter((x) => !x.pass && !x.status)) keys.set(`journey\u0000${j.name}`, `journey ${j.name}`);
+  for (const j of journeys.filter((x) => !x.pass && !x.status && !x.unmeasured)) keys.set(`journey\u0000${j.name}`, `journey ${j.name}`);
   for (const r of acceptance.filter((x) => x.status === "fail")) keys.set(`acceptance\u0000${r.item}`, `acceptance “${r.item}”`);
   return keys;
 }
@@ -1165,7 +1166,7 @@ export function renderSummary({ frames = [], sweep, journeys = [], gaps = [], ac
       ...(sweep.partial ?? []).map((u) => `${alignmentName(u)} matched fewer than two at ${u.ranges}: measured where it had two or more`)].filter(Boolean);
     body.push(`sweep ${sweep.from}–${sweep.to}: ${verdictOf(sweep)} · ${sweep.reason ?? `layout changes between ${sweep.switches.length ? sweep.switches.join(", ") : "no widths"}`}${parts.length ? `; ${parts.join("; ")}` : ""}`);
   }
-  const broken = journeys.filter((x) => !x.pass);
+  const broken = journeys.filter((x) => !x.pass && !x.unmeasured);
   if (broken.length) body.push(broken.map((j) => `journey ${j.status ? `disputed with the check (${j.status})` : "fails"}: ${j.name}: ${j.failed}`).join("; "));
   const journeyNotes = journeys.flatMap((j) => (j.issues ?? []).map((i) => `${j.name}: ${i.actual} (${i.landmark})`));
   if (journeyNotes.length) body.push(`journey notes, not findings: ${journeyNotes.slice(0, 2).join("; ")}${journeyNotes.length > 2 ? `; and ${journeyNotes.length - 2} more` : ""}`);
@@ -1269,7 +1270,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     const how = [spec.touch && "touch", j.widths?.length && `${j.widths.join(" → ")} px`, j.asFresh?.length && `as a fresh load at ${j.asFresh.join(", ")} px`].filter(Boolean).join(", ");
     const opensOnly = spec.steps.some((st) => "visible" in st) && !spec.steps.some((st) => "hidden" in st);
     const notes = [opensOnly && "checks opening only, not closing", ...(j.notes ?? [])].filter(Boolean);
-    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.pass ? "holds" : `${j.status ? `disputed with the check (${j.status}), ` : ""}fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
+    out.push(`- ${j.name}${how ? ` (${how})` : ""}: ${j.unmeasured ? `not measured: ${j.unmeasured}` : j.pass ? "holds" : `${j.status ? `disputed with the check (${j.status}), ` : ""}fails at ${j.failed}`}${notes.length ? `; ${notes.join("; ")}` : ""}`);
   }
   out.push("", "## Deviations", "");
   for (const p of ledgerProblems) out.push(`- the ledger is invalid: ${p}`);
@@ -1345,7 +1346,7 @@ ${gaps.length ? `<section><h2>Not checked</h2><ul>${gaps.map((g) => `<li>${esc(g
 ${sections.join("\n")}
 ${sweep ? `<section><h2>Widths ${sweep.from}–${sweep.to} <span class="${verdictOf(sweep)}">${verdictOf(sweep)}</span></h2><p>${esc(sweep.reason ?? `Layout changes between ${sweep.switches.join(", ") || "no widths"}.`)}</p>${sweep.issues.length ? `<ul>${sweep.issues.map((i) => `<li>${esc(i.property)} ${esc(where(i))} at ${esc(i.ranges)}: ${esc(i.actual)} — ${esc(i.status)}</li>`).join("")}</ul>` : ""}</section>` : ""}
 ${(sweep?.stories ?? []).filter((st) => !st.generated).map((st) => `<section><h2>Story: ${esc(st.name)}</h2><p>${esc(st.unmeasured ?? "At the frames' widths; its findings are in the list above.")}</p><div class="row">${st.shots.map((sh) => `<figure><figcaption>${sh.width} px</figcaption><img src="${sh.image}" alt="${esc(st.name)} at ${sh.width} px"></figure>`).join("")}</div></section>`).join("\n")}
-${journeys.length ? `<section><h2>Journeys</h2><ul>${journeys.map((j) => `<li><span class="${j.pass ? "pass" : "fail"}">${j.pass ? "holds" : "fails"}</span> ${esc(j.name)}${j.failed ? `: ${esc(j.failed)}` : ""}</li>`).join("")}</ul></section>` : ""}
+${journeys.length ? `<section><h2>Journeys</h2><ul>${journeys.map((j) => `<li><span class="${j.pass ? "pass" : j.unmeasured ? "incomplete" : "fail"}">${journeyVerdict(j)}</span> ${esc(j.name)}${j.failed || j.unmeasured ? `: ${esc(j.failed ?? j.unmeasured)}` : ""}</li>`).join("")}</ul></section>` : ""}
 ${ledger.length ? `<section><h2>Deviations</h2><ul>${ledger.map(entry).join("")}</ul></section>` : ""}
 </html>
 `;

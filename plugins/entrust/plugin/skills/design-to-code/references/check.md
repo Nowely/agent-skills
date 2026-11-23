@@ -82,8 +82,11 @@ Each journey opens the page afresh at the widest frame's width (by touch with `"
 gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations, each given a second to come true
 as a person sees it: `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
 journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. The
-first step that does not hold fails it. A journey runs with the page's transitions and animations: what is running is brought to its end, its end events fired, before each expectation, so a
-sheet that hides itself when its closing transition ends closes, and one that never closes fails. With
+first step that does not hold fails it. Journeys use the browser's natural motion preference. A sheet can close on its
+own `transitionend`; finite motion on the measured target has up to 1.5 seconds to settle for geometry. For visible
+continuity required by the design, capture the affected region during the ordinary transition with animations enabled,
+and again at the end. Record the frames sampled and any interval you could not observe. A DOM animation-frame callback
+measures layout only. With
 `"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
 an observer left on removed elements or a layout not chosen again shows. The check then resizes that page through the

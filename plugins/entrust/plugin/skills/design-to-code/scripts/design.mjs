@@ -135,13 +135,24 @@ async function chromium() {
 // Frames and the sweep only: a journey keeps the page's transitions, since a control may finish its work on one (a sheet
 // that hides itself when its closing transition ends).
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
-// What runs is brought to its end before a journey looks: its end events fire, as they would a moment later.
-const finishMotion = (page) => page.evaluate(async () => {
-  for (const a of document.getAnimations()) {
-    try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
-  }
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-}).catch(() => {});
+// Read geometry after the target's finite motion ends naturally. Other controls keep their timers and event order.
+async function waitForMotion(page, selector) {
+  const done = await page.locator(selector).evaluateAll(async (elements) => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const el = elements.find((e) => e.getBoundingClientRect().width > 0);
+    if (!el) return true;
+    const animations = el.getAnimations({ subtree: true });
+    for (let p = el.parentElement; p; p = p.parentElement) animations.push(...p.getAnimations());
+    const running = animations.filter((a) => a.playState === "running" && Number.isFinite(a.effect?.getComputedTiming().endTime));
+    if (!running.length) return true;
+    let timer;
+    try {
+      return await Promise.race([Promise.allSettled(running.map((a) => a.finished)).then(() => true),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), 1500); })]);
+    } finally { clearTimeout(timer); }
+  });
+  if (!done) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
+}
 
 // Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
 // component (the root, inside it or around it), whether the journey removed its root, and what a ResizeObserver callback or a window-size matchMedia listener sets on an element (a class, a
@@ -310,11 +321,11 @@ const markRoot = (page, selector) => page.evaluate(([sel, mark, seen]) => {
   return Boolean(el);
 }, [selector, MARK, seenIn.toString()]);
 
-async function settle(page, selector) {
-  await (await rootOf(page, selector)).evaluate(async (root) => {
+async function settle(page, selector, still = true) {
+  await (await rootOf(page, selector)).evaluate(async (root, still) => {
     await document.fonts.ready;
     // Animations a script started end too: content it fades in is captured as it ends.
-    for (const a of document.getAnimations()) {
+    if (still) for (const a of document.getAnimations()) {
       try { if (a.effect?.getComputedTiming().endTime !== Infinity) a.finish(); } catch { /* one that cannot end runs on */ }
     }
     const images = root.matches("img") ? [root] : root.querySelectorAll("img");
@@ -332,7 +343,7 @@ async function settle(page, selector) {
       })]);
     } finally { clearTimeout(timer); }
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  });
+  }, still);
 }
 
 async function setWidth(page, cfg, width, viewportHeight) {
@@ -393,10 +404,10 @@ async function runStep(page, step) {
 // A page that could not be put in its state: the frame, story or journey is reported, the rest of the check goes on.
 const unmeasured = (message) => Object.assign(new Error(message), { unmeasured: true, exit: 2 });
 
-function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale = 1, touch = false }) {
+function contextOptions(cfg, { width, setup = [], viewport, height = 900, scale = 1, touch = false, still = true }) {
   const viewportWidth = viewport ?? (cfg.host ? Math.max(cfg.viewport ?? 1280, width) : width);
   const hasTouch = touch || setup.some((step) => "tap" in step);
-  return { viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, reducedMotion: "reduce", hasTouch };
+  return { viewport: { width: viewportWidth, height }, deviceScaleFactor: scale, ...(still ? { reducedMotion: "reduce" } : {}), hasTouch };
 }
 
 async function open(browser, cfg, target) {
@@ -430,7 +441,7 @@ async function open(browser, cfg, target) {
   }
   if (cfg.host) await setWidth(page, cfg, width, height);
   await markRoot(page, cfg.root);
-  await settle(page, cfg.root);
+  await settle(page, cfg.root, still);
   return { context, page };
 }
 
@@ -1653,13 +1664,14 @@ async function journeys(browser, cfg) {
   const frameWidths = [...new Set(cfg.frames.filter((f) => !f.root).map((f) => f.width))].sort((a, b) => b - a);
   const fresh = new Map();
   const freshDiff = async (page, j, at, when) => {
-    await finishMotion(page);
+    await waitForMotion(page, cfg.root);
     const after = await layoutOf(page, cfg.root);
     const key = JSON.stringify([j.url, Boolean(j.touch), at]);
     if (!fresh.has(key)) {
       let opened;
       try {
         opened = await open(browser, journeyConfig(j), { url: j.url, width: at, touch: Boolean(j.touch), still: false });
+        await waitForMotion(opened.page, cfg.root);
         fresh.set(key, { layout: await layoutOf(opened.page, cfg.root) });
       } catch (e) { fresh.set(key, { error: e.message.split("\n")[0] }); }
       finally { await opened?.context.close(); }
@@ -1710,7 +1722,7 @@ async function journeys(browser, cfg) {
       try {
         opened = await open(browser, journeyConfig(j), { url: j.url, width: at, touch: Boolean(j.touch), still: false, prepare: hold });
         await hold(opened.page);
-        for (let i = 0; i < 2; i++) await settle(opened.page, cfg.root);
+        await waitForMotion(opened.page, cfg.root);
         held.set(key, { layout: await layoutOf(opened.page, cfg.root) });
       } catch (e) { held.set(key, { error: e.message.split("\n")[0] }); }
       finally { await opened?.context.close(); }
@@ -1729,7 +1741,7 @@ async function journeys(browser, cfg) {
   }
   for (const { j: base, edge, opener, at } of edged) {
     const j = edge ? { ...base, width: at, name: `${base.name} (at the window's ${edge} edge${at !== (base.width ?? width) ? `, ${at} px` : ""})` } : base;
-    let opened, failed, overlaySeen = false, openerDone = false;
+    let opened, failed, missing, overlaySeen = false, openerDone = false;
     // Taken before the journey's page opens, as the held loads are taken after it closes: the journey keeps its pace.
     const floor = from !== null ? await floorOf(j) : null;
     try { opened = await open(browser, journeyConfig(j), { url: j.url, width: j.width ?? width, touch: Boolean(j.touch), still: false }); }
@@ -1779,7 +1791,7 @@ async function journeys(browser, cfg) {
         const moved = (r) => r.width !== null && room.width !== null && Math.abs(r.width - room.width) > cfg.tolerance;
         const spills = (r) => r.beyond > cfg.tolerance && !(room.beyond > cfg.tolerance);
         let now = await roomOf(page);
-        if (moved(now) || spills(now)) { await finishMotion(page); now = await roomOf(page); }
+        if (moved(now) || spills(now)) { await waitForMotion(page, cfg.root); now = await roomOf(page); }
         const before = room.width, changed = moved(now), spilled = spills(now);
         room = { width: now.width ?? room.width, beyond: now.beyond };
         if (around === null && now.width !== null) around = widths.at(-1) - now.width;
@@ -1847,13 +1859,12 @@ async function journeys(browser, cfg) {
             if (!EXPECT.includes(action) && action !== "wait") for (const t of openSeen) actedOn.add(t);
             if ("width" in step) {
               await setWidth(page, journeyConfig(j), step.width, 900);
-              await settle(page, cfg.root);
+              await settle(page, cfg.root, false);
               widths.push(step.width);
               await parentMoved(true);
               await roomAfter(i, step);
               continue;
             }
-            if (EXPECT.includes(action)) await finishMotion(page);
             await runStep(page, step);
             await rootAfter();
             if (step.text) {
@@ -1864,6 +1875,7 @@ async function journeys(browser, cfg) {
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             await roomAfter(i, step);
             if (step.visible) {
+              await waitForMotion(page, step.visible);
               // What opens must be in view, whole: a popover cut by the window's edge, or by a box that scrolls or
               // clips it, is a failure. An overlay only (positioned out of the flow, or a popup's role, or the nearest
               // such ancestor of what the step names), the first match a person sees; the page's own content may
@@ -1915,7 +1927,11 @@ async function journeys(browser, cfg) {
               seen.delete(arg);
               trigger = null;
             }
-          } catch (e) { failed = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`; break; }
+          } catch (e) {
+            const message = `step ${i + 1}, ${JSON.stringify(step)}: ${e.message.split("\n")[0]}`;
+            if (e.unmeasured) missing = message; else failed = message;
+            break;
+          }
         }
         if (!edge) {
           const { mount } = await page.evaluate(() => window.__designCheck?.changed()).catch(() => null) ?? {};
@@ -1933,20 +1949,23 @@ async function journeys(browser, cfg) {
         // draws it at the same width (an observer left on removed elements, a layout not chosen again). Then the check
         // resizes the page itself through the frames' widths, each held against a fresh load at that width: a layout
         // chosen once, or by an observer no longer on the element, shows at the next width.
-        if (j.sameAsFresh && !edge && !failed) {
+        if (j.sameAsFresh && !edge && !failed && !missing) {
           let now = widths.at(-1);
           failed = await freshDiff(page, j, now, "after its steps");
           asFresh.push(now);
           for (const w of frameWidths) {
             if (failed) break;
             if (w === now) continue;
-            try { await setWidth(page, journeyConfig(j), w, 900); await settle(page, cfg.root); }
+            try { await setWidth(page, journeyConfig(j), w, 900); await settle(page, cfg.root, false); }
             catch (e) { failed = `after its steps, a resize to ${w} px: ${e.message.split("\n")[0]}`; break; }
             now = w;
             failed = await freshDiff(page, j, w, `after its steps and a resize to ${w} px`);
             asFresh.push(w);
           }
         }
+      } catch (e) {
+        if (!e.unmeasured) throw e;
+        missing = e.message;
       } finally { await opened.context.close(); }
       // The component as each step that changed its container's width left it, against a fresh load with the container
       // held at that width: the first that differs fails the journey at its step, before whatever failed after it. One
@@ -1963,7 +1982,7 @@ async function journeys(browser, cfg) {
       }
     }
     if (edge && opened && !failed && !overlaySeen) notes.push(`no overlay was seen open after ${opener}: nothing was checked at the window's edge`);
-    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed, ...(failed ? { failed } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
+    results.push({ name: j.name, widths, ...(asFresh.length ? { asFresh } : {}), ...(heldAt.length ? { held: heldAt } : {}), pass: !failed && !missing, ...(failed ? { failed } : {}), ...(missing && !failed ? { unmeasured: missing } : {}), ...(notes.length ? { notes } : {}), closed: [...closed],
       acted: [...acted], closes, closers, ...(edge ? {} : { lifecycle: [...took] }), ...(constructs.length ? { issues: constructs } : {}) });
   }
   return results;
@@ -2213,7 +2232,7 @@ async function check(file, flags) {
     answerCandidates(cfg, sweepResult);
     // A journey the builder shows the check itself breaks, proposed with "cause": "checker", waits for the owner.
     for (const j of journeyResults) {
-      if (j.pass) continue;
+      if (!j.failed) continue;
       const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", ledger)).find(Boolean);
       if (e) Object.assign(j, { status: e.status === "accepted" ? "accepted" : "pending", ledger: e.reason, entries: [ledger.indexOf(e)] });
     }
@@ -2222,13 +2241,14 @@ async function check(file, flags) {
     const rows = acceptanceRows(cfg);
     const acceptance = complete ? rows.map((row) => assessRow(row, sweepResult)) : [];
     const gaps = complete ? acceptanceGaps(cfg, acceptance, sweepResult, results, journeyResults) : [];
+    for (const j of journeyResults) if (j.unmeasured) gaps.push(`journey ${j.name}: ${j.unmeasured}`);
     const issues = [...results.flatMap((r) => r.issues), ...(sweepResult?.issues ?? [])];
     const pending = issues.some((issue) => issue.status === "pending") || acceptance.some((row) => row.status === "pending") || journeyResults.some((j) => j.status === "pending");
     const missingReferences = frames.filter((frame) => !frame.reference || !fs.existsSync(frame.reference)).map((frame) => frame.name);
     const unmeasured = sweepResult?.unmeasured?.some((u) => !u.story);
     const imageOnlyFrames = results.filter((r) => r.imageOnly).map((r) => r.frame);
     const passed = results.every((r) => r.pass) && (sweepResult?.pass ?? true) && ledgerProblems.length === 0;
-    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => !j.pass && !j.status) || acceptance.some((row) => row.status === "fail");
+    const failed = issues.some((issue) => issue.status === "fail") || ledgerProblems.length > 0 || journeyResults.some((j) => j.failed && !j.status) || acceptance.some((row) => row.status === "fail");
     const status = failed ? "fail"
       : results.some((r) => r.verdict === "incomplete") || unmeasured || sweepResult?.verdict === "incomplete" || gaps.length ? "incomplete"
         : pending ? "pending" : passed ? "pass" : "fail";

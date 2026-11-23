@@ -342,7 +342,7 @@ test("ARIA snapshot identity uses the computed name and rejects unfamiliar outpu
 const playwright = (() => {
   for (const base of [path.join(process.cwd(), "noop.js"), DESIGN]) {
     for (const name of ["playwright", "@playwright/test", "playwright-core"]) {
-      try { createRequire(base).resolve(name); return true; } catch { /* next */ }
+      try { return createRequire(base).resolve(name); } catch { /* next */ }
     }
   }
   return false;
@@ -2246,6 +2246,70 @@ test("draft 28.2: wraps with room needs the text on one line once lifted, inside
   assert.deepEqual(run('<div style="display:grid;grid-template-columns:minmax(0,max-content) auto;gap:8px"><div style="max-width:120px">Dedicated server with eight drives</div><button style="white-space:nowrap">Order now</button></div>'), []);
   // With nothing in the way, the same title wraps with room.
   assert.ok(run('<div style="max-width:100px">Dedicated server BA-i201</div>').some((i) => i.landmark === "Dedicated server BA-i201"));
+});
+
+test("a width journey keeps the natural motion preference, animation clock and end event", browser, () => {
+  const f = smallFrame(`<style>aside{position:fixed;top:0;left:0;width:2px;height:2px}
+@media (min-width:400px) and (prefers-reduced-motion:no-preference){aside{animation:blink .3s}}
+@keyframes blink{from{opacity:0}to{opacity:1}}</style>
+<aside></aside><span>Ready</span><output></output><script>
+let started;
+const moving = document.querySelector("aside"), out = document.querySelector("output");
+moving.onanimationstart = () => { started = performance.now(); };
+moving.onanimationend = () => { out.textContent = performance.now() - started >= 200 ? "completed naturally" : "fast-forwarded"; };
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "responsive transition", steps: [
+    { width: 450 }, { text: ["output", "completed naturally"] },
+  ] }] }));
+  const journey = check(f.dir, "--no-sweep").result.journeys[0];
+  assert.ok(journey.pass, JSON.stringify(journey));
+});
+
+test("geometry still moving at the journey timeout is incomplete", browser, () => {
+  const f = smallFrame(`<style>@media (min-width:400px) {main{animation:grow 30s linear}}
+@keyframes grow{from{height:80px}to{height:180px}}</style><span>Ready</span>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "growing", steps: [
+    { width: 450 }, { visible: "main" },
+  ] }] }));
+  const r = check(f.dir, "--no-sweep");
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.result.journeys[0].unmeasured, /still running after 1.5 seconds/);
+  assert.equal(r.result.journeys[0].failed, undefined);
+});
+
+test("a focused screenshot distinguishes a temporary flash with identical settled frames", browser, async () => {
+  const { chromium } = createRequire(import.meta.url)(playwright), browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    const sample = async () => {
+      const png = await page.screenshot({ clip: { x: 20, y: 20, width: 1, height: 1 }, animations: "allow" });
+      return page.evaluate(async (base64) => {
+        const image = new Image();
+        image.src = "data:image/png;base64," + base64;
+        await image.decode();
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      }, png.toString("base64"));
+    };
+    for (const flash of [false, true]) {
+      await page.setViewportSize({ width: 300, height: 100 });
+      await page.setContent(`<style>body{margin:0}#chart{height:50px;background:white}
+@keyframes redraw{0%,85%{background:${flash ? "red" : "white"}}100%{background:white}}
+@media(min-width:400px) and (prefers-reduced-motion:no-preference){#chart{animation:redraw 1s steps(1,end)}}
+</style><div id="chart"></div><script>
+document.onanimationstart = () => document.body.dataset.stage = "moving";
+document.onanimationend = () => document.body.dataset.stage = "done";
+</script>`);
+      await page.setViewportSize({ width: 450, height: 100 });
+      await page.locator('body[data-stage="moving"]').waitFor({ timeout: 2000 });
+      assert.deepEqual(await sample(), flash ? [255, 0, 0] : [255, 255, 255]);
+      await page.locator('body[data-stage="done"]').waitFor({ timeout: 2000 });
+      assert.deepEqual(await sample(), [255, 255, 255]);
+    }
+  } finally { await browser.close(); }
 });
 
 test("draft 28.2: journeys keep the page's transitions: a sheet that hides itself when its closing transition ends closes; one that never closes fails", browser, () => {
