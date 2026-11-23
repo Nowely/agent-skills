@@ -68,8 +68,10 @@ node evals/design-to-code/harness/arm.mjs freeze ~/arms/c1
 NODE_PATH=$(npm root -g) node evals/design-to-code/cases/catalogue-card/judge/judge.mjs ~/arms/c1 ~/arms/c1.judge
 ```
 
-It prints `ACCEPTED` or `RETURNED` with `width`, `choice` and `basics` each holding or broken, and each failed check;
-`judge.json` has them all, `shots/` the pictures for a blind review (the three frames' states, dense and many at 764
+It prints `ACCEPTED` or `RETURNED` for the **card contract only**, with `width`, `choice` and `basics` each holding
+or broken, and each failed check. Alongside it, read the consumer status in the complete check's handoff and the
+owner's decision in the existing verdict form; if either is absent, it is unknown. The judge does not establish an
+owner acceptance or the consumer's behavior at untested widths. `judge.json` has the unchanged checks and groups, `shots/` the pictures for a blind review (the three frames' states, dense and many at 764
 and 375, the page at 407 and with the sidebar open at 960).
 
 **Read as done** (the plan's iteration 7): the builder finds both defects itself before handing over, so the first

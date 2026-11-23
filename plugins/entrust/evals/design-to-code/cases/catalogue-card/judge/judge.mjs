@@ -205,4 +205,5 @@ const groups = Object.fromEntries(["width", "choice", "basics"].map((g) => [g, c
 const verdict = failed.length ? "RETURNED" : "ACCEPTED";
 fs.writeFileSync(path.join(out, "judge.json"), `${JSON.stringify({ verdict, groups, checks }, null, 2)}\n`);
 console.log(`${verdict} · width ${groups.width ? "holds" : "BROKEN"} · choice ${groups.choice ? "holds" : "BROKEN"} · basics ${groups.basics ? "hold" : "BROKEN"}`);
+console.log("Scope: card contract only; consumer status: see the complete check's handoff; owner decision: see the existing verdict form, unknown if not recorded.");
 for (const c of failed) console.log(`- ${c.group}: ${c.name}${c.detail ? ` — ${c.detail}` : ""}`);

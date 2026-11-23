@@ -39,6 +39,10 @@ incomplete when:
   row;
 - a [candidate](#generated-conditions) is unanswered.
 
+An evidenced external blocker does not change a `fail` or its exit code. The owner can receive a blocked handover
+with the current complete check and the evidence and scope boundary recorded as the skill says; a partial check does
+not stand in for it. If a current complete check cannot run, name the reason and what was not checked.
+
 **Rounds.** The score adds what is not settled, findings and proposals alike; notes and candidates count nothing. The
 console is a digest of fifteen lines at most: the round before and the lowest among rounds measured the same way, what
 changed since (findings fixed, new ones), each frame's new findings with where to start and the unchanged ones as a
@@ -64,7 +68,7 @@ Paths are relative to the file.
 | `ledger` | the ledger's file; `deviations.json` beside design.json when not given |
 | `kit` | the UI kit's class prefixes, `["Mui", "ant-"]`: its negative gutters and offsets are not constructs |
 | `frames[]` | `name`, `width`, `spec`, `reference`; optionally `url`, `viewport`, `setup` and `root` (a state drawn outside the component, such as a popover) |
-| `sweep` | `from`, `to`, `step` (default 8), `setup`, `stories`, `switches`, `align`, `lines`, `generate` |
+| `sweep` | chosen test range `from`–`to`, `step` (default 8), `setup`, `stories`, `switches`, `align`, `lines`, `generate`; `from` alone does not establish a supported minimum |
 | `static`, `journeys` | why the page needs no sweep; [what a user does](#journeys) |
 | `lifecycle` | the reason the product can cause no lifecycle (no remount, no data emptied and refilled, no change of the parent's width), `"no data changes: the card renders once"`: no `sameAsFresh` journey is then asked for, and the handoff prints the reason |
 
@@ -110,7 +114,8 @@ cleanup deferred). A script-set mode can be attributed to a size-query listener 
 that attribution.
 
 **The component's width.** After each step, at a width the sweep covers, the check measures the root's container (its
-parent), for the root the journey started with while it is on the page. The step fails the journey when the container
+parent), for the root the journey started with while it is on the page. `from` is a chosen test width, not evidence
+of a product minimum; record that minimum's source or unknown in `review.md`. The step fails the journey when the container
 is narrower than a fresh load gives it at the sweep's `from`, where it narrows with the width (what opened, a sidebar
 beside the list, takes the component's room), or when the page starts to scroll sideways. A container with no width,
 or a root clipped from view (a panel collapsed, a tab hidden), shows no component, and neither that floor nor the fresh
@@ -296,7 +301,9 @@ quotes: `- window “card-375”: the card is shown only in the 375 px column (l
 An entry that matches a finding settles it: accepted, it excuses it; proposed, of any category, it leaves it pending
 for the owner. An entry with `"cause": "checker"` may also name a failing journey (`"property": "journey"`, its name
 as the landmark): the journey waits for the owner instead of failing, and the evidence lists it under "Disputed with
-the check". A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
+the check". An invalid entry is a ledger fault and does not mark a journey. A valid owner-accepted `*` property can
+also match a journey without `cause: "checker"`; it is a broad excuse, not evidence that the check caused the failure.
+A refused entry is deleted and the difference fixed. An entry excuses a cause and what it carries.
 
 A `presence` entry, proposed or accepted, for a design text the page lacks also carries, in each frame it applies to,
 what that absence moves: upward `y` shifts below the text, and the root's height, by at most the text's height and its

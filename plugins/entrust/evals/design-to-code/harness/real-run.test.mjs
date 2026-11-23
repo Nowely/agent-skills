@@ -12,12 +12,16 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { APPROVAL, classify, diffFiles, execCellOps, lineDelta, literal, nestedCalls, parseRollout } from "./real-run.mjs";
+import { FAIL_GUIDANCE } from "../../../plugin/skills/design-to-code/scripts/core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, "real-run.mjs");
 const FIXTURE = path.join(HERE, "fixtures", "codex-rollout.jsonl");
 const MAKE_ARM = path.join(HERE, "../cases/server-card-planted/make-arm.mjs");
+const ARM = path.join(HERE, "arm.mjs");
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "real-run-test-"));
+// This frozen synthetic rollout predates the current generated approval.
+const HISTORIC_APPROVAL = "The owner has approved this plan: run the check, fix what is fixable in the component's files, record ledger entries, hand over at `pass`, `pending` or the budget; the fixed inputs are not yours to change.";
 
 // ------------------------------------------------------------------ the rollout parser
 
@@ -67,7 +71,7 @@ test("the rollout: calls by name and by what they did, polls, agents, the first 
   assert.deepEqual(r.wall, { first: "2026-01-15T14:53:32.500Z", last: "2026-01-15T15:00:26.500Z", seconds: 414 });
   assert.deepEqual([r.session.model, r.session.effort], ["worker-model", "xhigh"]);
   assert.equal(r.user.messages, 1);
-  assert.ok(r.user.first.includes(APPROVAL));
+  assert.ok(r.user.first.includes(HISTORIC_APPROVAL));
   assert.deepEqual(r.lastCall, { call: 10, at: "2026-01-15T15:00:26.500Z", outputAt: null, category: "check-complete" });
   assert.equal(r.final, null);
   // What it does not know is counted, not fatal.
@@ -280,10 +284,19 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   fs.writeFileSync(path.join(pack, "deviations.json"), JSON.stringify([{ landmark: "Выдача за 15 минут", property: "presence", category: "missing-state", status: "proposed", reason: "the frames draw it; the contract has no field", options: ["drop the line", "add an optional field"] }]));
   const round = (n, time, quick, status, score) => JSON.stringify({ round: n, time, frames: ["card-764", "card-601", "card-486", "card-280", "network-popover"], basis: quick ? "q" : "c", status, score, quick });
   fs.writeFileSync(path.join(out, "history.jsonl"), [round(1, "2026-01-15T14:54:20.000Z", true, "fail", 12), round(2, "2026-01-15T14:55:05.000Z", false, "pending", 3), round(3, "2026-01-15T15:00:50.000Z", false, "fail", 4), ""].join("\n"));
-  fs.writeFileSync(path.join(out, "handoff.md"), "Status: fail — fix the first cause and check again\n");
+  fs.writeFileSync(path.join(out, "handoff.md"), `Status: fail — ${FAIL_GUIDANCE}\n`);
+  const frozen = spawnSync(process.execPath, [ARM, "freeze", project], { encoding: "utf8" });
+  assert.equal(frozen.status, 0, frozen.stderr);
+  const frozenMeta = fs.readdirSync(dir).find((name) => /^card\..*\.tar\.json$/.test(name));
+  const frozenRecord = JSON.parse(fs.readFileSync(path.join(dir, frozenMeta), "utf8"));
+  assert.equal(frozenRecord.handedOverOnFail, true);
+  assert.equal(frozenRecord.status, `Status: fail — ${FAIL_GUIDANCE}`);
   for (const f of ["history.jsonl", "handoff.md"]) fs.utimesSync(path.join(out, f), at("2026-01-15T15:00:50Z"), at("2026-01-15T15:00:50Z"));
   const rollout = path.join(dir, "rollout.jsonl");
   fs.writeFileSync(rollout, fs.readFileSync(FIXTURE, "utf8").replaceAll("/ABSOLUTE/PROJECT", project));
+  // Replaying a historical run uses that run's recorded line, not today's generated prompt.
+  fs.writeFileSync(baseline, JSON.stringify({ ...b, approval: HISTORIC_APPROVAL,
+    firstMessage: b.firstMessage.replace(APPROVAL, HISTORIC_APPROVAL) }));
 
   // A check still running in the project: nothing is frozen.
   const fake = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)", path.join(project, ".skill/design-to-code/scripts/design.mjs"), "check", "design.json"], { stdio: "ignore" });
@@ -338,6 +351,9 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   // A frozen run is never written over.
   assert.equal(cli(home, "collect", project, "--rollout", rollout, "--baseline", baseline, "--out", path.join(dir, "out1")).status, 2);
 
+  // A newly registered run uses the new line, while the old frozen rollout above remains unchanged.
+  fs.writeFileSync(baseline, JSON.stringify(b));
+  fs.writeFileSync(rollout, fs.readFileSync(rollout, "utf8").replaceAll(HISTORIC_APPROVAL, APPROVAL));
   // One reference edited; the log found by itself under $CODEX_HOME, from the session opened in the project.
   fs.appendFileSync(path.join(project, "design", "card-764", "reference.png"), Buffer.from([0]));
   const day = path.join(home, ".codex", "sessions", "2026", "01", "15");
@@ -348,6 +364,15 @@ test("setup then collect on the planted card: inputs intact, a late check read a
   assert.match(c2.stdout, /^INPUTS CHANGED$\n^ {2}changed: design\/card-764\/reference\.png$/m);
   const r2 = JSON.parse(fs.readFileSync(path.join(dir, "out2", "record-A.json"), "utf8"));
   assert.deepEqual([r2.inputs.verdict, r2.inputs.changed, r2.inputs.removed, r2.inputs.added], ["INPUTS CHANGED", ["design/card-764/reference.png"], [], []]);
+  assert.equal(r2.fields["7 interventions and helpers"].approvalLineSent, true);
+  // A baseline predating the approval field provides no evidence: do not backfill it from the current constant.
+  const { approval: omitted, ...withoutApproval } = b;
+  fs.writeFileSync(baseline, JSON.stringify(withoutApproval));
+  const missing = cli(home, "collect", project, "--baseline", baseline, "--out", path.join(dir, "out3"));
+  assert.equal(missing.status, 0, missing.stdout + missing.stderr);
+  const r3 = JSON.parse(fs.readFileSync(path.join(dir, "out3", "record-A.json"), "utf8"));
+  assert.equal(r3.fields["7 interventions and helpers"].approvalLineSent, null);
+  assert.equal('approval' in JSON.parse(fs.readFileSync(baseline, 'utf8')), false);
   assert.equal(r2.rollout.file, "rollout-2026-01-15T14-53-32-0199a213-81c0-7800-8aa1-bbab2a035a55.jsonl");
   assert.ok(r2.component.changed.includes("design/card-764/reference.png"), "the changed original goes in the archive");
   // Beside it, the original as recorded, for the blind review.

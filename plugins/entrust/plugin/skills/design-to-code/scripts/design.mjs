@@ -27,7 +27,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  compareFrame, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
+  compareFrame, FAIL_GUIDANCE, findingKeys, firstStreak, inkRuns, joinContext, tightBox, uncovered, ledgerEntryFor, ledgerFaults, nameRegions, pageText, parseFigmaUrl, ranges, renderGallery, renderHandoff, renderReport, renderSummary,
   rerunNotice, snapshotIdentity, specFromMetadata, specFromRest, sweepIssues, switches, totalScore,
 } from "./core.mjs";
 
@@ -1863,7 +1863,7 @@ async function journeys(browser, cfg) {
         if (from !== null && widths.at(-1) < from) return;
         const px = (v) => Math.round(v), seen = now.shown && now.width > 0;
         if (changed && seen && least > 0 && now.width < least - cfg.tolerance) {
-          throw new Error(`after it the component's container is ${px(now.width)} px wide (${px(before)} before), narrower than the ${px(least)} px it has at the narrowest supported width, ${from} px: what it opened takes the component's room; where there is no room beside, stack it above or below the component, or lay it over`);
+          throw new Error(`after it the component's container is ${px(now.width)} px wide (${px(before)} before), narrower than the ${px(least)} px measured on a fresh page at the sweep's starting width, ${from} px: what it opened takes the component's room; check the supported minimum and the consumer's behavior against their source`);
         }
         if (spilled) {
           throw new Error(now.root !== null && now.width !== null && now.root > now.width + cfg.tolerance
@@ -2307,10 +2307,11 @@ async function check(file, flags) {
     }
     const journeyResults = full && !flags.quick ? await journeys(browser, cfg) : [];
     answerCandidates(cfg, sweepResult);
-    // A journey the builder shows the check itself breaks, proposed with "cause": "checker", waits for the owner.
+    // Invalid entries remain ledger faults, but must not mark an individual failed journey as disputed or accepted.
+    const validJourneyLedger = ledger.filter((e) => ledgerFaults([e]).length === 0);
     for (const j of journeyResults) {
       if (!j.failed) continue;
-      const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", ledger)).find(Boolean);
+      const e = [j.name, j.name.replace(/ \(at the window's .*\)$/, "")].map((name) => ledgerEntryFor({ landmark: name, property: "journey" }, "journeys", validJourneyLedger)).find(Boolean);
       if (e) Object.assign(j, { status: e.status === "accepted" ? "accepted" : "pending", ledger: e.reason, entries: [ledger.indexOf(e)] });
     }
     // A complete check (every frame, the sweep) is the evidence for a handoff; --frame, --no-sweep and --quick are partial.
@@ -2374,7 +2375,7 @@ async function check(file, flags) {
     const tail = 2 + (status === "fail" && !notice ? 1 : 0);
     const printed = [renderSummary(data, { file: `${where}/report.md`, limit: 15 - tail }),
       `Verdict: ${status}${notice}${complete ? "" : " on what this partial check measured"}${missingReferences.length ? `; missing reference images: ${missingReferences.join(", ")}` : ""}`,
-      ...(status === "fail" && !notice ? ["A fail is not a state to hand over in: fix the first cause and check again."] : []),
+      ...(status === "fail" && !notice ? [`Fail: ${FAIL_GUIDANCE}.`] : []),
       complete ? `Gallery (design, before, after): ${where}/gallery.html · evidence for the handoff: ${where}/handoff.md`
         : `A partial check (${flags.frame ? "--frame" : flags.quick ? "--quick" : "--no-sweep"}): it is not the evidence for a handoff.`].join("\n");
     fs.appendFileSync(historyFile, `${JSON.stringify({ ...record, seconds: Math.round((Date.now() - started) / 100) / 10, bytes: Buffer.byteLength(`${printed}\n`) })}\n`);

@@ -1194,6 +1194,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // images: { design, before, after, diff } as data URLs, any of them absent.
 // The evidence a handoff quotes, written by a check of every frame: each line is what was run and what it gave, what
 // the ledger excused, and what the script did not check, so a claim beyond this file has to name its own evidence.
+export const FAIL_GUIDANCE = "fix what is in scope; an evidenced external blocker may be handed over as blocked with the complete check's evidence, or why it could not run";
+
 export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs = [], gaps = [], ledger = [], ledgerProblems = [], acceptance = [],
   pictures = [], round: n, status, score, stamp = "", model, lifecycle }) {
   const fails = (issues) => issues.filter((i) => i.status === "fail");
@@ -1206,7 +1208,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
     return `${head}${ok ? `; ${ok} excused by the ledger` : ""}${noted.length ? `; ${sweepNotes(noted)}` : ""}${cand.length ? `; ${cand.length} candidate${cand.length === 1 ? "" : "s"}, ${open.length} unanswered` : ""}`;
   };
   const handoverState = { pass: "done", pending: "proposals wait for the owner: hand over, naming each",
-    incomplete: "only with a named blocker and the attempt made", fail: "not a state to hand over in: fix the first cause and check again" }[status] ?? "";
+    incomplete: "only with a named blocker and the attempt made", fail: FAIL_GUIDANCE }[status] ?? "";
   // An excuse should be narrower than what it excuses: an entry that covers many findings is named first. Entries that
   // name their landmarks are counted per frame (or in the sweep): the same question in every frame, one finding in each,
   // is one entry, not a broad one. A wildcard or a region is counted over every frame, as it names nothing.

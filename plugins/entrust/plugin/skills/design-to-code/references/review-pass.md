@@ -6,8 +6,11 @@ implementer that grades its own work skews positive, and talks itself out of the
 
 ## When
 
-After the complete check passes or is `pending`, and before handover. One pass, then one round of fixes and a
-complete check again. Where no second agent can be started, skip it and say so in the handover.
+After the complete check passes or is `pending`, and before handover. With an evidenced external blocker and an
+owner who needs a component decision, a review may instead be limited to the component and reachable states: name
+its scope and what remains unreviewed. If a current complete check could not run, do not treat older captures or a
+partial check as current complete evidence; say why and what is unavailable. A fixable `fail` does not itself call for
+a review. One pass, then one round of fixes and a complete check again. Where no second agent can be started, skip it and say so in the handover.
 
 ## How to start it
 
@@ -28,6 +31,8 @@ Read only these:
 - the check's findings and notes: <pack>/out/report.md (ignore any reasons written beside them)
 - the page itself, to open at any width: <page URL>
 - the diff of the work: <diff command or file>
+- the configured test widths: <pack>/design.json
+- the product contract or owner requirement for the component's minimum width: <source path, or unknown>
 
 The owner's criteria:
 - Return for these classes (one example each; find the class, not only the example):
@@ -45,8 +50,10 @@ The owner's criteria:
 - A construct (a negative margin, a transform moving text, a fixed height around content that grows) is a note that
   needs its reason: fix it, or give the reason in the handoff. Name each you see as "reason needed", not a return by
   itself, unless it breaks one of the classes above.
-- Look where returns hide: open the dense and many-entries stories at the narrowest width the product supports (the
-  sweep's `from` in design.json), and each overlay with its opener near the window's top and bottom edges.
+- Look where returns hide: open the dense and many-entries stories at the chosen `sweep.from` test width and each
+  overlay with its opener near the window's top and bottom edges. Establish the supported minimum from its product
+  contract or owner source; if no source is available, say unknown. Do not treat the builder's selected test width or
+  assertions as independently verified product requirements.
 - Do not return for: a moderate, systematic difference the system explains: an offset of 12 px or less, or a drift
   up to 24 px carried from the pieces before (a token gap where the frame measures a few pixels more or less, the
   kit's own component size, another font's widths); a stand-in icon; a collision the check found only under its own
@@ -68,6 +75,7 @@ do not invent what you cannot see. End with RETURN or ACCEPT.
 
 ## After it
 
-Fix each "fix", run the complete check, and hand over. In the handover, list the review's findings with what you did
-about each, and each "no" of the six questions with its place. A finding you disagree with is not dropped: say why,
-for the owner to decide.
+Fix each "fix" in scope and run the current complete check last; if it cannot run, say why and what remains
+unchecked. For an evidenced external blocker, retain the actual failure and hand over blocked as the skill says. In
+the handover, list the review's findings with what you did about each, and each "no" of the six questions with its
+place. A finding you disagree with is not dropped: say why, for the owner to decide.

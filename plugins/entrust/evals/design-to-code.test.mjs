@@ -1536,14 +1536,14 @@ test("v21: a story on a frame's page whose setup only waits is the frame again",
   assert.match(check(f.dir).stdout, /the story same is a frame's own page/);
 });
 
-test("v21: the evidence file starts with the handover status, a fail says to keep working, and other data is named", browser, () => {
+test("v21: the evidence starts with the status, a fail can be reported as blocked, and other data is named", browser, () => {
   const f = smallFrame('<span>Ready</span> <b>Steady</b> <i>Go</i>');
   f.write('<main><span>Alpha</span> <b>Beta</b> <i>Gamma</i></main>');
   const r = check(f.dir);
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /A fail is not a state to hand over in: fix the first cause and check again/);
+  assert.match(r.stdout, /Fail: fix what is in scope; an evidenced external blocker may be handed over as blocked/);
   assert.match(r.stdout, /3 of 3 design texts are missing: the page likely renders other data than this frame/);
-  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — not a state to hand over in/);
+  assert.match(fs.readFileSync(path.join(f.dir, "out/handoff.md"), "utf8"), /^Status: fail — fix what is in scope; an evidenced external blocker may be handed over as blocked/m);
 });
 
 // ------------------------------------------------------------------ v22: predicting where the layout breaks
@@ -3467,8 +3467,8 @@ test("44.8: after each step, a container narrower than at the sweep's from, or a
   // At 400 px the column is 368 px; the sidebar leaves it 152, and a fresh load gives it 268 at the sweep's 300.
   const squeezed = sidebarPage()({ width: 400 }, ...OPEN);
   assert.equal(squeezed.pass, false, JSON.stringify(squeezed));
-  assert.equal(squeezed.failed, 'step 2, {"click":"#filters"}: after it the component\'s container is 152 px wide (368 before), narrower than the 268 px it has at the narrowest supported width, 300 px: what it opened takes the component\'s room; where there is no room beside, stack it above or below the component, or lay it over');
-  // Stacked above the column there, the sidebar leaves it its width; below the narrowest supported width nothing is held.
+  assert.equal(squeezed.failed, 'step 2, {"click":"#filters"}: after it the component\'s container is 152 px wide (368 before), narrower than the 268 px measured on a fresh page at the sweep\'s starting width, 300 px: what it opened takes the component\'s room; check the supported minimum and the consumer\'s behavior against their source');
+  // Stacked above the column there, the sidebar leaves it its width; below the sweep start nothing is held.
   const stacked = sidebarPage({ stacked: true })({ width: 400 }, ...OPEN);
   assert.ok(stacked.pass, JSON.stringify(stacked));
   assert.match(stacked.notes.join(" "), /368 px: layout was not measured/);
@@ -3687,4 +3687,183 @@ test("44.8: a window-bound component below the fold still fails its expected pla
   const j = check(dir, "--no-sweep").result.journeys.find((x) => x.name === "filters");
   assert.equal(j.pass, false, JSON.stringify(j));
   assert.match(j.failed, /no .thumb:left-of.* is visible/);
+});
+
+// A second consumer, unrelated to the catalogue's selectors: a dock narrows a canvas, and a separate refresh
+// journey can independently lose a chosen value. Both pages use the same inputs, viewport and action sequence.
+function blockerConsumer() {
+  const f = smallFrame();
+  const page = (dock, losesChoice) => `<style>body{margin:0}.workspace{display:flex;width:100%}.dock{flex:0 0 ${dock}px}.dock[hidden]{display:none}
+.stage{flex:1 1 auto;min-width:0}main{width:100%;height:80px}.choice{white-space:nowrap}</style>
+<button id="dock-toggle">Dock</button><button id="refresh-view">Refresh</button>
+<div class="workspace"><aside class="dock" hidden>Panel</aside><div class="stage"><main><span>Document</span>
+<button id="select-choice">Choose</button><span class="choice">none</span></main></div></div>
+<script>document.querySelector('#dock-toggle').onclick=()=>{const d=document.querySelector('.dock');d.hidden=!d.hidden};
+document.querySelector('#select-choice').onclick=()=>{document.querySelector('.choice').textContent='selected'};
+document.querySelector('#refresh-view').onclick=()=>{if(${losesChoice})document.querySelector('.choice').textContent='none'};</script>`;
+  f.write(page(170, false));
+  fs.copyFileSync(f.page, path.join(f.dir, 'original.html'));
+  const original = fs.readFileSync(f.page, 'utf8');
+  const config = JSON.parse(fs.readFileSync(f.config, 'utf8'));
+  const squeeze = { name: 'open dock', width: 400, steps: [{ click: '#dock-toggle' }, { visible: '.dock' }] };
+  const selection = { name: 'choice survives refresh', steps: [{ click: '#select-choice' }, { text: ['.choice', 'selected'] },
+    { click: '#refresh-view' }, { text: ['.choice', 'selected'] }] };
+  fs.writeFileSync(f.config, JSON.stringify({ ...config, url: 'original.html' }));
+  const snap = cli('snapshot', f.config, '--images', '--force');
+  assert.equal(snap.status, 0, snap.stderr);
+  const run = ({ url = 'page.html', dock = 170, losesChoice = false, order = [squeeze, selection], minimum = 'unknown', baselineMissing = false, ledger = [], flags = [] } = {}) => {
+    f.write(page(dock, losesChoice));
+    const source = minimum === 'unknown' ? 'supported minimum: unknown; no owner or contract source' : `supported minimum: ${minimum} px; contract.md`;
+    fs.writeFileSync(path.join(f.dir, 'contract.md'), minimum === 'unknown' ? 'No minimum supplied.\n' : `Supported component minimum: ${minimum} px.\n`);
+    if (baselineMissing) fs.rmSync(path.join(f.dir, 'original.html'));
+    fs.writeFileSync(path.join(f.dir, 'review.md'), REVIEW + `\n## External blocker\n\nopen dock: measured ${400 - dock} px; sweep start: 300 px in design.json; ${source}; baseline comparison not recorded, attribution unknown. The consumer page is outside the edit boundary.\n`);
+    fs.writeFileSync(path.join(f.dir, 'ledger.json'), JSON.stringify(ledger));
+    fs.writeFileSync(f.config, JSON.stringify({ ...config, url, journeys: order }));
+    const result = check(f.dir, ...flags);
+    if (!baselineMissing) assert.equal(fs.readFileSync(path.join(f.dir, 'original.html'), 'utf8'), original);
+    return result;
+  };
+  return { ...f, run, squeeze, selection };
+}
+
+test('an external blocker preserves the measured failure across original and changed consumers', browser, () => {
+  const f = blockerConsumer();
+  const original = f.run({ url: 'original.html' });
+  const same = f.run();
+  const worsened = f.run({ dock: 210 });
+  const failure = (r) => r.result.journeys.find((j) => j.name === 'open dock');
+  for (const r of [original, same, worsened]) {
+    assert.equal(r.status, 1, r.stdout);
+    assert.equal(r.result.status, 'fail');
+    assert.equal(r.result.pass, false);
+    assert.match(r.stdout, /sweep's starting width, 300 px/);
+    assert.doesNotMatch(failure(r).failed, /narrowest supported width/);
+  }
+  assert.match(failure(original).failed, /230 px wide/);
+  assert.match(failure(same).failed, /230 px wide/);
+  assert.match(failure(worsened).failed, /190 px wide/);
+  assert.ok(same.result.journeys.find((j) => j.name === 'choice survives refresh').pass);
+  assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+});
+
+test('a separate choice regression stays visible with an external blocker in either journey order', browser, () => {
+  const f = blockerConsumer();
+  for (const order of [[f.squeeze, f.selection], [f.selection, f.squeeze]]) {
+    const r = f.run({ losesChoice: true, order });
+    assert.equal(r.status, 1, r.stdout);
+    assert.equal(r.result.status, 'fail');
+    const dock = r.result.journeys.find((j) => j.name === 'open dock');
+    const choice = r.result.journeys.find((j) => j.name === 'choice survives refresh');
+    assert.match(dock.failed, /230 px wide/);
+    assert.match(choice.failed, /no visible .* shows “selected”/);
+    assert.match(r.stdout, /journey fails: .*open dock/);
+    assert.match(r.stdout, /journey fails: .*choice survives refresh/);
+    assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+  }
+});
+
+test('an external journey cannot be converted to pending by an unclassified ledger entry', browser, () => {
+  const f = blockerConsumer();
+  const r = f.run({ ledger: [{ landmark: 'open dock', property: 'journey', status: 'proposed', reason: 'the page is outside the edit scope' }] });
+  assert.equal(r.status, 1, r.stdout);
+  assert.equal(r.result.status, 'fail');
+  assert.match(r.result.ledgerProblems.join(' '), /a journey entry disputes a journey the check itself breaks/);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, undefined);
+});
+
+test('invalid journey entries do not mark a failed journey, and a valid checker-tagged entry still matches', browser, () => {
+  const f = blockerConsumer();
+  const invalid = { landmark: 'open dock', property: 'journey', status: 'proposed', reason: 'outside the edit scope' };
+  const valid = { ...invalid, cause: 'checker', reason: 'synthetic checker-tagged entry; this case tests matching only' };
+  const acceptedWithoutOwner = { ...valid, status: 'accepted' };
+  let r = f.run({ ledger: [acceptedWithoutOwner] });
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.result.ledgerProblems.join(' '), /an accepted entry names who decided it/);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, undefined);
+  r = f.run({ ledger: [invalid, valid] });
+  assert.equal(r.status, 1, r.stdout); // the invalid entry is still a fault
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'pending');
+  assert.deepEqual(r.result.journeys.find((j) => j.name === 'open dock').entries, [1]);
+  r = f.run({ ledger: [valid] });
+  assert.equal(r.status, 3, r.stdout);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'pending');
+  assert.deepEqual(r.result.ledgerProblems, []);
+  // A valid owner-accepted wildcard has always matched journeys without a checker tag; preserve that behavior.
+  const wildcard = { landmark: '*', property: '*', status: 'accepted', decidedBy: 'fixture owner', reason: 'synthetic owner decision' };
+  r = f.run({ ledger: [wildcard] });
+  assert.deepEqual(r.result.ledgerProblems, []);
+  assert.equal(r.result.journeys.find((j) => j.name === 'open dock').status, 'accepted');
+});
+
+test('an unavailable baseline leaves attribution unknown and does not turn failure into pending', browser, () => {
+  const f = blockerConsumer();
+  const r = f.run({ baselineMissing: true });
+  assert.equal(r.status, 1, r.stdout);
+  assert.equal(r.result.status, 'fail');
+  assert.match(r.result.journeys.find((j) => j.name === 'open dock').failed, /230 px wide/);
+  assert.match(fs.readFileSync(path.join(f.dir, 'review.md'), 'utf8'), /baseline comparison not recorded, attribution unknown/);
+  assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+});
+
+test('a test width does not establish an unknown or sourced product minimum; partial checks stay partial', browser, () => {
+  const f = blockerConsumer();
+  for (const minimum of ['unknown', 280]) {
+    const r = f.run({ minimum });
+    assert.equal(r.status, 1, r.stdout);
+    const fail = r.result.journeys.find((j) => j.name === 'open dock');
+    assert.match(fail.failed, /sweep's starting width, 300 px/);
+    assert.doesNotMatch(fail.failed, /narrowest supported width/);
+    const review = fs.readFileSync(path.join(f.dir, 'review.md'), 'utf8');
+    assert.ok(review.includes(minimum === 'unknown' ? 'minimum: unknown' : '280 px; contract.md'));
+    assert.match(fs.readFileSync(path.join(f.dir, 'out/handoff.md'), 'utf8'), /^Status: fail —/);
+  }
+  for (const flags of [['--quick'], ['--frame', 'frame'], ['--no-sweep']]) {
+    const r = f.run({ flags });
+    assert.match(r.stdout, /partial check/i);
+    assert.ok(!fs.existsSync(path.join(f.dir, 'out/handoff.md')), flags.join(' '));
+  }
+});
+
+test('the catalogue judge labels its card scope without changing the historic verdict and groups', browser, () => {
+  const judge = path.join(CATALOGUE, 'judge/judge.mjs');
+  const cases = [
+    { name: 'reference', verdict: 'ACCEPTED', groups: { width: true, choice: true, basics: true } },
+    { name: 'start', verdict: 'RETURNED', groups: { width: false, choice: false, basics: false } },
+    { name: 'width only', verdict: 'RETURNED', groups: { width: false, choice: true, basics: true },
+      from: 'card.dataset.layout = width >= WIDE ? "wide" : "compact"',
+      to: 'card.dataset.layout = matchMedia("(min-width: 672px)").matches ? "wide" : "compact"' },
+    { name: 'choice only', verdict: 'RETURNED', groups: { width: true, choice: false, basics: true },
+      from: 'window.renderCards = function renderCards(host, items) {',
+      to: 'window.renderCards = function renderCards(host, items) { chosen.clear();' },
+  ];
+  for (const c of cases) {
+    const arm = catalogueArm(c.name === 'start' ? 'start' : 'reference'), out = path.join(tmp(), 'judge');
+    if (c.from) {
+      const file = path.join(arm, 'card.js'), source = fs.readFileSync(file, 'utf8');
+      assert.equal(source.split(c.from).length, 2, c.name);
+      fs.writeFileSync(file, source.replace(c.from, c.to));
+    }
+    const r = spawnSync(process.execPath, [judge, arm, out], { encoding: 'utf8', timeout: 120000 });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, new RegExp(`^${c.verdict} · width `));
+    assert.match(r.stdout, /Scope: card contract only; consumer status: see the complete check's handoff; owner decision: see the existing verdict form, unknown if not recorded/);
+    const result = JSON.parse(fs.readFileSync(path.join(out, 'judge.json'), 'utf8'));
+    assert.equal(result.verdict, c.verdict, c.name);
+    assert.deepEqual(Object.keys(result), ['verdict', 'groups', 'checks']);
+    assert.deepEqual(Object.keys(result.groups), ['width', 'choice', 'basics']);
+    assert.deepEqual(result.groups, c.groups, c.name);
+    assert.equal(result.checks.length, 18);
+    if (c.name === 'reference') assert.ok(result.checks.every((x) => x.pass), JSON.stringify(result));
+  }
+});
+
+test('the review brief distinguishes the selected test width from an independently sourced minimum', () => {
+  const file = path.join(HERE, '../plugin/skills/design-to-code/references/review-pass.md');
+  const page = fs.readFileSync(file, 'utf8'), prompt = page.split('```text\n')[1]?.split('\n```')[0];
+  assert.ok(prompt, 'the actual reviewer prompt exists');
+  assert.match(prompt, /product contract or owner requirement for the component's minimum width: <source path, or unknown>/);
+  assert.match(prompt, /sweep\.from.*test width/);
+  assert.match(prompt, /if no source is available, say unknown/);
+  assert.match(prompt, /Do not treat the builder's selected test width or\n  assertions as independently verified product requirements/);
+  assert.match(page, /do not\s+give it `review\.md`'s reasons, the ledger's reasons or your notes/i);
 });

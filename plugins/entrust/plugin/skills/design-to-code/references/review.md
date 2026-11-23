@@ -23,7 +23,9 @@ Ask about the gaps that matter to the request:
 - **States:** hover, focus, active, disabled, selected, loading, empty, error; open and closed; touch where a pointer
   hovers.
 - **Data:** the longest and shortest real values, an absent field, zero and many, plurals, localization, numbers.
-- **Widths:** below the narrowest frame, between the frames, above the widest.
+- **Widths:** the supported component minimum and its contract or owner source, or unknown; the chosen sweep start is
+  a test width, not evidence of that minimum. What does the consumer do when the component has less room? Also inspect
+  below the narrowest frame, between the frames and above the widest.
 - **Consistency:** a spacing off the scale, a type style or colour the system lacks, rows of one kind aligned
   differently.
 - **Accessibility:** contrast of 4.5:1 for text and 3:1 for controls, targets of 24 × 24 px, reflow at 320 px.
