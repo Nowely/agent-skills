@@ -244,3 +244,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   service-tier evidence and a proposed blind check of the final reconciliation.
 - [Review-return probe](54-review-return-probe.md): one simulated-review sample conveyed the material limitation and
   rejected a stale claim, then requested approval before completing its handoff.
+- [Approved probe continuation](55-review-probe-approved-continuation.md): the same session finished after explicit
+  approval; the preregistered first-response outcome remains unknown.
