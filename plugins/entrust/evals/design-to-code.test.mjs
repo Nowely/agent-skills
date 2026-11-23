@@ -3103,3 +3103,25 @@ if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = docu
   assert.deepEqual(r.gaps, [], JSON.stringify(r.gaps));
   assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, ["covers “Details” on b.html, whose target #sheet is not on that page"]);
 });
+
+test("44.8: a window-bound component in a scroller, below the fold, is still held against a fresh load", browser, () => {
+  // An app shell (`height:100vh; overflow:auto`) with the card below the fold: the card is scrolled out of view, not
+  // gone. Before, it counted as unseen and a card squeezed by the sidebar, laid out by the window, passed.
+  const dir = tmp(), config = path.join(dir, "design.json");
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0}html,body{height:100%}.shell{height:100vh;overflow:auto}
+.page{display:flex}.side{width:0;overflow:hidden;flex:none}.page.open .side{width:300px}.col{flex:1;min-width:0}
+.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}.thumb{width:200px;height:40px;background:#ccc;flex:none}
+@media (max-width:800px){.thumb{width:100px}}</style>
+<div class="shell"><button id="tog" onclick="document.querySelector('.page').classList.toggle('open')">Filters</button><div style="height:3000px"></div>
+<div class="page"><aside class="side"><p class="f">Filter</p></aside><div class="col"><div class="card"><div class="thumb"></div><span class="t">Title here</span>${MARKERS}</div></div></div></div>`);
+  fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+    frames: [{ name: "narrow", width: 400, spec: "0.json", reference: "0.png" }, { name: "wide", width: 1000, spec: "1.json", reference: "1.png" }],
+    sweep: { from: 400, to: 1000, step: 100, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES },
+    journeys: [{ name: "filters", steps: [{ click: "#tog" }, { visible: ".f" }, { click: "#tog" }, { hidden: ".f" }] }] }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const j = check(dir, "--no-sweep").result.journeys.find((x) => x.name === "filters");
+  assert.equal(j.pass, false, JSON.stringify(j));
+  assert.match(j.failed, /^step 1, \{"click":"#tog"\}: after it the component's container is 700 px wide \(1000 before\), and the component differs from a fresh load with its container held at 700 px/);
+});

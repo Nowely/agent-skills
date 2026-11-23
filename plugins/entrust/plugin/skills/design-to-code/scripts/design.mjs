@@ -1695,19 +1695,17 @@ async function journeys(browser, cfg) {
   // supported width; and the component in a fresh load whose container is held at a width, as the component's own
   // width holds it, in the window that leaves the page around the container as wide as the journey's start had it.
   // The root is the one the journey's page marked as it opened, while it is on the page, and whether a person sees it:
-  // shown, and not clipped away by a box around it (a panel collapsed to no width).
+  // shown, and not inside a box around it that is collapsed to no width or height (a panel); one scrolled out of view is seen.
   const from = cfg.sweep ? Number(cfg.sweep.from) : null;
   const roomOf = async (page) => ({
     width: await container(page, cfg),
     ...await page.evaluate(([sel, mark, seen]) => {
       const visible = new Function(`return (${seen})`)();
       const root = document.querySelector(`[${mark}]`) ?? [...document.querySelectorAll(sel)].find(visible);
-      let shown = Boolean(root && visible(root)), box = root?.getBoundingClientRect();
+      let shown = Boolean(root && visible(root));
       for (let p = root?.parentElement; p && shown; p = p.parentElement) {
         const cs = getComputedStyle(p), b = p.getBoundingClientRect();
-        if (cs.overflowX !== "visible") box = { left: Math.max(box.left, b.left), right: Math.min(box.right, b.right), top: box.top, bottom: box.bottom };
-        if (cs.overflowY !== "visible") box = { ...box, top: Math.max(box.top, b.top), bottom: Math.min(box.bottom, b.bottom) };
-        shown = box.right > box.left && box.bottom > box.top;
+        shown = !((cs.overflowX !== "visible" && b.width <= 0) || (cs.overflowY !== "visible" && b.height <= 0));
       }
       return { beyond: document.documentElement.scrollWidth - document.documentElement.clientWidth, root: root ? Math.max(root.getBoundingClientRect().width, root.scrollWidth) : null, shown };
     }, [cfg.root, MARK, seenIn.toString()]).catch(() => ({ beyond: 0, root: null, shown: false })),
