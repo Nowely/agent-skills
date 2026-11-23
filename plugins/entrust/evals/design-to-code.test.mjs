@@ -3104,6 +3104,39 @@ if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = docu
   assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, ["covers “Details” on b.html, whose target #sheet is not on that page"]);
 });
 
+test("44.9: a click that only shows a :focus tooltip or logs outside the root still leaves the opener covered from another page", browser, () => {
+  // Page b's inert Details (a story page without the consumer's sheet): before, any new visible node counted as opening
+  // something else, and left the opener a gap needing a journey on page b.
+  const card = (x = "") => `<div class="wrap"><div class="card"><span>Title here</span><button class="d" aria-expanded="false" aria-controls="sheet">Details</button>${x}${MARKERS}</div></div>`;
+  const css = ".card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}#sheet{position:fixed;left:20px;top:100px;background:#eee}.tip{display:none;position:absolute}.d:focus+.tip{display:block}";
+  const mounts = `<script>const b = document.querySelector(".d"); b.onclick = () => { let s = document.getElementById("sheet");
+if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = document.createElement("div"); s.id = "sheet"; s.textContent = "Sheet"; document.body.append(s); b.setAttribute("aria-expanded", "true"); } };</script>`;
+  const run = (b) => {
+    const dir = tmp(), config = path.join(dir, "design.json");
+    const page = (html) => `<!doctype html><style>body{margin:0}${css}</style>${html}`;
+    fs.writeFileSync(path.join(dir, "a.html"), page(card() + mounts));
+    fs.writeFileSync(path.join(dir, "b.html"), page(b));
+    fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
+    fs.writeFileSync(config, JSON.stringify({ url: "a.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
+      frames: [{ name: "a", width: 600, spec: "a.json", reference: "a.png" }, { name: "b", width: 600, url: "b.html", spec: "b.json", reference: "b.png" }],
+      sweep: { from: 600, to: 600, stories: [{ name: "dense", url: "a.html?dense" }], lines: LINES },
+      journeys: [{ name: "details", steps: [{ click: ".d" }, { visible: "#sheet" }, { click: ".d" }, { hidden: "#sheet" }] }] }));
+    const snap = cli("snapshot", config, "--images");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(dir).result;
+  };
+  const covered = ["covers “Details” on b.html, whose target #sheet is not on that page"];
+  for (const [what, b] of [["a :focus tooltip inside the root", card('<span class="tip">More about it</span>')],
+    ["a callback log outside the root", card() + '<pre id="log"></pre><script>document.querySelector(".d").onclick = () => { log.textContent += "onDetails()\\n"; };</script>']]) {
+    const r = run(b);
+    assert.deepEqual(r.gaps, [], `${what}: ${JSON.stringify(r.gaps)}`);
+    assert.deepEqual(r.journeys.find((j) => j.name === "details").notes, covered, what);
+  }
+  // A dialog it opens is something else shown: a gap.
+  const r = run(card() + '<script>document.querySelector(".d").onclick = () => { const d = document.createElement("div"); d.setAttribute("role", "dialog"); d.textContent = "Other"; document.body.append(d); };</script>');
+  assert.deepEqual(r.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"], JSON.stringify(r.gaps));
+});
+
 test("44.8: a window-bound component in a scroller, below the fold, is still held against a fresh load", browser, () => {
   // An app shell (`height:100vh; overflow:auto`) with the card below the fold: the card is scrolled out of view, not
   // gone. Before, it counted as unseen and a card squeezed by the sidebar, laid out by the window, passed.

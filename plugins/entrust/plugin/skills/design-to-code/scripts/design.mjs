@@ -297,7 +297,7 @@ async function rootOf(page, selector) {
 // Whether the inventory's opener at `nth`, whose target is not on its page, leaves it so when clicked there: the click
 // throws nothing, mounts no target and shows nothing else, as on a story page without the consumer's sheet. A target
 // mounted only on open ({open && <Sheet/>}) is on its page, and so is one that cannot be told (the click fails, the
-// page goes elsewhere).
+// page goes elsewhere). What else it shows counts only as a dialog, popover or menu: a tooltip or a log does not.
 async function staysAway(page, selector, nth, ids) {
   const errors = [], onError = (e) => errors.push(e);
   page.on("pageerror", onError);
@@ -310,10 +310,13 @@ async function staysAway(page, selector, nth, ids) {
     }, [opener, seenIn.toString()]);
     await opener.click({ timeout: 2000 });
     await page.mouse.move(-5, -5);
+    // The click's own focus shows a `:focus` tooltip: let go of it before judging.
+    await page.evaluate(() => document.activeElement?.blur());
     const opened = () => page.evaluate(([o, ids, was, seen]) => {
       const visible = new Function(`return (${seen})`)();
       return ids.some((id) => document.getElementById(id)) || (!was.expanded && o.getAttribute("aria-expanded") === "true")
-        || [...document.querySelectorAll("body *")].some((e) => visible(e) && !was.shown.has(e) && !o.contains(e));
+        || [...document.querySelectorAll("body *")].some((e) => visible(e) && !was.shown.has(e) && !o.contains(e)
+          && e.matches('dialog, [popover], [aria-modal="true"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'));
     }, [opener, ids, before, seenIn.toString()]);
     return !(await until(page, async () => errors.length > 0 || await opened()));
   } catch { return false; } finally { page.off("pageerror", onError); }
