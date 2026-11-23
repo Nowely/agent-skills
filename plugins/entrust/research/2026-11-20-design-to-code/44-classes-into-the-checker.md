@@ -112,3 +112,14 @@ All of these are fixed, each with a test that fails on the code before it.
 Each arm moved from `matchMedia` to a container query, kept the choice per host and id, and wrote its own `sameAsFresh` journey on the consumer page.
 
 **Known:** the catalogue's own `page.css` also squeezes the list at 375 px with the sidebar open. A journey there fails on the page, not the card: a fair question for the owner, one ledger entry.
+
+**A second, short verifier pass on items 6–9 and the fixes.** Items 6 and 7 ship as they are. It found three holes, each now fixed with a test that fails on the code before it:
+- **Item 2:** a root whose own width followed the window read as "not measured", and a component placed directly in `body` was skipped. Fixed in `13f6fe3`.
+- **Item 9:** a lazily mounted target read as "off its page", so a broken opener elsewhere was covered. Fixed in `ab8872c`: the opener is clicked on its own page first.
+- **Item 8:** a zero-width collapsed panel failed falsely, and the root's identity drifted between steps. Fixed in `95f8a75`.
+
+Noted, not changed:
+- any child-list change inside the root counts as "data" for the lifecycle gate;
+- a stale observer is caught only where a `sameAsFresh` journey runs.
+
+**At `95f8a75`:** 158 of 158 tests; the planted case 28; card bench 15 of 15 and stateful bench 4 of 4, no clean build blocked. Arm k4 on `74f68b5` was ACCEPTED by the catalogue's judge at `pass`, in about 17 calls, with no work-round for E152. This is the commit the Terra gate pins.
