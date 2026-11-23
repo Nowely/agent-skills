@@ -113,7 +113,7 @@ chart and an expanded one.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
-one that acts on the element its setup opened it from. A journey on another page can cover an opener with the same
+one that acts on the element its setup opened it from. A journey on another page or URL variant can cover an opener with the same
 selector, role, accessible name and linked target when that target exists on the measured page; the handoff names the
 journey. A missing target might be mounted on action, so it stays unchecked until a journey on its page opens and
 closes it. The check acts only through configured setup and journeys; an unknown accessible name or role cannot establish

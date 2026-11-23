@@ -1347,6 +1347,27 @@ test("a journey on another data variant covers the same explicitly linked contro
   assert.match(r.stdout, /no journey that opens and closes it: “More”/);
 });
 
+test("a journey on a data variant cannot cover an absent target on the measured page", browser, () => {
+  const f = smallFrame('<button id="more" popovertarget="panel">More</button>');
+  fs.appendFileSync(f.page, `<script>if (location.search) document.querySelector('main').insertAdjacentHTML('beforeend', '<div id="panel" popover>Details</div>');</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "variant", url: "page.html?variant", steps: [
+    { click: "#more" }, { visible: "#panel" }, { click: "#more" }, { hidden: "#panel" },
+  ] }] }));
+  let r = check(f.dir);
+  assert.ok(r.result.journeys.find((j) => j.name === "variant").pass, r.stdout);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+  fs.writeFileSync(f.page, fs.readFileSync(f.page, "utf8").replace("if (location.search)", "if (!location.search)"));
+  const configured = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  fs.writeFileSync(f.config, JSON.stringify({ ...configured, frames: [{ ...configured.frames[0], url: "page.html?variant" }],
+    journeys: [{ ...configured.journeys[0], url: "page.html" }] }));
+  r = check(f.dir);
+  assert.ok(r.result.journeys.find((j) => j.name === "variant").pass, r.stdout);
+  assert.equal(r.status, 2, r.stdout);
+  assert.match(r.stdout, /no journey that opens and closes it: “More”/);
+});
+
 test("cross-page coverage uses the accessible name and an existing linked target", browser, () => {
   const f = smallFrame('<span id="a-name" hidden>Details</span><button class="d" aria-labelledby="a-name" popovertarget="panel">More</button><div id="panel" popover>Content</div>');
   const other = path.join(f.dir, "other.html"), cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));

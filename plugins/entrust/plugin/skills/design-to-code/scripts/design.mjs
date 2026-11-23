@@ -268,8 +268,7 @@ function openerInfoIn(el, { inventory = false, point, keyboard, selectors = [], 
   if (nth !== undefined) return matches[nth];
   return matches.map((o) => {
     const ids = [o.getAttribute("aria-controls"), o.getAttribute("popovertarget")].filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
-    return { id: o.id, index: controls.indexOf(o), ids, page: location.href.replace(/[?#].*$/, ""),
-      variant: o.id && ids.length ? location.origin + location.pathname + location.hash : location.href,
+    return { id: o.id, index: controls.indexOf(o), ids, page: location.href,
       targetPresent: ids.length > 0 && ids.every((id) => Boolean(document.getElementById(id))),
       ...(inventory ? { answers: selectors.filter((s) => picks(o, s)) } : {}) };
   });
@@ -294,8 +293,7 @@ async function openerInfo(page, root, options) {
       if (identity) Object.assign(o, identity);
     } catch { /* Unknown accessibility identity stays uncovered. */ }
     finally { await handle.dispose(); }
-    if (o.role !== undefined && o.name !== undefined) o.key = JSON.stringify([o.variant, o.id ? ["id", o.id] : ["index", o.index], o.name, o.role, o.ids]);
-    delete o.variant;
+    if (o.role !== undefined && o.name !== undefined) o.key = JSON.stringify([o.page, o.id ? ["id", o.id] : ["index", o.index], o.name, o.role, o.ids]);
   }
   return info;
 }
@@ -2111,11 +2109,15 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
       answers: o.answers?.filter((s) => previous.answers?.includes(s)) } : o);
   }
   const closed = new Set(journeyResults.filter((j) => j.pass).flatMap((j) => j.closed));
-  // Across pages require the same linked target to exist on the measured page, and the journey to have actually
-  // opened and closed it. An absent target could be mounted on action, so it proves no cross-page identity.
+  // Across pages and URL variants require the same linked target to exist on the measured page, and the journey to
+  // have opened and closed it. An absent target could be mounted on action, so it proves no cross-page identity.
   const closers = journeyResults.filter((j) => j.pass).flatMap((j) => (j.closers ?? []).map((c) => ({ c, j })));
   const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
-  const shown = (u) => (u.startsWith("file:") ? path.relative(cfg.dir, fileURLToPath(u)) : u);
+  const shown = (u) => {
+    if (!u.startsWith("file:")) return u;
+    const url = new URL(u);
+    return path.relative(cfg.dir, fileURLToPath(url)) + url.search + url.hash;
+  };
   const unchecked = [];
   for (const o of openers.values()) {
     if (o.key && closed.has(o.key)) continue;
