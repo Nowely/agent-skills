@@ -224,3 +224,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 - [The return classes into the checker](44-classes-into-the-checker.md): registered before the work, from the
   owner's plan on #113 read practice-first: the lifecycle and own-width checks, script-set modes, what the contract
   keeps, the review pass run, the column shift and E159, each with its failing control, then the Terra gate.
+
+- [Seven review fixes](45-seven-review-fixes.md): the approved corrections, independent-review reports, local and CI
+  results, two baseline-reproduced open anomalies and the unrun Terra gate.

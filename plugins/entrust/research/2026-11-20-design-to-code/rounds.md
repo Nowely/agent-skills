@@ -790,3 +790,11 @@ On the same prebuilt case and skill version as P, a fresh Terra session was expl
 with a 30-second initial tool wait. The check finished in 25.115 seconds in its starting call, with no polls. This is
 one narrow feasibility observation; the prompt and scope differ from P. [The record](43-explicit-wait-probe.md)
 separates the result, cost and limits. It is not another full implementation.
+
+## Seven review fixes after the checker review
+
+The approved fixes and their boundaries are recorded in [45-seven-review-fixes.md](45-seven-review-fixes.md). The
+coordinator reported no blocking finding from the independent critic's 19 scenarios and 15 targeted verifier runs.
+The production routing change was then reviewed separately; the final candidate adds a routing test. Two local
+failures also reproduced on the baseline are tracked as E164 and E165. A whole-change regression count is not
+established. The Terra gate and real A/B were not run; the next gate must pin the newly checked commit.

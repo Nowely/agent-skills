@@ -10,6 +10,27 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E165. The card bench blocks two clean builds on a type finding
+
+**Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the card bench at
+`f4f570f` caught 15 of 15 expected classes but reported `control` and `common-shift` as blocked: both raised
+`card-280 Доступно 1 type -15`. Its assertion that no clean build is blocked is
+`evals/design-to-code/benches/card/card.test.mjs:29`. Running these two controls on baseline
+`f668204b50a120ae0184df3c2b0f562295792389` produced the same two blocked findings. The cause is not established.
+
+**Issue text.** The card bench's zero-clean-blocks assertion fails locally for `control` and `common-shift` on the
+same `Доступно 1 type -15` finding, including on the baseline. Investigate its cause before choosing a remedy.
+
+## E164. The v25 boxes assertion fails on a 16.5 px column shift
+
+**Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the v25 boxes test at
+`evals/design-to-code.test.mjs:1713` requires `Math.round(i.delta) === 16` for `32 ядер` x; its observed finding is
++16.5 and the assertion fails. The same test at baseline `f668204b50a120ae0184df3c2b0f562295792389`,
+`evals/design-to-code.test.mjs:1597`, produced the same +16.5 and failure. The cause is not established.
+
+**Issue text.** The v25 boxes test fails locally when the reported `32 ядер` x delta is +16.5, while it expects the
+rounded value 16. The same failure occurs on the baseline. Investigate the source of the delta before choosing a remedy.
+
 ## E163. The registered prebuilt sitting cannot pass setup without an owner-returns file
 
 **Evidence, level 3.** `research/2026-11-20-design-to-code/41-the-sitting.md` names `make-arm.mjs --prebuilt` then
