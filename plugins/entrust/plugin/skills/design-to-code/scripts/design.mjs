@@ -78,7 +78,8 @@ function loadConfig(file) {
   const at = (p) => (p ? path.resolve(dir, p) : p);
   // A file path may carry a query or a fragment (a story's arguments): only the path is a file.
   const url = (u) => {
-    if (!u || /^[a-z][\w+.-]*:/i.test(u)) return u;
+    if (!u) return u;
+    if (/^[a-z][\w+.-]*:/i.test(u)) return new URL(u).href;
     const [, file, rest] = u.match(/^([^?#]*)(.*)$/);
     return pathToFileURL(path.resolve(dir, file)).href + rest;
   };
@@ -87,6 +88,9 @@ function loadConfig(file) {
   const stories = cfg.sweep?.stories ?? [], journeys = cfg.journeys ?? [];
   if (!Array.isArray(stories) || stories.some((st) => !st?.name || !st.url)) throw new Error("design.json: each sweep story needs a name and a url");
   if (!Array.isArray(journeys) || journeys.some((j) => !j?.name || !Array.isArray(j.steps) || !j.steps.length)) throw new Error("design.json: each journey needs a name and steps");
+  // Only the builder can identify product data: a text expectation alone can also be an overlay or a control label.
+  for (const j of journeys) if (j.dataFields !== undefined && !(Array.isArray(j.dataFields) && j.dataFields.every((s) => typeof s === "string" && s.trim())))
+    throw new Error(`design.json: the journey "${j.name}" dataFields must be an array of selectors for its product data`);
   // A journey that expects nothing cannot fail, so its "holds" would prove nothing.
   for (const j of journeys) if (!j.steps.some((step) => EXPECT.some((k) => step && k in step))) throw new Error(`design.json: the journey "${j.name}" expects nothing: add a visible, hidden, text or focused step`);
   const steps = [...(cfg.frames ?? []).flatMap((f) => f.setup ?? []), ...(cfg.sweep?.setup ?? []), ...stories.flatMap((st) => st.setup ?? [])];
@@ -1647,9 +1651,8 @@ function layoutDiff(a, b, tolerance = 1) {
 async function journeys(browser, cfg) {
   const width = Math.max(...cfg.frames.map((f) => f.width));
   // A host sizes frames on their story pages, not a separate consumer page.
-  const pageKey = (u) => String(u).replace(/[?#].*$/, "");
-  const framePages = new Set(cfg.frames.map((f) => pageKey(f.url)));
-  const journeyConfig = (j) => cfg.host && !framePages.has(pageKey(j.url)) ? { ...cfg, host: undefined } : cfg;
+  const framePages = new Set(cfg.frames.map((f) => f.url));
+  const journeyConfig = (j) => cfg.host && !framePages.has(j.url) ? { ...cfg, host: undefined } : cfg;
   const results = [];
   // Each journey that opens something from an opener runs again with the opener at the window's top edge and at its
   // bottom edge, at the widest and the narrowest frame's width: an open popover must flip or shift to stay in the
@@ -1783,14 +1786,14 @@ async function journeys(browser, cfg) {
         checkpoint = { i, width: now.width, byWidth };
         resized.push(checkpoint);
       };
-      // A text expectation can witness changed data only on a field visible before the steps and still in the root.
+      // Only a declared data field with a text expectation can witness a data change.
       const textBefore = new Map();
       const readText = async (selector) => page.locator(selector).evaluateAll((els, [root, seen]) => {
         const visible = new Function(`return (${seen})`)();
-        const el = els.find((e) => e.closest(root) && !e.children.length && visible(e));
+        const el = els.find((e) => e.closest(root) && visible(e));
         return el ? el.innerText.replace(/\s+/g, " ").trim() : null;
       }, [cfg.root, seenIn.toString()]).catch(() => null);
-      for (const selector of new Set(j.steps.filter((s) => s.text).map((s) => s.text[0]))) textBefore.set(selector, await readText(selector));
+      for (const selector of new Set(j.dataFields ?? [])) textBefore.set(selector, await readText(selector));
       let box = edge ? null : await container(page, cfg);
       const rootSeen = () => page.evaluate(([sel, seen]) => [...document.querySelectorAll(sel)].some(new Function(`return (${seen})`)()), [cfg.root, seenIn.toString()]).catch(() => null);
       let hadRoot = edge ? null : await rootSeen();
@@ -1845,7 +1848,7 @@ async function journeys(browser, cfg) {
             }
             await runStep(page, step);
             await rootAfter();
-            if (step.text) {
+            if (step.text && textBefore.has(step.text[0])) {
               const before = textBefore.get(step.text[0]), after = await readText(step.text[0]);
               if (before !== null && after !== null && before !== after && !before.includes(step.text[1]) && after.includes(step.text[1])) took.add("data");
             }
@@ -2149,14 +2152,14 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
     for (const st of cfg.sweep?.stories ?? []) if (pages.has(st.url) && !st.setup?.some((x) => !("wait" in x))) gaps.push(`the story ${st.name} is a frame's own page: a dense story's setup brings data of its own`);
   }
   // A lifecycle the product can cause (a remount, data emptied and refilled, a parent-width change) is taken through the
-  // consumer, in a journey that ends as a fresh load draws the component: on the page `url` names (whatever its query),
+  // consumer, in a journey that ends as a fresh load draws the component: on the page `url` names,
   // or on a page of the journey's own that no frame or story shows. When `url` is a story page (the frames are drawn
   // there by a host the check sizes), only the latter is the consumer's. The journey must take
   // a lifecycle: a step that changed the component's data, mounted or unmounted it, or changed its parent's width; a
   // width step alone is the window's. Unless design.json gives the reason the product has none.
-  const page = (u) => String(u).replace(/[?#].*$/, ""), storyPages = new Set([...cfg.frames.map((f) => f.url), ...(cfg.sweep?.stories ?? []).map((st) => st.url)].map(page));
-  const storyUrl = Boolean(cfg.host && cfg.frames.map((f) => page(f.url)).includes(page(cfg.url)));
-  const consumer = (j) => (!storyUrl && page(j.url) === page(cfg.url)) || !storyPages.has(page(j.url));
+  const storyPages = new Set([...cfg.frames.map((f) => f.url), ...(cfg.sweep?.stories ?? []).map((st) => st.url)]);
+  const storyUrl = Boolean(cfg.host && cfg.frames.some((f) => f.url === cfg.url));
+  const consumer = (j) => (!storyUrl && j.url === cfg.url) || !storyPages.has(j.url);
   const onConsumer = cfg.journeys.filter((j) => j.sameAsFresh === true && consumer(j));
   const took = (j) => journeyResults.find((r) => r.name === j.name)?.lifecycle?.length;
   const where = storyUrl ? "on a consumer page of its own `url` that no frame or story shows (the page `url` names draws the frames, a story page)" : "on the page `url` names or a consumer page of its own `url`";
@@ -2164,7 +2167,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   if (typeof cfg.lifecycle !== "string" && !onConsumer.length) {
     gaps.push(`no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent's width changed) in one, ${where}, ${exit}`);
   } else if (typeof cfg.lifecycle !== "string" && !onConsumer.some(took)) {
-    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps observed changed data in a text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
+    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps observed changed data in a declared dataFields text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
   }
   // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
   // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.

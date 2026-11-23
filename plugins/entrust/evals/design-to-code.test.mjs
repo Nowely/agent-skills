@@ -2830,7 +2830,7 @@ test("draft 28.2: pending means proposals wait for the owner; a page snapshot us
 // lifecycle, or design.json gives the reason the product has none.
 const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle" in design\.json with the reason the product can cause none/;
 const STORY_URL = /no journey with "sameAsFresh": true runs on the consumer's page: .* in one, on a consumer page of its own `url` that no frame or story shows \(the page `url` names draws the frames, a story page\)/;
-const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps observed changed data in a text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's/;
+const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps observed changed data in a declared dataFields text expectation, mounted or unmounted the root, or changed its parent's width, and a width step is the window's/;
 test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh and takes a lifecycle, or design.json gives the reason there is none", browser, () => {
   // A button replaces the component root.
   const f = smallFrame('<div id="c"><span>Ready</span></div><button id="again">Again</button><script>document.getElementById("again").onclick = () => { const root = document.querySelector("main"); root.outerHTML = root.outerHTML; };</script>');
@@ -2886,24 +2886,28 @@ test("44.1: a complete check is incomplete until a journey on the consumer's pag
   assert.doesNotMatch(check(f.dir, "--quick").stdout, LIFECYCLE);
 });
 
-test("44.1: lifecycle evidence observes data, not arbitrary mutations or an overlay", browser, () => {
-  const f = smallFrame(`<span id="record">Ready</span><button id="refresh">Refresh</button><button id="tip">Tip</button>
+test("44.1: only a declared data field with changed text establishes a data lifecycle", browser, () => {
+  const f = smallFrame(`<span id="record">Quantity <b>1</b></span><button id="refresh">Refresh</button><button id="tip">Show tip</button><span id="status">Idle</span>
 <script>
-const record = document.getElementById("record");
-document.getElementById("refresh").onclick = () => { record.textContent = record.textContent === "Ready" ? "Loaded" : "Ready"; };
-document.getElementById("tip").onclick = () => { const tip = document.getElementById("popup"); if (tip) tip.remove(); else record.insertAdjacentHTML("afterend", '<main id="popup">Hint</main>'); };
+const record = document.querySelector("#record b"), tip = document.getElementById("tip"), status = document.getElementById("status");
+document.getElementById("refresh").onclick = () => { record.textContent = record.textContent === "1" ? "2" : "1"; };
+tip.onclick = () => { const popup = document.getElementById("popup"); if (popup) { popup.remove(); tip.textContent = "Show tip"; status.textContent = "Idle"; } else { tip.insertAdjacentHTML("afterend", '<main id="popup">Hint</main>'); tip.textContent = "Hide tip"; status.textContent = "Showing"; } };
 </script>`);
   const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
-  const run = (steps) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change", sameAsFresh: true, steps }] })); return check(f.dir); };
-  const tip = run([{ click: "#tip" }, { visible: "#popup" }, { click: "#tip" }, { hidden: "#popup" }]);
+  const run = (steps, dataFields) => { fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "change", sameAsFresh: true, steps, ...(dataFields ? { dataFields } : {}) }] })); return check(f.dir); };
+  const tip = run([{ click: "#tip" }, { text: ["#tip", "Hide tip"] }, { text: ["#status", "Showing"] }, { visible: "#popup" }, { click: "#tip" }, { hidden: "#popup" }]);
   assert.equal(tip.status, 2, tip.stdout);
   assert.deepEqual(tip.result.journeys[0].lifecycle, []);
-  const data = run([{ click: "#refresh" }, { text: ["#record", "Loaded"] }, { click: "#refresh" }, { text: ["#record", "Ready"] }]);
+  const steps = [{ click: "#refresh" }, { text: ["#record", "Quantity 2"] }, { click: "#refresh" }, { text: ["#record", "Quantity 1"] }];
+  const undeclared = run(steps);
+  assert.equal(undeclared.status, 2, undeclared.stdout);
+  assert.deepEqual(undeclared.result.journeys[0].lifecycle, []);
+  const data = run(steps, ["#record"]);
   assert.equal(data.status, 0, data.stdout);
   assert.deepEqual(data.result.journeys[0].lifecycle, ["data"]);
-  const html = fs.readFileSync(f.page, "utf8").replace('record.textContent = record.textContent === "Ready" ? "Loaded" : "Ready";', 'record.innerHTML = record.innerHTML;');
+  const html = fs.readFileSync(f.page, "utf8").replace('record.textContent = record.textContent === "1" ? "2" : "1";', 'record.innerHTML = record.innerHTML;');
   fs.writeFileSync(f.page, html);
-  const noop = run([{ click: "#refresh" }, { text: ["#record", "Ready"] }]);
+  const noop = run([{ click: "#refresh" }, { text: ["#record", "Quantity 1"] }], ["#record"]);
   assert.equal(noop.status, 2, noop.stdout);
   assert.deepEqual(noop.result.journeys[0].lifecycle, []);
 });
@@ -2940,6 +2944,13 @@ test("44.1: story host stays on the frame page; consumer journeys use their view
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(result.result.journeys[0].lifecycle, ["mount"]);
   assert.equal(run({ ...story, journeys: [{ ...journey, url: "page.html" }] }).status, 2);
+  // Hash and query can render a different route on the same HTML file.
+  fs.writeFileSync(f.page, consumer.replace("</main>", `</main><script>if (location.hash !== "#consumer" && location.search !== "?consumer") { const host = document.createElement("div"); host.id = "story-host"; document.body.append(host); host.append(document.querySelector("main")); }</script>`));
+  for (const url of ["page.html#consumer", "page.html?consumer"]) {
+    const routed = run({ ...story, journeys: [{ ...journey, url, steps: [{ width: 300 }, ...journey.steps] }] });
+    assert.equal(routed.status, 0, routed.stdout + routed.stderr);
+    assert.deepEqual(routed.result.journeys[0].lifecycle, ["mount"]);
+  }
 });
 
 // Item 1: the parent's width changed by a step (a sidebar opened) is a lifecycle; the window's width is not.

@@ -29,10 +29,11 @@ incomplete when:
 - a story on a frame's own URL has no setup but `wait`, so it is the frame again;
 - no journey with `"sameAsFresh": true` runs on the consumer's page and takes a lifecycle, unless `design.json` gives
   `"lifecycle"` with its reason. The consumer's page is a journey's own `url` that no frame or story shows, or the
-  page `url` names, whatever its query, unless the frames are drawn there by `host`. A journey takes a lifecycle when
-  a step shows, hides, removes or replaces its root, changes its container's width, or a `text` expectation observes
-  changed text in a leaf field that was visible in the root before the journey and did not already contain the expected
-  text. Other content mutations alone do not establish a data change; a `width` step is the window's, and alone takes none;
+  page `url` names, unless the frames are drawn there by `host`. URLs include query and fragment: either can select
+  a different page state. A journey takes a lifecycle when a step shows, hides, removes or replaces its root, changes
+  its container's width, or a `text` expectation observes changed text in a declared `dataFields` field that was visible
+  before the journey and did not already contain the expected text. Other text or DOM mutations alone do not establish
+  a data change; a `width` step is the window's, and alone takes none;
 - a line of the owner's past returns (`.design/returns.md` beside the task's folder) is not quoted in an acceptance
   row;
 - a [candidate](#generated-conditions) is unanswered.
@@ -81,7 +82,12 @@ fails in 5 seconds.
 Each journey opens the page afresh at the widest frame's width (by touch with `"touch": true`, on its own `url` if it
 gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations, each given a second to come true
 as a person sees it: `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
-journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. The
+journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. When a
+journey tests a change of product data inside a stable root, the builder declares the field selectors in that journey,
+for example `"dataFields": ["#quantity"]`, and asserts the changed value with `"text": ["#quantity", "2"]`. The
+builder identifies fields from the product contract: the checker cannot distinguish data from a control label or a
+status message by markup or text alone. Without this declaration, an ordinary `text` expectation still checks its text
+but cannot establish a data lifecycle; if no other lifecycle is observed, the complete check is incomplete. The
 first step that does not hold fails it. Journeys use the browser's natural motion preference. A sheet can close on its
 own `transitionend`; finite motion on the measured target has up to 1.5 seconds to settle for geometry. For visible
 continuity required by the design, capture the affected region during the ordinary transition with animations enabled,
