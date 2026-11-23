@@ -25,7 +25,7 @@
   { "name": "list: emptied by the search and restored, the cards come back", "sameAsFresh": true, "steps": [
    { "width": 375 }, { "fill": ["#q", "zzz"] }, { "hidden": ".card" }, { "visible": ".empty" },
    { "fill": ["#q", ""] }, { "visible": ".card" }, { "hidden": ".empty" } ] },
-  { "name": "sidebar: Filters opens it beside the list and closes it", "steps": [
-   { "click": "#filters" }, { "visible": "#sidebar" }, { "click": "#filters" }, { "hidden": "#sidebar" } ] }
+  { "name": "sidebar: Filters opens it beside the list and closes it", "sameAsFresh": true, "steps": [
+   { "click": "#filters" }, { "visible": "#sidebar" }, { "visible": ".card:first-child .sizes:below(.card:first-child .card__main)" }, { "click": "#filters" }, { "hidden": "#sidebar" } ] }
  ]
 }

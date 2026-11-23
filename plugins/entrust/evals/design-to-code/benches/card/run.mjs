@@ -165,7 +165,7 @@ function read(config, unexpectedIsText = true, own = []) {
     if (unexpectedIsText && unexpected.length) note("text", `${f.frame} not in the design: ${unexpected.slice(0, 3).join(" | ")}`);
   }
   for (const i of (r.sweep?.issues ?? []).filter((i) => i.status === "fail")) note(classOf(i), `sweep ${i.story ?? "page"} ${i.landmark} ${i.property} at ${i.ranges ?? ""}`);
-  for (const j of (r.journeys ?? []).filter((j) => !j.pass)) note("journey", `${j.name}: ${String(j.failed).slice(0, 90)}`);
+  for (const j of (r.journeys ?? []).filter((j) => j.failed)) note("journey", `${j.name}: ${String(j.failed).slice(0, 90)}`);
   return { found, status: r.status, holds: holds(r, own) };
 }
 

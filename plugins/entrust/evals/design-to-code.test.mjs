@@ -3032,7 +3032,7 @@ test("44.3: a mode a ResizeObserver or a matchMedia change listener sets is a co
 });
 
 test("MediaQueryList.onchange keeps the callback the page assigned and removes it on null", browser, () => {
-  const f = smallFrame(`<output>waiting</output><script>
+  const f = smallFrame(`<style>body{width:300px}</style><output>waiting</output><script>
 const q = matchMedia("(min-width: 400px)"), out = document.querySelector("output");
 function replaced() { out.textContent = "replaced callback ran"; }
 function current(event) {
@@ -3071,7 +3071,7 @@ function catalogueLifecycleArm(change = (js) => js) {
     journeys: [
       { name: "sheet: Details opens it, Close closes it", url: "../index.html", steps: [{ width: 375 }, { click: ".card .details" }, { visible: "#sheet" }, { click: ".sheet__close" }, { hidden: "#sheet" }] },
       list,
-      { name: "sidebar: Filters opens it beside the list and closes it", url: "../index.html", sameAsFresh: true, steps: [{ width: 960 }, { click: "#filters" }, { visible: "#sidebar" }, { click: "#filters" }, { hidden: "#sidebar" }] }] }));
+      { name: "sidebar: Filters opens it beside the list and closes it", url: "../index.html", sameAsFresh: true, steps: [{ width: 960 }, { click: "#filters" }, { visible: "#sidebar" }, compactCard, { click: "#filters" }, { hidden: "#sidebar" }, wideCard] }] }));
   fs.writeFileSync(path.join(dir, "deviations.json"), "[]");
   fs.writeFileSync(path.join(dir, "review.md"), "## Acceptance\n\n- frames: pass — the check\n");
   return dir;
@@ -3175,6 +3175,8 @@ document.getElementById("wide").onclick = () => document.body.insertAdjacentHTML
   };
 }
 const OPEN = [{ click: "#filters" }, { visible: "#sidebar" }];
+const compactCard = { visible: ".card:first-child .sizes:below(.card:first-child .card__main)" };
+const wideCard = { visible: ".card:first-child .sizes:right-of(.card:first-child .card__main)" };
 
 test("44.8: after each step, a container narrower than at the sweep's from, or a page that starts to scroll sideways, fails the step", browser, () => {
   // At 400 px the column is 368 px; the sidebar leaves it 152, and a fresh load gives it 268 at the sweep's 300.
@@ -3184,30 +3186,67 @@ test("44.8: after each step, a container narrower than at the sweep's from, or a
   // Stacked above the column there, the sidebar leaves it its width; below the narrowest supported width nothing is held.
   const stacked = sidebarPage({ stacked: true })({ width: 400 }, ...OPEN);
   assert.ok(stacked.pass, JSON.stringify(stacked));
-  assert.deepEqual(stacked.held, [368], "the width step changed the container: held against a fresh load");
+  assert.match(stacked.notes.join(" "), /368 px: layout was not measured/);
   assert.ok(sidebarPage()({ width: 280 }, ...OPEN).pass);
   const wide = sidebarPage()({ click: "#wide" }, { visible: "main" });
   assert.equal(wide.pass, false, JSON.stringify(wide));
   assert.match(wide.failed, /^step 1, \{"click":"#wide"\}: after it the page scrolls sideways, its content \d+ px wider than the window: keep what it opened inside the window, beside or over the component$/);
 });
 
-test("44.8: a step that changes the container's width holds the component against a fresh load whose container is held at that width", browser, () => {
+test("44.8: a width change and the open sidebar are checked in their own states", browser, () => {
   // At 600 px the column is 568; with the sidebar open, 352. A fresh load with its column held at 352 stacks the row.
-  const journey = [{ width: 600 }, ...OPEN, { click: "#filters" }, { hidden: "#sidebar" }];
+  const stack = { visible: ".row span:last-child:below(.row span:first-child)" };
+  const line = { visible: ".row span:last-child:right-of(.row span:first-child)" };
+  const journey = [{ width: 600 }, line, ...OPEN, stack, { click: "#filters" }, { hidden: "#sidebar" }, line];
   const own = sidebarPage()(...journey);
   assert.ok(own.pass, JSON.stringify(own));
-  assert.deepEqual(own.held, [568, 352, 568]);
+  assert.match(own.notes.join(" "), /568 px.*right-of/);
+  assert.match(own.notes.join(" "), /352 px.*below/);
   // Bound to the window, the row stays on one line in the narrowed column.
   const bound = sidebarPage({ mode: "window" })(...journey);
   assert.equal(bound.pass, false, JSON.stringify(bound));
-  assert.match(bound.failed, /^step 2, \{"click":"#filters"\}: after it the component's container is 352 px wide \(568 before\), and the component differs from a fresh load with its container held at 352 px: the root's height 48 px, fresh 80; \.row height 24, fresh 56; .*: lay it out by its own width whenever that changes \(a container query, or an observer on the component\), not by the window's or once on mount$/);
+  assert.match(bound.failed, /no .*:below\(.* is visible/);
   // Chosen once on load, at the frame's 268 px, it stays stacked when the window widens.
   const once = sidebarPage({ mode: "once" })(...journey);
-  assert.match(once.failed, /^step 1, \{"width":600\}: after it the component's container is 568 px wide \(268 before\), and the component differs from a fresh load with its container held at 568 px: the root's height 80 px, fresh 48; \.row height 56, fresh 24/);
-  // A component that shows other text than a fresh load is not held, and the journey says so.
-  const other = sidebarPage({ mode: "window" })({ width: 600 }, { click: "#more" }, ...OPEN);
-  assert.ok(other.pass, JSON.stringify(other));
-  assert.deepEqual(other.notes, ["step 3: not held against a fresh load with the container at 352 px: the component shows other text than a fresh load"]);
+  assert.match(once.failed, /no .*:right-of\(.* is visible/);
+  // The same interaction without a placement expectation cannot establish the state of the narrowed row.
+  for (const steps of [[{ width: 600 }, ...OPEN], [{ width: 600 }, { click: "#more" }, ...OPEN]]) {
+    const other = sidebarPage({ mode: "window" })(...steps);
+    assert.equal(other.pass, false);
+    assert.match(other.unmeasured, /352 px.*no established equivalent state/);
+    assert.equal(other.failed, undefined);
+  }
+});
+
+test("expanding a chart checks its specified height at the narrowed width, or reports the missing comparison", browser, () => {
+  const f = smallFrame();
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (expands, expectation) => {
+    f.write(`<style>#host{width:300px}main{width:100%;height:auto}#chart{height:40px;background:#ddd}
+.axis{position:absolute;top:135px;width:1px;height:1px}.legend{display:block}</style>
+<div id="host"><main><div id="chart"></div><span class="legend">Chart</span><i class="axis"></i><button id="expand">Expand</button></main></div>
+<script>document.querySelector("#expand").onclick=()=>{
+document.querySelector("#host").style.width="250px";document.querySelector("#chart").style.height="${expands ? 140 : 40}px";
+};</script>`);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, sweep: { ...cfg.sweep, from: 200 },
+      journeys: [{ name: "expanded", steps: [{ click: "#expand" }, expectation] }] }));
+    const snap = cli("snapshot", f.config, "--images", "--force");
+    assert.equal(snap.status, 0, snap.stderr);
+    return check(f.dir, "--no-sweep");
+  };
+  const placement = { visible: ".legend:below(.axis)" };
+  const clean = run(true, placement);
+  assert.equal(clean.status, 0, clean.stdout);
+  assert.match(clean.result.journeys[0].notes.join(" "), /250 px.*below/);
+  const broken = run(false, placement);
+  assert.equal(broken.status, 1);
+  assert.match(broken.result.journeys[0].failed, /no .legend:below.* is visible/);
+  for (const expands of [false, true]) {
+    const unknown = run(expands, { visible: "#chart" });
+    assert.equal(unknown.status, 2, unknown.stdout);
+    assert.match(unknown.result.journeys[0].unmeasured, /250 px.*no established equivalent state/);
+    assert.equal(unknown.result.journeys[0].failed, undefined);
+  }
 });
 
 test("44.8: a container collapsed to no width, or a root clipped from view, is not held to the floor; the root measured is the one the journey started with", browser, () => {
@@ -3222,12 +3261,12 @@ test("44.8: a container collapsed to no width, or a root clipped from view, is n
   // keeps its 300 px, failed: "the component's container is 0 px wide (300 before), narrower than the 300 px".
   const panel = run(`<button id="b" onclick="p.classList.toggle('shut')">Panel</button><style>#p{overflow:hidden}#p.shut{width:0}</style><div id="p"><main><span>Ready</span></main></div><p class="o">Other</p>`,
     [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { visible: "main" }]);
-  assert.ok(panel.pass, JSON.stringify(panel));
+  assert.equal(panel.failed, undefined, JSON.stringify(panel));
   // Before: a tab that hides the component and shows a second one in a 240 px column measured the second, the first
   // a person sees, and failed it as squeezed.
   const tab = run(`<button id="b" onclick="p.hidden=!p.hidden;q.hidden=!q.hidden">Tab</button><div id="p"><main><span>Ready</span></main></div><div id="q" hidden style="width:240px"><main style="width:auto"><span>Ready</span></main><p class="o">Other</p></div>`,
     [{ click: "#b" }, { visible: ".o" }, { click: "#b" }, { hidden: ".o" }]);
-  assert.ok(tab.pass, JSON.stringify(tab));
+  assert.equal(tab.failed, undefined, JSON.stringify(tab));
 });
 
 // The catalogue page sized by the window, its sidebar opened at 960 px, where it leaves the list 632 px. Before item 8
@@ -3237,7 +3276,7 @@ function catalogueSidebarArm(build) {
   const frames = [["card-764", 796], ["card-375", 407]].map(([name, width]) => ({ name, width,
     spec: path.join(CATALOGUE, "pack", name, "spec.json"), reference: path.join(CATALOGUE, "pack", name, "reference.png") }));
   fs.writeFileSync(path.join(dir, "design.json"), JSON.stringify({ url: "index.html", root: ".card", frames, sweep: { from: 407, to: 1280 },
-    journeys: [{ name: "sidebar: Filters opens it beside the list and closes it", steps: [{ width: 960 }, ...OPEN, { click: "#filters" }, { hidden: "#sidebar" }] }] }));
+    journeys: [{ name: "sidebar: Filters opens it beside the list and closes it", steps: [{ width: 960 }, ...OPEN, compactCard, { click: "#filters" }, { hidden: "#sidebar" }, wideCard] }] }));
   return dir;
 }
 
@@ -3245,10 +3284,10 @@ test("44.8, controls: the catalogue's start code fails its sidebar journey where
   const sidebar = "sidebar: Filters opens it beside the list and closes it";
   const start = check(catalogueSidebarArm("start"), "--no-sweep").result.journeys.find((j) => j.name === sidebar);
   assert.equal(start.pass, false, JSON.stringify(start));
-  assert.match(start.failed, /^step 2, \{"click":"#filters"\}: after it the component's container is 632 px wide \(928 before\), and the component differs from a fresh load with its container held at 632 px: the root's height \d+ px, fresh \d+/);
+  assert.match(start.failed, /no .*:below\(.* is visible/);
   const ref = check(catalogueSidebarArm("reference"), "--no-sweep");
   assert.deepEqual(ref.result.journeys.filter((j) => !j.pass), [], ref.stdout);
-  assert.deepEqual(ref.result.journeys.find((j) => j.name === sidebar).held, [928, 632, 928]);
+  assert.match(ref.result.journeys.find((j) => j.name === sidebar).notes.join(" "), /632 px: checked the placement .*:below/);
 });
 
 // ------------------------------------------------------------------ 44, item 9: an opener covered on another page
@@ -3343,24 +3382,24 @@ if (s) { s.remove(); b.setAttribute("aria-expanded", "false"); } else { s = docu
   assert.deepEqual(r.gaps, ["1 control opens something with no journey that opens and closes it: “Details”"], JSON.stringify(r.gaps));
 });
 
-test("44.8: a window-bound component in a scroller, below the fold, is still held against a fresh load", browser, () => {
+test("44.8: a window-bound component below the fold still fails its expected placement", browser, () => {
   // An app shell (`height:100vh; overflow:auto`) with the card below the fold: the card is scrolled out of view, not
   // gone. Before, it counted as unseen and a card squeezed by the sidebar, laid out by the window, passed.
   const dir = tmp(), config = path.join(dir, "design.json");
   fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0}html,body{height:100%}.shell{height:100vh;overflow:auto}
 .page{display:flex}.side{width:0;overflow:hidden;flex:none}.page.open .side{width:300px}.col{flex:1;min-width:0}
-.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}.thumb{width:200px;height:40px;background:#ccc;flex:none}
+.card{font:16px/20px monospace;background:#fff;display:flex;gap:8px}.thumb{width:200px;height:40px;background:#ccc;flex:none}.card{position:relative}.limit{position:absolute;left:150px;width:1px;height:1px}
 @media (max-width:800px){.thumb{width:100px}}</style>
 <div class="shell"><button id="tog" onclick="document.querySelector('.page').classList.toggle('open')">Filters</button><div style="height:3000px"></div>
-<div class="page"><aside class="side"><p class="f">Filter</p></aside><div class="col"><div class="card"><div class="thumb"></div><span class="t">Title here</span>${MARKERS}</div></div></div></div>`);
+<div class="page"><aside class="side"><p class="f">Filter</p></aside><div class="col"><div class="card"><div class="thumb"></div><i class="limit"></i><span class="t">Title here</span>${MARKERS}</div></div></div></div>`);
   fs.writeFileSync(path.join(dir, "review.md"), REVIEW);
   fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: ".card", ledger: "ledger.json", lifecycle: "a fixture: one render, no data changes",
     frames: [{ name: "narrow", width: 400, spec: "0.json", reference: "0.png" }, { name: "wide", width: 1000, spec: "1.json", reference: "1.png" }],
     sweep: { from: 400, to: 1000, step: 100, stories: [{ name: "dense", url: "page.html?dense" }], lines: LINES },
-    journeys: [{ name: "filters", steps: [{ click: "#tog" }, { visible: ".f" }, { click: "#tog" }, { hidden: ".f" }] }] }));
+    journeys: [{ name: "filters", steps: [{ click: "#tog" }, { visible: ".f" }, { visible: ".thumb:left-of(.limit)" }, { click: "#tog" }, { hidden: ".f" }] }] }));
   const snap = cli("snapshot", config, "--images");
   assert.equal(snap.status, 0, snap.stderr);
   const j = check(dir, "--no-sweep").result.journeys.find((x) => x.name === "filters");
   assert.equal(j.pass, false, JSON.stringify(j));
-  assert.match(j.failed, /^step 1, \{"click":"#tog"\}: after it the component's container is 700 px wide \(1000 before\), and the component differs from a fresh load with its container held at 700 px/);
+  assert.match(j.failed, /no .thumb:left-of.* is visible/);
 });

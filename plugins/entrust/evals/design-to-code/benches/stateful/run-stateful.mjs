@@ -47,7 +47,7 @@ const BUILDS = [
   { name: "control", expect: [] },
   // The clean sheet alone, closed by its transition, by button and by a tap on the backdrop: it must pass. With the
   // lifecycle journey and a coarse sweep, which a complete check asks for.
-  { name: "transition-close", expect: [], config: (c) => ({ ...c, sweep: { ...c.sweep, step: 580 }, journeys: c.journeys.filter((j) => SHEET(j) || j.sameAsFresh) }) },
+  { name: "transition-close", expect: [], config: (c) => ({ ...c, sweep: { ...c.sweep, step: 580 }, journeys: c.journeys.filter((j) => SHEET(j) || j.name.startsWith("list:")) }) },
   // After the list is emptied and restored, the observers stay on the removed cards and the new ones are never
   // observed: at 375 px the card keeps its wide layout and its content runs past it. A journey, or a finding that the
   // page after the journey differs from a fresh load at that width; today's checker has neither.
@@ -114,7 +114,7 @@ function read(config, own) {
     if ((f.unexpected ?? []).length) note("text", `${f.frame} not in the design: ${f.unexpected.slice(0, 3).join(" | ")}`);
   }
   for (const i of (r.sweep?.issues ?? []).filter((i) => i.status === "fail")) note(classOf(i), `sweep ${i.story ?? "page"} ${i.landmark} ${i.property} at ${i.ranges ?? ""}`);
-  for (const j of (r.journeys ?? []).filter((j) => !j.pass)) note(journeyClass(j), `${j.name}: ${String(j.failed).slice(0, 90)}`);
+  for (const j of (r.journeys ?? []).filter((j) => j.failed)) note(journeyClass(j), `${j.name}: ${String(j.failed).slice(0, 90)}`);
   for (const i of (r.journeys ?? []).flatMap((j) => (j.issues ?? []).map((i) => ({ ...i, journey: j.name }))).filter((i) => i.status === "fail")) note(classOf(i), `${i.journey}: ${i.landmark} ${i.property}`);
   return { found, status: r.status, holds: holds(r, own) };
 }

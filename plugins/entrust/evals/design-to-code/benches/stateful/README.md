@@ -6,7 +6,7 @@ HTML, CSS and JS: a host whose width a sidebar changes (beside the list from 640
 cards that a filter empties and restores (each card picks a wide or compact layout from its own width with a
 ResizeObserver), and a mobile sheet that closes by a CSS transition. Its frames (`control/frames/`, 764 and 375 px) are
 the page itself; `control/design.json` holds the journeys: the sheet opens and closes (by button and by backdrop), the
-list is emptied and restored at 375 px (the lifecycle journey, with `sameAsFresh`), the sidebar opens.
+list is emptied and restored at 375 px (the lifecycle journey, with `sameAsFresh`), the sidebar opens, the first card's sizes appear below its details, and closing it restores the initial geometry.
 Each build is judged as in `../card`: the classes expected against the classes raised, and a clean build's complete
 status, which blocks it at `fail` or at `incomplete` for anything but gaps its own config causes by design (`own` in
 the runner). A journey's class is the word before its colon (`journey:sheet`), so one journey failing for another

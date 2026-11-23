@@ -86,7 +86,7 @@ first step that does not hold fails it. Journeys use the browser's natural motio
 own `transitionend`; finite motion on the measured target has up to 1.5 seconds to settle for geometry. For visible
 continuity required by the design, capture the affected region during the ordinary transition with animations enabled,
 and again at the end. Record the frames sampled and any interval you could not observe. A DOM animation-frame callback
-measures layout only. With
+measures layout only. Frames and width sweeps capture settled states. With
 `"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
 an observer left on removed elements or a layout not chosen again shows. The check then resizes that page through the
@@ -102,12 +102,14 @@ parent), for the root the journey started with while it is on the page. The step
 is narrower than a fresh load gives it at the sweep's `from`, where it narrows with the width (what opened, a sidebar
 beside the list, takes the component's room), or when the page starts to scroll sideways. A container with no width,
 or a root clipped from view (a panel collapsed, a tab hidden), shows no component, and neither that floor nor the fresh
-load below holds it. When a step changed the container's width, the component is held against a fresh load whose
-container is held at that width, as [the component's own width](#generated-conditions) holds it, in a window wider than
-the container by as much as at the journey's start; what differs beyond the tolerance fails the step, so a layout bound
-to the window, or chosen once on mount, shows where a sidebar narrows its column. A component showing other text than
-that fresh load (a popover open, a list filtered) is not held, and the journey notes it. Each failure names the
-journey, the step and what to fix.
+comparison holds it. A width step sets the test width; its following expectations specify what must hold there.
+When a user action changes the parent width, assert the relationship in the live component before the next action,
+for example `{ "visible": ".price:below(.title)" }` while a sidebar is open. The check reports that placement only.
+It recognizes Playwright's `:above`, `:below`, `:left-of`, `:right-of` and `:near` on a visible component element,
+with a single selector on either side. A declared `sameAsFresh` endpoint compares the component at the frame widths.
+The check reports unmeasured widths. An independent change of parent width in the configured journey leaves the check
+incomplete until the relevant placement or equivalent endpoint is checked. Equal text can occur in both a collapsed
+chart and an expanded one.
 
 An opener is covered by a passing journey that acts on it while its content is hidden, sees the content (inside the
 target `aria-controls` or `popovertarget` names), acts again and sees the same selector hidden; an overlay frame, by
