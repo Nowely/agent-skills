@@ -3091,6 +3091,37 @@ test("44.1: story host stays on the frame page; consumer journeys use their view
   }
 });
 
+test("a journey on a registered sweep URL sizes the host; separate consumer routes and clipped popovers retain their checks", browser, () => {
+  const dir = tmp(), config = path.join(dir, "design.json"), story = "page.html?view=dense#story";
+  fs.writeFileSync(path.join(dir, "page.html"), `<!doctype html><style>body{margin:0}#host{width:500px}
+#tip{position:fixed;left:0;top:-16px;width:40px;height:32px}</style>
+<div id="host"><main>Ready<output></output><aside role="tooltip" id="tip" hidden>Tip</aside></main></div>
+<script>
+if (location.hash === "#consumer" || location.search === "?view=consumer") document.querySelector("#host").removeAttribute("id");
+document.onkeydown = (e) => {
+  if (e.key === "c") document.querySelector("#tip").hidden = false;
+  else document.querySelector("output").textContent = innerWidth + "/" + (document.querySelector("#host")?.clientWidth ?? "none");
+};
+</script>`);
+  const size = (expected) => [{ press: "p" }, { text: ["output", expected] }];
+  const journeys = [
+    { name: "hosted story", url: story, steps: [...size("700/300"), { width: 400 }, ...size("700/400")] },
+    ...["page.html?view=dense#consumer", "page.html?view=consumer#story"].map((url) => ({
+      name: url, url, steps: [...size("300/none"), { width: 400 }, ...size("400/none")],
+    })),
+    { name: "clipped tooltip", url: story, steps: [{ press: "c" }, { visible: "#tip" }] },
+  ];
+  fs.writeFileSync(config, JSON.stringify({ url: "page.html", root: "main", host: "#host", viewport: 700,
+    frames: [{ name: "default", width: 300, spec: "frame.json", reference: "frame.png" }],
+    sweep: { from: 300, to: 400, stories: [{ name: "dense", url: story }] }, journeys }));
+  const snap = cli("snapshot", config, "--images");
+  assert.equal(snap.status, 0, snap.stderr);
+  const r = check(dir, "--no-sweep");
+  const [hosted, hashConsumer, queryConsumer, clipped] = r.result.journeys;
+  for (const j of [hosted, hashConsumer, queryConsumer]) assert.ok(j.pass, JSON.stringify(j));
+  assert.match(clipped.failed, /#tip is open but 16 px of it is outside the window/);
+});
+
 // Item 1: the parent's width changed by a step (a sidebar opened) is a lifecycle; the window's width is not.
 test("44.1: a step that resizes the component's container takes a lifecycle; a width step alone does not", browser, () => {
   const f = smallFrame('<style>main{width:auto;max-width:300px}#col{width:100%}#col.narrow{width:150px}</style><div id="col"><div class="card"><span>Ready</span></div></div><button id="side">Side</button><script>document.getElementById("side").onclick = () => document.getElementById("col").classList.toggle("narrow");</script>');
