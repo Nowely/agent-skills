@@ -49,8 +49,8 @@ owns it, are open questions, not changes prescribed by this record.
 
 ## Post-gate width probe
 
-In one later local Chromium probe, Astra opened the original and submitted pages at a 375 px viewport, then applied
-temporary styles in the browser. The original project matches the gate's pinned commit; the submitted page, card and
+A later local Chromium probe opened the original and submitted pages at a 375 px viewport, then applied temporary
+styles in the browser. The original project matches the gate's pinned commit; the submitted page, card and
 data files match the frozen archive byte for byte. Both produced the same rounded measurements:
 
 | State | Host / card width | Card x extent | Document scroll width |
