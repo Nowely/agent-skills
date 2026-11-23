@@ -227,3 +227,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 
 - [Seven review fixes](45-seven-review-fixes.md): the approved corrections, independent-review reports, local and CI
   results, two baseline-reproduced open anomalies and the unrun Terra gate.
+- [Catalogue Terra gate](46-catalogue-terra-gate.md): one preregistered run on `a21e92f`; the hidden judge accepted width
+  and choice, while the builder handed over at `fail` on the fixed consumer's narrow Filters layout.
