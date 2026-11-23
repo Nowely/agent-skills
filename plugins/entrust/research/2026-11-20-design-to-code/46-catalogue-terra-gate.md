@@ -2,6 +2,14 @@
 
 The hidden judge returned **ACCEPTED**, with width, choice and basics holding. Terra's own first and final handover was **`fail`**: in the consumer at a 375 px window, opening Filters leaves a 47 px card column, below the check's 288 px floor. The checker calculated that floor from a fresh page at the 320 px sweep start Terra chose because the contract gave no narrower bound; 288 px is not an owner-stated requirement, and the closed-page floor is not established as a product invariant for the open sidebar. The fixed page owns that sidebar; changing it was outside the brief. Both results can hold: the judge checks the card at several usable container widths, including the open sidebar at 700–960 px, while the skill's journey also checks the page at 375 px with the sidebar open. The judge does not establish that this page-level narrow state works. Nor is its ACCEPTED an acceptance by the owner. Under the PR request the gate also needs the owner's acceptance; that is still open.
 
+The [card contract](../../evals/design-to-code/cases/catalogue-card/project/README.md) and its
+[design context](../../evals/design-to-code/cases/catalogue-card/pack/context.md) do not specify a minimum supported
+card width or what the consumer must do when the sidebar leaves too little room. A component `min-width` could protect
+its internal layout at a chosen bound, but does not create room beside the sidebar and may cause overflow. Both that
+bound and the consumer's narrow-space behavior remain an owner decision; 288 px is not that decision. A later
+[post-gate probe](47-external-blocker-and-judge-scope.md#post-gate-width-probe) observed the same host and card widths
+in the original and submitted pages and measured what temporary `min-width` and sidebar stacking styles changed.
+
 ## Conditions and boundary
 
 The [registration](45-catalogue-terra-gate-registration.md) was committed before launch at `16c3975`; the tested case, skill, harness and judge are pinned to `a21e92f0a0b032f7b88e9ef111215cea703e96e3`. The registration records the Git tree and blob IDs, but the case project tree ID was transcribed incorrectly before launch: it says `a849249a0f7b48f1650e0f1978f7147ad9a7d`; the actual ID at the pinned revision is `a849249a0f7b48f1650e0cc0f1978f7147ad9a7d`. The original registration remains unchanged. The skill was installed from that commit by the case's `make-arm.mjs` and the PR's `real-run.mjs setup` (which invokes `arm.mjs prepare`). One fresh Codex 0.171.0-alpha.13 session used `gpt-6.1-terra`, `xhigh`, workspace-write and automatic approval review. The first message was the generated prompt and the PR's exact approval line. No follow-up messages, helper agents, baseline comparison, A/B or post-handoff fix were used. The owner allowed the case's absent `.design/returns.md`; it was not fabricated.
@@ -33,7 +41,7 @@ gate from the frozen full-arm archive (SHA-256 `a6572f1b029bb4ee423d7e7a3e3d83fc
 it is not a historical gate frame. The six extracted page, card and data files match that archive byte for byte. The
 PNG is 388 px wide; the reproduced viewport was configured at 375 px. It shows the synthetic case, not an owner verdict.
 
-On visual inspection the wide and compact placements and the selected M state correspond to the references. The submitted text appears heavier and the compact price, stock and Details spacing differs; the pixel differences are visible in the attached comparisons. The checker reported unavailable Inter, and these pictures cannot distinguish font-substitution effects from other visual differences. They do not show the failing 375 px open-sidebar state. No owner visual or code verdict is claimed.
+On visual inspection the wide and compact placements and the selected M state correspond to the references. The submitted text appears heavier and the compact price, stock and Details spacing differs; the pixel differences are visible in the attached comparisons. The checker reported unavailable Inter, and these pictures cannot distinguish font-substitution effects from other visual differences. The original reference/submission pairs and the 960 px sidebar capture do not show the failing 375 px open-sidebar state; the separately reproduced 375 px view above does. No owner visual or code verdict is claimed.
 
 ## Cost and limits
 

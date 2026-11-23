@@ -15,8 +15,8 @@ from the proposed changes.
 - The consumer's full check stayed **`fail`**: opening Filters at a 375 px viewport left a 47 px column. The check
   compared it to a 288 px floor from a fresh page at the 320 px sweep start chosen by Terra. Neither that floor nor its
   use for the open-sidebar state is established as an owner-stated product invariant. The fixed page and its sidebar
-  were outside the card-change brief. An identical baseline/candidate measurement was not recorded, so the extent and
-  attribution of any change to this state remain unproved.
+  were outside the card-change brief. No baseline/candidate comparison was recorded during the gate; the subsequent
+  narrow [width probe](#post-gate-width-probe) observed matching geometry for this one state, not overall equivalence.
 - The [original PR request](https://github.com/Nowely/agent-skills/pull/113#issuecomment-7088019516) already named the
   375 px squeeze and expected one ledger entry leading to `pending`. The current
   [ledger validator](../../plugin/skills/design-to-code/scripts/core.mjs#L323) permits a `journey` entry only with
@@ -34,6 +34,38 @@ The measured candidate was `a21e92f`. At `8f2f096`, the design-to-code skill pag
 the checker and catalogue judge files are unchanged. The gate is one synthetic run, not evidence of a general model
 success rate or proof that the check caused the builder to discover either defect.
 
+## Open contract: minimum width and the consumer
+
+The [case contract](../../evals/design-to-code/cases/catalogue-card/project/README.md) says cards are used in
+containers of different widths; the [design context](../../evals/design-to-code/cases/catalogue-card/pack/context.md)
+specifies the layout below 640 px. Neither specifies the smallest supported component width or the page's behavior
+when the open sidebar leaves less room. The 288 px calculated floor is not an agreed product minimum.
+
+The owner needs to decide which minimum the component supports and, at less available width, what the consumer should
+do. Depending on that decision, the consumer might stack, overlay or otherwise adapt its sidebar; scrolling is another
+possibility only if the product permits it. A component `min-width` at an agreed bound can limit internal compression,
+but it cannot create space alongside the sidebar and may produce overflow. Whether that rule is needed, and which unit
+owns it, are open questions, not changes prescribed by this record.
+
+## Post-gate width probe
+
+In one later local Chromium probe, Astra opened the original and submitted pages at a 375 px viewport, then applied
+temporary styles in the browser. The original project matches the gate's pinned commit; the submitted page, card and
+data files match the frozen archive byte for byte. Both produced the same rounded measurements:
+
+| State | Host / card width | Card x extent | Document scroll width |
+|---|---:|---:|---:|
+| Filters closed | 343 / 343 px | 16–359 px | 375 px |
+| Filters open | 47 / 47 px | 312–359 px | 388 px |
+| Open with `.card { min-width: 288px; }` | 47 / 288 px | 312–600 px | 600 px |
+| Sidebar stacked above the list, with that min-width still applied | 343 / 343 px | 16–359 px | 375 px |
+
+Thus the temporary `min-width` prevented this card box from shrinking to 47 px, but did not widen its host; the card
+extended 225 px beyond the window. The stacking style provided room in this probe. Neither choice is an approved
+product solution, and the 288 px trial is not an agreed minimum. The samples compare geometry in one environment;
+they do not establish complete behavioral or visual equivalence. The unpublished raw probe output has SHA-256
+`3ce8ad8ee78004793aeab1e036708e142d787581860fbc9ee78f86ecd6bc1dd3`.
+
 ## Proposed behavior
 
 1. **A bounded handover with the real result.** Permit the builder to stop and hand over an evidence-backed external
@@ -42,11 +74,18 @@ success rate or proof that the check caused the builder to discover either defec
    the cause, and the exact brief boundary preventing the fix. Give the owner the available choices and any remaining
    unverified coverage. An owner decision can be recorded separately; do not relabel the run `pass` or make every
    `fail` eligible for handover.
+
+   For this case the owner-facing report could say: “At a 375 px viewport, opening Filters leaves 47 px for the card.
+   The consumer sidebar takes the available room; changing that page is outside this task. The checker compared the
+   result to 288 px measured on a fresh page at the chosen 320 px sweep start. The supported card minimum and the
+   consumer's behavior when room is insufficient need your decision.” This is a handover message for the owner, not a
+   proposed warning in the product UI. The later width probe shows matching original and submitted geometry in this
+   state; it does not prove the absence of other regressions.
 2. **Attribution before deferral.** When responsibility or regression status is uncertain, compare original and
    candidate in the same consumer, route, data, viewport and state. Record both observations, the tolerance and what
    the comparison can and cannot establish. If that comparison cannot be made or is ambiguous, leave the cause and
-   regression status unknown rather than asserting an inherited defect. The image above shows the candidate state; it
-   is not that baseline comparison.
+   regression status unknown rather than asserting an inherited defect. The image above shows the candidate state;
+   the post-gate probe compares the measured widths separately.
 3. **Align instructions and messages.** Reconcile the skill's handover rule with the checker stop guidance and the
    `fail` text shown in its summary and handoff. Prefer the existing `review.md` evidence and the real status over a
    new flag, schema or exit code. A genuine checker-caused failure can still be disputed as such; an external product
@@ -87,8 +126,9 @@ selectors, so the rule is not tailored to this fixture. Keep the same page and c
 | Candidate introduces or worsens the squeeze | Treat the difference as a candidate regression for investigation; a blanket external-blocker disposition must not clear it. |
 | Existing squeeze plus newly lost selection | Preserve the selection failure and missing coverage independently; the external blocker cannot mask it. |
 
-Also cover insufficient or mismatched baseline evidence, genuine checker-caused disputes, independently scoped review,
-and the uncovered Details opener. Verify the rendered handoff and console agree on the observed status and that the
+Also cover an explicit minimum-width contract and the consumer's behavior when the available room falls below it,
+without treating a card `min-width` alone as proof that the surrounding page fits. Cover insufficient or mismatched
+baseline evidence, genuine checker-caused disputes, independently scoped review, and the uncovered Details opener. Verify the rendered handoff and console agree on the observed status and that the
 historic card judge is unchanged. These controls establish deterministic behavior only; they do not prove how a model
 will behave. Assess that separately with a preregistered fresh run and stated acceptance criteria; no such run was
 performed in this discussion.
