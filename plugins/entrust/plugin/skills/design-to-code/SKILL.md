@@ -64,8 +64,8 @@ Beside `review.md`, `design.json` names the page (`url`), the component's select
   - `many`: more entries than any frame shows; its acceptance row quotes the last one at the narrowest width.
 - **`journeys`:** each control that opens something, opened and closed the ways it supports.
 
-A collision only under the check's generated texts, rows or edge openers is a candidate: reproduce it in a
-story with legal data, or name under Candidates in `review.md` the bound that rules it out.
+A collision only under the check's generated texts, rows or edge openers, or a layout that follows the window, is a
+candidate: reproduce it in a story with legal data, or name under Candidates in `review.md` the bound that rules it out.
 
 While building, run `node <skill>/scripts/design.mjs check design.json --quick`; at milestones and last, the
 complete check, in the foreground; if the shell returns first, wait in one call as long as the last complete check
@@ -91,8 +91,8 @@ evidence, an unanswered candidate); name it or record why not.
 - **The consumer.** Load the artifact through its public import, in a consumer or a minimal host, and exercise
   the affected action; take each lifecycle the product can cause (mount and unmount, data emptied and refilled) or
   parent-width change in a journey with `"sameAsFresh": true` on the consumer's page; if it can cause none, design.json
-  gives `"lifecycle"` with the reason. Where the contract keeps a state across a re-render (a selection, an input, focus), a
-  journey asserts it after the re-render; `sameAsFresh` cannot see it.
+  gives `"lifecycle"` with the reason. Where the contract keeps a state across a re-render (a selection, an input,
+  focus), a journey asserts it after the re-render; `sameAsFresh` cannot see it.
 - **A second look:** where you can start a second agent, run [the review pass](references/review-pass.md) and fix
   what it returns.
 - **The owner's decisions,** in one list: each fair question (the design or contract silent or contradicting itself:

@@ -2678,7 +2678,7 @@ test("draft 28.2: pending means proposals wait for the owner; a page snapshot us
 // lifecycle, or design.json gives the reason the product has none.
 const LIFECYCLE = /no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause \(mount and unmount, data emptied and refilled, the parent's width changed\) in one, on the page `url` names or a consumer page of its own `url`, or give "lifecycle" in design\.json with the reason the product can cause none/;
 const STORY_URL = /no journey with "sameAsFresh": true runs on the consumer's page: .* in one, on a consumer page of its own `url` that no frame or story shows \(the page `url` names draws the frames, a story page\)/;
-const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps changed the component's data, mounted or unmounted it, or changed its parent's width, and a width step is the window's/;
+const UNTAKEN = /the journeys with "sameAsFresh": true on the consumer's page took no lifecycle \(“remounted”\): none of their steps changed the component's content, mounted or unmounted it, or changed its parent's width, and a width step is the window's/;
 test("44.1: a complete check is incomplete until a journey on the consumer's page has sameAsFresh and takes a lifecycle, or design.json gives the reason there is none", browser, () => {
   // A button that renders the component's content again: its data changed, as a list emptied and refilled does.
   const f = smallFrame('<div id="c"><span>Ready</span></div><button id="again">Again</button><script>document.getElementById("again").onclick = () => { const c = document.getElementById("c"); c.innerHTML = c.innerHTML; };</script>');

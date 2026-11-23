@@ -2159,7 +2159,7 @@ function acceptanceGaps(cfg, rows, sweepResult, results, journeyResults) {
   if (typeof cfg.lifecycle !== "string" && !onConsumer.length) {
     gaps.push(`no journey with "sameAsFresh": true runs on the consumer's page: take each lifecycle the product can cause (mount and unmount, data emptied and refilled, the parent's width changed) in one, ${where}, ${exit}`);
   } else if (typeof cfg.lifecycle !== "string" && !onConsumer.some(took)) {
-    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps changed the component's data, mounted or unmounted it, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
+    gaps.push(`the journeys with "sameAsFresh": true on the consumer's page took no lifecycle (${onConsumer.slice(0, 3).map((j) => `“${j.name}”`).join(", ")}): none of their steps changed the component's content, mounted or unmounted it, or changed its parent's width, and a width step is the window's: empty and refill its data, remount it or resize its parent in one, ${exit}`);
   }
   // A frame of an overlay (it names its own root: a popover, menu or sheet) wants a passing journey that acts on the
   // same element its setup opens, sees something visible and then expects the same thing hidden, whatever the markup.

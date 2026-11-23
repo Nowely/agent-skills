@@ -109,7 +109,8 @@ one that acts on the element its setup opened it from. An opener whose target is
 without the consumer's sheet) is covered by such a journey on another page that opens one by the same selector, with
 the same role, accessible name and target; the handoff names that journey. The check clicks it on its own page first:
 a target that appears then (one mounted only on open) or a click that throws makes it that page's to cover, as does
-anything else the click shows. Each journey that opens something also runs with the opener at the window's top and
+a dialog, popover or menu the click opens (a tooltip or a log it shows does not). A target mounted later than a second
+after the click reads as off its page. Each journey that opens something also runs with the opener at the window's top and
 bottom edges, at the widest and narrowest frames' widths: the overlay it shows must be whole in the window and in every
 box that clips it. An opener in a fixed or sticky bar is not tried there.
 
@@ -142,15 +143,16 @@ A text reads as the frame shows it; a selector names the page's element for an i
 measured while a landmark has no text or selector, names a missing piece or takes in another's, or a piece is named
 twice; ink in no landmark and not skipped keeps it incomplete. A text several landmarks share is paired with the
 page's in reading order; one no other landmark repeats, with the page's nearest its box, so a count "1" is not the
-"1" inside "Выдача за 1 день". The page's boxes are made tight to their ink and compared by place within 4 px. A text wider in the page's font moves the next piece, and that is the font's; heights
-are not compared. **The type's size** is the trimmed mean (the middle 60 %) of the page's ink heights over the
-design's, with five texts or more: 10 % or more off is a `type` finding. One text 20 % or more off by its own ink (a
-price set larger than drawn) is a `type` finding too, unless its landmark gives its own box (an icon joined to it). A
-size a step off (a price 2 px smaller) moves the ink by a pixel, as rounding does; it moves the width by ten times as
-many. So one text is also a `type` finding when it is 10 % and 6 px wider or narrower than the frame's font explains
-(the median of the texts' width ratios) and its ink is taller or lower the same way. A text whose landmark gives its
-own box (an icon joined to it) has no ink height to read: it is a `type` finding when it is 10 % and 6 px wider than
-the font explains; narrower, its box may hold the icon too, and it stays a note.
+"1" inside "Выдача за 1 день". The page's boxes are made tight to their ink and compared by place within 4 px. A text
+wider in the page's font moves the next piece, and that is the font's; heights are not compared. **The type's size**
+is the trimmed mean (the middle 60 %) of the page's ink heights over the design's, with five texts or more: 10 % or
+more off is a `type` finding. One text 20 % or more off by its own ink (a price set larger than drawn) is a `type`
+finding too, unless its landmark gives its own box (an icon joined to it). A size a step off (a price 2 px smaller)
+moves the ink by a pixel, as rounding does; it moves the width by ten times as many. So one text is also a `type`
+finding when it is 10 % and 6 px wider or narrower than the frame's font explains (the median of the texts' width
+ratios) and its ink is taller or lower the same way. A text whose landmark gives its own box (an icon joined to it)
+has no ink height to read: it is a `type` finding when it is 10 % and 6 px wider than the font explains; narrower, its
+box may hold the icon too, and it stays a note.
 
 Either way, texts stacked on one left edge stay on it (`align`), an area outside the texts whose pixels differ is a
 `region`, and a font the page asks for that cannot draw its text is named.
@@ -235,7 +237,8 @@ size and the spec's landmarks must agree within the tolerance. A layout bound to
 `matchMedia`, a script reading the window's width) differs; one laid out by its container (a container query, an
 observer on the component) does not. A frame with its own root is not tried, nor the page itself in the page's body
 (a root that is `main` or holds it): a page is laid out by the window. A component placed directly in the body is
-tried. Where the hold does not give the root the width it had (within 3 px) because the wide window lays more beside
+tried. So is a page root with no `main` inside: answer it as the page. A frame whose width is 1280 px is not tried.
+Where the hold does not give the root the width it had (within 3 px) because the wide window lays more beside
 it in the container (a sidebar the narrower window hides), the condition measures nothing at that width, and the
 evidence says so as a note. Where nothing beside it moved, the root's own width follows the window (a width a media
 query sets, `vw`): a candidate.

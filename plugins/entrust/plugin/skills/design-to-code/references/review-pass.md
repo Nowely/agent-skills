@@ -59,7 +59,7 @@ Read the diff and answer six questions, yes or no, each with a file and line:
 4. Does no later rule override an earlier one for the same mode, and no selector reach outside the component?
 5. Is what the layout hides still available to a screen reader?
 6. Which lifecycles can the consumer cause (mount and unmount, data emptied and refilled, a parent's width changing),
-   and does a journey in design.json take each?
+   and does a journey in design.json take each, or its `"lifecycle"` reason hold?
 A "no" is a note for the owner with its place, not a return by itself.
 
 For each finding: the frame or story and width, what you see, by how much, and "fix" or "acceptable". Be concrete;
