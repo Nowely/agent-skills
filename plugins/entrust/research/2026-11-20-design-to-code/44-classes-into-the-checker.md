@@ -127,4 +127,4 @@ Residuals of that pass:
 - a window-bound card beside a sidebar that the narrow window hides gets only "not measured";
 - a target mounted more than a second after the click reads as off its page.
 
-**At `95f8a75`:** 158 of 158 tests; the planted case 28; card bench 15 of 15 and stateful bench 4 of 4, no clean build blocked. Arm k4 on `74f68b5` was ACCEPTED by the catalogue's judge at `pass`, in about 17 calls, with no work-round for E152. This is the commit the Terra gate pins.
+**At `95f8a75`:** 158 of 158 tests; the planted case 28; card bench 15 of 15 and stateful bench 4 of 4, no clean build blocked. Arm k4 on `74f68b5` was ACCEPTED by the catalogue's judge at `pass`, in about 17 calls, with no work-round for E152. The Terra gate pins `55b37c3`, which adds the review edits: a root scrolled out of view counts as seen, and an inert opener is judged after a blur. 160 of 160 tests.
