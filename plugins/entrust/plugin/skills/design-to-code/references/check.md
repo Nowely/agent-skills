@@ -29,9 +29,10 @@ incomplete when:
 - a story on a frame's own URL has no setup but `wait`, so it is the frame again;
 - no journey with `"sameAsFresh": true` runs on the consumer's page and takes a lifecycle, unless `design.json` gives
   `"lifecycle"` with its reason. The consumer's page is a journey's own `url` that no frame or story shows, or the
-  page `url` names, whatever its query, unless that is a story page: the frames drawn there by `host` or by a frame's
-  own `url`. A journey takes a lifecycle when one of its steps changes the component's content, mounts or unmounts
-  its root, or changes its container's width; a `width` step is the window's, and alone takes none;
+  page `url` names, whatever its query, unless the frames are drawn there by `host`. A journey takes a lifecycle when
+  a step shows, hides, removes or replaces its root, changes its container's width, or a `text` expectation observes
+  changed text in a leaf field that was visible in the root before the journey and did not already contain the expected
+  text. Other content mutations alone do not establish a data change; a `width` step is the window's, and alone takes none;
 - a line of the owner's past returns (`.design/returns.md` beside the task's folder) is not quoted in an acceptance
   row;
 - a [candidate](#generated-conditions) is unanswered.
@@ -80,8 +81,8 @@ fails in 5 seconds.
 Each journey opens the page afresh at the widest frame's width (by touch with `"touch": true`, on its own `url` if it
 gives one) and runs its `steps`: setup steps, `{ "width": 320 }`, and expectations, each given a second to come true
 as a person sees it: `visible`, `hidden` (none seen), `{ "text": ["<selector>", "<text>"] }` and `focused`. A
-journey with no expectation is an error; the first step that does not hold fails it. A journey runs with the page's
-transitions and animations: what is running is brought to its end, its end events fired, before each expectation, so a
+journey with no expectation is an error; a separate consumer page uses its own viewport, not the frame `host`. The
+first step that does not hold fails it. A journey runs with the page's transitions and animations: what is running is brought to its end, its end events fired, before each expectation, so a
 sheet that hides itself when its closing transition ends closes, and one that never closes fails. With
 `"sameAsFresh": true`, after its steps the component (the root's place, size and scrolled width, and each child's box)
 must match a fresh load of the same page at the same width; what differs beyond the tolerance fails the journey, so
