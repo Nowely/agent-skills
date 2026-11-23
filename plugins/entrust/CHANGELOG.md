@@ -42,11 +42,28 @@ leave a previously passing check incomplete. Review existing `design.json` journ
 - **Natural motion** is retained for journeys. Expectations and placement use bounded settling checks; motion still
   running at the deadline can leave the result unmeasured, and later timers or visual continuity between samples need
   separate observation.
+- **A documented external blocker** can be handed to the owner without calling the work done or changing a measured
+  `fail`, exit code or JSON result. A current complete check supplies the evidence, or the handoff says why it could
+  not run; partial checks stay partial. The report separates the action, measurement, expected value and its source,
+  cause, scope boundary, other findings and decisions. The checker is not named as the cause of an external defect.
+  Previously an invalid journey ledger entry still marked that journey `pending` or `accepted` even while its ledger
+  fault kept the overall check failed. Invalid entries no longer mark journeys; valid checker-tagged entries still
+  match. The existing owner-accepted wildcard can also match journeys without `cause: "checker"` and is unchanged.
+- **Test widths and the product minimum** are distinct: `sweep.from` is a selected test width, not proof of the
+  supported minimum. Record its contract or owner source, or unknown; the numeric checker calculation is unchanged.
+  The human-readable width diagnostic, including its `journeys[].failed` text in JSON, now names the sweep start;
+  consumers that match the old sentence must update. An independent reviewer reads the source rather than treating
+  the builder's selected width as the product contract.
 - **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
 - **The card and stateful benches** moved into evals.
 
 ### Design-to-code evals
 
+- The future generated run prompt permits an evidenced external blocker to be reported with the actual `fail` rather
+  than claimed done. Collection checks the approval line recorded in each run's baseline; an older baseline without
+  that line leaves the result unknown. Historical runs used a different prompt, so direct comparisons need that caveat.
+- The catalogue judge's human-readable verdict names its card-contract scope. Consumer status and the owner's
+  decision stay in the existing handoff and verdict form; the judge's checks, JSON and exit are unchanged.
 - The real-run collector includes response usage recorded after the last cumulative token count (E160).
   It reports empty-stdin polls, polls with no output and unreadable results separately. Its per-check count follows
   each completed full check's shell session and counts only waits that returned no output while it was still running.

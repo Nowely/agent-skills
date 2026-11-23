@@ -232,3 +232,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 
 - [External blocker and judge scope](47-external-blocker-and-judge-scope.md): the post-gate Astra discussion, the
   observed contract mismatch and a proposed plan with deterministic controls; no skill change or new model run.
+
+- [Blocked-handoff implementation](48-blocked-handoff-implementation.md): the preserved checker status, bounded
+  external-blocker instructions, judge scope and the changed future-run prompt and comparison boundary.

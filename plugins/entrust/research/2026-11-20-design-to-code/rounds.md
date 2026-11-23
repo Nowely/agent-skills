@@ -805,3 +805,10 @@ The [post-gate record](47-external-blocker-and-judge-scope.md) separates the car
 owner decision, then records Astra's proposed bounded-blocker handoff and controls. It corrects the source of the
 288 px floor in the gate record and links a post-gate reproduction, not a historical frame. No implementation or new
 model run was made; a regression count for the proposed change is not available.
+
+## Bounded blocked handoff
+
+[The implementation record](48-blocked-handoff-implementation.md) preserves the checker failure while allowing an
+evidence-backed external blocker in the owner's report. The future generated prompt changed; historical registrations
+and results remain unchanged, so a new run under that prompt has a different condition. No model run was performed in
+this round and no model-behavior regression count is available.
