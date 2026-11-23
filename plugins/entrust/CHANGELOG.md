@@ -55,9 +55,9 @@ leave a previously passing check incomplete. Review existing `design.json` journ
   consumers that match the old sentence must update. An independent reviewer reads the source rather than treating
   the builder's selected width as the product contract.
 - **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
-  After the full review, the handoff checks material claims against its observations and the final state; verified
-  material limitations are reported with source and scope, without calling an existing limitation a regression or
-  automatically changing the check's verdict.
+  After the full review, the handoff checks material claims against its observations and the final state; unverified
+  material claims stay marked as such, and verified material limitations are reported with source and scope. An
+  existing limitation is not called a regression; the check's verdict does not change automatically.
 - **The card and stateful benches** moved into evals.
 
 ### Design-to-code evals

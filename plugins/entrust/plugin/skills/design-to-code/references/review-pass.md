@@ -81,6 +81,7 @@ the handover, list the review's findings with what you did about each, and each 
 place. A finding you disagree with is not dropped: say why, for the owner to decide.
 
 After receiving the full review and before the final answer, compare each material result claim with the review and
-the final state. Verify the reviewer's observations against evidence; tell the owner any confirmed material remaining
-limitation, its source and scope. Distinguish an existing limitation from a proven regression; reporting a limitation
-does not by itself change the check's verdict.
+the final state. Check material reviewer observations relevant to the handoff against evidence; mark any material claim
+you cannot verify as unverified. Tell the owner any confirmed material remaining limitation, its source and scope.
+Distinguish an existing limitation from a proven regression; reporting a limitation does not by itself change the
+check's verdict.
