@@ -15,7 +15,15 @@ export const key = (s) => String(s).replace(/[\s\u200b]+/g, "").toLocaleLowerCas
 
 // Parse only the root node of a Playwright ARIA snapshot. Unrecognized output is not an identity.
 export function snapshotIdentity(snapshot) {
-  const match = snapshot?.split("\n")[0].match(/^- ([\w-]+)(?: ("(?:\\.|[^"\\])*"))?(?= *[:\[]|$)/);
+  if (typeof snapshot !== "string") return null;
+  let line = snapshot.split("\n")[0];
+  // Playwright quotes the entire YAML key when the name contains ": " or " #", doubling its apostrophes.
+  if (line.startsWith("- '")) {
+    const quoted = line.match(/^- '((?:[^']|'')*)'(?::(?:\s|$)|$)/);
+    if (!quoted) return null;
+    line = `- ${quoted[1].replaceAll("''", "'")}`;
+  }
+  const match = line.match(/^- ([\w-]+)(?: ("(?:\\.|[^"\\])*"))?(?: \[[^\]\n]*\])*(?=:(?:\s|$)|$)/);
   if (!match) return null;
   try { return { role: match[1], name: match[2] ? JSON.parse(match[2]) : "" }; } catch { return null; }
 }

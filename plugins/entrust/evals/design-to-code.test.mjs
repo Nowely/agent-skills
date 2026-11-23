@@ -335,6 +335,13 @@ test("ARIA snapshot identity uses the computed name and rejects unfamiliar outpu
   assert.deepEqual(snapshotIdentity('- button'), { role: "button", name: "" });
   assert.equal(snapshotIdentity('unexpected'), null);
   assert.equal(snapshotIdentity('- button "unterminated'), null);
+  assert.deepEqual(snapshotIdentity(`- 'button "Details: quantity"': More`), { role: "button", name: "Details: quantity" });
+  assert.deepEqual(snapshotIdentity(`- 'button "Details: quantity" [expanded=false]': More`), { role: "button", name: "Details: quantity" });
+  assert.deepEqual(snapshotIdentity(`- 'button "Bob''s: #1"': More`), { role: "button", name: "Bob's: #1" });
+  assert.deepEqual(snapshotIdentity(`- 'button ${JSON.stringify(`Bob's: "quoted" #1`).replaceAll("'", "''")}': More`), { role: "button", name: `Bob's: "quoted" #1` });
+  assert.equal(snapshotIdentity(`- 'button "unterminated': More`), null);
+  assert.equal(snapshotIdentity(`- 'button "Details: quantity"' garbage`), null);
+  assert.equal(snapshotIdentity(`- 'button "Bob's: #1"': More`), null);
 });
 
 // ------------------------------------------------------------------ in the browser
@@ -1395,6 +1402,27 @@ test("cross-page coverage uses the accessible name and an existing linked target
   r = check(f.dir);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, /no journey that opens and closes it: “Details”/);
+});
+
+test("ARIA names with YAML punctuation keep identical and different controls distinct", browser, () => {
+  const name = `Bob's: "volume" #1`;
+  const f = smallFrame(`<span id="label" hidden>${name}</span><button id="more" aria-labelledby="label" popovertarget="panel">More</button><div id="panel" popover>Details</div>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const other = path.join(f.dir, "other.html"), original = fs.readFileSync(f.page, "utf8");
+  const run = (html) => {
+    fs.writeFileSync(other, html);
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "open and close", url: "other.html", steps: [
+      { click: "#more" }, { visible: "#panel" }, { click: "#more" }, { hidden: "#panel" },
+    ] }] }));
+    return check(f.dir);
+  };
+  let r = run(original.replaceAll('id="label"', 'id="other-label"').replaceAll('aria-labelledby="label"', 'aria-labelledby="other-label"'));
+  assert.equal(r.status, 0, r.stdout);
+  assert.equal(r.result.frames[0].openers[0].name, name);
+  assert.equal(r.result.journeys[0].closers[0].name, name);
+  r = run(original.replace(name, `Bob's: "other" #1`));
+  assert.equal(r.status, 2, r.stdout);
+  assert.ok(r.result.gaps.some((gap) => gap.includes(name)), r.stdout);
 });
 
 test("frame, quick and full never act on an unspecified opener; an explicit journey may open a lazy target", browser, async () => {
