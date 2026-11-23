@@ -117,7 +117,8 @@ comparison holds it. A width step sets the test width; its following expectation
 When a user action changes the parent width, assert the relationship in the live component before the next action,
 for example `{ "visible": ".price:below(.title)" }` while a sidebar is open. The check reports that placement only.
 Changes to a flex or grid item's size can also resize its sibling column. The check follows size-affecting effects
-on those items. If an action overlaps unfinished motion from a window resize, it provides no independent evidence of a parent-width
+on those items and their in-flow content, including a nested child that sets the item's intrinsic width. Descendants
+behind full size containment contribute no intrinsic size outside that box. If an action overlaps unfinished motion from a window resize, it provides no independent evidence of a parent-width
 lifecycle. Exercise that action once the viewport has settled when the product supports it.
 It recognizes Playwright's `:above`, `:below`, `:left-of`, `:right-of` and `:near` on a visible component element,
 with a single selector on either side. A declared `sameAsFresh` endpoint compares the component at the frame widths.

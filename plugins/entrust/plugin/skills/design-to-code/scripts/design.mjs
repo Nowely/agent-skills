@@ -147,11 +147,25 @@ const motionSettled = (page, selector, timeout, mode = "geometry") => page.locat
   const outOfFlow = /^(opacity|transform|transformOrigin|translate|rotate|scale)$/;
   const changesBox = (a, own) => a.effect.getKeyframes().some((frame) =>
     Object.keys(frame).some((k) => !paint.test(k) && (own || !outOfFlow.test(k))));
+  // An item's intrinsic size can come from any depth in its content. Follow that contribution up to the
+  // flex/grid item, stopping where a box leaves the flow or contains its descendants' size.
+  const contributesTo = (effect, peer) => {
+    const target = effect.target;
+    const outside = (style) => style.display === "none" || /^(absolute|fixed)$/.test(style.position);
+    if (effect.pseudoElement && outside(getComputedStyle(target, effect.pseudoElement))) return false;
+    for (let el = target; el; el = el.assignedSlot ?? el.parentElement ?? el.getRootNode().host) {
+      const style = getComputedStyle(el);
+      if (outside(style)) return false;
+      if ((el !== target || effect.pseudoElement) && /(^| )(size|strict)( |$)/.test(style.contain + " " + style.containerType)) return false;
+      if (el === peer) return true;
+    }
+    return false;
+  };
   const active = () => {
     const found = new Set(), family = new Set();
-    const add = (a, role) => {
+    const add = (a, role, peer) => {
       if (!["running", "paused"].includes(a.playState)) return;
-      if (role === "flow" && !changesBox(a, false)) return;
+      if (role === "flow" && (!changesBox(a, false) || (peer && !contributesTo(a.effect, peer)))) return;
       const finite = Number.isFinite(a.effect?.getComputedTiming().endTime);
       if (!finite && role !== "flow") {
         if (role !== "target" || !["hidden", "placement"].includes(mode) || !changesBox(a, true)) return;
@@ -170,8 +184,8 @@ const motionSettled = (page, selector, timeout, mode = "geometry") => page.locat
         if (mode === "hidden" || family.has(parent) || !/flex|grid/.test(getComputedStyle(parent).display)) continue;
         family.add(parent);
         for (const peer of parent.children) {
-          if (peer === child || /^(absolute|fixed)$/.test(getComputedStyle(peer).position)) continue;
-          for (const a of peer.getAnimations()) add(a, "flow");
+          if (peer === child) continue;
+          for (const a of peer.getAnimations({ subtree: true })) add(a, "flow", peer);
         }
       }
     }

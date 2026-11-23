@@ -3133,6 +3133,40 @@ main span{display:block;height:12px}</style><div class="layout"><div class="colu
   assert.deepEqual(side.lifecycle, ["parent width"]);
 });
 
+test("nested sidebar content sets its intrinsic width; viewport-only, noop and actual toggles stay distinct", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>.layout{display:flex}.col{flex:1;min-width:0}.sidebar{flex:none}.inner{width:50px;height:10px;transition:width .6s linear .2s}
+@media(min-width:400px){.inner{width:150px}}.inner.open{width:200px}main{width:100%}main span{display:block}
+.floating{position:absolute}.contained{contain:size;height:0;overflow:hidden}.decoration{height:1px;animation:pulse 20s linear infinite}
+.spinner{display:inline-block;animation:spin 20s linear infinite}@keyframes spin{to{transform:rotate(1turn)}}
+@keyframes pulse{from{width:1px}to{width:100px}}</style>
+<div class="layout"><div class="col"><main><span class="a">One</span><span class="b">Two</span></main></div>
+<aside class="sidebar"><div><div class="inner"></div><b class="spinner">*</b></div>
+<div class="floating"><div class="decoration"></div></div><div class="contained"><div class="decoration"></div></div></aside></div>
+<button id="noop">No change</button><button id="side">Side</button>
+<script>side.onclick=()=>document.querySelector(".inner").classList.toggle("open")</script>`);
+  const { frames, root, url } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const cfg = { url, root, frames, static: "one reference" };
+  fs.writeFileSync(f.config, JSON.stringify(cfg));
+  const snap = cli("snapshot", f.config, "--images", "--force");
+  assert.equal(snap.status, 0, snap.stderr);
+  const placement = { visible: ".b:below(.a)" }, relax = { wait: 900 };
+  const viewport = (after) => [{ width: 450 }, ...after, relax, placement, { width: 300 }, relax, placement];
+  const cases = [
+    ["viewport only", viewport([]), 2, []],
+    ["viewport and noop", viewport([{ click: "#noop" }]), 2, []],
+    ["real side change", [{ click: "#side" }, relax, placement, { click: "#side" }, relax, placement], 0, ["parent width"]],
+  ];
+  for (const [name, steps, status, lifecycle] of cases) {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name, steps, sameAsFresh: true }] }));
+    const r = check(f.dir);
+    assert.equal(r.status, status, r.stdout);
+    assert.ok(r.result.journeys[0].pass, JSON.stringify(r.result.journeys[0]));
+    assert.deepEqual(r.result.journeys[0].lifecycle, lifecycle);
+    if (status === 2) assert.match(r.result.gaps.join(" "), /took no lifecycle/);
+  }
+});
+
 // A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer
 // lets go of the row leaving; `rewatch`: the row mounted again is observed.
 function listPage({ disconnect, rewatch }) {
