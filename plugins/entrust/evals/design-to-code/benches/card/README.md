@@ -45,7 +45,8 @@ Mutants (a change to the control, each expecting one class):
 - `small-type`, expects `type`: the specs text set to 13 px, smaller than drawn.
 - `dropped-disk`, expects `text`: only two of the disks rendered.
 - `overlap`, expects `overlap`: the CPU model pulled 60 px over its neighbour.
-- `column-shift`, expects `offset`: the RAM column moved 30 px in the wide layout. MISSED today (ISSUES.md E149).
+- `column-shift`, expects `offset`: the RAM column moved 30 px in the wide layout.
+- `common-shift`: every piece of the row moved 10 px; expects nothing.
 - `order-swap`, expects `offset`: the stock icon moved after its text in the mid layout.
 - `disk-format`, expects `text`: a disk's size and count written in the other order.
 - `cut-sku`, expects `cut`: the SKU clipped at 120 px.

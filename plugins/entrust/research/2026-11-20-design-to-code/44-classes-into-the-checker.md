@@ -120,6 +120,11 @@ Each arm moved from `matchMedia` to a container query, kept the choice per host 
 
 Noted, not changed:
 - any child-list change inside the root counts as "data" for the lifecycle gate;
-- a stale observer is caught only where a `sameAsFresh` journey runs.
+- the stale-observer note follows any journey that removes the element; the layout it keeps fails only after a `sameAsFresh` journey.
+
+Residuals of that pass:
+- a page root with no `main` inside (`#app` in body) is tried, and raises the candidate;
+- a window-bound card beside a sidebar that the narrow window hides gets only "not measured";
+- a target mounted more than a second after the click reads as off its page.
 
 **At `95f8a75`:** 158 of 158 tests; the planted case 28; card bench 15 of 15 and stateful bench 4 of 4, no clean build blocked. Arm k4 on `74f68b5` was ACCEPTED by the catalogue's judge at `pass`, in about 17 calls, with no work-round for E152. This is the commit the Terra gate pins.

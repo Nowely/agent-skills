@@ -19,6 +19,16 @@ forensics remain in the repository references and release notes.
   stock's "1" was paired with the "1" of "Выдача за 1 день" (`x` -352, `y` -212) and its own "1" was page text not in
   the design. A text no other landmark repeats is now paired with the match nearest its box; repeated labels keep
   reading order. The frame then shows only the build's own findings, and a stock moved 60 px still fails.
+- **A lifecycle journey is required.** A complete check is `incomplete` until a `sameAsFresh` journey on the
+  consumer's page takes a lifecycle, or `design.json` gives `"lifecycle"` with its reason. After it, the check resizes
+  through the frames' widths against fresh loads.
+- **The component's own width** is a generated condition: a layout that follows the window is a candidate.
+- **A journey step that squeezes the component** below its width at the sweep's `from`, or makes the page scroll
+  sideways, fails. A step that changes the container's width is held against a fresh load.
+- **Script-set modes, and observers kept on removed elements,** are construct notes.
+- **An opener whose target is not on its page** is covered by a journey on another page (E152).
+- **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
+- **The card and stateful benches** moved into evals.
 
 ### Design-to-code evals
 

@@ -101,7 +101,7 @@ look where a second agent can start. In the Sonnet harness a builder is a subage
 builder in iterations 6 and 7 says so in its handoff. In the owner's Codex, Terra started a second agent, which
 declined the formal review because the check ended `fail`
 (`research/2026-11-20-design-to-code/37-terra-28-4-dry-run.md:23-25`). The pass, its cost and what it adds are
-unmeasured; "as read" rests on the coordinator's blind review.
+unmeasured; "as read" rests on the coordinator's blind review. rp44 (doc 44, item 5) ran it on three blind targets; no builder has run it at `pass` or `pending`.
 
 ## E152. An opener on a story page without its overlay leaves the design-to-code check incomplete
 
@@ -109,7 +109,7 @@ unmeasured; "as read" rests on the coordinator's blind review.
 `design-to-code/references/check.md:23` keeps a complete check `incomplete` while an opener has no journey that opens
 and closes it. When the frames are on a story page whose buttons open an overlay that only the real page holds, the
 journey cannot be written there; the builder of c1 passed the same journeys on the real page and handed over
-`incomplete`. Options: let a journey on another page cover an opener of the same name, or let the ledger settle it.
+`incomplete`. Since doc 44's item 9, a journey on another page covers it if a click on its own page shows nothing. Still open: an opener on a second consumer page that silently does nothing is covered too.
 
 ## E151. Design-to-code builders write ledger entries that name every landmark of a frame
 
@@ -119,7 +119,7 @@ also excuse a real vertical defect there. Seen in 28.3 (p1) and 28.5 (r3). Draft
 fixed it but multiplied proposals, and went with the gate.
 
 **Since 0.46.1, level 3 for the check, not established for builders.** The missing text's own `presence` entry
-carries that shift, within the text's height and its gap (`design-to-code/references/check.md:228-235`), so the case
+carries that shift, within the text's height and its gap (`design-to-code/references/check.md:275-282`), so the case
 seen needs no such entry, and a 20 px shift planted below the line stays a finding (`evals/design-to-code.test.mjs:2407`,
 `:2430`). Still open: nothing refuses an every-landmark entry a builder writes anyway, and a vertical shift with
 another cause than a missing text is carried by nothing. On three harness arms on the candidate, entries fell from a
@@ -134,19 +134,12 @@ with a box of its own is judged by width alone, larger only. At 1×, a 1 px chan
 blind reviewer returned builds for values about 2 px off that the check did not name. Figma specs are compared by
 computed size and are not affected.
 
-## E149. The design-to-code stateful bench misses an observer left on removed cards
-
-**Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:143-145`).** The stateful bench catches 2
-of 3: an observer left on removed cards shows only through a journey with `"sameAsFresh": true`, which the builder
-must write (`design-to-code/SKILL.md:91`); on the catalogue case every Sonnet builder did. The card bench's
-`column-shift`, the entry's other class, is caught since the change the changelog's Unreleased section names.
-
 ## E148. A design-to-code run on the planted card costs 77–131 calls on Sonnet
 
 **Evidence, level 3 (`research/2026-11-20-design-to-code/35-iteration-7.md:172`, `:280-288`, `:320`).** Nine runs on
 a card whose frames draw data the contract does not send took 77 to 131 tool calls and 17 to 33 minutes, with no
 change shown between drafts; the catalogue card took 19 to 28. The advisory notice
-(`design-to-code/references/check.md:38-40`) does not stop a loop on an unchanged first finding; a gate that refused
+(`design-to-code/references/check.md:43-46`) does not stop a loop on an unchanged first finding; a gate that refused
 to continue made it longer and was removed.
 
 ## E147. Under a plan-approval rule, the ledger entry may wait for approval
