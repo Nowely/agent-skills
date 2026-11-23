@@ -2411,19 +2411,33 @@ test("a focused screenshot distinguishes a temporary flash with identical settle
         return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
       }, png.toString("base64"));
     };
+    // Bracket the screenshot with the chart's own clock. A white final frame cannot serve as an intermediate capture.
+    const phase = () => {
+      const chart = document.querySelector("#chart");
+      const animation = chart.getAnimations().find((a) => a.animationName === "redraw");
+      if (chart.dataset.done || animation?.currentTime >= 750) return "missed";
+      return animation?.playState === "running" && animation.currentTime >= 150 ? "moving" : false;
+    };
+    const sampleMoving = async () => {
+      const observed = await page.waitForFunction(phase, undefined, { polling: "raf", timeout: 2000 });
+      if (await observed.jsonValue() !== "moving") return null;
+      const pixel = await sample();
+      return await page.evaluate(phase) === "moving" ? pixel : null;
+    };
     for (const flash of [false, true]) {
       await page.setViewportSize({ width: 300, height: 100 });
       await page.setContent(`<style>body{margin:0}#chart{height:50px;background:white}
 @keyframes redraw{0%,85%{background:${flash ? "red" : "white"}}100%{background:white}}
 @media(min-width:400px) and (prefers-reduced-motion:no-preference){#chart{animation:redraw 1s steps(1,end)}}
 </style><div id="chart"></div><script>
-document.onanimationstart = () => document.body.dataset.stage = "moving";
-document.onanimationend = () => document.body.dataset.stage = "done";
+document.querySelector("#chart").addEventListener("animationend", (e) => { e.currentTarget.dataset.done = "yes"; }, { once: true });
 </script>`);
       await page.setViewportSize({ width: 450, height: 100 });
-      await page.locator('body[data-stage="moving"]').waitFor({ timeout: 2000 });
-      assert.deepEqual(await sample(), flash ? [255, 0, 0] : [255, 255, 255]);
-      await page.locator('body[data-stage="done"]').waitFor({ timeout: 2000 });
+      const moving = await sampleMoving();
+      assert.notEqual(moving, null, "The intermediate PNG missed the capture window.");
+      assert.deepEqual(moving, flash ? [255, 0, 0] : [255, 255, 255]);
+      await page.waitForFunction(() => document.querySelector("#chart").dataset.done, undefined, { timeout: 2000 });
+      assert.equal(await sampleMoving(), null, "A late capture must remain unmeasured.");
       assert.deepEqual(await sample(), [255, 255, 255]);
     }
   } finally { await browser.close(); }
