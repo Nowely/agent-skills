@@ -235,3 +235,5 @@ round and analysis-cost data accompany it. No new UI implementation was run.
 
 - [Blocked-handoff implementation](48-blocked-handoff-implementation.md): the preserved checker status, bounded
   external-blocker instructions, judge scope and the changed future-run prompt and comparison boundary.
+- [Blocked-handoff catalogue gate](50-catalogue-blocked-handoff-gate.md): one preregistered Terra run; the card judge
+  passed, while the complete consumer check remained failed and Terra handed over an evidenced blocker.
