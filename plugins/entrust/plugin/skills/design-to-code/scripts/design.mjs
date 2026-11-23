@@ -1748,7 +1748,7 @@ async function journeys(browser, cfg) {
     }
     const widths = opened ? [j.width ?? width] : [], asFresh = [], resized = [];
     const seen = new Set(), notes = [], closed = new Set(), closers = [];
-    let byWidth = false, checkpoint;
+    let lastInput, checkpoint;
     const targets = [...new Set(j.steps.filter((s) => "hidden" in s).map((s) => s.hidden))]
       .filter((t) => j.steps.some((s) => s.visible === t || s.text?.[0] === t));
     const observed = new Map();
@@ -1772,6 +1772,7 @@ async function journeys(browser, cfg) {
         if (moved(now) || spills(now)) { await waitForMotion(page, cfg.root); now = await roomOf(page); }
         const before = room.width, changed = moved(now), spilled = spills(now);
         room = { width: now.width ?? room.width, beyond: now.beyond };
+        if (changed && !edge && lastInput && lastInput !== "width") took.add("parent width");
         if (from !== null && widths.at(-1) < from) return;
         const px = (v) => Math.round(v), seen = now.shown && now.width > 0;
         if (changed && seen && least > 0 && now.width < least - cfg.tolerance) {
@@ -1783,7 +1784,7 @@ async function journeys(browser, cfg) {
             : `after it the page scrolls sideways, its content ${px(now.beyond)} px wider than the window: keep what it opened inside the window, beside or over the component`);
         }
         if (!changed || !seen) return;
-        checkpoint = { i, width: now.width, byWidth };
+        checkpoint = { i, width: now.width, byWidth: lastInput === "width" };
         resized.push(checkpoint);
       };
       // Only a declared data field with a text expectation can witness a data change.
@@ -1794,7 +1795,6 @@ async function journeys(browser, cfg) {
         return el ? el.innerText.replace(/\s+/g, " ").trim() : null;
       }, [cfg.root, seenIn.toString()]).catch(() => null);
       for (const selector of new Set(j.dataFields ?? [])) textBefore.set(selector, await readText(selector));
-      let box = edge ? null : await container(page, cfg);
       const rootSeen = () => page.evaluate(([sel, seen]) => [...document.querySelectorAll(sel)].some(new Function(`return (${seen})`)()), [cfg.root, seenIn.toString()]).catch(() => null);
       let hadRoot = edge ? null : await rootSeen();
       const rootAfter = async () => {
@@ -1804,12 +1804,6 @@ async function journeys(browser, cfg) {
         if (now !== null) hadRoot = now;
       };
       await page.evaluate(() => window.__designCheck?.mark()).catch(() => {});
-      const parentMoved = async (byWindow) => {
-        if (edge) return;
-        const now = await container(page, cfg);
-        if (!byWindow && Number.isFinite(now) && Number.isFinite(box) && Math.abs(now - box) > cfg.tolerance) took.add("parent width");
-        if (Number.isFinite(now)) box = now;
-      };
       try {
         for (const [i, step] of j.steps.entries()) {
           if (failed) break;
@@ -1817,7 +1811,7 @@ async function journeys(browser, cfg) {
             const [action] = Object.keys(step), arg = step[action];
             if (!EXPECT.includes(action) && action !== "wait") {
               checkpoint = null;
-              byWidth = action === "width";
+              lastInput = action;
             }
             if (targets.length && !EXPECT.includes(action) && action !== "wait") {
               visibleBefore = new Set();
@@ -1842,7 +1836,6 @@ async function journeys(browser, cfg) {
               await setWidth(page, journeyConfig(j), step.width, 900);
               await settle(page, cfg.root, false);
               widths.push(step.width);
-              await parentMoved(true);
               await roomAfter(i);
               continue;
             }
@@ -1852,7 +1845,6 @@ async function journeys(browser, cfg) {
               const before = textBefore.get(step.text[0]), after = await readText(step.text[0]);
               if (before !== null && after !== null && before !== after && !before.includes(step.text[1]) && after.includes(step.text[1])) took.add("data");
             }
-            await parentMoved(false);
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
             if (step.visible) await waitForMotion(page, step.visible);
             await roomAfter(i);

@@ -2965,6 +2965,24 @@ test("44.1: a step that resizes the component's container takes a lifecycle; a w
   assert.deepEqual(took([{ width: 200 }, { visible: ".card" }, { width: 300 }, { visible: ".card" }]), []);
 });
 
+test("a viewport transition completing during a passive expectation cannot supply a parent lifecycle", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>#column{width:100%;transition:width .6s linear}@media(min-width:400px){#column{width:400px}}</style>
+<div id="column"><main><span>Ready</span></main></div><button id="side">Side</button>
+<script>document.querySelector("#side").onclick = () => document.querySelector("#column").style.width = "380px";</script>`);
+  const { lifecycle, ...cfg } = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const run = (extra) => {
+    fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys: [{ name: "resize", sameAsFresh: true,
+      steps: [{ width: 450 }, { visible: "main" }, ...extra] }] }));
+    return check(f.dir).result;
+  };
+  const viewport = run([]);
+  assert.deepEqual(viewport.journeys[0].lifecycle, []);
+  assert.ok(viewport.gaps.some((g) => /took no lifecycle/.test(g)), JSON.stringify(viewport.gaps));
+  const byUser = run([{ click: "#side" }, { visible: "main" }]);
+  assert.ok(byUser.journeys[0].lifecycle.includes("parent width"), JSON.stringify(byUser.journeys[0]));
+});
+
 // A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer
 // lets go of the row leaving; `rewatch`: the row mounted again is observed.
 function listPage({ disconnect, rewatch }) {
