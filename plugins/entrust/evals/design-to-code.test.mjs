@@ -2324,9 +2324,33 @@ root.onanimationend=()=>{out.textContent='Settled';};
   for (const wrong of [temporary, anchor]) assert.match(wrong.failed, /step 3.*no .a:below\(.b\) is visible/);
 });
 
+test("a placement waits for chained natural animations under one deadline and ignores a decorative loop", browser, () => {
+  const f = smallFrame(`<style>.key,.anchor{position:relative;display:block;width:30px;height:10px}
+.spark{position:absolute;width:2px;height:2px;animation:spin .2s linear infinite}@keyframes spin{to{transform:rotate(1turn)}}
+</style><i class="key">A<b class="spark"></b></i><i class="anchor">B</i><script>
+const key=document.querySelector(".key"), root=document.querySelector("main"), mode=location.search.slice(1);
+const startsBelow=mode!=="correct";
+key.style.top=startsBelow?"40px":"0px";
+document.onkeydown=async()=>{
+  for (let i=0;i<2;i++) await root.animate({opacity:[1,.99]},mode==="slow"?600:200).finished;
+  key.animate({top:[key.style.top,startsBelow?"0px":"40px"]},{duration:550,easing:"steps(1,end)",fill:"forwards"});
+};
+</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const journeys = ["correct", "wrong", "slow"].map((mode) => ({ name: mode, url: "page.html?" + mode,
+    steps: [{ press: "Enter" }, { visible: ".key:below(.anchor)" }] }));
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const [correct, wrong, slow] = check(f.dir, "--no-sweep").result.journeys;
+  assert.ok(correct.pass, JSON.stringify(correct));
+  assert.match(wrong.failed, /no .key:below\(.anchor\) is visible/);
+  assert.equal(slow.failed, undefined);
+  assert.match(slow.unmeasured, /after 1.5 seconds/);
+});
+
 test("a sheet may close on a slow transitionend; a finished broken close fails and unfinished motion is unmeasured", browser, () => {
-  const f = smallFrame(`<style>aside{width:40px;height:20px;transition:opacity 1.35s}main.slow aside{transition-duration:30s}</style>
-<aside>Sheet</aside><script>
+  const f = smallFrame(`<style>aside{width:40px;height:20px;transition:opacity 1.35s}main.slow aside{transition-duration:30s}
+aside b{display:inline-block;animation:turn .2s infinite}@keyframes turn{to{transform:rotate(1turn)}}</style>
+<aside>Sheet<b>*</b></aside><script>
 const sheet=document.querySelector('aside'), mode=location.search.slice(1);
 document.querySelector('main').className=mode;
 document.onkeydown=()=>{sheet.style.opacity='.4';};
@@ -3055,6 +3079,30 @@ test("a viewport transition completing during a passive expectation cannot suppl
   assert.deepEqual(noop.journeys[0].lifecycle, []);
   const byUser = run([{ click: "#side" }, { visible: "main" }]);
   assert.ok(byUser.journeys[0].lifecycle.includes("parent width"), JSON.stringify(byUser.journeys[0]));
+});
+
+test("a flex sidebar can resize the column from the viewport or from a control; its decorative loop does neither", browser, () => {
+  const f = smallFrame();
+  f.write(`<style>.layout{display:flex}.column{flex:1;min-width:0}aside{flex:none;width:0;transition:width .4s linear .3s}
+@media(min-width:400px){aside{width:60px}}aside.open{width:90px}
+aside{animation:pulse .2s infinite alternate}@keyframes pulse{from{opacity:.8}to{opacity:1}}
+main span{display:block;height:12px}</style><div class="layout"><div class="column"><main><span class="a">A</span>
+<span class="b">B</span></main></div><aside></aside></div><button id="noop">Nothing</button><button id="side">Side</button>
+<script>side.onclick=()=>document.querySelector("aside").classList.toggle("open")</script>`);
+  const cfg = JSON.parse(fs.readFileSync(f.config, "utf8"));
+  const atWidth = { width: 450 }, placement = { visible: ".b:below(.a)" };
+  const journeys = [
+    { name: "no independent resize", sameAsFresh: true, steps: [atWidth, { click: "#noop" }, { wait: 800 }, placement] },
+    { name: "sidebar resized", sameAsFresh: true, steps: [atWidth, placement, { click: "#side" }, { wait: 800 }, placement,
+      { click: "#side" }, { wait: 800 }, placement] },
+  ];
+  fs.writeFileSync(f.config, JSON.stringify({ ...cfg, journeys }));
+  const result = check(f.dir, "--no-sweep").result.journeys;
+  const noop = result.find((j) => j.name === journeys[0].name), side = result.find((j) => j.name === journeys[1].name);
+  assert.ok(noop.pass, JSON.stringify(noop));
+  assert.deepEqual(noop.lifecycle, []);
+  assert.ok(side.pass, JSON.stringify(side));
+  assert.deepEqual(side.lifecycle, ["parent width"]);
 });
 
 // A list a button empties and restores; its row stacks below 400 px by a ResizeObserver. `disconnect`: the observer

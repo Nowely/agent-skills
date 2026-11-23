@@ -92,7 +92,8 @@ but cannot establish a data lifecycle; if no other lifecycle is observed, the co
 first step that does not hold fails it. Journeys use the browser's natural motion preference. A sheet can close on its
 own `transitionend`. A hidden expectation has 1.5 seconds for the target to disappear. If it remains visible with
 unfinished motion at that deadline, closing is unmeasured. Other expectations have a second to match. A placement
-checks both participants after motion settles, with a 1.5-second bound. Put a text expectation for a required
+checks both participants after motion settles. Successive effects from completion handlers share the same 1.5-second
+bound. Two successive layout samples must agree. A later timer beyond those samples is outside this checkpoint. Put a text expectation for a required
 intermediate state immediately after the input that enters it. For visible
 continuity required by the design, capture the affected region during the ordinary transition with animations enabled,
 and again at the end. Record the frames sampled and any interval you could not observe. A DOM animation-frame callback
@@ -115,7 +116,8 @@ or a root clipped from view (a panel collapsed, a tab hidden), shows no componen
 comparison holds it. A width step sets the test width; its following expectations specify what must hold there.
 When a user action changes the parent width, assert the relationship in the live component before the next action,
 for example `{ "visible": ".price:below(.title)" }` while a sidebar is open. The check reports that placement only.
-If an action overlaps unfinished motion from a window resize, it provides no independent evidence of a parent-width
+Changes to a flex or grid item's size can also resize its sibling column. The check follows size-affecting effects
+on those items. If an action overlaps unfinished motion from a window resize, it provides no independent evidence of a parent-width
 lifecycle. Exercise that action once the viewport has settled when the product supports it.
 It recognizes Playwright's `:above`, `:below`, `:left-of`, `:right-of` and `:near` on a visible component element,
 with a single selector on either side. A declared `sameAsFresh` endpoint compares the component at the frame widths.

@@ -140,26 +140,71 @@ async function chromium() {
 // that hides itself when its closing transition ends).
 const STILL = "*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important}";
 const MOTION_MS = 1500;
-// Observe the selected elements, their children and their ancestors. A zero budget inspects motion at the deadline.
-const motionSettled = (page, selector, timeout, repeating) => page.locator(selector).evaluateAll(async (elements, [timeout, repeating]) => {
-  if (timeout) await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  const animations = new Set();
-  for (const el of elements) {
-    if (!el.getBoundingClientRect().width) continue;
-    for (const a of el.getAnimations({ subtree: true })) animations.add(a);
-    for (let p = el.parentElement; p; p = p.parentElement) for (const a of p.getAnimations()) animations.add(a);
-  }
-  const active = [...animations].filter((a) => ["running", "paused"].includes(a.playState) && (repeating || Number.isFinite(a.effect?.getComputedTiming().endTime)));
-  if (!active.length) return true;
-  if (!timeout) return false;
-  let timer;
+// At each checkpoint, inspect only the measured boxes and what can resize them. A flex/grid peer's paint
+// does not take room; a transition of its size can change the column before the next user action.
+const motionSettled = (page, selector, timeout, mode = "geometry") => page.locator(selector).evaluateAll(async (elements, [timeout, mode]) => {
+  const paint = /^(offset|computedOffset|easing|composite|color|background.*|.*Color|boxShadow|textShadow|filter)$/;
+  const outOfFlow = /^(opacity|transform|transformOrigin|translate|rotate|scale)$/;
+  const changesBox = (a, own) => a.effect.getKeyframes().some((frame) =>
+    Object.keys(frame).some((k) => !paint.test(k) && (own || !outOfFlow.test(k))));
+  const active = () => {
+    const found = new Set(), family = new Set();
+    const add = (a, role) => {
+      if (!["running", "paused"].includes(a.playState)) return;
+      if (role === "flow" && !changesBox(a, false)) return;
+      const finite = Number.isFinite(a.effect?.getComputedTiming().endTime);
+      if (!finite && role !== "flow") {
+        if (role !== "target" || !["hidden", "placement"].includes(mode) || !changesBox(a, true)) return;
+      }
+      found.add(a);
+    };
+    for (const el of elements) {
+      if (!el.getBoundingClientRect().width) continue;
+      for (const a of el.getAnimations({ subtree: true })) {
+        const direct = a.effect?.target === el;
+        if (direct && mode !== "container") add(a, "target");
+        else add(a, mode === "hidden" ? "content" : "flow");
+      }
+      for (let child = el, parent; (parent = child.parentElement); child = parent) {
+        for (const a of parent.getAnimations()) add(a, mode === "container" ? "flow" : "target");
+        if (mode === "hidden" || family.has(parent) || !/flex|grid/.test(getComputedStyle(parent).display)) continue;
+        family.add(parent);
+        for (const peer of parent.children) {
+          if (peer === child || /^(absolute|fixed)$/.test(getComputedStyle(peer).position)) continue;
+          for (const a of peer.getAnimations()) add(a, "flow");
+        }
+      }
+    }
+    return [...found];
+  };
+  if (!timeout) return !active().length;
+  const boxes = () => elements.flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    return [r.x, r.y, r.width, r.height, el.parentElement?.getBoundingClientRect().width];
+  });
+  let timer, raf;
+  const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeout); });
+  const nextFrame = () => new Promise((resolve) => { raf = requestAnimationFrame(() => resolve(true)); });
   try {
-    return await Promise.race([Promise.allSettled(active.map((a) => a.finished)).then(() => true),
-      new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeout); })]);
-  } finally { clearTimeout(timer); }
-}, [timeout, repeating]);
-async function waitForMotion(page, selector, repeating = false) {
-  if (!await motionSettled(page, selector, MOTION_MS, repeating)) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
+    let previous;
+    while (await Promise.race([nextFrame(), deadline])) {
+      const running = active();
+      if (running.length) {
+        previous = undefined;
+        // An end handler can immediately start another transition. Re-read the effects at the next rendering
+        // opportunity, under the same deadline, before treating either box as settled.
+        if (!await Promise.race([Promise.allSettled(running.map((a) => a.finished)).then(() => true), deadline])) return false;
+        continue;
+      }
+      const now = boxes();
+      if (previous && now.every((v, i) => v === previous[i])) return true;
+      previous = now;
+    }
+    return false;
+  } finally { clearTimeout(timer); cancelAnimationFrame(raf); }
+}, [timeout, mode]);
+async function waitForMotion(page, selector, mode) {
+  if (!await motionSettled(page, selector, MOTION_MS, mode)) throw unmeasured(`motion on ${selector} was still running after 1.5 seconds; its settled geometry was not measured`);
 }
 
 // Run in every checked page before its own scripts: each ResizeObserver's targets, which of them left the page from the
@@ -408,7 +453,7 @@ async function runStep(page, step) {
   // What a journey expects, given a second to come true: any match seen, none seen, one seen with the text.
   if (action === "visible" && !(await until(page, () => anySeen(page, arg)))) throw new Error(`no ${arg} is visible`);
   if (action === "hidden" && !(await until(page, async () => !(await anySeen(page, arg)), MOTION_MS))) {
-    const settled = await motionSettled(page, arg, 0, true);
+    const settled = await motionSettled(page, arg, 0, "hidden");
     if (await anySeen(page, arg)) {
       if (!settled) throw unmeasured(`${arg} is still visible with unfinished motion after 1.5 seconds; closing was not measured`);
       throw new Error(`${arg} is still visible`);
@@ -1835,7 +1880,7 @@ async function journeys(browser, cfg) {
               // the container cannot be distinguished. Keep the action on time and withhold lifecycle credit.
               if (action === "width") widthMayContinue = true;
               else if (widthMayContinue) {
-                widthMayContinue = !await motionSettled(page, cfg.root, 0, false);
+                widthMayContinue = !await motionSettled(page, cfg.root, 0, "container");
                 if (!widthMayContinue) await roomAfter(i - 1);
               }
               lastInput = action === "width" || !widthMayContinue ? action : undefined;
@@ -1871,12 +1916,12 @@ async function journeys(browser, cfg) {
             // independently of whether the relationship is currently true.
             const placement = step.visible?.match(/^([^(),]+):(?:below|above|left-of|right-of|near)\(([^(),]+)\)$/);
             const pair = placement && `${placement[1]}, ${placement[2]}`;
-            if (pair) await waitForMotion(page, pair, true);
+            if (pair) await waitForMotion(page, pair, "placement");
             await runStep(page, step);
             await rootAfter();
             if (step.text && dataSelectors.has(step.text[0]) && await dataText(step.text[0], step.text[1])) took.add("data");
             if (edge && step[action] === opener && ["hover", "focus", "tap", "click"].includes(action)) openerDone = true;
-            if (step.visible) await waitForMotion(page, pair ?? step.visible, Boolean(pair));
+            if (step.visible) await waitForMotion(page, pair ?? step.visible, pair ? "placement" : "geometry");
             await roomAfter(i);
             if (pair && !(await anySeen(page, step.visible))) throw new Error(`no ${step.visible} is visible after motion settled`);
             if (step.visible) {
