@@ -2241,6 +2241,12 @@ test("draft 28.2: a generated condition's collision is a candidate: no finding, 
   assert.match(renderHandoff({ frames: [], sweep: { ...sweep, issues: [], generate: false }, status: "pass" }), /^- the generated conditions \(sweep\.generate is false\)/m);
 });
 
+test("a passing journey's handoff names the gap in transition coverage", () => {
+  const handoff = renderHandoff({ status: "pass", journeys: [{ name: "sheet closes", pass: true }] });
+  const limits = handoff.slice(handoff.indexOf("## Not checked by the script"));
+  assert.match(limits, /^- visual continuity during transitions, including brief flashes between sampled states$/m);
+});
+
 test("draft 28.2: a finding the check itself causes is proposed with cause checker, a journey too, and the evidence lists it as disputed with the check", () => {
   const entry = { landmark: "the sheet", property: "journey", cause: "checker", status: "proposed", reason: "the check's own style keeps the sheet from closing: review.md, Checker reproduction" };
   assert.deepEqual(ledgerFaults([entry]), []);

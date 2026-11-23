@@ -1314,6 +1314,7 @@ export function renderHandoff({ frames = [], sweep, journeys = [], journeySpecs 
   if (lifecycle) out.push(`- a lifecycle in a journey (mount and unmount, data emptied and refilled, the parent's width changed): design.json says the product can cause none: “${lifecycle}”`);
   const unsized = frames.filter((f) => f.typeUnchecked).map((f) => f.frame);
   if (unsized.length) out.push(`- type sizes in ${unsized.join(", ")}: the spec gives no font sizes`);
+  out.push("- visual continuity during transitions, including brief flashes between sampled states");
   out.push("- behaviour beyond the journeys above, browsers other than Chromium, devices, assistive technology and real consumers");
   return out.join("\n");
 }
