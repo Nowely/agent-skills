@@ -10,6 +10,33 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E167. The journey width floor reads the builder's sweep start as the narrowest supported width
+
+**Evidence, level 3.** Item 8 of `research/2026-11-20-design-to-code/44-classes-into-the-checker.md` fails a journey
+step whose container is narrower than at the sweep's `from`, a value the builder chooses in `design.json`. In the
+catalogue Terra gate (`research/2026-11-20-design-to-code/46-catalogue-terra-gate.md`), the hidden judge returned
+ACCEPTED while the handover was `fail`: the case's own `page.css` leaves the card 47 px beside the open sidebar at a
+375 px window. Record 46 states that the narrowest supported width is the owner's decision and that 288 px is not it.
+
+**Issue text.** The design check fails a journey when the component's container becomes narrower than the narrowest
+width the builder swept, though no contract states that width. A consumer page that squeezes the component then makes
+the check fail for a bound nobody decided. Treat the squeeze as a finding only when the narrowest supported width is
+stated with its source, and otherwise as a candidate the owner answers.
+
+## E166. The card bench's control lets an open popover leave the window after a resize
+
+**Evidence, level 3.** On Linux with the repository's Playwright, the card bench at `45fbea2` reports `control` and
+`common-shift` blocked, each failing the journey "network help: an open popover survives a resize". After
+`{"width":300}`, `.pop-net` has 127 px outside the window. Its `place()` at
+`evals/design-to-code/benches/card/packs/control26/card.js:89-103` puts the popover above its icon whenever below has
+no room, and never clamps it when above has none either. The stricter placement check after a resize, from commits
+`7e0c9eb` and `c44257f`, now reports it. The benches are opt-in (`ENTRUST_BENCHES=1`) and are not run in CI.
+
+**Issue text.** The card bench's reference build lets an open popover leave the window after the window narrows,
+because its placement does not clamp when neither side has room. The tightened placement check now fails it, so the
+bench reports two clean builds blocked. Clamp the control's placement, keep the unclamped build as a mutant of its own
+class, and run the benches before design-to-code releases.
+
 ## E165. The card bench blocks two clean builds on a type finding
 
 **Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the card bench at
