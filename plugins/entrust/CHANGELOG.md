@@ -3,7 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.47.0 — 2026-11-23
+
+**Compatibility:** A complete design check now needs a qualifying consumer lifecycle journey or an explicit reason
+there is none. A data-only lifecycle can use optional `dataFields` with an assertion on a stable field; ambiguous or
+undeclared data changes do not establish the lifecycle. Changed opener coverage and resized-state evidence can also
+leave a previously passing check incomplete. Review existing `design.json` journeys and record the needed evidence.
 
 ### Design to code
 
@@ -47,6 +52,24 @@ forensics remain in the repository references and release notes.
   each completed full check's shell session and counts only waits that returned no output while it was still running.
   A poll that reports process exit delivers a result even when stdout is empty (E161).
   If process enumeration fails, collection stops before writing the archive (E162).
+
+### Known issues
+
+- [E164: v25 boxes assertion](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e164-the-v25-boxes-assertion-fails-on-a-165-px-column-shift): on macOS 26.7.2 with Playwright 1.65.1 and Chromium 159, a local test received a +16.5 px delta while its assertion expects `Math.round(delta) === 16`. The same failure occurred on baseline `f668204`; its cause is not established.
+- [E165: card bench clean controls](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e165-the-card-bench-blocks-two-clean-builds-on-a-type-finding): the local `control` and `common-shift` cases were blocked by the same `Доступно 1 type -15` finding, also observed on `f668204`. The cause is not established. The bench caught its 15 expected classes; both blocks remain failures.
+- Other open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+### Gate and limits
+
+- One synthetic catalogue gate at `a21e92f` had the judge accept width, choice and basics, while the builder's first
+  and final handover was `fail`: at a 375 px window the open sidebar leaves the card 47 px, below the check's 288 px
+  minimum. The judge did not assess that narrow state. The owner's acceptance remains open; the two verdicts cover
+  different evidence. [The gate record](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/2026-11-20-design-to-code/46-catalogue-terra-gate.md) gives the limits.
+- The current PR CI on `a21e92f` had four successful jobs; the macOS design-to-code suite skipped 135 browser tests
+  because Playwright was unavailable. CI on the release head is separate. The full local design suite had one failure
+  (E164); the local card bench blocked two clean builds (E165). A snapshot does not establish continuity between frames.
+- The gate used codex-cli 0.171.0-alpha.13. Node.js v24.15.0 was available during preparation. No real-task A/B or
+  live orchestrate release gate was run.
 
 ## 0.46.2 — 2026-11-22
 
