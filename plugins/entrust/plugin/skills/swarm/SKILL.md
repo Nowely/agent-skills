@@ -31,8 +31,8 @@ it, use an approved alternative or return the choice to the user.
 
 For a standalone swarm, every brief carries the `MODEL:` and
 `EFFORT:` of the bulk or cheap row of the adapter's model table ([Codex](../codex/references/models.md)); a
-stronger model marks the pilot's units, and recall, false positives and tokens against that marking decide the
-brief's fixes and its effort before the swarm runs.
+stronger model marks the pilot's units, the swarm's model runs those same units, and recall, false positives and
+tokens against that marking decide the brief's fixes and its effort before the swarm runs.
 
 ## The launch
 
