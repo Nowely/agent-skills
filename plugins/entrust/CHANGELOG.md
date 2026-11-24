@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.47.2 — 2026-11-24
 
 ### Orchestration
 
@@ -23,6 +23,17 @@ forensics remain in the repository references and release notes.
   verifier also gets the critic's objections and any tests a worker named in defence of an addition as claims to check.
 - The one-worker live gate checks its file's sole writer without requiring a plan critic before that worker; the
   separate split check still requires a critic before multiple workers.
+
+### Gate and limits
+
+- Local checks passed: gate (26), orchestrate (13), agent-contract (16), skills (8), and package (21; the tag
+  check was skipped before tagging). The development environment had Node.js v24.15.0 and codex-cli
+  0.171.0-alpha.13.2; Codex conformance was not run for this change.
+- The Claude Code live orchestrate gate was not run. Two adapted Terra scenarios completed their tasks, but their
+  records do not prove the full protocol; workers did not run their own tests. They do not measure the new
+  critic's effectiveness.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md),
+  including the design-to-code issues E164 and E165.
 
 ## 0.47.1 — 2026-11-24
 
