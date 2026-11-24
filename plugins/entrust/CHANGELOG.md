@@ -3,6 +3,20 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Orchestration
+
+- The plan critic's thread is continued after a diff that adds a concept: it names what the request does not
+  require and the existing code that already serves, and asks which requirement or test fails without each
+  addition; the worker answers or removes it. The worker returns its additions with the request's words behind each.
+- The plan critic reports what the code shows against the plan and what the plan can drop, and each objection
+  names the acceptance check that fails if it is ignored; the coordinator drops an objection that cites nothing.
+- The verifier checks behaviour only: at most three attempts to break the tree, a read of what the change removed
+  or narrowed, no defects outside the change unless they fail a requirement, and a mark on each of the critic's
+  objections by whether its check failed. After a fix it re-reads the fix's diff, not the whole change.
+- A critic's and the verifier's brief carries the user's request verbatim, never the coordinator's restatement.
+
 ## 0.47.1 — 2026-11-24
 
 ### Orchestration

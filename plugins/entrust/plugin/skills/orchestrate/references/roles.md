@@ -17,19 +17,32 @@ host transports user messages and Claude's replies.
 | Role | What it does | May write | Returns |
 |---|---|---|---|
 | coordinator | the main session: what it owns and may do is [the orchestrate page's contract](../SKILL.md#the-contract); it decides when a result lands, which a worker applies and the verifier checks ([results.md](results.md#a-worktree-agents-harvest)) | its card, briefs, decision log and draft under its temporary directory | the answer |
-| worker | one deliverable by file ownership, in the live tree or a worktree, or the harvest of an approved worktree result; writes its own tests and runs its checks as [Checks](#checks) says | its owned files, or its worktree, harvested as a diff | the diff, with the counts of what ran and its ledger's path; commits only with existing authority and runtime permission |
-| plan critic | judges the plan as written, as [its section](#the-plan-critic) says | nothing | `result`: the verdict `sound`, `change` or `stop`, at most five ranked objections, and the acceptance checks the verifier should run |
+| worker | one deliverable by file ownership, in the live tree or a worktree, or the harvest of an approved worktree result; writes its own tests and runs its checks as [Checks](#checks) says | its owned files, or its worktree, harvested as a diff | the diff, with the counts of what ran and its ledger's path, and in `open` its additions: each concept the diff adds, with the request's words that require it or `none`, and the existing code it searched and why that did not serve; commits only with existing authority and runtime permission |
+| plan critic | judges the plan as written, as [its section](#the-plan-critic) says | nothing | `result`: the verdict `sound`, `change` or `stop`, at most five ranked objections, what the plan can drop, and the acceptance checks the verifier should run; on [its second read](#its-second-read), the additions the request does not require |
 | architecture critic | challenges the chosen approach and the solution's architecture, as [its section](#the-architecture-critic) says | nothing | `result`: the verdict `keep`, `change approach` or `stop`; at most five ranked objections; on `change approach`, the alternative in a few lines, with what it removes or moves and who relies on it; and what evidence would change the verdict |
-| verifier | checks the final combined tree, or for read-only work the claims of the workers' findings, against the requirements, as [its section](#the-verifier) says | its ledger and logs under its temporary directory | `evidence`: a requirement → evidence table; `open`: the unverified parts |
+| verifier | checks the final combined tree, or for read-only work the claims of the workers' findings, against the requirements, as [its section](#the-verifier) says | its ledger and logs under its temporary directory | `evidence`: a requirement → evidence table, and each of the plan critic's objections marked by whether the check it named failed; `open`: the unverified parts |
 
 ### The plan critic
 
 It reads the request, the card and the code locations the card names, and judges the plan as written, not the
 approach: coverage of every requirement; the steps and their order; ownership, one owner per deliverable; with
 several workers, the split, the sequence and the shared interfaces; each brief's completion criteria; missing
-work and risks; the allocation of roles and models against the work. Each objection cites a path:line or a named
-consumer, states what ignoring it costs and gives the smallest fix to the plan. Only a gap that affects
-correctness, ownership or cost counts, never style; "sound, no objections" is a valid verdict.
+work and risks; the allocation of roles and models against the work. It reports first what the code shows that
+the plan contradicts or does not know, then what the plan can drop: a step, a check or a role no requirement needs.
+Each objection cites a path:line or a named consumer, names the acceptance check that fails if it is ignored and
+gives the smallest fix to the plan. Only a gap that affects correctness, ownership or cost counts, never style;
+"sound, no objections" is a valid verdict, and five is a cap, not a target.
+
+#### Its second read
+
+When a worker's diff adds a concept, as the [default team](../SKILL.md#the-default-team)'s architecture row
+defines one, the coordinator continues the critic's thread with the user's request verbatim, the diff's path and
+the worker's additions as claims to check, never the rest of the worker's return. It reads for what can go, and
+leaves behaviour to the verifier: what the diff adds that the request does not ask for; for each new mechanism,
+the existing code that already does it, by path:line; the smallest change that meets the request, against the
+diff's size. It runs nothing. For each addition it doubts it asks one question: which requirement or test fails
+without this? The worker's thread, continued, answers by quoting the requirement or naming a test of a
+requirement, or removes the addition and re-runs its checks. One round.
 
 ### The architecture critic
 
@@ -45,13 +58,18 @@ asked; the judge, who picks among candidates; and the review's design direction,
 
 ### The verifier
 
-It works from its brief alone, which carries what the orchestrate page's [Verification](../SKILL.md#verification)
+It checks behaviour against the requirements, and leaves what could be removed to the plan critic. It works from its brief alone, which carries what the orchestrate page's [Verification](../SKILL.md#verification)
 gives it, and names its target and whole scope. Its target is the final combined tree or, for read-only work
 (research, analysis, review), the claims of the workers' findings. On a tree it runs the full relevant suite as
 [Checks](#checks) says and reports every failure with its command and output; a requirement with no executed
 evidence is `not proven`, never passed. On findings it re-derives each material claim from the cited source or
 command, and a claim it cannot re-derive is `not proven`. A verdict that rests on judgement alone, with no executed
-check, says so. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
+check, says so. After the table it makes at most three attempts to break the tree, each aimed at a named
+requirement, and reads the diff for what the change removed, moved or narrowed and who relied on it. A defect
+outside the change is reported only when it fails a requirement. It marks each of the plan critic's objections by
+whether the check it named failed, and each test a worker named in defence of an addition by whether it tests a
+requirement or only the addition's internals. After a fix it re-runs the suite and re-reads the fix's diff, not
+the whole change. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
 
 ## Other roles
 
