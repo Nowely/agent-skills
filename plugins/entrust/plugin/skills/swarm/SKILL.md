@@ -6,7 +6,7 @@ description: >-
   state and free messaging between agents are experiment arms, never the default.
 disable-model-invocation: true
 metadata:
-  version: "0.47.0"
+  version: "0.47.1"
 license: MIT
 ---
 
@@ -21,7 +21,18 @@ separate session. Each adapter's default concurrency is its own. An OpenCode wor
 prompts and is not confined to `RIGHTS`; its brief must keep shell use within the task. A swarm agent has no
 mailbox, so any other permission request or question is declined. A unit that needs a command can use Bash.
 
-A unit is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part of the material for extraction, with a fixed answer schema the brief states. Write the units to a file, one per line, fifty at most, and one brief template with `{{UNIT}}` where the unit goes and `{{UNIT_ID}}` where its number goes. Assemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source. Every brief carries the `MODEL:` and `EFFORT:` of the bulk or cheap row of the adapter's model table ([Codex](../codex/references/models.md)). Its `OUTPUT_SCHEMA:` is the shipped five-field schema, `<skill-dir>/../orchestrate/schemas/five-fields.schema.json`, `<skill-dir>` being this skill's installed directory. A swarm never carries a top- or strong-tier model, and it never writes: every agent is a read agent. Announce the count, derived from the units with the plan saying why that many, before the launch. Show the plan, the pilot's units in it, and stop; "go" covers the pilot and the swarm as announced and nothing else. Pilot first: a stronger model marks the pilot's units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort; then launch the swarm at that effort.
+A unit is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part of the material for extraction, with a fixed answer schema the brief states. Write the units to a file, one per line, fifty at most, and one brief template with `{{UNIT}}` where the unit goes and `{{UNIT_ID}}` where its number goes. Assemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source. Its `OUTPUT_SCHEMA:` is the shipped five-field schema, `<skill-dir>/../orchestrate/schemas/five-fields.schema.json`, `<skill-dir>` being this skill's installed directory. A swarm never carries a top- or strong-tier model, and it never writes: every agent is a read agent. Announce the count, derived from the units with the plan saying why that many, before the launch. Show the plan, the pilot's units in it, and stop; "go" covers the pilot and the swarm as announced and nothing else.
+
+Under an orchestrate plan, every swarm brief carries its approved `MODEL:` and `EFFORT:`; the reducer follows
+its own approved allocation. Pilot
+against a verifiable reference under [model fit](../orchestrate/references/plan.md#model-fit-and-estimates),
+and keep the approved allocation for the pilot and batch. If the swarm's model restrictions cannot accommodate
+it, use an approved alternative or return the choice to the user.
+
+For a standalone swarm, every brief carries the `MODEL:` and
+`EFFORT:` of the bulk or cheap row of the adapter's model table ([Codex](../codex/references/models.md)); a
+stronger model marks the pilot's units, the swarm's model runs those same units, and recall, false positives and
+tokens against that marking decide the brief's fixes and its effort before the swarm runs.
 
 ## The launch
 
@@ -31,7 +42,7 @@ The run directory is `<state>/orchestrate/<project-slug>/<run>/`: `<run>` unique
 
 ## The reducer
 
-After the summary, the reducer, one cheap-tier agent, gets the summary path. It reads every report whose status line says the report is this run's own, opens one return whole, and tallies the verdicts by unit; for extraction parts it counts each part's answers instead. It names the units whose answer did not parse, whose exit was not zero or whose report was not this run's. It returns the five fields with the tally in `result`. Read one return whole yourself before trusting the tally; a unanimous tally is evidence about the brief first.
+After the summary, the reducer gets the summary path (one cheap-tier agent outside an orchestrate plan). It reads every report whose status line says the report is this run's own, opens one return whole, and tallies the verdicts by unit; for extraction parts it counts each part's answers instead. It names the units whose answer did not parse, whose exit was not zero or whose report was not the run's. It returns the five fields with the tally in `result`. Read one return whole yourself before trusting the tally; a unanimous tally is evidence about the brief first.
 
 ## Coordination arms
 

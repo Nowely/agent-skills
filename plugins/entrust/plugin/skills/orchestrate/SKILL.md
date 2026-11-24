@@ -5,7 +5,7 @@ description: >-
   work, and synthesise their evidence while this session keeps the plan, the decisions and a small context.
 disable-model-invocation: true
 metadata:
-  version: "0.47.0"
+  version: "0.47.1"
 license: MIT
 ---
 
@@ -36,10 +36,9 @@ user conversation and the synthesis; agents do the work.
    naming `<scope>/card.md` in it; plan.md's index says when to read its other sections.
    Wait for approval unless the user already authorised that scope and allocation. A model, route, scope or right
    outside the approved card needs a new decision; commits and publication need their own authority.
-3. At approval write the card to `card.md`, then append each decision with its reason. Name that path in
-   every phase report except the final answer. On a re-invocation, or when the approved card is no longer in
-   context, re-read this contract and `card.md` and continue the approved work without planning it again; if the
-   path is lost, ask the user.
+3. At approval write the card to `card.md`, then append each decision with its reason. On a re-invocation, or when
+   the approved card is no longer in context, re-read this contract and `card.md` and continue the approved work
+   without planning it again; if the path is lost, ask the user.
 4. Run the card's critics, then brief the workers. Every brief names its row in
    [roles.md](references/roles.md) by path, and the agent reads that row. Apply or overrule each objection, with the
    reason in the decision log. A change of scope or allocation goes to the user, and so does an architecture
@@ -57,13 +56,13 @@ user conversation and the synthesis; agents do the work.
 
 ## The default team
 
-| Role | When | Tier |
-| --- | --- | --- |
-| coordinator | this session, throughout | the user's model, unless the user asks otherwise |
-| architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks | top |
-| plan critic | once, after approval and the architecture critic, before the first worker brief | strong |
-| worker | after the critics; usually one, one per owned deliverable | strong; cheap for mechanical work |
-| verifier | fresh, after the writes or a read-only task's findings | strong |
+| Role | When |
+| --- | --- |
+| coordinator | this session, throughout |
+| architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks |
+| plan critic | once, after approval and the architecture critic, before the first worker brief |
+| worker | after the critics; usually one, one per owned deliverable |
+| verifier | fresh, after the writes or a read-only task's findings |
 
 You put the plan critic and the verifier on every card as the minimum; only the user's word drops or changes either,
 and an architecture critic stands in for neither. Any other role joins only when the card names why.
@@ -79,19 +78,22 @@ Nothing proposes another provider unprompted, a cross-family second opinion incl
 
 ## Capacity and models
 
-Tiers describe work demands, not model ability; the host's models page names its models for them:
-[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md); on another host, its runtime.
+For every ordinary agent role, including critics, verifiers and a foreman, use the host's executor model by
+default: Terra in Codex, Sonnet in Claude Code, regardless of the coordinator's model. An explicit user choice
+of model or effort takes precedence for its stated scope. A transport relay is not an executor and keeps the
+relay model and effort its adapter specifies. On another host use its runtime's model choices.
 
-| Tier | Work |
-| --- | --- |
-| top | consequential design, architecture critique, judgement and a case stuck after two approaches |
-| strong | nontrivial analysis, implementation, plan critique, verification and independent review |
-| cheap | bounded work where mistakes are easy to detect and repair |
-| bulk | independent units after the candidate model meets the acceptance rule |
+Use the coordinator's effort for each executor and continuation. Trust inheritance when the host confirms it;
+when a launch needs an explicit value, pass the coordinator's value, not the CLI's own default. If the required
+value is unknown or unsupported, use an approved fallback or ask the user before launching. This includes
+`max` and `ultra` when inherited; selecting either otherwise requires the user's explicit word. A foreman uses
+the coordinator's approved allocation, including effort, for its workers.
+
+The models pages map tiers to models for explicit choices and the top-tier cap:
+[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md).
 
 At most 6 agents are alive at once, every route counted, and 1 top-tier agent at a time, a standing advisor not
-counted; the host's capacity and the user's limits cap both further. Choose the effort for each task, `max` or
-`ultra` only on the user's separate explicit word.
+counted; the host's capacity and the user's limits cap both further.
 
 ## Verification
 
@@ -102,7 +104,8 @@ as claims to re-derive, never a worker's judgement that they hold. Give it and t
 `<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
 `unknown`, not a refutation. Open one complete return before trusting a unanimous tally of verifiers: agreement may
 come from one broken prompt or prerequisite. Fix and re-verify at most two rounds; then use a stronger reviewer or
-return the blocker to the user, and the same blocker in two rounds needs a revised plan.
+return the blocker to the user, and the same blocker in two rounds needs a revised plan. A stronger reviewer
+uses a different model only when the user authorized it.
 
 ## The agent's return
 

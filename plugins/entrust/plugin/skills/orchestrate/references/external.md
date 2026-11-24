@@ -49,7 +49,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 | --- | --- | --- |
 | `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
-| `EFFORT:` | an effort name from the adapter's page | chosen for this task under the orchestration policy; set it on every launch and continuation |
+| `EFFORT:` | the coordinator's effort, or the user's approved override, from the adapter's page | set it on every launch and continuation; the external CLI's default may differ from the coordinator's |
 | `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main proxy uses `<orchestrate>/schemas/proxy-reply.schema.json` | the adapter's default |
 | `RESUME:` | the `REPORT=` path of an earlier run of this agent | a new agent |
 | `ALLOW_NO_COMMANDS:` | `yes` | a turn that ran no command and read no file fails with exit 5 |
