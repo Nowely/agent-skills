@@ -65,10 +65,13 @@ test("A0 the page loads codex, and no sentence asks it to load orchestrate",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("U1 every brief takes its model from the bulk or cheap row of the adapter's table, and the page names no model",
-  "a top-tier model in a swarm is the pool cap multiplied by fifty; a model named on the shared page is the adapter's table copied out of its owner",
+test("U1 a swarm keeps its model bound and an orchestrated batch follows its approved allocation",
+  "a top-tier model in a swarm multiplies the pool cap; an orchestrated batch must not silently change its model or effort",
   () => {
-    if (!/bulk or cheap row of the adapter's model table/.test(flat)) return "the page does not send the brief's model to the bulk or cheap row";
+    if (!/For a standalone swarm,.*bulk or cheap row of the adapter's model table/.test(flat)) return "the standalone page does not send the brief's model to the bulk or cheap row";
+    if (!/never carries a top- or strong-tier model/.test(flat)) return "the page does not bound swarm models";
+    if (!/approved `MODEL:` and `EFFORT:`/.test(flat) || !/keep the approved allocation for the pilot and batch/.test(flat))
+      return "the page does not preserve the orchestrated allocation";
     const named = /`MODEL: [a-z]/.exec(flat) ?? /\b(?:astra|sol|terra|luna|fable|opus|sonnet|haiku)\b/i.exec(flat);
     return !named || `the page names a model: ${named[0]}`;
   });

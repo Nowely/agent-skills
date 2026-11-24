@@ -50,9 +50,9 @@ for a file there costs a refused write and exit 6 ([measured](incidents.md#a-rea
 
 ## Model tiers
 
-A Codex agent's model and effort come from [models.md](models.md), a Claude agent's from the
-[claude adapter](../../claude/SKILL.md). Every Codex agent carries a `MODEL:` line with a name from the
-table, never the config default, and the `EFFORT:` line its row gives; pass its Agent call no `model` and
+A Codex or Claude agent's model and effort follow the approved card and the orchestrate page's
+[defaults](../../orchestrate/SKILL.md#capacity-and-models). Every Codex agent carries a `MODEL:` line and
+an `EFFORT:` line for that allocation, never the external CLI's config default; pass its Agent call no `model` and
 no `effort`: either is spent on the wrapper alone and never reaches Codex. Its card description is
 "Codex <short name> <id>: <task in a few words>". Use current or user-supplied price estimates with their
 source; do not hard-code volatile ratios. For bulk batches, keep the unit and pilot rules in

@@ -9,7 +9,7 @@ When to read each section:
 - [Model fit](#model-fit-and-estimates): for a role/model pairing without comparable evidence, and for every batch.
 - [Environment and worktrees](#environment-and-worktrees): when an agent works in a worktree or outside the
   coordinator's working directory.
-- [A bulk row](#a-bulk-row): when independent units fan out on the bulk tier.
+- [A bulk row](#a-bulk-row): when independent units fan out.
 - [An experiment](#an-experiment-on-these-rules): when the user asks to measure a rule or a composition.
 - [Skills per invocation](#skills-per-invocation): when the user asks for an invocation without skills.
 
@@ -21,7 +21,7 @@ quality only when it materially changes the allocation, with the approval that s
 | Row | Contents |
 | --- | --- |
 | work | deliverables, ownership, interfaces and completion criteria |
-| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; always the plan critic and the verifier, one the user dropped named as dropped at the user's word; do not restate the coordinator's model or call it unknown; show the requested effort for each agent and continuation, chosen for its task under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
+| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; always the plan critic and the verifier, one the user dropped named as dropped at the user's word; do not restate the coordinator's model or call it unknown; show each agent's and continuation's effort or confirmed inheritance under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
 | checks | who verifies what and which evidence decides; only when the plan has an external route, or a usage window is near its limit: the adapter status's source and freshness, the OpenCode model list's source (Desktop or the whole catalogue), the quota windows and the exact launch validation |
 
@@ -31,9 +31,8 @@ Show worker concurrency only when it affects parallel work; count nested workers
 
 Allocate by the work, not to fill a team size: the smallest team that meets the work and its verification.
 Give each deliverable one owner, keep dependent execution together, and settle shared interfaces before parallel
-writes; who verifies is the orchestrate page's [Verification](../SKILL.md#verification). Choose models and effort by
-required quality, uncertainty, consequences, context and latency; use cost as a selection input when it can change
-the choice, and leave cost estimates off the card.
+writes; who verifies is the orchestrate page's [Verification](../SKILL.md#verification). Apply its
+[model and effort defaults](../SKILL.md#capacity-and-models), and leave cost estimates off the card.
 
 Honour requested models, routes and exclusions. A tier does not select a model or authorize a fallback: an
 unavailable model or unsupported effort goes to the user with the available alternatives, unless the approved
@@ -53,9 +52,9 @@ batches, all within the orchestrate page's alive-at-once bound. The card recomme
 
 | Profile | Allocation |
 |---|---|
-| balanced (default) | the default team, with the bulk tier for scouting |
-| speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the [default team](../SKILL.md#the-default-team)'s minimum, the plan critic and the verifier, and any further review the consequences warrant. |
-| quality | The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
+| balanced (default) | the default team, with scouts as needed |
+| speed | For bounded, recoverable work with a proven model/task pairing: one scout per independent unit and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the [default team](../SKILL.md#the-default-team)'s minimum, the plan critic and the verifier, and any further review the consequences warrant. |
+| quality | Independent reviewers on the same material when distinct perspectives can change the decision, and a separate judge for consequential disagreement. |
 
 ## Usage windows
 
@@ -64,12 +63,14 @@ window's account/route/model scope, source and observation time; do not sum over
 calls from a percentage. Account windows include the coordinator and workers/proxies using that account, but do not
 give per-model call counts. Missing telemetry is `unknown`; age an observation against the current time and treat
 stale data as stale, never unlimited. At the configured near-limit threshold (default 99% used), hold large work
-when its estimate is unknown; use the bulk tier only when its task fit and quota savings are evidenced.
+when its estimate is unknown; use a different model for quota savings only when authorized and its task fit and
+quota savings are evidenced.
 
 ## Model fit and estimates
 
 For a role/model pairing without comparable evidence, define the acceptance rule and pilot representative work.
-Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness. Expand
+Compare the same inputs with a verifiable reference; check omissions, incorrect results and usefulness. If no
+reference can be established, report the limit; use a different model as reference only when authorized. Expand
 when the rule passes: give the remaining independent units to agents that run side by side within the alive
 bound, each external one with its own proxy, unless usage rather than time is the limit. A continuation of the
 pilot carries them one batch after another ([measured](../../claude/references/incidents.md#batches-in-turn)).

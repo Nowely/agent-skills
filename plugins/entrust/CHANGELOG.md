@@ -3,6 +3,25 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Orchestration
+
+- Ordinary agent roles now default to Terra in Codex and Sonnet in Claude Code, with the coordinator's effort,
+  regardless of the coordinator's model. An explicit user choice still takes precedence; transport relays keep
+  their own settings. When the effort cannot be inherited or supplied, the coordinator asks rather than silently
+  choosing another value.
+- The approved plan and decisions are still saved in `card.md`; phase reports no longer repeat its path.
+- Model-fit checks use a verifiable reference without automatically selecting a different model. Explicitly
+  authorized model choices, adapter constraints and existing concurrency limits still apply.
+
+### Gate and limits
+
+- Skill-page, orchestration, swarm and agent-contract checks ran locally on Node.js v24.15.0; codex-cli
+  0.171.0-alpha.13.2 was available. The live orchestration gate was not run, so the new instructions have not
+  been observed in a live session.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.47.0 — 2026-11-23
 
 **Compatibility:** A complete design check now needs a qualifying consumer lifecycle journey or an explicit reason

@@ -30,13 +30,13 @@ its CLI, or a specific provider keeps that route; do not silently switch provide
 Apply [skills per invocation](../orchestrate/references/plan.md#skills-per-invocation) to native Claude briefs and
 continuations as well as external agents.
 
-- Tag every Agent call with an explicit `model` from the tier table; untagged, a subagent inherits the
-  session's model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the
-  card gave it.
+- Tag every Agent call with the approved `model`; under orchestrate use its [model and effort defaults](../orchestrate/SKILL.md#capacity-and-models).
+  Untagged, a subagent inherits the session's model. Give it a description of the form "<Model> <id>: <task in a
+  few words>", the id the card gave it.
 - A subagent spawns subagents only where the session gives it the Agent tool, and a cloud session's subagent
   had none ([measured](references/incidents.md#a-subagent-without-the-agent-tool)): tell a subagent that must
   launch agents, such as a foreman, to say so and stop when it has no Agent tool, and keep its role yourself.
-  A top-tier agent never spawns another top-tier one: it tags its own Agent calls with a strong or cheap model.
+  A top-tier agent never spawns another top-tier one.
   Only you, or a foreman you launched, launch top-tier agents.
 - A subagent's final text is its return value, not a message to a human: say so in the brief.
 - A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context,
@@ -65,12 +65,12 @@ continuations as well as external agents.
 The user's invocation of orchestrate authorises Workflow. Use it only for a chain a script must decide,
 such as refute then judge. A Workflow reports nothing until its last agent returns, so an agent that
 ends early stays invisible behind its siblings. Load the `workflow-authoring` skill before writing the
-script when the session lists it. In a Workflow, `effort: 'low'` is for mechanical cheap-tier stages
-only.
+script when the session lists it. Under orchestrate, a Workflow uses the approved effort allocation; otherwise,
+`effort: 'low'` is for mechanical cheap-tier stages only.
 
 ## The foreman
 
-A Claude foreman is a `general-purpose` Agent on the strong tier. An explicit-only skill loads only in
+A Claude foreman is a `general-purpose` Agent on the model the approved plan names. An explicit-only skill loads only in
 a turn whose user message typed its command, and nobody types one to a subagent: pass it orchestrate's
 pages and the adapters' pages it needs as files to read. Its workers run in the foreground, parallel
 calls for independent workers of similar length. An approval relayed mid-run is quoted exactly, and an

@@ -58,9 +58,10 @@ What an explicit request authorizes the provider to receive is the shared call p
    continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
    selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant. A requested
-   variant is not proof of the provider's effective reasoning effort. The coordinator chooses low, medium, high,
-   or xhigh as appropriate; max and ultra require a separate explicit user request and are never selected
-   automatically. Existing authorization applies to continuations in its scope; a previous report alone is not
+   variant is not proof of the provider's effective reasoning effort. Under orchestrate use its
+   [model and effort policy](../orchestrate/SKILL.md#capacity-and-models); otherwise the coordinator chooses low,
+   medium, high or xhigh as appropriate, and max and ultra require a separate explicit user request. Existing
+   authorization applies to continuations in its scope; a previous report alone is not
    proof of authorization. The runtime cannot verify authorization and reports the effective effort as unknown
    when unconfirmed.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
