@@ -7,19 +7,22 @@ forensics remain in the repository references and release notes.
 
 ### Orchestration
 
-- The plan critic's thread is continued after a diff that adds a concept: it names what the request does not
-  require and the existing code that already serves, and asks which requirement or test fails without each
+- The plan critic reads a diff that adds a concept, continuing its thread or starting fresh: it names what the
+  request does not require and the existing code that already serves, and asks which requirement or test fails without each
   addition; the worker answers or removes it. The worker returns its additions with the request's words behind each.
 - The plan critic reports what the code shows against the plan and what the plan can drop, and each objection
   names the acceptance check that fails if it is ignored; the coordinator drops an objection that cites nothing.
-- The verifier checks behaviour only: at most three attempts to break the tree, a read of what the change removed
-  or narrowed, no defects outside the change unless they fail a requirement, and a mark on each of the critic's
-  objections by whether its check failed. After a fix it re-reads the fix's diff, not the whole change.
+- The verifier checks behaviour: at most three attempts to break the tree, a read of what the change removed
+  or narrowed, and a mark on each of the critic's objections by whether its check failed. It reports defects it
+  notices outside the change separately. After a fix it re-reads the fix's diff, not the whole change.
 - The plan critic reads the plan before the workers only when the card has several workers; with one worker it is
-  briefed after a diff that adds a concept. The verifier stays on every card.
-- A worker writes as the codebase's owner would, by the design standard, and does not fix a problem it notices
-  outside the request: it returns it in `open`, or `blocked` when the task cannot be done without it.
-- A critic's and the verifier's brief carries the user's request verbatim, never the coordinator's restatement.
+  briefed after a diff that adds a concept. The card names that conditional read; the verifier stays on every card.
+- A worker checks each independently removable change against its requirement or necessary consumer, and reports
+  uncertainty. It returns a problem outside the request in `open`, or `blocked` when the task cannot be done without it.
+- Worker briefs carry the user's words for their task; critic and verifier briefs carry the request verbatim. The
+  verifier also gets the critic's objections and any tests a worker named in defence of an addition as claims to check.
+- The one-worker live gate checks its file's sole writer without requiring a plan critic before that worker; the
+  separate split check still requires a critic before multiple workers.
 
 ## 0.47.1 — 2026-11-24
 

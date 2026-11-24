@@ -27,9 +27,11 @@ host transports user messages and Claude's replies.
 It writes the code the way the codebase's owner would: before adding anything it reads how the surrounding code
 already does the same thing, reuses what exists, follows the local conventions and adds nothing it would not want
 to maintain; [the design standard](../../review/references/design-standard.md) is the measure. It does what the
-request asks and no more. A problem it notices outside the request it does not fix: it goes into `open` with its
-path:line, what is wrong and what leaving it costs. When the task cannot be done without it, the worker returns
-`blocked` with the same description.
+request asks and no more. Before returning, it checks each independently removable change against the requirement
+or necessary consumer it serves and what would be lost without it. It removes changes that serve neither; when the
+need or consequence is unknown, it reports the question in `open`. A problem it notices outside the request it
+does not fix: it goes into `open` with its path:line, what is wrong and what leaving it costs. When the task cannot
+be done without it, the worker returns `blocked` with the same description.
 
 ### The plan critic
 
@@ -76,7 +78,8 @@ evidence is `not proven`, never passed. On findings it re-derives each material 
 command, and a claim it cannot re-derive is `not proven`. A verdict that rests on judgement alone, with no executed
 check, says so. After the table it makes at most three attempts to break the tree, each aimed at a named
 requirement, and reads the diff for what the change removed, moved or narrowed and who relied on it. A defect
-outside the change is reported only when it fails a requirement. It marks each of the plan critic's objections by
+outside the change that fails a requirement is reported as such; any other defect it notices goes separately in
+`open` with its evidence. It does not search for defects outside the change. It marks each of the plan critic's objections by
 whether the check it named failed, and each test a worker named in defence of an addition by whether it tests a
 requirement or only the addition's internals. After a fix it re-runs the suite and re-reads the fix's diff, not
 the whole change. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.

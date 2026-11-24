@@ -257,6 +257,11 @@ test("the plan critic: no worker brief before it returns, and the shared interfa
       "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     return all(
       expectNone(G.splitAdmissionProblems(good, opts)),
+      // Case 5 checks the sole writer without requiring a critic for a single worker.
+      expectNone(G.sharedOwnerProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts)),
+      expectSome(G.sharedOwnerProblems(worker(session(), "W1", "lib/a.mjs", false).parsed(), opts), /0 agents wrote lib\/shared\.mjs/),
+      expectSome(G.sharedOwnerProblems(twoWriters, opts), /2 agents wrote lib\/shared\.mjs/),
+      expectSome(G.sharedOwnerProblems(codexWriter, opts), /2 agents wrote lib\/shared\.mjs/),
       expectSome(G.splitAdmissionProblems(early, opts), /1 worker brief\(s\) written before the plan critic returned/),
       expectSome(G.splitAdmissionProblems(twoWriters, opts), /2 agents wrote lib\/shared\.mjs, and it has one owner/),
       expectSome(G.splitAdmissionProblems(codexWriter, opts), /2 agents wrote lib\/shared\.mjs/),

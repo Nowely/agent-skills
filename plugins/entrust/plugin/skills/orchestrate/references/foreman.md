@@ -11,8 +11,9 @@ Use it when grouping several workers reduces coordination work and the host allo
 Reserve slots for the foreman and its workers; if nested delegation is unavailable, the coordinator
 runs the same plan itself. Name that allocation in the approved plan.
 
-Give the foreman the approved plan with the critics' objections as applied, relevant user authorisation,
-task-specific skills or references, artifact locations, writable roots and the runtime's constraints.
+Give the foreman the approved plan with the critics' objections as applied, the user's words for each worker's
+task verbatim, relevant user authorisation, task-specific skills or references, artifact locations, writable roots
+and the runtime's constraints.
 Its return goes to the coordinator; it has no authority to publish or address the user on the
 coordinator's behalf.
 

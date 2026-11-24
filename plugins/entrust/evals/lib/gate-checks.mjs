@@ -402,11 +402,16 @@ const resumes = (b) => (b.side === "codex" ? /^RESUME:\s*(\S+)/m.exec(b.text)?.[
 // A worker's brief: one that names a unit of the task and is for none of the core roles, and no continuation.
 const workersOf = (bs, units) => bs.filter((b) => !roleOf(b) && !resumes(b) && units.some((u) => b.text.includes(u)));
 
-// No worker brief exists before the plan critic returns, and the shared interface has one owner, counted from
-// the agents seen writing it (#16's acceptance check, T5's bypass). The plan critic is found by its role's name
-// at any tier; a worker is a brief that names a unit of the task and is for none of the other core roles. What
-// the briefs say about owners is not read: measured on the live gate's case 7 (2026-09-28), a brief quoting the
-// request read as owning every file it named, while each file had one writer.
+// The shared interface has one writer, counted from the agents seen writing it. Briefs are not evidence of
+// ownership: in live gate case 7 (2026-09-28), a brief quoting the request named every file.
+export function sharedOwnerProblems(s, { shared, reportOf = null }) {
+  const reports = briefs(s).filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
+  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
+  return writers.size === 1 ? [] : [`${writers.size} agents wrote ${shared}, and it has one owner`];
+}
+
+// For a split, no worker brief exists before the plan critic returns (#16's acceptance check, T5's bypass).
+// The plan critic is found by role at any tier; a worker names a unit and is for none of the other core roles.
 export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   const bs = briefs(s);
   const problems = [];
@@ -417,10 +422,7 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
   if (early.length) problems.push(`${early.length} worker brief(s) written before the plan critic returned`);
-  const reports = bs.filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
-  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
-  if (writers.size !== 1) problems.push(`${writers.size} agents wrote ${shared}, and it has one owner`);
-  return problems;
+  return [...problems, ...sharedOwnerProblems(s, { shared, reportOf })];
 }
 
 // When a card's trigger for the architecture critic holds: it ran, and it returned before the plan critic's brief
