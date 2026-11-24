@@ -21,7 +21,7 @@ quality only when it materially changes the allocation, with the approval that s
 | Row | Contents |
 | --- | --- |
 | work | deliverables, ownership, interfaces and completion criteria |
-| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; always the plan critic and the verifier, one the user dropped named as dropped at the user's word; do not restate the coordinator's model or call it unknown; show each agent's and continuation's effort or confirmed inheritance under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
+| team | coordinator role and each agent's role, one model display name and policy coverage in one place; whether the architecture critic runs and which of its triggers holds; always the verifier, and the plan critic with several workers, one the user dropped named as dropped at the user's word; do not restate the coordinator's model or call it unknown; show each agent's and continuation's effort or confirmed inheritance under the orchestration policy; a provider ID only when it disambiguates, a route only when it differs from the host's native one |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
 | checks | who verifies what and which evidence decides; only when the plan has an external route, or a usage window is near its limit: the adapter status's source and freshness, the OpenCode model list's source (Desktop or the whole catalogue), the quota windows and the exact launch validation |
 
@@ -53,7 +53,7 @@ batches, all within the orchestrate page's alive-at-once bound. The card recomme
 | Profile | Allocation |
 |---|---|
 | balanced (default) | the default team, with scouts as needed |
-| speed | For bounded, recoverable work with a proven model/task pairing: one scout per independent unit and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the [default team](../SKILL.md#the-default-team)'s minimum, the plan critic and the verifier, and any further review the consequences warrant. |
+| speed | For bounded, recoverable work with a proven model/task pairing: one scout per independent unit and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the [default team](../SKILL.md#the-default-team)'s minimum and any further review the consequences warrant. |
 | quality | Independent reviewers on the same material when distinct perspectives can change the decision, and a separate judge for consequential disagreement. |
 
 ## Usage windows

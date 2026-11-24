@@ -64,12 +64,12 @@ user conversation and the synthesis; agents do the work.
 | --- | --- |
 | coordinator | this session, throughout |
 | architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks |
-| plan critic | once, after approval and the architecture critic, before the first worker brief; its thread again after a diff that adds a concept |
+| plan critic | with several workers, once, after approval and the architecture critic, before the first worker brief; with any team, after a diff that adds a concept: its thread continued or, where it has not run, briefed fresh |
 | worker | after the critics; usually one, one per owned deliverable |
 | verifier | fresh, after the writes or a read-only task's findings |
 
-You put the plan critic and the verifier on every card as the minimum; only the user's word drops or changes either,
-and an architecture critic stands in for neither. Any other role joins only when the card names why.
+You put the verifier on every card, and the plan critic on every card with several workers, as the minimum; only
+the user's word drops or changes either, and an architecture critic stands in for neither. Any other role joins only when the card names why.
 
 ## Other providers
 

@@ -350,9 +350,11 @@ test("the minimum team in every run: a plan critic briefed before the first work
     return all(
       expectNone(check(verify(work(plan(session()))))),
       // The coordinator's own reason drops nothing, and neither does an architecture critic in the plan critic's place.
-      expectSome(check(verify(work(session().say("The plan is too small to need a plan critic.")))), /no plan critic was briefed before the first worker brief/),
-      expectSome(check(verify(work(session().claude("Fable A1: architecture critic", "fable", "TASK: judge the approach.", five())))), /no plan critic was briefed before the first worker brief/),
-      expectSome(check(verify(plan(work(session())))), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(second(work(session().say("The plan is too small to need a plan critic.")))), two), /no plan critic was briefed before the first worker brief/),
+      expectSome(check(verify(second(work(session().claude("Fable A1: architecture critic", "fable", "TASK: judge the approach.", five())))), two), /no plan critic was briefed before the first worker brief/),
+      // One worker's plan needs no plan critic before it; its critic may read the diff after the worker.
+      expectNone(check(verify(work(session())))),
+      expectNone(check(verify(plan(work(session()))))),
       expectSome(check(work(plan(session())).done("Opus W1 wrote it.")), /no verifier was briefed after the last worker returned/),
       expectSome(check(early), /no verifier was briefed after the last worker returned/),
       expectSome(check(lost), /no verifier was briefed after the last worker returned/),
@@ -749,14 +751,15 @@ test("one coherent good run passes every check at once, the pre-fix shape of the
     const want = [/neither the verifier's thread nor a final reader read a linted draft/, /the draft was never linted before its read/,
       /the coordinator ran a check itself: "node --test"/, /W1's brief asks for a check/, /no architecture critic ran/,
       /does not parse into the five fields/, /lints red, path/, /lints red, unsupported-success/, /C1 is registered, never ran/,
-      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/, /no plan critic was briefed/, /no verifier was briefed/];
+      /K1 wrote test\/slug\.test\.mjs, outside its row's writes \(nothing\)/, /no verifier was briefed/];
     const missed = want.filter((re) => !bad.some((p) => re.test(p)));
     return all(
       ok.problems.length === 0 || `the good run failed: ${ok.problems.join("; ")}`,
       missed.length === 0 || `the pre-fix run passed ${missed.join(", ")}: ${JSON.stringify(bad)}`,
       expectSome(edited, /the coordinator wrote lib\/slug\.mjs in the working tree itself \(Edit\)/),
       expectSome(checked, /the coordinator ran a check itself/),
-      expectSome(unpaired, /no plan critic was briefed before the first worker brief/),
+      // One worker's plan needs no plan critic before it, so the skipped critic is red as an agent the answer names that never ran.
+      expectSome(unpaired, /the answer names Opus P1, an agent that never ran/),
       !dropped.some((p) => /no plan critic/.test(p)) || `a plan critic the user dropped is still asked for: ${dropped.join("; ")}`,
       expectSome(touched, /is a worker or wrote a worker's file: Codex Terra C1: verifier/),
     );

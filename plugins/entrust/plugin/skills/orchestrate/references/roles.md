@@ -36,7 +36,8 @@ gives the smallest fix to the plan. Only a gap that affects correctness, ownersh
 #### Its second read
 
 When a worker's diff adds a concept, as the [default team](../SKILL.md#the-default-team)'s architecture row
-defines one, the coordinator continues the critic's thread with the user's request verbatim, the diff's path and
+defines one, the coordinator continues the critic's thread, or briefs it fresh where one worker's plan ran
+without it, with the user's request verbatim, the diff's path and
 the worker's additions as claims to check, never the rest of the worker's return. It reads for what can go, and
 leaves behaviour to the verifier: what the diff adds that the request does not ask for; for each new mechanism,
 the existing code that already does it, by path:line; the smallest change that meets the request, against the

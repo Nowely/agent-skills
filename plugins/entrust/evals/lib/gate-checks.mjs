@@ -435,8 +435,10 @@ export function architectureProblems(s, { units }) {
   return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
 }
 
-// In every run, the orchestrate page's minimum team: a plan critic briefed before the first worker, and a verifier
-// briefed after the last worker returned that is no worker and wrote no file a worker wrote. Only the user's word
+// In every run, the orchestrate page's minimum team: with several workers a plan critic briefed before the first
+// worker, and always a verifier briefed after the last worker returned that is no worker and wrote no file a worker
+// wrote. One worker's plan needs no plan critic before it (the owner's decision, 2026-11-24: no run had shown the
+// first read paying for itself on a single deliverable); its critic reads the diff instead. Only the user's word
 // drops either, so a case whose user dropped one names it in `dropped`; nothing the coordinator says drops one, and
 // an architecture critic that ran never stands in for the plan critic (probe P1, 2026-11-22: a coordinator ran it and
 // skipped the plan critic). A worker is a brief that names a unit of the task, as above; a continuation is that agent
@@ -446,7 +448,7 @@ export function minimumTeamProblems(s, { units, reports = [], dropped = [] }) {
   const workers = workersOf(bs, units);
   if (!workers.length) return ["no worker brief names a unit of the task, so the minimum team's order cannot be read"];
   const problems = [];
-  if (!dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
+  if (workers.length > 1 && !dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
     problems.push("no plan critic was briefed before the first worker brief");
   if (dropped.includes("verifier")) return problems;
   const last = Math.max(...workers.map((w) => w.done ?? Infinity));
