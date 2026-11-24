@@ -40,15 +40,19 @@ user conversation and the synthesis; agents do the work.
    the approved card is no longer in context, re-read this contract and `card.md` and continue the approved work
    without planning it again; if the path is lost, ask the user.
 4. Run the card's critics, then brief the workers. Every brief names its row in
-   [roles.md](references/roles.md) by path, and the agent reads that row. Apply or overrule each objection, with the
-   reason in the decision log. A change of scope or allocation goes to the user, and so does an architecture
+   [roles.md](references/roles.md) by path, and the agent reads that row; a critic's and the verifier's brief
+   carries the user's request verbatim, and your restatement never stands in for it. Apply or overrule each
+   objection that cites a path:line, a named consumer or a failing check, with the reason in the decision log;
+   drop one that cites none. A change of scope or allocation goes to the user, and so does an architecture
    verdict other than `keep`, with both approaches, before anyone else starts.
 5. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision and [results.md](references/results.md) when work fails, a worktree needs
    landing or writers collide. Continue a worker to correct its own work. With several workers, a
    [foreman](references/foreman.md) may run them where the host allows nested agents.
 6. Read every return and compare each launch's model and effort with the card, the effective ones as the host
-   reports them, else `unknown`; reconcile a deviation before going on. At each phase, tell the user what is
+   reports them, else `unknown`; reconcile a deviation before going on. When a worker's diff adds a concept,
+   continue the plan critic's thread for [its second read](references/roles.md#its-second-read) before the
+   verifier. At each phase, tell the user what is
    verified, pending and blocked, in their language.
 7. After the verifier, draft the answer and have it read as [answer.md](references/answer.md) says. Lint the draft
    with `node "<skill-dir>/scripts/lint-draft.mjs" --agents "<Model> <id>, …" --receipts <ledger> <draft>`, the
@@ -60,7 +64,7 @@ user conversation and the synthesis; agents do the work.
 | --- | --- |
 | coordinator | this session, throughout |
 | architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks |
-| plan critic | once, after approval and the architecture critic, before the first worker brief |
+| plan critic | once, after approval and the architecture critic, before the first worker brief; its thread again after a diff that adds a concept |
 | worker | after the critics; usually one, one per owned deliverable |
 | verifier | fresh, after the writes or a read-only task's findings |
 
@@ -98,7 +102,7 @@ counted; the host's capacity and the user's limits cap both further.
 ## Verification
 
 Before a fan-out, check one assembled brief's input paths, output rights and completion criteria. Verify with an
-agent that wrote nothing of what it checks: give it the requirements, the plan critic's acceptance checks (without
+agent that wrote nothing of what it checks: give it the requirements in the user's words, the plan critic's acceptance checks (without
 one, the card's checks row) and the raw artifacts, never a writer's return; on read-only work, the workers' findings
 as claims to re-derive, never a worker's judgement that they hold. Give it and the workers the resolved
 `<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
