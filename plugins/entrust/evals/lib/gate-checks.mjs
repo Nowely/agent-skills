@@ -402,11 +402,16 @@ const resumes = (b) => (b.side === "codex" ? /^RESUME:\s*(\S+)/m.exec(b.text)?.[
 // A worker's brief: one that names a unit of the task and is for none of the core roles, and no continuation.
 const workersOf = (bs, units) => bs.filter((b) => !roleOf(b) && !resumes(b) && units.some((u) => b.text.includes(u)));
 
-// No worker brief exists before the plan critic returns, and the shared interface has one owner, counted from
-// the agents seen writing it (#16's acceptance check, T5's bypass). The plan critic is found by its role's name
-// at any tier; a worker is a brief that names a unit of the task and is for none of the other core roles. What
-// the briefs say about owners is not read: measured on the live gate's case 7 (2026-09-28), a brief quoting the
-// request read as owning every file it named, while each file had one writer.
+// The shared interface has one writer, counted from the agents seen writing it. Briefs are not evidence of
+// ownership: in live gate case 7 (2026-09-28), a brief quoting the request named every file.
+export function sharedOwnerProblems(s, { shared, reportOf = null }) {
+  const reports = briefs(s).filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
+  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
+  return writers.size === 1 ? [] : [`${writers.size} agents wrote ${shared}, and it has one owner`];
+}
+
+// For a split, no worker brief exists before the plan critic returns (#16's acceptance check, T5's bypass).
+// The plan critic is found by role at any tier; a worker names a unit and is for none of the other core roles.
 export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   const bs = briefs(s);
   const problems = [];
@@ -417,10 +422,7 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null }) {
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
   if (early.length) problems.push(`${early.length} worker brief(s) written before the plan critic returned`);
-  const reports = bs.filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
-  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
-  if (writers.size !== 1) problems.push(`${writers.size} agents wrote ${shared}, and it has one owner`);
-  return problems;
+  return [...problems, ...sharedOwnerProblems(s, { shared, reportOf })];
 }
 
 // When a card's trigger for the architecture critic holds: it ran, and it returned before the plan critic's brief
@@ -435,8 +437,10 @@ export function architectureProblems(s, { units }) {
   return early.length ? [`${early.length} plan critic or worker brief(s) written before the architecture critic returned`] : [];
 }
 
-// In every run, the orchestrate page's minimum team: a plan critic briefed before the first worker, and a verifier
-// briefed after the last worker returned that is no worker and wrote no file a worker wrote. Only the user's word
+// In every run, the orchestrate page's minimum team: with several workers a plan critic briefed before the first
+// worker, and always a verifier briefed after the last worker returned that is no worker and wrote no file a worker
+// wrote. One worker's plan needs no plan critic before it (the owner's decision, 2026-11-24: no run had shown the
+// first read paying for itself on a single deliverable); its critic reads the diff instead. Only the user's word
 // drops either, so a case whose user dropped one names it in `dropped`; nothing the coordinator says drops one, and
 // an architecture critic that ran never stands in for the plan critic (probe P1, 2026-11-22: a coordinator ran it and
 // skipped the plan critic). A worker is a brief that names a unit of the task, as above; a continuation is that agent
@@ -446,7 +450,7 @@ export function minimumTeamProblems(s, { units, reports = [], dropped = [] }) {
   const workers = workersOf(bs, units);
   if (!workers.length) return ["no worker brief names a unit of the task, so the minimum team's order cannot be read"];
   const problems = [];
-  if (!dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
+  if (workers.length > 1 && !dropped.includes("plan critic") && !bs.some((b) => roleOf(b) === "plan critic" && b.seq < workers[0].seq))
     problems.push("no plan critic was briefed before the first worker brief");
   if (dropped.includes("verifier")) return problems;
   const last = Math.max(...workers.map((w) => w.done ?? Infinity));

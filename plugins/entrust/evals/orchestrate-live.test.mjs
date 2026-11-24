@@ -28,7 +28,7 @@
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
 //   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
-//   F6, Q3a      briefs only after the plan critic; the shared file has one writer                       5, 7
+//   F6, Q3a      shared file has one writer (5, 7); multi-worker briefs after the plan critic (7)       5, 7
 //   approach     the architecture critic runs first when its trigger holds (7), and not for one helper (5) 5, 7
 //   F4, P8b      the draft is read after its lint, after an architecture critic by a final reader; it goes out 5, 7
 //   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
@@ -106,7 +106,7 @@ import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/h
 import {
   CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, briefs, cardProblems, codexCalls,
   codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, roleOf, runProblems as checkRun,
-  skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
+  sharedOwnerProblems, skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
@@ -815,7 +815,7 @@ function tinyProject(dir) {
 }
 
 test("the full run under Opus: plan, go, run",
-  "everything above stops before the agents, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex agent that actually ran, every Claude agent tagged, a plan critic before any worker even for one helper, and a live tree that gains files but not a commit",
+  "everything above stops before the agents, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex agent that actually ran, every Claude agent tagged, and a live tree that gains files but not a commit",
   async () => {
     const dir = caseDir(5, "full-run");
     const scratch = tinyProject(dir);
@@ -942,13 +942,11 @@ test("the full run under Opus: plan, go, run",
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
     // One helper in a new lib/slug.mjs is no new module, the page says, so no trigger of the architecture critic
-    // holds and none runs. The plan critic is on every card, so it runs here too: no worker is briefed before it
-    // returns and lib/slug.mjs has one writer. The verifier follows the last worker, and the draft is read by the
-    // verifier's thread or a final reader (runProblems).
+    // holds and none runs. lib/slug.mjs has one writer. runProblems checks the minimum team and its order,
+    // including a plan critic before the workers if there are several, and the final draft read.
     if (briefs(s2).map(roleOf).includes("architecture critic")) problems.push("an architecture critic ran, though no trigger holds for one helper in a new file");
-    problems.push(...splitAdmissionProblems(s2, { units: ["test/slug.test.mjs"], shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
-    // The slug task's phases: the plan critique, the fan-out's returns, the verification, the synthesis, and the
-    // answer.
+    problems.push(...sharedOwnerProblems(s2, { shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
+    // At most five phase updates before the answer.
     problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 5, units: ["lib/slug.mjs", "test/slug.test.mjs"] }));
     return settle(dir, problems);
   });
