@@ -17,6 +17,8 @@ forensics remain in the repository references and release notes.
   objections by whether its check failed. After a fix it re-reads the fix's diff, not the whole change.
 - The plan critic reads the plan before the workers only when the card has several workers; with one worker it is
   briefed after a diff that adds a concept. The verifier stays on every card.
+- A worker writes as the codebase's owner would, by the design standard, and does not fix a problem it notices
+  outside the request: it returns it in `open`, or `blocked` when the task cannot be done without it.
 - A critic's and the verifier's brief carries the user's request verbatim, never the coordinator's restatement.
 
 ## 0.47.1 — 2026-11-24
