@@ -1,0 +1,34 @@
+/* Hosting UI kit: tokens, type styles and small components shared by the product's pages. */
+:root {
+  --c-surface: #ffffff; --c-page: #f2f3f5; --c-line: #e6e8eb;
+  --c-text: #1d2025; --c-muted: #7c828d; --c-faint: #a3a8b0;
+  --c-accent: #1f6fe5; --c-accent-soft: #e3edff; --c-chip: #eef0f3;
+  --c-deal: #1a8a4a; --c-deal-soft: #e3f5ea; --c-low: #e08a00; --c-low-soft: #fff1cc;
+  --r-card: 12px; --r-chip: 6px; --r-popover: 10px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --shadow-card: 0 0 0 1px var(--c-line); --shadow-popover: 0 6px 24px rgba(0, 0, 0, .14);
+}
+body { font-family: sans-serif; color: var(--c-text); }
+.t-caption { font-size: 13px; line-height: 18px; color: var(--c-muted); }
+.t-body { font-size: 15px; line-height: 20px; }
+.t-muted { color: var(--c-muted); }
+.t-price { font-size: 17px; line-height: 22px; font-weight: 700; }
+.kit-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--r-chip);
+  font-size: 13px; line-height: 20px; white-space: nowrap; background: var(--c-chip); color: var(--c-text); }
+.kit-badge--accent { background: var(--c-accent-soft); color: var(--c-accent); }
+.kit-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--r-chip);
+  font-size: 13px; background: var(--c-chip); }
+.kit-help { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 14px; height: 14px;
+  padding: 0; border: 1px solid var(--c-faint); border-radius: 50%; background: none; color: var(--c-faint);
+  font: 600 10px/12px sans-serif; cursor: pointer; }
+.kit-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; height: 20px;
+  border-radius: var(--r-chip); font: 700 11px/1 sans-serif; }
+.kit-icon--deal { background: var(--c-deal-soft); color: var(--c-deal); }
+.kit-icon--low { background: var(--c-low-soft); color: var(--c-low); }
+.kit-link { color: var(--c-accent); text-decoration: none; }
+.kit-action { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none;
+  color: var(--c-muted); font: 15px/20px sans-serif; cursor: pointer; }
+.kit-popover { position: absolute; z-index: 20; box-sizing: border-box; width: max-content; max-width: 320px;
+  padding: 14px 16px; border-radius: var(--r-popover); background: var(--c-surface); box-shadow: var(--shadow-popover);
+  font-size: 15px; line-height: 22px; color: var(--c-text); }
+.kit-popover__title { font-weight: 600; margin-bottom: 6px; }

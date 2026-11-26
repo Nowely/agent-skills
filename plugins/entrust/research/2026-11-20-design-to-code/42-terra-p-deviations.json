@@ -1,0 +1,36 @@
+[
+  {
+    "landmark": [
+      "Выдача за 15 минут",
+      "Выдача за 2 часа",
+      "Выдача за 1 день",
+      "Выдача за 3 дня"
+    ],
+    "property": "presence",
+    "category": "missing-state",
+    "status": "proposed",
+    "reason": "All four frames show a delivery time, but README.md explicitly lists the API fields and contains no delivery-time value. The card cannot derive these four distinct values from the provided offer. The rendered card omits the row; its content below moves up by about 31 px.",
+    "options": "Add a delivery-time field to the API and render it, or accept that the card omits the row."
+  },
+  {
+    "landmark": [
+      "MC-LAG 25/25",
+      "2+",
+      "2+ PSU"
+    ],
+    "property": "type",
+    "category": "system",
+    "status": "proposed",
+    "reason": "The network and power values use the 15 px t-body kit style specified for values; the frames draw smaller text. Measured ink/width comparisons find 14–27% differences. Changing the size would override the specified kit style.",
+    "options": "Keep the kit style, or use a smaller footer-specific style to match the frames."
+  },
+  {
+    "landmark": "root",
+    "frame": "network-popover",
+    "property": "width",
+    "category": "system",
+    "status": "proposed",
+    "reason": "The supplied kit-popover uses 15 px text and max-content width; with the specified title it measures 302.17 px. The reference is 267 px wide and uses visibly smaller text. A fixed 267 px width with the kit text wraps the title; the kit and drawing cannot both be matched as written.",
+    "options": "Keep the kit popover, or reduce its typography to match the reference."
+  }
+]

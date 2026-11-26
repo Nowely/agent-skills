@@ -3,6 +3,353 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.47.2 — 2026-11-24
+
+### Orchestration
+
+- The plan critic reads a diff that adds a concept, continuing its thread or starting fresh: it names what the
+  request does not require and the existing code that already serves, and asks which requirement or test fails without each
+  addition; the worker answers or removes it. The worker returns its additions with the request's words behind each.
+- The plan critic reports what the code shows against the plan and what the plan can drop, and each objection
+  names the acceptance check that fails if it is ignored; the coordinator drops an objection that cites nothing.
+- The verifier checks behaviour: at most three attempts to break the tree, a read of what the change removed
+  or narrowed, and a mark on each of the critic's objections by whether its check failed. It reports defects it
+  notices outside the change separately. After a fix it re-reads the fix's diff, not the whole change.
+- The plan critic reads the plan before the workers only when the card has several workers; with one worker it is
+  briefed after a diff that adds a concept. The card names that conditional read; the verifier stays on every card.
+- A worker checks each independently removable change against its requirement or necessary consumer, and reports
+  uncertainty. It returns a problem outside the request in `open`, or `blocked` when the task cannot be done without it.
+- Worker briefs carry the user's words for their task; critic and verifier briefs carry the request verbatim. The
+  verifier also gets the critic's objections and any tests a worker named in defence of an addition as claims to check.
+- The one-worker live gate checks its file's sole writer without requiring a plan critic before that worker; the
+  separate split check still requires a critic before multiple workers.
+
+### Gate and limits
+
+- Local checks passed: gate (26), orchestrate (13), agent-contract (16), skills (8), and package (21; the tag
+  check was skipped before tagging). The development environment had Node.js v24.15.0 and codex-cli
+  0.171.0-alpha.13.2; Codex conformance was not run for this change.
+- The Claude Code live orchestrate gate was not run. Two adapted Terra scenarios completed their tasks, but their
+  records do not prove the full protocol; workers did not run their own tests. They do not measure the new
+  critic's effectiveness.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md),
+  including the design-to-code issues E164 and E165.
+
+## 0.47.1 — 2026-11-24
+
+### Orchestration
+
+- Ordinary agent roles now default to Terra in Codex and Sonnet in Claude Code, with the coordinator's effort,
+  regardless of the coordinator's model. An explicit user choice still takes precedence; transport relays keep
+  their own settings. When the effort cannot be inherited or supplied, the coordinator asks rather than silently
+  choosing another value.
+- The approved plan and decisions are still saved in `card.md`; phase reports no longer repeat its path.
+- Model-fit checks use a verifiable reference without automatically selecting a different model. Explicitly
+  authorized model choices, adapter constraints and existing concurrency limits still apply.
+
+### Gate and limits
+
+- Skill-page, orchestration, swarm, agent-contract and package checks passed locally on Node.js v24.15.0; the
+  package's tag check was skipped before tagging. Codex conformance passed 108 scenarios using codex-cli
+  0.171.0-alpha.13.2; 324 responses had no mapped schema and `definitions`, `minLength` and `minimum` were not
+  checked. The live orchestration gate was not run, so the new instructions have not been observed in a live
+  session.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+## 0.47.0 — 2026-11-23
+
+**Compatibility:** A complete design check now needs a qualifying consumer lifecycle journey or an explicit reason
+there is none. A data-only lifecycle can use optional `dataFields` with an assertion on a stable field; ambiguous or
+undeclared data changes do not establish the lifecycle. Changed opener coverage and resized-state evidence can also
+leave a previously passing check incomplete. Review existing `design.json` journeys and record the needed evidence.
+
+### Design to code
+
+- **Columns that move together are a finding** (E149, its column shift). A landmark's place across was read from
+  whichever edge moved least, by any margin. In the card bench's `column-shift`, a 30 px margin before the RAM column
+  moves the four columns before it 15 px left: the frequency is 16 px off from the left and 15 from the right, so it
+  was read from the right on that pixel, where the page's wider texts explain the shift as a drift, and its place
+  against the processor was never compared. Another edge now takes over from the one the text's alignment holds only
+  when it moved less by more than the tolerance.
+- **A one-digit landmark is paired with its own text** (E159). On a screenshot's spec, a text was paired with the
+  page's first match in reading order, so on the prebuilt planted card with its delivery line rendered at 486, the
+  stock's "1" was paired with the "1" of "Выдача за 1 день" (`x` -352, `y` -212) and its own "1" was page text not in
+  the design. A text no other landmark repeats is now paired with the match nearest its box; repeated labels keep
+  reading order.
+- **A lifecycle journey is required.** A complete check is `incomplete` until a `sameAsFresh` journey on the
+  consumer's page takes a lifecycle, or `design.json` gives `"lifecycle"` with its reason. Data-only changes can be
+  established with optional `dataFields` and a `text` expectation on a stable field; undeclared or ambiguous changes
+  do not establish a data lifecycle. A separate consumer page uses its own viewport, not the frame's `host`.
+- **The component's own width** is a generated condition: a layout that follows the window is a candidate.
+- **A journey step that squeezes the component** below its width at the sweep's `from`, or makes the page scroll
+  sideways, fails. An independent parent-width change requires an explicit placement or equivalent `sameAsFresh`
+  endpoint; without evidence its geometry remains unmeasured. A window-width step sets the test width and its
+  following expectations specify what must hold; `sameAsFresh` compares the endpoint and frame widths to fresh loads.
+- **Script-set modes, and observers kept on removed elements,** are construct notes. Attribution covers media-query
+  listeners registered with `addEventListener` or `addListener`; `MediaQueryList.onchange` keeps native behavior and
+  is outside attribution.
+- **Opener coverage** uses Playwright's accessibility snapshot for role and accessible name; measurement clicks
+  only through configured setup and journeys. Another page or URL variant can cover a matching opener when its linked
+  target exists on the measured page. An absent target requires a journey on its page; unknown accessibility identity
+  cannot establish coverage.
+- **Natural motion** is retained for journeys. Expectations and placement use bounded settling checks; motion still
+  running at the deadline can leave the result unmeasured, and later timers or visual continuity between samples need
+  separate observation.
+- **A documented external blocker** can be handed to the owner without calling the work done or changing a measured
+  `fail`, exit code or JSON result. A current complete check supplies the evidence, or the handoff says why it could
+  not run; partial checks stay partial. The report separates the action, measurement, expected value and its source,
+  cause, scope boundary, other findings and decisions. The checker is not named as the cause of an external defect.
+  Previously an invalid journey ledger entry still marked that journey `pending` or `accepted` even while its ledger
+  fault kept the overall check failed. Invalid entries no longer mark journeys; valid checker-tagged entries still
+  match. The existing owner-accepted wildcard can also match journeys without `cause: "checker"` and is unchanged.
+- **Test widths and the product minimum** are distinct: `sweep.from` is a selected test width, not proof of the
+  supported minimum. Record its contract or owner source, or unknown; the numeric checker calculation is unchanged.
+  The human-readable width diagnostic, including its `journeys[].failed` text in JSON, now names the sweep start;
+  consumers that match the old sentence must update. An independent reviewer reads the source rather than treating
+  the builder's selected width as the product contract.
+- **The review pass** asks a sixth question: which lifecycles the consumer can cause, and which journey takes each.
+  After the full review, the handoff checks material claims against its observations and the final state; unverified
+  material claims stay marked as such, and verified material limitations are reported with source and scope. An
+  existing limitation is not called a regression; the check's verdict does not change automatically.
+- **The card and stateful benches** moved into evals.
+
+### Design-to-code evals
+
+- The future generated run prompt permits an evidenced external blocker to be reported with the actual `fail` rather
+  than claimed done. Collection checks the approval line recorded in each run's baseline; an older baseline without
+  that line leaves the result unknown. Historical runs used a different prompt, so direct comparisons need that caveat.
+- The catalogue judge's human-readable verdict names its card-contract scope. Consumer status and the owner's
+  decision stay in the existing handoff and verdict form; the judge's checks, JSON and exit are unchanged.
+- The real-run collector includes response usage recorded after the last cumulative token count (E160).
+  It reports empty-stdin polls, polls with no output and unreadable results separately. Its per-check count follows
+  each completed full check's shell session and counts only waits that returned no output while it was still running.
+  A poll that reports process exit delivers a result even when stdout is empty (E161).
+  If process enumeration fails, collection stops before writing the archive (E162).
+
+### Known issues
+
+- [E164: v25 boxes assertion](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e164-the-v25-boxes-assertion-fails-on-a-165-px-column-shift): on macOS 26.7.2 with Playwright 1.65.1 and Chromium 159, a local test received a +16.5 px delta while its assertion expects `Math.round(delta) === 16`. The same failure occurred on baseline `f668204`; its cause is not established.
+- [E165: card bench clean controls](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md#e165-the-card-bench-blocks-two-clean-builds-on-a-type-finding): the local `control` and `common-shift` cases were blocked by the same `Доступно 1 type -15` finding, also observed on `f668204`. The cause is not established. The bench caught its 15 expected classes; both blocks remain failures.
+- Other open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+### Gate and limits
+
+- One synthetic catalogue gate at `a21e92f` had the judge accept width, choice and basics, while the builder's first
+  and final handover was `fail`: at a 375 px window the open sidebar leaves the card 47 px, below the check's 288 px
+  minimum. The judge did not assess that narrow state. The owner's acceptance remains open; the two verdicts cover
+  different evidence. [The gate record](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/2026-11-20-design-to-code/46-catalogue-terra-gate.md) gives the limits.
+- The current PR CI on `a21e92f` had four successful jobs; the macOS design-to-code suite skipped 135 browser tests
+  because Playwright was unavailable. CI on the release head is separate. The full local design suite had one failure
+  (E164); the local card bench blocked two clean builds (E165). A snapshot does not establish continuity between frames.
+- The gate used codex-cli 0.171.0-alpha.13. Node.js v24.15.0 was available during preparation. No real-task A/B or
+  live orchestrate release gate was run.
+
+## 0.46.2 — 2026-11-22
+
+### Orchestrate
+
+- The page's Verification, which owns what the verifier is given, says it once: on write work the verifier never
+  receives a writer's return, and on read-only work (research, analysis, review) it receives the workers' findings as
+  claims to re-derive, never a worker's judgement that they hold. The contract's sentence on a writer's return moved
+  there, and `references/roles.md`'s verifier row and section name the claims of the workers' findings as its target.
+  Three sentences were tightened to keep the page's body at 7,999 characters, under 8,000.
+- The OpenCode adapter's orchestration page links the orchestrate page's Verification for what a fresh verifier is
+  given, instead of naming only the requirements and the raw artifacts.
+- The speed profile in `references/plan.md` keeps the default team's minimum, the plan critic and the verifier, and
+  any further review the consequences warrant, beside its targeted check; it said only "Keep the review the
+  consequences warrant" and named neither role.
+- On a card, a role the user dropped is named as dropped at the user's word: `references/plan.md`'s team row has said
+  so since 0.46.0, whose notes did not mention it.
+
+### Live gate
+
+- The minimum-team check no longer counts a verifier's Codex continuation (`RESUME:`) as the verifier briefed after
+  the last worker returned, as its own comment said: a verifier briefed while the worker still ran and resumed after
+  it returned is red. The offline suite gains that case and two with two workers, a plan critic briefed between the
+  workers' briefs and a verifier briefed between their returns, so a check that reads only the last worker's brief or
+  the first worker's return turns it red.
+
+### Known issues
+
+- No new issues; the open ones, E154 to E157 among them, are described in
+
+## 0.46.1 — 2026-11-22
+
+### Design to code
+
+- **Waiting for the check:** when the shell returns before a complete check ends, the page says to wait in one call as
+  long as the last complete check took (`seconds` in `out/history.jsonl`, else two minutes), not in short polls. The
+  rerun of 0.45.0 in the owner's Codex polled 14 times at 1 s. The harness builders' shell blocks and does not poll,
+  so the wait is read only in Codex, in the owner's sitting.
+- **One ledger entry per cause:** its texts listed in `landmark`, and no `frame` when it holds in every frame. Broad
+  excuses count the findings per frame (or in the sweep) for entries that name their landmarks, so one question asked
+  in every frame is not a broad one, and over every frame for a `*` or a region, as before.
+- **A missing text's `presence` entry carries the shift its absence causes.** Proposed or accepted, it carries, in each
+  frame it applies to, the upward `y` shifts below the text and the root's height, within the text's height plus its
+  gap to the next landmark below, both from the spec.
+  - It carries only on evidence: the nearest landmark below the text that shares some of its width (the root's bottom
+    when nothing is below) moved up past the text's place by that bound less 12 px, or more. Then each step down the
+    page past its place is carried, in any column; a collapse only in another column carries nothing.
+  - Only a carried shift leaves a rest to judge, in the usual bands, shown as `(-8; +22 after the ledger)`; an
+    ordinary entry still excuses an offset or a height whole or not at all.
+  - The carried shifts are notes naming the entry, and the handoff says how many each entry carries; the builder
+    writes no entry for them.
+  - Its limits are in `references/check.md`: a text on the page in other words is not matched, so it counts as
+    missing and its entry could carry a collapse with another cause; the reworded text is then page text the spec
+    lacks, which keeps the frame `incomplete` until an entry names it.
+- **Measured** on the prebuilt planted card. With only the line's presence entry, the check went from 81 findings, 73
+  of them rows' `y` and the root's height, to 8, all the build's own; a 20 px shift planted below the line stays a
+  finding, 21–22 px after the ledger. On three harness arms each, 0.45.0 against the candidate before a verifier's
+  fixes, ledger entries fell from a median of 7 to 3 and rounds to a handover from 23 to 10, calls from 41–54 to
+  30–34. `pending` came 2 of 3 on both sides, short of the carried shift's registered rule; the owner kept it as a
+  recorded departure. A line that opened a frame's `side.png` only when the numbers leave the question open did not
+  reduce views (a median of 4, then 5) and was reverted. [The research
+  record](https://github.com/Nowely/agent-skills/blob/c680af8/plugins/entrust/research/2026-11-20-design-to-code/40-overhead-and-one-sitting.md)
+  holds the Codex rerun on 0.45.0 that set the baseline (doc 39), the measures written before the runs, and the
+  results (doc 40).
+
+### Design-to-code evals
+
+- The planted-card grader counts an `options` array of two or more as a question put to the owner; one option still
+  does not count (E158). It had read a proposed entry with two options as named but not asked.
+- The prebuilt planted specs' footer boxes, "MC-LAG 25/25" and "PSU" / "2+ PSU", sit under the planted line, where its
+  ink is. They were 30 px above it in all four card frames, so no build could settle them without editing the specs.
+- `evals/design-to-code/harness/real-run.mjs`, for the owner's real runs. `setup` installs the skill at a commit,
+  hashes the owner's originals into a baseline outside the project, checks the seeds, prints the Codex rule and the
+  first message, and starts Chromium from the project. `collect` waits until no check is in flight, freezes the run,
+  diffs the originals against the baseline, reads the Codex rollout log into the run's record, and writes the archive
+  and the owner's verdict form. Its rollout parser is tested on a synthetic log only.
+
+### Known issues
+
+- New open issue E159: the check can pair a one-digit landmark with the same digit inside a longer page text, report
+  offsets for a piece the page places correctly, and leave the frame `incomplete`. E146–E153 stay open, E151 narrowed
+  to what the carried shift does not cover. All are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+## 0.46.0 — 2026-11-22
+
+### Orchestrate
+
+- **Breaking:** `/entrust:orchestrate` makes this session the coordinator of the whole task, unconditionally: it
+  plans, briefs, decides, talks with the user and synthesises, and never reads sources whole, edits the tree or runs
+  the project's checks, tests or builds. Its own commands name a brief's inputs in at most 20 lines, its scripts
+  include the launcher's `--handback`, `--status`, `--pending` and `--stop` for a provider the user named, and it
+  reads a cited range of at most 40 lines only to settle a conflict between returns or a claim it is about to relay;
+  only the user's word for a specific edit lets it make one. It decides when a worktree result lands; a worker applies
+  it, or reads a preserved tree and takes what is worth keeping, and the verifier checks the combined tree. The contract is the page's first screen, and at approval the
+  coordinator writes the card, then each decision, to `card.md` in the run's temporary directory: a re-invocation, or
+  a card no longer in context, re-reads both and continues the approved work without planning it again.
+- Claude Code 2.1.330 re-attaches the page after a compaction only in the process that invoked it: in one measured
+  session it came back whole, and in a session resumed with `claude -p --resume` it did not, the coordinator going on
+  from the compaction summary and a re-attached `references/plan.md`. The README says to type `/entrust:orchestrate`
+  again after resuming in a new process, which loads the page again; what a run does after that was not measured.
+  The claude adapter's incidents record the measurement (n=1 per mode).
+- The default team is the coordinator, usually one worker that writes its own tests, a plan critic before any write
+  and a fresh verifier after the writes, or on read-only work (research, analysis, review) after the workers'
+  findings, each material claim of which it re-derives from the cited source or command, `not proven` where it
+  cannot. The plan critic and the verifier are the minimum: the coordinator puts both on every card, and only the
+  user's word drops or changes either. An architecture critic runs first when the solution adds a concept, a module
+  meaning a new unit with a responsibility others will depend on (not a new file for one function or helper),
+  changes or removes an existing contract other units consume (a new export or function does not), acts irreversibly
+  or outward, leaves several approaches open, or the user asks, and the card says which trigger holds; whenever it
+  runs, the plan critic runs too, unless the user dropped it. The plan critic replaces the split critic and judges
+  the plan as written, each objection citing a path or a consumer, its cost and the smallest fix; the architecture
+  critic judges the approach against the review's design standard, and a verdict other than `keep` goes to the user
+  with both approaches. The coordinator hands the verifier the requirements, the plan critic's acceptance checks and
+  the writers' artifacts, never their returns; a requirement without executed evidence is `not proven`, and one
+  complete return is opened before a unanimous tally of verifiers is trusted.
+- Another provider, model or route comes in only when the user names it, in the conversation or in the user's or
+  project's instructions; the coordinator then runs `adapter-status.mjs`, no longer on every plan and again before
+  dispatch, and nothing proposes another provider unprompted. The codex page's "nothing" row is zero Codex agents,
+  its description applies only when the user asks for Codex or names a Codex model, and the rule that made half the
+  judging agents Codex and reversed cross-review is gone. The advisor runs on the host's top-tier model unless the
+  user names another. The card's checks row shows adapter status, the OpenCode list's source and quota windows only
+  for an external route or a usage window near its limit, and an experiment's judge is the user or one the user names.
+- The role catalogue opens with the five core roles, what each does, may write and returns; every other role has a
+  trigger and is read when the card names it. The advisor's two rows are one with two modes, the final reviewer is
+  the last cross-review, the bulk verifier and the swarm are one row, the completeness critic is gone, and a final
+  reader joins.
+- The answer drops the manifest, its sha256 checks, the critic's copy with diff hunks and the three-read count. The
+  verifier's thread, continued, reads the linted draft against the request, or a fresh final reader does when the
+  card ran the architecture critic or no verifier, as when the user dropped it, or the answer is a publication: it
+  tags each claim by what backs it and lists what the draft does not answer. An answer gets at most two reads, and
+  after the second only an `Open:` list quoting the reader's gaps may be appended. `lint-draft.mjs --help` no longer
+  speaks of a manifest.
+- The page's body is 7,997 characters, from 15,507. Skills per invocation, larger teams, profiles, usage windows and
+  the substitution rule moved to `references/plan.md`, whose index says once when each section is read, the card and
+  the composition rules with every plan; the advisor and the codex page link its substitution rule. The capture
+  recipe moved to `references/roles.md`, where each agent reads its own row, and the consent, Codex-escalation and
+  temporary-directory text for external runs to `references/external.md`. The foreman's page is titled Foreman,
+  "coordinator" names only the main session, and the adapters' plan rows say worker.
+
+### Live gate
+
+- The gate's reading of a session checks the coordinator's contract: no Edit or Write under the working tree and no
+  project check at the root, through `capture-check.mjs` or not. It finds the plan critic, the verifier and the final
+  reader by their role's name at any tier, the first a description names or a brief's text says the agent is, not a
+  role it merely mentions, and no longer asks for a corrected-split file. When the card's trigger holds, the
+  architecture critic returned before the plan critic and the workers, a brief that names a unit of the task, were
+  briefed. In every run a plan critic is briefed before the first worker, and a verifier after the last worker
+  returned that is no worker and wrote no worker's file, unless the case declares that its user dropped one; the
+  coordinator's own reason drops neither, and an architecture critic does not stand in for the plan critic. The
+  draft's path and the read's time come from the message that starts the read: nothing writes the draft after it,
+  the last lint comes before it, and what went out is the draft, or the draft and the allowed `Open:` list. Live
+  case 5, one slug helper in a new file, expects no architecture critic, a plan critic before its worker and five
+  phases; case 7, an export two files import renamed, expects the architecture critic and a final reader; case 6 a
+  default plan that leaves `roles.md` to its agents; and case 8 says why the Astra the user names goes through the
+  Codex adapter.
+
+### Known issues
+
+- New open issues E154, E155, E156 and E157 are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
+## 0.45.0 — 2026-11-22
+
+### Design to code
+
+- **New, experimental:** `design-to-code` builds or changes UI from Figma, screenshots or a mockup, responsive
+  layouts and interactive states included, so that the owner accepts the first submission. "Done" is checked, not
+  claimed. Before building, `review.md` lists each reference with its role, the data's limits (each field's longest
+  legal value, how many entries repeat, the narrowest supported width) and past returns quoted as acceptance rows.
+- **The check:** an optional Chromium script, `scripts/design.mjs check design.json`, compares each frame's landmarks
+  and image with its reference, made from Figma specs or from named boxes on a screenshot (`design.mjs boxes`).
+  - Moderate, systematic offsets are notes. Findings are broken relations, text over text, cut or covered text, a
+    price split from its period while there is room, and a type size of another class, per frame and per text.
+  - A width sweep runs between the frames on the frames' page and on `dense` and `many` stories, with conditions the
+    check makes itself (texts stretched, entries doubled) whose collisions need an answer.
+  - Journeys open and close each overlay from its own opener, at the window's edges. A consumer path (a list emptied
+    and refilled, a parent's width change, a remount) can be compared with a fresh load (`sameAsFresh`).
+  - `--quick` runs a partial round while building; the digest shows what changed first, in at most 15 lines. When the
+    same first finding leads three rounds, the check says to fix it or propose it.
+- **The owner's decisions:** every entry of the deviations ledger, `deviations.json`, is a proposal until the owner
+  accepts it, and a check with proposals hands over at `pending`. A ledger entry records a question, such as a design
+  that draws data the contract does not send, frames that disagree, the kit against the drawing or an unbounded
+  value; the builder writes it when the gap is first seen, without asking. A full check writes `out/handoff.md` and a
+  gallery of design, before and after.
+- **The code, on the page:** one element for each thing shown, not copies swapped by CSS; what the layout hides is
+  hidden visually, not with `display: none`; selectors stay under the component's root, and kit classes are never
+  restyled page-wide. Modes switch by container queries; a script that measures widths is a construct unless it fits
+  content no query expresses, and then its observer follows the mounted element and is cleaned up. The review of an
+  implementation, with its five code questions, is in `references/pack.md` and `references/review-pass.md`.
+- **Measured:** on a bench of an accepted control's mutants and frozen submissions, the check catches 14 of 15 known
+  return classes with no clean build blocked, and 2 of 3 on a stateful consumer bench. On Sonnet, a card restyled
+  inside a stateful consumer was accepted on its width and its kept choice in 4 of 4 runs. On a server card whose
+  frames draw a line the contract does not send, every run put the line to the owner as a question with options, and
+  a strict blind reviewer, with a control in each set, accepted one build as seen and as read and found none of the
+  four code faults that had recurred before. A gate that refused to continue on an unchanged first finding, and a
+  record of the owner's inputs, were tried and dropped. [The research
+  record](https://github.com/Nowely/agent-skills/blob/9571213/plugins/entrust/research/2026-11-20-design-to-code/35-iteration-7.md)
+  holds the plans written before the runs, the runs, the blind reviews and the owner's Terra runs.
+- **Known issues E146–E153:** a builder can change the owner's references, specs, frames' data or tolerance to clear a
+  contradiction, and nothing in the skill detects it, so review those inputs against the originals; under a
+  plan-approval rule, the ledger entry may wait for approval, and the page's line to write it without asking has not
+  been run on Terra; a run on a contradictory design costs 77–131 calls on Sonnet; the benches miss column shifts and
+  need a builder-written fresh-load journey for a stale observer; builders still write ledger entries naming every
+  landmark of a frame; type sizes within about 10 % per text are not told apart at 1× references; an opener on a
+  story page without its overlay leaves the check `incomplete`; and the review pass has not been exercised.
+
 ## 0.44.0 — 2026-11-20
 
 ### Review report

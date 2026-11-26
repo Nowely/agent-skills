@@ -1,0 +1,62 @@
+{
+  "source_commit": "b5d671bf5bac616332a4e33f7d063919b2bd3e3f",
+  "skill_commit": "bf6aafc75a10d823e4178987e7ca5adf6d04b654",
+  "S": {
+    "calls": 60,
+    "polls_empty_stdin": 14,
+    "polls_no_output": 5,
+    "collector_token_totals": {
+      "uncached": 78832,
+      "cached": 3954176,
+      "output": 14101
+    },
+    "last_turn_record_totals": {
+      "uncached": 79452,
+      "cached": 4048000,
+      "output": 14494
+    },
+    "archived_rounds": 5,
+    "baseline_created_after_run": true,
+    "cwd_mismatch_expected": true,
+    "setup_exit": 1
+  },
+  "P": {
+    "calls": 27,
+    "rounds": 3,
+    "complete_checks": 2,
+    "quick_checks": 1,
+    "polls_empty_stdin": 8,
+    "polls_no_output": 4,
+    "no_output_by_full_check": [
+      2,
+      2
+    ],
+    "full_check_seconds": [
+      25.2,
+      24.8
+    ],
+    "ledger_proposals": 3,
+    "status": "pending",
+    "user_handover": true,
+    "grader": "QUESTION SURFACED, INPUTS INTACT",
+    "setup_exit": 1,
+    "setup_not_ready": "no prior returns.md in supplied synthetic fixture",
+    "worker_seconds": 220.0,
+    "tokens": {
+      "uncached": 54906,
+      "cached": 1576192,
+      "output": 7582
+    },
+    "poll_response_tokens": {
+      "uncached": 9236,
+      "cached": 478592,
+      "output": 715
+    },
+    "no_output_poll_response_tokens": {
+      "uncached": 8246,
+      "cached": 224256,
+      "output": 415
+    },
+    "archive_sha256_prefix": "d44ca1ce37c7"
+  }
+}

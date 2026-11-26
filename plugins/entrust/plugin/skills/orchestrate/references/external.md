@@ -6,7 +6,7 @@ adapter adds is on its own page: [codex](../../codex/SKILL.md), [opencode](../..
 [claude](../../claude/references/external.md). Read the adapter's page for its models and its extra fields, and
 this page for everything else.
 
-The steps: [1. the prompt](#1-write-the-prompt), [2. `--new`](#2-make-the-agent---new), [3. the run](#3-run-it),
+First [what holds before the first call](#before-the-first-call); then the steps: [1. the prompt](#1-write-the-prompt), [2. `--new`](#2-make-the-agent---new), [3. the run](#3-run-it),
 [4. the result](#4-read-the-result), [5. a request](#5-decide-a-request), [6. continuing](#6-continue-an-agent),
 [7. stopping](#7-stop-an-agent), [8. the budget](#8-the-budget), [9. what differs](#9-what-still-differs-by-adapter),
 and [what the user reads](#what-the-user-reads).
@@ -18,6 +18,28 @@ Two paths appear in the commands. Replace them before running anything:
 - `<state>` is the state directory: `$ENTRUST_STATE_DIR` when it is set, else `entrust-state` inside the system's
   temporary directory.
 
+## Before the first call
+
+The adapter is the one the [orchestrate page's rule for other providers](../SKILL.md#other-providers) selects. A
+model its status lists is a recent reference, not proof that it runs now; an absent or unsupported source stays
+`unknown` or `unsupported`. The adapter's launch validates the exact model and variant before it makes an agent: a
+refusal there stops the launch and amends the plan, and a model that passes is available, not approved.
+
+An approved plan, or the user's explicit request to use an adapter or model for a task, authorizes sending that
+provider the prompt and the task's data, a diff and related files included, within that scope and its rights; ask
+for no second consent to the same transfer. A model mentioned only for information is not a request, and this
+authorizes no unrelated data, other route, write or publication.
+
+In Codex, run the launcher's `--plan`, `--new` and `--decide` without escalation: they need nothing outside the
+sandbox. Escalated, a `--new` goes to the reviewer of escalated commands (auto-review), which refused one on an
+approval inside a brief the user pasted and passed it on the user's own chat words naming the provider
+([measured](../../claude/references/incidents.md#an-approval-in-a-pasted-brief)). If the host refuses, report the
+action and its stated reason; do not infer a wording that will make it pass.
+
+The launcher's calls take no `ENTRUST_TEMP_CONTEXT`: external drivers and swarms establish and forward the
+temporary context themselves. A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an
+OpenCode or Claude agent inherits yours, so give it its own temporary directory when its checks write.
+
 ## 1. Write the prompt
 
 A prompt is a few header lines, then `TASK:` and the task. Header lines come first, one per line, each
@@ -27,7 +49,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 | --- | --- | --- |
 | `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
-| `EFFORT:` | an effort name from the adapter's page | chosen for this task under the orchestration policy; set it on every launch and continuation |
+| `EFFORT:` | the coordinator's effort, or the user's approved override, from the adapter's page | set it on every launch and continuation; the external CLI's default may differ from the coordinator's |
 | `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main proxy uses `<orchestrate>/schemas/proxy-reply.schema.json` | the adapter's default |
 | `RESUME:` | the `REPORT=` path of an earlier run of this agent | a new agent |
 | `ALLOW_NO_COMMANDS:` | `yes` | a turn that ran no command and read no file fails with exit 5 |
@@ -38,7 +60,7 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
     CHECK: how the agent can tell it is right
     RETURN: exactly what to hand back
 
-Apply [skills per invocation](../SKILL.md#skills-per-invocation) to this prompt, including each `RESUME:`.
+Apply [skills per invocation](plan.md#skills-per-invocation) to this prompt, including each `RESUME:`.
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 

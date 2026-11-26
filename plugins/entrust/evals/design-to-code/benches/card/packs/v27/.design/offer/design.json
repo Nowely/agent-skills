@@ -1,0 +1,584 @@
+{
+ "url": "../../story.html?data=card-764",
+ "root": ".card",
+ "host": "#host",
+ "viewport": 1000,
+ "tolerance": 1,
+ "ledger": "deviations.json",
+ "frames": [
+  {
+   "name": "card-764",
+   "width": 764,
+   "spec": "frames/card-764/spec.json",
+   "reference": "frames/card-764/reference.png",
+   "url": "../../story.html?data=card-764"
+  },
+  {
+   "name": "card-601",
+   "width": 601,
+   "spec": "frames/card-601/spec.json",
+   "reference": "frames/card-601/reference.png",
+   "url": "../../story.html?data=card-601"
+  },
+  {
+   "name": "card-486",
+   "width": 486,
+   "spec": "frames/card-486/spec.json",
+   "reference": "frames/card-486/reference.png",
+   "url": "../../story.html?data=card-486"
+  },
+  {
+   "name": "card-280",
+   "width": 280,
+   "spec": "frames/card-280/spec.json",
+   "reference": "frames/card-280/reference.png",
+   "url": "../../story.html?data=card-280"
+  },
+  {
+   "name": "network-popover",
+   "width": 265,
+   "spec": "frames/network-popover/spec.json",
+   "reference": "frames/network-popover/reference.png",
+   "url": "../../story.html?data=card-601",
+   "root": ".c-netpop",
+   "setup": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "wait": 200
+    }
+   ]
+  }
+ ],
+ "sweep": {
+  "from": 280,
+  "to": 900,
+  "step": 8,
+  "lines": [
+   {
+    "name": "top row, A",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     {
+      "selector": ".c-cpu",
+      "wraps": true
+     },
+     ".c-freq",
+     ".c-pc",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     },
+     {
+      "selector": ".c-price",
+      "wraps": true
+     }
+    ],
+    "when": "[data-mode=\"A\"]"
+   },
+   {
+    "name": "footer row, A",
+    "pieces": [
+     ".c-foot",
+     ".c-stock"
+    ],
+    "when": "[data-mode=\"A\"]"
+   },
+   {
+    "name": "specs row, B",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     ".c-freq",
+     ".c-pc",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     }
+    ],
+    "when": "[data-mode=\"B\"]"
+   },
+   {
+    "name": "footer row, B",
+    "pieces": [
+     ".c-foot",
+     ".c-stock"
+    ],
+    "when": "[data-mode=\"B\"]"
+   },
+   {
+    "name": "id and cpu, C",
+    "pieces": [
+     {
+      "selector": ".c-id",
+      "wraps": true
+     },
+     {
+      "selector": ".c-cpu",
+      "wraps": true
+     }
+    ],
+    "when": "[data-mode=\"C\"]"
+   },
+   {
+    "name": "specs row, C",
+    "pieces": [
+     ".c-freq",
+     {
+      "selector": ".c-cc",
+      "wraps": true
+     },
+     {
+      "selector": ".c-ram",
+      "wraps": true
+     },
+     {
+      "selector": ".c-disks",
+      "wraps": true
+     }
+    ],
+    "when": "[data-mode=\"C\"]"
+   },
+   {
+    "name": "price and stock, C",
+    "pieces": [
+     {
+      "selector": ".c-price",
+      "wraps": true
+     },
+     ".c-stock"
+    ],
+    "when": "[data-mode=\"C\"]"
+   },
+   {
+    "name": "cores row, D",
+    "pieces": [
+     ".c-pc",
+     {
+      "selector": ".c-cores",
+      "wraps": true
+     }
+    ],
+    "when": "[data-mode=\"D\"]"
+   }
+  ],
+  "stories": [
+   {
+    "name": "dense",
+    "url": "../../story.html?data=dense"
+   },
+   {
+    "name": "many",
+    "url": "../../story.html?data=many"
+   },
+   {
+    "name": "minimal",
+    "url": "../../story.html?data=minimal"
+   }
+  ]
+ },
+ "journeys": [
+  {
+   "name": "network help: hover, leaving closes it",
+   "steps": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "move": ".c-netpop"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "network help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "network help: Escape closes it",
+   "steps": [
+    {
+     "focus": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "power help: hover, leaving closes it",
+   "steps": [
+    {
+     "hover": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "power help: Escape closes it",
+   "steps": [
+    {
+     "focus": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "discount: hover shows old price, leaving closes it",
+   "url": "../../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-dealbtn"
+    },
+    {
+     "visible": ".c-dealpop"
+    },
+    {
+     "text": [
+      ".c-dealpop",
+      "139 900,00 \u20bd"
+     ]
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-dealpop"
+    }
+   ]
+  },
+  {
+   "name": "discount: Escape closes it",
+   "url": "../../story.html?data=card-601",
+   "steps": [
+    {
+     "focus": ".c-dealbtn"
+    },
+    {
+     "visible": ".c-dealpop"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".c-dealpop"
+    }
+   ]
+  },
+  {
+   "name": "discount: a tap toggles it",
+   "url": "../../story.html?data=card-601",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-dealbtn"
+    },
+    {
+     "visible": ".c-dealpop"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-dealpop"
+    }
+   ]
+  },
+  {
+   "name": "power help: a tap toggles it",
+   "touch": true,
+   "steps": [
+    {
+     "tap": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "tap": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "network help survives a resize to the narrow layout",
+   "steps": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "width": 300
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "press": "Escape"
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "card-601: network help opens and closes",
+   "url": "../../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "card-601: power help opens and closes",
+   "url": "../../story.html?data=card-601",
+   "steps": [
+    {
+     "hover": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "card-486: network help opens and closes",
+   "url": "../../story.html?data=card-486",
+   "steps": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "card-486: power help opens and closes",
+   "url": "../../story.html?data=card-486",
+   "steps": [
+    {
+     "hover": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "card-280: network help opens and closes",
+   "url": "../../story.html?data=card-280",
+   "steps": [
+    {
+     "hover": ".c-nethelp"
+    },
+    {
+     "visible": ".c-netpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-netpop"
+    }
+   ]
+  },
+  {
+   "name": "card-280: power help opens and closes",
+   "url": "../../story.html?data=card-280",
+   "steps": [
+    {
+     "hover": ".c-powerhelp"
+    },
+    {
+     "visible": ".c-powerpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-powerpop"
+    }
+   ]
+  },
+  {
+   "name": "card-486: discount opens and closes",
+   "url": "../../story.html?data=card-486",
+   "steps": [
+    {
+     "hover": ".c-dealbtn"
+    },
+    {
+     "visible": ".c-dealpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-dealpop"
+    }
+   ]
+  },
+  {
+   "name": "card-280: discount opens and closes",
+   "url": "../../story.html?data=card-280",
+   "steps": [
+    {
+     "hover": ".c-dealbtn"
+    },
+    {
+     "visible": ".c-dealpop"
+    },
+    {
+     "move": [
+      5,
+      5
+     ]
+    },
+    {
+     "hidden": ".c-dealpop"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,108 @@
+# The design pack
+
+Keep the inputs for comparisons together. Use the existing project location or a local `.design/<task>/` pack.
+For each requested screen or detail, keep its supplied reference, the state and data it shows, and the
+known dimensions and scale. Context images can remain beside the targets. Reserve `frames/` for references
+the checker should measure. For visual comparison alone, a reference and a comparable final capture suffice.
+
+```text
+.design/<task>/
+  design.json             the page, root, host, frames, sweep and journeys: check.md
+  deviations.json         the ledger: check.md
+  review.md               acceptance criteria and the project or design decisions behind them
+  assets/                 design assets needed for the change
+  frames/<frame>/
+    spec.json             its texts: characters, box, alignment, font
+    reference.png         the frame at its available scale
+    metadata.xml, context.tsx   the MCP answers the spec was made from, when it was
+  out/                    the check's results
+```
+
+## Spec and image
+
+**With a Figma token** (a personal access token, Figma: Settings, Security; set as `FIGMA_TOKEN`):
+
+```bash
+node "<skill-dir>/scripts/design.mjs" figma "<frame link with node-id>" --out .design/<task>/frames/<frame>
+```
+
+It reads the frame from Figma's REST API and writes `spec.json`, with every visible text's characters, box relative
+to the frame, alignment, size, weight, line height and colour, and `reference.png` at 2× (`--scale` to change).
+A selected text layer becomes its own landmark at the frame origin.
+
+**With access to the Figma MCP server**, extract a frame as follows.
+
+1. `get_metadata` on the frame: its layers with positions and sizes, but text layers only by name. Save it as
+   `frames/<frame>/metadata.xml`.
+2. `get_design_context` on the frame: its code, in which every element carries its layer's `data-node-id` and the
+   actual text. Save it as `frames/<frame>/context.tsx`.
+3. `node "<skill-dir>/scripts/design.mjs" spec frames/<frame>/metadata.xml --context frames/<frame>/context.tsx --out frames/<frame>/spec.json`
+   places every text layer by the outline and takes its text from the context by node id. It prints which reading of
+   x and y it chose (relative to the parent, or absolute on the canvas) and which layers got no text; if the
+   landmarks land outside the frame, run it again with the other reading as `--coords`.
+4. Save a `reference.png` from the available export; prefer 2× when the exporter supports it. Record its actual
+   scale. The check rounds the image-width-to-frame-width ratio to an integer device scale, so a non-integer scale
+   needs a visual comparison at a consistent size rather than being treated as a pixel-exact measurement. Compare
+   every text in the spec with it: correct one that reads differently, and write in the ones the context did not
+   give. A layer whose text the code builds from data (`{count} cores`) is reported as missing, not guessed. Nothing
+   later catches a wrong text in the spec: the check looks for that text on the page and excludes text from the pixel
+   comparison.
+5. The spec takes each text's size and line height from the context's `text-[Npx]` and `leading-[Npx]` classes by
+   node id. Add weight and colour where the context states them: `"font": { "weight", "color" }` (`#rrggbb`). A spec
+   with no font size leaves the type's size uncompared, and the check says so.
+
+## What else to read
+
+- **Design context**, `get_design_context` on the frame; when the answer is cut short, on its children, one call
+  each. Its code (React and Tailwind by default) is a source of values, not code to paste.
+- **Code Connect**, when available and useful, can identify mapped components and props. Verify a mapping against the
+  design and the consumer. For unmapped layers, inspect the project and its UI kit; record what has no match in
+  `review.md`.
+- **Variables**, `get_variable_defs`. A raw value where the system has a variable is a gap for `review.md`.
+- **Assets.** Inspect design assets alongside the project's existing icons and UI components. Preserve the intended
+  appearance and supported component behavior; download a design asset when needed. Keep an SVG's viewBox and do not
+  leave a temporary Figma URL in code.
+- **Comments**, `get_comments` on the remote server: states and behaviour are often written there.
+
+## The data and the states
+
+A frame's texts are its data. Render each frame with that data (a story per frame, or one story with arguments);
+where the product's data cannot produce a text, the check cannot find it, and the gap goes to `review.md`. A frame
+showing a state (an open menu, a selected row, hover) gets `setup` steps in `design.json` that put the page in that
+state before it is measured; a state drawn outside the component, such as a popover or a sheet, also names its own
+`root`.
+
+When content or actions can collide, use a story with a legal combination of long data and conditional controls:
+there a price that splits from its period, or any short text that wraps while the component has room for it, is a
+`wrap` finding ("wraps with room"). Say what the case adds to the reference. Keep those inputs constant while varying the component's width. A story
+may use another URL, arguments, or setup on the original page. Inspect the rendered state to verify that its data
+changed. The checker measures the supplied story and cannot determine whether the case is representative.
+
+## Screenshots without a spec
+
+Use each supplied screenshot as a reference. Record the known CSS dimensions and scale; if unknown, state the
+assumption and compare at a consistent size. Then name it:
+
+```bash
+node "<skill-dir>/scripts/design.mjs" boxes frames/<frame>/reference.png --width <frame px>
+```
+
+It writes `frames/<frame>/spec.json` with the numbered pieces of ink and `boxes.png` to read them from. Fill
+`landmarks` once, each from its pieces: the text as the frame shows it (`"5587 × 4"`, not the format you would
+prefer), or a page selector for an icon, a shape or a photo; an icon and its label are two landmarks, and where
+one piece holds both, the landmark gives its own `box` instead. The check
+then measures each landmark by place and its text exactly ([check.md](check.md#frames)): an offset of 12 px or less,
+or a drift up to 24 px carried from the pieces before, is a note; the type's size, read from the ink heights of five
+texts or more, is a finding when it is 10 % or more off. Inspect typography and states against the screenshot, and
+report unobserved widths and interactions. Do not invent Figma metadata or imply an assumed scale is measured.
+
+## Reviewing an implementation
+
+The same check reviews built UI: snapshot it as the baseline (`design.mjs snapshot <a copy of design.json> --images`),
+rewrite the inside from tokens, flow and grid, and check against it: a visible change is a finding unless the owner
+accepts it.
+
+To make a pack from an accepted implementation, for a baseline or a test case, `design.mjs snapshot` writes
+each frame's spec (and, with `--images`, its reference) from the page as it renders now; such a spec also compares
+text widths, which a Figma spec does not. Outside a review it compares the page with itself, and the evidence says
+so.

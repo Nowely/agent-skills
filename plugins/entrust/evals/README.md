@@ -8,6 +8,21 @@ prompts that must stay silent. `review/` is the instrument a version of the revi
 cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round, the one that scores a judge's verdicts, and the two that hand each review to an implementer and measure the code that is left
 ([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it prints; `review-decisions.test.mjs` checks the owner's answers as `decisions.mjs` keeps them, and `review-page.test.mjs` the page `page.mjs` writes; their records live in `review/report-fixtures.mjs`.
 
+`design-to-code/` is the instrument for the design-to-code skill: the `offer-card` case (an unstyled start, the
+reference that is its answer, the design context and brief), `prepare.mjs`, which renders the reference into a
+design pack and gives the implementer a directory without the answer, and `score.mjs`, which checks the result with
+the judge's own copy of the design; the run protocol is in
+[its research run](../research/2026-11-20-design-to-code/protocol.md). The `listing-card` case is a short controlled
+pair with its own frozen judge (visual frames, dense data, popup behaviour, the edit contract) and an arm maker:
+[its page](design-to-code/cases/listing-card/README.md). `design-to-code.test.mjs` checks the skill's
+`core.mjs` without a browser and plants defects in the offer card to see the check find them; its browser cases need
+Playwright with Chromium and are reported as skipped without it, as in CI.
+
+For a screenshot-only task, compare the submitted render with the supplied reference at the same scale.
+Hidden CSS or typography specs can flag different line boxes even when every rendered RGB pixel matches.
+Include an implementation with identical RGB output and different internal layout in the judge's calibration.
+A visual defect needs a difference visible in the reference comparison.
+
 `review-page-browser.test.mjs` drives the rendered review page in Chromium: tabs and deep links, answering in
 Decisions and in the code's margin, the keys and what they must never do, persistence, the export, reading without
 JavaScript, both print profiles, the Russian page and a large record it generates. It renders public records only.
@@ -23,7 +38,7 @@ node evals/run-all.mjs        # every suite, one per core at a time, longest fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the thirty-one suites longest first: protocol, opencode, opencode-owner, agent-run, lock, worktree, conformance, cli, review-page-browser, claude, main-proxy, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, review-eval, review-report, review-decisions, review-page, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the thirty-two suites longest first: protocol, opencode, opencode-owner, agent-run, lock, worktree, conformance, cli, review-page-browser, claude, main-proxy, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, review-eval, review-report, review-decisions, review-page, design-to-code, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. It runs as many suites at once as the machine has cores: they mostly wait on the
 driver's real timers, so a full run takes about as long as its longest suite rather than ten minutes. Each
 suite's output is printed whole when it ends. A red suite does not stop the run, so one run names every
@@ -86,7 +101,7 @@ development validation passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) 
 subagents they spawn, two cheap Sonnet sessions for the activation pair, and Codex turns: one Astra turn,
 a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe, which checks the
 `subagentThreads` of an agent that took the invitation, and the Codex agents the plans of the full-run,
-split-critic and advisor cases choose. Its header lists the cases and what each spends. Without
+plan-critic and advisor cases choose. Its header lists the cases and what each spends. Without
 `ENTRUST_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.
 
 Publishing an already merged, versioned candidate reuses its recorded checks and required PR CI. It does not

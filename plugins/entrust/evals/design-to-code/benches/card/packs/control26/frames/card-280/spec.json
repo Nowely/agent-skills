@@ -1,0 +1,566 @@
+{
+ "frame": {
+  "name": "card-280",
+  "width": 280,
+  "height": 499
+ },
+ "source": "image boxes",
+ "landmarks": [
+  {
+   "text": "HA-a701-6N-4H-2X25G",
+   "pieces": [
+    1
+   ]
+  },
+  {
+   "text": "New",
+   "pieces": [
+    2
+   ]
+  },
+  {
+   "text": "High performance",
+   "pieces": [
+    3
+   ]
+  },
+  {
+   "text": "EPYC 9374F",
+   "pieces": [
+    4
+   ]
+  },
+  {
+   "selector": ".cpu-vendor",
+   "pieces": [
+    5
+   ]
+  },
+  {
+   "text": "3.33 ГГц",
+   "pieces": [
+    6,
+    7
+   ]
+  },
+  {
+   "text": "16 ядер",
+   "pieces": [
+    8
+   ]
+  },
+  {
+   "text": "×2 CPU",
+   "pieces": [
+    9
+   ]
+  },
+  {
+   "text": "32 ядер",
+   "pieces": [
+    10
+   ]
+  },
+  {
+   "text": "64 потока",
+   "pieces": [
+    11
+   ]
+  },
+  {
+   "text": "256 ГБ RAM",
+   "pieces": [
+    12,
+    13,
+    14
+   ]
+  },
+  {
+   "text": "DDR3 ECC",
+   "pieces": [
+    15
+   ]
+  },
+  {
+   "text": "5587 × 4",
+   "pieces": [
+    16,
+    19,
+    17
+   ]
+  },
+  {
+   "text": "HDD",
+   "pieces": [
+    18
+   ]
+  },
+  {
+   "text": "18626 × 4",
+   "pieces": [
+    20,
+    23,
+    21
+   ]
+  },
+  {
+   "text": "HDD",
+   "pieces": [
+    22
+   ]
+  },
+  {
+   "text": "838 × 2",
+   "pieces": [
+    24,
+    27,
+    25
+   ]
+  },
+  {
+   "text": "SSD",
+   "pieces": [
+    26
+   ]
+  },
+  {
+   "selector": ".meta-icon",
+   "pieces": [
+    30
+   ]
+  },
+  {
+   "text": "MC-LAG 25/25",
+   "pieces": [
+    28
+   ],
+   "box": {
+    "x": 37,
+    "y": 380,
+    "width": 90,
+    "height": 12
+   }
+  },
+  {
+   "selector": ".net-help",
+   "pieces": [],
+   "box": {
+    "x": 133,
+    "y": 381,
+    "width": 11,
+    "height": 11
+   }
+  },
+  {
+   "text": "2+ PSU",
+   "pieces": [
+    29
+   ],
+   "box": {
+    "x": 163,
+    "y": 380,
+    "width": 45,
+    "height": 12
+   }
+  },
+  {
+   "selector": ".power-help",
+   "pieces": [],
+   "box": {
+    "x": 210,
+    "y": 381,
+    "width": 11,
+    "height": 11
+   }
+  },
+  {
+   "text": "125 898,00 ₽ / месяц",
+   "pieces": [
+    31,
+    32,
+    33
+   ]
+  },
+  {
+   "selector": ".kit-icon--deal",
+   "pieces": [
+    34
+   ]
+  },
+  {
+   "text": "Доступно 1",
+   "pieces": [
+    35
+   ]
+  },
+  {
+   "selector": ".kit-icon--low",
+   "pieces": [
+    36
+   ]
+  }
+ ],
+ "skip": {},
+ "pieces": [
+  {
+   "n": 1,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 23,
+    "width": 147,
+    "height": 10
+   }
+  },
+  {
+   "n": 2,
+   "kind": "coloured ink",
+   "box": {
+    "x": 31,
+    "y": 50,
+    "width": 32,
+    "height": 12
+   }
+  },
+  {
+   "n": 3,
+   "kind": "ink",
+   "box": {
+    "x": 92,
+    "y": 50,
+    "width": 128,
+    "height": 15
+   }
+  },
+  {
+   "n": 4,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 93,
+    "width": 85,
+    "height": 12
+   }
+  },
+  {
+   "n": 5,
+   "kind": "ink",
+   "box": {
+    "x": 20,
+    "y": 118,
+    "width": 50,
+    "height": 12
+   }
+  },
+  {
+   "n": 6,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 153,
+    "width": 30,
+    "height": 12
+   }
+  },
+  {
+   "n": 7,
+   "kind": "ink",
+   "box": {
+    "x": 56,
+    "y": 153,
+    "width": 24,
+    "height": 15
+   }
+  },
+  {
+   "n": 8,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 200,
+    "width": 55,
+    "height": 15
+   }
+  },
+  {
+   "n": 9,
+   "kind": "ink",
+   "box": {
+    "x": 96,
+    "y": 200,
+    "width": 51,
+    "height": 12
+   }
+  },
+  {
+   "n": 10,
+   "kind": "ink",
+   "box": {
+    "x": 171,
+    "y": 200,
+    "width": 55,
+    "height": 15
+   }
+  },
+  {
+   "n": 11,
+   "kind": "ink",
+   "box": {
+    "x": 170,
+    "y": 222,
+    "width": 71,
+    "height": 12
+   }
+  },
+  {
+   "n": 12,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 260,
+    "width": 25,
+    "height": 12
+   }
+  },
+  {
+   "n": 13,
+   "kind": "ink",
+   "box": {
+    "x": 51,
+    "y": 260,
+    "width": 17,
+    "height": 12
+   }
+  },
+  {
+   "n": 14,
+   "kind": "ink",
+   "box": {
+    "x": 73,
+    "y": 260,
+    "width": 33,
+    "height": 12
+   }
+  },
+  {
+   "n": 15,
+   "kind": "ink",
+   "box": {
+    "x": 115,
+    "y": 260,
+    "width": 73,
+    "height": 12
+   }
+  },
+  {
+   "n": 16,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 300,
+    "width": 34,
+    "height": 12
+   }
+  },
+  {
+   "n": 17,
+   "kind": "ink",
+   "box": {
+    "x": 74,
+    "y": 300,
+    "width": 8,
+    "height": 12
+   }
+  },
+  {
+   "n": 18,
+   "kind": "ink",
+   "box": {
+    "x": 92,
+    "y": 300,
+    "width": 32,
+    "height": 12
+   }
+  },
+  {
+   "n": 19,
+   "kind": "ink",
+   "box": {
+    "x": 61,
+    "y": 303,
+    "width": 7,
+    "height": 7
+   }
+  },
+  {
+   "n": 20,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 320,
+    "width": 43,
+    "height": 12
+   }
+  },
+  {
+   "n": 21,
+   "kind": "ink",
+   "box": {
+    "x": 83,
+    "y": 320,
+    "width": 8,
+    "height": 12
+   }
+  },
+  {
+   "n": 22,
+   "kind": "ink",
+   "box": {
+    "x": 100,
+    "y": 320,
+    "width": 33,
+    "height": 12
+   }
+  },
+  {
+   "n": 23,
+   "kind": "ink",
+   "box": {
+    "x": 70,
+    "y": 323,
+    "width": 7,
+    "height": 7
+   }
+  },
+  {
+   "n": 24,
+   "kind": "ink",
+   "box": {
+    "x": 20,
+    "y": 340,
+    "width": 26,
+    "height": 12
+   }
+  },
+  {
+   "n": 25,
+   "kind": "ink",
+   "box": {
+    "x": 65,
+    "y": 340,
+    "width": 8,
+    "height": 12
+   }
+  },
+  {
+   "n": 26,
+   "kind": "ink",
+   "box": {
+    "x": 82,
+    "y": 340,
+    "width": 29,
+    "height": 12
+   }
+  },
+  {
+   "n": 27,
+   "kind": "ink",
+   "box": {
+    "x": 52,
+    "y": 343,
+    "width": 7,
+    "height": 7
+   }
+  },
+  {
+   "n": 28,
+   "kind": "ink",
+   "box": {
+    "x": 37,
+    "y": 380,
+    "width": 108,
+    "height": 12
+   }
+  },
+  {
+   "n": 29,
+   "kind": "ink",
+   "box": {
+    "x": 163,
+    "y": 380,
+    "width": 59,
+    "height": 12
+   }
+  },
+  {
+   "n": 30,
+   "kind": "ink",
+   "box": {
+    "x": 21,
+    "y": 381,
+    "width": 10,
+    "height": 10
+   }
+  },
+  {
+   "n": 31,
+   "kind": "ink",
+   "box": {
+    "x": 22,
+    "y": 420,
+    "width": 26,
+    "height": 13
+   }
+  },
+  {
+   "n": 32,
+   "kind": "ink",
+   "box": {
+    "x": 55,
+    "y": 420,
+    "width": 51,
+    "height": 15
+   }
+  },
+  {
+   "n": 33,
+   "kind": "ink",
+   "box": {
+    "x": 112,
+    "y": 420,
+    "width": 73,
+    "height": 16
+   }
+  },
+  {
+   "n": 34,
+   "kind": "coloured ink",
+   "box": {
+    "x": 199,
+    "y": 424,
+    "width": 10,
+    "height": 7
+   }
+  },
+  {
+   "n": 35,
+   "kind": "ink",
+   "box": {
+    "x": 20,
+    "y": 462,
+    "width": 82,
+    "height": 15
+   }
+  },
+  {
+   "n": 36,
+   "kind": "coloured ink",
+   "box": {
+    "x": 121,
+    "y": 466,
+    "width": 6,
+    "height": 9
+   }
+  }
+ ]
+}

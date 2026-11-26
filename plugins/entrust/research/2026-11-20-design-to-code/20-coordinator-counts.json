@@ -1,0 +1,524 @@
+{
+  "wait_agent": {
+    "call_records": 191,
+    "distinct_call_ids": 191,
+    "with_matching_output": 191,
+    "observed_token_count_event_fields": [
+      [
+        "info",
+        "rate_limits",
+        "type"
+      ]
+    ]
+  },
+  "root": {
+    "start_utc": "2026-11-20T21:40:01.974Z",
+    "end_utc": "2026-11-20T23:51:08.331Z",
+    "duration_ms": 7866373,
+    "item_owner_is_root": true,
+    "item_owner_pairs": 1,
+    "completed_items": 1227
+  },
+  "role_records": [
+    {
+      "role": "coordinator",
+      "usage": {
+        "input_tokens": 269029985,
+        "cached_input_tokens": 267968256,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 133400,
+        "reasoning_output_tokens": 48799,
+        "total_tokens": 269163385,
+        "uncached_input_tokens": 1061729
+      },
+      "events": 585,
+      "advancing": 583,
+      "repeated": 2,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true
+    },
+    {
+      "role": "coordinator_permission_review",
+      "usage": {
+        "input_tokens": 4642851,
+        "cached_input_tokens": 4522752,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2034,
+        "reasoning_output_tokens": 404,
+        "total_tokens": 4644885,
+        "uncached_input_tokens": 120099
+      },
+      "events": 23,
+      "advancing": 23,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration2_listing_worker",
+      "usage": {
+        "input_tokens": 1630469,
+        "cached_input_tokens": 1590912,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11920,
+        "reasoning_output_tokens": 2420,
+        "total_tokens": 1642389,
+        "uncached_input_tokens": 39557
+      },
+      "events": 28,
+      "advancing": 28,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_checker_permission_review",
+      "usage": {
+        "input_tokens": 144348,
+        "cached_input_tokens": 100224,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 488,
+        "reasoning_output_tokens": 191,
+        "total_tokens": 144836,
+        "uncached_input_tokens": 44124
+      },
+      "events": 4,
+      "advancing": 4,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "final_answer_critic",
+      "usage": {
+        "input_tokens": 786584,
+        "cached_input_tokens": 720512,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3165,
+        "reasoning_output_tokens": 489,
+        "total_tokens": 789749,
+        "uncached_input_tokens": 66072
+      },
+      "events": 14,
+      "advancing": 14,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "final_completeness",
+      "usage": {
+        "input_tokens": 1193875,
+        "cached_input_tokens": 1121792,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 5529,
+        "reasoning_output_tokens": 875,
+        "total_tokens": 1199404,
+        "uncached_input_tokens": 72083
+      },
+      "events": 17,
+      "advancing": 17,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_listing_worker",
+      "usage": {
+        "input_tokens": 1556545,
+        "cached_input_tokens": 1518464,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 13023,
+        "reasoning_output_tokens": 3304,
+        "total_tokens": 1569568,
+        "uncached_input_tokens": 38081
+      },
+      "events": 27,
+      "advancing": 27,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration2_listing_worker_permission_review",
+      "usage": {
+        "input_tokens": 228598,
+        "cached_input_tokens": 187648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 848,
+        "reasoning_output_tokens": 369,
+        "total_tokens": 229446,
+        "uncached_input_tokens": 40950
+      },
+      "events": 7,
+      "advancing": 7,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration5_real_worker",
+      "usage": {
+        "input_tokens": 27733437,
+        "cached_input_tokens": 27555840,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 49899,
+        "reasoning_output_tokens": 11474,
+        "total_tokens": 27783336,
+        "uncached_input_tokens": 177597
+      },
+      "events": 165,
+      "advancing": 165,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_listing_worker_permission_review",
+      "usage": {
+        "input_tokens": 187931,
+        "cached_input_tokens": 149120,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 791,
+        "reasoning_output_tokens": 381,
+        "total_tokens": 188722,
+        "uncached_input_tokens": 38811
+      },
+      "events": 6,
+      "advancing": 6,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_checker_permission_review",
+      "usage": {
+        "input_tokens": 100230,
+        "cached_input_tokens": 65920,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 328,
+        "reasoning_output_tokens": 129,
+        "total_tokens": 100558,
+        "uncached_input_tokens": 34310
+      },
+      "events": 3,
+      "advancing": 3,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "astra_root_causes",
+      "usage": {
+        "input_tokens": 13552472,
+        "cached_input_tokens": 13407744,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 26580,
+        "reasoning_output_tokens": 2883,
+        "total_tokens": 13579052,
+        "uncached_input_tokens": 144728
+      },
+      "events": 69,
+      "advancing": 69,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration5_real_worker_permission_review",
+      "usage": {
+        "input_tokens": 3140181,
+        "cached_input_tokens": 2957056,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2844,
+        "reasoning_output_tokens": 553,
+        "total_tokens": 3143025,
+        "uncached_input_tokens": 183125
+      },
+      "events": 30,
+      "advancing": 30,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_checker",
+      "usage": {
+        "input_tokens": 24711706,
+        "cached_input_tokens": 24477824,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 57893,
+        "reasoning_output_tokens": 12545,
+        "total_tokens": 24769599,
+        "uncached_input_tokens": 233882
+      },
+      "events": 167,
+      "advancing": 167,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_verify",
+      "usage": {
+        "input_tokens": 2486915,
+        "cached_input_tokens": 2389376,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9789,
+        "reasoning_output_tokens": 1851,
+        "total_tokens": 2496704,
+        "uncached_input_tokens": 97539
+      },
+      "events": 30,
+      "advancing": 30,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration3_real_worker",
+      "usage": {
+        "input_tokens": 12387273,
+        "cached_input_tokens": 12251776,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 33235,
+        "reasoning_output_tokens": 6841,
+        "total_tokens": 12420508,
+        "uncached_input_tokens": 135497
+      },
+      "events": 94,
+      "advancing": 94,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_verify_permission_review",
+      "usage": {
+        "input_tokens": 148609,
+        "cached_input_tokens": 107136,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 609,
+        "reasoning_output_tokens": 277,
+        "total_tokens": 149218,
+        "uncached_input_tokens": 41473
+      },
+      "events": 5,
+      "advancing": 5,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration1_checker_permission_review",
+      "usage": {
+        "input_tokens": 939015,
+        "cached_input_tokens": 838400,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1474,
+        "reasoning_output_tokens": 507,
+        "total_tokens": 940489,
+        "uncached_input_tokens": 100615
+      },
+      "events": 15,
+      "advancing": 15,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "coordinator_permission_review",
+      "usage": {
+        "input_tokens": 2313189,
+        "cached_input_tokens": 2181376,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2595,
+        "reasoning_output_tokens": 826,
+        "total_tokens": 2315784,
+        "uncached_input_tokens": 131813
+      },
+      "events": 24,
+      "advancing": 24,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration3_real_worker_permission_review",
+      "usage": {
+        "input_tokens": 958756,
+        "cached_input_tokens": 857216,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1500,
+        "reasoning_output_tokens": 466,
+        "total_tokens": 960256,
+        "uncached_input_tokens": 101540
+      },
+      "events": 15,
+      "advancing": 15,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration4_static_worker",
+      "usage": {
+        "input_tokens": 682731,
+        "cached_input_tokens": 655104,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6464,
+        "reasoning_output_tokens": 2306,
+        "total_tokens": 689195,
+        "uncached_input_tokens": 27627
+      },
+      "events": 18,
+      "advancing": 18,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "astra_root_causes_permission_review",
+      "usage": {
+        "input_tokens": 69631,
+        "cached_input_tokens": 36096,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 224,
+        "reasoning_output_tokens": 104,
+        "total_tokens": 69855,
+        "uncached_input_tokens": 33535
+      },
+      "events": 2,
+      "advancing": 2,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    },
+    {
+      "role": "iteration4_static_worker_permission_review",
+      "usage": {
+        "input_tokens": 110304,
+        "cached_input_tokens": 86016,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 519,
+        "reasoning_output_tokens": 112,
+        "total_tokens": 110823,
+        "uncached_input_tokens": 24288
+      },
+      "events": 5,
+      "advancing": 5,
+      "repeated": 0,
+      "advancing_delta_differs_from_last": 0,
+      "sum_of_advancing_last_equals_delta": true,
+      "includes_reasoning_all_true": true,
+      "identical_advancing_usage_vectors_also_in_root": 0
+    }
+  ],
+  "five_worker_sum": {
+    "input_tokens": 43990455,
+    "cached_input_tokens": 43572096,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 114541,
+    "reasoning_output_tokens": 26345,
+    "total_tokens": 44104996,
+    "uncached_input_tokens": 418359
+  },
+  "root_and_five_workers": {
+    "input_tokens": 313020440,
+    "cached_input_tokens": 311540352,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 247941,
+    "reasoning_output_tokens": 75144,
+    "total_tokens": 313268381,
+    "uncached_input_tokens": 1480088
+  },
+  "all_locally_linked_monitored_usage": {
+    "input_tokens": 368735635,
+    "cached_input_tokens": 365746560,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 365151,
+    "reasoning_output_tokens": 98106,
+    "total_tokens": 369100786,
+    "uncached_input_tokens": 2989075
+  },
+  "worker_vs_root": [
+    {
+      "role": "iteration2_listing_worker",
+      "worker_output": 11920,
+      "root_output_bracketing_worker": 6655,
+      "worker_uncached": 39557,
+      "root_uncached_bracketing_worker": 5708
+    },
+    {
+      "role": "iteration1_listing_worker",
+      "worker_output": 13023,
+      "root_output_bracketing_worker": 2668,
+      "worker_uncached": 38081,
+      "root_uncached_bracketing_worker": 7568
+    },
+    {
+      "role": "iteration5_real_worker",
+      "worker_output": 49899,
+      "root_output_bracketing_worker": 12879,
+      "worker_uncached": 177597,
+      "root_uncached_bracketing_worker": 168718
+    },
+    {
+      "role": "iteration3_real_worker",
+      "worker_output": 33235,
+      "root_output_bracketing_worker": 7419,
+      "worker_uncached": 135497,
+      "root_uncached_bracketing_worker": 14857
+    },
+    {
+      "role": "iteration4_static_worker",
+      "worker_output": 6464,
+      "root_output_bracketing_worker": 2944,
+      "worker_uncached": 27627,
+      "root_uncached_bracketing_worker": 1385
+    }
+  ]
+}

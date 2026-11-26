@@ -145,7 +145,7 @@ test("every agent that ran is named by model and id, and an id alone is red",
   ));
 
 test("the command line: one LINT= per hit, then WORDS=, SHA256= of the bytes read and HITS= last; exit 0 clean, 1 on a hit, 2 on a refusal",
-  "the coordinator lints the frozen draft and hands its digest to the critic; the digest must be of exactly the bytes linted",
+  "the coordinator lints the draft last before its read; the digest must be of exactly the bytes linted",
   async () => {
     const clean = "Opus W2 added the runner; node --test passed, 10 of 10.\n";
     const file = path.join(TMP, "clean.md");
@@ -163,16 +163,15 @@ test("the command line: one LINT= per hit, then WORDS=, SHA256= of the bytes rea
     return problems.length === 0 || problems.join("; ");
   });
 
-test("--help is the canonical reference: every rule and flag is named there, and SHA256 is the draft digest, not the manifest's",
-  "the pages point at --help instead of restating the rules, so --help is where they must be; a help that called the draft's digest the critic's sent a coordinator to compare the wrong numbers",
+test("--help is the canonical reference: every rule and flag is named there, and SHA256 is the draft's digest, with no manifest or critic beside it",
+  "the pages point at --help instead of restating the rules, so --help is where they must be; the answer page reads the draft without a manifest, so a help that still named the critic's manifest would send a coordinator after a number nothing compares",
   async () => {
     const r = await cli(["--help"]);
     const missing = ["path", "field", "five-fields", "machinery", "model-slug", "agent-id", "length", "bare-id", "agent-not-named",
       "unsupported-success", "--agents", "--receipt", "--receipts", "--request", "--max-words", "SHA256=", "HITS=",
-      "the draft digest", "the manifest digest the critic returns is\n          another number"].filter((s) => !r.out.includes(s));
-    // The critic returns the manifest's digest, not this one (orchestrate page, the critic bullet).
-    const wrong = /SHA256=[^\n]*the digest the critic returns/.test(r.out);
-    return (r.code === 0 && missing.length === 0 && !wrong) || `exit ${r.code}; --help lacks ${missing.join(", ") || "nothing"}${wrong ? "; it calls SHA256 the digest the critic returns" : ""}`;
+      "the draft digest: the sha256 of the bytes read"].filter((s) => !r.out.includes(s));
+    const wrong = /manifest|critic/i.test(r.out);
+    return (r.code === 0 && missing.length === 0 && !wrong) || `exit ${r.code}; --help lacks ${missing.join(", ") || "nothing"}${wrong ? "; it still names a manifest or a critic" : ""}`;
   });
 
 const failed = await runCases(CASES);

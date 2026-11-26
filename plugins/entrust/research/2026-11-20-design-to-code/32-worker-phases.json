@@ -1,0 +1,128 @@
+{
+  "method": "Timestamp windows; request usage is total model context for responses in the window, not the isolated cost of each activity. Boundary timestamps rounded for milestones; phases overlap in purpose.",
+  "phases": [
+    {
+      "from": "2026-11-21T18:44:09.467Z",
+      "to": "2026-11-21T18:49:54Z",
+      "responses": 37,
+      "uncached": 98924,
+      "cached": 2907008,
+      "output": 12219,
+      "calls": 37
+    },
+    {
+      "from": "2026-11-21T18:49:54Z",
+      "to": "2026-11-21T18:52:55Z",
+      "responses": 20,
+      "uncached": 23090,
+      "cached": 2475136,
+      "output": 6030,
+      "calls": 20
+    },
+    {
+      "from": "2026-11-21T18:52:55Z",
+      "to": "2026-11-21T19:13:26Z",
+      "responses": 106,
+      "uncached": 78762,
+      "cached": 20349568,
+      "output": 45051,
+      "calls": 106
+    },
+    {
+      "from": "2026-11-21T19:13:26Z",
+      "to": "2026-11-21T19:58:35Z",
+      "responses": 231,
+      "uncached": 123827,
+      "cached": 79135488,
+      "output": 88451,
+      "calls": 230
+    },
+    {
+      "from": "2026-11-21T19:58:35Z",
+      "to": "2026-11-21T20:01:47Z",
+      "responses": 21,
+      "uncached": 8539,
+      "cached": 9116928,
+      "output": 4674,
+      "calls": 21
+    },
+    {
+      "from": "2026-11-21T20:01:47Z",
+      "to": "2026-11-21T20:23:22.369Z",
+      "responses": 115,
+      "uncached": 477591,
+      "cached": 54095616,
+      "output": 40916,
+      "calls": 113
+    }
+  ],
+  "totals": {
+    "responses": 530,
+    "uncached": 810733,
+    "cached": 168079744,
+    "output": 197341,
+    "calls": 527
+  },
+  "largest_uncached_requests": [
+    {
+      "time": "2026-11-21T20:03:26.846Z",
+      "uncached": 437482,
+      "input": 444010,
+      "cached": 6528
+    },
+    {
+      "time": "2026-11-21T18:44:15.276Z",
+      "uncached": 30698,
+      "input": 30698,
+      "cached": 0
+    },
+    {
+      "time": "2026-11-21T18:44:34.193Z",
+      "uncached": 9993,
+      "input": 45321,
+      "cached": 35328
+    },
+    {
+      "time": "2026-11-21T18:44:45.945Z",
+      "uncached": 9280,
+      "input": 63936,
+      "cached": 54656
+    },
+    {
+      "time": "2026-11-21T18:44:42.987Z",
+      "uncached": 8950,
+      "input": 54390,
+      "cached": 45440
+    },
+    {
+      "time": "2026-11-21T18:50:55.374Z",
+      "uncached": 7195,
+      "input": 122779,
+      "cached": 115584
+    },
+    {
+      "time": "2026-11-21T18:45:46.904Z",
+      "uncached": 7139,
+      "input": 83171,
+      "cached": 76032
+    },
+    {
+      "time": "2026-11-21T18:50:17.487Z",
+      "uncached": 6326,
+      "input": 114230,
+      "cached": 107904
+    },
+    {
+      "time": "2026-11-21T18:46:39.766Z",
+      "uncached": 5969,
+      "input": 90961,
+      "cached": 84992
+    },
+    {
+      "time": "2026-11-21T18:55:34.905Z",
+      "uncached": 5743,
+      "input": 152943,
+      "cached": 147200
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+[
+ {
+  "landmark": "125 898,00 ₽ / месяц",
+  "property": "width",
+  "frame": "card-601",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Inter sets the 17 px bold price 20 px wider than the design's font; the size is the kit's t-price.",
+  "options": [
+   "accept as is",
+   "change the layout or the font so it is gone (costs more than the difference is worth here)"
+  ]
+ },
+ {
+  "landmark": "root",
+  "property": "height",
+  "frame": "card-280",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Inter's line boxes and the wider groups add 9 px over six rows; every row uses the drawn pitch within 2 px.",
+  "options": [
+   "accept as is",
+   "change the layout or the font so it is gone (costs more than the difference is worth here)"
+  ]
+ },
+ {
+  "landmark": "root",
+  "property": "width",
+  "frame": "network-popover",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The popover's width is its content (kit-popover, max-content up to 320); the title \"Скорость соединения сетевых карт\" is 34 px wider in Inter.",
+  "options": [
+   "accept as is",
+   "change the layout or the font so it is gone (costs more than the difference is worth here)"
+  ]
+ },
+ {
+  "landmark": [
+   ".cpu__vendor",
+   ".foot__net .card__net-icon",
+   ".foot__net .kit-help",
+   ".foot__power .kit-help",
+   ".price__deal",
+   ".stock__low",
+   "New",
+   "64 потока",
+   "MC-LAG"
+  ],
+  "property": "region",
+  "category": "system",
+  "status": "proposed",
+  "reason": "Stand-in pictures: the kit has no AMD logo, network icon, deal chevrons, low-stock bars or settings icon, nor the design's help ring; small inline SVGs and a grey wordmark are used. The areas that differ are those icons and the card's edge (the kit's outline against the frame's shadow).",
+  "options": [
+   "accept as is",
+   "change the layout or the font so it is gone (costs more than the difference is worth here)"
+  ],
+  "region": [
+   0,
+   0,
+   800,
+   600
+  ]
+ },
+ {
+  "landmark": "root",
+  "property": "height",
+  "frame": "card-601",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "Inter's line boxes are taller than the design's font in the three-line RAM column; the rows keep the drawn pitch within 4 px.",
+  "options": [
+   "accept as is",
+   "tighten line heights below the kit's"
+  ]
+ },
+ {
+  "landmark": ".stock__low",
+  "property": "x",
+  "frame": "card-601",
+  "category": "platform",
+  "status": "proposed",
+  "reason": "The footer texts (13 px) and the stock text are wider in Inter, so the free space between the power help and the stock is 21 px shorter; both are right/left aligned as drawn.",
+  "options": [
+   "accept as is",
+   "ask for the design's font in the story"
+  ]
+ }
+]

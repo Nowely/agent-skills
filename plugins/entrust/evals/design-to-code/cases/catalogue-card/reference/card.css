@@ -1,0 +1,19 @@
+/* The card: one row when it is at least 640 px wide, stacked below that. */
+.card { display: grid; gap: 12px 24px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.card[data-layout="wide"] { grid-template-columns: minmax(240px, 1fr) auto auto; align-items: start; }
+.card[data-layout="compact"] { grid-template-columns: minmax(0, 1fr); }
+.card__main { min-width: 0; }
+.card__title { margin: 0; font: 600 17px/24px Inter, sans-serif; overflow-wrap: anywhere; }
+.card__sku { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.card__tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.tag { padding: 2px 8px; border-radius: 999px; background: var(--chip); font-size: 12px; line-height: 18px; white-space: nowrap; }
+
+.sizes { display: flex; flex-wrap: wrap; gap: 6px; }
+.size { min-width: 36px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  color: var(--ink); font: 600 13px/26px Inter, sans-serif; cursor: pointer; }
+.size[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.card__buy { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.card[data-layout="compact"] .card__buy { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.price { margin: 0; font: 700 17px/24px Inter, sans-serif; white-space: nowrap; }
+.card__stock { margin: 0; color: var(--muted); font-size: 13px; line-height: 18px; white-space: nowrap; }

@@ -2,11 +2,10 @@
 name: codex
 description: >-
   Claude-to-Codex adapter: launch external Codex agents with per-call rights, isolated worktrees,
-  evidence gates and receipts. Use in Claude when external Codex is requested or chosen for an
-  independent review, competing implementation or multi-provider panel. Native Codex subagents
-  use the host's own delegation facilities instead.
+  evidence gates and receipts. Use in Claude only when the user asks for Codex or names a Codex
+  model. Native Codex subagents use the host's own delegation facilities instead.
 metadata:
-  version: "0.44.0"
+  version: "0.47.2"
 license: MIT
 allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
@@ -32,19 +31,18 @@ Apply all six rules:
 
 1. Show the Codex agents and their exact model allocations in the approved plan before launch. Read-only
    rights need no write grant; they do not remove model selection from the plan.
-2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents and say the resulting
-   panel is all-Claude and shares one model bias.
+2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents.
 3. Attribute every finding; if a Codex agent failed or returned nothing, say so and never backfill it with
    a Claude answer.
 4. Knowing the answer is not a reason to skip a requested second opinion.
 5. Never add allow-rules on the user's behalf.
 6. Compose from the Codex status the codex page printed as it loaded: a `CODEX=` line and, when it reads
    `ready`, one `MODEL=` line per model the account lists.
-   - `ready`: every Codex agent's `MODEL:` resolves to a listed model. If the selected model is unavailable,
-     report it and propose available alternatives. Use a replacement only when the approved standing policy
-     names that fallback or the user approves the amended plan; nearest-model order alone grants no authority.
+   - `ready`: every Codex agent's `MODEL:` resolves to a listed model. An unavailable selected model goes as
+     [orchestrate's plan reference](../orchestrate/references/plan.md#composition) says; nearest-model order alone
+     grants no authority.
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
-     signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
+     signed in, not installed, or lists no model.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
      a signed-out server lists models too.
    - The command itself in place of those lines was not run: run it with the Bash tool before composing.
@@ -54,15 +52,14 @@ Apply all six rules:
 | What the user says | Composition |
 | --- | --- |
 | “no codex”, “just you” | zero Codex agents |
-| nothing | follow [orchestrate's model policy](../orchestrate/SKILL.md#capacity-and-models); add a Codex agent only for a role that improves quality, time or cost |
+| nothing | zero Codex agents; [orchestrate's model policy](../orchestrate/SKILL.md#capacity-and-models) composes the team |
 | “a codex agent”, “one of them codex” | exactly one |
 | “half codex” | half the agents, rounded up |
 | “mostly codex” | every agent except the coordinator |
 | “only codex”, “all codex” | every agent, including a one-agent task |
 | “two of five codex” | exactly as stated |
 
-Add another model only when its perspective or independent coverage can improve the result. “Only codex”
-means Codex does the task while the coordinator checks it.
+“Only codex” means Codex agents do the task and its checks; the coordinator stays this session.
 
 ## Rights
 
@@ -109,7 +106,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/../orchestrate/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`, the newest listed model of that name, or a full slug | this agent needs a model other than the configured default; in prose the name is capitalised |
-| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | set for each launch and continuation under the orchestration policy; choose for the task under the orchestration policy |
+| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | set for each launch and continuation under the [orchestration policy](../orchestrate/SKILL.md#capacity-and-models) |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network | the user asked for the provider's web search; "the network is allowed" is not that ask |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` on a valid return and still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |

@@ -1,0 +1,104 @@
+/* Offer card. The card adapts to its own width, not the window's: card.js picks data-mode on .card as the widest
+   mode whose content fits the container (so longer data switches wider): A one row of everything, B one spec row
+   with CPU and price below, C CPU beside the id and one wrapping spec row, D (base) one column.
+   Only kit tokens and type styles are used. */
+.offer { position: relative; }
+.card { display: grid; box-sizing: border-box; padding: var(--s-4) var(--s-5); gap: calc(var(--s-5) + var(--s-1) / 2); border-radius: var(--r-card);
+  background: var(--c-surface); box-shadow: var(--shadow-card); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.nw { white-space: nowrap; }
+.c-id, .c-cpu { display: grid; gap: var(--s-1); align-content: start; }
+.c-id, .c-cpu { min-width: 0; }
+.c-sku { overflow-wrap: anywhere; }
+.c-badges { display: flex; flex-wrap: wrap; gap: var(--s-2) 6px; }
+.c-vendor { font: 800 14px/16px sans-serif; letter-spacing: .05em; color: var(--c-faint); }
+.c-model { overflow-wrap: anywhere; }
+.c-specs { display: contents; }
+.c-cc { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-2) var(--s-3); }
+.c-pc { display: flex; align-items: center; gap: var(--s-2); }
+.c-freq, .c-pc, .c-cores > * { white-space: nowrap; }
+.c-disks { margin: 0; padding: 0; list-style: none; }
+.c-ps { display: flex; flex-direction: column; gap: var(--s-6); }
+.c-price { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.c-amount { white-space: nowrap; }
+.c-stock { display: flex; align-items: center; gap: var(--s-2); }
+.c-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.c-fi { display: inline-flex; align-items: center; gap: var(--s-1); }
+.c-fi .c-neticon { margin-right: var(--s-1); }
+.c-neticon { flex: none; width: 12px; height: 12px; color: var(--c-faint); }
+.kit-icon svg { display: block; }
+.c-dealbtn { padding: 0; border: 0; cursor: pointer; }
+.c-configure { color: var(--c-text); }
+.kit-help:focus-visible, .kit-icon:focus-visible, .kit-action:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+/* popovers: anchored to their trigger, above it, flipping and shifting to stay in the window */
+.offer-pop { position: fixed; margin: var(--s-2) 0; inset: auto; border: 0; max-width: min(320px, calc(100vw - 16px));
+  position-area: block-start span-inline-end; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; }
+.offer-pop:not(:popover-open) { display: none; }
+.offer-pop__gap { margin-top: var(--s-3); }
+
+/* D, base: one column. Unit words shown ("3.33 ГГц", "×2 CPU", "256 ГБ RAM"), size-first disks. */
+/* base (D): size-first disks, unit words shown */
+.ab { display: none; }
+.c-disks li { display: flex; gap: var(--s-2); white-space: nowrap; }
+
+
+.c-badges .kit-badge { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
+
+/* C: CPU beside the id, specs in one wrapping row, price and stock share a row. */
+.card:not([data-mode="D"]) { padding: var(--s-3) var(--s-4); }
+.card[data-mode="C"] { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-4); row-gap: calc(var(--s-5) + var(--s-1) / 2); }
+.card[data-mode="C"] .c-specs { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: var(--s-4) var(--s-5);
+  justify-content: space-between; align-items: flex-start; }
+.card[data-mode="C"] .c-foot, .card[data-mode="C"] .c-ps { grid-column: 1 / -1; }
+.card[data-mode="C"] .c-ps { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--s-2) var(--s-4); }
+.card[data-mode="C"] .c-ram .nw .u, .card[data-mode="C"] .cpu-u,
+.card[data-mode="B"] .c-ram .nw .u, .card[data-mode="B"] .c-freq .u, .card[data-mode="B"] .c-pc .u,
+.card[data-mode="A"] .c-ram .nw .u, .card[data-mode="A"] .c-freq .u, .card[data-mode="A"] .c-pc .u { display: none; }
+.card[data-mode="C"] .c-ram, .card[data-mode="B"] .c-ram, .card[data-mode="A"] .c-ram { width: min-content; }
+.card[data-mode="C"] .c-ramtype, .card[data-mode="B"] .c-ramtype, .card[data-mode="A"] .c-ramtype { display: block; }
+.card[data-mode="B"] .ab, .card[data-mode="A"] .ab { display: inline; }
+.card[data-mode="B"] .ba, .card[data-mode="A"] .ba { display: none; }
+
+/* B and A: grid areas. */
+.card[data-mode="B"], .card[data-mode="A"] { column-gap: calc(var(--s-6) + var(--s-1)); row-gap: 0; }
+.card[data-mode="A"] { row-gap: var(--s-4); }
+.card[data-mode="B"] { column-gap: var(--s-5); }
+.card[data-mode="B"] .c-disks { padding-right: var(--s-5); }
+.card[data-mode="B"] .c-specs, .card[data-mode="B"] .c-cc, .card[data-mode="A"] .c-specs, .card[data-mode="A"] .c-cc { display: contents; }
+.card[data-mode="B"] .c-ps, .card[data-mode="A"] .c-ps { display: contents; }
+.card[data-mode="B"] .c-id, .card[data-mode="A"] .c-id { grid-area: id; }
+.card[data-mode="B"] .c-cpu, .card[data-mode="A"] .c-cpu { grid-area: cpu; }
+.card[data-mode="B"] .c-freq, .card[data-mode="A"] .c-freq { grid-area: freq; }
+.card[data-mode="B"] .c-pc, .card[data-mode="A"] .c-pc { grid-area: pc; }
+.card[data-mode="B"] .c-cores, .card[data-mode="A"] .c-cores { grid-area: cores; }
+.card[data-mode="B"] .c-ram, .card[data-mode="A"] .c-ram { grid-area: ram; }
+.card[data-mode="B"] .c-disks, .card[data-mode="A"] .c-disks { grid-area: disks; }
+.card[data-mode="B"] .c-price, .card[data-mode="A"] .c-price { grid-area: price; justify-self: end; flex-direction: column; align-items: flex-end; gap: var(--s-1); }
+.card[data-mode="B"] .c-stock, .card[data-mode="A"] .c-stock { grid-area: stock; justify-self: end; }
+.card[data-mode="B"] .c-foot, .card[data-mode="A"] .c-foot { grid-area: foot; }
+.card[data-mode="B"] .c-lowicon, .card[data-mode="A"] .c-lowicon { order: -1; }
+.card[data-mode="B"] {
+  grid-template-columns: minmax(112px, 1fr) auto auto auto min-content auto;
+  grid-template-areas: "id freq pc cores ram disks" "cpu cpu cpu cpu price price" "foot foot foot foot stock stock"; }
+.card[data-mode="A"] {
+  grid-template-columns: minmax(112px, 1.1fr) minmax(88px, 1.1fr) auto auto auto min-content auto auto;
+  grid-template-areas: "id cpu freq pc cores ram disks price" "foot foot foot foot foot foot foot stock"; }
+.card[data-mode="A"] .c-price { flex-direction: row; align-items: center; gap: var(--s-2); flex-wrap: nowrap; }
+
+/* Type sizes as drawn. The kit's body token is 15/20 and is used as is in D; the frames draw the values in A, B and C
+   at 13/18 and the price at 14 (A, B) and 16 (C). Local override of the kit's sizes, proposed in the ledger. */
+.card:not([data-mode="D"]) .t-body { font-size: 13px; line-height: 18px; }
+.card:not([data-mode="D"]) .kit-action { font-size: 13px; line-height: 18px; }
+.card[data-mode="A"] .t-price, .card[data-mode="B"] .t-price { font-size: 14px; line-height: 20px; }
+.card[data-mode="C"] .t-price { font-size: 16px; line-height: 22px; }
+.offer-pop { padding: var(--s-3) var(--s-4); font-size: 13px; line-height: 18px; }
+.offer-pop .kit-popover__title { margin-bottom: var(--s-1); }
+/* The narrow frame draws the badge and the chip larger than the kit's 20 px. */
+.card[data-mode="D"] .kit-badge { height: 26px; padding: 0 var(--s-2); font-size: 15px; line-height: 26px; }
+.card[data-mode="D"] .kit-chip { height: 30px; padding: 0 var(--s-2); font-size: 15px; }
+/* the discount indicator follows the price where it sits in a row (C, D) */
+.card[data-mode="A"] .c-deal, .card[data-mode="C"] .c-deal, .card[data-mode="D"] .c-deal { order: 1; }
+/* the footer is drawn smaller than the values: the kit's caption size (13) in D, 12 in A, B and C */
+.c-foot { font-size: 13px; line-height: 18px; }
+.card:not([data-mode="D"]) .c-foot { font-size: 12px; }
+.card[data-mode="C"] .c-disks { padding-right: var(--s-3); }

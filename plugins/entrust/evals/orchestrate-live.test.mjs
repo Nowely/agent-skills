@@ -28,12 +28,13 @@
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
 //   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
-//   F6, Q3a      briefs only after the split critic, each naming its file; the shared file has one writer   7
-//   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
+//   F6, Q3a      shared file has one writer (5, 7); multi-worker briefs after the plan critic (7)       5, 7
+//   approach     the architecture critic runs first when its trigger holds (7), and not for one helper (5) 5, 7
+//   F4, P8b      the draft is read after its lint, after an architecture critic by a final reader; it goes out 5, 7
 //   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
 //   P13b, F20a   the draft linted first; the answer lints clean, names every agent, credits each fact right 5, 7
-//   F20b         every return, the critic's too, in the five fields against its schema, before synthesis  5, 7
-//   F9, F10, F15, F21  briefs name the runner, no check read inline whole, inline reads priced            5, 7
+//   F20b         every return, the reader's too, in the five fields against its schema, before synthesis  5, 7
+//   F9, F10, F15, F21  briefs name the runner, the coordinator runs no check and edits nothing, reads priced 5, 7
 //   F11, F19, P10a     a write agent's ENVIRONMENT: line says something and names paths that exist        5, 7
 // What it spends: sessions under Opus for cases 1 and 5 to 8, one under Fable for case 2, two cheap Sonnet
 // sessions for case 9, the subagents they spawn, and Codex turns: one Astra in case 4 (two with the
@@ -103,9 +104,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/harness.mjs";
 import {
-  CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
-  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
-  skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
+  CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, briefs, cardProblems, codexCalls,
+  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, roleOf, runProblems as checkRun,
+  sharedOwnerProblems, skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
@@ -465,9 +466,9 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
   // "no codex" is zero Codex agents: a plan that names one by model has not honoured it.
   if (!codexPlanned && (CODEX_SLUG.test(text) || /\bCodex\s+(Astra|Sol|Terra|Luna)\b/.test(text)))
     problems.push("an all-Claude plan names a Codex agent");
-  // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
-  // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
-  // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
+  // No Claude-agent requirement: the worker may be a Codex agent the user named. That the coordinator edits
+  // nothing itself is judged after "go" (runProblems), and whether every Claude Agent call that does run
+  // carries a tag is judged there too, on the calls themselves.
   if (codexPlanned && (!/\bCodex\b/.test(text)
       || !/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text)))
     problems.push("the plan announces no composition: the word Codex and a count or \"zero\"");
@@ -506,8 +507,9 @@ const SCHEMA_FILE = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fi
 const readJsonFile = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
 
 // What a run left: each agent's prompt file and report under the run directories, keyed by the agent's
-// directory name, which is the id the plan registered; and the receipts the coordinator's own runner
-// ledger holds, read from the --ledger its capture-check calls named.
+// directory name, which is the id the plan registered; and the receipts the ledgers hold that the
+// coordinator's lint of its draft took (--receipts, the workers' and the verifier's ledgers), with any
+// --ledger a root capture-check call named, which the gate also reports as the coordinator running a check.
 function runEvidence(dirs, s) {
   const prompts = [], reports = [];
   for (const run of dirs) {
@@ -523,22 +525,24 @@ function runEvidence(dirs, s) {
   // A ledger named through $TMPDIR (measured on the rerun of 2026-09-28: `--ledger $TMPDIR/v1-ledger.jsonl`
   // in a brief) is this machine's temporary directory, which the agents share.
   const tmp = (process.env.TMPDIR || os.tmpdir()).replace(/\/+$/, "");
-  const ledgers = new Set(s.toolUses.filter((u) => u.parent === null && /capture-check\.mjs/.test(String(u.input.command ?? "")))
-    .map((u) => /--ledger\s+"?([^"\s]+)"?/.exec(String(u.input.command))?.[1]).filter(Boolean)
-    .map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
+  const root = s.toolUses.filter((u) => u.parent === null).map((u) => String(u.input.command ?? ""));
+  const ledgers = new Set([
+    ...root.filter((c) => /capture-check\.mjs/.test(c)).map((c) => /--ledger\s+"?([^"\s]+)"?/.exec(c)?.[1]),
+    ...root.filter((c) => /lint-draft\.mjs/.test(c)).flatMap((c) => [...c.matchAll(/--receipts\s+"?([^"\s]+)"?/g)].map((m) => m[1])),
+  ].filter(Boolean).map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
   const ledger = [...ledgers].flatMap((f) => { try { return parseReceipts(fs.readFileSync(f, "utf8")); } catch { return []; } });
   return { prompts, reports, ledger, ledgers: [...ledgers] };
 }
 
 // Everything after "go" that the answer and its evidence must show (lib/gate-checks.mjs runProblems, one
 // delta each), and the measurements the page asks the plan to price, saved beside the case, never asserted.
-function runProblems({ s1, s2, dirs, dir, request, phases }) {
+function runProblems({ s1, s2, dirs, dir, request, phases, units, architecture = false }) {
   const { prompts, reports, ledger, ledgers } = runEvidence(dirs, s2);
   const reg = registeredPlan(path.join(dir, "scratch"));
   const schema = readJsonFile(SCHEMA_FILE);
   // The fixtures stage nothing and run no daemon, so the capsule's staged inputs and tools are empty here;
   // gate-checks.test.mjs pins that half against a staged fixture.
-  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, reportOf: readJsonFile,
+  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, units, architecture, reportOf: readJsonFile,
     cwd: path.join(dir, "scratch"), tmp: [os.tmpdir(), process.env.TMPDIR] });
   save(dir, "run-evidence.json", JSON.stringify({ plan: reg, agents: r.agents, receipts: r.receipts, ledgers,
     prompts: prompts.map((p) => p.id), reports: reports.map((x) => x.id) }, null, 2));
@@ -937,8 +941,13 @@ test("the full run under Opus: plan, go, run",
       problems.push(`${reportPaths.length} report file(s) named by the agent calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
-    // The slug task's phases: the fan-out's returns, the verification, the synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 4 }));
+    // One helper in a new lib/slug.mjs is no new module, the page says, so no trigger of the architecture critic
+    // holds and none runs. lib/slug.mjs has one writer. runProblems checks the minimum team and its order,
+    // including a plan critic before the workers if there are several, and the final draft read.
+    if (briefs(s2).map(roleOf).includes("architecture critic")) problems.push("an architecture critic ran, though no trigger holds for one helper in a new file");
+    problems.push(...sharedOwnerProblems(s2, { shared: "lib/slug.mjs", reportOf: (p) => readJsonFile(p) }));
+    // At most five phase updates before the answer.
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 5, units: ["lib/slug.mjs", "test/slug.test.mjs"] }));
     return settle(dir, problems);
   });
 
@@ -949,8 +958,8 @@ const NO_CODEX_TASK =
   + "joins words with hyphens, with a test in test/slug.test.mjs. CHECK: node --test passes, run by an agent "
   + "that did not write the code. RETURN: the files and the test count.";
 
-test("plan only, no codex: the codex page is never loaded, nothing is registered, and the card still shows",
-  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the four rows",
+test("plan only, no codex: the codex page is never loaded, nothing is registered, the card still shows, and the role catalogue stays unread",
+  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference, for its card, is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the four rows; a reference is read when its step needs it, and each agent reads its own row of the role catalogue, so a default plan leaves roles.md to them",
   async () => {
     const dir = caseDir(6, "plan-no-codex");
     const scratch = scratchClone(dir);
@@ -967,16 +976,18 @@ test("plan only, no codex: the codex page is never loaded, nothing is registered
     if (wrong) problems.push(wrong);
     if (r.killed) problems.push("the session was killed at the timeout");
     problems.push(...planProblems({ s, scratch, head0, codexPlanned: false }));
-    // Native composition comes from the common plan reference without loading the external adapter.
-    const readIt = s.toolUses.some((u) => u.parent === null && /references[\\/]plan\.md/.test(JSON.stringify(u.input)));
-    if (!readIt) problems.push("the plan never read references/plan.md before composing");
+    // The card comes from the common plan reference without loading the external adapter; the role catalogue
+    // is the agents' to read, each its own row, so the coordinator of a default plan never opens it.
+    const reads = (file) => s.toolUses.some((u) => u.parent === null && new RegExp(`references[\\\\/]${file}\\.md`).test(JSON.stringify(u.input)));
+    if (!reads("plan")) problems.push("the plan never read references/plan.md, where its card is defined");
+    if (reads("roles")) problems.push("the coordinator of a default plan read references/roles.md, which its agents read for their own rows");
     return settle(dir, problems);
   });
 
 // --------------------------------------------------------------- 7
 
 // Two units that share one interface: the task changes the interface, so exactly one worker must own it,
-// and the split critic is what says so before any worker brief exists.
+// and the plan critic judges that before any worker brief exists.
 function splitProject(dir) {
   const s = path.join(dir, "scratch");
   const files = {
@@ -1004,10 +1015,10 @@ const SPLIT_TASK =
   + "both import it, one worker per file, with every test in test/ still passing. CHECK: node --test passes, run "
   + "by an agent that wrote none of it. RETURN: the files changed and the test count.";
 
-test("the split critic: no worker brief before it returns, each brief names its file, the shared interface has one owner",
-  "D12 (#16's acceptance check, #15 F6: T5 fanned out before its split critique finished): a brief is written from the critic's corrected split, so none can exist before it",
+test("the plan critic: no worker brief before it returns, the shared interface has one owner, and the architecture critic comes first",
+  "D12 (#16's acceptance check, #15 F6: T5 fanned out before its split critique finished): a brief is written from the plan the critic judged, so none can exist before it; the corrected-split file the split critic wrote, and each brief's naming of it, are no longer asserted, since the plan critic returns objections, not a split; renaming an export two files import changes a contract other units consume, so the architecture critic runs and a final reader reads the draft",
   async () => {
-    const dir = caseDir(7, "split-critic");
+    const dir = caseDir(7, "plan-critic");
     const scratch = splitProject(dir);
     const head0 = git(scratch, "rev-parse", "HEAD").trim();
     const sessionId = crypto.randomUUID();
@@ -1030,8 +1041,8 @@ test("the split critic: no worker brief before it returns, each brief names its 
     if (nodeTest.code !== 0) problems.push(`node --test in the scratch exited ${nodeTest.code}`);
     if (!/export const format\b/.test(fs.readFileSync(path.join(scratch, "lib", "shared.mjs"), "utf8"))) problems.push("lib/shared.mjs does not export format");
     if (git(scratch, "rev-parse", "HEAD").trim() !== head0) problems.push("HEAD moved, so the run committed");
-    // Split critique, fan-out, verification, synthesis, and the answer.
-    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 5 }));
+    // Architecture critique, plan critique, fan-out, verification, synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 6, units: ["lib/a.mjs", "lib/b.mjs", "lib/shared.mjs"], architecture: true }));
     return settle(dir, problems);
   });
 
@@ -1046,7 +1057,7 @@ const ADVISOR_TURNS = [
 ];
 
 test("an explicit advisor request starts consultation and continues until the user pauses or resumes it",
-  "a Claude-hosted advisor verifies Astra through the Codex adapter, uses the request's authority without duplicate approval, and retains the adapter schema on continuation",
+  "the user names Astra, which Claude Code does not run natively, so the Claude-hosted advisor reaches it through the Codex adapter (an advisor no one names runs natively), uses the request's authority without duplicate approval, and retains the adapter schema on continuation",
   async () => {
     const dir = caseDir(8, "advisor");
     const scratch = splitProject(dir);

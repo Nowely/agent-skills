@@ -5,14 +5,14 @@
 //   node capture-check.mjs --summary --ledger FILE
 //   node capture-check.mjs --help
 //
-// Why a script and not a sentence: the orchestrate page asked the coordinator to redirect its own checks
+// Why a script and not a sentence: the orchestrate page once asked the coordinator to redirect its own checks
 // into a file and read back a short tail, and the floods still came (#15 F9: 64, 31 and 23 MB of inline
 // output in three sessions), and a `| tail` written to bound one returned tail's status, not the check's
 // (#15 F10: a failing suite read as exit 0). Here the bound and the exit do not depend on the command
 // being written well: everything goes to the log, the tail is capped, and the command runs under
 // pipefail, so a pipeline's status is its failing stage's.
 //
-// The receipt lines are what the coordinator's context is charged for, so they are few and fixed, and the
+// The receipt lines are what the checking agent's context is charged for, so they are few and fixed, and the
 // ledger is what lets a run count them afterwards (#15 F21, F15: inline work was never priced, and
 // "bounded" was never a number).
 

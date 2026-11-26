@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Offer card story</title>
+<link rel="stylesheet" href="kit/kit.css">
+<link rel="stylesheet" href="card.css">
+<style>body { margin: 0; padding: 24px; background: var(--c-page); } #host { width: 764px; }</style>
+<div id="host"></div>
+<script src="data.js"></script>
+<script src="card.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const host = document.getElementById("host");
+  if (params.get("w")) host.style.width = `${params.get("w")}px`;
+  if (params.get("top")) document.body.style.paddingTop = `${params.get("top")}px`;
+  renderCard(host, OFFERS[params.get("data") || "card-764"], { onConfigure: (id) => { window.configured = id; } });
+</script>

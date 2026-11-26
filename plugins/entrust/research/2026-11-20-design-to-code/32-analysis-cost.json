@@ -1,0 +1,59 @@
+{
+  "from_utc": "2026-11-21T21:43:47.535Z",
+  "captured_utc": "2026-11-21T22:13:59.925906+00:00",
+  "method": "Observed distinct model response usage by role and linked permission reviewer, not billed cost; coordinator includes user-directed follow-ups and excludes work after capture. Output includes reasoning.",
+  "roles": {
+    "coordinator": {
+      "sessions": 1,
+      "responses": 145,
+      "uncached_input": 351931,
+      "cached_input": 70430848,
+      "output": 65085,
+      "outer_calls": 127,
+      "last_usage_utc": "2026-11-21T22:13:59.495Z"
+    },
+    "independent advisor permission reviewer": {
+      "sessions": 1,
+      "responses": 1,
+      "uncached_input": 8239,
+      "cached_input": 5888,
+      "output": 144,
+      "outer_calls": 0,
+      "last_usage_utc": "2026-11-21T21:45:13.361Z"
+    },
+    "timeline analyst": {
+      "sessions": 1,
+      "responses": 52,
+      "uncached_input": 190044,
+      "cached_input": 7235072,
+      "output": 30993,
+      "outer_calls": 49,
+      "last_usage_utc": "2026-11-21T21:58:39.151Z"
+    },
+    "usage analyst": {
+      "sessions": 1,
+      "responses": 50,
+      "uncached_input": 70963,
+      "cached_input": 3639552,
+      "output": 27907,
+      "outer_calls": 47,
+      "last_usage_utc": "2026-11-21T21:58:14.191Z"
+    },
+    "independent advisor": {
+      "sessions": 1,
+      "responses": 65,
+      "uncached_input": 145215,
+      "cached_input": 5936384,
+      "output": 32309,
+      "outer_calls": 58,
+      "last_usage_utc": "2026-11-21T22:13:44.343Z"
+    }
+  },
+  "total": {
+    "responses": 313,
+    "uncached_input": 766392,
+    "cached_input": 87247744,
+    "output": 156438,
+    "outer_calls": 281
+  }
+}

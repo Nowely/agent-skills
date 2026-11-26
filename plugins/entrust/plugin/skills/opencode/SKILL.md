@@ -8,7 +8,7 @@ description: >-
   model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.44.0"
+  version: "0.47.2"
 license: MIT
 ---
 
@@ -33,8 +33,8 @@ Choose the route first; when task details are missing, ask for them before check
 worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
 “Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary rule
 below. A model mentioned only for information or discussion does not request a worker.
-An explicit request for an OpenCode worker authorizes sending the selected provider the prompt and task-needed
-data within the requested scope; do not ask for the same consent again. Follow the shared call page's
+What an explicit request authorizes the provider to receive is the shared call page's
+[before the first call](../orchestrate/references/external.md#before-the-first-call). Follow its
 [relay context](../orchestrate/references/external.md#in-codex-or-opencode) even without an orchestration plan.
 
 ## Select and launch
@@ -58,9 +58,10 @@ data within the requested scope; do not ask for the same consent again. Follow t
    continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
    selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant. A requested
-   variant is not proof of the provider's effective reasoning effort. The coordinator chooses low, medium, high,
-   or xhigh as appropriate; max and ultra require a separate explicit user request and are never selected
-   automatically. Existing authorization applies to continuations in its scope; a previous report alone is not
+   variant is not proof of the provider's effective reasoning effort. Under orchestrate use its
+   [model and effort policy](../orchestrate/SKILL.md#capacity-and-models); otherwise the coordinator chooses low,
+   medium, high or xhigh as appropriate, and max and ultra require a separate explicit user request. Existing
+   authorization applies to continuations in its scope; a previous report alone is not
    proof of authorization. The runtime cannot verify authorization and reports the effective effort as unknown
    when unconfirmed.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model

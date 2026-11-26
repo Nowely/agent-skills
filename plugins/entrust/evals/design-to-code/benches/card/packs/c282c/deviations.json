@@ -1,0 +1,8 @@
+[
+  { "landmark": "root", "property": "width", "frame": "network-popover", "max": 9, "category": "system", "status": "proposed",
+    "reason": "The reference image includes the popover's shadow and tail margin and is drawn in the design's narrower font; the kit popover (width: max-content, max 320) is 298.6 px wide with the fallback font, text and padding as drawn.",
+    "options": ["accept: the box follows its text", "force width 267 px: would wrap the title in the fallback font"] },
+  { "landmark": "root", "property": "height", "frame": "network-popover", "max": 32, "category": "system", "status": "proposed",
+    "reason": "The image's 161 px includes about 17 px of shadow above and the tail below the popover box; the box itself is 130 px with the kit's 14/16 padding and 22 px lines.",
+    "options": ["accept: the shadow margin is not part of the component", "export the reference cropped to the box"] }
+]

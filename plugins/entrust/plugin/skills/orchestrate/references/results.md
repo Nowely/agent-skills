@@ -13,10 +13,11 @@ or failed and preserve its evidence; do not silently replace its answer with you
 
 ## A worktree agent's harvest
 
-Inspect the actual diff, untracked artifacts and any authorised commits. A preserved tree alone
-does not prove the result was transferred. Apply the reviewed result within existing authority;
-if the plan did not authorise landing it, propose the concrete harvest and wait for that decision.
-Verify the combined tree after transfer, including inputs absent from an isolated worktree.
+The coordinator decides when a reviewed result lands, within existing authority; if the plan did not
+authorise landing it, it proposes the concrete harvest and waits for that decision. A worker applies the
+harvest: it inspects the actual diff, untracked artifacts and any authorised commits, and transfers
+them, since a preserved tree alone does not prove the result was transferred. The verifier then checks
+the combined tree, including inputs absent from an isolated worktree.
 
 ## Writers collided
 

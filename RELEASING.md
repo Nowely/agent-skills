@@ -39,13 +39,12 @@ the GitHub release.
 3. **Check what CI does not.**
    - Review the complete release diff; confirm no scratch files or credentials are tracked.
    - Run the plugin's conditional checks (its section below) whose trigger the release hits.
-   - A check that spends tokens — a live session, a live gate, a trigger run — is proposed to the owner with what
-     it would show and what it costs, and runs only on their word; one not run is named in the package.
-   - When the release changes what a session shows, propose a fresh session loaded from the candidate
-     (`claude --plugin-dir plugins/<plugin>/plugin`), not from the installed copy, confirm its version, and exercise the
-     changed behaviour.
-   - When the release changes a path, a brief or a procedure the other plugin uses, run one real example through
-     the other plugin.
+   - A check that spends tokens — a live session, a live gate, a trigger run, a real example through the other
+     plugin — is no release requirement and is not proposed: it runs only when the owner asks for it, and the package
+     names each one not run.
+   - When the owner asks to see a changed behaviour in a session, load a fresh one from the candidate
+     (`claude --plugin-dir plugins/<plugin>/plugin`), not from the installed copy, and confirm its version.
+   - When the release changes a path, a brief or a procedure the other plugin uses, the package says so.
 4. **One word for the package.** Show in one message the versions, the diff, the notes, which conditional checks
    ran and why, and that the agent merges. The owner's word covers push, PR, squash merge, tag, release, and the
    local update when the message lists it. Any change to the tree after the word voids it: show the package again.
@@ -93,13 +92,13 @@ the GitHub release.
   directory and reports that CLI's version; no schema snapshot or CLI version is pinned. CI skips this check
   explicitly and reports it as not run. Run the separate fidelity check when its real-server evidence is needed;
   its opt-in live turn spends a model call and needs the owner's approval.
-- **Live orchestrate gate during development**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the candidate
-  changes a skill page, the agent file, the launcher or the driver, a model, effort or cap, a path or a right, or
-  follows a Codex CLI or Claude Code upgrade. It spends real sessions and a Codex turn. Add
-  `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` after a Codex CLI upgrade: it spends a second turn on a probe that invites
-  the agent to delegate. Keep the artifact directory its last line prints with the release notes. A failed case
-  blocks candidate preparation, and a skipped case is not a pass: the summary names it. Record the codex-cli and
-  Claude Code builds used. These checks do not run again to publish a merged candidate.
+- **Live orchestrate gate**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, runs only on the
+  owner's word and is no release requirement. It shows most for a candidate that changes a skill page, the agent
+  file, the launcher or the driver, a model, effort or cap, a path or a right, or follows a Codex CLI or Claude Code
+  upgrade. It spends real sessions and a Codex turn; `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` spends a second turn on a
+  probe that invites the agent to delegate. When it runs, keep the artifact directory its last line prints with the
+  release notes and record the codex-cli and Claude Code builds; a failed case blocks candidate preparation, and a
+  skipped case is not a pass: the summary names it. It does not run again to publish a merged candidate.
 - **Notes**: use the codex-cli and Node versions recorded during development, and the open entries of
   `plugins/entrust/ISSUES.md` as known issues. Do not start new measurements to fill publication notes.
 
@@ -113,8 +112,9 @@ the GitHub release.
 - **Clarity trigger**: when `plugins/terse/plugin/skills/clarity/SKILL.md` or its discovery metadata changes, on the
   PR's branch before the version is set, follow `plugins/terse/evals/clarity-trigger.count.mjs` with 20
   hand-labelled sessions, `plugins/terse/evals/clarity-trigger.live.md`, and
-  `node plugins/terse/evals/clarity-trigger.official.mjs --run`. The live and official runs spend Claude tokens and
-  stay out of CI. Record model, Claude Code version, settings and trigger fractions; the owner sets the release
+  `node plugins/terse/evals/clarity-trigger.official.mjs --run`. The live and official runs spend Claude tokens,
+  stay out of CI and run only on the owner's word. Record model, Claude Code version, settings and trigger fractions; the owner sets the release
   threshold after the first run.
-- **Cross-plugin during development**: terse's briefs launch entrust agents, so an entrust change to how an agent
-  is launched runs one terse brief through it on the PR's branch, before the merge.
+- **Cross-plugin during development**: terse's briefs launch entrust agents, so the package names an entrust change
+  to how an agent is launched; one terse brief through it spends tokens and runs on the owner's word, on the PR's
+  branch before the merge.

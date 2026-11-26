@@ -1,0 +1,408 @@
+{
+ "frame": {
+  "name": "card-764",
+  "width": 764,
+  "height": 114
+ },
+ "source": "image boxes",
+ "landmarks": [
+  {
+   "text": "BA-i201-B",
+   "pieces": [
+    2
+   ]
+  },
+  {
+   "text": "High performance",
+   "pieces": [
+    18
+   ]
+  },
+  {
+   "text": "EPYC 9374F",
+   "pieces": [
+    3
+   ]
+  },
+  {
+   "selector": ".vendor",
+   "pieces": [
+    15
+   ]
+  },
+  {
+   "text": "3.33",
+   "pieces": [
+    4
+   ]
+  },
+  {
+   "text": "16",
+   "pieces": [
+    5
+   ]
+  },
+  {
+   "text": "x2",
+   "pieces": [
+    1
+   ]
+  },
+  {
+   "text": "32 ядер",
+   "pieces": [
+    6
+   ]
+  },
+  {
+   "text": "64 потока",
+   "pieces": [
+    16
+   ]
+  },
+  {
+   "text": "256 ГБ",
+   "pieces": [
+    7
+   ]
+  },
+  {
+   "text": "DDR3 ECC",
+   "pieces": [
+    17,
+    19
+   ]
+  },
+  {
+   "text": "2 × 838",
+   "pieces": [
+    8,
+    14,
+    9
+   ]
+  },
+  {
+   "text": "SSD",
+   "pieces": [
+    10
+   ]
+  },
+  {
+   "text": "125 898,00 ₽",
+   "pieces": [
+    11,
+    12,
+    13
+   ]
+  },
+  {
+   "selector": ".net-icon",
+   "pieces": [
+    24
+   ]
+  },
+  {
+   "text": "MC-LAG 25/25",
+   "pieces": [
+    20
+   ],
+   "box": {
+    "x": 33,
+    "y": 88,
+    "width": 78,
+    "height": 12
+   }
+  },
+  {
+   "selector": ".c-net .kit-help",
+   "box": {
+    "x": 113,
+    "y": 87,
+    "width": 14,
+    "height": 14
+   }
+  },
+  {
+   "text": "2+ PSU",
+   "pieces": [
+    25,
+    21
+   ],
+   "box": {
+    "x": 137,
+    "y": 88,
+    "width": 36,
+    "height": 12
+   }
+  },
+  {
+   "selector": ".c-psu .kit-help",
+   "box": {
+    "x": 176,
+    "y": 87,
+    "width": 14,
+    "height": 14
+   }
+  },
+  {
+   "text": "Доступно 1",
+   "pieces": [
+    22,
+    23
+   ]
+  }
+ ],
+ "skip": {},
+ "pieces": [
+  {
+   "n": 1,
+   "kind": "ink",
+   "box": {
+    "x": 352,
+    "y": 15,
+    "width": 13,
+    "height": 10
+   }
+  },
+  {
+   "n": 2,
+   "kind": "ink",
+   "box": {
+    "x": 17,
+    "y": 16,
+    "width": 53,
+    "height": 9
+   }
+  },
+  {
+   "n": 3,
+   "kind": "ink",
+   "box": {
+    "x": 159,
+    "y": 16,
+    "width": 74,
+    "height": 10
+   }
+  },
+  {
+   "n": 4,
+   "kind": "ink",
+   "box": {
+    "x": 277,
+    "y": 16,
+    "width": 26,
+    "height": 10
+   }
+  },
+  {
+   "n": 5,
+   "kind": "ink",
+   "box": {
+    "x": 321,
+    "y": 16,
+    "width": 14,
+    "height": 10
+   }
+  },
+  {
+   "n": 6,
+   "kind": "ink",
+   "box": {
+    "x": 388,
+    "y": 16,
+    "width": 48,
+    "height": 13
+   }
+  },
+  {
+   "n": 7,
+   "kind": "ink",
+   "box": {
+    "x": 474,
+    "y": 16,
+    "width": 42,
+    "height": 10
+   }
+  },
+  {
+   "n": 8,
+   "kind": "ink",
+   "box": {
+    "x": 542,
+    "y": 16,
+    "width": 7,
+    "height": 10
+   }
+  },
+  {
+   "n": 9,
+   "kind": "ink",
+   "box": {
+    "x": 566,
+    "y": 16,
+    "width": 22,
+    "height": 10
+   }
+  },
+  {
+   "n": 10,
+   "kind": "ink",
+   "box": {
+    "x": 602,
+    "y": 16,
+    "width": 25,
+    "height": 10
+   }
+  },
+  {
+   "n": 11,
+   "kind": "ink",
+   "box": {
+    "x": 663,
+    "y": 16,
+    "width": 22,
+    "height": 10
+   }
+  },
+  {
+   "n": 12,
+   "kind": "ink",
+   "box": {
+    "x": 690,
+    "y": 16,
+    "width": 43,
+    "height": 12
+   }
+  },
+  {
+   "n": 13,
+   "kind": "ink",
+   "box": {
+    "x": 737,
+    "y": 16,
+    "width": 8,
+    "height": 10
+   }
+  },
+  {
+   "n": 14,
+   "kind": "ink",
+   "box": {
+    "x": 554,
+    "y": 18,
+    "width": 7,
+    "height": 6
+   }
+  },
+  {
+   "n": 15,
+   "kind": "ink",
+   "box": {
+    "x": 159,
+    "y": 38,
+    "width": 37,
+    "height": 9
+   }
+  },
+  {
+   "n": 16,
+   "kind": "ink",
+   "box": {
+    "x": 387,
+    "y": 38,
+    "width": 62,
+    "height": 10
+   }
+  },
+  {
+   "n": 17,
+   "kind": "ink",
+   "box": {
+    "x": 475,
+    "y": 38,
+    "width": 35,
+    "height": 10
+   }
+  },
+  {
+   "n": 18,
+   "kind": "ink",
+   "box": {
+    "x": 23,
+    "y": 41,
+    "width": 96,
+    "height": 11
+   }
+  },
+  {
+   "n": 19,
+   "kind": "ink",
+   "box": {
+    "x": 475,
+    "y": 56,
+    "width": 25,
+    "height": 10
+   }
+  },
+  {
+   "n": 20,
+   "kind": "ink",
+   "box": {
+    "x": 33,
+    "y": 88,
+    "width": 94,
+    "height": 12
+   }
+  },
+  {
+   "n": 21,
+   "kind": "ink",
+   "box": {
+    "x": 153,
+    "y": 88,
+    "width": 37,
+    "height": 12
+   }
+  },
+  {
+   "n": 22,
+   "kind": "ink",
+   "box": {
+    "x": 671,
+    "y": 88,
+    "width": 63,
+    "height": 13
+   }
+  },
+  {
+   "n": 23,
+   "kind": "ink",
+   "box": {
+    "x": 739,
+    "y": 88,
+    "width": 4,
+    "height": 10
+   }
+  },
+  {
+   "n": 24,
+   "kind": "ink",
+   "box": {
+    "x": 17,
+    "y": 89,
+    "width": 10,
+    "height": 10
+   }
+  },
+  {
+   "n": 25,
+   "kind": "ink",
+   "box": {
+    "x": 137,
+    "y": 89,
+    "width": 11,
+    "height": 9
+   }
+  }
+ ]
+}

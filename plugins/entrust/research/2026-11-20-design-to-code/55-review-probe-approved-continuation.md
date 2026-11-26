@@ -1,0 +1,23 @@
+# Approved continuation of the review-return probe
+
+After the [first response](54-review-return-probe.md), the owner explicitly approved the requested note update and final check. The **same Codex session** was resumed; this was a separate, approval-assisted continuation, not another autonomous first submission. Terra updated `review.md`, reran the complete check and handed over `pass`: four frames, the 320–760 px sweep and 15/15 configured journeys held. The original preregistered outcome remains **unknown** because the first handoff was incomplete; this continuation does not replace it or establish what would have happened without the owner's intervention.
+
+The final owner-facing response stated that the map allegation did not reproduce at 520 px with `editable: false`, and that the dashboard Edit callback works but its preview does not open an editor. It did not assert the false map allegation or turn the preview limitation into a blocker. The updated `review.md` records the placeholder, notes the independent second look and attributes the map allegation to that review, but does not explicitly attribute the dashboard observation to the reviewer. Full explicit source attribution for that observation is therefore not established. The owner has not accepted the synthetic product result.
+
+## Authorized boundary and evidence
+
+Before the continuation, the first answer and archive remained unchanged, and a copy of the original session rollout was saved. The exact follow-up message was:
+
+> The plan is approved: update `review.md` with the verified state, limitations and owner decisions, then run the complete check last to refresh `out/handoff.md` and its evidence. Proceed with those actions.
+
+The message was delivered byte for byte; its SHA-256 is `12ee751bf83de3280ebf50671c5ec9b05da80d0feedb4fb3d2e703e83891e2e9`. It supplied authorization for the builder's requested work, without adding a new reviewer finding or expected answer. The original rollout copy SHA-256 is `02f3239ad7598cd1f3a87b327d2f6ae485752d0507d7b58298d636f6e7f13d07`; the resumed rollout retains that copy as an exact prefix. The first submission archive remains SHA-256 `e2d8719512af53d1750a9be8266921b4a95bf4d8b8eb03f70e274b166ef48900`. Raw logs, local session identifiers and archives remain private.
+
+The resumed task-complete event was at **14:04:26.757 UTC**; the observer recorded the final answer, file hashes and process list at **14:04:26.763 UTC**, approximately 6 ms later. A subsequent process check found no matching builder or check. All 55 observed regular files matched the later continuation archive, SHA-256 `52bd725f00e2ddedd7e0d0f6b4bb4d8361971ad0ff6fc70947d88869fd8583f1`; subsequent comparison found no additions, removals or changes. The snapshot excluded `node_modules` and `.git`, did not establish the state during the 6 ms before observation and cannot exclude an escaped process or transient write.
+
+A comparison of the two frozen archives found only six changed files: `review.md` and `out/gallery.html`, `out/handoff.md`, `out/history.jsonl`, `out/report.md` and `out/result.json`. Component code, fixed consumers, design references and kit were unchanged. The independent browser controls from the first phase therefore still apply to those unchanged inputs. The final screenshot files were also unchanged; the [reference/candidate pictures and reconstructed consumer views](54-review-return-probe.md#pictures) retain their earlier provenance.
+
+## Separate continuation cost and limits
+
+The continuation ran `gpt-6.1-terra` at `xhigh`, workspace-write with network enabled, on-request approval and automatic review. Its thread settings recorded `service_tier=default`; the provider-side served tier and billing are not observed. It used four outer calls, one complete check and no spawned review helper, over **45.468 s**. Raw turn telemetry was **9,810 uncached input**, **284,160 cached input** and **1,218 output** tokens, including 204 reasoning tokens. These figures describe the continuation only; any additional approval-review or coordinator overhead not captured in that turn is unknown. The two-turn thread totals were 60,445 uncached input, 697,344 cached input and 4,459 output tokens, including 1,375 reasoning tokens; these are raw telemetry, not a deduplicated billing calculation.
+
+The continued answer is conditioned on the user's explicit approval and the prior response and context. Its successful check and handoff do not turn the first response into an unassisted success, prove the revised instruction caused the result, test asynchronous reviewer delivery or establish general reliability. The reviewer response in this case was simulated, and the observation remains one sample.
