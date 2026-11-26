@@ -3,6 +3,24 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Review report
+
+- The Code toolbar's controls share one height and one type size. The requirement filter is a menu like Purpose's,
+  with each requirement's whole text instead of 48 characters, and «File order» is gone: «Needs attention / All»
+  already shows what waits for a decision, and the tree and the code keep one order.
+- × at the top right closes the keys, the export and the Code panel, whether a block is selected or not; the text
+  Close among the export's actions is gone. In a narrow window the panel and the tree float below the toolbar
+  wherever the page is scrolled, so their heads stay reachable.
+- The file tree hides from its own head and comes back from a «Files» rail beside the code; the toolbar's «Files»
+  button, whose purpose was not obvious, is gone. A tree entry is one line in smaller type and the tree scrolls
+  sideways for a long name; the file header is one line, its directories giving way from the left while the file's
+  name stays whole, and the full path is its title. Fold arrows are a legible chevron.
+- The paragraph comment control is an icon in the paragraph's own margin, never over its text.
+- The export shows the preview, then «Copy text» and «Download JSON»; the raw text opens on request, and by itself,
+  selected, when the clipboard refuses.
+
 ## 0.47.2 — 2026-11-24
 
 ### Orchestration

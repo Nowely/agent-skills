@@ -28,9 +28,20 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const splitPath = (p) => { const i = p.lastIndexOf("/"); return [p.slice(0, i + 1), p.slice(i + 1)]; };
 const slashBreaks = (s) => esc(s).replace(/\//g, "/<wbr>");
 const pathHtml = (p) => { const [d, b] = splitPath(p); return `<span class="dir">${slashBreaks(d)}</span><b>${esc(b)}</b>`; };
+// A path on one line: the directories give way from the left, the file's name stays; the whole path is the title.
+const pathLine = (p) => { const [d, b] = splitPath(p); return `${d ? `<span class="dir"><span dir="ltr">${esc(d)}</span></span>` : ""}<b>${esc(b)}</b>`; };
+const closeX = (act, label, extra = "") => `<button class="btn sm icon quiet x" ${act} aria-label="${esc(label)}" title="${esc(label)}"${extra}>${ICON.close}</button>`;
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 const kbd = (k) => `<span class="kbd">${esc(k)}</span>`;
+// The page's few icons, drawn in the text's colour; the control that holds one carries the words.
+const svg = (d) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
+const ICON = {
+  close: svg("M4 4l8 8M12 4l-8 8"),
+  chevron: svg("M4 6l4 4 4-4"),
+  comment: svg("M3 3.5h10v7H7l-3 2.5v-2.5H3z"),
+  panel: svg("M2.5 3h11v10h-11zM6.5 3v10"),
+};
 
 // ---------------------------------------------------------------- the diff: each file's rows, read from its <noscript>
 // A row is [kind 0 context | 1 added | 2 removed, old number, new number, block, code markup, length]; page.mjs
@@ -111,7 +122,7 @@ const S = {
   field: {}, reasonText: {}, lcEdit: null, pcEdit: null, pcDraft: {}, tab: "summary",
   sel: { summary: null, decisions: null, code: null, details: null }, cur: null, file: null,
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
-  code: { mode: "attention", order: "diff", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
+  code: { mode: "attention", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
     pinned: new Set(), whole: new Set(), doneOpen: new Set(), set: null, tree: window.innerWidth > 1150, dirsClosed: new Set(), ctx: false },
   viewed: new Set(), scroll: {}, theme: "auto", rendered: {}, find: { open: false, q: "", matches: [], i: -1 },
 };
@@ -149,11 +160,10 @@ function load() {
   if (["auto", "light", "dark"].includes(ui.theme)) S.theme = ui.theme;
   if (typeof ui.tree === "boolean") S.code.tree = ui.tree;
   if (Array.isArray(ui.dirsClosed)) S.code.dirsClosed = new Set(ui.dirsClosed.filter((d) => typeof d === "string"));
-  if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
 }
 function save() {
   if (storage === "unreadable") { unsaved = true; showStorage(); return offerUnreadable(); }
-  const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
+  const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed] } };
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
@@ -385,12 +395,12 @@ function openExport() {
   $("#export-preview").innerHTML = EXPORT_SECTIONS.filter(([id]) => m.sections[id].length).map(([id, head]) => `<section class="xp"><h3>${esc(L(head))}</h3>${m.sections[id].map((r) => `<p>${esc(r.text)}${r.go ? `<button class="btn sm quiet" data-act="export-go" data-target="${esc(r.go)}">${esc(L("p.show-it"))}</button>` : ""}</p>`).join("")}</section>`).join("")
     + `<p class="muted small">${esc(m.progress)}</p>`;
   $("#export-text").value = exportText(m);
-  $("#export-status").textContent = "";
+  $("#export-status").textContent = ""; $("#export-raw").open = false;
   if (!dialog.open) dialog.showModal();
 }
 // «Copied» only after the clipboard confirms; on refusal the text is selected for the owner to copy.
 function copyText(box, status) {
-  const fail = () => { box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
+  const fail = () => { const d = box.closest("details"); if (d) d.open = true; box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
   try { navigator.clipboard.writeText(box.value).then(() => { status.textContent = L("p.export.copied"); }, fail); } catch { fail(); }
 }
 function downloadExport() {
@@ -411,6 +421,8 @@ const KEYS = [
 function keysHtml() {
   return KEYS.map(([head, rows]) => `<h3>${esc(L(head))}</h3>${rows.map(([keys, what]) => `<span>${keys.map(kbd).join(" ")}</span><span${keys.length ? "" : ' class="muted small"'}>${esc(L(what))}</span>`).join("")}`).join("");
 }
+// A dialog's head: its title, which takes focus when it opens, and × at the top right.
+const dialogHead = (id, title) => `<div class="dialog-head"><h2 id="${id}" tabindex="-1" autofocus>${esc(title)}</h2><form method="dialog">${closeX("", L("p.close"))}</form></div>`;
 function renderShell() {
   const c = D.counters;
   app.innerHTML = `
@@ -424,20 +436,18 @@ function renderShell() {
       <button class="btn quiet sm" data-act="keys" aria-haspopup="dialog">${esc(L("p.keys"))} ${kbd("?")}</button></div>
   </div></nav>
   <main>${TABS.map((t) => `<section class="tabpanel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join("")}</main>
-  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h" tabindex="-1" autofocus>${esc(L("p.keys"))}</h2>
+  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in">${dialogHead("keys-h", L("p.keys"))}
     <div class="keys">${keysHtml()}</div>
-    <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p>
-    <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>
-  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h" tabindex="-1" autofocus>${esc(L("p.export"))}</h2>
+    <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p></div></dialog>
+  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export">${dialogHead("export-h", L("p.export"))}
     <p class="muted small" id="export-note">${esc(kept("export"))}</p>
     <div id="export-preview"></div>
-    <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
-    <p id="export-status" role="status"></p>
-    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>
-  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export"><h2 id="unreadable-h" tabindex="-1" autofocus>${esc(L("p.unreadable"))}</h2>
+    <div class="dialog-actions"><p id="export-status" role="status"></p><button class="btn" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn primary" data-act="export-copy">${esc(L("p.export.copy"))}</button></div>
+    <details id="export-raw"><summary>${esc(L("p.export.text"))}</summary><textarea id="export-text" readonly rows="10" aria-label="${esc(L("p.export.text"))}"></textarea></details></div></dialog>
+  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export">${dialogHead("unreadable-h", L("p.unreadable"))}
     <p class="muted small">${esc(L("p.unreadable.note"))}</p>
     <label for="unreadable-text">${esc(L("p.unreadable.text"))}</label><textarea id="unreadable-text" readonly rows="10"></textarea>
-    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
+    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button></div>
     <p id="unreadable-status" role="status"></p></div></dialog>`;
   applyTheme(); showStorage();
 }
@@ -590,7 +600,7 @@ function miniItem(c) {
 // An anchor is "item/field": q2/context.0, f3/what, verdict/paragraph.1, recommendation/text, step.2/text,
 // scenario.1/change, challenge.1/point. Its words come from anchorLabel, never from the page that drew it.
 function pcWrap(anchor, inner, tag = "div") {
-  return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}">${esc(L("p.pc.comment"))}</button></${tag}>`;
+  return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}" title="${esc(L("p.pc.comment"))}">${ICON.comment}</button></${tag}>`;
 }
 function pcExtra(anchor) {
   if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div><textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
@@ -1012,12 +1022,7 @@ function fileAttn(fi) {
 }
 const attnText = (a) => [a.open && L("p.file.open", n(a.open), P("p.count.of-decisions", a.total)), a.by.decided && P("p.count.decided", a.by.decided),
   a.by.answered && P("p.count.answered", a.by.answered), a.by.deferred && P("p.count.deferred", a.by.deferred), a.by.na && P("p.count.na", a.by.na)].filter(Boolean).join(" · ");
-function fileOrder() {
-  const all = F.map((_, fi) => fi);
-  if (S.code.order !== "attention") return all;
-  const rank = (fi) => { const a = fileAttn(fi); return a.open ? 0 : a.total ? 1 : 2; };
-  return all.sort((x, y) => rank(x) - rank(y) || x - y);
-}
+const fileOrder = () => F.map((_, fi) => fi);
 let WALK_CACHE = null;
 const invalidateWalk = () => { WALK_CACHE = null; WALK_F = null; };
 // the walk: decisions with code, each with its blocks as positions; one unit for «open» everywhere
@@ -1172,34 +1177,38 @@ function fileBodyHtml(fi, items) {
 // ---------------------------------------------------------------- Code: rendering, drawing on demand, and releasing far files
 let io = null;
 function renderCode() {
-  const reqOpts = D.requirements.map((r) => { const t = r.text.length > 48 ? r.text.slice(0, 48) + "…" : r.text; return `<option value="${esc(r.id)}">R${esc(r.id)} · ${esc(t)} (${n(r.blocks.length)})</option>`; }).join("");
+  const reqItem = (id, label, text, count) => `<button class="mi" role="menuitemradio" aria-checked="false" data-act="req-pick" data-req="${esc(id)}">${label}<span class="mi-t">${text}</span>${count === null ? "" : `<span class="muted">${n(count)}</span>`}</button>`;
+  const reqOpts = reqItem("", `<span class="mi-id"></span>`, esc(L("p.code.any-req")), null) + D.requirements.map((r) => reqItem(r.id, `<span class="mi-id">R${esc(r.id)}</span>`, prose(r.text), r.blocks.length)).join("");
   const rules = D.purposes.map((p) => `<li><b>${esc(PURPOSE_LABEL[p])}</b>: ${esc(L("purpose.rules." + p))}</li>`).join("");
   $("#panel-code").innerHTML = `
   <div class="toolbar" role="toolbar" aria-label="${esc(L("p.code.toolbar"))}">
-    <button class="btn sm" data-act="tree" aria-pressed="${S.code.tree}" aria-controls="tree" title="${esc(L("p.code.tree-title"))}">${esc(L("files"))}</button>
     <div class="seg" role="group" aria-label="${esc(L("p.code.which"))}"><button data-act="mode" data-mode="attention" aria-pressed="${S.code.mode === "attention"}" title="${esc(L("p.code.attention-title"))}">${esc(L("p.code.attention"))}</button><button data-act="mode" data-mode="all" aria-pressed="${S.code.mode === "all"}">${esc(L("p.code.all"))}</button></div>
-    <div class="pop" id="purpose-pop"><button class="btn sm" data-act="purpose-menu" aria-expanded="false" aria-haspopup="true" id="purpose-btn"></button>
+    <div class="pop" id="purpose-pop"><button class="btn sm menu-btn" data-act="purpose-menu" aria-expanded="false" aria-haspopup="true" id="purpose-btn"></button>
       <div class="pop-menu" hidden role="group" aria-label="${esc(L("purpose"))}">${D.purposes.filter((p) => D.purposeCounts[p].files || D.purposeCounts[p].blocks).map((p) => `<label><input type="checkbox" data-act="purpose" value="${p}"${S.code.purposes.has(p) ? " checked" : ""}> ${esc(PURPOSE_LABEL[p])} <span class="muted">${esc(P("p.count.files", D.purposeCounts[p].files))}</span></label>`).join("")}
       <div class="rules">${esc(L("p.code.rules"))}<ul>${rules}</ul></div></div></div>
-    <select data-act="req" aria-label="${esc(L("requirement"))}"><option value="">${esc(L("p.code.any-req"))}</option>${reqOpts}</select>
-    <select data-act="order" aria-label="${esc(L("p.code.order"))}"><option value="diff">${esc(L("p.code.order-diff"))}</option><option value="attention">${esc(L("p.code.order-attention"))}</option></select>
+    <div class="pop" id="req-pop"><button class="btn sm menu-btn" data-act="req-menu" aria-expanded="false" aria-haspopup="true" id="req-btn"></button>
+      <div class="pop-menu req-menu" hidden role="menu" aria-label="${esc(L("requirement"))}">${reqOpts}</div></div>
     <span id="unit-token"></span>
     <div class="search"><input type="search" id="file-q" data-act="q" placeholder="${esc(L("p.code.filter"))}" aria-label="${esc(L("p.code.filter-label"))}" value="${esc(S.code.q)}">${kbd("/")}</div>
     <button class="btn sm" data-act="find-open" title="${esc(L("p.find.title", MOD))}">${esc(L("p.find"))}</button>
     <div class="pos" id="pos"></div>
     <button class="btn sm" data-act="ctx" aria-pressed="${S.code.ctx}" aria-controls="ctx-code" title="${esc(L("p.code.ctx-title"))}">${esc(L("p.context"))}</button>
-    <div class="findbar" id="findbar"${S.find.open ? "" : " hidden"} role="search" aria-label="${esc(L("p.find.label"))}"><input type="search" id="find-q" data-act="find-q" placeholder="${esc(L("p.find.placeholder"))}" aria-label="${esc(L("p.find.label"))}" value="${esc(S.find.q)}"><span id="find-count" aria-live="polite" class="small muted"></span><button class="btn sm icon" data-act="find-prev" aria-label="${esc(L("p.find.prev"))}">‹</button><button class="btn sm icon" data-act="find-next" aria-label="${esc(L("p.find.next"))}">›</button><button class="btn sm quiet" data-act="find-close">${esc(L("p.close"))}</button></div>
+    <div class="findbar" id="findbar"${S.find.open ? "" : " hidden"} role="search" aria-label="${esc(L("p.find.label"))}"><input type="search" id="find-q" data-act="find-q" placeholder="${esc(L("p.find.placeholder"))}" aria-label="${esc(L("p.find.label"))}" value="${esc(S.find.q)}"><span id="find-count" aria-live="polite" class="small muted"></span><button class="btn sm icon" data-act="find-prev" aria-label="${esc(L("p.find.prev"))}">‹</button><button class="btn sm icon" data-act="find-next" aria-label="${esc(L("p.find.next"))}">›</button>${closeX('data-act="find-close"', L("p.find.close"))}</div>
   </div>
-  <div class="frame code${S.code.tree ? "" : " no-tree"}${S.code.ctx ? " ctx" : ""}" id="code-frame"><a class="skip" href="#files" data-act="skip">${esc(L("p.skip"))}</a><nav class="tree" id="tree" aria-label="${esc(L("files"))}"${S.code.tree ? "" : " hidden"}></nav><div class="files" id="files" tabindex="-1"></div><aside class="panel" id="ctx-code" aria-label="${esc(L("p.context"))}"${S.code.ctx ? "" : " hidden"}></aside></div>`;
+  <div class="frame code${S.code.tree ? "" : " no-tree"}${S.code.ctx ? " ctx" : ""}" id="code-frame"><a class="skip" href="#files" data-act="skip">${esc(L("p.skip"))}</a><div class="tree-rail" id="tree-rail"${S.code.tree ? " hidden" : ""}><button class="rail-btn" data-act="tree" aria-expanded="false" aria-controls="tree" title="${esc(L("p.tree.show"))}">${ICON.panel}<span>${esc(L("files"))}</span></button></div><nav class="tree" id="tree" aria-label="${esc(L("files"))}"${S.code.tree ? "" : " hidden"}></nav><div class="files" id="files" tabindex="-1"></div><aside class="panel" id="ctx-code" aria-label="${esc(L("p.context"))}"${S.code.ctx ? "" : " hidden"}></aside></div>`;
   syncToolbar(); syncTbar(); measureCpl(); renderFiles(); renderTree(); renderPanel("code"); updatePos(); if (S.find.open) runFind();
   // The toolbar wraps at narrow widths, grows with filter tokens and the find bar: its rendered height places the file headers.
   new ResizeObserver(syncTbar).observe($(".toolbar"));
 }
 function syncToolbar() {
-  const sel = $('#panel-code select[data-act="req"]'); if (sel) sel.value = S.code.req;
-  const ord = $('#panel-code select[data-act="order"]'); if (ord) ord.value = S.code.order;
+  const rb = $("#req-btn");
+  if (rb) {
+    const r = S.code.req && D.requirements.find((x) => String(x.id) === String(S.code.req));
+    rb.innerHTML = `<span>${esc(r ? L("p.code.req-one", r.id) : L("p.code.req-any"))}</span>${ICON.chevron}`; rb.title = r ? r.text : "";
+    $$('#req-pop [data-act="req-pick"]').forEach((b) => b.setAttribute("aria-checked", String(b.dataset.req === String(S.code.req))));
+  }
   $$('#panel-code [data-act="mode"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === S.code.mode)));
-  const pb = $("#purpose-btn"); if (pb) pb.textContent = allPurposes() ? L("p.code.purpose-all") : L("p.code.purpose", [...S.code.purposes].filter((p) => D.purposeCounts[p].files).map((p) => PURPOSE_LABEL[p]).join(", ") || L("none"));
+  const pb = $("#purpose-btn"); if (pb) pb.innerHTML = `<span>${esc(allPurposes() ? L("p.code.purpose-all") : L("p.code.purpose", [...S.code.purposes].filter((p) => D.purposeCounts[p].files).map((p) => PURPOSE_LABEL[p]).join(", ") || L("none")))}</span>${ICON.chevron}`;
   $$('#panel-code input[data-act="purpose"]').forEach((i) => { i.checked = S.code.purposes.has(i.value); });
   const tok = $("#unit-token"); if (tok) tok.innerHTML = (S.code.unit ? `<span class="token">${esc(L("p.code.unit", S.code.unit))}<button data-act="unit-clear" aria-label="${esc(L("p.code.unit-clear"))}">×</button></span>` : "") + (S.code.set ? `<span class="token">${esc(SETS[S.code.set].label)}<button data-act="set-clear" aria-label="${esc(L("p.code.set-clear"))}">×</button></span>` : "");
   const q = $("#file-q"); if (q && q.value !== S.code.q) q.value = S.code.q;
@@ -1208,8 +1217,8 @@ function syncToolbar() {
 const STATUS_WORD = { A: "p.file.added", D: "p.file.deleted" };
 function fileHeader(fi) {
   const f = F[fi], a = fileAttn(fi), col = S.code.collapsed.has(fi), whole = S.code.whole.has(fi), viewed = S.viewed.has(fi);
-  return `<button class="btn icon sm quiet fold-btn" data-act="fcollapse" data-f="${fi}" aria-expanded="${!col}" aria-label="${esc(L(col ? "p.file.expand" : "p.file.collapse", f.path))}">${col ? "▸" : "▾"}</button>
-    <div class="path" title="${esc(f.path)}">${pathHtml(f.path)}</div><div class="meta">${STATUS_WORD[f.status] ? `<span>${esc(L(STATUS_WORD[f.status]))}</span>` : ""}${a.total ? `<span>${esc(attnText(a))}</span>` : ""}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span><span>${esc(PURPOSE_LABEL[f.purpose])}</span>
+  return `<button class="btn icon sm quiet fold-btn" data-act="fcollapse" data-f="${fi}" aria-expanded="${!col}" aria-label="${esc(L(col ? "p.file.expand" : "p.file.collapse", f.path))}">${ICON.chevron}</button>
+    <div class="path" title="${esc(f.path)}">${pathLine(f.path)}</div><div class="meta">${STATUS_WORD[f.status] ? `<span>${esc(L(STATUS_WORD[f.status]))}</span>` : ""}${a.total ? `<span>${esc(attnText(a))}</span>` : ""}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span><span>${esc(PURPOSE_LABEL[f.purpose])}</span>
     <button class="btn sm quiet" data-act="whole" data-f="${fi}" aria-pressed="${whole}" title="${esc(L("p.file.whole-title"))}">${esc(L(whole ? "p.file.fold-kept" : "p.file.whole"))}</button>
     <label class="viewed-box"><input type="checkbox" data-act="viewed" data-f="${fi}"${viewed ? " checked" : ""}> ${esc(L("p.file.viewed"))}</label></div>`;
 }
@@ -1288,19 +1297,17 @@ function renderTree() {
   const el = $("#tree"); if (!el) return;
   const root = buildTree();
   const compress = (name, node) => { while (node.dirs.size === 1 && !node.files.length) { const [k, v] = [...node.dirs][0]; name += "/" + k; node = v; } return [name, node]; };
-  let html = `<div class="tree-head"><span>${esc(P("p.count.files", F.filter((_, fi) => fileMatches(fi)).length))} · ${esc(P("p.count.viewed", S.viewed.size))}</span></div>`;
-  const flat = S.code.order === "attention";
+  let html = `<div class="tree-head"><span>${esc(P("p.count.files", F.filter((_, fi) => fileMatches(fi)).length))} · ${esc(P("p.count.viewed", S.viewed.size))}</span><button class="btn sm icon quiet" data-act="tree" aria-expanded="true" aria-controls="tree" aria-label="${esc(L("p.tree.hide"))}" title="${esc(L("p.tree.hide"))}">${ICON.panel}</button></div>`;
   const fileRow = (fi, depth) => {
-    const f = F[fi], a = fileAttn(fi), dim = !fileShown(fi), base = flat ? f.path : f.path.slice(f.path.lastIndexOf("/") + 1);
+    const f = F[fi], a = fileAttn(fi), dim = !fileShown(fi), base = f.path.slice(f.path.lastIndexOf("/") + 1);
     const mark = a.total ? `<span class="mark ${a.open ? a.worst ?? "question" : "done"}" title="${esc(attnText(a))}">${n(a.open || a.total)}</span>` : "";
-    return `<button class="tnode t-file${dim ? " dim" : ""}${S.viewed.has(fi) ? " viewed" : ""}" style="--d:${depth}" data-act="gofile" data-f="${fi}" title="${esc(dim ? L("p.tree.dim", f.path) : f.path)}"><span class="tn-st">${f.status}</span><span class="tn-main"><span class="tn-name">${flat ? slashBreaks(base) : esc(base).replace(/([_-])/g, "$1<wbr>")}</span><span class="tn-meta">${mark}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span></span></span></button>`;
+    return `<button class="tnode t-file${dim ? " dim" : ""}${S.viewed.has(fi) ? " viewed" : ""}" style="--d:${depth}" data-act="gofile" data-f="${fi}" title="${esc(dim ? L("p.tree.dim", f.path) : f.path)}"><span class="tn-st">${f.status}</span><span class="tn-main"><span class="tn-name">${esc(base)}</span><span class="tn-meta">${mark}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span></span></span></button>`;
   };
-  if (flat) html += fileOrder().filter(fileMatches).map((fi) => fileRow(fi, 0)).join("");
-  else {
+  {
     const walkTree = (node, depth, prefix) => {
       for (const [k, v] of [...node.dirs].sort()) {
         const [name, inner] = compress(k, v), path = prefix + name + "/", closed = S.code.dirsClosed.has(path);
-        html += `<button class="tnode t-dir" style="--d:${depth}" data-act="dir" data-dir="${esc(path)}" aria-expanded="${!closed}"><span class="caret">▾</span><span class="tn-name">${slashBreaks(name)}/</span></button>`;
+        html += `<button class="tnode t-dir" style="--d:${depth}" data-act="dir" data-dir="${esc(path)}" aria-expanded="${!closed}"><span class="caret">${ICON.chevron}</span><span class="tn-name">${esc(name)}/</span></button>`;
         if (!closed) walkTree(inner, depth + 1, path);
       }
       for (const fi of node.files) html += fileRow(fi, depth);
@@ -1413,12 +1420,31 @@ function goFile(fi) {
   fill(fi);
   landOn(() => $(`#file-${fi}`), toolbarBottom() + 6).then(() => $(`#file-${fi} .fold-btn`)?.focus({ preventScroll: true }));
 }
-// The purpose menu closes here alone, whatever closes it, and says so to assistive technology; true when it was open.
-function closePurposeMenu() {
-  const m = $("#purpose-pop .pop-menu");
-  if (!m || m.hidden) return false;
-  m.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false");
-  return true;
+// The toolbar's menus close here alone, whatever closes them, and say so to assistive technology; the button of a menu
+// that was open is returned, so Esc can give it focus back. A click inside a menu keeps that menu open.
+function closeMenus(inside = null) {
+  let was = null;
+  for (const pop of $$("#panel-code .pop")) {
+    const m = $(".pop-menu", pop), b = $(".menu-btn", pop);
+    if (!m || m.hidden || (inside && pop.contains(inside))) continue;
+    m.hidden = true; b.setAttribute("aria-expanded", "false"); was = b;
+  }
+  return was;
+}
+function toggleMenu(btn) {
+  const m = $(".pop-menu", btn.closest(".pop")), opening = m.hidden;
+  closeMenus();
+  if (!opening) return;
+  m.hidden = false; btn.setAttribute("aria-expanded", "true");
+  ($('[aria-checked="true"]', m) ?? $("button, input", m))?.focus();
+}
+// The file tree hides from its own head and comes back from the rail beside the code; focus moves to the other one.
+function setTree(on) {
+  S.code.tree = on;
+  $("#tree").hidden = !on; $("#tree-rail").hidden = on; $("#code-frame").classList.toggle("no-tree", !on);
+  if (on) renderTree();
+  measureCpl(); save();
+  (on ? $('#tree [data-act="tree"]') : $('#tree-rail [data-act="tree"]'))?.focus();
 }
 function resetFilters() { S.code.q = ""; S.code.req = ""; S.code.unit = ""; S.code.set = null; S.code.purposes = new Set(D.purposes); }
 function goLine(lk, { hl = "lnsel" } = {}) {
@@ -1471,7 +1497,7 @@ function setViewed(fi, on) {
 function rovingInit(body) { const first = $(".lnb", body); if (first) first.tabIndex = 0; }
 function codePanel(sel) {
   const lcList = (filter) => { const list = state.lines.filter((c) => lkOfAnchor(c) && filter(lkOfAnchor(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lkOfAnchor(c); return `<div class="cmt"><div class="where">${esc(splitPath(c.path)[1])}:${c.side === "base" ? "−" : ""}${c.line}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div><div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
-  if (!sel) return panelWrap(esc(L("p.context")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
+  if (!sel) return panelWrap(esc(L("p.context")) + closeX('data-act="ctx"', L("p.code.ctx-close")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
   const b = blk(sel), items = blockItems(b);
   let body = `<div class="psec"><dl class="kv"><dt>${esc(L("p.place"))}</dt><dd><span class="mono small">${slashBreaks(b.path)}</span> <span class="muted small">${esc(b.where)}</span><br><button class="btn sm quiet flush" data-act="copy-block" data-b="${b.id}">${esc(L("p.copy"))}</button></dd>${b.kind ? `<dt>${esc(L("p.block.kind"))}</dt><dd>${esc(L("weight.category." + b.kind))}</dd>` : ""}<dt>${esc(L("purpose"))}</dt><dd>${esc(PURPOSE_LABEL[b.purpose])}</dd></dl></div>`;
   for (const c of items) {
@@ -1484,7 +1510,7 @@ function codePanel(sel) {
   if (!items.length) body += `<div class="psec"><p class="muted">${esc(L("p.block.kept"))}</p><h3>${esc(L("p.related"))}</h3>${relations("b", String(b.id))}</div>`;
   else body += `<div class="psec"><h3>${esc(L("p.block.this"))}</h3>${relations("b", String(b.id))}</div>`;
   body += `<div class="psec"><h3>${esc(L("p.lc.file"))}</h3>${lcList((lk) => +lk.split(":")[0] === b.file)}</div>`;
-  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}<button class="btn sm quiet" data-act="ctx" aria-label="${esc(L("p.code.ctx-close"))}">${esc(L("p.close"))}</button>`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.kept-code"))}</span>`, body);
+  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}${closeX('data-act="ctx"', L("p.code.ctx-close"))}`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.kept-code"))}</span>`, body);
 }
 
 // ---------------------------------------------------------------- Details
@@ -1745,7 +1771,7 @@ document.addEventListener("click", (e) => {
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
   if (NAVIGATES.has(a)) pushNext = true;
   if (a === "pick" && act.tagName === "INPUT") return; // radios and checkboxes act on change
-  if (!e.target.closest("#purpose-pop")) closePurposeMenu();
+  closeMenus(e.target);
   if (a) {
     const key = act.dataset.key;
     switch (a) {
@@ -1793,11 +1819,12 @@ document.addEventListener("click", (e) => {
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
-      case "tree": { S.code.tree = !S.code.tree; act.setAttribute("aria-pressed", String(S.code.tree)); $("#tree").hidden = !S.code.tree; $("#code-frame").classList.toggle("no-tree", !S.code.tree); if (S.code.tree) renderTree(); measureCpl(); return save(); }
+      case "tree": return setTree(!S.code.tree);
       case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
-      case "purpose-menu": { if (!closePurposeMenu()) { $("#purpose-pop .pop-menu").hidden = false; act.setAttribute("aria-expanded", "true"); } return; }
+      case "purpose-menu": case "req-menu": return toggleMenu(act);
+      case "req-pick": S.code.req = act.dataset.req; S.code.pinned.clear(); closeMenus(); $("#req-btn").focus(); return rerenderCode();
       case "unit-clear": S.code.unit = ""; return rerenderCode();
       case "set-clear": S.code.set = null; return rerenderCode();
       case "undo": return runUndo();
@@ -1844,8 +1871,6 @@ document.addEventListener("change", (e) => {
   if (a === "pick") return pick(t.dataset.key, t.dataset.opt);
   if (a === "zone") { setState(DR.markZone(ITEMS, state, t.dataset.key, t.dataset.zone, t.checked)); return afterChange(t.dataset.key, { structural: false }); }
   if (a === "purpose") { if (t.checked) S.code.purposes.add(t.value); else S.code.purposes.delete(t.value); S.code.pinned.clear(); return rerenderCode(); }
-  if (a === "req") { S.code.req = t.value; S.code.pinned.clear(); return rerenderCode(); }
-  if (a === "order") { S.code.order = t.value; rerenderCode(); return save(); }
   if (a === "viewed") return setViewed(+t.dataset.f, t.checked);
 });
 document.addEventListener("input", (e) => {
@@ -1988,7 +2013,9 @@ function findStep(dir) {
   goLine(m[S.find.i].lk, { hl: "findhit" }).then(() => $("#find-q")?.focus({ preventScroll: true }));
 }
 // the sticky offsets follow the toolbar's real height (the find bar adds a row)
-function syncTbar() { TB = null; const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--tbar", t.offsetHeight + "px"); }
+function syncTbar() { TB = null; const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--tbar", t.offsetHeight + "px"); syncOverlay(); }
+// In a narrow window the tree and the panel float over the code: they start where the toolbar ends, wherever the page is scrolled.
+function syncOverlay() { const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--ov-top", Math.max(0, Math.round(t.getBoundingClientRect().bottom)) + "px"); }
 // where focus goes back to from a field: the selected note in Code, the item's card in Decisions
 function focusHome(key) {
   const home = S.tab === "code" ? S.sel.code && $(`#note-${S.sel.code}`) : $(`#card-${key}`);
@@ -2014,7 +2041,7 @@ document.addEventListener("keydown", (e) => {
     if (t.classList.contains("pc-input")) { e.preventDefault(); return savePc(t.dataset.anchor, t); }
   }
   if (e.key === "Escape") {
-    if (closePurposeMenu()) { $("#purpose-btn").focus(); return; }
+    { const b = closeMenus(); if (b) { b.focus(); return; } }
     if ($("#copybox")) { $("#copybox").remove(); return; }
     if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) return closePc();
@@ -2082,7 +2109,7 @@ let spyQueued = false;
 window.addEventListener("scroll", () => {
   if (spyQueued || S.tab !== "code") return;
   spyQueued = true;
-  requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); });
+  requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); syncOverlay(); });
 }, { passive: true });
 window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
 window.addEventListener("hashchange", () => route(location.hash));

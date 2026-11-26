@@ -135,7 +135,7 @@ const cased = (url, options, fn) => async () => {
 test("the page opens on Summary with Start review, and every deep link lands on its tab and item",
   "a link to an item, a line or a sub-tab is how the owner, the export and a colleague point at one place",
   cased(THEMED_URL, {}, async (page) => {
-    if (await page.getAttribute("#tab-summary", "aria-selected") !== "true" || (await page.locator(".btn.primary").count()) !== 1) return "not on Summary with one primary button";
+    if (await page.getAttribute("#tab-summary", "aria-selected") !== "true" || (await page.locator(".btn.primary:visible").count()) !== 1) return "not on Summary with one primary button";
     for (const [hash, tab, check] of [["#decisions/f1", "decisions", "#card-f1.sel"], ["#code/b2", "code", "#note-2.sel"], ["#decisions/comments", "decisions", '[data-sub="comments"][aria-selected="true"]'],
       ["#summary/r1", "summary", '[data-sel="req:1"].sel'], ["#details/challenges/chal:0", "details", '[data-sel="chal:0"].sel'], ["#code/line/1:+3", "code", 'tr.r[data-lk="1:+3"]']]) {
       await page.goto(THEMED_URL + hash); await page.waitForSelector(".tabbar"); await settle(page); await page.waitForTimeout(150);
@@ -355,7 +355,7 @@ test("review 7: the newest explicit choice wins over an older filter that would 
     await page.click('[data-act="set-code"][data-set="assumed"]'); await page.waitForTimeout(400);
     await page.goto(THEMED_URL + "#summary/r1"); await page.waitForSelector(".tabbar"); await settle(page);
     await page.click('#ctx-summary [data-act="req-code"]'); await page.waitForTimeout(500);
-    const req = await page.locator('#panel-code select[data-act="req"]').inputValue(), tokens = await text(page, "#unit-token").catch(() => "");
+    const req = await page.getAttribute('#req-pop [aria-checked="true"]', "data-req"), tokens = await text(page, "#unit-token").catch(() => "");
     return req === "1" && !/Kept/.test(tokens) && /code\/b2/.test(page.url()) || `requirement «${req}», tokens «${tokens}», ${page.url()}`;
   }));
 
@@ -723,6 +723,89 @@ test("without JavaScript a decision whose variants combine says so, and marks ea
   });
 
 // ---- record values as text
+// ---- reading space and controls (PR 109: C1, C3, C4, C5)
+test("the Code toolbar's controls share one height and one type size, and none is a native select",
+  "buttons, the segment, the menus and the filter differed in height and type, and the selects' menus were the system's",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    const m = await page.evaluate(() => [...document.querySelectorAll(".toolbar > *:not(.findbar)")].filter((e) => e.getClientRects().length && e.id !== "unit-token" && e.id !== "pos")
+      .map((e) => { const c = e.matches("button, input") ? e : e.querySelector("button, input"); return { h: Math.round(e.getBoundingClientRect().height), fs: getComputedStyle(c).fontSize }; }));
+    const selects = await page.locator("#panel-code select").count();
+    return m.length > 5 && new Set(m.map((x) => x.h)).size === 1 && new Set(m.map((x) => x.fs)).size === 1 && !selects || JSON.stringify({ m, selects });
+  }));
+
+test("the requirement filter is a menu with every requirement's whole text; picking one filters the code and says so on its button",
+  "a native select cut each requirement to 48 characters",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click("#req-btn");
+    const items = await page.locator('#req-pop [data-act="req-pick"]').allInnerTexts(), whole = items.some((t) => t.includes(record.requirements[0].text));
+    await page.locator('#req-pop [data-act="req-pick"][data-req="1"]').click(); await settle(page);
+    const btn = await text(page, "#req-btn"), open = await page.locator("#req-pop .pop-menu").isVisible(), focused = await page.evaluate(() => document.activeElement?.id);
+    await page.click("#req-btn"); await page.keyboard.press("Escape");
+    const closed = !(await page.locator("#req-pop .pop-menu").isVisible()) && await page.getAttribute("#req-btn", "aria-expanded") === "false";
+    return whole && /R1/.test(btn) && !open && focused === "req-btn" && closed || JSON.stringify({ items, btn, open, focused, closed });
+  }));
+
+test("× at the top right closes the keys, the export and the Code panel, whether a block is selected or not",
+  "a text Close sat among the export's actions, and the Code panel had none while nothing was selected",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    const r = {};
+    await page.click('[data-act="keys"]'); await page.click("#keys-dialog .x"); r.keys = await page.locator("#keys-dialog").evaluate((d) => d.open);
+    await page.click('.mh-right [data-act="export"]'); await page.click("#export-dialog .x"); r.export = await page.locator("#export-dialog").evaluate((d) => d.open);
+    await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.empty = await page.locator("#ctx-code").isVisible();
+    await page.goto(THEMED_URL + "#code/b2"); await page.waitForSelector(".tabbar"); await settle(page);
+    await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.selected = await page.locator("#ctx-code").isVisible();
+    return !r.keys && !r.export && !r.empty && !r.selected || JSON.stringify(r);
+  }));
+
+test("the file tree hides from its own head and comes back from the rail beside the code, focus following",
+  "the toolbar's «Files» button hid the tree, and what it did was not obvious",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('#tree [data-act="tree"]'); await settle(page);
+    const hidden = !(await page.locator("#tree").isVisible()) && await page.locator("#tree-rail").isVisible(), f1 = await page.evaluate(() => document.activeElement?.closest("#tree-rail") !== null);
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const kept = !(await page.locator("#tree").isVisible());
+    await page.click('#tree-rail [data-act="tree"]'); await settle(page);
+    const back = await page.locator("#tree").isVisible() && !(await page.locator("#tree-rail").isVisible()), f2 = await page.evaluate(() => document.activeElement?.closest("#tree") !== null);
+    return hidden && f1 && kept && back && f2 || JSON.stringify({ hidden, f1, kept, back, f2 });
+  }));
+
+test("a long path takes one line in the tree and in the file header, the file's name whole and the full path in the title",
+  "a long path took seven lines in the tree and four above the diff",
+  cased(LONG_URL + "#code", {}, async (page) => {
+    const m = await page.evaluate(() => {
+      const row = document.querySelector('#tree [data-act="gofile"]'), path = document.querySelector(".fh .path"), name = path.querySelector("b");
+      return { row: Math.round(row.getBoundingClientRect().height), path: Math.round(path.getBoundingClientRect().height), title: path.title, nameCut: name.scrollWidth > name.clientWidth,
+        sideways: document.documentElement.scrollWidth > innerWidth };
+    });
+    return m.row < 30 && m.path < 24 && m.title === LONG_PATH && !m.nameCut && !m.sideways || JSON.stringify(m);
+  }));
+
+test("the paragraph comment control sits beside the paragraph's text, never over it",
+  "the «Comment» button appeared over the end of the paragraph's first line",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const hits = await page.evaluate(() => [...document.querySelectorAll("#panel-decisions .pc")].filter((pc) => pc.getClientRects().length).map((pc) => {
+      const btn = pc.querySelector(":scope > .pc-btn"), b = btn.getBoundingClientRect(), range = document.createRange(), rects = [];
+      const walker = document.createTreeWalker(pc, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement.closest(".pc-btn, .pc-x") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) { range.selectNodeContents(n); rects.push(...range.getClientRects()); }
+      return rects.some((r) => r.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) ? pc.dataset.anchor : null;
+    }).filter(Boolean));
+    return !hits.length || `over the text of ${hits.join(", ")}`;
+  }));
+
+test("the export shows the preview and its two actions; the raw text opens on request, and by itself when the clipboard refuses",
+  "the raw text took a third of the dialog though it is only the fallback for a refused clipboard",
+  cased(THEMED_URL + "#decisions", { init: () => { Object.defineProperty(navigator, "clipboard", { value: { writeText: () => Promise.reject(new Error("no")) } }); } }, async (page) => {
+    await page.click('.mh-right [data-act="export"]');
+    const first = await page.locator("#export-text").isVisible();
+    await page.click("#export-raw summary"); const asked = await page.locator("#export-text").isVisible();
+    await page.keyboard.press("Escape"); await page.click('.mh-right [data-act="export"]');
+    const again = await page.locator("#export-text").isVisible();
+    await page.click('[data-act="export-copy"]'); await page.waitForTimeout(150);
+    const refused = await page.evaluate(() => ({ open: document.querySelector("#export-raw").open, focus: document.activeElement?.id, selected: (() => { const t = document.querySelector("#export-text"); return t.selectionEnd - t.selectionStart === t.value.length; })() }));
+    const status = await text(page, "#export-status");
+    return !first && asked && !again && refused.open && refused.focus === "export-text" && refused.selected && status.length > 0 || JSON.stringify({ first, asked, again, refused, status });
+  }));
+
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
   async () => {

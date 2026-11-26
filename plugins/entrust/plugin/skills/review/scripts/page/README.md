@@ -21,7 +21,8 @@ drives it in Chromium, locally only.
   done) and for the comments; a side panel adds the card's place, sources and related items.
 - **Code** is the diff with the open decisions in its margin and kept code folded: j and k walk the open decisions,
   a decided block shrinks to one line, a file can be marked «Viewed», and the code can be filtered by requirement,
-  unit and purpose and searched in every file. Purpose comes from the path alone: `__tests__/`, `*.test.*`,
+  unit and purpose and searched in every file. The file tree hides from its own head and comes back from the rail
+  beside the code; a tree entry and a file header are one line each, the full path in the title. Purpose comes from the path alone: `__tests__/`, `*.test.*`,
   `*.spec.*`, `*.browser.mjs`, `__stories__/*.stories.*` are tests; `.scss/.css/.less/.sass/.styl` styles;
   pictures, fonts and `assets/`, `icons/`, `keysets/` assets; `.md/.mdx/.rst/.txt` and changelog/readme/license
   docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like config; the rest production. A
@@ -45,7 +46,7 @@ drives it in Chromium, locally only.
   fields, a scenario and a challenge; listed in Decisions › Comments and exported. One paragraph editor is open at a
   time: opening another keeps the first one's text as that paragraph's unsaved draft.
 - **Export.** «Export answers» opens the preview with «Copy text», which says «Copied» only once the clipboard
-  confirms and otherwise selects the text, and «Download JSON».
+  confirms and otherwise opens the raw text, selected, and «Download JSON»; the raw text is otherwise shown on request.
 - **Without JavaScript, and in print.** The page holds the report as a document: the summary, every card as text,
   each file's whole diff with every block's verdict, and the details; the diff's code is in the page once. It prints
   for the owner (the summary and every decision with its answer) or for audit (also every file whole and the
