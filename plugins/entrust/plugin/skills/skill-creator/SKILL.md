@@ -142,7 +142,9 @@ its description. Take one of three routes; a change to this skill takes them too
    The file is one in the run directory; write it when a line is listed. Each listed line stood in the files
    before and stands nowhere now. For each, do the first of these that is true:
    - its fact is still stated, in other words or another file: answer it with
-     `moved | <file>:<line as printed> | <file>:<line where it stands now> | <the words there>`;
+     `moved | <file>:<line as printed> | <file>:<line where it stands now> | <the words there>`. A copy that
+     contradicted the file that owns the fact is answered the same way, with the owner's line: the owner's
+     value stands;
    - the user's own words ask for it to go: answer it with
      `retired | <file>:<line as printed> | <file>:<line of their saved message> | <their words>`;
    - neither: put the line back, or move it to the file that owns the fact.

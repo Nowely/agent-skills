@@ -104,15 +104,16 @@ const BEFORE = {
   "references/effort.md": EFFORT,
   "references/models.md": "# Models\n\nA refuter runs at `xhigh` on the strongest model the host offers.\n",
 };
-// The skill before an edit, and beside it the same skill with `edit` laid over it and a run directory for `notes`.
-function edited(edit, notes = {}) {
+// The skill before an edit, and beside it the same skill with `edit` laid over it and a run directory for `notes`;
+// `was` is laid over both, for a case whose state before the edit differs from BEFORE.
+function edited(edit, notes = {}, was = {}) {
   const top = path.join(TMP, String(++n));
   const put = (dir, files) => Object.entries(files).forEach(([rel, text]) => {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), text);
   });
-  put(path.join(top, "before", "sample"), BEFORE);
-  put(path.join(top, "after", "sample"), { ...BEFORE, ...edit });
+  put(path.join(top, "before", "sample"), { ...BEFORE, ...was });
+  put(path.join(top, "after", "sample"), { ...BEFORE, ...was, ...edit });
   put(path.join(top, "run"), notes);
   return { dir: path.join(top, "after", "sample"), base: path.join(top, "before", "sample"), run: path.join(top, "run") };
 }
@@ -168,6 +169,10 @@ test("a lost line passes only with a disposition whose quote stands at the place
       /^1 /.test(freeWord) && /BAD .*line 1 is neither/.test(freeWord) || `free word: ${freeWord}`,
       lostIn("a quote that shares no word with the line", edited(lowMoved, { "d.md":
         `moved | ${LOW} | references/models.md:3 | A refuter runs at \`xhigh\` on the strongest model\n` }), [LOW], "d.md"),
+      lostIn("a copy that contradicted its owner, answered with the owner's line", edited({
+        "references/effort.md": EFFORT.replace("| `high`, `xhigh` | refutation, competing designs |\n", ""),
+      }, { "d.md": "moved | references/effort.md:9 | references/models.md:3 | `medium` for review, refutation and judgement\n" },
+      { "references/models.md": "# Models\n\nThe strong model runs at `medium` for review, refutation and judgement.\n" }), [], "d.md"),
       lostIn("retired by the user's saved words", edited(noLow, { "messages.md": said,
         "d.md": `retired | ${LOW} | messages.md:1 | Drop the low row, nobody uses it.\n` }), [], "d.md"),
       lostIn("retired by words the user did not write", edited(noLow, { "messages.md": said,
