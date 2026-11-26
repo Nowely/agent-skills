@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.47.3 — 2026-11-26
 
 ### Orchestration
 
@@ -17,6 +17,15 @@ forensics remain in the repository references and release notes.
   earlier run failed.
 - Before the workers start, the coordinator applies an objection that cites a place only after reading it and
   overrules one only by citing what refutes it; one it can settle neither way stays a claim for the verifier.
+
+### Gate and limits
+
+- Local checks passed: gate (26), orchestrate (13), agent-contract (16), fragments (2) and package. The
+  development environment had Node.js v22.23.5 and no Codex CLI; Codex conformance was not run for this change.
+- One Opus critic read the change and one Sonnet verifier checked the fixes to its six findings. The live
+  orchestrate gate was not run, and no gate check covers these rules: the plan critic's model, the fresh second
+  read and the verifier's fix round live only in the skill's pages. The cost of the stronger critic is not measured.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
 
 ## 0.47.2 — 2026-11-24
 
