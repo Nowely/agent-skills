@@ -9,13 +9,14 @@ Take every row whose claim the user's request makes.
 | a script now enforces a rule | a test that fails when the change is taken out | nothing |
 | nothing was lost in a cut, a move, a merge or a rewrite | each removed sentence is found where its fact is now defined, in the same words, at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
 | a literal reader can follow the skill: a route, a step, an order | [a dry run](#a-dry-run); for a change, once before and once after | one agent per run |
-| an agent acts differently with the skill: a new skill, an instruction added or reworded | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
+| an agent acts differently with the skill: an instruction added or reworded, or a new skill when the user asks for runs | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
-| the description selects the skill: a new skill that agents select, or a changed name or description | [a selection check](#a-selection-check) | its sessions, for each host |
+| the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check) | its sessions, for each host |
 
-Size the check to the work. A change to one step takes one case. A new skill takes the dry run; it takes test
-cases as well, one for each stage of the walk that its instructions cover, up to three, when the user asks for
-them or when only a run can show that the agent acts differently. When the user caps the spend below that, keep every check in
+Size the check to the work. A change to one step takes one case. A new skill takes the dry run, and when the
+user asks for runs, one test case for each stage of the walk that its instructions cover, up to three. A
+selection check for a reworded description runs each request once, about twenty sessions for each host, and has
+no second run. When the user caps the spend below that, keep every check in
 the plan, in the order of the decision each can change, and say which ones the cap leaves unrun and what each
 would have shown. With no run at all, the quality critic's read is the only evidence, and the result says so.
 
@@ -40,9 +41,10 @@ would have shown. With no run at all, the quality critic's read is the only evid
 ## A dry run
 
 1. At step 5, write one request the way a user would type it, from the middle of the sheet's job.
-2. At step 8, start one fresh agent as [the sessions](#the-sessions) says. Tell it to walk the
-   request through the files as written, to run nothing, and to report each step where it halts, has to guess or
-   can read a line two ways, with the file and line.
+2. At step 8, start one fresh agent on the cheapest model the sheet says will load the skill. Give it the path
+   of `SKILL.md` and the request. Tell it to walk the request through the files as written, to run nothing, and
+   to report each step where it halts, has to guess or can read a line two ways, with the file and line. For a
+   change, start the same walk at step 5 as well, on the skill as it was, and compare the two reports.
 3. The work is kept when the walk reaches the end with no halt and no guess at a stage the sheet's walk covers.
 
 ## Test cases
@@ -73,8 +75,8 @@ would have shown. With no run at all, the quality critic's read is the only evid
    [structure.md](structure.md#the-approach) sorted out in step 2, the host's built-in ones included. A rival
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
-3. Run each request three times, because a single run of a request varies: about sixty sessions for each host. Use the host's own tool for this
-   where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
+3. Run each request three times, because a single run of a request varies: about sixty sessions for each
+   host. Use the host's own tool for this where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
    which skill was loaded before the answer or the first action: this one, a rival by name, or none.
 4. Report the fraction for each request, and every request a rival took. Run the same set a second time: a
    margin over a rival, or over an earlier description, that is smaller than the difference between those two

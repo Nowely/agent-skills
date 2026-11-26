@@ -23,7 +23,7 @@ the executor tier; the plan names each model, so the user sees the difference an
 
 | Judge | Create | Change |
 |---|---|---|
-| architecture critic | once; again when a correction changes the approach | only when the change adds a step, a route, a script or a file |
+| architecture critic | once; again when the approach changes | only when the change adds a step, a route, a script or a file |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met` or `not met` |
 

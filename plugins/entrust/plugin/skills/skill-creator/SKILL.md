@@ -11,20 +11,21 @@ metadata:
 license: MIT
 ---
 
-This skill takes a request about a skill to a checked result. A skill is a folder, a `SKILL.md`
-and the files it links, that a host loads when a request matches its description; a host is a program that
-loads skills, such as Claude Code or Codex. Take one of three routes. A change to this skill takes them too.
+This skill takes a request about a skill to a checked result, and leaves collecting feedback from sessions to
+other skills. A skill is a folder, a `SKILL.md` and the files it links, that is loaded when a request matches
+its description. Take one of three routes; a change to this skill takes them too.
 
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
   that load it, or its set of reference files.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states.
-- **Correct**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
+- **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
   the file that defines it. Make the edit and run the script of Create's step 6.
 
 ## Standing rules
 
-- Read the repository's agent instructions first: the files the host loads for it, such as `AGENTS.md`,
+- Read the repository's agent instructions first: the files the host loads for it (a host is a program
+  that loads skills, such as Claude Code or Codex), such as `AGENTS.md`,
   `CLAUDE.md` or `AGENT.md` at its root, and what they link. Where they differ from these steps, follow them.
 - Keep everything these steps write down, and every agent's return, in one run directory outside the skill's
   folder: where the repository's rule for research runs puts it, else a temporary directory. A skill in a
@@ -35,8 +36,10 @@ loads skills, such as Claude Code or Codex. Take one of three routes. A change t
   and blockers, all blockers in one message.
 - When no user can answer, because another agent started you or the run has no one attached, your return
   stands where a step says to tell the user. The plan with its questions is then your return, and you stop
-  there, on either route. An instruction that names an edit counts as the user's acceptance of that edit and
-  the check script: write no plan for it, and start no agent.
+  there, on either route.
+- With no user attached, an instruction from whoever started you that names an edit is acceptance of that edit
+  and the check script, and of nothing else: make the edit, start no agent, and say in the result that no judge
+  read it.
 - When this session cannot start agents, say so in the plan, do the steps that need none, and name each step
   left undone in the result.
 - A step number in a reference is Create's.
@@ -74,7 +77,8 @@ loads skills, such as Claude Code or Codex. Take one of three routes. A change t
 4. **Have the approach challenged.** Start the architecture critic as
    [critics.md](references/critics.md#the-architecture-critic) briefs it.
    - `keep`: go on.
-   - `change approach`: decide between the two approaches as step 3 does, and show the user the changed plan.
+   - `change approach`: decide between the two approaches as step 3 does, show the user the changed plan, and
+     wait as step 3 does.
    - `stop`: write nothing and change nothing. The critic's reason goes to the user as
      [the result](#the-result). A stop is the user's to overrule; it is not a correction.
    - A stage, a requirement or a question it finds missing is [a correction](#a-correction).
@@ -82,13 +86,13 @@ loads skills, such as Claude Code or Codex. Take one of three routes. A change t
    and statements, or a dry run's request, now, before any text exists. Where it compares with runs without the skill, start those runs
    and wait for them.
 6. **Write the text, once.** Follow [writing.md](references/writing.md). After each edit run
-   `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and the repository's own checks for skill
-   pages, until both pass.
+   `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the
+   repository has them, its own checks for skill pages, until they pass.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and settle its objections as [that page](references/critics.md#settling-an-objection) says.
-8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says, and decide
-   by the plan's rule; set no threshold after seeing a result. A result that fails the rule is
-   [a correction](#a-correction). When the one more run a correction allows fails too, the work is not kept:
+8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
+   and decide by the plan's rule; set no threshold after seeing a result. A result that fails the rule is
+   [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept:
    undo the change, or take the new skill's folder out of the tree and keep its text in the run directory.
 9. **Have the result verified.** Where [critics.md](references/critics.md#which-model-and-how-many) gives the
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it returns as `not met` is [a correction](#a-correction).
@@ -121,17 +125,20 @@ loads skills, such as Claude Code or Codex. Take one of three routes. A change t
 ## A correction
 
 A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
-from the user, a judge's return, a reader's return, a result of the plan's check that fails its rule, a description that agents do not select.
+from the user, a judge's return, a reader's return, a result of the plan's check that fails its rule, a
+description that agents do not select.
 
 1. Add it to the sheet, with the user's words or the return's, and where they are.
 2. Name the step that should have caught it, and redo that step's part of the sheet to find what else it missed.
 3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
-   show the user the changed plan, and the architecture critic reads a changed approach again. If only the text
+   show the user the changed plan and wait as step 3 does; the architecture critic reads a changed approach
+   again. If only the text
    changes, edit it by [writing.md](references/writing.md) and run the check script;
    [critics.md](references/critics.md#which-model-and-how-many) says whether a judge reads again.
 
 Every edit that follows comes from the amended sheet, never from the correction alone. After the plan's check
-fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both results.
+fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
+results.
 
 ## The result
 
