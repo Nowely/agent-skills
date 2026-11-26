@@ -65,6 +65,13 @@ const LONG = "The archive reader converts the currency code while it reads each 
 record.findings[1].what = LONG;
 const THEMED_URL = render("themed", record);
 const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru", RU);
+// A continuation of the themed review: the same diff, its first block carried, two replies to earlier comments.
+const PREV_KEY = createHash("sha256").update(JSON.stringify(record)).digest("hex").slice(0, 10);
+const NEXT_URL = render("next", { ...structuredClone(record), title: "Where the conversion lives, again",
+  previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
+  blocks: record.blocks.map((b, i) => i === 0 ? { ...b, carried: true } : b),
+  replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", at: "src/invoices/archive.js:4", quote: "toUpperCase()", sources: [{ at: "TASK-9", quote: "upper case" }] },
+    { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] });
 // Every value the record names things by made hostile, and a hostile file path on a diff of its own.
 const HOSTILE_URL = render("hostile", hostileThemed(record));
 // The themed record with its idea at a line of the base side, which the head numbers otherwise.
@@ -938,6 +945,28 @@ test("selected words of a paragraph take a comment that quotes them, is listed w
     await page.click('[data-sub="comments"]'); await settle(page);
     const listed = await text(page, ".cmt-list .cmt");
     return c?.item === "f2" && c.field === "fix" && c.from === 0 && c.to === 3 && c.quote === words && now === 1 && listed.includes(words) || JSON.stringify({ words, c, now, listed });
+  }));
+
+// ---- the next review of the same change (PR 109: C2, C7, C1.f)
+test("a continuation offers the answers this browser kept for the previous report on the items that read the same, marks carried code, and lists replies to earlier comments",
+  "each turn of the cycle lost the owner's answers and could not say what was read again; replies to comments lived only in a chat",
+  cased(NEXT_URL + "#decisions", { init: `localStorage.setItem("review-report:6:${PREV_KEY}", JSON.stringify({ decisions: { answers: { q3: { choice: "status-quo" }, f1: { choice: "fix" } }, lines: [], paragraphs: [] } }))` }, async (page) => {
+    const offer = await text(page, "#carry");
+    await page.click('[data-act="carry-take"]'); await settle(page);
+    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1");
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const again = await page.locator("#carry").isVisible(), kept = await statusOf(page, "q3");
+    await page.click('[data-sub="comments"]'); await settle(page);
+    const replies = await text(page, "#panel-decisions");
+    const showable = await page.locator('#panel-decisions .cmt [data-act="goline"]').count();
+    await page.goto(NEXT_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
+    const coverage = await text(page, "#panel-details");
+    await page.goto(NEXT_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
+    if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
+    const panel = await text(page, "#ctx-code");
+    return /2 answers you gave on the previous version/.test(offer) && q3 === "Decided" && f1 === "Decided" && !again && kept === "Decided"
+      && /Replies to your comments on the previous review/.test(replies) && /Why convert here\?/.test(replies) && /the place changed/.test(replies) && showable === 1
+      && /1 kept block was carried from the previous review/.test(coverage) && /Carried\s*from the previous review/.test(panel) || JSON.stringify({ offer, q3, f1, again, kept, replies: replies.slice(0, 300), showable, coverage: coverage.slice(0, 200), panel: panel.slice(0, 300) });
   }));
 
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",

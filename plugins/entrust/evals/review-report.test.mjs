@@ -195,6 +195,52 @@ test("a candidate the reviewer set aside on a place is recorded as its own, so t
     return /4\. reviewer's own candidate: The reader finds the display by its CSS class\. Rejected: .*src\/invoices\/archive\.js:4/.test(done.stdout) || done.stdout.slice(done.stdout.indexOf("## Challenges"), done.stdout.indexOf("## Challenges") + 600);
   });
 
+test("carry takes over the previous record's blocks whose lines read the same: a kept one stays kept and is marked carried, one to fix is judged again, and check proves each carried block from the previous record",
+  "a follow-up review re-read and re-judged every block, so each turn of the cycle paid a full review, and nothing could show which parts were read again",
+  () => {
+    // the previous review, beside its saved diff, under previous/; then a fresh scaffold of the same change
+    const dir = fs.mkdtempSync(path.join(run, "continuation-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    fs.writeFileSync(path.join(prev, "source.diff"), generated.stdout);
+    for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(prev, name));
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(REVIEW));
+    const target = path.join(dir, "review.json");
+    const made = report("scaffold", patch, target);
+    if (made.status !== 0) return made.stderr;
+    const carried = report("carry", path.join(prev, "review.json"), target);
+    if (carried.status !== 0) return carried.stderr;
+    const record = JSON.parse(fs.readFileSync(target, "utf8"));
+    const kept = record.blocks.filter((b) => b.carried), judge = record.blocks.filter((b) => !b.carried && b.does);
+    if (kept.length !== 2 || kept.some((b) => b.verdict !== "keep") || judge.length !== 1 || judge[0].verdict !== "" || judge[0].does !== "Tests it.") return `carried ${JSON.stringify(record.blocks)}`;
+    if (!/2 kept blocks carried unchanged/.test(carried.stdout)) return carried.stdout;
+    // the reviewer fills the rest: the check accepts the carried blocks it can prove, and refuses one it cannot
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, previous: record.previous,
+      blocks: record.blocks.map((b) => b.carried ? b : { ...b, verdict: "fix", findings: [1] }) };
+    for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(dir, name));
+    fs.writeFileSync(target, JSON.stringify(filled));
+    const ok = report("render", target);
+    if (ok.status !== 0) return ok.stderr;
+    if (!/Carried from the previous review, not read again: B1, B3/.test(ok.stdout)) return ok.stdout.slice(-800);
+    const forged = { ...filled, blocks: filled.blocks.map((b, i) => i === 1 ? { ...b, verdict: "keep", carried: true, findings: undefined } : b) };
+    fs.writeFileSync(target, JSON.stringify(forged));
+    const refused = report("check", target);
+    if (refused.status !== 1 || !refused.stderr.includes("block 2 is marked carried, and no block the previous record kept has its lines")) return `a forged carried block passed: ${refused.stderr}`;
+    fs.writeFileSync(target, JSON.stringify({ ...filled, previous: { ...filled.previous, sha256: "0".repeat(64) } }));
+    const moved = report("check", target);
+    return moved.status === 1 && moved.stderr.includes("carried blocks cannot be proven: the previous record") || `a changed previous record passed: ${moved.stderr}`;
+  });
+
+test("a reply to a previous comment is placed at code only where the commented code still reads the same, and the printout lists every reply",
+  "a reply placed at a guessed line tells the owner the old comment's code is still there",
+  () => {
+    const reply = { comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "Because the archive keeps lower case.", sources: [{ at: "src/invoices/archive.js:2", quote: "The archive holds currencies in lower case" }] };
+    const placed = render((r) => { r.replies = [{ ...reply, at: "src/invoices/archive.js:4", quote: "toUpperCase()" }, { ...reply, comment: "And this?", place: "src/old.js:9" }]; });
+    if (placed.status !== 0) return placed.stderr;
+    if (!/## Replies to your comments on the previous review\n1\. src\/invoices\/archive\.js:4: «Why convert here\?» — Because the archive keeps lower case\. \(`src\/invoices\/archive\.js:4`\)/.test(placed.stdout)) return placed.stdout.slice(placed.stdout.indexOf("## Replies"), placed.stdout.indexOf("## Replies") + 400);
+    const wrong = render((r) => { r.replies = [{ ...reply, at: "src/invoices/archive.js:4", quote: "toLowerCase()" }]; });
+    return wrong.status === 1 && wrong.stderr.includes('reply 1: its "quote" is not on the lines "at" names') || `a reply at a line without its quote passed: ${wrong.stderr}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
@@ -642,7 +688,7 @@ test("the page that tells a reviewer what to write names every word the check ac
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
     // The example carries the optional fields of the decision cards too; the minimal REVIEW renders without them.
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "tradeoffs", "coverageStructured", "passport", "previous", "replies"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 

@@ -231,7 +231,9 @@ test("the page carries its runtime, its styles, its catalog and each row's code 
   once(html, CSS, "the stylesheet");
   once(html, JSON.stringify(island.labels), "the catalog");
   const besides = html.length - codeOf(html).join("").length;
-  assert.ok(besides <= 320 * 1024, `the themed page carries ${besides} bytes besides its code`);
+  // The bound grew with routes, selection comments, carried answers and the shared screen box (PR 109): it catches a part
+  // carried twice, not the page's own growth.
+  assert.ok(besides <= 360 * 1024, `the themed page carries ${besides} bytes besides its code`);
   // 30 files, each changed in five hunks of three context lines, four removed and six added, and three more context.
   const FILES = 30, HUNKS = 5, lines = [], blocks = [];
   const source = (f, i, side) => `  const ${side}${f}_${i} = compute(${i}, "text ${f}", { mode: ${i % 3} });`;

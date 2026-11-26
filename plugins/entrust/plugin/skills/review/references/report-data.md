@@ -37,7 +37,8 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
-new evidence that changes a conclusion makes a revised record, named as such.
+new evidence that changes a conclusion makes a revised record, named as such, made as a [continuation](#the-next-revision)
+of the same diff, so the owner's answers to the items it leaves unchanged come with it.
 
 ## Format
 
@@ -106,6 +107,10 @@ new evidence that changes a conclusion makes a revised record, named as such.
                       "zones": [{ "text": "the narrow widths", "sources": [{ "ref": "/coverageStructured/0" }] }] }],
       "tradeoffs": [{ "text": "the omission the owner accepted", "consequence": "what remains unknown or lost",
                       "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] }],
+      "previous": { "record": "previous/review.json", "sha256": "the previous record's digest" },
+      "replies": [{ "comment": "the owner's comment, from the export", "place": "src/a.js:12, as the export named it",
+                    "text": "the answer", "at": "src/a.js:14", "quote": "the commented code, as it reads there",
+                    "sources": [{ "at": "src/a.js:14", "quote": "the line" }] }],
       "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123",
                                "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
@@ -194,7 +199,7 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
   `coverageStructured`, optional, lists the same coverage as authored statements — `kind` of `ran`, `read` or
-  `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
+  `not_checked`, or `carried` for blocks taken over from a previous record, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
   warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
   never reads a status such as "tests passed" or "merge-ready" out of the prose. Without it the page shows
   `coverage`.
@@ -303,7 +308,23 @@ record does not hold is left out, and the response says so. A short review appli
 - Read what changed since the previous head first — `git diff <previous head>..<head>` when the base stayed,
   `git range-diff <previous base>..<previous head> <base>..<head>` when it moved, the previous saved diff against
   this one when the old commits are gone — then the whole diff, and say in `coverage` how the change since was read.
-  The record covers the whole diff, as any record does, and the page needs nothing new.
+  The record covers the whole diff, as any record does.
+- **A continuation** reads only what changed. The plan offers it when the previous review was whole, the base stayed
+  or the range-diff shows the change's own commits unaltered, no manifest or lock file changed since, and no answer
+  changed a requirement the previous analysis rested on; the plan names what it skips, and anything else makes the
+  review whole. After `scaffold`, `node "<skill-dir>/scripts/report.mjs" carry <out>/previous/review.json
+  <out>/review.json` takes over each previous block whose changed lines read the same, in the same order and found
+  once: a block the previous record kept stays kept, marked `carried`, not read again; one it did not keep keeps its
+  description and is judged again. `previous` names the record they came from, and `check` proves each carried block
+  against it. Say in `coverageStructured`, kind `carried`, what was carried and from which head. While the base and
+  the requirements stand the independent target is not started again; the comparison pass, the critic and the
+  verifier take the change since and the claims new or changed. The page marks carried blocks, lets the owner show
+  them in Code, and offers the answers this browser kept for the previous report on the items that read exactly the
+  same — never by number. A revised record at the same head is a continuation whose change since is empty.
+- **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
+  it, `text` and `sources`; and `at` (path:line or path:first-last on the head side) with `quote`, the commented code
+  as it reads there, only where it still reads the same — the check finds the quote on those lines, and the page then
+  links the reply to the code. A reply without `at` is listed with the place it had, never placed by guess.
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
   by its words — a question by its text, a finding or idea by its title — since its key names another item here:
   - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with

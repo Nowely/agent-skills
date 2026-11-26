@@ -65,6 +65,21 @@ forensics remain in the repository references and release notes.
   want goes to them as an idea. The critic opens the saved diff for the code the draft keeps without comment. Where
   the reviewer has a concrete reason to doubt its analysis suffices, an evidence card asks for another reviewer or
   model, saying what is uncertain and why another look may help.
+- A review of a change reviewed before can be a continuation that reads only what changed. After `scaffold`,
+  `report.mjs carry <previous/review.json> <review.json>` takes over each previous block whose changed lines read the
+  same, in the same order and found once: a block the previous record kept stays kept and is marked `carried`, not
+  read again, and one it did not keep keeps its description and is judged again. `previous` names the record they
+  came from by its digest, and `check` proves every carried block against it and its saved diff. The plan offers a
+  continuation only when the previous review was whole, the base stayed or the change's own commits are unaltered,
+  no manifest or lock file changed and no answer changed a requirement the previous analysis rested on, and names
+  what it skips; coverage says what was carried, under the new kind `carried`. The page marks carried blocks, lists
+  them in Coverage with «Show in Code», and offers the answers this browser kept for the previous report on the items
+  that read exactly the same — never by number. A revised record at the same head is a continuation with nothing
+  changed since, so the owner's answers come with it.
+- `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
+  it, the answer and its sources, and a place in the code only where the commented code still reads the same — the
+  check finds the reply's quote on those lines. Decisions › Comments lists them, linking to the code only where they
+  have such a place; the printout lists them for the checking agents.
 
 ## 0.47.2 — 2026-11-24
 

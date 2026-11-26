@@ -9,7 +9,8 @@ import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
-import { sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
+import path from "node:path";
+import { keyOf, previousOf, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
 import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
@@ -87,7 +88,24 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
 </table></section></noscript>`;
 }
 
-export function page(review, files, model, { syntax } = {}) {
+// An item as the owner answered it: a later record holding an item that reads the same — the same question with the
+// same variants, the same finding, the same idea — asks the same thing, whatever its number there.
+const itemReads = (r) => new Map([
+  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", q.kind, q.text, q.multiple === true, (q.variants ?? []).map((v) => [v.id, v.text])])]),
+  ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f.title, f.what, f.fix])]),
+  ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x.title, x.text])])]);
+// The previous record's key and its items this record holds unchanged, each matched once by how it reads, never by number.
+function previousAnswers(review, directory) {
+  if (!review.previous || !directory) return null;
+  const prev = previousOf(review, directory);
+  if (prev.fault) return null;
+  const count = (map) => [...map.values()].reduce((m, v) => m.set(v, (m.get(v) ?? 0) + 1), new Map());
+  const before = itemReads(prev.review), now = itemReads(review), onceBefore = count(before), onceNow = count(now);
+  const byRead = new Map([...before].filter(([, v]) => onceBefore.get(v) === 1).map(([k, v]) => [v, k]));
+  return { key: keyOf(prev.review), pairs: [...now].filter(([, v]) => onceNow.get(v) === 1 && byRead.has(v)).map(([k, v]) => [k, byRead.get(v)]) };
+}
+
+export function page(review, files, model, { syntax, directory } = {}) {
   const language = languageOf(review), labels = CATALOGS[language];
   // The render-time Shiki syntax when the caller built it; the built-in pattern highlighter otherwise.
   const hl = syntax ? (l) => syntax.line(l) : (l, path) => highlight(l.text, path);
@@ -138,6 +156,9 @@ export function page(review, files, model, { syntax } = {}) {
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,
       serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),
     unasked: model.unasked,
+    carried: model.carried ?? [],
+    previous: previousAnswers(review, directory),
+    replies: (review.replies ?? []).map((x) => ({ comment: x.comment, place: x.place, text: x.text, at: x.at ?? null, quote: x.quote ?? null, sources: sources(x.sources) })),
     purposes: PURPOSES, purposeCounts: model.purpose.counts,
     files: files.map((f, fi) => ({ path: f.path, status: model.files[fi].status, purpose: model.files[fi].purpose,
       add: f.hunks.flat().filter((l) => l.kind === "add").length, del: f.hunks.flat().filter((l) => l.kind === "del").length })),

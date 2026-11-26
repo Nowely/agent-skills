@@ -175,6 +175,30 @@ function save() {
 // refused a save or holds what the page could not read, only this page's memory.
 const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
 const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
+// A later record of the same change — revised, or of a new revision — holds items that read exactly as before: the
+// page offers the owner's answers to those, from what this browser kept for the previous report, never by number.
+function carriedAnswers() {
+  if (!D.previous?.pairs.length || Object.keys(state.answers).length) return [];
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(`review-report:6:${D.previous.key}`)); } catch { return []; }
+  const answers = raw?.decisions?.answers;
+  if (!answers || typeof answers !== "object") return [];
+  return D.previous.pairs.filter(([, before]) => answers[before] && typeof answers[before] === "object").map(([now, before]) => [now, answers[before]]);
+}
+function offerCarried() {
+  const found = carriedAnswers(), bar = $("#carry");
+  if (!bar) return;
+  bar.hidden = !found.length;
+  if (found.length) $("#carry-text").textContent = P("p.carry", found.length);
+}
+function takeCarried() {
+  const found = carriedAnswers();
+  if (!found.length) return;
+  setState(DR.settle(ITEMS, DR.normalize({ ...state, answers: Object.fromEntries(found) })));
+  save(); $("#carry").hidden = true;
+  for (const tab of ["summary", "decisions", "code", "details"]) if (S.rendered[tab]) RENDER[tab]();
+  updateChrome();
+}
 function showStorage() {
   for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
   if (S.rendered?.decisions) updateSubCounts();
@@ -435,6 +459,7 @@ function renderShell() {
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
     <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
+  <div class="carry" id="carry" hidden><span id="carry-text"></span> <button class="btn sm" data-act="carry-take">${esc(L("p.carry.take"))}</button><button class="btn sm quiet" data-act="carry-skip">${esc(L("p.carry.skip"))}</button></div>
   <div class="storage" id="storage" hidden><span id="storage-text" role="status"></span> <button class="linkbtn" data-act="unreadable-show" hidden>${esc(L("p.storage.unreadable.show"))}</button></div>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
     <div class="tabs" role="tablist" aria-label="${esc(L("p.tabs"))}">${TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${esc(t.label)}<span class="count" id="badge-${t.id}" hidden></span></button>`).join("")}</div>
@@ -456,7 +481,7 @@ function renderShell() {
     <label for="unreadable-text">${esc(L("p.unreadable.text"))}</label><textarea id="unreadable-text" readonly rows="10"></textarea>
     <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button></div>
     <p id="unreadable-status" role="status"></p></div></dialog>`;
-  applyTheme(); showStorage();
+  applyTheme(); showStorage(); offerCarried();
 }
 function applyTheme() {
   if (S.theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = S.theme;
@@ -994,16 +1019,25 @@ function notAnswerHint(lk) {
   const row = rowOfLk(lk), b = row?.row[3] ? blk(row.row[3]) : null, open = b ? blockItems(b).filter(isOpen) : [];
   return open.length ? L("p.lc.not-answer", open.map((c) => c.label).join(", ")) : "";
 }
+// The reviewer's replies to the owner's comments on the previous review: shown at a line only where the commented code
+// still reads the same, which the check proved; otherwise listed with the place it had.
+function repliesHtml() {
+  if (!D.replies.length) return "";
+  return `<div class="section-h"><h2>${esc(L("replies"))}</h2></div><div class="box cmt-list">${D.replies.map((x) => {
+    const lk = x.at && (() => { const m = /^(.+):(\d+)(?:-\d+)?$/.exec(x.at); return m && fileByPath.has(m[1]) ? `${fileByPath.get(m[1])}:+${m[2]}` : null; })();
+    return `<div class="cmt"><div class="where">${esc(x.place)}${lk ? `<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show-in-code"))}</button>` : ` <span class="muted small">${esc(L("reply.moved"))}</span>`}</div><blockquote class="sel-quote">${esc(x.comment)}</blockquote><div class="txt">${prose(x.text)}</div>${srcList(x.sources)}</div>`;
+  }).join("")}</div>`;
+}
 function commentsListHtml() {
   const list = comments();
-  if (!list.length) return `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
+  if (!list.length) return repliesHtml() + `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
   return `<div class="box cmt-list">${list.map((x) => {
     if (x.kind === "line") {
       const row = rowOfLk(x.lk), b = row?.row[3] ? blk(row.row[3]) : null, hint = notAnswerHint(x.lk);
       return `<div class="cmt"><div class="where">${esc(placeWords(x.c))}${b ? ` · ${chip("b", b.id)}` : ""}<button class="btn sm quiet" data-act="goline" data-lk="${x.lk}">${esc(L("p.show-in-code"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div>${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
     }
     return `<div class="cmt"><div class="where">${esc(anchorLabel(x.anchor))}<button class="btn sm quiet" data-act="goanchor" data-anchor="${esc(x.anchor)}">${esc(L("p.show-it"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div></div>`;
-  }).join("")}</div><p class="muted small gap-top">${esc(L("p.comments.note"))}</p>`;
+  }).join("")}</div><p class="muted small gap-top">${esc(L("p.comments.note"))}</p>${repliesHtml()}`;
 }
 function decisionsPanel(sel) {
   if (!sel) return panelWrap(esc(L("p.context")), esc(L("p.select-card")), `<div class="empty"><strong>${esc(L("p.nothing-selected"))}</strong>${esc(L("p.select-card.note"))}</div>`);
@@ -1033,6 +1067,7 @@ const allPurposes = () => S.code.purposes.size === D.purposes.length;
 const SETS = {
   assumed: { label: L("p.set.assumed"), warn: "p.warn.assumed", ids: new Set(D.unasked.assumed) },
   unlinked: { label: L("p.set.unlinked"), warn: "p.warn.unlinked", ids: new Set(D.unasked.unlinked) },
+  carried: { label: L("p.set.carried"), warn: "p.warn.carried", ids: new Set(D.carried) },
 };
 const inFilters = (b) => S.code.purposes.has(b.purpose) && (!S.code.req || b.serves.includes(S.code.req)) && (!S.code.unit || b.unit === S.code.unit) && (!S.code.set || SETS[S.code.set].ids.has(b.id));
 const isDone = (b) => b.verdict !== "keep" && !blockOpen(b) && !S.code.doneOpen.has(b.id);
@@ -1549,6 +1584,7 @@ function aboutBlock(b) {
     const prev = r.steps[k - 1], next = r.steps[k + 1];
     add("p.route", `<button class="linkbtn" data-act="goroute" data-route="${i}">${prose(r.title)}</button> <span class="muted small">${esc(L("p.route.of", k + 1, r.steps.length))}</span><div class="small">${prose(s.role)}</div><div class="route-nav">${prev ? `${esc(L("p.route.prev"))} ${chip("b", prev.block)}` : ""}${next ? ` ${esc(L("p.route.next"))} ${chip("b", next.block)}` : ""}</div>`);
   }));
+  if (SETS.carried.ids.has(b.id)) add("p.block.carried", `<span class="tag dashed">${esc(L("p.block.carried-tag"))}</span> <span class="small sub">${esc(L("p.block.carried-note"))}</span>`);
   const items = blockItems(b);
   return `<div class="psec"><h3>${esc(L("p.block.about"))}</h3><dl class="kv kv-wide">${rows.join("")}</dl>${items.length ? "" : `<p class="muted small gap-top">${esc(L("p.block.kept"))}</p>`}</div>`;
 }
@@ -1637,7 +1673,7 @@ function renderDetailBody() {
     html = D.screens.map((s, si) => screenBox(si)).join("");
   } else if (sub === "coverage") {
     const warn = (set) => SETS[set].ids.size ? `<li><b>${esc(P(SETS[set].warn, SETS[set].ids.size))}</b> ${esc(L("p.warn.do"))} <button class="btn sm" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
-    const warnings = warn("assumed") + warn("unlinked");
+    const warnings = warn("assumed") + warn("unlinked") + warn("carried");
     html = `${warnings ? `<div class="section-h"><h2>${esc(L("p.warn"))}</h2><span class="muted">${esc(L("p.warn.note"))}</span></div><div class="box"><ul class="plain warnings">${warnings}</ul></div>` : ""}${D.coverageStructured.length ? `<div class="section-h"><h2>${esc(L("p.coverage.statements"))}</h2><span class="muted">${esc(L("p.coverage.statements-note"))}</span></div><table class="tbl"><tbody>${D.coverageStructured.map((c) => `<tr><td class="nowrap"><span class="tag ${c.kind === "not_checked" ? "open" : "neutral"}">${esc(L(c.kind === "not_checked" ? "coverage.not-checked" : "coverage." + c.kind))}</span></td><td>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}<div>${srcList(c.sources)}</div></td></tr>`).join("")}</tbody></table>` : ""}
       <div class="section-h"><h2>${esc(L("p.coverage.written"))}</h2></div><div class="box prose">${textBlock(D.coverage)}</div>
       <div class="section-h"><h2>${esc(L("p.scope"))}</h2></div><div class="box prose"><p>${prose(D.range)}</p></div>
@@ -1895,6 +1931,8 @@ document.addEventListener("click", (e) => {
       case "next": return step(1);
       case "lc": return editLine(act.dataset.lk);
       case "lc-save": return saveLine(act.dataset.lk);
+      case "carry-take": return takeCarried();
+      case "carry-skip": $("#carry").hidden = true; return;
       case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; return refreshLine(lk); }
       case "sel-comment": return SELT && openSelection(SELT);
       case "lc-del": { const lk = act.dataset.lk; setState(DR.lineComment(state, anchorOfLk(lk), "")); return commentsChanged(() => refreshLine(lk)); }
