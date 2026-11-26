@@ -47,9 +47,9 @@ gives the smallest fix to the plan. Only a gap that affects correctness, ownersh
 #### Its second read
 
 When a worker's diff adds a concept, as the [default team](../SKILL.md#the-default-team)'s architecture row
-defines one, the coordinator continues the critic's thread, or briefs it fresh where one worker's plan ran
-without it, with the user's request verbatim, the diff's path and
-the worker's additions as claims to check, never the rest of the worker's return. It reads for what can go, and
+defines one, the coordinator briefs a fresh plan critic, never the thread that judged the plan, with the user's
+request verbatim, the diff's path and the worker's additions as claims to check, never the rest of the worker's
+return: one critic for the whole diff, and none for a diff a critic has already read. It reads for what can go, and
 leaves behaviour to the verifier: what the diff adds that the request does not ask for; for each new mechanism,
 the existing code that already does it, by path:line; the smallest change that meets the request, against the
 diff's size. It runs nothing. For each addition it doubts it asks one question: which requirement or test fails
@@ -81,8 +81,10 @@ requirement, and reads the diff for what the change removed, moved or narrowed a
 outside the change that fails a requirement is reported as such; any other defect it notices goes separately in
 `open` with its evidence. It does not search for defects outside the change. It marks each of the plan critic's objections by
 whether the check it named failed, and each test a worker named in defence of an addition by whether it tests a
-requirement or only the addition's internals. After a fix it re-runs the suite and re-reads the fix's diff, not
-the whole change. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
+requirement or only the addition's internals. After a fix it re-runs the suite and checks the fixes alone: for
+each, the claim it makes and the test that shows it, returned as confirmed, refuted with the place and what it
+saw, or not checkable and why; where that is cheap, it shows the test fails without the fix. It looks for nothing
+new there, and a doubt outside the fixes goes into `open` in one line. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
 
 ## Other roles
 

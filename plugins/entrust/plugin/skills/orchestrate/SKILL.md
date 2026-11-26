@@ -21,7 +21,7 @@ user conversation and the synthesis; agents do the work.
   `--pending` and `--stop`.
 - You may write your card, briefs, decision log and draft under your temporary directory; read the agents'
   returns and summary artifacts; and read a cited file:line range of at most 40 lines to settle a conflict
-  between returns or a claim you are about to relay.
+  between returns, a claim you are about to relay or an objection you are about to apply or overrule.
 - Hand a worker's artifacts to the next agent by path, verbatim, never as your paraphrase.
 - Only the user's explicit word for a specific edit lets you make that edit. There is no solo lane: invoking this
   mode is the user's choice of coordinated work.
@@ -42,9 +42,10 @@ user conversation and the synthesis; agents do the work.
 4. Run the card's critics, then brief the workers. Every brief names its row in
    [roles.md](references/roles.md) by path, and the agent reads that row; each worker's brief carries the user's
    words for its task verbatim, and a critic's and the verifier's brief carries the request verbatim. Your restatement never
-   stands in for either. Apply or overrule each
-   objection that cites a path:line, a named consumer or a failing check, with the reason in the decision log;
-   drop one that cites none. A change of scope or allocation goes to the user, and so does an architecture
+   stands in for either. An objection counts when it cites a path:line, a named consumer or a failing check;
+   drop one that cites none. Apply one only after reading the place it cites, and overrule one only by citing
+   the place in the code or the request that refutes it, each with the reason in the decision log; one you can
+   neither confirm nor refute goes to the user with what would settle it. A change of scope or allocation goes to the user, and so does an architecture
    verdict other than `keep`, with both approaches, before anyone else starts.
 5. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision and [results.md](references/results.md) when work fails, a worktree needs
@@ -52,7 +53,7 @@ user conversation and the synthesis; agents do the work.
    [foreman](references/foreman.md) may run them where the host allows nested agents.
 6. Read every return and compare each launch's model and effort with the card, the effective ones as the host
    reports them, else `unknown`; reconcile a deviation before going on. When a worker's diff adds a concept,
-   continue the plan critic's thread, or brief it fresh if it has not run, for
+   brief a fresh plan critic, never the thread that judged the plan, for
    [its second read](references/roles.md#its-second-read) before the verifier. At each phase, tell the user what is
    verified, pending and blocked, in their language.
 7. After the verifier, draft the answer and have it read as [answer.md](references/answer.md) says. Lint the draft
@@ -65,7 +66,7 @@ user conversation and the synthesis; agents do the work.
 | --- | --- |
 | coordinator | this session, throughout |
 | architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks |
-| plan critic | with several workers, once, after approval and the architecture critic, before the first worker brief; with any team, after a diff that adds a concept: its thread continued or, where it has not run, briefed fresh |
+| plan critic | with several workers, once, after approval and the architecture critic, before the first worker brief; with any team, fresh, after a diff that adds a concept |
 | worker | after the critics; usually one, one per owned deliverable |
 | verifier | fresh, after the writes or a read-only task's findings |
 
@@ -83,8 +84,9 @@ Nothing proposes another provider unprompted, a cross-family second opinion incl
 
 ## Capacity and models
 
-For every ordinary agent role, including critics, verifiers and a foreman, use the host's executor model by
-default: Terra in Codex, Sonnet in Claude Code, regardless of the coordinator's model. An explicit user choice
+For every ordinary agent role, including verifiers and a foreman, use the host's executor model by
+default: Terra in Codex, Sonnet in Claude Code, regardless of the coordinator's model. The plan critic and the
+architecture critic use the host's strong model by default: Sol in Codex, Opus in Claude Code. An explicit user choice
 of model or effort takes precedence for its stated scope. A transport relay is not an executor and keeps the
 relay model and effort its adapter specifies. On another host use its runtime's model choices.
 

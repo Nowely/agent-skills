@@ -3,6 +3,19 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Orchestration
+
+- The plan critic and the architecture critic run on the host's strong model by default: Opus in Claude Code, Sol
+  in Codex. Workers, verifiers and a foreman keep the executor model.
+- The second read of a diff is a fresh plan critic, never the thread that judged the plan: one critic for the
+  whole diff, and none for a diff a critic has already read.
+- After a fix the verifier checks the fixes alone: each claim and its test, as confirmed, refuted or not
+  checkable, and where cheap that the test fails without the fix. It looks for nothing new there.
+- The coordinator applies an objection only after reading the place it cites and overrules one only by citing
+  what refutes it; one it can neither confirm nor refute goes to the user.
+
 ## 0.47.2 — 2026-11-24
 
 ### Orchestration
