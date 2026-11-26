@@ -100,8 +100,14 @@ again at v2's checkpoints against the tables above.
 added (`0b3bfaf`), this file. Promises the audit listed as pending: the licence check of text carried over from
 vendor skill-creators, now done — v1 copies no text from them; its checker quotes two short sentences of
 Anthropic's public best-practices page with attribution, in a comment (`skill-creator/scripts/check.mjs:257`); the
-fork comparison promised if the audit passed, run once on the same list (its result is added here when it
-returns); and four repository changes an early design proposed (a role row moved to orchestrate, a line in
+fork comparison promised if the audit passed, run once on the same list: a fork of the coordinator filled tables
+A, B, D, E and F from its inherited context, opening no file (406k tokens, 2.1 minutes, against the fresh audit's
+266k and 11.0). The comparison is void: the fork was made after the audit's return was already in the
+coordinator's context, and its tables D and E reproduce the audit's exactly. It found fewer rows where it could
+not copy (45 owner instructions against 56, 16 questions against 25) and raised two items the audit had not
+marked: by output tokens the run's main spend fell on Fable and Opus, not on Sonnet, against the owner's word for
+the test, and the coordinator wrote the record and the merge itself. Adjustment: a fork, if one is used, is made
+before any reflection return enters the coordinator's context; and four repository changes an early design proposed (a role row moved to orchestrate, a line in
 `AGENT.md`, a ledger entry, a research folder under another name), dropped when the second design replaced it
 without the owner being told, now reported to him.
 
