@@ -8,10 +8,10 @@ Take every row whose claim the user's request makes.
 |---|---|---|
 | a script now enforces a rule | a test that fails when the change is taken out | nothing |
 | nothing was lost in a cut, a move, a merge or a rewrite | each removed sentence is found where its fact is now defined, in the same words, at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
-| a literal reader can follow the skill: a route, a step, an order | a dry run: a fresh agent walks one request through the files as written, runs nothing, and reports each step where it halts or has to guess, with the file and line; for a change, once before and once after | one agent per run |
+| a literal reader can follow the skill: a route, a step, an order | [a dry run](#a-dry-run); for a change, once before and once after | one agent per run |
 | an agent acts differently with the skill: a new skill, an instruction added or reworded | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
-| the description selects the skill: a new skill that agents select, or a changed name or description | [a selection check](#a-selection-check) | about sixty sessions a run, for each host |
+| the description selects the skill: a new skill that agents select, or a changed name or description | [a selection check](#a-selection-check) | its sessions, for each host |
 
 Size the check to the work. A change to one step takes one case. A new skill takes the dry run; it takes test
 cases as well, one for each stage of the walk that its instructions cover, up to three, when the user asks for
@@ -36,6 +36,14 @@ would have shown. With no run at all, the quality critic's read is the only evid
   therefore cannot show.
 - No session receives the statements it is marked by or the finding you expect.
 - A session has no user. A question it asks appears in its return; count it as an event and do not answer it.
+
+## A dry run
+
+1. At step 5, write one request the way a user would type it, from the middle of the sheet's job.
+2. At step 8, start one fresh agent as [the sessions](#the-sessions) says. Tell it to walk the
+   request through the files as written, to run nothing, and to report each step where it halts, has to guess or
+   can read a line two ways, with the file and line.
+3. The work is kept when the walk reaches the end with no halt and no guess at a stage the sheet's walk covers.
 
 ## Test cases
 

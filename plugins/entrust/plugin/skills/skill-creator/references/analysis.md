@@ -21,7 +21,7 @@ R<n> | the requirement | the user's words, quoted | where they are | stated or i
 - When a line reads two ways, write both readings. Do not narrow a requirement to the case the user gave as an
   example.
 - What the user disliked in an earlier attempt at this job is a requirement: it says what must not happen again.
-- Leave `met at` empty. Step 6 fills it with a file and line.
+- Leave `met at` empty until the text is written.
 
 **The job, walked.** Walk the job the skill will serve once, from the request that starts it to the result its
 user accepts. Write each stage as a line: what goes in, what comes out, and who judges it. A stage the user's
@@ -37,10 +37,10 @@ the sources of step 2 share; the default in the table. Write beside each answer 
 | The job: which requests the skill serves, what the agent then produces, and what it leaves to other skills | none: it is a question |
 | What it governs: for each stage of the walk, whether the skill gives steps for it or leaves it to the agent | steps for every stage; a stage left to the agent names the source that shows agents do it unprompted |
 | Who invokes it | an agent selects it by its description, and the user can also call it by name |
-| Which hosts and models load it. A host is a program that loads skills, such as Claude Code or Codex | any host of the open format: a fact that holds on one host only is written with that host's name, in one place |
+| Which hosts and models load it | any host of the open format: a fact that holds on one host only is written with that host's name, in one place |
 | Its name | the name the sources use for this job; else a short name that starts with the action |
 | Where it lives | where the user said; else beside the skills of the plugin or repository it belongs to; else the host's folder for personal skills |
-| What it uses and touches outside its folder, and what in it is private | it uses what the repository already has for the purpose and adds nothing new; it changes nothing outside; whatever came from the user's sessions is private |
+| What it uses and touches outside its folder, and what in it is private | it uses what the repository already has for the purpose and adds nothing new; it changes nothing outside; it carries no private material |
 | How the result is delivered, and who writes that text | as the repository's instructions say; else the files in place and the result message |
 
 A decision is open when none of the four answers it, when two of them disagree, or when the default would go
@@ -88,7 +88,8 @@ agent. Only when every way has failed is it recorded as `not read`, with the way
 settled goes into the plan as a question. A source is cited only after it was opened.
 
 A source too wide to read in this session, such as a corpus of sessions, is read now by reader agents, not
-later. Tell the user their number and their model before they start;
+later. Tell the user their number and their model before they start; with no user attached, the readers wait
+for the plan.
 [critics.md](critics.md#which-model-and-how-many) gives their tier. Give each reader the messages file, the
 sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give its address." Have a stronger model read again any part whose
 return contradicts the sheet. Step 3 waits for the readers.
@@ -99,9 +100,9 @@ A question is an open decision, put inside the plan of step 3.
 
 - Give the decision, what you read that did not settle it, your recommendation, and the alternatives, each with
   what it changes in the skill.
-- Draw the plan under the recommendations, so that one word accepts all of them.
+- Draw the plan under the recommendations.
 - Use a term the user has not used only with its meaning beside it.
 
-A choice between two designs that both meet every requirement is not a question: recommend the one that serves
-the goal better and show the other in the plan. Send a question alone, before any plan, only when the goal
+A choice between two designs that both meet every requirement is not a question: step 3 says how it is
+decided. Send a question alone, before any plan, only when the goal
 sentence cannot be written without its answer.

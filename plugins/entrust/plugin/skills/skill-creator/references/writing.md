@@ -37,8 +37,8 @@
 ## The description
 
 Write it from the sheet's decision on the job. Say what the skill does and which requests it is for, in the
-words a user would type, the main use first: a host that lists many skills shortens each description from the
-end. Write in the third person, because the description is placed in the agent's own instructions. Do not
+words a user would type, the main use first: [hosts.md](hosts.md) shows how each host cuts a description that
+runs long. Write in the third person, because the description is placed in the agent's own instructions. Do not
 summarise the steps: an agent that reads a summary follows it and leaves the skill unread. Name what the skill
 is not for only where such a request is likely to be routed to it.
 

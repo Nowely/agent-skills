@@ -54,7 +54,7 @@ Decide the files before the sentences. Each requirement goes to exactly one file
 | What is limited | Why |
 |---|---|
 | `name`: its characters, its length, and that it is the folder's name | the open specification; a host refuses or renames anything else |
-| `description`: its length | the open specification sets a limit, and each host cuts a listing that runs long, so the words that select the skill come first |
+| `description`: its length | the open specification sets a limit, and each host's listing has its own |
 | the body of `SKILL.md`: its lines and its characters | it is loaded whole on every use, and a host that compacts a long session keeps only its start; a rule past that point is gone |
 | a reference file: linked from `SKILL.md` itself | a file reached only through another file is often read in part, and one that nothing links is never read |
 | a long reference: a contents list at its top | an agent previews the top of a file and must see what the rest holds |

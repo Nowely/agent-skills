@@ -11,18 +11,20 @@ hear, and another agent's return goes in only as a claim to check.
 Two tiers are used. The top tier is the strongest model the host offers; the executor tier is the model the
 host uses for ordinary work. [hosts.md](hosts.md) says where each host lists its models: look them up before the
 plan names one, and when this session cannot see the list, the plan gives the tier and asks the user to name
-the model. A model the user names for a role replaces its tier.
+the model. A model the user names for a role replaces its tier. Putting the critics on the top tier is the
+choice of this skill's owner. It differs from the defaults of entrust's orchestrate, which runs such critics on
+the executor tier; the plan names each model, so the user sees the difference and settles it with one word.
 
 | Role | Tier | Why |
 |---|---|---|
 | the architecture critic and the quality critic | top | a skill is read on every later use, so a gap a critic misses is paid for each time |
 | the verifier; a reader of sources; the reader who marks a check's statements; the writer of a selection check's requests | executor | each works from a fixed question against files |
-| the sessions of a check | the models the sheet says load the skill, as [checks.md](checks.md#the-sessions) sets out | a check shows what those models do |
+| the agent of a dry run; the sessions of a check | no tier: [checks.md](checks.md#the-sessions) says which models | a check shows what the models that load the skill do |
 
 | Judge | Create | Change |
 |---|---|---|
 | architecture critic | once; again when a correction changes the approach | only when the change adds a step, a route, a script or a file |
-| quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same, reading the diff with the files |
+| quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met` or `not met` |
 
 ## The architecture critic
@@ -55,7 +57,7 @@ It reads every file of the skill as the agent that will load it would, and runs 
 Give it, by path: the skill's directory, and for a change its diff; the sheet; [structure.md](structure.md) and
 [writing.md](writing.md); this section.
 
-It does five things, in this order:
+It does these things, in this order:
 
 1. It walks two requests through the files as a literal reader, one from the middle of the sheet's job and one
    from its edge, and reports each step where it halts, has to guess, or can read the line two ways.
@@ -66,6 +68,8 @@ It does five things, in this order:
 4. It holds each line against writing.md's rules for lines.
 5. It holds the description against the sheet's job: the requests it fits, the near misses it leaves, and
    whether it summarises the steps.
+6. On work that gets no verifier, it marks each requirement line of the sheet `met` or `not met`, with the
+   place.
 
 It returns `sound` or `change`, and its objections ranked by how far each would mislead the reading agent. Each
 objection gives a file and line, the rule it rests on and the smallest fix. Whether the skill's behaviour is
