@@ -442,8 +442,8 @@ export function check(review, files, directory) {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
     if (block.kind !== undefined && !BLOCK_KINDS.includes(block.kind)) errors.push(`${name}: kind is one of ${BLOCK_KINDS.join(", ")}`);
     if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
-    // What a block does is written where it asks for something; a kept block's lines speak for themselves.
-    if (block.verdict !== "keep" && !text(block.does)) errors.push(`${name} has no "does": say what a block not kept does`);
+    // Every block says what it does and why it is there: the owner reads the kept ones to understand the change too.
+    if (!text(block.does)) errors.push(`${name} has no "does": say what it does and why it is there, or that no source gives a reason`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
@@ -463,6 +463,23 @@ export function check(review, files, directory) {
       }
     }
     if (!own) errors.push(`${name} covers no changed line of ${block.path}`);
+  });
+
+  // A route follows one behaviour through its blocks in the order it runs: each step's role there, and from the second
+  // on how it gets what the step before produced.
+  if (review.routes !== undefined && !Array.isArray(review.routes)) errors.push(`"routes" is not a list`);
+  (Array.isArray(review.routes) ? review.routes : []).forEach((route, index) => {
+    const who = `route ${index + 1}`;
+    if (!text(route?.title)) errors.push(`${who} has no "title": name the behaviour it follows`);
+    if (route?.requirements !== undefined && !Array.isArray(route.requirements)) errors.push(`${who}: requirements is not a list`);
+    else refs(who, route?.requirements, requirements, "requirement");
+    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several blocks`); return; }
+    route.steps.forEach((step, k) => {
+      const w = `${who} step ${k + 1}`;
+      if (!Number.isInteger(step?.block) || step.block < 1 || step.block > review.blocks.length) errors.push(`${w} names block ${step?.block}, which is not listed`);
+      if (!text(step?.role)) errors.push(`${w} has no "role": what its block does for this behaviour`);
+      if (k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+    });
   });
 
   // Code kept only for requirements to confirm stays because of a proposal nobody has accepted: a question names each

@@ -36,7 +36,7 @@ Wait for approval before analysis. A choice is fixed when the user names it or s
 
 The review's agents are briefed by [the agents reference](references/agents.md): an independent target, scouts, a critic, a verifier and, in multi mode, direction helpers. Start only agents the plan names. The session that can start agents starts all of them: in Claude Code load [the claude adapter](../claude/SKILL.md) first; an outside critic on another provider runs through [codex](../codex/SKILL.md) or [opencode](../opencode/SKILL.md). Where no session can start agents, the plan says so and the checks are none. An agent's return is evidence to check against the source, never a conclusion to copy.
 
-**Conducting.** When the review runs in a subagent, this session makes the plan, starts the reviewer, or the coordinator, with the approved plan and this page's path, and starts every agent the plan names on its behalf: the independent target at the same time as the reviewer, direction helpers on the coordinator's briefs, the critic and verifier on its saved draft, when selected. It hands the returns to the reviewer as they come and relays the result without redoing the analysis. The reviewer saves its record and draft before each return, so the review survives a host that cannot continue it. Follow-up questions go to the same reviewer.
+**Conducting.** When the review runs in a subagent, this session conducts it as [the agents reference](references/agents.md#conducting) says.
 
 ## Read
 
@@ -48,7 +48,7 @@ Read the whole diff, the base version of rewritten logic, the producers of chang
 
 ## Analyse
 
-For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check; a [generated file](references/report-data.md#generated-files) is the exception.
+For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check; a [generated file](references/report-data.md#generated-files) is the exception. Each block says what it does and why it is there, kept or not, and each behaviour that runs through several blocks gets a [route](references/report-data.md#fields).
 
 The record's fields are the data contract's. What they mean here:
 

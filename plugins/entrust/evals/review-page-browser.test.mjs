@@ -764,10 +764,12 @@ test("× at the top right closes the keys, the export and the Code panel, whethe
 test("the file tree hides from its own head and comes back from the rail beside the code, focus following",
   "the toolbar's «Files» button hid the tree, and what it did was not obvious",
   cased(THEMED_URL + "#code", {}, async (page) => {
-    await page.click('#tree [data-act="tree"]'); await settle(page);
+    await page.waitForSelector('#tree [data-act="tree"]', { state: "visible" }); await page.click('#tree [data-act="tree"]'); await settle(page);
     const hidden = !(await page.locator("#tree").isVisible()) && await page.locator("#tree-rail").isVisible(), f1 = await page.evaluate(() => document.activeElement?.closest("#tree-rail") !== null);
     await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
     const kept = !(await page.locator("#tree").isVisible());
+    await page.waitForSelector('#tree-rail [data-act="tree"]', { state: "visible", timeout: 5000 }).catch(() => {});
+    if (!(await page.locator('#tree-rail [data-act="tree"]').isVisible())) return `after a reload the rail is not shown: tree ${await page.locator("#tree").isVisible()}`;
     await page.click('#tree-rail [data-act="tree"]'); await settle(page);
     const back = await page.locator("#tree").isVisible() && !(await page.locator("#tree-rail").isVisible()), f2 = await page.evaluate(() => document.activeElement?.closest("#tree") !== null);
     return hidden && f1 && kept && back && f2 || JSON.stringify({ hidden, f1, kept, back, f2 });
@@ -836,6 +838,34 @@ test("a decision's recommendation names the variant it recommends, and one with 
     const q3 = await text(page, "#card-q3 .card-rec"), pick = await text(page, "#card-q3 .card-rec .rec-pick"), q4none = await page.locator("#card-q4 .card-rec.none").count();
     const mark = await page.locator("#card-q3 .opt .rec-mark").count();
     return pick === "Keep the conversion in the reader" && /Keep it in this change/.test(q3) && q4none === 1 && mark === 1 || JSON.stringify({ q3, pick, q4none, mark });
+  }));
+
+// ---- understanding the change (PR 109: C5, C6)
+test("Summary says how the change works, one route per behaviour, and a route's panel walks its steps in order with each role, link and code",
+  "related blocks were a set with no order, roles or connections",
+  cased(THEMED_URL + "#summary", {}, async (page) => {
+    const rows = await page.locator("#summary-routes + ul.routes .route-row").allInnerTexts();
+    await page.click("#summary-routes + ul.routes .route-row"); await settle(page);
+    const steps = await page.locator("#ctx-summary .route-step").evaluateAll((els) => els.map((e) => ({ head: e.querySelector("h3").innerText, text: e.innerText, code: Boolean(e.querySelector(".excerpt")) })));
+    const url = page.url();
+    await page.goto(THEMED_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const linked = await page.locator('#panel-summary .route-row.sel').count();
+    return rows.length === 1 && /2 steps/.test(rows[0]) && steps.length === 2 && /Step 1\s*B1/.test(steps[0].head) && /Step 2\s*B3/.test(steps[1].head)
+      && /Gets it from: readArchive's return/.test(steps[1].text) && steps.every((x) => x.code) && /#summary\/route1$/.test(url) && linked === 1 || JSON.stringify({ rows, steps, url, linked });
+  }));
+
+test("a kept block's panel says what the record knows about it — what it does, its unit with its jobs, the requirements it serves in words and its place in a route — not a bare «Kept code»",
+  "selecting kept code showed the verdict, not what the code is for",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    await page.goto(THEMED_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
+    if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
+    await settle(page);
+    const panel = await text(page, "#ctx-code");
+    await page.click('#ctx-code [data-act="goroute"]'); await settle(page);
+    const routed = await page.getAttribute("#tab-summary", "aria-selected") === "true" && await page.locator("#panel-summary .route-row.sel").count() === 1;
+    return /Converts the code/.test(panel) && /About this code/.test(panel) && /readArchive/.test(panel) && /reads the archive/.test(panel) && /A requirement that fails/.test(panel)
+      && /step 1 of 2/.test(panel) && !/Kept code/.test(panel) && routed || JSON.stringify({ panel: panel.slice(0, 600), routed });
   }));
 
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",

@@ -178,6 +178,15 @@ test("the printout presents the verdict, current solution, target and recommenda
     return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1])) || "summary order differs";
   });
 
+test("the printout lists each route's steps in order, each with its block, place, role and how it gets its input, and each requirement with its origin and quote",
+  "the critic and the verifier read the printout: a route or a requirement's source they cannot see is one they cannot check",
+  () => {
+    const out = render((r) => { r.requirements[2].source = "author"; }).stdout;
+    const route = /## How it works\n### An archived invoice shows its currency in upper case \(requirement 1\)\n1\. B1 `src\/invoices\/archive\.js:[^`]+`: Converts the code while it reads each row\.\n2\. B3 `test\/outputs\.test\.js:[^`]+`: Checks the three outputs of the conversion\. Gets it from: readArchive's return/.test(out);
+    const req = /3\. A requirement that fails\. \(proposed by the author, to confirm; [^)]*\) — TASK-9 “wherever a price is shown”/.test(out);
+    return route && req || out.slice(0, 1600);
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
@@ -451,6 +460,11 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }],
         recommendation: { text: "Probably A.", sources: [{ ref: "/requirements/0" }] } }]; }, "question 1 recommendation names no variant: name the one you recommend, or open its text with «No clear recommendation»"],
       [(r) => { r.ideas[0].sources = [{ ref: "/ideas/0" }]; }, 'idea 1: source ref "/ideas/0" is the entry that makes the claim'],
+      [(r) => { delete r.blocks[0].does; }, 'block 1 has no "does": say what it does and why it is there'],
+      [(r) => { r.routes[0].steps = [r.routes[0].steps[0]]; }, "route 1 has fewer than two steps"],
+      [(r) => { delete r.routes[0].steps[1].via; }, 'route 1 step 2 has no "via": how it gets what step 1 produced'],
+      [(r) => { r.routes[0].steps[0].block = 9; }, "route 1 step 1 names block 9, which is not listed"],
+      [(r) => { r.routes[0].requirements = [7]; }, "route 1 names requirement 7, which is not listed"],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
@@ -534,9 +548,9 @@ test("scaffold reads a supplied diff outside a repository, splits at declaration
     if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
     // Prose is divided at its headings, not at every paragraph.
     if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
-    // A kept block may leave "does" out; the check asks it only of a block that is not kept.
-    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
-      requirements: [{ id: 1, text: "A requirement.", source: "task", sources: [{ at: "TASK-1", quote: "a requirement" }] }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
+    // Every block, kept or not, says what it does and why it is there.
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined, routes: undefined,
+      requirements: [{ id: 1, text: "A requirement.", source: "task", sources: [{ at: "TASK-1", quote: "a requirement" }] }], blocks: record.blocks.map((b) => ({ ...b, does: "A part of the change, for no stated reason.", verdict: "keep" })) };
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;

@@ -127,6 +127,7 @@ export function page(review, files, model, { syntax } = {}) {
       parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
         texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
     checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String) })),
+    routes: (review.routes ?? []).map((r) => ({ title: r.title, requirements: (r.requirements ?? []).map(String), steps: r.steps.map((s) => ({ block: s.block, role: s.role, via: s.via ?? "" })) })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),
       findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id), lines: u.lines })),

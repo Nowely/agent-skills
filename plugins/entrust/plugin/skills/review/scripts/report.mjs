@@ -59,6 +59,9 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
     `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}${ESTABLISHED.has(r.source) ? "" : `, ${t("req.to-confirm")}`}; ${state(r)})${r.sources?.length ? ` — ${srcs(r.sources)}` : ""}${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
+    // A route follows one behaviour through its blocks in order; the checking agents read the roles and links here.
+    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
+      ...r.steps.map((step, k) => `${k + 1}. B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`: ${step.role}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`)]), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -151,7 +154,7 @@ const [command, argument] = process.argv.slice(2);
 try {
   if (command === "scaffold" && argument && process.argv[4]) {
     const made = scaffold(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));

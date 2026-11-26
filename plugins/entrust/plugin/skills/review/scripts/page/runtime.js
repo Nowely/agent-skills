@@ -495,6 +495,7 @@ function setHash() {
   else if (S.tab === "code" && S.sel.code) h += "/b" + S.sel.code;
   else if (S.tab === "details") h += "/" + S.sub.details + (sel ? "/" + hashPart(sel) : "");
   else if (S.tab === "summary" && sel?.startsWith("req:")) h += "/r" + hashPart(sel.slice(4));
+  else if (S.tab === "summary" && sel?.startsWith("route:")) h += "/route" + (+sel.slice(6) + 1);
   // An explicit move to another place adds a history entry, so Back returns there; a step within a list replaces it.
   if (pushNext && location.hash !== "#" + h) history.pushState(null, "", "#" + h); else history.replaceState(null, "", "#" + h);
   pushNext = false;
@@ -512,6 +513,7 @@ function route(hash) {
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
   if (tab === "details" && rest) { const [sub, sel] = rest.split("/").map(dec); if (DETAIL_TABS.some((t) => t.id === sub)) { S.sub.details = sub; if (sel) S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); return; } }
+  if (tab === "summary" && rest && /^route\d+$/.test(rest) && D.routes[+rest.slice(5) - 1]) { showTab("summary"); return select("summary", "route:" + (+rest.slice(5) - 1), { scroll: true }); }
   if (tab === "summary" && rest && /^r/.test(rest) && reqById.has(dec(rest.slice(1)))) { showTab("summary"); return select("summary", "req:" + dec(rest.slice(1)), { scroll: true }); }
   showTab(tab);
 }
@@ -837,6 +839,8 @@ function summaryHtml() {
     ${textBlockPc(D.verdict, "verdict")}
     <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p>${prose(D.recommendation)}</p>`)}
       ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span>${prose(s.text)}${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
+    ${D.routes.length ? `<div class="section-h" id="summary-routes"><h2>${esc(L("routes"))}</h2><span class="muted">${esc(L("p.routes.note"))}</span></div>
+    <ul class="routes">${D.routes.map((r, i) => `<li class="route-row" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span><span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>`).join("")}</ul>` : ""}
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
     <table class="tbl"><thead><tr><th>#</th><th>${esc(L("requirement"))}</th><th>${esc(L("status"))}</th><th class="num">${esc(L("p.code"))}</th></tr></thead><tbody>
     ${reqGroups().map(([head, list]) => (head ? `<tr class="grp"><th colspan="4">${esc(head)} <span class="muted">${n(list.length)}</span></th></tr>` : "") + list.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}${r.sources.length ? ` · <span class="srcs">${srcItems(r.sources)}</span>` : ""}</div>${!r.established && askedIn(r.id).length ? `<div class="why"><b>${esc(L("p.req.asked-in"))}</b>${chips("q", askedIn(r.id))}</div>` : ""}${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
@@ -889,6 +893,11 @@ function summaryPanel(sel) {
       ${fs.length ? `<div class="psec"><h3>${esc(L("findings"))}</h3>${fs.map((f) => miniItem(itemByKey.get("f" + f))).join("")}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
       <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${excerptList(r.blocks, "req" + r.id)}</div>`);
+  }
+  if (sel.startsWith("route:")) {
+    const i = +sel.slice(6), r = D.routes[i];
+    return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), r.steps.map((s, k) => `<div class="psec route-step">
+      <h3>${esc(L("p.route.step", k + 1))} ${chip("b", s.block)}</h3><p>${prose(s.role)}</p>${s.via ? `<p class="small sub"><b>${esc(L("route.via"))}:</b> ${prose(s.via)}</p>` : ""}${excerptList([s.block], `route${i}.${k}`)}</div>`).join(""));
   }
   if (sel.startsWith("step:")) {
     const i = +sel.slice(5), s = D.steps[i], ids = [...new Set(s.findings.flatMap((f) => itemByKey.get("f" + f)?.blocks ?? []))];
@@ -1519,6 +1528,23 @@ function setViewed(fi, on) {
 }
 // line numbers: one tab stop per file, arrows between lines
 function rovingInit(body) { const first = $(".lnb", body); if (first) first.tabIndex = 0; }
+// What the record knows about a block, kept or not: the unit it belongs to with its jobs and the reason for its verdict,
+// the requirements it serves in words, the mechanisms it is part of with what they replace, and the routes it is a step of.
+function aboutBlock(b) {
+  const rows = [], add = (label, html) => rows.push(`<dt>${esc(L(label))}</dt><dd>${html}</dd>`);
+  const u = b.unit && D.units.find((x) => x.name === b.unit);
+  if (u) add("p.block.unit", `<button class="linkbtn" data-act="gounit" data-unit="${D.units.indexOf(u)}"><span class="unit-name">${esc(u.name)}</span></button>${u.jobs.length ? ` — ${u.jobs.map(prose).join("; ")}` : ""}${u.reason ? `<div class="small sub">${prose(u.reason)}</div>` : ""}`);
+  add("p.block.serves", b.serves.length ? `<ul class="plain">${b.serves.map((id) => { const r = reqById.get(String(id)); return `<li>${chip("r", id)} ${prose(r.text)} <span class="muted small">${esc(L("source." + r.source))}${r.established ? "" : ` · ${esc(L("req.to-confirm"))}`}</span></li>`; }).join("")}</ul>` : `<span class="muted">${esc(L("p.block.no-req"))}</span>`);
+  for (const [m, i] of D.mechanisms.map((m, i) => [m, i]).filter(([m]) => m.blocks.includes(b.id)))
+    add("p.block.mechanism", `<button class="linkbtn" data-act="gomech" data-mech="${i}">${esc(m.name)}</button>${m.purpose ? ` — ${prose(m.purpose)}` : ""}${m.instead ? `<div class="small sub"><b>${esc(L("instead"))}:</b> ${prose(m.instead)}</div>` : ""}`);
+  D.routes.forEach((r, i) => r.steps.forEach((s, k) => {
+    if (s.block !== b.id) return;
+    const prev = r.steps[k - 1], next = r.steps[k + 1];
+    add("p.route", `<button class="linkbtn" data-act="goroute" data-route="${i}">${prose(r.title)}</button> <span class="muted small">${esc(L("p.route.of", k + 1, r.steps.length))}</span><div class="small">${prose(s.role)}</div><div class="route-nav">${prev ? `${esc(L("p.route.prev"))} ${chip("b", prev.block)}` : ""}${next ? ` ${esc(L("p.route.next"))} ${chip("b", next.block)}` : ""}</div>`);
+  }));
+  const items = blockItems(b);
+  return `<div class="psec"><h3>${esc(L("p.block.about"))}</h3><dl class="kv kv-wide">${rows.join("")}</dl>${items.length ? "" : `<p class="muted small gap-top">${esc(L("p.block.kept"))}</p>`}</div>`;
+}
 function codePanel(sel) {
   const lcList = (filter) => { const list = state.lines.filter((c) => lkOfAnchor(c) && filter(lkOfAnchor(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lkOfAnchor(c); return `<div class="cmt"><div class="where">${esc(splitPath(c.path)[1])}:${c.side === "base" ? "−" : ""}${c.line}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div><div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
   if (!sel) return panelWrap(esc(L("p.context")) + closeX('data-act="ctx"', L("p.code.ctx-close")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
@@ -1531,10 +1557,9 @@ function codePanel(sel) {
     else if (c.type === "q") basis = `${r.context.length ? `<ul class="plain">${r.context.map((x) => `<li>${prose(x.text)} ${srcList(x.sources)}</li>`).join("")}</ul>` : `<p class="muted small">${esc(L("p.no-context", c.label))}</p>`}${r.recommendation?.sources.length ? `<p class="small">${esc(L("recommendation"))} ${srcList(r.recommendation.sources)}</p>` : ""}`;
     body += `<div class="psec"><h3>${c.label} · ${esc(typeText(c))} <span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></h3><p class="strong">${prose(itemTitle(c))}</p><div class="answer-line small" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${basis}<h3 class="gap-top">${esc(L("p.related"))}</h3>${relations(c.type, r.id)}</div>`;
   }
-  if (!items.length) body += `<div class="psec"><p class="muted">${esc(L("p.block.kept"))}</p><h3>${esc(L("p.related"))}</h3>${relations("b", String(b.id))}</div>`;
-  else body += `<div class="psec"><h3>${esc(L("p.block.this"))}</h3>${relations("b", String(b.id))}</div>`;
+  body += aboutBlock(b);
   body += `<div class="psec"><h3>${esc(L("p.lc.file"))}</h3>${lcList((lk) => +lk.split(":")[0] === b.file)}</div>`;
-  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}${closeX('data-act="ctx"', L("p.code.ctx-close"))}`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.kept-code"))}</span>`, body);
+  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}${closeX('data-act="ctx"', L("p.code.ctx-close"))}`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.no-does"))}</span>`, body);
 }
 
 // ---------------------------------------------------------------- Details
@@ -1838,6 +1863,7 @@ document.addEventListener("click", (e) => {
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
+      case "goroute": showTab("summary"); return select("summary", "route:" + act.dataset.route, { scroll: true });
       case "tree": return setTree(!S.code.tree);
       case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;

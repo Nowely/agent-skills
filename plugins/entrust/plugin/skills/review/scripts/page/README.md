@@ -15,8 +15,9 @@ child question applies under in the page's data — has that one owner; the runt
 only word it. `evals/review-page.test.mjs` checks what the file carries, and `evals/review-page-browser.test.mjs`
 drives it in Chromium, locally only.
 
-- **Summary** opens the page: the verdict, the recommendation and its steps, the requirements with one status each,
-  the coverage limits and «Start review», which goes to the first open item.
+- **Summary** opens the page: the verdict, the recommendation and its steps, «How it works» — the record's routes,
+  each walked step by step with its code in the side panel — the requirements, established apart from those to
+  confirm, with one status each, the coverage limits and «Start review», which goes to the first open item.
 - **Decisions** shows every question, finding and idea as one card, with sub-tabs by kind, by state (deferred,
   done) and for the comments; a side panel adds the card's place, sources and related items.
 - **Code** is the diff with the open decisions in its margin and kept code folded: j and k walk the open decisions,

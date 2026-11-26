@@ -40,6 +40,7 @@ export function documentOf(data, t, picture) {
 <h3>${esc(t("verdict"))}</h3>${block(data.verdict)}
 <h3>${esc(t("recommendation"))}</h3><p>${prose(data.recommendation)}</p>
 ${data.steps.length ? `<ol>${data.steps.map((s) => `<li>${prose(s.text)}${s.findings.length ? ` (${ids("F", s.findings)})` : ""}</li>`).join("")}</ol>` : ""}
+${data.routes.length ? `<h3>${esc(t("routes"))}</h3><ol>${data.routes.map((r) => `<li><b>${prose(r.title)}</b>${r.requirements.length ? ` (${ids("R", r.requirements)})` : ""}<ol>${r.steps.map((s) => `<li>B${esc(s.block)}: ${prose(s.role)}${s.via ? ` <span class="muted">${esc(t("route.via"))}: ${prose(s.via)}</span>` : ""}</li>`).join("")}</ol></li>`).join("")}</ol>` : ""}
 <h3>${esc(t("requirements"))}</h3><table class="stbl"><tr><th>#</th><th>${esc(t("requirement"))}</th><th>${esc(t("status"))}</th><th>${esc(t("p.code"))}</th></tr>
 ${data.requirements.map((r, i, all) => `${all.some((x) => !x.established) && (i === 0 || all[i - 1].established !== r.established) ? `<tr><th colspan="4">${esc(t(r.established ? "req.established" : "req.confirm-group"))}</th></tr>` : ""}<tr><td>R${esc(r.id)}</td><td>${prose(r.text)}<div class="muted">${esc(t("source"))}: ${esc(t(`source.${r.source}`))}${r.sources.length ? ` · ${r.sources.map((x) => esc(x.text)).join("; ")}` : ""}</div>${r.doubt ? `<div class="muted">${esc(t("p.req.doubt"))}: ${prose(r.doubt)}</div>` : ""}</td><td>${reqStatus(r)}</td><td>${r.blocks.length ? ids("B", r.blocks) : esc(t("p.req.none-linked"))}</td></tr>`).join("\n")}
 </table>

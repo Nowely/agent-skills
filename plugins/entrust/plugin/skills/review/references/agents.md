@@ -7,6 +7,10 @@ file but its own return, which for the independent target is `<out>/target.md`. 
 `path:line`, what it ran and what it could not reach. The reviewer, or the coordinator, checks each returned point
 against the source before using it.
 
+## Conducting
+
+When the review runs in a subagent, the session that started it makes the plan, starts the reviewer, or the coordinator, with the approved plan and the review skill's path, and starts every agent the plan names on its behalf: the independent target at the same time as the reviewer, direction helpers on the coordinator's briefs, the critic and verifier on its saved draft, when selected. It hands the returns to the reviewer as they come and relays the result without redoing the analysis. The reviewer saves its record and draft before each return, so the review survives a host that cannot continue it. Follow-up questions go to the same reviewer.
+
 ## Reviewer under a conductor
 
 The full reviewer, not a checking agent: it gets the approved plan as given and the review skill's path and runs the

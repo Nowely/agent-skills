@@ -31,6 +31,8 @@ export function reportFixtures(diffSha) {
       { path: "test/archive.test.js", added: "1-8", does: "Tests it.", serves: [1], verdict: "fix", findings: [1] },
       { path: "test/outputs.test.js", added: "1-13", does: "Tests the three outputs.", serves: [1], verdict: "keep" },
     ],
+    routes: [{ title: "An archived invoice shows its currency in upper case", requirements: [1],
+      steps: [{ block: 1, role: "Converts the code while it reads each row." }, { block: 3, role: "Checks the three outputs of the conversion.", via: "readArchive's return, test/outputs.test.js:3" }] }],
     challenges: [{ from: "critic", point: "The reader should not convert.", outcome: "rejected", at: "src/main.js:4", note: "The caller prints the code as read." },
       { from: "target", point: "The independent target converts where prices are shown.", outcome: "owner", note: "Which unit owns display is the owner's call." },
       { from: "verifier", point: "Line 2 is not the conversion.", outcome: "accepted", note: "The finding's place was corrected." }],
@@ -112,6 +114,7 @@ export function hostileThemed(themed) {
   r.blocks.forEach((b) => { b.serves = reqs(b.serves); });
   r.findings.forEach((f) => { f.breaks = reqs(f.breaks); f.untested = reqs(f.untested); });
   r.checks.forEach((c) => { c.requirements = reqs(c.requirements); });
+  r.routes.forEach((x) => { x.requirements = reqs(x.requirements); x.title = `A route ${H}`; x.steps[1].via = `the return ${H}`; });
   const unit = (name) => `${H}${name}`;
   for (const list of [r.units, r.target_units]) list.forEach((u) => { u.name = unit(u.name); u.uses = u.uses?.map(unit); });
   r.blocks.forEach((b) => { if (b.unit) b.unit = unit(b.unit); });

@@ -89,6 +89,9 @@ new evidence that changes a conclusion makes a revised record, named as such.
                    "does": "...", "serves": [1], "verdict": "remove", "findings": [1] },
                  { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
                    "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
+      "routes": [{ "title": "an upload gets its thumbnails", "requirements": [2],
+                   "steps": [{ "block": 1, "role": "picks the sizes" },
+                             { "block": 2, "role": "writes each size", "via": "the sizes storeUpload returns, src/a.js:16" }] }],
       "challenges": [{ "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" }],
       "questions": [{ "at": "path:line", "text": "which behavior to keep", "kind": "decision", "resolver": "owner",
                       "context": [{ "text": "what the code does now", "sources": [{ "ref": "/blocks/0" }] }],
@@ -164,10 +167,18 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   block listed then names its own `kind`: `code`, `test` or `other`; a block two mechanisms list is shown as shared, and a block that
   mixes other work, shared imports included, is left out. Weigh the mechanisms specified in [Analyse](../SKILL.md#analyse); with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
-- **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
-  which a kept block may leave out.
+- **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`:
+  what the block does and why it is there, read from its lines and the code around them, with the reason the task, a
+  requirement or the code gives — or the plain statement that no source gives one, never a guess. A kept block needs
+  it as much as an open one: the owner reads it to understand the change, not only to decide.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`. `remove` means the
   target has no such code: work that belongs in another change keeps its verdict, and a step moves it.
+- **Routes.** One for each behaviour the change adds or alters that runs through more than one block — where its
+  data is produced, transformed and used, or how a request reaches its effect. `title` names the behaviour,
+  `requirements` the ids it serves, and `steps` lists its blocks (numbers from 1) in the order the behaviour runs,
+  each with its `role` there and, from the second step on, `via`: how it gets what the step before produced — a
+  call, a return, an event, a stored value — with its place. Order, roles and connections are not in the diff, so the
+  reviewer writes them; the page lets the owner walk a route with its code beside it.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and

@@ -40,6 +40,15 @@ forensics remain in the repository references and release notes.
   compared when the plan allows the web, and otherwise the card says that no outside comparison was made.
 - An idea's text says what the code does now and why, what is proposed, the burden it removes and its cost, and may
   cite sources; its excerpt is labelled as the code as written.
+- **Breaking:** every block says what it does and why it is there, kept or not, or that no source gives a reason;
+  `check` refuses a block without `does`. Selecting a block in Code shows what the record knows about it — its unit
+  with its jobs and the reason for its verdict, the requirements it serves in words, the mechanisms it is part of
+  with what they replace, and its place in a route — instead of the bare label «Kept code».
+- A record may follow each behaviour the change adds through its blocks: `routes`, each a `title`, the
+  `requirements` it serves and `steps` in the order the behaviour runs, each with its block's `role` and, from the
+  second on, `via` — how it gets what the step before produced, with its place. Summary's «How it works» lists them;
+  a route's panel walks its steps with their code, a block's panel links its neighbours in the route, and
+  `#summary/route1` opens one. The printout and the page without JavaScript list them too.
 
 ## 0.47.2 — 2026-11-24
 
