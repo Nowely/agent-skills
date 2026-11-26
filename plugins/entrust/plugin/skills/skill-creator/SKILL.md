@@ -22,15 +22,19 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
 
 ## Standing rules
 
-- Read the repository's agent instructions first. Where they differ from these steps, follow them.
+- Read the repository's agent instructions first: the files the host loads for it, such as `AGENTS.md`,
+  `CLAUDE.md` or `AGENT.md` at its root, and what they link. Where they differ from these steps, follow them.
 - Keep everything these steps write down, and every agent's return, in one run directory outside the skill's
-  folder: where the repository keeps its research runs, else a temporary directory.
+  folder: where the repository's rule for research runs puts it, else a temporary directory. A skill in a
+  personal folder has one too. Where that rule numbers each version of a file and overwrites none, an amended
+  sheet is a new numbered file.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
 - Between the plan and the result, the user hears from you only a changed plan, a verdict that stops the work,
   and blockers, all blockers in one message.
-- When no user can answer, because another agent started you or the run has no one attached, put the plan with
-  its questions in your return and stop there. An instruction that names an edit is the word for that edit and
-  the check script, and for nothing that starts an agent.
+- When no user can answer, because another agent started you or the run has no one attached, your return
+  stands where a step says to tell the user. The plan with its questions is then your return, and you stop
+  there, on either route. An instruction that names an edit is the word for that edit and the check script, and
+  for nothing that starts an agent.
 - When this session cannot start agents, say so in the plan, do the steps that need none, and name each step
   left undone in the result.
 - `<skill-dir>` is this skill's installed directory. Its script needs Node.js 18 or later.
@@ -39,7 +43,7 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
 
 1. **Analyse the request.** Write the sheet as [analysis.md](references/analysis.md#the-sheet) sets it out: the
    goal in one sentence, one line for each requirement in the user's words, the job walked stage by stage, and
-   the decisions every skill must settle. For a rewrite, first take
+   the decisions every skill must settle. Read the material the request names before you write it. For a rewrite, first take
    [the inventory](references/writing.md#rewriting-an-existing-skill).
 2. **Read the sources.** Read what already does this job, what the hosts say a skill is, and the user's own
    experience of the job, and record what you take, change and leave out, as
@@ -47,7 +51,8 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
    [hosts.md](references/hosts.md) has each host's guide and what differs between hosts.
 3. **Plan and ask, in one message.** Choose the approach and the layout by
    [structure.md](references/structure.md), and the check by
-   [checks.md](references/checks.md#choosing-the-check). Show the user one plan. Open it with what you will make
+   [checks.md](references/checks.md#choosing-the-check). When two approaches both meet the sheet and its goal
+   does not decide between them, the plan's check is that table's comparison of the two. Show the user one plan. Open it with what you will make
    and what you need from them, in two sentences at most. Then:
    - the goal, the requirements, and each decision with what settled it; a decision still open is put as a
      question, as [the questions](references/analysis.md#the-questions) says, and the plan is drawn under your
@@ -59,7 +64,8 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
      start, each with its model and its number of sessions, as [critics.md](references/critics.md#which-model-and-how-many) and checks.md give them;
    - how the result will be delivered.
 
-   Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
+   Wait for the user's word on the plan; with no user attached, the standing rule above applies. Their
+   instructions, or an approval they already gave for this scope
    and spend, can stand for it; the request to do the work cannot. One word accepts the plan and its
    recommendations, and no later step asks for another.
 4. **Have the approach challenged.** Start the architecture critic as
@@ -95,8 +101,8 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
    in the output of the failing check; when neither has it, the plan of step 4 includes one session that
    repeats the request.
 2. **Find the place.** Read what the skill's own files, the skills beside it and the hosts' guides say on the
-   rule the change is about, and record them as [the sources](references/analysis.md#the-sources) says. If a
-   rule already says it, do not state it again; find where it stopped working: past what the host keeps of the
+   rule the change is about, and record them as [the sources](references/analysis.md#the-sources) says. If
+   the page or a script already carries the rule, do not state it again; find where it stopped working: past what the host keeps of the
    page in a long session, behind a link away from the step that needs it, contradicted in another file, or
    written as advice where a step was needed. A rule that is absent has a place too: the step that should carry
    it. If a script can enforce the rule, the fix is the script, not a sentence. If what produced the failure

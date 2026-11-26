@@ -37,6 +37,7 @@ const skills = fs.readdirSync(path.join(ROOT, "plugins"), { withFileTypes: true 
         const dir = path.join(plugin, "skills", s.name);
         return skillAt(dir, {
           bound: plugin,
+          installed: plugin,
           skips: agent,
           follows: (dest) => inside(plugin, dest) && path.basename(dest) !== "README.md" && !agent(dest)
             && (!inside(path.join(plugin, "skills"), dest) || inside(dir, dest)),

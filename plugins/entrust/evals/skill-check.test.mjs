@@ -63,6 +63,7 @@ test("a skill that breaks no rule fails none, and each planted violation fails i
     expect("no description", plant({ "SKILL.md": page("name: sample") }), [10]),
     expect("a description of 1,025 characters", plant({ "SKILL.md": page(`name: sample\ndescription: ${"d".repeat(1025)}`) }), [10]),
     expect("a reference nothing links", plant({ "references/orphan.md": "# Orphan\n" }), [11]),
+    expect("a link out of the installed folders", plant({ "SKILL.md": page(`name: sample\n${DESC}`, "Read [the table](references/table.md) and [the notes](../../notes.md).\n") }), [8, 12]),
     expect("a description the reader cannot count", plant({ "SKILL.md": page("name: sample\ndescription: Does a thing\n  on two lines.") }), [1, 2, 9, 10]),
   ));
 
@@ -77,7 +78,7 @@ test("the command line prints the failed rule, exits 1 on a violation, 0 on none
     const red = await run(plant({ "references/orphan.md": "# Orphan\n" }));
     const bare = await run();
     const problems = [];
-    if (clean.code !== 0 || !/^ok {4}.*11 of 11 rules passed/m.test(clean.out)) problems.push(`clean: exit ${clean.code}: ${clean.out}`);
+    if (clean.code !== 0 || !/^ok {4}.*12 of 12 rules passed/m.test(clean.out)) problems.push(`clean: exit ${clean.code}: ${clean.out}`);
     if (red.code !== 1 || !/^FAIL {2}11\. /m.test(red.out)) problems.push(`red: exit ${red.code}: ${red.out}`);
     if (bare.code !== 2) problems.push(`no argument: exit ${bare.code}`);
     return problems.length === 0 || problems.join("; ");

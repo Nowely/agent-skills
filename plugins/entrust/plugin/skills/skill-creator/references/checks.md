@@ -11,10 +11,11 @@ Take every row whose claim the user's request makes.
 | a literal reader can follow the skill: a route, a step, an order | a dry run: a fresh agent walks one request through the files as written, runs nothing, and reports each step where it halts or has to guess, with the file and line; for a change, once before and once after | one agent per run |
 | an agent acts differently with the skill: a new skill, an instruction added or reworded | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
-| the description selects the skill: a new skill that agents select, or a changed name or description | [a selection check](#a-selection-check) | the sessions of one run per host |
+| the description selects the skill: a new skill that agents select, or a changed name or description | [a selection check](#a-selection-check) | about sixty sessions a run, for each host |
 
-Size the check to the work. A change to one step takes one case; a new skill takes one case for each stage of
-the walk that its instructions cover, up to three. When the user caps the spend below that, keep every check in
+Size the check to the work. A change to one step takes one case. A new skill takes the dry run; it takes test
+cases as well, one for each stage of the walk that its instructions cover, up to three, when the user asks for
+them or when only a run can show that the agent acts differently. When the user caps the spend below that, keep every check in
 the plan, in the order of the decision each can change, and say which ones the cap leaves unrun and what each
 would have shown. With no run at all, the quality critic's read is the only evidence, and the result says so.
 
@@ -30,8 +31,9 @@ would have shown. With no run at all, the quality critic's read is the only evid
 - The skill reaches a session as files: give it the path of `SKILL.md` and tell it to read the file whole and
   follow it. A session that runs without the skill gets neither the path nor the skill's name.
 - Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
-  repository. A case that needs a live system or an action outside the copy runs only when the plan named it and
-  the user approved it.
+  repository. No case performs an action that cannot be undone or that leaves the copy, such as a tag, a push,
+  a release, a publication or a message sent: the case stops before it, and the plan says what the check
+  therefore cannot show.
 - No session receives the statements it is marked by or the finding you expect.
 - A session has no user. A question it asks appears in its return; count it as an event and do not answer it.
 
@@ -63,7 +65,7 @@ would have shown. With no run at all, the quality critic's read is the only evid
    [structure.md](structure.md#the-approach) sorted out in step 2, the host's built-in ones included. A rival
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
-3. Run each request three times, because a single run of a request varies. Use the host's own tool for this
+3. Run each request three times, because a single run of a request varies: about sixty sessions for each host. Use the host's own tool for this
    where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
    which skill was loaded before the answer or the first action: this one, a rival by name, or none.
 4. Report the fraction for each request, and every request a rival took. Run the same set a second time: a

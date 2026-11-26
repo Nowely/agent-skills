@@ -44,6 +44,8 @@ Decide the files before the sentences. Each requirement goes to exactly one file
   and `SKILL.md` chooses between them.
 - A skill whose whole text fits the budgets and has no detail that only one step needs is a single `SKILL.md`.
 - Create no file that no step reads or runs.
+- Link only to files inside the skill's folder and to the skills installed beside it. An install copies the
+  skill and its neighbours and nothing else of a repository, so any other link is dead on arrival.
 - Write the skill in a folder that has its final name, in the place the sheet gives it, so that its links to
   neighbouring files open.
 

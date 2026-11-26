@@ -88,9 +88,9 @@ agent. Only when every way has failed is it recorded as `not read`, with the way
 settled goes into the plan as a question. A source is cited only after it was opened.
 
 A source too wide to read in this session, such as a corpus of sessions, is read now by reader agents, not
-later. Tell the user their number and their model before they start; they run on the host's ordinary working
-model. Give each reader the messages file, the sheet and this question: "What did the user require, correct or
-reject about this job? Quote each item and give its address." Have a stronger model read again any part whose
+later. Tell the user their number and their model before they start;
+[critics.md](critics.md#which-model-and-how-many) gives their tier. Give each reader the messages file, the
+sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give its address." Have a stronger model read again any part whose
 return contradicts the sheet. Step 3 waits for the readers.
 
 ## The questions

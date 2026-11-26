@@ -3,7 +3,8 @@
 The [open specification](https://agentskills.io/specification) holds on every host: the folder, the frontmatter,
 the limits on `name` and `description`, a body it recommends keeping under 5,000 tokens and 500 lines, and
 references one level from `SKILL.md`. This table holds what each host adds, as its vendor's guide states it.
-Read the guide again before relying on a figure.
+Read the guide again before relying on a figure. OpenCode also loads skills of the open format, and entrust
+reaches it through [its adapter](../../opencode/SKILL.md); nothing in this table was measured on it.
 
 | | Claude Code | Codex and ChatGPT |
 |---|---|---|

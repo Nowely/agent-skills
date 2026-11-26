@@ -1,21 +1,27 @@
 # The judges
 
-Three agents judge the work: the architecture critic at Create's step 4, the quality critic at step 7 and the
+Three agents judge the work: the architecture critic at Create's step 4, which judges the architecture and the
+approach together, the quality critic at step 7 and the
 verifier at step 9. Each is started fresh: it wrote none of the work and saw none of the conversation. Brief each
 one with paths to files, never with your summary of them. No brief carries your reasons or what you expect to
 hear, and another agent's return goes in only as a claim to check.
 
 ## Which model, and how many
 
-The two critics run on the strongest model the host offers, and the verifier on the model the host uses for
-ordinary work. A skill is read on every later use, so a gap a critic misses is paid for each time. A model the
-user names for a judge replaces this. Before the plan names a model, look the host's models up where
-[hosts.md](hosts.md) says it lists them. When this session cannot see that list, the plan says "the strongest
-model available" and asks the user to name it.
+Two tiers are used. The top tier is the strongest model the host offers; the executor tier is the model the
+host uses for ordinary work. [hosts.md](hosts.md) says where each host lists its models: look them up before the
+plan names one, and when this session cannot see the list, the plan gives the tier and asks the user to name
+the model. A model the user names for a role replaces its tier.
+
+| Role | Tier | Why |
+|---|---|---|
+| the architecture critic and the quality critic | top | a skill is read on every later use, so a gap a critic misses is paid for each time |
+| the verifier; a reader of sources; the reader who marks a check's statements; the writer of a selection check's requests | executor | each works from a fixed question against files |
+| the sessions of a check | the models the sheet says load the skill, as [checks.md](checks.md#the-sessions) sets out | a check shows what those models do |
 
 | Judge | Create | Change |
 |---|---|---|
-| architecture critic | once; again when a correction changes the approach | not started |
+| architecture critic | once; again when a correction changes the approach | only when the change adds a step, a route, a script or a file |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same, reading the diff with the files |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met` or `not met` |
 

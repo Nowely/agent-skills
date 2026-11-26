@@ -39,10 +39,12 @@ const inside = (dir, p) => p.startsWith(dir + path.sep);
 
 // A skill to check. `bound` is the directory the walk stays inside, the skill's folder unless the caller widens
 // it; `follows` says whether the walk reads a linked markdown file, and `skips` names a directly linked file that
-// is held to no rule. A repository's suite passes its own three.
-export function skillAt(dir, { bound, follows, skips } = {}) {
+// is held to no rule. `installed` is the directory an install copies the skill with: the folder that holds the
+// skill and its neighbours, unless the caller names a wider one. A repository's suite passes its own four.
+export function skillAt(dir, { bound, follows, skips, installed } = {}) {
   const root = path.resolve(dir), file = path.join(root, "SKILL.md");
-  const skill = { name: path.basename(root), dir: root, file, bound: bound ?? root, skips: skips ?? (() => false) };
+  const skill = { name: path.basename(root), dir: root, file, bound: bound ?? root, skips: skips ?? (() => false),
+    installed: installed ?? path.dirname(root) };
   skill.follows = follows ?? ((dest) => inside(skill.bound, dest));
   return skill;
 }
@@ -283,6 +285,10 @@ export function rules(skills, rel = (p) => p) {
     [11, "every file under the skill's references/ is linked from SKILL.md", () => walks.flatMap(({ skill, direct }) =>
       markdownUnder(path.join(skill.dir, "references")).filter((f) => !direct.has(f))
         .map((f) => `${rel(skill.file)} does not link ${rel(f)}`))],
+    [12, "every relative link stays among the files installed with the skill", () => walks.flatMap(({ skill, reached }) =>
+      [skill.file, ...reached.keys()].filter((f) => f === skill.file || inside(skill.dir, f)).flatMap((f) => links(f)
+        .filter((l) => l.dest && l.dest !== skill.installed && !inside(skill.installed, l.dest))
+        .map((l) => `${rel(f)}:${l.line}: ${l.target} leaves the installed folders`)))],
   ].map(([n, title, collect]) => {
     try { return [n, title, collect()]; } catch (e) { return [n, title, [`threw: ${e.stack}`]]; }
   });
