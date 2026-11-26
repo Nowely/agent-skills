@@ -44,7 +44,10 @@ drives it in Chromium, locally only.
   field is being typed in, and only «Save this page's answers over it» replaces it; until then the answers live in the
   page's memory.
 - **Comments.** On any line of the diff, and on the paragraphs of the verdict, the recommendation, a step, a card's
-  fields, a scenario and a challenge; listed in Decisions › Comments and exported. One paragraph editor is open at a
+  fields, a scenario and a challenge; listed in Decisions › Comments and exported. Selecting text inside one paragraph,
+  or inside one hunk on one side of a file, offers «Comment» below the selection (and `c`): the comment keeps the
+  lines, characters and words selected, quotes them, and the words are marked in place through the CSS Custom
+  Highlight API where it exists and they still read the same; a selection across two of them is refused with a word. One paragraph editor is open at a
   time: opening another keeps the first one's text as that paragraph's unsaved draft.
 - **Export.** «Export answers» opens the preview with «Copy text», which says «Copied» only once the clipboard
   confirms and otherwise opens the raw text, selected, and «Download JSON»; the raw text is otherwise shown on request.

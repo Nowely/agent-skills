@@ -10,9 +10,11 @@
 // request is the owner's input, never a verified result.
 export function decisionRuntime() {
   // The export format's number: it tells a later reader how to read the export, and changes with the export alone.
-  const schema = 7;
+  const schema = 8;
   // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
-  // report (an item or part of it, and a field). A comment never answers anything.
+  // report (an item or part of it, and a field). A comment made on a selection also keeps what was selected: in the
+  // diff the lines it spans on one side (`line` to `end`), and in either the characters (`from` in its first line or
+  // the paragraph, `to` in its last) and the selected words (`quote`). A comment never answers anything.
   const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
   const OPTIONS = { finding: ["fix", "leave"], idea: ["take", "skip"] };
   const REQUESTS = ["fact", "evidence"];
@@ -31,8 +33,8 @@ export function decisionRuntime() {
     const list = (v, ok) => Array.isArray(v) ? v.filter((c) => object(c) && has(c.text) && ok(c)) : [];
     if (!object(raw)) return empty();
     return { answers: object(raw.answers) ? { ...raw.answers } : {},
-      lines: list(raw.lines, (c) => typeof c.path === "string" && ["head", "base"].includes(c.side) && Number.isInteger(c.line)),
-      paragraphs: list(raw.paragraphs, (c) => typeof c.item === "string" && typeof c.field === "string") };
+      lines: list(raw.lines, (c) => typeof c.path === "string" && ["head", "base"].includes(c.side) && Number.isInteger(c.line) && spanOk(c) && (c.end === undefined || (Number.isInteger(c.end) && c.end >= c.line))),
+      paragraphs: list(raw.paragraphs, (c) => typeof c.item === "string" && typeof c.field === "string" && spanOk(c)) };
   };
   const entryOf = (state, key) => state.answers[key] ?? {};
   const byKeyOf = (items) => new Map(items.map((item) => [item.key, item]));
@@ -152,18 +154,21 @@ export function decisionRuntime() {
     }
     return settle(items, { ...state, answers });
   };
-  // One comment per anchor: new text replaces it in place, empty text removes it.
+  // What a selection kept, when there is one: whole numbers for the characters and a non-empty quote.
+  const spanOk = (c) => ["from", "to"].every((k) => c[k] === undefined || (Number.isInteger(c[k]) && c[k] >= 0)) && (c.quote === undefined || has(c.quote));
+  // One comment per anchor — a line comment's is its last line — : new text replaces it in place, empty text removes it.
   const comment = (list, anchor, text, same) => {
     const at = list.findIndex((c) => same(c, anchor)), next = [...list];
     if (!has(text)) { if (at >= 0) next.splice(at, 1); return next; }
-    const entry = { ...anchor, text: String(text).trim() };
+    const entry = { ...Object.fromEntries(Object.entries(anchor).filter(([, v]) => v !== undefined)), text: String(text).trim() };
     if (at >= 0) next[at] = entry; else next.push(entry);
     return next;
   };
-  const lineComment = (state, { path, side, line }, text) =>
-    ({ ...state, lines: comment(state.lines, { path, side, line }, text, (c, a) => c.path === a.path && c.side === a.side && c.line === a.line) });
-  const paragraphComment = (state, { item, field }, text) =>
-    ({ ...state, paragraphs: comment(state.paragraphs, { item, field }, text, (c, a) => c.item === a.item && c.field === a.field) });
+  const lineComment = (state, { path, side, line, end, from, to, quote }, text) =>
+    ({ ...state, lines: comment(state.lines, { path, side, line, end: end > line ? end : undefined, from, to, quote }, text,
+      (c, a) => c.path === a.path && c.side === a.side && (c.end ?? c.line) === (a.end ?? a.line)) });
+  const paragraphComment = (state, { item, field, from, to, quote }, text) =>
+    ({ ...state, paragraphs: comment(state.paragraphs, { item, field, from, to, quote }, text, (c, a) => c.item === a.item && c.field === a.field) });
   // The one payload behind the export's preview, its text and its JSON. Each item says its status and the answer in
   // effect; an answer not in effect travels as a draft; a request's answer is "answered", never verified; a zone mark is
   // the owner's mark. A conditional item whose parent is still open says so: its answer holds only while the parent

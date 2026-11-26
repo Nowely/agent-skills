@@ -95,6 +95,10 @@ for (const c of ITEMS) { const at = rowAt(c.ref.place); c.placeRow = at; c.place
 const lkOf = (fi, r) => `${fi}:${r[0] === 2 ? "-" + r[1] : "+" + r[2]}`;
 const anchorOfLk = (lk) => { const [fi, side] = lk.split(":"); return { path: F[+fi].path, side: side[0] === "-" ? "base" : "head", line: +side.slice(1) }; };
 const lkOfAnchor = (c) => fileByPath.has(c.path) ? `${fileByPath.get(c.path)}:${c.side === "base" ? "-" : "+"}${c.line}` : null;
+// A comment on several lines is drawn below the last of them, and keyed there.
+const lastLk = (c) => lkOfAnchor({ ...c, line: c.end ?? c.line });
+const placeWords = (c) => `${c.path}:${c.side === "base" ? "−" : ""}${c.line}${c.end ? `–${c.end}` : ""}`;
+const quoteHtml = (c) => c?.quote ? `<blockquote class="sel-quote">${esc(c.quote)}</blockquote>` : "";
 const rowOfLk = (lk) => {
   const [fi, side] = [+lk.split(":")[0], lk.split(":")[1] ?? ""], num = +side.slice(1);
   if (!F[fi] || !/^[+-]\d+$/.test(side)) return null;
@@ -119,7 +123,7 @@ const REVIEW_ORDER = GROUPS.flatMap((g) => orderChildren(ITEMS.filter(g.test)));
 // ---------------------------------------------------------------- state: the owner's answers and comments (DR), and the view
 let state = DR.empty();
 const S = {
-  field: {}, reasonText: {}, lcEdit: null, pcEdit: null, pcDraft: {}, tab: "summary",
+  field: {}, reasonText: {}, lcEdit: null, lcRange: null, pcEdit: null, pcRange: null, pcDraft: {}, tab: "summary",
   sel: { summary: null, decisions: null, code: null, details: null }, cur: null, file: null,
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
   code: { mode: "attention", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
@@ -129,7 +133,7 @@ const S = {
 // The comments as the page looks them up: line comments by line key, paragraph comments by anchor.
 let LC = new Map(), PC = new Map();
 function indexComments() {
-  LC = new Map(state.lines.map((c) => [lkOfAnchor(c), c]).filter(([lk]) => lk));
+  LC = new Map(state.lines.map((c) => [lastLk(c), c]).filter(([lk]) => lk));
   PC = new Map(state.paragraphs.map((c) => [`${c.item}/${c.field}`, c]));
 }
 const entryOf = (key) => state.answers[key] ?? {};
@@ -378,8 +382,9 @@ function exportModel() {
     else if (x.status === "not-applicable") sections.na.push(row(L("p.export.na", itemByKey.get(c.parent.key).label) + draft));
     else sections.open.push(row(itemTitle(c) + draft + zones + waiting));
   }
-  for (const x of payload.lineComments) sections.comments.push({ text: `${x.path}:${x.side === "base" ? "−" : ""}${x.line}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
-  for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
+  const quoted = (x) => x.quote ? ` «${x.quote.replace(/\s+/g, " ")}»` : "";
+  for (const x of payload.lineComments) sections.comments.push({ text: `${placeWords(x)}${quoted(x)}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
+  for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}${quoted(x)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
   const p = progress();
   return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
 }
@@ -437,6 +442,7 @@ function renderShell() {
       <button class="btn quiet sm" data-act="keys" aria-haspopup="dialog">${esc(L("p.keys"))} ${kbd("?")}</button></div>
   </div></nav>
   <main>${TABS.map((t) => `<section class="tabpanel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join("")}</main>
+  <button type="button" id="sel-adder" class="sel-adder" data-act="sel-comment" hidden></button>
   <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in">${dialogHead("keys-h", L("p.keys"))}
     <div class="keys">${keysHtml()}</div>
     <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p></div></dialog>
@@ -606,10 +612,10 @@ function pcWrap(anchor, inner, tag = "div") {
   return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}" title="${esc(L("p.pc.comment"))}">${ICON.comment}</button></${tag}>`;
 }
 function pcExtra(anchor) {
-  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div><textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
+  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div>${quoteHtml(S.pcRange?.anchor === anchor ? S.pcRange : PC.get(anchor))}<textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
     <div class="field-actions"><button class="btn sm" data-act="pc-save" data-anchor="${esc(anchor)}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="pc-cancel">${esc(L("p.cancel"))}</button><span>${esc(L("p.saves", MOD))}</span></div>`;
   const v = PC.get(anchor);
-  const saved = v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div><div class="pc-t">${esc(v.text)}</div>` : "";
+  const saved = v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div>${quoteHtml(v)}<div class="pc-t">${esc(v.text)}</div>` : "";
   // text typed in an editor another one closed: kept, not saved, until it is saved or cancelled
   const draft = S.pcDraft[anchor] !== undefined ? `<div class="pc-h">${esc(L("p.pc.draft"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button></div><div class="pc-t">${esc(S.pcDraft[anchor])}</div>` : "";
   return saved + draft;
@@ -913,7 +919,7 @@ function panelWrap(kicker, title, body) {
 
 // ---------------------------------------------------------------- Decisions
 const comments = () => [
-  ...state.lines.map((c) => ({ kind: "line", lk: lkOfAnchor(c), c })).filter((x) => x.lk),
+  ...state.lines.map((c) => ({ kind: "line", lk: lastLk(c), c })).filter((x) => x.lk),
   ...state.paragraphs.map((c) => ({ kind: "para", anchor: `${c.item}/${c.field}`, c })),
 ];
 const DEC_TABS = [
@@ -994,9 +1000,9 @@ function commentsListHtml() {
   return `<div class="box cmt-list">${list.map((x) => {
     if (x.kind === "line") {
       const row = rowOfLk(x.lk), b = row?.row[3] ? blk(row.row[3]) : null, hint = notAnswerHint(x.lk);
-      return `<div class="cmt"><div class="where">${esc(x.c.path)}:${x.c.side === "base" ? "−" : ""}${x.c.line}${b ? ` · ${chip("b", b.id)}` : ""}<button class="btn sm quiet" data-act="goline" data-lk="${x.lk}">${esc(L("p.show-in-code"))}</button></div><div class="txt">${esc(x.c.text)}</div>${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
+      return `<div class="cmt"><div class="where">${esc(placeWords(x.c))}${b ? ` · ${chip("b", b.id)}` : ""}<button class="btn sm quiet" data-act="goline" data-lk="${x.lk}">${esc(L("p.show-in-code"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div>${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
     }
-    return `<div class="cmt"><div class="where">${esc(anchorLabel(x.anchor))}<button class="btn sm quiet" data-act="goanchor" data-anchor="${esc(x.anchor)}">${esc(L("p.show-it"))}</button></div><div class="txt">${esc(x.c.text)}</div></div>`;
+    return `<div class="cmt"><div class="where">${esc(anchorLabel(x.anchor))}<button class="btn sm quiet" data-act="goanchor" data-anchor="${esc(x.anchor)}">${esc(L("p.show-it"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div></div>`;
   }).join("")}</div><p class="muted small gap-top">${esc(L("p.comments.note"))}</p>`;
 }
 function decisionsPanel(sel) {
@@ -1181,11 +1187,12 @@ function doneHtml(b) {
   return `<tr class="done-row" data-b="${b.id}"><td colspan="3"><div class="done-line${sel ? " sel" : ""}" id="note-${b.id}" data-b="${b.id}" tabindex="-1" role="button" data-act="done-open" aria-label="${esc(L("p.done-line", `B${b.id} · ${tags.map((st) => st.label).join(", ")}`, ans))}">${tags.map(tagHtml).join("")}<span class="bid">B${b.id}</span><span class="ans">${esc(ans)}</span><span class="muted small">${esc(L("p.fold.expand"))}</span></div></td></tr>`;
 }
 function lcHtml(lk) {
-  const [, side] = lk.split(":"), what = L(side[0] === "-" ? "p.lc.removed-line" : "p.lc.line", side.slice(1));
+  const [, side] = lk.split(":"), span = S.lcEdit === lk ? (S.lcRange ?? LC.get(lk)) : LC.get(lk);
+  const what = span?.end ? L("p.lc.lines", span.line, span.end) : L(side[0] === "-" ? "p.lc.removed-line" : "p.lc.line", side.slice(1));
   const hint = notAnswerHint(lk), hintHtml = hint ? `<span class="hint">${esc(hint)}</span>` : "";
   const copyBtn = `<button class="btn sm quiet" data-act="copy-line" data-lk="${lk}">${esc(L("p.copy"))}</button>`;
-  if (S.lcEdit === lk) return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.on", what))} ${hintHtml}</div><textarea id="lc-input" aria-label="${esc(L("p.lc.on", what))}" placeholder="${esc(L("p.lc.placeholder"))}">${esc(LC.get(lk)?.text ?? "")}</textarea><div class="lc-a"><button class="btn sm" data-act="lc-save" data-lk="${lk}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="lc-cancel">${esc(L("p.cancel"))}</button>${copyBtn}<span class="hint">${esc(L("p.saves", MOD))}</span></div></div></td></tr>`;
-  return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.yours", what))} ${hintHtml}<button class="btn sm quiet" data-act="lc" data-lk="${lk}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="lc-del" data-lk="${lk}">${esc(L("p.delete"))}</button>${copyBtn}</div><div class="lc-t">${esc(LC.get(lk).text)}</div></div></td></tr>`;
+  if (S.lcEdit === lk) return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.on", what))} ${hintHtml}</div>${quoteHtml(span)}<textarea id="lc-input" aria-label="${esc(L("p.lc.on", what))}" placeholder="${esc(L("p.lc.placeholder"))}">${esc(LC.get(lk)?.text ?? "")}</textarea><div class="lc-a"><button class="btn sm" data-act="lc-save" data-lk="${lk}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="lc-cancel">${esc(L("p.cancel"))}</button>${copyBtn}<span class="hint">${esc(L("p.saves", MOD))}</span></div></div></td></tr>`;
+  return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.yours", what))} ${hintHtml}<button class="btn sm quiet" data-act="lc" data-lk="${lk}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="lc-del" data-lk="${lk}">${esc(L("p.delete"))}</button>${copyBtn}</div>${quoteHtml(span)}<div class="lc-t">${esc(LC.get(lk).text)}</div></div></td></tr>`;
 }
 function fileBodyHtml(fi, items) {
   const out = [];
@@ -1888,7 +1895,8 @@ document.addEventListener("click", (e) => {
       case "next": return step(1);
       case "lc": return editLine(act.dataset.lk);
       case "lc-save": return saveLine(act.dataset.lk);
-      case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; return refreshLine(lk); }
+      case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; return refreshLine(lk); }
+      case "sel-comment": return SELT && openSelection(SELT);
       case "lc-del": { const lk = act.dataset.lk; setState(DR.lineComment(state, anchorOfLk(lk), "")); return commentsChanged(() => refreshLine(lk)); }
       case "goline": return goLine(act.dataset.lk);
       case "copy-block": return copy(blockRef(+act.dataset.b));
@@ -1970,32 +1978,34 @@ function commentsChanged(redraw) {
   redraw();
   if (S.rendered.decisions) { updateSubCounts(); if (S.sub.decisions === "comments") renderDecList(); }
 }
+// A comment saved from a selection keeps the lines, characters and words selected; one edited keeps those it had.
 function saveLine(lk) {
-  setState(DR.lineComment(state, anchorOfLk(lk), $("#lc-input")?.value ?? ""));
-  S.lcEdit = null;
+  const old = LC.get(lk), span = S.lcRange ?? (old ? { line: old.line, end: old.end, from: old.from, to: old.to, quote: old.quote } : {});
+  setState(DR.lineComment(state, { ...anchorOfLk(lk), ...span }, $("#lc-input")?.value ?? ""));
+  S.lcEdit = null; S.lcRange = null;
   commentsChanged(() => refreshLine(lk));
   $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus({ preventScroll: true });
 }
 // One paragraph editor at a time: opening another closes this one and keeps what was typed in it as that paragraph's
 // unsaved draft, shown there until it is saved or cancelled.
-function openPc(anchor, from) {
+function openPc(anchor, from, span = null) {
   const prev = S.pcEdit;
-  S.pcEdit = anchor;
+  S.pcEdit = anchor; S.pcRange = span ? { anchor, ...span } : null;
   if (prev && prev !== anchor) refreshPc(prev);
   refreshPc(anchor);
   (from?.closest(".pc")?.querySelector(".pc-input") ?? $(".pc-input"))?.focus();
 }
-function closePc() { const an = S.pcEdit; S.pcEdit = null; delete S.pcDraft[an]; refreshPc(an); }
+function closePc() { const an = S.pcEdit; S.pcEdit = null; S.pcRange = null; delete S.pcDraft[an]; refreshPc(an); }
 // Saves the text of the editor the save came from, never another one on the page.
 function savePc(anchor, input) {
-  const [item, field] = cutLast(anchor, "/");
-  setState(DR.paragraphComment(state, { item, field }, input?.value ?? S.pcDraft[anchor] ?? ""));
-  S.pcEdit = null; delete S.pcDraft[anchor];
+  const [item, field] = cutLast(anchor, "/"), old = PC.get(anchor), span = (S.pcRange?.anchor === anchor ? S.pcRange : null) ?? old ?? {};
+  setState(DR.paragraphComment(state, { item, field, from: span.from, to: span.to, quote: span.quote }, input?.value ?? S.pcDraft[anchor] ?? ""));
+  S.pcEdit = null; S.pcRange = null; delete S.pcDraft[anchor];
   commentsChanged(() => refreshPc(anchor));
   $(`[data-anchor="${CSS.escape(anchor)}"] .pc-btn`)?.focus({ preventScroll: true });
 }
-function editLine(lk) {
-  const prev = S.lcEdit; S.lcEdit = lk;
+function editLine(lk, span = null) {
+  const prev = S.lcEdit; S.lcEdit = lk; S.lcRange = span;
   if (prev && prev !== lk) refreshLine(prev, false);
   refreshLine(lk, false);
   $("#lc-input")?.focus();
@@ -2005,6 +2015,112 @@ function refreshLine(lk, chrome = true) {
   fill(+lk.split(":")[0], true);
   if (chrome) { updateChrome(); if (S.code.ctx) renderPanel("code"); }
 }
+// ---------------------------------------------------------------- comments on a selection
+// A selection inside one paragraph of the report, or inside the rows of one hunk on one side of a file, can be commented:
+// the comment keeps the lines, the characters and the words selected. A selection across two of them is refused with a
+// word, never placed by guess. The words are drawn marked where they still read as selected.
+let SELT = null;
+const textWithout = (root, skip) => { const c = root.cloneNode(true); c.querySelectorAll(skip).forEach((n) => n.remove()); return c.textContent; };
+const lineText = (cell) => textWithout(cell, ".sg");
+// How many characters of a container come before a point in it, its skipped parts left out.
+function offsetIn(root, node, offset, skip) {
+  const r = document.createRange(); r.setStart(root, 0); r.setEnd(node, offset);
+  const frag = r.cloneContents(); frag.querySelectorAll(skip).forEach((n) => n.remove());
+  return frag.textContent.length;
+}
+// The range of characters from..to of a container, its skipped parts left out.
+function rangeIn(root, from, to, skip) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => { const s = n.parentElement.closest(skip); return s && root.contains(s) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
+  let pos = 0, start = null, end = null;
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const len = n.data.length;
+    if (!start && from <= pos + len) start = [n, from - pos];
+    if (start && to <= pos + len) { end = [n, to - pos]; break; }
+    pos += len;
+  }
+  if (!start || !end) return null;
+  const r = document.createRange(); r.setStart(...start); r.setEnd(...end); return r;
+}
+function selectionTarget() {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount || !sel.toString().trim()) return null;
+  const range = sel.getRangeAt(0), el = (n) => n.nodeType === 1 ? n : n.parentElement;
+  const a = el(range.startContainer), z = el(range.endContainer);
+  if (a.closest("textarea, input, .pc-x, .lc, #sel-adder") || z.closest("textarea, input, .pc-x, .lc, #sel-adder")) return null;
+  const pa = a.closest(".pc"), pz = z.closest(".pc");
+  if (pa || pz) {
+    if (pa !== pz || a.closest(".pc-btn") || z.closest(".pc-btn")) return { refused: true, range };
+    const skip = ".pc-x, .pc-btn", from = offsetIn(pa, range.startContainer, range.startOffset, skip), to = offsetIn(pa, range.endContainer, range.endOffset, skip);
+    return { kind: "para", anchor: pa.dataset.anchor, el: pa, span: { from, to, quote: textWithout(pa, skip).slice(from, to) }, range };
+  }
+  const ra = a.closest("#files tr.r"), rz = z.closest("#files tr.r");
+  if (!ra && !rz) return null;
+  if (!ra || !rz || ra.closest(".file") !== rz.closest(".file")) return { refused: true, range };
+  const rows = [];
+  for (let r = ra; r; r = r.nextElementSibling) { if (r.matches("tr.r")) rows.push(r); else if (r.matches("tr.gap, tr.fold")) return { refused: true, range }; if (r === rz) break; }
+  if (rows.at(-1) !== rz) return { refused: true, range };
+  let from = a.closest("td.cd") === $("td.cd", ra) ? offsetIn($("td.cd", ra), range.startContainer, range.startOffset, ".sg") : 0;
+  let to = z.closest("td.cd") === $("td.cd", rz) ? offsetIn($("td.cd", rz), range.endContainer, range.endOffset, ".sg") : lineText($("td.cd", rz)).length;
+  // a selection that ends at the very start of a line, or starts at the very end of one, does not take that line
+  if (rows.length > 1 && to === 0) { rows.pop(); to = lineText($("td.cd", rows.at(-1))).length; }
+  if (rows.length > 1 && from >= lineText($("td.cd", rows[0])).length) { rows.shift(); from = 0; }
+  const removed = rows.filter((r) => r.classList.contains("d")).length;
+  if (removed && removed < rows.length) return { refused: true, range };
+  const first = anchorOfLk(rows[0].dataset.lk), last = anchorOfLk(rows.at(-1).dataset.lk), texts = rows.map((r) => lineText($("td.cd", r)));
+  const quote = texts.map((t, i) => t.slice(i === 0 ? from : 0, i === texts.length - 1 ? to : t.length)).join("\n");
+  return { kind: "line", lk: rows.at(-1).dataset.lk, span: { line: first.line, end: last.line > first.line ? last.line : undefined, from, to, quote }, range };
+}
+function hideAdder() { const ad = $("#sel-adder"); if (ad) ad.hidden = true; SELT = null; }
+function showAdder() {
+  const t = selectionTarget(), ad = $("#sel-adder");
+  if (!t || !ad) return hideAdder();
+  SELT = t.refused ? null : t;
+  ad.disabled = Boolean(t.refused); ad.classList.toggle("refused", Boolean(t.refused));
+  ad.innerHTML = t.refused ? esc(L("p.sel.refused")) : `${ICON.comment}<span>${esc(L("p.sel.comment"))}</span>${kbd("c")}`;
+  ad.hidden = false;
+  // below the selection's last line, never over the words selected; above it when there is no room below
+  const rects = t.range.getClientRects(), r = rects[rects.length - 1] ?? t.range.getBoundingClientRect();
+  const x = Math.min(innerWidth - ad.offsetWidth - 8, Math.max(8, r.right - ad.offsetWidth)), below = r.bottom + 6;
+  ad.style.left = x + "px"; ad.style.top = Math.min(innerHeight - ad.offsetHeight - 8, below + ad.offsetHeight > innerHeight ? Math.max(8, r.top - ad.offsetHeight - 6) : below) + "px";
+}
+function openSelection(t) {
+  hideAdder(); getSelection()?.removeAllRanges();
+  if (t.kind === "line") return editLine(t.lk, t.span);
+  openPc(t.anchor, t.el, t.span);
+}
+// The selected words of each comment, marked where the page draws them and they still read the same.
+const CAN_MARK = typeof CSS !== "undefined" && "highlights" in CSS && typeof Highlight === "function";
+let markQueued = false;
+function queueMark() { if (!CAN_MARK || markQueued) return; markQueued = true; requestAnimationFrame(() => { markQueued = false; markComments(); }); }
+function markComments() {
+  const ranges = [];
+  for (const c of state.lines) {
+    if (c.from === undefined && c.to === undefined) continue;
+    const fi = fileByPath.get(c.path), sign = c.side === "base" ? "-" : "+", cells = [];
+    if (fi === undefined) continue;
+    for (let n = c.line; n <= (c.end ?? c.line); n++) { const tr = $(`#file-${fi} tr.r[data-lk="${fi}:${sign}${n}"]`); if (!tr) { cells.length = 0; break; } cells.push($("td.cd", tr)); }
+    if (!cells.length) continue;
+    const texts = cells.map(lineText), at = (i) => [i === 0 ? c.from ?? 0 : 0, i === texts.length - 1 ? c.to ?? texts[i].length : texts[i].length];
+    if (c.quote !== undefined && texts.map((t, i) => t.slice(...at(i))).join("\n") !== c.quote) continue;
+    cells.forEach((cell, i) => { const r = rangeIn(cell, ...at(i), ".sg"); if (r) ranges.push(r); });
+  }
+  for (const c of state.paragraphs) {
+    if (c.from === undefined || c.to === undefined) continue;
+    for (const pc of $$(`.pc[data-anchor="${CSS.escape(`${c.item}/${c.field}`)}"]`)) {
+      if (c.quote !== undefined && textWithout(pc, ".pc-x, .pc-btn").slice(c.from, c.to) !== c.quote) continue;
+      const r = rangeIn(pc, c.from, c.to, ".pc-x, .pc-btn"); if (r) ranges.push(r);
+    }
+  }
+  CSS.highlights.set("review-comment", new Highlight(...ranges));
+}
+document.addEventListener("mouseup", (e) => { if (!e.target.closest?.("#sel-adder")) setTimeout(showAdder, 0); });
+// pressing the adder keeps the selection it is for
+document.addEventListener("mousedown", (e) => { if (e.target.closest?.("#sel-adder")) e.preventDefault(); });
+document.addEventListener("keyup", (e) => { if (e.shiftKey || e.key === "Shift") showAdder(); });
+document.addEventListener("selectionchange", () => { if (getSelection()?.isCollapsed) hideAdder(); });
+window.addEventListener("scroll", () => { if (!$("#sel-adder")?.hidden) hideAdder(); }, { passive: true });
+new MutationObserver(queueMark).observe(app, { childList: true, subtree: true });
+
 let gAt = 0;
 function keyTarget() {
   if (S.tab === "code" && S.cur) return $(`#note-${S.cur.bid}`);
@@ -2088,7 +2204,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     { const b = closeMenus(); if (b) { b.focus(); return; } }
     if ($("#copybox")) { $("#copybox").remove(); return; }
-    if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
+    if (!$("#sel-adder").hidden) { hideAdder(); return; }
+    if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) return closePc();
     // Esc leaves a field: what was written there stays, an untouched field changes nothing, and focus returns to the
     // note or card, so the next key moves on instead of typing.
@@ -2132,6 +2249,7 @@ document.addEventListener("keydown", (e) => {
   if (k === "i" && S.tab === "code") return $('#panel-code [data-act="ctx"]')?.click();
   if (k === "v" && S.tab === "code") { const fi = currentFile(); if (fi !== null) setViewed(fi, !S.viewed.has(fi)); return; }
   if (k === "y" && S.tab === "code") { if (t.classList?.contains("lnb")) { const at = rowOfLk(t.dataset.lk); return copy(refText(at.fi, at.row[0] === 2 ? "-" : "+", at.row[0] === 2 ? at.row[1] : at.row[2])); } if (S.sel.code) return copy(blockRef(S.sel.code)); return; }
+  if (k === "c" && SELT) { e.preventDefault(); return openSelection(SELT); }
   if (k === "c" && S.tab === "code") { e.preventDefault(); if (t.classList?.contains("lnb")) return editLine(t.dataset.lk); if (S.sel.code) { const tr = $(`#files tr.r[data-b="${S.sel.code}"]`); if (tr) editLine(tr.dataset.lk); } return; }
   const c = currentItem();
   if (!c || !applicable(c)) return;

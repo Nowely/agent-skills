@@ -49,6 +49,14 @@ forensics remain in the repository references and release notes.
   second on, `via` — how it gets what the step before produced, with its place. Summary's «How it works» lists them;
   a route's panel walks its steps with their code, a block's panel links its neighbours in the route, and
   `#summary/route1` opens one. The printout and the page without JavaScript list them too.
+- Selected text takes a comment, in a paragraph of the report or in the code: «Comment» appears below the selection
+  (or press `c`), never over the words. A selection over several lines of one side of a hunk takes one comment drawn
+  below its last line. The comment keeps the lines, the characters and the words selected, quotes them in the code,
+  in Decisions › Comments and in the export, and the words are marked in place, through the CSS Custom Highlight API
+  where the browser has it, wherever they still read the same. A selection across two paragraphs, two files, a fold
+  or a removed and an added line is refused with a word, never placed by guess. A comment on a line is still one per
+  line — a selection's is its last line's. **Breaking:** the export is schema 8, its comments carrying `end`, `from`,
+  `to` and `quote` where a selection gave them; what the page stores reads as before.
 
 ## 0.47.2 — 2026-11-24
 

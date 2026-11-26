@@ -868,6 +868,78 @@ test("a kept block's panel says what the record knows about it — what it does,
       && /step 1 of 2/.test(panel) && !/Kept code/.test(panel) && routed || JSON.stringify({ panel: panel.slice(0, 600), routed });
   }));
 
+// ---- comments on a selection (PR 109: C1, C5, C6)
+// Selects characters from..to of a code line (its sign left out) or of a paragraph (its comment parts left out), then
+// lifts the mouse, as a person selecting with it does.
+const selectIn = (page, spec) => page.evaluate((spec) => {
+  const point = (root, at, skip) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement.closest(skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    let pos = 0;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) { if (at <= pos + n.data.length) return [n, at - pos]; pos += n.data.length; }
+    return null;
+  };
+  const cell = (s) => s.lk ? document.querySelector(`#files tr.r[data-lk="${s.lk}"] td.cd`) : document.querySelector(s.css);
+  const skip = spec.from.lk ? ".sg" : ".pc-x, .pc-btn";
+  const a = point(cell(spec.from), spec.from.at, skip), z = point(cell(spec.to), spec.to.at, spec.to.lk ? ".sg" : ".pc-x, .pc-btn");
+  const r = document.createRange(); r.setStart(...a); r.setEnd(...z);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  return sel.toString();
+}, spec);
+const marked = (page) => page.evaluate(() => (typeof CSS !== "undefined" && CSS.highlights?.get("review-comment")?.size) ?? -1);
+
+test("selected code on one line takes a comment from «Comment» below the selection: the comment keeps its characters and words, quotes them, and marks them in place after a reload",
+  "a comment could only name a whole line, so the owner had to copy the words they meant into it",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    const words = await selectIn(page, { from: { lk: "0:+4", at: 9 }, to: { lk: "0:+4", at: 17 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const over = await page.evaluate(() => { const a = document.querySelector("#sel-adder").getBoundingClientRect(); return [...getSelection().getRangeAt(0).getClientRects()].some((r) => r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top); });
+    await page.click("#sel-adder");
+    const quoted = await text(page, "#files .lc .sel-quote");
+    await page.fill("#lc-input", "why map here?"); await page.click('[data-act="lc-save"]'); await settle(page);
+    const data = await payload(page), c = data.lineComments[0];
+    const now = await marked(page);
+    await page.reload(); await page.waitForSelector(".tabbar"); await page.click('.toolbar .seg [data-mode="all"]'); await settle(page); await page.waitForTimeout(100);
+    const after = await marked(page);
+    return words === "rows.map" && !over && quoted === "rows.map" && c?.line === 4 && c.from === 9 && c.to === 17 && c.quote === "rows.map" && c.end === undefined && now === 1 && after === 1
+      || JSON.stringify({ words, over, quoted, c, now, after });
+  }));
+
+test("a selection over two lines of one side takes one comment drawn below its last line; across a removed and an added line, or two files, it is refused with a word",
+  "a comment on a five-line expression named only its first line, and a selection across sides or files has no single place",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    await selectIn(page, { from: { lk: "0:+2", at: 3 }, to: { lk: "0:-3", at: 4 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const mixed = { disabled: await page.locator("#sel-adder").isDisabled(), words: await text(page, "#sel-adder") };
+    await selectIn(page, { from: { lk: "0:+4", at: 2 }, to: { lk: "1:+1", at: 3 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const files = await page.locator("#sel-adder").isDisabled();
+    await selectIn(page, { from: { lk: "0:+2", at: 3 }, to: { lk: "0:+3", at: 6 } });
+    await page.waitForSelector("#sel-adder:not([disabled])");
+    await page.keyboard.press("c");
+    const head = await text(page, "#files .lc .lc-h");
+    await page.fill("#lc-input", "both lines"); await page.click('[data-act="lc-save"]'); await settle(page);
+    const c = (await payload(page)).lineComments[0], under = await page.locator('#files tr.r[data-lk="0:+3"] + tr.lc-row').count();
+    return mixed.disabled && /one side/.test(mixed.words) && files && /lines 2–3/.test(head) && c?.line === 2 && c.end === 3 && c.from === 3 && c.to === 6 && under === 1
+      || JSON.stringify({ mixed, files, head, c, under });
+  }));
+
+test("selected words of a paragraph take a comment that quotes them, is listed with the quote and marks them in place",
+  "a paragraph comment could not say which words of a long paragraph it meant",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const css = '#card-f2 .pc[data-anchor="f2/fix"]';
+    await page.locator(css).scrollIntoViewIfNeeded(); await settle(page); await page.waitForTimeout(150);
+    const words = await selectIn(page, { from: { css, at: 0 }, to: { css, at: 3 } });
+    await page.waitForSelector("#sel-adder:not([hidden])"); await page.click("#sel-adder");
+    await page.locator(".pc-input").fill("which fix?"); await page.click('[data-act="pc-save"]'); await settle(page);
+    const c = (await payload(page)).paragraphComments[0], now = await marked(page);
+    await page.click('[data-sub="comments"]'); await settle(page);
+    const listed = await text(page, ".cmt-list .cmt");
+    return c?.item === "f2" && c.field === "fix" && c.from === 0 && c.to === 3 && c.quote === words && now === 1 && listed.includes(words) || JSON.stringify({ words, c, now, listed });
+  }));
+
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
   async () => {
@@ -1008,7 +1080,7 @@ test("the page reads what a page of the same stored format kept: an answer, a de
       && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
   }));
 
-test("the export is one schema-7 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
+test("the export is one schema-8 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
@@ -1017,7 +1089,7 @@ test("the export is one schema-7 payload behind the preview, the text and the JS
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
     const q3 = p.items.find((x) => x.item === "q3");
-    return p.schema_version === 7 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
+    return p.schema_version === 8 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
       && p.lineComments[0]?.path === "src/invoices/archive.js" && p.lineComments[0].side === "head" && p.lineComments[0].line === 4
       && p.paragraphComments[0]?.item === "q3" && p.paragraphComments[0].field === "text" && t.includes("Q3: Keep the conversion in the reader") && t.includes("check this")
       || JSON.stringify({ q3, lines: p.lineComments, paragraphs: p.paragraphComments });
