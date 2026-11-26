@@ -215,7 +215,7 @@ try {
     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
   } else if (command === "carry" && argument && process.argv[4]) {
     const made = carry(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again, judge the units marked with no verdict, and add what the export's answers make, with new ids.`);
+    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));

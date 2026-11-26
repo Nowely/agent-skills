@@ -300,7 +300,7 @@ owner's own session or orchestrate's fix round; the review applies none of it. A
 A review of a new revision of a change already reviewed and answered starts from three inputs its plan names: the
 previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
 review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
-previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
+previous record, its saved diff, its comparison inventory and the export into `<out>/previous/`, so what cites them resolves beside the record
 and the checking agents can read them. Cite them by `at` with a quote, by file and line — `previous/export.json:14`,
 `"item": "f2"` — because a `ref` resolves in this record. The export's
 keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
@@ -321,8 +321,10 @@ record does not hold is left out, and the response says so. A short review appli
   what it served; each is checked again, and the export's answers add their own. So do the units and target units,
   a unit the previous record did not keep left without a verdict to judge, the mechanisms with their carried blocks,
   and each route whose every step was carried, renumbered; what pointed at the previous findings and questions is
-  this review's to write. The comparison inventory covers the whole diff: a key whose witnesses read as before keeps
-  the previous decision. `previous` names the record they
+  this review's to write; a carried requirement's `met` and `doubt` and a unit's verdict are this review's to give
+  again. The comparison inventory covers the whole diff: a key whose witnesses read as before keeps the previous
+  decision, and one that pointed at a previous finding, question or idea by `ref` keeps it as `settled` text naming
+  that item by its words. `previous` names the record they
   came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
   carried block was judged on its own lines: where the change since touches its file, read it with that change. While
   the base and the requirements stand the independent target is not started again; the comparison pass, the critic
@@ -337,7 +339,7 @@ record does not hold is left out, and the response says so. A short review appli
   - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with
     `source: "discussion"`, its `text` naming the previous item and the answer, sourced at the export with the answer
     quoted: `met` when the new revision does it,
-    and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
+    and, when it does not, a finding that breaks it, or for a test still missing one that leaves it `untested`. Summary's requirements then say what the revision did with each
     decision;
   - «Leave it» or «Skip it» is a `tradeoff` with its `consequence`, sourced at the export with the answer quoted. The
     review does not raise that finding or idea again unless the new revision changes its premise, and then the
