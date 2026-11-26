@@ -5,7 +5,7 @@ description: >-
   work, and synthesise their evidence while this session keeps the plan, the decisions and a small context.
 disable-model-invocation: true
 metadata:
-  version: "0.47.2"
+  version: "0.47.3"
 license: MIT
 ---
 
@@ -21,7 +21,7 @@ user conversation and the synthesis; agents do the work.
   `--pending` and `--stop`.
 - You may write your card, briefs, decision log and draft under your temporary directory; read the agents'
   returns and summary artifacts; and read a cited file:line range of at most 40 lines to settle a conflict
-  between returns or a claim you are about to relay.
+  between returns, a claim you are about to relay or an objection you are about to apply or overrule.
 - Hand a worker's artifacts to the next agent by path, verbatim, never as your paraphrase.
 - Only the user's explicit word for a specific edit lets you make that edit. There is no solo lane: invoking this
   mode is the user's choice of coordinated work.
@@ -42,18 +42,19 @@ user conversation and the synthesis; agents do the work.
 4. Run the card's critics, then brief the workers. Every brief names its row in
    [roles.md](references/roles.md) by path, and the agent reads that row; each worker's brief carries the user's
    words for its task verbatim, and a critic's and the verifier's brief carries the request verbatim. Your restatement never
-   stands in for either. Apply or overrule each
-   objection that cites a path:line, a named consumer or a failing check, with the reason in the decision log;
-   drop one that cites none. A change of scope or allocation goes to the user, and so does an architecture
+   stands in for either. An objection counts when it cites a path:line, a named consumer or a failing check;
+   drop one that cites none. Apply one that cites a place only after reading that place, and overrule one only by
+   citing the place in the code or the request that refutes it, each with the reason in the decision log; one you
+   can settle neither way stays a claim for the verifier, which marks whether its check failed. A change of scope or allocation goes to the user, and so does an architecture
    verdict other than `keep`, with both approaches, before anyone else starts.
 5. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision and [results.md](references/results.md) when work fails, a worktree needs
    landing or writers collide. Continue a worker to correct its own work. With several workers, a
    [foreman](references/foreman.md) may run them where the host allows nested agents.
 6. Read every return and compare each launch's model and effort with the card, the effective ones as the host
-   reports them, else `unknown`; reconcile a deviation before going on. When a worker's diff adds a concept,
-   continue the plan critic's thread, or brief it fresh if it has not run, for
-   [its second read](references/roles.md#its-second-read) before the verifier. At each phase, tell the user what is
+   reports them, else `unknown`; reconcile a deviation before going on. When any worker's diff adds a concept,
+   brief one fresh plan critic, never the thread that judged the plan, once the last worker has returned, for
+   [its second read](references/roles.md#its-second-read) of the combined diff before the verifier. At each phase, tell the user what is
    verified, pending and blocked, in their language.
 7. After the verifier, draft the answer and have it read as [answer.md](references/answer.md) says. Lint the draft
    with `node "<skill-dir>/scripts/lint-draft.mjs" --agents "<Model> <id>, …" --receipts <ledger> <draft>`, the
@@ -65,7 +66,7 @@ user conversation and the synthesis; agents do the work.
 | --- | --- |
 | coordinator | this session, throughout |
 | architecture critic | once, after approval, when the solution adds a concept (a module, meaning a new unit with a responsibility others will depend on, not a new file for one function or helper; a mechanism, flag, layer, state or dependency), changes or removes an existing interface or contract other units consume (a new export or function does not), takes an irreversible or outward-facing action, or leaves several viable approaches, or the user asks |
-| plan critic | with several workers, once, after approval and the architecture critic, before the first worker brief; with any team, after a diff that adds a concept: its thread continued or, where it has not run, briefed fresh |
+| plan critic | with several workers, once, after approval and the architecture critic, before the first worker brief; with any team, one fresh critic after the last worker returns, when a diff adds a concept |
 | worker | after the critics; usually one, one per owned deliverable |
 | verifier | fresh, after the writes or a read-only task's findings |
 
@@ -83,8 +84,10 @@ Nothing proposes another provider unprompted, a cross-family second opinion incl
 
 ## Capacity and models
 
-For every ordinary agent role, including critics, verifiers and a foreman, use the host's executor model by
-default: Terra in Codex, Sonnet in Claude Code, regardless of the coordinator's model. An explicit user choice
+For every ordinary agent role except the plan critic, including the architecture critic, verifiers and a
+foreman, use the host's executor model by default: Terra in Codex, Sonnet in Claude Code, regardless of the
+coordinator's model. The plan critic, on both of its reads, uses the host's strong model by default: Sol in Codex,
+Opus in Claude Code. An explicit user choice
 of model or effort takes precedence for its stated scope. A transport relay is not an executor and keeps the
 relay model and effort its adapter specifies. On another host use its runtime's model choices.
 
@@ -110,7 +113,8 @@ on read-only work, give it the workers' findings as claims to re-derive, never t
 Give it and the workers the resolved
 `<skill-dir>/scripts/capture-check.mjs`; their rows say how to run it. A decisive check that could not run yields
 `unknown`, not a refutation. Open one complete return before trusting a unanimous tally of verifiers: agreement may
-come from one broken prompt or prerequisite. Fix and re-verify at most two rounds; then use a stronger reviewer or
+come from one broken prompt or prerequisite. After a fix, continue the verifier's thread with each fix as a claim
+to check: what it changes, its test and the worker's ledger. Fix and re-verify at most two rounds; then use a stronger reviewer or
 return the blocker to the user, and the same blocker in two rounds needs a revised plan. A stronger reviewer
 uses a different model only when the user authorized it.
 

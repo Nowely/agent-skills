@@ -4,7 +4,7 @@ description: >-
   Switches this session to proxy mode: a chosen Claude model executes the work in a full Claude Code session, after one final confirmation.
 disable-model-invocation: true
 metadata:
-  version: "0.47.2"
+  version: "0.47.3"
 license: MIT
 ---
 

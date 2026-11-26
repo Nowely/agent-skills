@@ -93,6 +93,30 @@ forensics remain in the repository references and release notes.
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.
 
+## 0.47.3 — 2026-11-26
+
+### Orchestration
+
+- The plan critic runs on the host's strong model by default, on both of its reads: Opus in Claude Code, Sol in
+  Codex. The architecture critic, workers, verifiers and a foreman keep the executor model.
+- The second read is one fresh plan critic on the combined diff, after the last worker returns, never the thread
+  that judged the plan. It follows its own subsection and gets no card.
+- After a fix the verifier's thread is continued with each fix as a claim. It re-runs the suite and checks the
+  fixes alone: each fix's diff and test, as confirmed, refuted or not checkable. It looks for nothing new there.
+- A worker's fix comes, where cheap, with a test it ran before the fix and after; the verifier says whether the
+  earlier run failed.
+- Before the workers start, the coordinator applies an objection that cites a place only after reading it and
+  overrules one only by citing what refutes it; one it can settle neither way stays a claim for the verifier.
+
+### Gate and limits
+
+- Local checks passed: gate (26), orchestrate (13), agent-contract (16), fragments (2) and package. The
+  development environment had Node.js v22.23.5 and no Codex CLI; Codex conformance was not run for this change.
+- One Opus critic read the change and one Sonnet verifier checked the fixes to its six findings. The live
+  orchestrate gate was not run, and no gate check covers these rules: the plan critic's model, the fresh second
+  read and the verifier's fix round live only in the skill's pages. The cost of the stronger critic is not measured.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.47.2 — 2026-11-24
 
 ### Orchestration
