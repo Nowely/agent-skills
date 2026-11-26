@@ -260,7 +260,8 @@ function chipTitle(kind, id) {
 const chips = (kind, ids) => ids.length ? `<span class="chips">${ids.map((id) => chip(kind, id)).join("")}</span>` : "";
 // An entry of Details, linked by its tab and row.
 const detailsChip = (s) => `<a class="chip" href="${esc(`#details/${hashPart(s.sub)}${s.sel ? "/" + hashPart(s.sel) : ""}`)}" data-go="d:${esc(s.sub)}/${esc(s.sel)}">${esc(s.text)}</a>`;
-const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${sources.map((s) => s.ref === "d" ? detailsChip(s) : s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ")}</span>`;
+const srcItems = (sources) => sources.map((s) => s.ref === "d" ? detailsChip(s) : s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ");
+const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${srcItems(sources)}</span>`;
 const refsIn = (lists, kind) => [...new Set(lists.flat().filter((s) => s?.ref === kind).map((s) => s.id))];
 function relations(kind, id) {
   const rows = [];
@@ -702,7 +703,7 @@ function cardHtml(c) {
   } else {
     body += pcWrap(c.key + "/text", `<p class="card-title q">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
     if (r.parent) body += `<p class="card-text small">${esc(L("p.applies-while"))} ${chip("q", r.parent.question)} ${esc(L("p.applies-with"))} ${r.parent.texts.map((v) => `<b>${prose(v)}</b>`).join(` ${esc(L("p.or"))} `)}.</p>`;
-    if (r.recommendation) body += `<div class="card-rec"><b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}</div>`;
+    if (r.recommendation) { const picks = recommendedTexts(r); body += `<div class="card-rec${picks.length ? "" : " none"}"><b>${esc(L("p.recommendation"))}</b> ${picks.length ? `<span class="rec-pick">${picks.map((t) => prose(t)).join(" + ")}</span> — ` : ""}${prose(r.recommendation.text)}</div>`; }
   }
   body += `<div class="answer-line${st.unverified ? " unverified" : ""}" data-answer="${esc(c.key)}">${answerHtml(st)}</div>`;
   if (c.parent) body += `<p class="waiting small" data-waiting="${esc(c.key)}">${esc(waitingText(c))}</p>`;
@@ -838,8 +839,8 @@ function summaryHtml() {
       ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span>${prose(s.text)}${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
     <table class="tbl"><thead><tr><th>#</th><th>${esc(L("requirement"))}</th><th>${esc(L("status"))}</th><th class="num">${esc(L("p.code"))}</th></tr></thead><tbody>
-    ${D.requirements.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}</div>${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
-      <td class="num">${r.blocks.length ? `<button class="linkbtn nowrap" data-act="req-code" data-req="${esc(r.id)}" title="${esc(L("p.req.code-title", r.id))}">${esc(P("p.count.blocks", r.blocks.length))}</button>` : `<span class="muted small">${esc(L("p.req.none-linked"))}</span>`}</td></tr>`).join("")}
+    ${reqGroups().map(([head, list]) => (head ? `<tr class="grp"><th colspan="4">${esc(head)} <span class="muted">${n(list.length)}</span></th></tr>` : "") + list.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}${r.sources.length ? ` · <span class="srcs">${srcItems(r.sources)}</span>` : ""}</div>${!r.established && askedIn(r.id).length ? `<div class="why"><b>${esc(L("p.req.asked-in"))}</b>${chips("q", askedIn(r.id))}</div>` : ""}${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
+      <td class="num">${r.blocks.length ? `<button class="linkbtn nowrap" data-act="req-code" data-req="${esc(r.id)}" title="${esc(L("p.req.code-title", r.id))}">${esc(P("p.count.blocks", r.blocks.length))}</button>` : `<span class="muted small">${esc(L("p.req.none-linked"))}</span>`}</td></tr>`).join("")).join("")}
     </tbody></table>
     <div class="section-h"><h2>${esc(L("p.limits"))}</h2><span class="muted">${esc(L("p.limits.note"))}</span></div>
     <div class="box">
@@ -853,6 +854,24 @@ function renderSummary() {
   $("#panel-summary").innerHTML = `<div class="frame"><div class="col">${summaryHtml()}</div><aside class="panel" id="ctx-summary" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderPanel("summary");
 }
+// Where a requirement comes from decides whether it binds; the ones to confirm are listed apart, each with the questions that ask about it.
+const askedIn = (id) => D.questions.filter((q) => refsIn([q.context.flatMap((x) => x.sources), q.variants.flatMap((v) => v.consequences.flatMap((x) => x.sources)), q.recommendation?.sources ?? [], q.zones.flatMap((z) => z.sources)], "r").includes(id)).map((q) => q.id);
+function reqGroups() {
+  const est = D.requirements.filter((r) => r.established), rest = D.requirements.filter((r) => !r.established);
+  return rest.length ? [[L("req.established"), est], [L("req.confirm-group"), rest]].filter(([, list]) => list.length) : [[null, est]];
+}
+// The variants a decision's recommendation names, by their words.
+const recommendedTexts = (q) => (q.recommendation?.variant ? [q.recommendation.variant] : q.recommendation?.variants ?? []).map((id) => q.variants.find((v) => v.id === id)?.text).filter(Boolean);
+// A screen as Details shows it — its provenance, pictures, differences and what was not compared — wherever a claim cites it.
+function screenBox(si) {
+  const s = D.screens[si];
+  return `<div class="box box-gap screen-box"><h3 class="screen-h">${esc(s.name)}</h3>
+      ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
+      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
+      ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
+      ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
+      ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`;
+}
 function summaryPanel(sel) {
   if (!sel) {
     const ch = D.change;
@@ -865,7 +884,8 @@ function summaryPanel(sel) {
   }
   if (sel.startsWith("req:")) {
     const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])];
-    return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}`), prose(r.text), `
+    return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}${r.established ? "" : ` · ${L("req.to-confirm")}`}`), prose(r.text), `
+      <div class="psec"><h3>${esc(L("p.req.stated"))}</h3>${r.sources.length ? `<p>${srcItems(r.sources)}</p>` : `<p class="muted small">${esc(L("p.req.unstated"))}</p>`}${r.screens.map(screenBox).join("")}</div>
       ${fs.length ? `<div class="psec"><h3>${esc(L("findings"))}</h3>${fs.map((f) => miniItem(itemByKey.get("f" + f))).join("")}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
       <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${excerptList(r.blocks, "req" + r.id)}</div>`);
@@ -974,8 +994,12 @@ function decisionsPanel(sel) {
   if (!sel) return panelWrap(esc(L("p.context")), esc(L("p.select-card")), `<div class="empty"><strong>${esc(L("p.nothing-selected"))}</strong>${esc(L("p.select-card.note"))}</div>`);
   const c = itemByKey.get(sel.slice(5)), r = c.ref;
   let body = "";
-  if (r.place) body += `<div class="psec"><h3>${esc(L("p.where"))}</h3>${placeExcerpt(r.place, c.placeRow)}</div>`;
+  // an idea's excerpt is the code as the change wrote it; the proposal is in the idea's words, never in the diff
+  if (r.place) body += `<div class="psec"><h3>${esc(L(c.kind === "idea" ? "p.idea.code" : "p.where"))}</h3>${placeExcerpt(r.place, c.placeRow)}</div>`;
   if (c.kind === "finding") body += `<div class="psec"><h3>${esc(L("shown-by"))}</h3>${pcWrap(c.key + "/shown_by", `<p>${prose(r.shown_by)}</p>`)}</div>`;
+  const shots = c.kind === "finding" ? D.screens.map((s, si) => s.differences.some((d) => d.finding === r.id) ? si : -1).filter((si) => si >= 0) : [];
+  if (shots.length) body += `<div class="psec"><h3>${esc(L("p.screens.beside"))}</h3>${shots.map(screenBox).join("")}</div>`;
+  if (c.kind === "idea" && r.sources.length) body += `<div class="psec"><h3>${esc(L("sources"))}</h3><p>${srcList(r.sources)}</p></div>`;
   if (c.type === "q") {
     if (r.context.length) body += `<div class="psec"><h3>${esc(L("question.context"))}</h3><ul class="plain">${r.context.map((x, i) => `<li>${pcWrap(`${c.key}/context.${i}`, `${prose(x.text)} ${srcList(x.sources)}`)}</li>`).join("")}</ul></div>`;
     const vs = r.variants.filter((v) => v.consequences.some((x) => x.sources.length));
@@ -1135,7 +1159,7 @@ function noteItem(c, b) {
     const hint = `${opts.length ? `${kbd("1")}–${kbd(String(opts.length))} ${esc(L("p.hint.choose"))} · ` : ""}${kbd("o")} ${esc(L(opts.length ? "p.hint.other" : "p.hint.answer"))} · ${kbd("d")} ${esc(L("p.hint.defer"))}`;
     return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", all))}${shown < all ? ` · ${esc(P("p.one-answer.shown", shown))}` : ""}</span><span class="key-hint small muted">${hint}</span></div></div>`;
   }
-  const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}` : "";
+  const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${recommendedTexts(r).length ? `<span class="rec-pick">${recommendedTexts(r).map((t) => prose(t)).join(" + ")}</span> — ` : ""}${prose(r.recommendation.text)}` : "";
   if (st.state !== "open") return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
   return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp2">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div>
     ${sub ? `<p class="ni-fix clamp">${sub}</p>` : ""}<div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
@@ -1578,12 +1602,7 @@ function renderDetailBody() {
   } else if (sub === "challenges") {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
-    html = D.screens.map((s, si) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
-      ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
-      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
-      ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
-      ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
-      ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`).join("");
+    html = D.screens.map((s, si) => screenBox(si)).join("");
   } else if (sub === "coverage") {
     const warn = (set) => SETS[set].ids.size ? `<li><b>${esc(P(SETS[set].warn, SETS[set].ids.size))}</b> ${esc(L("p.warn.do"))} <button class="btn sm" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
     const warnings = warn("assumed") + warn("unlinked");

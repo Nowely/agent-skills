@@ -68,7 +68,13 @@ export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
-export const SOURCES = ["task", "discussion", "project", "question", "assumption"];
+// The words a decision's recommendation opens with when the data leaves no clear one.
+export const NO_CLEAR = { en: "No clear recommendation", ru: "Однозначной рекомендации нет" };
+export const SOURCES = ["task", "discussion", "project", "author", "contract", "assumption", "question"];
+// Where a requirement comes from decides whether it binds: the task, an owner's decision and a project rule are
+// established; what the author proposes, an existing behaviour or contract that may need keeping, the reviewer's own
+// reading and an open point wait for the owner to confirm them.
+export const ESTABLISHED = new Set(["task", "discussion", "project"]);
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
 // The one state the model gives each requirement, which every rendering words.
 export const REQUIREMENT_STATES = ["permission", "fail", "met", "unchecked"];
@@ -201,9 +207,15 @@ export function check(review, files, directory) {
     if (f.direction !== "tests" && f.untested?.length) errors.push(`finding ${f.id} is not about tests: it lists requirements under "breaks", not "untested"`);
     refs(`finding ${f.id}`, f.scenarios, scenarioIds, "scenario");
   }
-  for (const r of review.requirements) {
+  review.requirements.forEach((r, index) => {
     if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
     if (!SOURCES.includes(r.source)) errors.push(`requirement ${r.id}: source is one of ${SOURCES.join(", ")}`);
+    // A requirement shows where it is stated; an established one quotes it — the task's sentence, the owner's word, the
+    // project's rule — or cites the screen it comes from, so the reader can check it without the conversation.
+    sourceFaults(`requirement ${r.id}`, r.sources, `/requirements/${index}`);
+    const quoted = (Array.isArray(r.sources) ? r.sources : []).some((x) => (x?.at !== undefined && text(x.quote)) || /^\/screens\/\d+$/.test(String(x?.ref)));
+    if (ESTABLISHED.has(r.source) && Array.isArray(r.sources) && r.sources.length && !quoted)
+      errors.push(`requirement ${r.id} is ${r.source}: quote where it is stated, as {at, quote}, or cite the screen it comes from`);
     if (r.met !== undefined && !MET.includes(r.met)) errors.push(`requirement ${r.id}: met is one of ${MET.join(", ")}, or left out when you did not check it`);
     const breaking = review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id);
     if (r.met !== undefined && breaking.length) errors.push(`requirement ${r.id} is marked met, and finding ${breaking.join(", ")} breaks it`);
@@ -211,7 +223,7 @@ export function check(review, files, directory) {
     // A permission allows; it does not oblige, so there is nothing to mark met.
     if (r.permission !== undefined && typeof r.permission !== "boolean") errors.push(`requirement ${r.id}: permission is true, or left out`);
     if (r.permission === true && r.met !== undefined) errors.push(`requirement ${r.id} is a permission, not an obligation: it cannot be marked met`);
-  }
+  });
   (review.steps ?? []).forEach((step, index) => {
     if (!text(step.text)) errors.push(`step ${index + 1} has no "text"`);
     refs(`step ${index + 1}`, step.findings, findings, "finding");
@@ -222,8 +234,10 @@ export function check(review, files, directory) {
     if (!text(scenario.expect)) errors.push(`${name} has no "expect"`);
     refs(name, scenario.requirements, requirements, "requirement");
   });
-  for (const [index, idea] of (review.ideas ?? []).entries())
+  for (const [index, idea] of (review.ideas ?? []).entries()) {
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
+    if (idea.sources !== undefined) sourceFaults(`idea ${index + 1}`, idea.sources, `/ideas/${index}`);
+  }
   // A question is named by its place in the list, from 1.
   const qList = review.questions ?? [];
   const questions = new Set(qList.map((_, index) => index + 1));
@@ -252,9 +266,13 @@ export function check(review, files, directory) {
     }
     // Variants that combine are marked so; the owner may then take several, and the recommendation may name several.
     if (q.multiple !== undefined && (q.multiple !== true || q.kind !== "decision")) errors.push(`${who}: multiple is only for a decision whose variants combine, and only true`);
+    // A choice comes with the reviewer's opinion tied to a variant, or the plain word that there is none.
+    if (q.kind === "decision" && q.recommendation === undefined) errors.push(`${who} is a decision with no recommendation: name the variant you recommend, or open its text with «${NO_CLEAR.en}»`);
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;
       if (!text(q.recommendation?.text)) errors.push(`${w} has no text`);
+      else if (q.kind === "decision" && q.recommendation.variant === undefined && q.recommendation.variants === undefined && !Object.values(NO_CLEAR).some((x) => q.recommendation.text.startsWith(x)))
+        errors.push(`${w} names no variant: name the one you recommend, or open its text with «${NO_CLEAR.en}» and give the rule`);
       if (q.recommendation?.variant !== undefined && !variantIds.has(q.recommendation.variant)) errors.push(`${w} names variant "${q.recommendation.variant}", which is not listed`);
       const several = q.recommendation?.variants;
       if (several !== undefined) {
@@ -447,6 +465,18 @@ export function check(review, files, directory) {
     if (!own) errors.push(`${name} covers no changed line of ${block.path}`);
   });
 
+  // Code kept only for requirements to confirm stays because of a proposal nobody has accepted: a question names each
+  // such requirement, so the owner confirms it or lets it go; one decision whose variants combine can ask for all of them.
+  const asked = new Set(qList.flatMap((q) => [q.context, q.zones, q.recommendation && [q.recommendation], ...(Array.isArray(q.variants) ? q.variants.map((v) => v?.consequences) : [])]
+    .flatMap((list) => Array.isArray(list) ? list : []).flatMap((c) => Array.isArray(c?.sources) ? c.sources : [])
+    .map((x) => /^\/requirements\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map((i) => review.requirements[+i]?.id)));
+  const unconfirmed = new Set();
+  review.blocks.forEach((block) => {
+    const served = (block.serves ?? []).map((id) => review.requirements.find((r) => r.id === id)).filter(Boolean);
+    if (block.verdict === "keep" && served.length && served.every((r) => SOURCES.includes(r.source) && !ESTABLISHED.has(r.source))) for (const r of served) if (!asked.has(r.id)) unconfirmed.add(r.id);
+  });
+  for (const id of unconfirmed) errors.push(`requirement ${id} is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it (one decision whose variants combine can ask for several)`);
+
   for (const file of files) {
     const loose = changedLines(file).filter((l) => !blank(l) && !owner.has(`${file.path}\n${address(l)}`));
     const of = (kind) => compact(loose.filter((l) => l.kind === kind).map(numberOf));
@@ -478,11 +508,13 @@ export function modelOf(review, files, owner, directory) {
   const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
   // A requirement's one state, in this order: a permission is never met, a finding that breaks it outweighs the
   // reviewer's «met», and whatever is left is not checked.
+  // The established requirements first, then the ones to confirm, each in the record's order: every rendering lists them so.
   const requirements = review.requirements.map((r) => {
     const broken = naming("breaks", r.id);
     return { ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)), broken, untested: naming("untested", r.id),
-      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked" };
+      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked", established: ESTABLISHED.has(r.source) };
   });
+  requirements.sort((a, b) => b.established - a.established);
   // The lines of some blocks under each block verdict: what a unit or the whole change holds of each.
   const linesOf = (list) => Object.fromEntries(VERDICTS.map((v) => [v, list.filter((b) => b.verdict === v).reduce((sum, b) => sum + b.size, 0)]));
   const unit = (u) => { const own = blocks.filter((b) => b.unit === u.name); return { ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: own, lines: linesOf(own) }; };
@@ -515,7 +547,7 @@ export function modelOf(review, files, owner, directory) {
   // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked:
   // the check warns about both, and the page lists them for the reviewer.
   const kept = blocks.filter((b) => b.verdict === "keep");
-  const assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
+  const assumed = (b) => b.serves.length && b.serves.every((id) => !ESTABLISHED.has(review.requirements.find((r) => r.id === id)?.source));
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
     unasked: { unlinked: kept.filter((b) => !b.serves.length).map((b) => b.id), assumed: kept.filter(assumed).map((b) => b.id) },

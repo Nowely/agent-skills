@@ -19,10 +19,12 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
    `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
+   What the review quotes from the conversation — the owner's task, a decision, the author's description or a
+   session's hand-off — is saved beside the record (`task.md`, `discussion.md`, `description.md`) and quoted from there.
    A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
-   about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
+   about a large block given one verdict, about kept blocks that serve no requirement or only requirements to confirm, and
    about a kept unit holding an open block; for the decision-card fields, about a source named but unreachable, an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
@@ -49,17 +51,21 @@ new evidence that changes a conclusion makes a revised record, named as such.
       "target": "the cleanest solution, by the design standard",
       "recommendation": "accept, fix in place or rewrite as the target, in a sentence",
       "steps": [{ "text": "what to do first", "findings": [1] }],
-      "requirements": [{ "id": 1, "text": "...", "source": "task" },
+      "requirements": [{ "id": 1, "text": "...", "source": "task", "sources": [{ "at": "task.md:3", "quote": "the task's sentence" }] },
                        { "id": 2, "text": "...", "source": "discussion", "met": "read", "not_checked": "how it looks on screen",
-                         "doubt": "what contradicts it" },
-                       { "id": 3, "text": "the contract may change outside legacy", "source": "discussion", "permission": true }],
+                         "doubt": "what contradicts it", "sources": [{ "at": "discussion.md:8", "quote": "the owner's word" }] },
+                       { "id": 3, "text": "the contract may change outside legacy", "source": "discussion", "permission": true,
+                         "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] },
+                       { "id": 4, "text": "older links keep working", "source": "author",
+                         "sources": [{ "at": "description.md:5", "quote": "restores older links" }] }],
       "findings": [{ "id": 1, "title": "what is wrong, and no test would catch it", "direction": "behavior", "evidence": "read",
                      "at": "path:line", "what": "...", "shown_by": "the caller at path:line", "fix": "...", "breaks": [1], "untested": [1] },
                    { "id": 2, "title": "a size rule cannot change without reading the writes", "direction": "design", "evidence": "judgment",
                      "at": "path:line", "what": "...", "shown_by": "scenario 1", "fix": "...", "scenarios": [1] }],
       "checks": [{ "from": "the state to start from", "do": ["the first step", "the next"], "expect": "what a person sees",
                    "requirements": [2] }],
-      "ideas": [{ "title": "the idea", "at": "path:line", "text": "what it gains and what it costs" }],
+      "ideas": [{ "title": "the idea", "at": "path:line", "text": "what the code does now and why, what is proposed, the burden it removes and its cost",
+                  "sources": [{ "ref": "/mechanisms/0" }] }],
       "screens": [{ "name": "the screen and its state", "mockup": "https://...", "before": "before.png", "after": "after.png",
                     "differences": [{ "what": "how the result differs from the mockup", "why": "the reason given" },
                                     { "what": "a difference nothing explains", "finding": 1 }],
@@ -120,9 +126,18 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 
 ## Fields
 
-- **Requirements.** `source`: `task`, what the task states; `discussion`, a decision made while the work was discussed;
-  `project`, a rule of the project instructions named with its place, such as a version bump or docs that say what the code does;
-  `question`, a point left open; `assumption`, yours or the author's. `met`: `ran`, executed and seen, or `read`,
+- **Requirements.** `source` is where it comes from, and that decides whether it binds. Established: `task`, what
+  the task states; `discussion`, a decision the owner made while the work was discussed or answered on a page;
+  `project`, a rule of the project instructions, such as a version bump or docs that say what the code does. To
+  confirm: `author`, what only the author's account states — the description, commits or a session's hand-off;
+  `contract`, an existing behaviour or interface the change may need to keep, such as a default a consumer relies on;
+  `assumption`, your reading of the task's words; `question`, a point left open. Behaviour the code implements is
+  never a requirement because the code implements it: what only the implementation shows is a mechanism whose
+  `basis` says so. `sources`, in the [one format](#sources), show where it is stated; an established requirement
+  quotes it — the task's sentence, the owner's word, the project's rule — or cites the screen it comes from, a
+  mockup whose authority the task gives, and `check` refuses one that does neither. Kept code that serves only
+  requirements to confirm is asked about: a question cites each of them, one decision whose variants combine
+  asking for several, and `check` refuses the record otherwise. `met`: `ran`, executed and seen, or `read`,
   followed in the code; left out when unchecked or broken by a finding. A part not checked, such as how it looks,
   goes in `not_checked`, not in `text`. `doubt` says what in the code or a contract contradicts a requirement.
   `permission: true` marks a permission, not an obligation: the source alone does not express that difference,
@@ -133,7 +148,9 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   `shown_by` is the evidence. A candidate without evidence becomes a question only when settling it could change a conclusion or next action.
   `breaks` lists requirements shown unmet. For a test gap, `untested` lists the requirements whose regression no test would catch.
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs.
-- **Ideas.** `title`, `text`, and `at` when the idea has a place.
+- **Ideas.** `title`, `text`, and `at` when the idea has a place. The text says what the code does now and why, with
+  its place, what is proposed instead, the burden it removes and what it costs; an idea is optional and never a
+  defect. `sources`, optional, cite what shows it, such as the mechanism it would replace.
 - **Scenarios.** Optional: a change grounded in the task walked through the code and the target, with the places
   edited and read in each (`now`, `target`); a finding may name them in `scenarios`.
 - **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge`, `remove` or `question`, its
@@ -201,19 +218,23 @@ obtain). The required `kind` comes from what the question asks, never from its n
 `at` give the question and place; the card can also include:
 
 - `resolver`: the role that answers, when naming one helps; questions group by kind first.
-- `context`: self-contained facts — what happens now, what was before or in the mockup, what the owner already
-  decided, the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`.
+- `context`: self-contained facts — what happens now, how the state in question arises and what is known of how
+  often, how the nearest comparable code behaves, what was before or in the mockup, what the owner already decided,
+  the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`. For a choice
+  about an interface, how comparable products behave belongs here too when the plan allows the web, cited by URL;
+  otherwise the context says that no comparison outside the project was made.
 - `variants`: the choices of a decision, at least two, each a local stable `id` (not a localized text), a `text`,
-  and `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
-  questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
+  and `consequences` with `sources`: behavior and what the user sees, code and PR size, tests and evidence needed,
+  the fate of child questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
   than two variants or a variant without consequences.
 - `multiple: true`: the variants combine, and the owner may take one or several; without it they exclude each other.
   Set it when one answer could not say the combination the owner may want, which they would otherwise write in their
   own words, unmatched to the variants.
-- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends (or, where the
-  variants combine, the `variants` it recommends together), and `sources`.
-  Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
-  recommendation» and gives the conditional rule, and no `variant` or `variants` is named.
+- `recommendation`: always the reviewer's opinion — `text`, the `variant` it recommends (or, where the variants
+  combine, the `variants` it recommends together), and `sources`; a decision needs one. Where the data leaves no
+  clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear recommendation» and gives the
+  conditional rule, and no `variant` or `variants` is named; `check` refuses a decision's recommendation that does
+  neither.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
 - `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
@@ -268,7 +289,8 @@ record does not hold is left out, and the response says so. A short review appli
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
   by its words — a question by its text, a finding or idea by its title — since its key names another item here:
   - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with
-    `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
+    `source: "discussion"`, its `text` naming the previous item and the answer, sourced at the export with the answer
+    quoted: `met` when the new revision does it,
     and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
     decision;
   - «Leave it» or «Skip it» is a `tradeoff` with its `consequence`, sourced at the export with the answer quoted. The

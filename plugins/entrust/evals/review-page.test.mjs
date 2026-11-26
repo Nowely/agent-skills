@@ -166,6 +166,7 @@ test("every class the stylesheet styles is one the page, its document, its highl
 test("the island carries what the runtime reads from the model: the kept blocks the check warns about, purposes and digests", () => {
   const record = structuredClone(THEMED);
   record.blocks[0].serves = [3];
+  record.questions[1].context = [{ text: "The reader converts on an assumed reading.", sources: [{ ref: "/requirements/2" }] }];
   const { html, model } = draw(record, diffText), island = islandOf(html);
   assert.deepEqual(island.unasked, { unlinked: [], assumed: [1] });
   assert.deepEqual(island.unasked, model.unasked);
@@ -249,7 +250,7 @@ test("the page carries its runtime, its styles, its catalog and each row's code 
   const diff = lines.join("\n") + "\n";
   const mixed = { title: "Mixed", range: "generated", language: "en", diff: { file: "mixed.diff", sha256: createHash("sha256").update(diff).digest("hex") },
     change: { goal: "Modules.", parts: ["Thirty."], sources: ["generated"] }, verdict: "Generated.", now: "Now.", target: "Target.", recommendation: "Read it.",
-    requirements: [{ id: 1, text: "Every module computes.", source: "task", met: "read" }], blocks, challenges: [], coverage: "Generated.",
+    requirements: [{ id: 1, text: "Every module computes.", source: "task", met: "read", sources: [{ at: "generated", quote: "every module computes" }] }], blocks, challenges: [], coverage: "Generated.",
     findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/mod1/file1.js:20", what: "What.", shown_by: "The line.", fix: "Fix." }],
     questions: [{ at: "src/mod0/file0.js:1", text: "Keep it?", kind: "fact" }] };
   const page = draw(mixed, diff).html;

@@ -442,7 +442,15 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.checks[0].expect; }, 'check 1 has no "expect"'],
       [(r) => { r.checks[0].requirements = [6]; }, "check 1 names requirement 6, which is not listed"],
       [(r) => { delete r.now; }, '"now" is missing'],
-      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, question, assumption"],
+      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, author, contract, assumption, question"],
+      [(r) => { delete r.requirements[0].sources; }, "requirement 1 names no source: an analytical claim needs one"],
+      [(r) => { r.requirements[0].sources = [{ at: "TASK-9" }]; }, "requirement 1 is task: quote where it is stated, as {at, quote}, or cite the screen it comes from"],
+      [(r) => { r.blocks[0].serves = [3]; }, "requirement 3 is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it"],
+      [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }] }]; },
+        "question 1 is a decision with no recommendation: name the variant you recommend"],
+      [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }],
+        recommendation: { text: "Probably A.", sources: [{ ref: "/requirements/0" }] } }]; }, "question 1 recommendation names no variant: name the one you recommend, or open its text with «No clear recommendation»"],
+      [(r) => { r.ideas[0].sources = [{ ref: "/ideas/0" }]; }, 'idea 1: source ref "/ideas/0" is the entry that makes the claim'],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
@@ -528,7 +536,7 @@ test("scaffold reads a supplied diff outside a repository, splits at declaration
     if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
     // A kept block may leave "does" out; the check asks it only of a block that is not kept.
     const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
-      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
+      requirements: [{ id: 1, text: "A requirement.", source: "task", sources: [{ at: "TASK-1", quote: "a requirement" }] }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;
@@ -593,9 +601,10 @@ test("a block or unit whose premise is unread is a question, and a point against
     if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
     for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
       if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
-    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3]; });
+    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3];
+      r.questions[0].context = [{ text: "The reader converts on an assumed reading.", sources: [{ ref: "/requirements/2" }] }]; });
     if (done.status !== 0) return done.stderr;
-    if (!done.stderr.includes("kept blocks 1 serve only assumed requirements")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    if (!done.stderr.includes("kept blocks 1 serve only requirements to confirm")) return `no warning about a block kept for an assumption: ${done.stderr}`;
     if (!done.stderr.includes("unit readArchive is kept, and its blocks 3 are not")) return `no warning about a kept unit with an open block: ${done.stderr}`;
     const island = dataOf(fs.readFileSync(html, "utf8"));
     if (island.challenges.length !== 3 || island.blocks[2].questions.join() !== "1") return "the page carries no challenges or no link from the block to its question";

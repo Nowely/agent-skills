@@ -30,6 +30,9 @@ function placer(files) {
   };
 }
 
+// The screens a list of sources cites, by their index: their pictures are shown beside the claim.
+const screensCited = (list) => [...new Set((list ?? []).map((x) => /^\/screens\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map(Number))];
+
 // Sources as the page links them: an internal ref to a requirement, finding, question, idea, block or mechanism
 // becomes its id; one to an entry of Details becomes its tab and, where it has one, its row; an external place stays
 // the text sourceOf gives it.
@@ -110,10 +113,11 @@ export function page(review, files, model, { syntax } = {}) {
     digest: { diff: review.diff.sha256, record: model.recordSha ?? model.key, key: model.key, diffFile: review.diff.file },
     counters: model.counters,
     requirements: model.requirements.map((r) => ({ id: String(r.id), text: r.text, source: r.source, met: r.met, not_checked: r.not_checked, doubt: r.doubt, state: r.state,
+      established: r.established, sources: sources(r.sources), screens: screensCited(r.sources),
       blocks: r.blocks.map((b) => b.id), broken: r.broken.map(String), untested: r.untested.map(String) })),
     findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), scenarios: (f.scenarios ?? []).map(String),
       place: placeOf(f.at), blocks: model.blocks.filter((b) => b.findings.includes(f.id)).map((b) => b.id) })),
-    ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at) })),
+    ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at), sources: sources(i.sources) })),
     questions: model.questions.map((q) => ({ id: String(q.id), at: q.at, place: placeOf(q.at), text: q.text, kind: q.kind, resolver: q.resolver,
       multiple: q.multiple === true, context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
       recommendation: q.recommendation ? { text: q.recommendation.text, variant: q.recommendation.variant, variants: q.recommendation.variants, sources: sources(q.recommendation.sources) } : null,

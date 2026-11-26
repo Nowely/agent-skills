@@ -55,6 +55,9 @@ function render(name, record, diffBytes = diff, pictures = true) {
 // with blocks to keep and to fix.
 const record = structuredClone(THEMED);
 record.blocks[0].serves = [3];
+record.questions[1].context = [{ text: "The reader converts on an assumed reading of the task.", sources: [{ ref: "/requirements/2" }] }];
+// The first requirement also comes from the mockup the task names.
+record.requirements[0].sources = [...record.requirements[0].sources, { ref: "/screens/0" }];
 record.blocks[1].unit = "readArchive";
 record.screens[0] = { ...record.screens[0], revision: "head", sources: [{ ref: "/requirements/0" }] };
 // A finding text long enough that a clamped card would cut it.
@@ -82,11 +85,12 @@ const big = { title: "A large generated change", range: "generated", language: "
   diff: { file: "source.diff", sha256: createHash("sha256").update(bigDiff).digest("hex") },
   change: { goal: "Many modules.", parts: ["Forty modules."], sources: ["generated"] },
   verdict: "Generated.", now: "Generated.", target: "Generated.", recommendation: "Read it.",
-  requirements: [{ id: 1, text: "Every module exports its values.", source: "task", met: "read" }],
+  requirements: [{ id: 1, text: "Every module exports its values.", source: "task", met: "read", sources: [{ at: "generated", quote: "every module exports its values" }] }],
   findings: [1, 2].map((id) => ({ id, title: `Finding ${id}`, direction: "behavior", evidence: "read", at: `src/m${id}/part${id}.js:10`, what: "What.", shown_by: "The line.", fix: "Fix." })),
   questions: [{ at: "src/m0/part0.js:1", text: "Keep the generated modules?", kind: "decision",
     variants: [{ id: "keep", text: "Keep them", consequences: [{ text: "They stay.", sources: [{ ref: "/requirements/0" }] }] },
-      { id: "drop", text: "Drop them", consequences: [{ text: "They go.", sources: [{ ref: "/requirements/0" }] }] }] }],
+      { id: "drop", text: "Drop them", consequences: [{ text: "They go.", sources: [{ ref: "/requirements/0" }] }] }],
+    recommendation: { text: "Keep them.", variant: "keep", sources: [{ ref: "/requirements/0" }] } }],
   units: [{ name: UNIT, jobs: ["exports the values of the first ten modules"], uses: [], verdict: "keep", reason: "Generated." }],
   blocks: bigBlocks, challenges: [], coverage: "Generated." };
 const BIG_URL = render("big", big, bigDiff, false);
@@ -804,6 +808,34 @@ test("the export shows the preview and its two actions; the raw text opens on re
     const refused = await page.evaluate(() => ({ open: document.querySelector("#export-raw").open, focus: document.activeElement?.id, selected: (() => { const t = document.querySelector("#export-text"); return t.selectionEnd - t.selectionStart === t.value.length; })() }));
     const status = await text(page, "#export-status");
     return !first && asked && !again && refused.open && refused.focus === "export-text" && refused.selected && status.length > 0 || JSON.stringify({ first, asked, again, refused, status });
+  }));
+
+// ---- requirements, pictures and recommendations (PR 109: C1, C8, C9, C10)
+test("Summary lists the established requirements apart from those to confirm, each with its origin, the words that state it and the question that asks about it",
+  "a requirement only the author or the reviewer's reading supplied looked as binding as the task's",
+  cased(THEMED_URL + "#summary", {}, async (page) => {
+    const heads = await page.locator("#summary-reqs + table tr.grp th").allInnerTexts();
+    const r3 = await text(page, '[data-sel="req:3"]'), r1 = await text(page, '[data-sel="req:1"]');
+    const order = await page.locator('#summary-reqs + table tr.selectable').evaluateAll((rows) => rows.map((r) => r.dataset.sel));
+    return /^Established/.test(heads[0] ?? "") && /^To confirm/.test(heads[1] ?? "") && order.at(-1) === "req:3" && /the reviewer's reading/.test(r3) && /Asked in\s*Q2/.test(r3)
+      && /Show currency codes in upper case wherever a price is shown/.test(r1) || JSON.stringify({ heads, order, r1, r3 });
+  }));
+
+test("a requirement's panel says where it is stated and shows the mockup it comes from; a finding's panel shows the pictures whose differences name it",
+  "pictures sat in Details › Screens, away from the requirement or the finding they support",
+  cased(THEMED_URL + "#summary/r1", {}, async (page) => {
+    const stated = await text(page, "#ctx-summary"), reqPics = await page.locator("#ctx-summary .screen-box img").count();
+    await page.goto(THEMED_URL + "#decisions/f1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const findingPics = await page.locator("#ctx-decisions .screen-box img").count(), f2Pics = await (async () => { await page.goto(THEMED_URL + "#decisions/f2"); await page.waitForSelector(".tabbar"); await settle(page); return page.locator("#ctx-decisions .screen-box").count(); })();
+    return /Where it is stated/.test(stated) && /TASK-9/.test(stated) && reqPics > 0 && findingPics > 0 && f2Pics === 0 || JSON.stringify({ stated: stated.slice(0, 200), reqPics, findingPics, f2Pics });
+  }));
+
+test("a decision's recommendation names the variant it recommends, and one with no clear recommendation says so in its place",
+  "the recommendation's text did not show which of the choices it meant",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const q3 = await text(page, "#card-q3 .card-rec"), pick = await text(page, "#card-q3 .card-rec .rec-pick"), q4none = await page.locator("#card-q4 .card-rec.none").count();
+    const mark = await page.locator("#card-q3 .opt .rec-mark").count();
+    return pick === "Keep the conversion in the reader" && /Keep it in this change/.test(q3) && q4none === 1 && mark === 1 || JSON.stringify({ q3, pick, q4none, mark });
   }));
 
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",

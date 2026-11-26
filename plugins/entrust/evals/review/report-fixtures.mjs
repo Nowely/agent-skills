@@ -11,9 +11,10 @@ export function reportFixtures(diffSha) {
     change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
     verdict: "The change does its task.\n- One test is missing.", now: "The archive reader converts the code.", target: "The change is already this.", recommendation: "Accept it.",
     steps: [{ text: "Add the test.", findings: [1] }],
-    requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "read", not_checked: "How the list draws it." },
-      { id: 2, text: "A requirement nothing serves.", source: "discussion", doubt: "The contract says otherwise." },
-      { id: 3, text: "A requirement that fails.", source: "assumption" }],
+    requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "read", not_checked: "How the list draws it.",
+        sources: [{ at: "TASK-9", quote: "Show currency codes in upper case wherever a price is shown." }] },
+      { id: 2, text: "A requirement nothing serves.", source: "discussion", doubt: "The contract says otherwise.", sources: [{ at: "TASK-9 discussion", quote: "Keep this one too." }] },
+      { id: 3, text: "A requirement that fails.", source: "assumption", sources: [{ at: "TASK-9", quote: "wherever a price is shown" }] }],
     findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "read", at: "test/archive.test.js:5", what: "What happens.", shown_by: "The regression that passes.", fix: "The fix.", untested: [1] },
       { id: 2, title: "A defect", direction: "behavior", evidence: "read", at: "src/invoices/archive.js:2", what: "What breaks.", shown_by: "The caller at `src/main.js:4`.", fix: "The fix.", breaks: [3] }],
     checks: [{ from: "An invoice in the archive.", do: ["Open the list.", "Find the invoice."], expect: "Its currency is in upper case.", requirements: [1] }],
@@ -40,7 +41,7 @@ export function reportFixtures(diffSha) {
   const THEMED = (() => {
     const r = structuredClone(REVIEW);
     r.title = "Where the conversion lives";
-    r.requirements.push({ id: 4, text: "The contract may change outside legacy.", source: "discussion", permission: true });
+    r.requirements.push({ id: 4, text: "The contract may change outside legacy.", source: "discussion", permission: true, sources: [{ at: "TASK-9 discussion", quote: "the contract may change outside legacy" }] });
     r.questions = [
       { at: "src/invoices/archive.js:2", text: "What does the contract guarantee for empty codes?", kind: "evidence",
         zones: [{ text: "empty input", sources: [{ ref: "/requirements/0" }] }] },
@@ -55,7 +56,8 @@ export function reportFixtures(diffSha) {
       { at: "src/invoices/upper.js:1", text: "Which widths should the display unit cover?", kind: "decision", resolver: "owner",
         parent: { question: 3, variants: ["extend"] },
         variants: [{ id: "narrow", text: "Narrow cards only", consequences: [{ text: "Less to check.", sources: [{ ref: "/questions/0" }] }] },
-          { id: "every", text: "Every width", consequences: [{ text: "Each width needs its own check.", sources: [{ ref: "/questions/0" }] }] }] },
+          { id: "every", text: "Every width", consequences: [{ text: "Each width needs its own check.", sources: [{ ref: "/questions/0" }] }] }],
+        recommendation: { text: "No clear recommendation: narrow cards only, unless the list is shown wide.", sources: [{ ref: "/questions/0" }] } },
       { at: "test/archive.test.js:5", text: "The visual check of the list was not run.", kind: "evidence" },
     ];
     r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1, 5], unit: "readArchive" };
@@ -81,7 +83,7 @@ export function hostileFixture() {
     diff: { file: "source.diff", sha256: createHash("sha256").update(diff).digest("hex") },
     change: { goal: "A goal.", parts: ["A part."], sources: ["brief.md"] },
     verdict: "A verdict.", now: "Now.", target: "Target.", recommendation: "Accept.",
-    requirements: [{ id: 1, text: "A requirement.", source: "task", met: "read" }],
+    requirements: [{ id: 1, text: "A requirement.", source: "task", met: "read", sources: [{ at: "TASK-1", quote: "a requirement" }] }],
     findings: [],
     blocks: [{ path: HOSTILE_PATH, added: "1", removed: "1", does: "d'oes", serves: [1], questions: [1], verdict: "keep" }],
     questions: [{ at: "docs/billing.md", text: "q'<img src=x onerror=alert(1)>", kind: "fact" }],

@@ -20,6 +20,26 @@ forensics remain in the repository references and release notes.
 - The paragraph comment control is an icon in the paragraph's own margin, never over its text.
 - The export shows the preview, then «Copy text» and «Download JSON»; the raw text opens on request, and by itself,
   selected, when the clipboard refuses.
+- **Breaking:** a requirement says where it comes from and quotes it. Established — the task, an owner's decision,
+  a project rule — it quotes its words (`{at, quote}`) or cites the mockup it comes from, and `check` refuses one
+  that does neither. To confirm — `author` (only the author's account states it: the description, commits or a
+  session's hand-off), `contract` (an existing behaviour the change may need to keep), `assumption` (the reviewer's
+  reading) or `question` — it waits for the owner, and kept code that serves only such requirements is refused unless
+  a question cites each of them. Approving the author's description as the task is a line of the approval question:
+  its goal becomes the task, its details stay the author's until confirmed. Summary lists the established
+  requirements apart from those to confirm, each with its origin, its quote and the question that asks about it; the
+  printout and the page without JavaScript list them in the same order.
+- A requirement's panel shows the mockup it cites, and a finding's panel the pictures whose differences name it, with
+  their provenance, beside the claim instead of only in Details › Screens.
+- **Breaking:** a decision has a recommendation that names its variant, or opens with «No clear recommendation»;
+  `check` refuses one that does neither. The card names the recommended variant in its recommendation and marks the
+  variant; a card with no clear recommendation says so in the same place.
+- Before a point goes to the owner, the reviewer settles what the scope readily supplies that could change its
+  options — how the state arises and how often, how the nearest comparable code behaves, what each option changes
+  for the user — and the card says what stayed out of reach. For a choice about an interface, other products are
+  compared when the plan allows the web, and otherwise the card says that no outside comparison was made.
+- An idea's text says what the code does now and why, what is proposed, the burden it removes and its cost, and may
+  cite sources; its excerpt is labelled as the code as written.
 
 ## 0.47.2 — 2026-11-24
 

@@ -52,7 +52,7 @@ Brief:
 
 ## Verifier
 
-The same printout. Each factual claim in it: the source given for each requirement, every `met: read`, what calls what, what a
+The same printout. Each factual claim in it: the source given for each requirement, its quote and its origin, every `met: read`, what calls what, what a
 contract guarantees, what is unavailable, what a removal would eliminate, what a test covers, the reasons for kept
 units. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
 coverage limits and the sources of the accepted tradeoffs. The full text report carries all of these regardless of

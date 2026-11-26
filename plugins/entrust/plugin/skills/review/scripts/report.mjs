@@ -20,7 +20,7 @@ import { comparisons } from "./comparisons.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
+import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -58,7 +58,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       + `${review.passport.repository} · ${t("passport.base")} ${review.passport.base} → ${t("passport.head")} ${review.passport.head} · ${t("passport.reviewed-at")} ${review.passport.reviewedAt}`, ""] : []),
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
-    `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}; ${state(r)})${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
+    `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}${ESTABLISHED.has(r.source) ? "" : `, ${t("req.to-confirm")}`}; ${state(r)})${r.sources?.length ? ` — ${srcs(r.sources)}` : ""}${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -176,7 +176,7 @@ try {
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
     for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
       console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
-    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only assumed requirements"]])
+    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only requirements to confirm"]])
       if (ids.length) console.error(`warning: kept blocks ${ids.join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
     for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
       console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
