@@ -19,7 +19,7 @@ The descriptions predate this release preparation and contradict the invocation 
 ## E168. The skill-page genre note restates limits that entrust's skill checker now owns
 
 Evidence level: 1. `plugins/terse/plugin/references/genres/skill-page.md:5` states the compaction figures (5,000
-tokens, about 20,000 characters) and lines 7 to 12 list six mechanical limits. Since skill-creator landed, the
+tokens, about 20,000 characters) and lines 7 to 12 list six mechanical limits. With skill-creator in the tree, the
 numbers and the checks are owned by `plugins/entrust/plugin/skills/skill-creator/scripts/check.mjs`, which
 `scripts/skills.test.mjs` imports, and that script also checks the open specification's limits on `name` (64
 characters) and `description` (1,024), which the note does not mention. The note is in another plugin and cannot

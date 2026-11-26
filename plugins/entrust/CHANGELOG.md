@@ -23,9 +23,11 @@ forensics remain in the repository references and release notes.
 
 - Local checks passed: `scripts/skills.test.mjs` (12), skill-check (3), package, orchestrate (13) and
   fragments (2), on Node.js v22.23.5.
-- No model has run the skill. Its design was read by three rounds of fresh critics on paper; the test of
-  whether a session that follows it differs from one that does not is written and not yet run. Unmeasured:
-  whether agents select it beside a host's built-in `skill-creator`, and anything on Codex.
+- Tested on Sonnet by a protocol frozen before the test (`research/2026-11-26-skill-creator/`): on a pending
+  change, both sessions that followed the skill lost page facts while merging duplicates (back to design); on a
+  replay of its own design run, sessions with the skill scored 12 of 13 against the controls' 10, short of the
+  margin the protocol asks (undecided). By that protocol's rule this version does not land. Unmeasured: whether
+  agents select it beside a host's built-in `skill-creator`, and anything on Codex or OpenCode.
 
 ## 0.47.3 — 2026-11-26
 
