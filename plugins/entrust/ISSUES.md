@@ -10,6 +10,17 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E169. The cleanup help gives "no state directory" as a cause of its usage exit, and a listing with none exits 0
+
+**Evidence, level 3.** `cleanup/scripts/cleanup.mjs:121`, in the `--help` text, lists "no state directory" among
+the causes of `EXIT.USAGE` (2). At `e341ed1`, `--list` with `ENTRUST_STATE_DIR` naming a directory that does not
+exist and an empty `TMPDIR` printed "Nothing this cleanup covers is on this machine." and exited 0. No `die()` in
+the file names a missing state directory; `:249` and `:254` reject only a relative `TMPDIR` or state path.
+
+**Issue text.** The cleanup help says a missing state directory exits 2, while `--list` without one reports an empty
+machine and exits 0. Decide which is meant: drop the clause from the help, or make a missing state directory a
+usage exit.
+
 ## E165. The card bench blocks two clean builds on a type finding
 
 **Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the card bench at
