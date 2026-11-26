@@ -47,15 +47,16 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
    [hosts.md](references/hosts.md) has each host's guide and what differs between hosts.
 3. **Plan and ask, in one message.** Choose the approach and the layout by
    [structure.md](references/structure.md), and the check by
-   [checks.md](references/checks.md#choosing-the-check). Show the user one plan:
+   [checks.md](references/checks.md#choosing-the-check). Show the user one plan. Open it with what you will make
+   and what you need from them, in two sentences at most. Then:
    - the goal, the requirements, and each decision with what settled it; a decision still open is put as a
      question, as [the questions](references/analysis.md#the-questions) says, and the plan is drawn under your
      recommendation;
    - the approach, with the alternative you rejected, and each file with one line on what it holds;
    - the check: what will be observed, in which runs, the result that keeps the work, the result that does not,
      and what the check cannot show;
-   - who writes the text, and every agent steps 4 to 9 will start, each with its model and its number of
-     sessions, as [critics.md](references/critics.md#which-model-and-how-many) and checks.md give them;
+   - who writes the text, which is this session when the user named no one, and every agent steps 4 to 9 will
+     start, each with its model and its number of sessions, as [critics.md](references/critics.md#which-model-and-how-many) and checks.md give them;
    - how the result will be delivered.
 
    Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
@@ -65,7 +66,8 @@ request matches its description: a `SKILL.md` and the files it links. Take one o
    [critics.md](references/critics.md#the-architecture-critic) briefs it.
    - `keep`: go on.
    - `change approach`: hold both approaches against the sheet. If a requirement decides between them, take
-     that one and show the changed plan with the requirement. If none does, the user chooses.
+     that one and show the changed plan with the requirement. If none does, the sheet's goal sentence decides.
+     If that does not either, the user chooses.
    - `stop`: write nothing. Give the user the critic's reason, as [the result](#the-result).
    - A stage, a requirement or a question it finds missing is [a correction](#a-correction).
 5. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named: write its cases
@@ -123,7 +125,7 @@ changed plan and one more run are the limit; a second failure goes to the user w
 
 ## The result
 
-Tell the user:
+Tell the user, in this order, the outcome first; the text that delivers the work opens the same way:
 
 - whether the work was kept, undone or left unchecked, and the rule that decided it;
 - for each requirement, the place that meets it, from the verifier's table;

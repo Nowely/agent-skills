@@ -9,7 +9,9 @@ hear, and another agent's return goes in only as a claim to check.
 
 The two critics run on the strongest model the host offers, and the verifier on the model the host uses for
 ordinary work. A skill is read on every later use, so a gap a critic misses is paid for each time. A model the
-user names for a judge replaces this. [hosts.md](hosts.md) says where each host lists its models.
+user names for a judge replaces this. Before the plan names a model, look the host's models up where
+[hosts.md](hosts.md) says it lists them. When this session cannot see that list, the plan says "the strongest
+model available" and asks the user to name it.
 
 | Judge | Create | Change |
 |---|---|---|
@@ -80,6 +82,8 @@ objection as holding or not, with the place.
   a rule of structure.md or writing.md that fails.
 - Overrule one only by citing the place in the skill or on the sheet that refutes it. One you can settle neither
   way goes to the verifier as a claim.
+- When an objection and the text as it stands both keep those rules, the sheet's goal sentence decides: take
+  the one that serves it, and write the sentence beside the decision.
 - Objections still open after the last read go to the user in the result.
 
 A session that the user runs under entrust's [orchestrate](../../orchestrate/SKILL.md) puts these judges on

@@ -18,7 +18,10 @@ Go through the sheet's requirements and stages and give each one what meets it:
 
 An existing skill owns the job when three things hold: it lives where this skill would live, the user can edit
 it, and it serves the hosts on the sheet. Extend an owner when the requirement fits the job its description
-states. Create a new skill when the requirement would give the owner a second job. A skill the user cannot edit,
+states. Extending is the
+Change route on the owner, or Create's rewrite when its text no longer fits. Create a new skill only when the
+sheet shows a job the owner cannot do without taking on a second one. This holds for a request to make a skill
+like the one you are reading. A skill the user cannot edit,
 or one made for a single host when the sheet names more, is a rival: step 2 takes from it as a source, and
 [a selection check](checks.md#a-selection-check) lists it beside the new skill.
 

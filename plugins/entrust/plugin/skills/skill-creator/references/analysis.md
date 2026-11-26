@@ -53,15 +53,18 @@ Read these before the approach is chosen.
 
 1. Skills that already do this job or a neighbouring one: in the repository, among the skills installed on the
    host, its built-in ones included, and among the examples the host's vendor publishes.
-   [hosts.md](hosts.md) says where each host keeps them.
+   [hosts.md](hosts.md) says where each host keeps them and how a built-in one is read.
 2. What a skill is: the [open specification](https://agentskills.io/specification), and the guide of each host
    on the sheet, whose address is in [hosts.md](hosts.md).
 3. The material the skill is to carry: the documents, schemas and procedures the user named. With them, the
    repository's instructions and its records of this job: what was tried, kept and reverted.
 4. The user's own experience of the job. When the work was done in this conversation, the conversation is the
-   first source. Otherwise it is the sessions where the job was done or went wrong.
+   first source. Otherwise it is the sessions where the job was done or went wrong. When the user named none
+   and the host has no tool that finds them, ask in the plan where they are and go on with the other three
+   kinds.
 
-Record one row for each source, in a table beside the sheet:
+Record one row for each source, in a table beside the sheet, and one line for each of the four kinds that says
+what was read and what could not be:
 
 ```text
 source, with its path or URL and line | read whole or in part | taken | changed, and why | left out, and why
@@ -75,7 +78,8 @@ Then do four things with what you read.
   decisions the user's words left empty. Departing from it takes a requirement that says so; without one, the
   departure is a question.
 - Sort each skill you found into an owner of the job or a rival for it, as
-  [structure.md](structure.md#the-approach) defines them.
+  [structure.md](structure.md#the-approach) defines them. Each part you carry over from such a skill gets a row
+  of its own: the part, its place there, and what you changed.
 - Where you copy text and do not adapt it, name the source's licence in its row and keep its notice with the
   copy.
 

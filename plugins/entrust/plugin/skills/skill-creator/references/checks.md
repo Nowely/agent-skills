@@ -20,7 +20,9 @@ would have shown. With no run at all, the quality critic's read is the only evid
 
 ## The sessions
 
-- Start each session as an agent of this host, on the cheapest model the sheet says will load the skill. A
+- Start each session as an agent of this host. Run every case on the cheapest model the sheet says will load
+  the skill, and one case once more on each other model on the sheet. A model that got no session is named in
+  the result as unmeasured. A
   session on a host this one cannot run is started only when the user named that host, through what the
   repository has for starting such a session; in entrust that is orchestrate's
   [call page](../../orchestrate/references/external.md). A host on the sheet that got no session is named in
