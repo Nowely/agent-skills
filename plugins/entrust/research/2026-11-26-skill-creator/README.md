@@ -61,6 +61,12 @@ verifiers run inside the coordinator's session and have no dollar figure.
 - One run, two sessions an arm: an event occurred or did not; no stable difference (`RESEARCH.md:89-90`). Nothing
   here measures a Codex or OpenCode model reading the pages.
 
+Session digests: [04-part-a-sessions.md](04-part-a-sessions.md), with the four sessions' patches in
+[part-a/](part-a/), and [05-part-r-sessions.md](05-part-r-sessions.md). The Part A trace shows that both
+sessions given the page opened only `SKILL.md` and `references/analysis.md`; neither opened `checks.md`, whose
+row 10 holds the "nothing was lost" check, nor `writing.md`. The controls lost the same rows without the page, so
+the trace does not show that opening it would have changed the edit.
+
 ## For the next design round
 
 Part A's failure is the page's own: it has a "nothing lost" check for merged duplicates and neither page session
