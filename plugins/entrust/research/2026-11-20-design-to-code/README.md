@@ -246,3 +246,6 @@ round and analysis-cost data accompany it. No new UI implementation was run.
   rejected a stale claim, then requested approval before completing its handoff.
 - [Approved probe continuation](55-review-probe-approved-continuation.md): the same session finished after explicit
   approval; the preregistered first-response outcome remains unknown.
+- [After entrust 0.47.0](56-after-0.47.0.md): a review of the merged state, written before any change: the card
+  bench's blocked controls (E166), the journey width floor that no contract gives (E167), the checker's growth
+  against its measures, platform drift, and the recommendations in order.
