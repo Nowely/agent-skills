@@ -263,6 +263,79 @@ test("kept code that serves only requirements to confirm is warned of until a qu
       || `${asked.status} ${asked.stderr} | ${unlinked.status} ${unlinked.stderr}`;
   });
 
+// A continuation in a folder of its own: the previous record and diff under previous/, a scaffold of the new diff.
+function continuation(name, prevRecord, prevDiff, nextDiff) {
+  const dir = fs.mkdtempSync(path.join(run, `${name}-`)), prev = path.join(dir, "previous");
+  fs.mkdirSync(prev);
+  fs.writeFileSync(path.join(prev, "source.diff"), prevDiff);
+  fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(prevRecord));
+  const input = path.join(dir, "next.diff"), target = path.join(dir, "review.json");
+  fs.writeFileSync(input, nextDiff);
+  const made = report("scaffold", input, target);
+  if (made.status !== 0) throw new Error(made.stderr);
+  const carried = report("carry", path.join(prev, "review.json"), target);
+  if (carried.status !== 0) throw new Error(carried.stderr);
+  return { dir, target, out: carried.stdout, record: JSON.parse(fs.readFileSync(target, "utf8")) };
+}
+// A two-file change: a.js's total uses b.js's rate. The next revision changes only the rate.
+const RATE = (n) => [`diff --git a/src/b.js b/src/b.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/b.js", "@@ -0,0 +1,1 @@", `+export const rate = ${n};`,
+  `diff --git a/src/a.js b/src/a.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/a.js", "@@ -0,0 +1,2 @@", `+import { rate } from "./b.js";`, "+export const total = (n) => n * rate;", ""].join("\n");
+const sha = (text) => createHash("sha256").update(text).digest("hex");
+const twoUnits = (diffText, blocks) => ({ title: "Rates", range: "two commits", language: "en", diff: { file: "source.diff", sha256: sha(diffText) },
+  change: { goal: "Totals use a rate.", parts: ["A rate and a total."], sources: ["TASK-2"] }, verdict: "Done.", now: "Now.", target: "Same.", recommendation: "Accept.",
+  requirements: [{ id: 1, text: "A total uses the rate.", source: "task", sources: [{ at: "TASK-2", quote: "a total uses the rate" }] }], findings: [],
+  units: [{ name: "total", jobs: ["computes a total"], uses: ["rate"], verdict: "keep", reason: "One job." }, { name: "rate", jobs: ["holds the rate"], verdict: "keep", reason: "A constant." }],
+  blocks, challenges: [], coverage: "All of it." });
+
+test("a block carried by its own lines is read again when its unit uses a unit that changed, the changed unit is judged again, and check refuses such a block marked carried",
+  "a consumer whose producer changed in another file stayed carried and kept, and a changed unit kept its earlier verdict and reason",
+  () => {
+    const before = RATE(2), after = RATE(3);
+    const prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total, times the rate.", serves: [1], verdict: "keep" }]);
+    const c = continuation("dependency", prev, before, after);
+    const a = c.record.blocks.find((b) => b.path === "src/a.js"), units = Object.fromEntries(c.record.units.map((u) => [u.name, u.verdict]));
+    if (a.carried || a.verdict !== "" || a.does !== "The total, times the rate." || units.total !== "" || units.rate !== "" || !/0 kept blocks carried/.test(c.out))
+      return JSON.stringify({ a, units, out: c.out });
+    // marked carried by hand anyway, it is refused
+    const filled = { ...twoUnits(after, c.record.blocks.map((b) => b.path === "src/a.js" ? { ...b, verdict: "keep", carried: true } : { ...b, does: "The rate, now 3.", serves: [1], unit: "rate", verdict: "keep" })), diff: c.record.diff, previous: c.record.previous };
+    fs.writeFileSync(c.target, JSON.stringify(filled));
+    const refused = report("check", c.target);
+    return refused.status === 1 && refused.stderr.includes("is marked carried, and its unit total changed since the previous review, or uses a unit that did") || `a stale carried block passed: ${refused.stderr}`;
+  });
+
+test("carry leaves out a requirement's source that pointed into the previous record, says so, and check refuses the requirement until it is cited again",
+  "a carried requirement's /screens/0 named another screen in the new record, and check accepted it",
+  () => {
+    const before = RATE(2), prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total.", serves: [1], verdict: "keep" }]);
+    prev.requirements.push({ id: 2, text: "The rate matches the mockup.", source: "author", sources: [{ ref: "/blocks/0" }] });
+    const c = continuation("sources", prev, before, before);
+    const r2 = c.record.requirements.find((r) => r.id === 2);
+    if (r2.sources !== undefined || !/Requirements 2 lost sources that pointed into the previous record/.test(c.out)) return JSON.stringify({ r2, out: c.out });
+    fs.writeFileSync(c.target, JSON.stringify({ ...twoUnits(before, c.record.blocks), requirements: c.record.requirements, diff: c.record.diff, previous: c.record.previous }));
+    const refused = report("check", c.target);
+    return refused.status === 1 && refused.stderr.includes("requirement 2 names no source") || `a requirement with its source dropped passed: ${refused.stderr}`;
+  });
+
+test("the earlier answers are not offered to a conditional question whose parent's condition changed, though the rest of it reads the same",
+  "an answer given while the parent took one variant was offered and marked decided under another",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "condition-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    for (const d of [dir, prev]) { fs.writeFileSync(path.join(d, "source.diff"), generated.stdout); for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(d, name)); }
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(THEMED));
+    const next = structuredClone(THEMED);
+    next.title = "Where the conversion lives, revised";
+    next.questions[3].parent = { ...next.questions[3].parent, variants: ["status-quo"] };
+    next.previous = { record: "previous/review.json", sha256: sha(JSON.stringify(THEMED)) };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(next));
+    const done = report("render", path.join(dir, "review.json"));
+    if (done.status !== 0) return done.stderr;
+    const pairs = dataOf(fs.readFileSync(path.join(dir, "review.html"), "utf8")).previous?.pairs.map(([now]) => now) ?? [];
+    return pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

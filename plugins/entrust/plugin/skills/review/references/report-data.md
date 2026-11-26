@@ -326,11 +326,17 @@ record does not hold is left out, and the response says so. A short review appli
   decision, and one that pointed at a previous finding, question or idea by `ref` keeps it as `settled` text naming
   that item by its words. `previous` names the record they
   came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
-  carried block was judged on its own lines: where the change since touches its file, read it with that change. While
+  block is kept for the code around it too, so `carry` and `check` carry it only while that stands: a block of a unit
+  that changed — a block of it read again, changed or gone — or that uses one that did, at any remove through `uses`,
+  is read again, its unit judged again with its reason; so is a block with no unit in a file that holds a block read
+  again. Give a unit to code another file depends on, or it is carried by its own file alone. A carried requirement's
+  source that pointed into the previous record by `ref` would name another entry here: `carry` leaves it out and says
+  so, and a requirement left with no source is cited again. While
   the base and the requirements stand the independent target is not started again; the comparison pass, the critic
   and the verifier take the change since and the claims new or changed. A revised record at the same head — new
   evidence, the same diff — is a continuation whose change since is empty: there the page offers the answers this
-  browser kept for the previous report on the items that read exactly the same in full, never by number; a record of
+  browser kept for the previous report on the items that read exactly the same in full — a conditional question under
+  the same parent and variants — never by number; a record of
   a new revision takes the owner's answers through the export, as below.
 - **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
   it, `text` and `sources`. Decisions › Comments lists them at the place the comment had, never placed in this diff.

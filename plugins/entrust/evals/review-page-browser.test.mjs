@@ -68,7 +68,8 @@ const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru",
 const PREV_KEY = createHash("sha256").update(JSON.stringify(record)).digest("hex").slice(0, 10);
 const NEXT = { ...structuredClone(record), title: "Where the conversion lives, again",
   previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
-  blocks: record.blocks.map((b, i) => i === 0 ? { ...b, carried: true } : b),
+  // the first block carried: its unit has blocks not kept, so it is carried without one, by its file, which nothing else in changes
+  blocks: record.blocks.map((b, i) => i === 0 ? (({ unit, ...rest }) => ({ ...rest, carried: true }))(b) : b),
   replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", sources: [{ at: "TASK-9", quote: "upper case" }] },
     { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] };
 const NEXT_URL = render("next", NEXT), NEXT_KEY = createHash("sha256").update(JSON.stringify(NEXT)).digest("hex").slice(0, 10);

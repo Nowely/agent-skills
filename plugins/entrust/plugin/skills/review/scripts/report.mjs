@@ -21,7 +21,7 @@ import { comparisons } from "./comparisons.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
-import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
+import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, staleCarried, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -182,19 +182,37 @@ function carry(previousPath, target) {
   // named, a unit judged anew where the previous record did not keep it; mechanisms with the blocks that came over;
   // routes whose every step came over. What pointed at the previous findings or questions is left for this review.
   const renumber = new Map(ordered.map((x, i) => [x.from, i + 1]).filter(([from]) => from !== undefined));
-  const unjudged = ({ findings, questions, ...u }) => u.verdict === "keep" || u.existing ? u : { ...u, verdict: "", reason: "" };
-  review.units = (prev.units ?? []).map(unjudged);
+  review.units = (prev.units ?? []).map(({ findings, questions, ...u }) => u);
   review.target_units = prev.target_units ?? [];
   review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
     .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
   const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
   if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
-  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => ({ id, text, source, ...(sources ? { sources } : {}), ...(permission ? { permission } : {}) }));
+  // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a
+  // requirement left with no source is refused until this review cites one again.
+  const unsourced = [];
+  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => {
+    const kept = (sources ?? []).filter((x) => x?.ref === undefined);
+    if (kept.length !== (sources ?? []).length) unsourced.push(id);
+    return { id, text, source, ...(kept.length ? { sources: kept } : {}), ...(permission ? { permission } : {}) };
+  });
+  // A kept block is carried only while what it was kept for stands: a block of a unit that changed, or uses one that
+  // did, and a block with no unit in a file that changed, are read again — until nothing more changes.
   review.previous = { record: path.relative(dir, path.resolve(previousPath)), sha256: createHash("sha256").update(prevBytes).digest("hex") };
+  const prevRecord = { review: prev, files: p.files, owner: prevOwner };
+  for (let again = true; again;) {
+    const stale = staleCarried(review, cur.files, ownerOf(review, cur.files), prevRecord);
+    again = stale.some(Boolean);
+    stale.forEach((why, i) => { if (why) { const { carried, ...b } = review.blocks[i]; review.blocks[i] = { ...b, verdict: "" }; } });
+  }
+  // A unit with a block read again is judged again, its reason with it.
+  const reread = new Set(review.blocks.filter((b) => b.carried !== true && b.unit).map((b) => b.unit));
+  for (const b of prev.blocks) if (b.unit && !review.blocks.some((x) => x.carried === true && x.unit === b.unit)) reread.add(b.unit);
+  review.units = review.units.map((u) => u.existing || (u.verdict === "keep" && !reread.has(u.name)) ? u : { ...u, verdict: "", reason: "" });
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
-  return { kept: carriedBlocks.filter((x) => x.block.carried).length, judge: carriedBlocks.filter((x) => !x.block.carried).length, fresh: rest.length,
-    routes: [routes.length, (prev.routes ?? []).length] };
+  const kept = review.blocks.filter((b) => b.carried).length;
+  return { kept, judge: carriedBlocks.length - kept, fresh: rest.length, routes: [routes.length, (prev.routes ?? []).length], unsourced };
 }
 
 // The diff a record judges is the copy saved beside it, checked against its digest.
@@ -215,7 +233,7 @@ try {
     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
   } else if (command === "carry" && argument && process.argv[4]) {
     const made = carry(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
+    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept — not kept before, or kept for a unit or file that changed; ${made.fresh} blocks new or changed.${made.unsourced.length ? ` Requirements ${made.unsourced.join(", ")} lost sources that pointed into the previous record; cite them again.` : ""} The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));

@@ -159,6 +159,23 @@ export const blockLines = (files, owner, index, path) => {
   const file = files.find((f) => f.path === path);
   return file ? changedLines(file).filter((l) => owner.get(`${file.path}\n${address(l)}`) === index).map(lineRead).join("\n") : "";
 };
+// Which carried blocks cannot stand as carried. The previous record kept a block for the code around it too: one whose
+// unit changed — a block of it read again, changed or gone — or uses, at any remove, a unit that changed is read again,
+// and so is one with no unit in a file that holds a block read again. Each stale block gets the reason, the rest null.
+export function staleCarried(review, files, owner, prev) {
+  const sig = (f, o, i, p) => `${p}\n${blockLines(f, o, i, p)}`;
+  const carried = new Set(review.blocks.map((b, i) => b.carried === true ? sig(files, owner, i, b.path) : null).filter(Boolean));
+  const changed = new Set();
+  prev.review.blocks.forEach((b, i) => { if (b.unit && !(b.verdict === "keep" && carried.has(sig(prev.files, prev.owner, i, b.path)))) changed.add(b.unit); });
+  review.blocks.forEach((b) => { if (b.carried !== true && b.unit) changed.add(b.unit); });
+  const affected = new Set(changed), uses = (review.units ?? []).map((u) => [u.name, Array.isArray(u.uses) ? u.uses : []]);
+  for (let grew = true; grew;) { grew = false; for (const [name, list] of uses) if (!affected.has(name) && list.some((x) => affected.has(x))) { affected.add(name); grew = true; } }
+  const touched = new Set(review.blocks.filter((b) => b.carried !== true).map((b) => b.path));
+  return review.blocks.map((b) => b.carried !== true ? null
+    : b.unit ? (affected.has(b.unit) ? `its unit ${b.unit} changed since the previous review, or uses a unit that did` : null)
+    : touched.has(b.path) ? `it has no unit, and its file holds a block read again` : null);
+}
+
 // The previous record a continuation carries blocks from, read with its saved diff, both by their digests.
 export function previousOf(review, directory) {
   const p = review.previous;
@@ -528,6 +545,7 @@ export function check(review, files, directory) {
       const kept = new Set(prev.review.blocks.map((b, i) => b.verdict === "keep" ? `${b.path}\n${blockLines(prev.files, prev.owner, i, b.path)}` : null).filter(Boolean));
       for (const [b, i] of carried) if (b.carried === true && !kept.has(`${b.path}\n${blockLines(files, owner, i, b.path)}`))
         errors.push(`block ${i + 1} is marked carried, and no block the previous record kept has its lines: read it and judge it, and it is not carried`);
+      staleCarried(review, files, owner, prev).forEach((why, i) => { if (why) errors.push(`block ${i + 1} is marked carried, and ${why}: read it and judge it, and it is not carried`); });
     }
   }
   // A reply answers a comment the owner made on the previous review, at the place that comment had there.

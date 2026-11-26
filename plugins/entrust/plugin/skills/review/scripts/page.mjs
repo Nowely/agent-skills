@@ -91,7 +91,7 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
 // An item as the owner answered it: a later record holding an item that reads the same — the same question with the
 // same variants, the same finding, the same idea — asks the same thing, whatever its number there.
 const itemReads = (r) => new Map([
-  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: undefined }])]),
+  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: q.parent ? [r.questions?.[q.parent.question - 1]?.text, q.parent.variants] : null }])]),
   ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f])]),
   ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x])])]);
 // A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each

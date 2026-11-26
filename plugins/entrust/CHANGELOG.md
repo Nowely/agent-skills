@@ -76,14 +76,18 @@ forensics remain in the repository references and release notes.
   came from by its digest, and `check` proves every carried block against it and its saved diff. The plan offers a
   continuation only when the previous review was whole, the base stayed or the change's own commits are unaltered,
   no manifest or lock file changed and no answer changed a requirement the previous analysis rested on, and names
-  what it skips. The previous requirements come with the carried blocks, by their ids, each to be checked again, and
+  what it skips. A kept block is carried only while what it was kept for stands: a block of a unit that changed, or
+  that uses one that did through `uses`, and a block with no unit in a file that changed, are read again, and such a
+  unit is judged again; `check` refuses such a block marked carried. The previous requirements come with the carried
+  blocks, by their ids, each to be checked again — a source that pointed into the previous record by `ref` left out,
+  so it is cited again — and
   so do the units and target units (a unit the previous record did not keep left to judge), the mechanisms with their
   carried blocks and each route whose every step was carried, all renumbered; a comparison key whose witnesses read as
   before keeps its previous decision. The
   printout and the page list the carried blocks, Coverage with «Show in Code». A revised record of the same diff is a
   continuation with nothing changed since: its page offers the answers this browser kept for the previous report on
-  the items still unanswered that read the same in full — the question with its context, variants, consequences and
-  recommendation, the finding with its evidence — never by number; a record of a new revision takes the owner's
+  the items still unanswered that read the same in full — the question with its context, variants, consequences,
+  recommendation and the parent's condition, the finding with its evidence — never by number; a record of a new revision takes the owner's
   answers through the export.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
