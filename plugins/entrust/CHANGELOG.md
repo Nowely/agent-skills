@@ -10,7 +10,7 @@ forensics remain in the repository references and release notes.
 - The plan critic runs on the host's strong model by default, on both of its reads: Opus in Claude Code, Sol in
   Codex. The architecture critic, workers, verifiers and a foreman keep the executor model.
 - The second read is one fresh plan critic on the combined diff, after the last worker returns, never the thread
-  that judged the plan.
+  that judged the plan. It follows its own subsection and gets no card.
 - After a fix the verifier's thread is continued with each fix as a claim. It re-runs the suite and checks the
   fixes alone: each fix's diff and test, as confirmed, refuted or not checkable. It looks for nothing new there.
 - A worker's fix comes, where cheap, with a test it ran before the fix and after; the verifier says whether the
