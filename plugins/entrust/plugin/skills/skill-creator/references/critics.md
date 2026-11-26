@@ -53,6 +53,8 @@ the executor tier; the plan names each model, so the user sees the difference an
 |---|---|---|
 | the architecture critic and the quality critic | top | a skill is read on every later use, so a gap a critic misses is paid for each time |
 | the verifier; a reader of sources; the reader who marks a check's statements; the writer of a selection check's requests | executor | each works from a fixed question against files |
+| [reflection](reflection.md): the audit, from zero, combinations | top | each judges a whole run or a whole design |
+| reflection: evidence, prior art | the strongest model below the top tier; the executor tier where the host has two | each reads much and answers a fixed question |
 | the agent of a dry run; the sessions of a check | no tier: [checks.md](checks.md#the-sessions) says which models | a check shows what the models that load the skill do |
 
 | Judge | Create | Change |

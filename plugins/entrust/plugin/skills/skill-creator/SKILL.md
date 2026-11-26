@@ -35,8 +35,12 @@ its description. Take one of three routes; a change to this skill takes them too
   personal folder has one too. Where that rule numbers each version of a file and overwrites none, an amended
   sheet is a new numbered file.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
-- Between the plan and the result, the user hears from you only a changed plan, a verdict that stops the work,
-  and blockers, all blockers in one message.
+- Between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
+  verdict that stops the work, and blockers, all blockers in one message.
+- A plan that starts an agent or a session is a file, as [plan.md](references/plan.md) sets it out. After the
+  user's word, and after any pause, open it first. Log each decision, idea of the user and departure from a
+  step in it when it happens, with the time a command gives; at a checkpoint it names, fill its table and
+  apply its rule.
 - When no user can answer, because another agent started you or the run has no one attached, your return
   stands where a step says to tell the user. The plan with its questions is then your return, and you stop
   there, on either route.
@@ -57,7 +61,9 @@ its description. Take one of three routes; a change to this skill takes them too
 2. **Read the sources.** Read what already does this job, what the hosts say a skill is, and the user's own
    experience of the job, and record what you take, change and leave out, as
    [the sources](references/analysis.md#the-sources) says. Hold the walk of step 1 against them.
-   [hosts.md](references/hosts.md) has each host's guide and what differs between hosts.
+   [hosts.md](references/hosts.md) has each host's guide and what differs between hosts. When someone already
+   does the job well and the skill is to carry how, take
+   [the practice](references/analysis.md#a-practice-someone-already-performs) from their runs, not from memory.
 3. **Plan and ask, in one message.** Choose the approach and the layout by
    [structure.md](references/structure.md), and the check by
    [checks.md](references/checks.md#choosing-the-check). Between two approaches that both meet the sheet, a
@@ -72,7 +78,10 @@ its description. Take one of three routes; a change to this skill takes them too
    - who writes the text, which is this session when the user named no one, and every agent steps 4 to 9 will
      start, each with its model and its number of sessions, as
      [critics.md](references/critics.md#which-model-and-how-many) and checks.md give them;
-   - how the result will be delivered.
+   - how the result will be delivered;
+   - when the plan starts an agent or a session: how the check's sessions start, who writes the delivery
+     text, what could not be read, the rounds, the checkpoints, the spend, and the parts of
+     [reflection](references/reflection.md) it will run, each as [plan.md](references/plan.md) gives it.
 
    Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
    and spend, can stand for it; the request to do the work cannot. One word accepts the plan and its
@@ -98,12 +107,13 @@ its description. Take one of three routes; a change to this skill takes them too
    and decide by the plan's rule from confirmed marks; set no threshold after seeing a result. A result that
    fails the rule is [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept: undo
    the change, or take the new skill's folder out of the tree and keep its text in the run directory. Either
-   way, write [a close-out](#a-close-out).
+   way, write [a close-out](#a-close-out), and start the parts of reflection the plan gave this step.
 9. **Have the result verified.** Where [critics.md](references/critics.md#which-model-and-how-many) gives the
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
    returns as `not met` is [a correction](#a-correction).
-10. **Deliver**, once [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says,
-    and give [the result](#the-result).
+10. **Deliver**, once the parts of reflection the plan gave this step have returned and
+    [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says, and give
+    [the result](#the-result).
 
 ## Change
 
@@ -119,7 +129,9 @@ its description. Take one of three routes; a change to this skill takes them too
    the page or a script already carries the rule, do not state it again; find where it stopped working: past what the host keeps of the
    page in a long session, behind a link away from the step that needs it, contradicted in another file, or
    written as advice where a step was needed. A rule that is absent has a place too: the step that should carry
-   it. If a script can enforce the rule, the fix is the script, not a sentence. If what produced the failure
+   it. If a script can enforce the rule, the fix is the script, not a sentence. If the rule is something a
+   person or an agent already does well, take
+   [the practice](references/analysis.md#a-practice-someone-already-performs) from their runs. If what produced the failure
    lies outside the skill's files, change nothing: record it where the repository records defects, tell the
    user, and stop.
 3. **Choose the smallest change.** Take the first of these that meets the requirement: remove; move, or link at
@@ -163,12 +175,13 @@ its description. Take one of three routes; a change to this skill takes them too
 10. **Run the plan's check** on the text as it now stands, and decide by the plan's rule from confirmed marks;
     set no threshold after seeing a result. A result that fails the rule is [a correction](#a-correction). Past
     [its limit](#a-correction), undo the change and keep its text in the run directory. Either way, write
-    [a close-out](#a-close-out).
+    [a close-out](#a-close-out), and start the parts of reflection the plan gave this step.
 11. **Have the result verified**, where [critics.md](references/critics.md#which-model-and-how-many) gives a
     change a verifier, as [its section](references/critics.md#the-verifier) briefs it, with the dispositions
     file. A requirement it returns as `not met` is [a correction](#a-correction).
-12. **Deliver**, once [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says,
-    and give [the result](#the-result).
+12. **Deliver**, once the parts of reflection the plan gave this step have returned and
+    [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says, and give
+    [the result](#the-result).
 
 ## A correction
 
@@ -192,7 +205,7 @@ results.
 
 Nothing the run started is left without an end. Write these in the run directory, beside the sheet.
 
-- For the plan's check, a dry run and a selection check, each when its result is in: the verdict by the rule
+- For the plan's check, a dry run, a selection check and a part of reflection, each when its result is in: the verdict by the rule
   the plan gave it; `adopt`, `adjust` or `drop`; what you did because of it; what it changes in the skill; and
   when it is measured next.
 - For each line of the sheet marked `idea`, before delivery: taken, with the place; declined, with the reason

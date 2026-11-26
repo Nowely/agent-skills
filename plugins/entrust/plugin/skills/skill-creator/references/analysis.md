@@ -1,7 +1,8 @@
 # Analysing the request
 
 A requirement missed here is missed by everything built on it: the approach, the text, and every judge that is
-handed only that text.
+handed only that text. This page has [the sheet](#the-sheet), [the sources](#the-sources),
+[a practice someone already performs](#a-practice-someone-already-performs) and [the questions](#the-questions).
 
 ## The sheet
 
@@ -43,7 +44,7 @@ the sources of step 2 share; the default in the table. Write beside each answer 
 | Its name | the name the sources use for this job; else a short name that starts with the action |
 | Where it lives | where the user said; else beside the skills of the plugin or repository it belongs to; else the host's folder for personal skills |
 | What it uses and touches outside its folder, and what in it is private | it uses what the repository already has for the purpose and adds nothing new; it changes nothing outside; it carries no private material |
-| How the result is delivered, and who writes that text | as the repository's instructions say; else the files in place and the result message |
+| How the result is delivered, and who writes that text | as the repository's instructions say; else the files in place and the result message. The text is written by whoever writes the skill, unless the user names another |
 
 A decision is open when none of the four answers it, when two of them disagree, or when the default would go
 against a requirement or against what the sources share. An open decision whose answer would change the
@@ -69,7 +70,7 @@ Record one row for each source, in a table beside the sheet, and one line for ea
 what was read and what could not be:
 
 ```text
-source, with its path or URL and line | read whole or in part | taken | changed, and why | left out, and why
+source, with its path or URL and line | its version or date | read on | read whole or in part | taken | changed, and why | left out, and why
 ```
 
 Then do four things with what you read.
@@ -95,6 +96,37 @@ later. Tell the user their number and their model before they start;
 sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give
 its address." Have a stronger model read again any part whose return contradicts the sheet. Step 3 waits for the
 readers; with no user attached, step 3 names them in the plan and they run after it is accepted.
+
+## A practice someone already performs
+
+Sometimes the job the skill is to carry is already done well by a person or an agent, and the skill exists so
+that others do it the same way. What they do is then a source, and it is not in their head or yours: someone who
+does a thing well cannot list what a newcomer lacks. Take it from their runs.
+
+Do this when the user asks for it or names the sessions, or when the practice is this run's own. Sessions are
+the user's and private: read only the ones they named, and keep what you take in the run directory.
+
+1. Collect, by a command and never from memory, every artifact of the practice from those sessions: each brief,
+   each review, each message of the kind the skill is to produce, with what came back from it. Where a session
+   cannot be read, record the gap and go on; do not widen the search to fill it.
+2. Start one fresh reader, briefed by [the form](critics.md#every-brief) with this section as its role. `Read`
+   holds the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
+   practice. It writes `practice.md` in the run directory, in four parts:
+   - the catalogue: each thing the artifacts do, in how many of them, with one example and its place;
+   - what each did, judged by what came back: the place that shows it and an evidence level, or `nothing
+     visible`; and what went wrong where it was absent;
+   - the gaps: for each thing, whether the pages state it, state it in part, lack it or contradict it, with the
+     place on the page;
+   - each gap written as a line for a reader who was not there: what to do, in the reader's own terms, with no
+     name, event or reason that only the run explains.
+3. Each gap the pages should close becomes a requirement line of the sheet, with `practice` as its source. On a
+   sheet that will be tracked, name the source in neutral words and leave the session's place in the run
+   directory. A contradiction between the practice and a page is a question for the plan, never settled
+   silently.
+4. The check for these lines is [a transfer test](checks.md#a-transfer-test), which step 5 prepares.
+
+A thing in the catalogue with `nothing visible` is carried only when it costs one line; say in the sources
+table that it rests on habit.
 
 ## The questions
 

@@ -18,4 +18,7 @@ reaches it through [its adapter](../../opencode/SKILL.md); nothing in this table
 | Reading a built-in skill | it is in the session's list of skills; its files are under `~/.claude/skills/synced/` when the account's skills are synced; otherwise load it by name and read what the host returns | the list of skills Codex gives the agent carries each skill's file path; read `SKILL.md` at that path |
 | A tool that runs a selection check | `claude plugin eval` | none known |
 | Where it lists its models | the model picker; with entrust, [its models page](../../claude/references/models.md) | the model picker; with entrust, [its models page](../../codex/references/models.md) |
+| What a session started through entrust cost | its report's `usage` (tokens) and `cost` (the CLI's estimate; across a resumed run it is the sum so far) | its report's `tokenUsage`, for the root thread only; no price |
+| What an agent of the host cost | the figure in the agent's completion notice; it has been measured as the last call's context, not the agent's total, so read it as a lower bound | no figure known: `unknown` |
+| What this session itself has cost | not visible to the session: `unknown` | not visible to the session: `unknown` |
 | Reading the user's past sessions | with entrust, [prepare-feedback](../../prepare-feedback/SKILL.md) finds them and has them read | no tool known: read the session files the user points to |
