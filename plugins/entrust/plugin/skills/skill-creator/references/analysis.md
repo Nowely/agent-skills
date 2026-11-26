@@ -22,6 +22,8 @@ R<n> | the requirement | the user's words, quoted | where they are | stated or i
   example.
 - What the user disliked in an earlier attempt at this job is a requirement: it says what must not happen again.
 - Leave `met at` empty until the text is written.
+- A thought the user offers without asking for it, such as "maybe", "what if" or "a side idea", is a line too,
+  marked `idea` in place of `stated`. [A close-out](../SKILL.md#a-close-out) gives it an outcome before delivery.
 
 **The job, walked.** Walk the job the skill will serve once, from the request that starts it to the result its
 user accepts. Write each stage as a line: what goes in, what comes out, and who judges it. A stage the user's

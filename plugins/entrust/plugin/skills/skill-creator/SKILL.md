@@ -93,14 +93,17 @@ its description. Take one of three routes; a change to this skill takes them too
    repository has them, its own checks for skill pages, until they pass. A rewrite also passes
    [Change's step 8](#change), against a copy of the skill taken before the first edit.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
-   briefs it, and settle its objections as [that page](references/critics.md#settling-an-objection) says.
+   briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
 8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
-   and decide by the plan's rule; set no threshold after seeing a result. A result that fails the rule is
-   [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept:
-   undo the change, or take the new skill's folder out of the tree and keep its text in the run directory.
+   and decide by the plan's rule from confirmed marks; set no threshold after seeing a result. A result that
+   fails the rule is [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept: undo
+   the change, or take the new skill's folder out of the tree and keep its text in the run directory. Either
+   way, write [a close-out](#a-close-out).
 9. **Have the result verified.** Where [critics.md](references/critics.md#which-model-and-how-many) gives the
-   work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it returns as `not met` is [a correction](#a-correction).
-10. **Deliver.** Hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
+   work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
+   returns as `not met` is [a correction](#a-correction).
+10. **Deliver**, once [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says,
+    and give [the result](#the-result).
 
 ## Change
 
@@ -155,15 +158,17 @@ its description. Take one of three routes; a change to this skill takes them too
 
    Run it again until it exits 0. Your own judgement that a fact is not needed retires nothing.
 9. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
-   briefs it, with the diff and the dispositions file, and settle its objections as
-   [that page](references/critics.md#settling-an-objection) says.
-10. **Run the plan's check** on the text as it now stands, and decide by the plan's rule; set no threshold
-    after seeing a result. A result that fails the rule is [a correction](#a-correction). Past
-    [its limit](#a-correction), undo the change and keep its text in the run directory.
+   briefs it, with the diff and the dispositions file, and act on its return as
+   [that page](references/critics.md#handling-a-return) says.
+10. **Run the plan's check** on the text as it now stands, and decide by the plan's rule from confirmed marks;
+    set no threshold after seeing a result. A result that fails the rule is [a correction](#a-correction). Past
+    [its limit](#a-correction), undo the change and keep its text in the run directory. Either way, write
+    [a close-out](#a-close-out).
 11. **Have the result verified**, where [critics.md](references/critics.md#which-model-and-how-many) gives a
-    change a verifier, as [its section](references/critics.md#the-verifier) briefs it. A requirement it
-    returns as `not met` is [a correction](#a-correction).
-12. **Deliver.** Hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
+    change a verifier, as [its section](references/critics.md#the-verifier) briefs it, with the dispositions
+    file. A requirement it returns as `not met` is [a correction](#a-correction).
+12. **Deliver**, once [a close-out](#a-close-out) leaves nothing open, as the sheet's delivery decision says,
+    and give [the result](#the-result).
 
 ## A correction
 
@@ -183,6 +188,16 @@ Every edit that follows comes from the amended sheet, never from the correction 
 fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
 results.
 
+## A close-out
+
+Nothing the run started is left without an end. Write these in the run directory, beside the sheet.
+
+- For the plan's check, a dry run and a selection check, each when its result is in: the verdict by the rule
+  the plan gave it; `adopt`, `adjust` or `drop`; what you did because of it; what it changes in the skill; and
+  when it is measured next.
+- For each line of the sheet marked `idea`, before delivery: taken, with the place; declined, with the reason
+  you gave the user; or pending, with the step that will decide it.
+
 ## The result
 
 Tell the user, in this order, the outcome first; the text that delivers the work opens the same way:
@@ -191,7 +206,7 @@ Tell the user, in this order, the outcome first; the text that delivers the work
 - for each requirement, the place that meets it, from the verifier's table or the quality critic's marks;
 - what ran, with its counts, and what did not run;
 - what stayed unmeasured, and what in the user's next real use would show the skill failing;
-- the judges' objections still open;
+- the judges' objections still open, and every close-out line that is `adjust`, `drop`, declined or pending;
 - at delivery, and whenever the user asks: what the skill does, in three sentences, and the questions still
   open.
 

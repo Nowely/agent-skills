@@ -41,8 +41,9 @@ would have shown. With no run at all, the quality critic's read is the only evid
 ## A dry run
 
 1. At step 5, write one request the way a user would type it, from the middle of the sheet's job.
-2. At step 8, start one fresh agent on the cheapest model the sheet says will load the skill. Give it the path
-   of `SKILL.md` and the request. Tell it to walk the request through the files as written, to run nothing, and
+2. At step 8, start one fresh agent on the cheapest model the sheet says will load the skill, briefed by
+   [the form](critics.md#every-brief) with this step as its role and the sheet under `Do not open`. Give it the
+   path of `SKILL.md` and the request. Tell it to walk the request through the files as written, to run nothing, and
    to report each step where it halts, has to guess or can read a line two ways, with the file and line. For a
    change, start the same walk at step 5 as well, on the skill as it was, and compare the two reports.
 3. The work is kept when the walk reaches the end with no halt and no guess at a stage the sheet's walk covers.
@@ -52,14 +53,18 @@ would have shown. With no run at all, the quality critic's read is the only evid
 1. Write each case as a request the way a user would type it: concrete, with the file names, the context and the
    detail a real request carries. Make one of them the request on which following the skill costs the agent
    most. Take none from the run that prompted the work.
-2. Before any run, write for each case what a good result is, as statements a reader can mark true or false with
-   a place. A statement is about the result. Where the claim is about what the agent does on the way, such as a
+2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part` or
+   `false` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`. A
+   statement is about the result. Where the claim is about what the agent does on the way, such as a
    question it asks or a step it skips, the statement names an event the transcript shows, never the agent's
    wording.
 3. Run each case once with the skill and once without it, on the same model with the same inputs. For a change,
    "without" is the skill before the change.
 4. Have one fresh reader mark each statement for each run, with the place that shows it, not knowing which run
-   is which. Read the transcripts as well, for a file of the skill no session opened and a step every session
+   is which. Brief it by [the form](critics.md#every-brief) with this step as its role: it marks strictly and
+   literally, says why where two marks were possible, and returns the marks and no verdict. `Do not open` holds
+   the key to which run is which and the skill's own files. Then have the marks confirmed and compute the
+   verdict as [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the skill no session opened and a step every session
    skipped; each is a finding for the result.
 5. A statement that every run passes measured nothing. Report it so and count it for neither side.
 6. Code that every session wrote for itself is a finding for the result: a script the skill should carry.
