@@ -10,6 +10,18 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E168. Under orchestrate the advisor is told two opposite default models
+
+**Evidence, level 1.** `orchestrate/references/roles.md:89` at `256c326` says the orchestrate page's model and effort
+defaults apply to the rows of its table, whose row `:97` is the advisor, and `orchestrate/SKILL.md:86-87` gives every
+ordinary role the host's executor model (Terra in Codex, Sonnet in Claude Code). `advisor/SKILL.md:12` still says that,
+unless the user names a model, the advisor is the host's top-tier model. Found by a trial review of PR 115 run with the
+review skill of PR 109; read again at `256c326`.
+
+**Issue text.** A coordinator that starts an advisor under orchestrate reads two defaults for its model: the executor
+model from orchestrate's capacity rule and the top-tier model from the advisor page. Say in one place whether the
+advisor is an ordinary role under orchestrate, and make the other page follow it.
+
 ## E165. The card bench blocks two clean builds on a type finding
 
 **Evidence, level 3.** On macOS 26.7.2 with Playwright 1.65.1 and Chromium 159.0.8154.6, the card bench at
