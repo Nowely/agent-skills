@@ -61,15 +61,15 @@ export const VERDICTS = ["keep", "fix", "remove", "question"];
 export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "question"];
 // What a question asks of its resolver: a choice, a fact, or evidence. The number never decides the kind.
 export const QUESTION_KINDS = ["decision", "fact", "evidence"];
-export const COVERAGE_KINDS = ["ran", "read", "not_checked", "carried"];
+export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
 // Who raised a point against the draft, and what the review did with it.
 export const CHALLENGERS = ["target", "critic", "verifier", "reviewer"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
-// Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
 // The words a decision's recommendation opens with when the data leaves no clear one.
 export const NO_CLEAR = { en: "No clear recommendation", ru: "Однозначной рекомендации нет" };
+// Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
 export const SOURCES = ["task", "discussion", "project", "author", "contract", "assumption", "question"];
 // Where a requirement comes from decides whether it binds: the task, an owner's decision and a project rule are
 // established; what the author proposes, an existing behaviour or contract that may need keeping, the reviewer's own
@@ -130,9 +130,6 @@ export function compact(list) {
 // The page writes the language into <html lang> as Intl canonicalizes it, and Intl takes one well-formed tag.
 const languageTag = (value) => { if (typeof value !== "string") return false; try { Intl.getCanonicalLocales(value); return true; } catch { return false; } };
 
-// Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
-// Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
-// without the optional fields of the decision-first report gets none of them.
 // A review's name, which no other review has: the page keeps the owner's answers under it.
 export const keyOf = (review) => createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10);
 // Which block owns each changed line, by the blocks' own line lists, whatever else the record holds.
@@ -151,9 +148,10 @@ export function ownerOf(review, files) {
   return owner;
 }
 // A block's changed lines as they read, in order: two blocks with the same lines hold the same code.
-export const linesOf = (files, owner, index, path) => {
+export const lineRead = (l) => `${l.kind}\t${l.text}`;
+export const blockLines = (files, owner, index, path) => {
   const file = files.find((f) => f.path === path);
-  return file ? changedLines(file).filter((l) => owner.get(`${file.path}\n${address(l)}`) === index).map((l) => `${l.kind}\t${l.text}`).join("\n") : "";
+  return file ? changedLines(file).filter((l) => owner.get(`${file.path}\n${address(l)}`) === index).map(lineRead).join("\n") : "";
 };
 // The previous record a continuation carries blocks from, read with its saved diff, both by their digests.
 export function previousOf(review, directory) {
@@ -163,7 +161,10 @@ export function previousOf(review, directory) {
   if (!fs.existsSync(file)) return { fault: `the previous record "${p.record}" is not there` };
   const bytes = fs.readFileSync(file);
   if (createHash("sha256").update(bytes).digest("hex") !== p.sha256) return { fault: `the previous record "${p.record}" is not the one the blocks were carried from` };
-  const prev = JSON.parse(bytes.toString("utf8")), dir = path.dirname(file), diff = path.resolve(dir, String(prev.diff?.file ?? ""));
+  let prev;
+  try { prev = JSON.parse(bytes.toString("utf8")); } catch (error) { return { fault: `the previous record "${p.record}" is not JSON: ${error.message}` }; }
+  if (!Array.isArray(prev?.blocks)) return { fault: `the previous record "${p.record}" lists no blocks` };
+  const dir = path.dirname(file), diff = path.resolve(dir, String(prev.diff?.file ?? ""));
   if (!prev.diff?.file || !fs.existsSync(diff)) return { fault: `the previous record's saved diff is not beside it` };
   const diffBytes = fs.readFileSync(diff);
   if (createHash("sha256").update(diffBytes).digest("hex") !== prev.diff.sha256) return { fault: `the previous record's saved diff is not the one it was made from` };
@@ -171,6 +172,9 @@ export function previousOf(review, directory) {
   return { review: prev, files, owner: ownerOf(prev, files), sha256: p.sha256 };
 }
 
+// Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
+// Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
+// without the optional fields of the decision-first report gets none of them.
 export function check(review, files, directory) {
   const errors = [], warnings = [], owner = new Map();
   const text = (v) => typeof v === "string" && v.trim() !== "", filled = (v) => Array.isArray(v) && v.length > 0;
@@ -512,28 +516,22 @@ export function check(review, files, directory) {
     if (b.carried !== true) errors.push(`block ${i + 1}: carried is true, or left out`);
     else if (b.verdict !== "keep") errors.push(`block ${i + 1} is carried and not kept: a block carried from the previous record is kept as it was; judge it again, and it is not carried`);
   }
+  const prev = review.previous !== undefined ? previousOf(review, directory) : null;
+  if (prev?.fault) errors.push(`"previous" cannot be read: ${prev.fault}`);
   if (carried.some(([b]) => b.carried === true)) {
-    const prev = previousOf(review, directory);
-    if (prev.fault) errors.push(`carried blocks cannot be proven: ${prev.fault}`);
-    else {
-      const kept = new Set(prev.review.blocks.map((b, i) => b.verdict === "keep" ? `${b.path}\n${linesOf(prev.files, prev.owner, i, b.path)}` : null).filter(Boolean));
-      for (const [b, i] of carried) if (b.carried === true && !kept.has(`${b.path}\n${linesOf(files, owner, i, b.path)}`))
+    if (!prev) errors.push(`carried blocks cannot be proven: "previous" names no record`);
+    else if (!prev.fault) {
+      const kept = new Set(prev.review.blocks.map((b, i) => b.verdict === "keep" ? `${b.path}\n${blockLines(prev.files, prev.owner, i, b.path)}` : null).filter(Boolean));
+      for (const [b, i] of carried) if (b.carried === true && !kept.has(`${b.path}\n${blockLines(files, owner, i, b.path)}`))
         errors.push(`block ${i + 1} is marked carried, and no block the previous record kept has its lines: read it and judge it, and it is not carried`);
     }
   }
-  // A reply answers a comment the owner made on the previous review. It is placed in the code only where the commented
-  // code still reads the same: its quote is on the lines `at` names, which the check reads in the saved diff.
+  // A reply answers a comment the owner made on the previous review, at the place that comment had there.
   if (review.replies !== undefined && !Array.isArray(review.replies)) errors.push(`"replies" is not a list`);
   (Array.isArray(review.replies) ? review.replies : []).forEach((x, index) => {
     const who = `reply ${index + 1}`;
     for (const field of ["comment", "place", "text"]) if (!text(x?.[field])) errors.push(`${who} has no "${field}"`);
     sourceFaults(who, x?.sources, `/replies/${index}`);
-    if (x?.at === undefined) return;
-    const m = /^(.+):(\d+)(?:-(\d+))?$/.exec(String(x.at)), file = m && files.find((f) => f.path === m[1]);
-    if (!m || !file) { errors.push(`${who}: "at" is path:line or path:first-last of the diff's head side`); return; }
-    const from = +m[2], to = +(m[3] ?? m[2]), seen = file.hunks.flat().filter((l) => l.kind !== "del" && l.new >= from && l.new <= to).map((l) => l.text);
-    if (seen.length !== to - from + 1) errors.push(`${who}: "at" names lines the saved diff does not show`);
-    else if (!text(x.quote) || !seen.join("\n").includes(x.quote)) errors.push(`${who}: its "quote" is not on the lines "at" names; leave "at" out when the commented code changed`);
   });
 
   // A route follows one behaviour through its blocks in the order it runs: each step's role there, and from the second
@@ -563,7 +561,7 @@ export function check(review, files, directory) {
     const served = (block.serves ?? []).map((id) => review.requirements.find((r) => r.id === id)).filter(Boolean);
     if (block.verdict === "keep" && served.length && served.every((r) => SOURCES.includes(r.source) && !ESTABLISHED.has(r.source))) for (const r of served) if (!asked.has(r.id)) unconfirmed.add(r.id);
   });
-  for (const id of unconfirmed) errors.push(`requirement ${id} is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it (one decision whose variants combine can ask for several)`);
+  for (const id of unconfirmed) warnings.push(`requirement ${id} is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it (one decision whose variants combine can ask for several)`);
 
   for (const file of files) {
     const loose = changedLines(file).filter((l) => !blank(l) && !owner.has(`${file.path}\n${address(l)}`));

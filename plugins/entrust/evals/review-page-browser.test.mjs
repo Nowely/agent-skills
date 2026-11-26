@@ -67,11 +67,12 @@ const THEMED_URL = render("themed", record);
 const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru", RU);
 // A continuation of the themed review: the same diff, its first block carried, two replies to earlier comments.
 const PREV_KEY = createHash("sha256").update(JSON.stringify(record)).digest("hex").slice(0, 10);
-const NEXT_URL = render("next", { ...structuredClone(record), title: "Where the conversion lives, again",
+const NEXT = { ...structuredClone(record), title: "Where the conversion lives, again",
   previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
   blocks: record.blocks.map((b, i) => i === 0 ? { ...b, carried: true } : b),
-  replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", at: "src/invoices/archive.js:4", quote: "toUpperCase()", sources: [{ at: "TASK-9", quote: "upper case" }] },
-    { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] });
+  replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", sources: [{ at: "TASK-9", quote: "upper case" }] },
+    { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] };
+const NEXT_URL = render("next", NEXT), NEXT_KEY = createHash("sha256").update(JSON.stringify(NEXT)).digest("hex").slice(0, 10);
 // Every value the record names things by made hostile, and a hostile file path on a diff of its own.
 const HOSTILE_URL = render("hostile", hostileThemed(record));
 // The themed record with its idea at a line of the base side, which the head numbers otherwise.
@@ -366,7 +367,7 @@ test("review 7: the newest explicit choice wins over an older filter that would 
     await page.click('[data-act="set-code"][data-set="assumed"]'); await page.waitForTimeout(400);
     await page.goto(THEMED_URL + "#summary/r1"); await page.waitForSelector(".tabbar"); await settle(page);
     await page.click('#ctx-summary [data-act="req-code"]'); await page.waitForTimeout(500);
-    const req = await page.getAttribute('#req-pop [aria-checked="true"]', "data-req"), tokens = await text(page, "#unit-token").catch(() => "");
+    const req = await page.getAttribute('#req-pop [aria-pressed="true"]', "data-req"), tokens = await text(page, "#unit-token").catch(() => "");
     return req === "1" && !/Kept/.test(tokens) && /code\/b2/.test(page.url()) || `requirement «${req}», tokens «${tokens}», ${page.url()}`;
   }));
 
@@ -753,7 +754,13 @@ test("the requirement filter is a menu with every requirement's whole text; pick
     const btn = await text(page, "#req-btn"), open = await page.locator("#req-pop .pop-menu").isVisible(), focused = await page.evaluate(() => document.activeElement?.id);
     await page.click("#req-btn"); await page.keyboard.press("Escape");
     const closed = !(await page.locator("#req-pop .pop-menu").isVisible()) && await page.getAttribute("#req-btn", "aria-expanded") === "false";
-    return whole && /R1/.test(btn) && !open && focused === "req-btn" && closed || JSON.stringify({ items, btn, open, focused, closed });
+    await page.click("#req-btn"); await page.keyboard.press("End");
+    const last = await page.evaluate(() => document.activeElement?.dataset.req);
+    await page.keyboard.press("Home"); await page.keyboard.press("ArrowDown");
+    const second = await page.evaluate(() => document.activeElement?.dataset.req);
+    await page.locator("#file-q").focus(); await settle(page);
+    const left = !(await page.locator("#req-pop .pop-menu").isVisible());
+    return whole && /R1/.test(btn) && !open && focused === "req-btn" && closed && last === "3" && second === "1" && left || JSON.stringify({ items, btn, open, focused, closed, last, second, left });
   }));
 
 test("× at the top right closes the keys, the export and the Code panel, whether a block is selected or not",
@@ -763,9 +770,10 @@ test("× at the top right closes the keys, the export and the Code panel, whethe
     await page.click('[data-act="keys"]'); await page.click("#keys-dialog .x"); r.keys = await page.locator("#keys-dialog").evaluate((d) => d.open);
     await page.click('.mh-right [data-act="export"]'); await page.click("#export-dialog .x"); r.export = await page.locator("#export-dialog").evaluate((d) => d.open);
     await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.empty = await page.locator("#ctx-code").isVisible();
+    await settle(page); r.focus = await page.evaluate(() => document.activeElement?.dataset.act);
     await page.goto(THEMED_URL + "#code/b2"); await page.waitForSelector(".tabbar"); await settle(page);
     await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.selected = await page.locator("#ctx-code").isVisible();
-    return !r.keys && !r.export && !r.empty && !r.selected || JSON.stringify(r);
+    return !r.keys && !r.export && !r.empty && !r.selected && r.focus === "ctx" || JSON.stringify(r);
   }));
 
 test("the file tree hides from its own head and comes back from the rail beside the code, focus following",
@@ -936,15 +944,34 @@ test("a selection over two lines of one side takes one comment drawn below its l
 test("selected words of a paragraph take a comment that quotes them, is listed with the quote and marks them in place",
   "a paragraph comment could not say which words of a long paragraph it meant",
   cased(THEMED_URL + "#decisions", {}, async (page) => {
-    const css = '#card-f2 .pc[data-anchor="f2/fix"]';
+    const css = '#card-f2 .pc[data-anchor="f2/fix"] .pf';
     await page.locator(css).scrollIntoViewIfNeeded(); await settle(page); await page.waitForTimeout(150);
-    const words = await selectIn(page, { from: { css, at: 0 }, to: { css, at: 3 } });
+    // from the label «Proposed fix» into the field: the page's own words are no part of the field, so it is refused
+    await page.evaluate(() => { const pc = document.querySelector('#card-f2 .pc[data-anchor="f2/fix"]'), r = document.createRange();
+      r.setStart(pc.querySelector("b").firstChild, 0); r.setEnd(pc.querySelector(".pf").firstChild, 3);
+      getSelection().removeAllRanges(); getSelection().addRange(r); document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true })); });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const labelRefused = await page.locator("#sel-adder").isDisabled();
+    const words = await selectIn(page, { from: { css, at: 4 }, to: { css, at: 7 } });
     await page.waitForSelector("#sel-adder:not([hidden])"); await page.click("#sel-adder");
     await page.locator(".pc-input").fill("which fix?"); await page.click('[data-act="pc-save"]'); await settle(page);
     const c = (await payload(page)).paragraphComments[0], now = await marked(page);
     await page.click('[data-sub="comments"]'); await settle(page);
     const listed = await text(page, ".cmt-list .cmt");
-    return c?.item === "f2" && c.field === "fix" && c.from === 0 && c.to === 3 && c.quote === words && now === 1 && listed.includes(words) || JSON.stringify({ words, c, now, listed });
+    return labelRefused && words === "fix" && c?.item === "f2" && c.field === "fix" && c.from === 4 && c.to === 7 && c.quote === "fix" && now === 1 && listed.includes(words) || JSON.stringify({ labelRefused, words, c, now, listed });
+  }));
+
+// A revised record whose Q3 now recommends another variant on new context: its answer is not offered back.
+const REVISED_URL = render("revised", { ...structuredClone(record), title: "Where the conversion lives, revised",
+  previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
+  questions: record.questions.map((q, i) => i === 2 ? { ...q, context: [{ text: "The display now converts too.", sources: [{ ref: "/blocks/0" }] }], recommendation: { ...q.recommendation, variant: "extend" } } : q) });
+test("the earlier answers are offered only for items that read the same in full: a question whose context or recommendation changed gets none",
+  "an answer came back on a card that now recommends the other variant, as if it read the same",
+  cased(REVISED_URL + "#decisions", { init: `localStorage.setItem("review-report:6:${PREV_KEY}", JSON.stringify({ decisions: { answers: { q3: { choice: "status-quo" }, f1: { choice: "fix" } }, lines: [], paragraphs: [] } }))` }, async (page) => {
+    const offer = await text(page, "#carry");
+    await page.click('[data-act="carry-take"]'); await settle(page);
+    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1");
+    return /^1 answer you gave/.test(offer) && q3 === "Open" && f1 === "Decided" || JSON.stringify({ offer, q3, f1 });
   }));
 
 // ---- the next review of the same change (PR 109: C2, C7, C1.f)
@@ -952,21 +979,25 @@ test("a continuation offers the answers this browser kept for the previous repor
   "each turn of the cycle lost the owner's answers and could not say what was read again; replies to comments lived only in a chat",
   cased(NEXT_URL + "#decisions", { init: `localStorage.setItem("review-report:6:${PREV_KEY}", JSON.stringify({ decisions: { answers: { q3: { choice: "status-quo" }, f1: { choice: "fix" } }, lines: [], paragraphs: [] } }))` }, async (page) => {
     const offer = await text(page, "#carry");
+    // an answer given first is kept; the offer still takes the others
+    await page.click('#card-f2 [data-act="pick"][data-opt="leave"]'); await settle(page);
     await page.click('[data-act="carry-take"]'); await settle(page);
-    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1");
-    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
-    const again = await page.locator("#carry").isVisible(), kept = await statusOf(page, "q3");
+    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1"), f2 = await statusOf(page, "f2"), focus = await page.evaluate(() => document.activeElement?.id);
+    // what the page kept, read in the page itself: a reload of a file page loses its storage now and then in headless
+    // Chromium, and the reload case above covers keeping answers across one
+    const again = await page.locator("#carry").isVisible();
+    const kept = await page.evaluate((key) => Object.keys(JSON.parse(localStorage.getItem(key) ?? "{}").decisions?.answers ?? {}).sort().join(), `review-report:6:${NEXT_KEY}`);
     await page.click('[data-sub="comments"]'); await settle(page);
-    const replies = await text(page, "#panel-decisions");
+    const replies = await text(page, "#panel-decisions"), count = await text(page, '[data-subcount="comments"]');
     const showable = await page.locator('#panel-decisions .cmt [data-act="goline"]').count();
     await page.goto(NEXT_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
     const coverage = await text(page, "#panel-details");
     await page.goto(NEXT_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
     if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
     const panel = await text(page, "#ctx-code");
-    return /2 answers you gave on the previous version/.test(offer) && q3 === "Decided" && f1 === "Decided" && !again && kept === "Decided"
-      && /Replies to your comments on the previous review/.test(replies) && /Why convert here\?/.test(replies) && /the place changed/.test(replies) && showable === 1
-      && /1 kept block was carried from the previous review/.test(coverage) && /Carried\s*from the previous review/.test(panel) || JSON.stringify({ offer, q3, f1, again, kept, replies: replies.slice(0, 300), showable, coverage: coverage.slice(0, 200), panel: panel.slice(0, 300) });
+    return /2 answers you gave on the previous version/.test(offer) && q3 === "Decided" && f1 === "Decided" && f2 === "Decided" && focus === "tab-decisions" && !again && kept === "f1,f2,q3"
+      && /Replies to your comments on the previous review/.test(replies) && /Why convert here\?/.test(replies) && /src\/old\.js:9/.test(replies) && showable === 0 && count === "2"
+      && /1 kept block was carried from the previous review/.test(coverage) && /Carried\s*from the previous review/.test(panel) || JSON.stringify({ offer, q3, f1, f2, focus, again, kept, replies: replies.slice(0, 300), count, showable, coverage: coverage.slice(0, 200), panel: panel.slice(0, 300) });
   }));
 
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
@@ -981,7 +1012,8 @@ test("a hostile id or name of any kind stays text on every tab, in every panel, 
     // each row and card that opens a panel, one after another
     const each = async (page, where, selector) => {
       for (let i = 0, n = await page.locator(selector).count(); i < Math.min(n, 30); i++) {
-        await page.locator(selector).nth(i).click({ force: true }); await settle(page); await scan(page, `${where} ${i}`);
+        // at the row's own corner, not its middle, where a link inside it would take the click to another tab
+        await page.locator(selector).nth(i).click({ force: true, position: { x: 4, y: 4 } }); await settle(page); await scan(page, `${where} ${i}`);
       }
     };
     const leads = {};

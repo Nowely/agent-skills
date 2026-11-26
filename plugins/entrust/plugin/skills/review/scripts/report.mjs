@@ -21,7 +21,7 @@ import { comparisons } from "./comparisons.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
-import { check, compact, linesOf, modelOf, mechanismCounts, ownerOf, sourceOf, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
+import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -96,12 +96,12 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
     `${t("purpose")}: ${PURPOSES.map((p) => `${t(`purpose.${p}`)} ${purpose.counts[p].blocks}`).join("; ")}. ${t("purpose.lines-note")}`,
-    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
+    ...blocks.map((b) => `- B${b.id} \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}${b.carried ? ` (${t("carried").toLowerCase()})` : ""}.`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
       `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
     `## ${t("questions")}`, ...list(review.questions, questionText), "",
-    ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text}${x.at ? ` (\`${x.at}\`)` : ` (${t("reply.moved")})`} (${srcs(x.sources)})`), ""] : []),
+    ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text} (${srcs(x.sources)})`), ""] : []),
     `## ${t("coverage")}`,
     ...(carried?.length ? [`${t("carried")}: ${carried.map((id) => `B${id}`).join(", ")}`] : []),
     ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
@@ -160,8 +160,8 @@ function carry(previousPath, target) {
     if (!pf || !nf) return;
     const plines = changedLines(pf), at = plines.map((l, k) => prevOwner.get(key(pf, l)) === i ? k : -1).filter((k) => k >= 0);
     if (!at.length || at.at(-1) - at[0] + 1 !== at.length) return;
-    const seq = at.map((k) => `${plines[k].kind}\t${plines[k].text}`), nlines = changedLines(nf), hits = [];
-    for (let s = 0; s + seq.length <= nlines.length; s++) if (seq.every((x, j) => `${nlines[s + j].kind}\t${nlines[s + j].text}` === x)) hits.push(s);
+    const seq = at.map((k) => lineRead(plines[k])), nlines = changedLines(nf), hits = [];
+    for (let s = 0; s + seq.length <= nlines.length; s++) if (seq.every((x, j) => lineRead(nlines[s + j]) === x)) hits.push(s);
     if (hits.length !== 1) return;
     const run = nlines.slice(hits[0], hits[0] + seq.length);
     if (run.some((l) => taken.has(key(nf, l)))) return;
@@ -177,6 +177,8 @@ function carry(previousPath, target) {
     return [{ at: [cur.files.indexOf(nf), changedLines(nf).indexOf(mine[0])], block: { path: b.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" } }];
   });
   review.blocks = [...carriedBlocks, ...rest].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1]).map((x) => x.block);
+  // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
+  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => ({ id, text, source, ...(sources ? { sources } : {}), ...(permission ? { permission } : {}) }));
   review.previous = { record: path.relative(dir, path.resolve(previousPath)), sha256: createHash("sha256").update(prevBytes).digest("hex") };
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
   return { kept: carriedBlocks.filter((x) => x.block.carried).length, judge: carriedBlocks.filter((x) => !x.block.carried).length, fresh: rest.length };
@@ -200,7 +202,7 @@ try {
     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
   } else if (command === "carry" && argument && process.argv[4]) {
     const made = carry(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. Mark the carried blocks in coverageStructured as "carried", then review the rest.`);
+    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements came with them, each to check again; add the ones the export's answers make, with new ids.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));
@@ -236,7 +238,7 @@ try {
     fs.writeFileSync(target, page(review, files, model, { syntax, directory }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

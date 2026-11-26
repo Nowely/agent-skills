@@ -91,14 +91,16 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
 // An item as the owner answered it: a later record holding an item that reads the same — the same question with the
 // same variants, the same finding, the same idea — asks the same thing, whatever its number there.
 const itemReads = (r) => new Map([
-  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", q.kind, q.text, q.multiple === true, (q.variants ?? []).map((v) => [v.id, v.text])])]),
-  ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f.title, f.what, f.fix])]),
-  ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x.title, x.text])])]);
-// The previous record's key and its items this record holds unchanged, each matched once by how it reads, never by number.
+  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: undefined }])]),
+  ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f])]),
+  ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x])])]);
+// A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each
+// matched once by what it says, never by number. A record of a new revision takes the owner's answers through the
+// export instead, as the data contract says.
 function previousAnswers(review, directory) {
   if (!review.previous || !directory) return null;
   const prev = previousOf(review, directory);
-  if (prev.fault) return null;
+  if (prev.fault || prev.review.diff?.sha256 !== review.diff?.sha256) return null;
   const count = (map) => [...map.values()].reduce((m, v) => m.set(v, (m.get(v) ?? 0) + 1), new Map());
   const before = itemReads(prev.review), now = itemReads(review), onceBefore = count(before), onceNow = count(now);
   const byRead = new Map([...before].filter(([, v]) => onceBefore.get(v) === 1).map(([k, v]) => [v, k]));

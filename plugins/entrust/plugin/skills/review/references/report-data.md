@@ -109,8 +109,7 @@ of the same diff, so the owner's answers to the items it leaves unchanged come w
                       "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] }],
       "previous": { "record": "previous/review.json", "sha256": "the previous record's digest" },
       "replies": [{ "comment": "the owner's comment, from the export", "place": "src/a.js:12, as the export named it",
-                    "text": "the answer", "at": "src/a.js:14", "quote": "the commented code, as it reads there",
-                    "sources": [{ "at": "src/a.js:14", "quote": "the line" }] }],
+                    "text": "the answer", "sources": [{ "at": "src/a.js:14", "quote": "the line" }] }],
       "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123",
                                "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
@@ -145,7 +144,7 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   quotes it — the task's sentence, the owner's word, the project's rule — or cites the screen it comes from, a
   mockup whose authority the task gives, and `check` refuses one that does neither. Kept code that serves only
   requirements to confirm is asked about: a question cites each of them, one decision whose variants combine
-  asking for several, and `check` refuses the record otherwise. `met`: `ran`, executed and seen, or `read`,
+  asking for several, and `check` warns otherwise, as it does for kept code that serves no requirement. `met`: `ran`, executed and seen, or `read`,
   followed in the code; left out when unchecked or broken by a finding. A part not checked, such as how it looks,
   goes in `not_checked`, not in `text`. `doubt` says what in the code or a contract contradicts a requirement.
   `permission: true` marks a permission, not an obligation: the source alone does not express that difference,
@@ -199,7 +198,7 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
   `coverageStructured`, optional, lists the same coverage as authored statements — `kind` of `ran`, `read` or
-  `not_checked`, or `carried` for blocks taken over from a previous record, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
+  `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
   warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
   never reads a status such as "tests passed" or "merge-ready" out of the prose. Without it the page shows
   `coverage`.
@@ -287,7 +286,8 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 `lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,
 `line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment made on
 a selection also keeps what was selected: on several lines the last as `end`, the characters as `from` in the first
-line or the paragraph and `to` in the last, and the words as `quote`. A comment never answers an item.
+line, or in the field's text as the page shows it, and `to` in the last, and the words as `quote`. A comment never
+answers an item.
 
 The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
 owner's own session or orchestrate's fix round; the review applies none of it. A review of the next revision reads it as
@@ -315,16 +315,17 @@ record does not hold is left out, and the response says so. A short review appli
   review whole. After `scaffold`, `node "<skill-dir>/scripts/report.mjs" carry <out>/previous/review.json
   <out>/review.json` takes over each previous block whose changed lines read the same, in the same order and found
   once: a block the previous record kept stays kept, marked `carried`, not read again; one it did not keep keeps its
-  description and is judged again. `previous` names the record they came from, and `check` proves each carried block
-  against it. Say in `coverageStructured`, kind `carried`, what was carried and from which head. While the base and
-  the requirements stand the independent target is not started again; the comparison pass, the critic and the
-  verifier take the change since and the claims new or changed. The page marks carried blocks, lets the owner show
-  them in Code, and offers the answers this browser kept for the previous report on the items that read exactly the
-  same — never by number. A revised record at the same head is a continuation whose change since is empty.
+  description and is judged again. The previous requirements come with them, by their ids, so a carried block serves
+  what it served; each is checked again, and the export's answers add their own. `previous` names the record they
+  came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
+  carried block was judged on its own lines: where the change since touches its file, read it with that change. While
+  the base and the requirements stand the independent target is not started again; the comparison pass, the critic
+  and the verifier take the change since and the claims new or changed. A revised record at the same head — new
+  evidence, the same diff — is a continuation whose change since is empty: there the page offers the answers this
+  browser kept for the previous report on the items that read exactly the same in full, never by number; a record of
+  a new revision takes the owner's answers through the export, as below.
 - **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
-  it, `text` and `sources`; and `at` (path:line or path:first-last on the head side) with `quote`, the commented code
-  as it reads there, only where it still reads the same — the check finds the quote on those lines, and the page then
-  links the reply to the code. A reply without `at` is listed with the place it had, never placed by guess.
+  it, `text` and `sources`. Decisions › Comments lists them at the place the comment had, never placed in this diff.
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
   by its words — a question by its text, a finding or idea by its title — since its key names another item here:
   - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with

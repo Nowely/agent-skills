@@ -24,8 +24,8 @@ forensics remain in the repository references and release notes.
   a project rule — it quotes its words (`{at, quote}`) or cites the mockup it comes from, and `check` refuses one
   that does neither. To confirm — `author` (only the author's account states it: the description, commits or a
   session's hand-off), `contract` (an existing behaviour the change may need to keep), `assumption` (the reviewer's
-  reading) or `question` — it waits for the owner, and kept code that serves only such requirements is refused unless
-  a question cites each of them. Approving the author's description as the task is a line of the approval question:
+  reading) or `question` — it waits for the owner, and kept code that serves only such requirements is warned of
+  until a question cites each of them, as kept code that serves none is. Approving the author's description as the task is a line of the approval question:
   its goal becomes the task, its details stay the author's until confirmed. Summary lists the established
   requirements apart from those to confirm, each with its origin, its quote and the question that asks about it; the
   printout and the page without JavaScript list them in the same order.
@@ -43,14 +43,16 @@ forensics remain in the repository references and release notes.
 - **Breaking:** every block says what it does and why it is there, kept or not, or that no source gives a reason;
   `check` refuses a block without `does`. Selecting a block in Code shows what the record knows about it — its unit
   with its jobs and the reason for its verdict, the requirements it serves in words, the mechanisms it is part of
-  with what they replace, and its place in a route — instead of the bare label «Kept code».
+  with what they replace, and its place in a route — instead of the bare label «Kept code». The printout lists every
+  block's description, a kept one's too, so the critic and the verifier read what the page shows.
 - A record may follow each behaviour the change adds through its blocks: `routes`, each a `title`, the
   `requirements` it serves and `steps` in the order the behaviour runs, each with its block's `role` and, from the
   second on, `via` — how it gets what the step before produced, with its place. Summary's «How it works» lists them;
   a route's panel walks its steps with their code, a block's panel links its neighbours in the route, and
   `#summary/route1` opens one. The printout and the page without JavaScript list them too.
-- Selected text takes a comment, in a paragraph of the report or in the code: «Comment» appears below the selection
-  (or press `c`), never over the words. A selection over several lines of one side of a hunk takes one comment drawn
+- Selected text takes a comment, in a paragraph of the report or in the code: «Comment» appears below the selection,
+  or above its first line where there is no room below (or press `c`), never over the words. In a paragraph only the
+  field's own words can be selected, never the page's label or source chips beside them. A selection over several lines of one side of a hunk takes one comment drawn
   below its last line. The comment keeps the lines, the characters and the words selected, quotes them in the code,
   in Decisions › Comments and in the export, and the words are marked in place, through the CSS Custom Highlight API
   where the browser has it, wherever they still read the same. A selection across two paragraphs, two files, a fold
@@ -72,14 +74,15 @@ forensics remain in the repository references and release notes.
   came from by its digest, and `check` proves every carried block against it and its saved diff. The plan offers a
   continuation only when the previous review was whole, the base stayed or the change's own commits are unaltered,
   no manifest or lock file changed and no answer changed a requirement the previous analysis rested on, and names
-  what it skips; coverage says what was carried, under the new kind `carried`. The page marks carried blocks, lists
-  them in Coverage with «Show in Code», and offers the answers this browser kept for the previous report on the items
-  that read exactly the same — never by number. A revised record at the same head is a continuation with nothing
-  changed since, so the owner's answers come with it.
+  what it skips. The previous requirements come with the carried blocks, by their ids, each to be checked again. The
+  printout and the page list the carried blocks, Coverage with «Show in Code». A revised record of the same diff is a
+  continuation with nothing changed since: its page offers the answers this browser kept for the previous report on
+  the items still unanswered that read the same in full — the question with its context, variants, consequences and
+  recommendation, the finding with its evidence — never by number; a record of a new revision takes the owner's
+  answers through the export.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
-  it, the answer and its sources, and a place in the code only where the commented code still reads the same — the
-  check finds the reply's quote on those lines. Decisions › Comments lists them, linking to the code only where they
-  have such a place; the printout lists them for the checking agents.
+  it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
+  placed in this diff; the printout lists them for the checking agents.
 
 ## 0.47.2 — 2026-11-24
 

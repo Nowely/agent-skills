@@ -145,7 +145,8 @@ const entryOf = (key) => state.answers[key] ?? {};
 // copy, and only the owner's choice saves over it.
 // The stored format's number changes when the page would read a value an earlier page stored differently from what that
 // page meant, or would need code only to read it; never with the export's number, which concerns the export alone.
-const STORE = `review-report:6:${D.digest.key}`;
+// The stored format's number is in the prefix; a report's answers are kept under its key.
+const STORE_PREFIX = "review-report:6:", STORE = STORE_PREFIX + D.digest.key;
 let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
 // What the page stores, at every level it reads: an object of decisions (answers, line and paragraph comments), «Viewed»
 // and view choices. Anything else is not this page's to read, nor to write over.
@@ -178,12 +179,12 @@ const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
 // A later record of the same change — revised, or of a new revision — holds items that read exactly as before: the
 // page offers the owner's answers to those, from what this browser kept for the previous report, never by number.
 function carriedAnswers() {
-  if (!D.previous?.pairs.length || Object.keys(state.answers).length) return [];
+  if (!D.previous?.pairs.length) return [];
   let raw;
-  try { raw = JSON.parse(localStorage.getItem(`review-report:6:${D.previous.key}`)); } catch { return []; }
+  try { raw = JSON.parse(localStorage.getItem(STORE_PREFIX + D.previous.key)); } catch { return []; }
   const answers = raw?.decisions?.answers;
   if (!answers || typeof answers !== "object") return [];
-  return D.previous.pairs.filter(([, before]) => answers[before] && typeof answers[before] === "object").map(([now, before]) => [now, answers[before]]);
+  return D.previous.pairs.filter(([now, before]) => !state.answers[now] && answers[before] && typeof answers[before] === "object").map(([now, before]) => [now, answers[before]]);
 }
 function offerCarried() {
   const found = carriedAnswers(), bar = $("#carry");
@@ -193,12 +194,15 @@ function offerCarried() {
 }
 function takeCarried() {
   const found = carriedAnswers();
+  hideCarry();
   if (!found.length) return;
-  setState(DR.settle(ITEMS, DR.normalize({ ...state, answers: Object.fromEntries(found) })));
-  save(); $("#carry").hidden = true;
+  setState(DR.settle(ITEMS, DR.normalize({ ...state, answers: { ...state.answers, ...Object.fromEntries(found) } })));
+  save();
   for (const tab of ["summary", "decisions", "code", "details"]) if (S.rendered[tab]) RENDER[tab]();
   updateChrome();
 }
+// The bar goes, and focus with it to the tab in view, never to the page's body.
+function hideCarry() { $("#carry").hidden = true; $(`#tab-${S.tab}`)?.focus(); }
 function showStorage() {
   for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
   if (S.rendered?.decisions) updateSubCounts();
@@ -322,12 +326,6 @@ function relations(kind, id) {
     add("p.rel.conditional", chips("q", q.children));
     add("p.rel.evidence-kept", chips("q", q.remainingEvidence));
     add("p.rel.cites", [chips("r", refsIn(srcs, "r")), chips("f", refsIn(srcs, "f")), chips("q", refsIn(srcs, "q").filter((x) => x !== id)), chips("b", refsIn(srcs, "b"))].join(" ").trim());
-  } else if (kind === "b") {
-    const b = blk(+id);
-    add("p.rel.serves", chips("r", b.serves));
-    add("p.rel.decisions", [chips("f", b.findings), chips("q", b.questions)].join(" ").trim());
-    add("p.rel.unit", b.unit ? unitLinks([b.unit]) : "");
-    add("p.rel.mechanisms", mechLinks(D.mechanisms.map((m, i) => [m, i]).filter(([m]) => m.blocks.includes(+id))));
   }
   return rows.length ? `<dl class="rel">${rows.join("")}</dl>` : `<p class="muted small">${esc(L("p.rel.none"))}</p>`;
 }
@@ -407,7 +405,7 @@ function exportModel() {
     else sections.open.push(row(itemTitle(c) + draft + zones + waiting));
   }
   const quoted = (x) => x.quote ? ` «${x.quote.replace(/\s+/g, " ")}»` : "";
-  for (const x of payload.lineComments) sections.comments.push({ text: `${placeWords(x)}${quoted(x)}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
+  for (const x of payload.lineComments) sections.comments.push({ text: `${placeWords(x)}${quoted(x)}: ${x.text}`, go: lastLk(x) && "line:" + lastLk(x) });
   for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}${quoted(x)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
   const p = progress();
   return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
@@ -648,10 +646,10 @@ function pcExtra(anchor) {
 function refreshPc(anchor) { for (const el of $$(`[data-pcx="${CSS.escape(anchor)}"]`)) el.innerHTML = pcExtra(anchor); }
 function textBlockPc(v, item) {
   let out = "", list = [], i = 0;
-  const flush = () => { if (list.length) { out += `<ul class="bullets">${list.map(([t, a]) => pcWrap(a, prose(t), "li")).join("")}</ul>`; list = []; } };
+  const flush = () => { if (list.length) { out += `<ul class="bullets">${list.map(([t, a]) => pcWrap(a, `<span class="pf">${prose(t)}</span>`, "li")).join("")}</ul>`; list = []; } };
   for (const line of String(v ?? "").split("\n")) {
     if (/^\s*-\s+/.test(line)) list.push([line.replace(/^\s*-\s+/, ""), `${item}/paragraph.${i++}`]);
-    else { flush(); if (line.trim()) { const a = `${item}/paragraph.${i++}`; out += pcWrap(a, `<p class="${i === 1 ? "lead" : ""}">${prose(line)}</p>`); } }
+    else { flush(); if (line.trim()) { const a = `${item}/paragraph.${i++}`; out += pcWrap(a, `<p class="pf${i === 1 ? " lead" : ""}">${prose(line)}</p>`); } }
   }
   flush();
   return out;
@@ -729,12 +727,12 @@ function cardHtml(c) {
   const r = c.ref, st = statusOf(c), sel = S.sel.decisions === "card:" + c.key, settled = st.state !== "open";
   let body = `<div class="card-head"><span class="card-id">${c.label}</span><span class="card-type">${esc(typeText(c))}</span><span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div>`;
   if (c.kind === "finding") {
-    body += `<p class="card-title">${prose(r.title)}</p><div class="card-at">${slashBreaks(r.at)}</div>${pcWrap(c.key + "/what", `<p class="card-text clamp" data-clamp>${prose(r.what)}</p>`)}`;
-    body += pcWrap(c.key + "/fix", `<div class="card-fix"><b>${esc(L("p.fix.proposed"))}</b>${prose(r.fix)}</div>`);
+    body += `<p class="card-title">${prose(r.title)}</p><div class="card-at">${slashBreaks(r.at)}</div>${pcWrap(c.key + "/what", `<p class="card-text clamp pf" data-clamp>${prose(r.what)}</p>`)}`;
+    body += pcWrap(c.key + "/fix", `<div class="card-fix"><b>${esc(L("p.fix.proposed"))}</b><span class="pf">${prose(r.fix)}</span></div>`);
   } else if (c.kind === "idea") {
-    body += `<p class="card-title">${prose(r.title)}</p>${r.at ? `<div class="card-at">${slashBreaks(r.at)}</div>` : ""}${pcWrap(c.key + "/text", `<p class="card-text clamp">${prose(r.text)}</p>`)}`;
+    body += `<p class="card-title">${prose(r.title)}</p>${r.at ? `<div class="card-at">${slashBreaks(r.at)}</div>` : ""}${pcWrap(c.key + "/text", `<p class="card-text clamp pf">${prose(r.text)}</p>`)}`;
   } else {
-    body += pcWrap(c.key + "/text", `<p class="card-title q">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
+    body += pcWrap(c.key + "/text", `<p class="card-title q pf">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
     if (r.parent) body += `<p class="card-text small">${esc(L("p.applies-while"))} ${chip("q", r.parent.question)} ${esc(L("p.applies-with"))} ${r.parent.texts.map((v) => `<b>${prose(v)}</b>`).join(` ${esc(L("p.or"))} `)}.</p>`;
     if (r.recommendation) { const picks = recommendedTexts(r); body += `<div class="card-rec${picks.length ? "" : " none"}"><b>${esc(L("p.recommendation"))}</b> ${picks.length ? `<span class="rec-pick">${picks.map((t) => prose(t)).join(" + ")}</span> — ` : ""}${prose(r.recommendation.text)}</div>`; }
   }
@@ -868,8 +866,8 @@ function summaryHtml() {
     </div>
     <div class="section-h"><h2>${esc(L("verdict"))}</h2></div>
     ${textBlockPc(D.verdict, "verdict")}
-    <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p>${prose(D.recommendation)}</p>`)}
-      ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span>${prose(s.text)}${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
+    <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p class="pf">${prose(D.recommendation)}</p>`)}
+      ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span><span class="pf">${prose(s.text)}</span>${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
     ${D.routes.length ? `<div class="section-h" id="summary-routes"><h2>${esc(L("routes"))}</h2><span class="muted">${esc(L("p.routes.note"))}</span></div>
     <ul class="routes">${D.routes.map((r, i) => `<li class="route-row" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span><span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>`).join("")}</ul>` : ""}
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
@@ -920,7 +918,7 @@ function summaryPanel(sel) {
   if (sel.startsWith("req:")) {
     const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])];
     return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}${r.established ? "" : ` · ${L("req.to-confirm")}`}`), prose(r.text), `
-      <div class="psec"><h3>${esc(L("p.req.stated"))}</h3>${r.sources.length ? `<p>${srcItems(r.sources)}</p>` : `<p class="muted small">${esc(L("p.req.unstated"))}</p>`}${r.screens.map(screenBox).join("")}</div>
+      <div class="psec"><h3>${esc(L("p.req.stated"))}</h3><p>${srcItems(r.sources)}</p>${r.screens.map(screenBox).join("")}</div>
       ${fs.length ? `<div class="psec"><h3>${esc(L("findings"))}</h3>${fs.map((f) => miniItem(itemByKey.get("f" + f))).join("")}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
       <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${excerptList(r.blocks, "req" + r.id)}</div>`);
@@ -956,7 +954,7 @@ const DEC_TABS = [
   { id: "done", label: L("p.sub.done"), test: (c) => DR.done(ITEMS, state, c.key) },
 ];
 function subCount(t) {
-  if (t.id === "comments") return comments().length;
+  if (t.id === "comments") return comments().length + D.replies.length;
   const list = ITEMS.filter(t.test);
   return ["deferred", "done"].includes(t.id) ? list.length : list.filter(isOpen).length;
 }
@@ -1019,18 +1017,16 @@ function notAnswerHint(lk) {
   const row = rowOfLk(lk), b = row?.row[3] ? blk(row.row[3]) : null, open = b ? blockItems(b).filter(isOpen) : [];
   return open.length ? L("p.lc.not-answer", open.map((c) => c.label).join(", ")) : "";
 }
-// The reviewer's replies to the owner's comments on the previous review: shown at a line only where the commented code
-// still reads the same, which the check proved; otherwise listed with the place it had.
+// The reviewer's replies to the owner's comments on the previous review, each with the place the comment had: a place
+// in the previous diff, never placed in this one by guess.
 function repliesHtml() {
   if (!D.replies.length) return "";
-  return `<div class="section-h"><h2>${esc(L("replies"))}</h2></div><div class="box cmt-list">${D.replies.map((x) => {
-    const lk = x.at && (() => { const m = /^(.+):(\d+)(?:-\d+)?$/.exec(x.at); return m && fileByPath.has(m[1]) ? `${fileByPath.get(m[1])}:+${m[2]}` : null; })();
-    return `<div class="cmt"><div class="where">${esc(x.place)}${lk ? `<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show-in-code"))}</button>` : ` <span class="muted small">${esc(L("reply.moved"))}</span>`}</div><blockquote class="sel-quote">${esc(x.comment)}</blockquote><div class="txt">${prose(x.text)}</div>${srcList(x.sources)}</div>`;
-  }).join("")}</div>`;
+  return `<div class="section-h"><h2>${esc(L("replies"))}</h2><span class="muted">${esc(L("p.replies.note"))}</span></div><div class="box cmt-list">${D.replies.map((x) =>
+    `<div class="cmt"><div class="where">${esc(x.place)}</div><blockquote class="sel-quote">${esc(x.comment)}</blockquote><div class="txt">${prose(x.text)}</div>${srcList(x.sources)}</div>`).join("")}</div>`;
 }
 function commentsListHtml() {
   const list = comments();
-  if (!list.length) return repliesHtml() + `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
+  if (!list.length) return repliesHtml() ||  `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
   return `<div class="box cmt-list">${list.map((x) => {
     if (x.kind === "line") {
       const row = rowOfLk(x.lk), b = row?.row[3] ? blk(row.row[3]) : null, hint = notAnswerHint(x.lk);
@@ -1045,12 +1041,12 @@ function decisionsPanel(sel) {
   let body = "";
   // an idea's excerpt is the code as the change wrote it; the proposal is in the idea's words, never in the diff
   if (r.place) body += `<div class="psec"><h3>${esc(L(c.kind === "idea" ? "p.idea.code" : "p.where"))}</h3>${placeExcerpt(r.place, c.placeRow)}</div>`;
-  if (c.kind === "finding") body += `<div class="psec"><h3>${esc(L("shown-by"))}</h3>${pcWrap(c.key + "/shown_by", `<p>${prose(r.shown_by)}</p>`)}</div>`;
+  if (c.kind === "finding") body += `<div class="psec"><h3>${esc(L("shown-by"))}</h3>${pcWrap(c.key + "/shown_by", `<p class="pf">${prose(r.shown_by)}</p>`)}</div>`;
   const shots = c.kind === "finding" ? D.screens.map((s, si) => s.differences.some((d) => d.finding === r.id) ? si : -1).filter((si) => si >= 0) : [];
   if (shots.length) body += `<div class="psec"><h3>${esc(L("p.screens.beside"))}</h3>${shots.map(screenBox).join("")}</div>`;
   if (c.kind === "idea" && r.sources.length) body += `<div class="psec"><h3>${esc(L("sources"))}</h3><p>${srcList(r.sources)}</p></div>`;
   if (c.type === "q") {
-    if (r.context.length) body += `<div class="psec"><h3>${esc(L("question.context"))}</h3><ul class="plain">${r.context.map((x, i) => `<li>${pcWrap(`${c.key}/context.${i}`, `${prose(x.text)} ${srcList(x.sources)}`)}</li>`).join("")}</ul></div>`;
+    if (r.context.length) body += `<div class="psec"><h3>${esc(L("question.context"))}</h3><ul class="plain">${r.context.map((x, i) => `<li>${pcWrap(`${c.key}/context.${i}`, `<span class="pf">${prose(x.text)}</span> ${srcList(x.sources)}`)}</li>`).join("")}</ul></div>`;
     const vs = r.variants.filter((v) => v.consequences.some((x) => x.sources.length));
     if (vs.length || r.recommendation?.sources.length) body += `<div class="psec"><h3>${esc(L("p.variant-sources"))}</h3><ul class="plain">${vs.map((v) => `<li><b>${prose(v.text)}</b> ${v.consequences.map((x) => srcList(x.sources)).join(" ")}</li>`).join("")}${r.recommendation?.sources.length ? `<li>${esc(L("recommendation"))} ${srcList(r.recommendation.sources)}</li>` : ""}</ul></div>`;
     if (r.zones.length) body += `<div class="psec"><h3>${esc(L("p.zone-sources"))}</h3><ul class="plain">${r.zones.map((z) => `<li>${prose(z.text)} ${srcList(z.sources)}</li>`).join("")}</ul></div>`;
@@ -1096,14 +1092,14 @@ function fileAttn(fi) {
 }
 const attnText = (a) => [a.open && L("p.file.open", n(a.open), P("p.count.of-decisions", a.total)), a.by.decided && P("p.count.decided", a.by.decided),
   a.by.answered && P("p.count.answered", a.by.answered), a.by.deferred && P("p.count.deferred", a.by.deferred), a.by.na && P("p.count.na", a.by.na)].filter(Boolean).join(" · ");
+// files in the diff's order: a file's index is its rank
 const fileOrder = () => F.map((_, fi) => fi);
 let WALK_CACHE = null;
 const invalidateWalk = () => { WALK_CACHE = null; WALK_F = null; };
 // the walk: decisions with code, each with its blocks as positions; one unit for «open» everywhere
 function walkAll() {
   if (WALK_CACHE) return WALK_CACHE;
-  const rank = new Map(fileOrder().map((fi, i) => [fi, i]));
-  const pos = (bid) => { const p = firstPos[bid]; return [rank.get(p[0]), p[1], p[2]]; };
+  const pos = (bid) => firstPos[bid];
   const cmp = (a, b) => { const x = pos(a), y = pos(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
   const list = ITEMS.filter((c) => c.blocks.length && applicable(c)).map((c) => ({ c, blocks: c.blocks.filter((id) => firstPos[id]).sort(cmp) })).filter((x) => x.blocks.length);
   list.sort((a, b) => cmp(a.blocks[0], b.blocks[0]));
@@ -1252,7 +1248,7 @@ function fileBodyHtml(fi, items) {
 // ---------------------------------------------------------------- Code: rendering, drawing on demand, and releasing far files
 let io = null;
 function renderCode() {
-  const reqItem = (id, label, text, count) => `<button class="mi" role="menuitemradio" aria-checked="false" data-act="req-pick" data-req="${esc(id)}">${label}<span class="mi-t">${text}</span>${count === null ? "" : `<span class="muted">${n(count)}</span>`}</button>`;
+  const reqItem = (id, label, text, count) => `<button class="mi" aria-pressed="false" data-act="req-pick" data-req="${esc(id)}">${label}<span class="mi-t">${text}</span>${count === null ? "" : `<span class="muted">${n(count)}</span>`}</button>`;
   const reqOpts = reqItem("", `<span class="mi-id"></span>`, esc(L("p.code.any-req")), null) + D.requirements.map((r) => reqItem(r.id, `<span class="mi-id">R${esc(r.id)}</span>`, prose(r.text), r.blocks.length)).join("");
   const rules = D.purposes.map((p) => `<li><b>${esc(PURPOSE_LABEL[p])}</b>: ${esc(L("purpose.rules." + p))}</li>`).join("");
   $("#panel-code").innerHTML = `
@@ -1262,7 +1258,7 @@ function renderCode() {
       <div class="pop-menu" hidden role="group" aria-label="${esc(L("purpose"))}">${D.purposes.filter((p) => D.purposeCounts[p].files || D.purposeCounts[p].blocks).map((p) => `<label><input type="checkbox" data-act="purpose" value="${p}"${S.code.purposes.has(p) ? " checked" : ""}> ${esc(PURPOSE_LABEL[p])} <span class="muted">${esc(P("p.count.files", D.purposeCounts[p].files))}</span></label>`).join("")}
       <div class="rules">${esc(L("p.code.rules"))}<ul>${rules}</ul></div></div></div>
     <div class="pop" id="req-pop"><button class="btn sm menu-btn" data-act="req-menu" aria-expanded="false" aria-haspopup="true" id="req-btn"></button>
-      <div class="pop-menu req-menu" hidden role="menu" aria-label="${esc(L("requirement"))}">${reqOpts}</div></div>
+      <div class="pop-menu req-menu" hidden role="group" aria-label="${esc(L("requirement"))}">${reqOpts}</div></div>
     <span id="unit-token"></span>
     <div class="search"><input type="search" id="file-q" data-act="q" placeholder="${esc(L("p.code.filter"))}" aria-label="${esc(L("p.code.filter-label"))}" value="${esc(S.code.q)}">${kbd("/")}</div>
     <button class="btn sm" data-act="find-open" title="${esc(L("p.find.title", MOD))}">${esc(L("p.find"))}</button>
@@ -1280,7 +1276,7 @@ function syncToolbar() {
   if (rb) {
     const r = S.code.req && D.requirements.find((x) => String(x.id) === String(S.code.req));
     rb.innerHTML = `<span>${esc(r ? L("p.code.req-one", r.id) : L("p.code.req-any"))}</span>${ICON.chevron}`; rb.title = r ? r.text : "";
-    $$('#req-pop [data-act="req-pick"]').forEach((b) => b.setAttribute("aria-checked", String(b.dataset.req === String(S.code.req))));
+    $$('#req-pop [data-act="req-pick"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.req === String(S.code.req))));
   }
   $$('#panel-code [data-act="mode"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === S.code.mode)));
   const pb = $("#purpose-btn"); if (pb) pb.innerHTML = `<span>${esc(allPurposes() ? L("p.code.purpose-all") : L("p.code.purpose", [...S.code.purposes].filter((p) => D.purposeCounts[p].files).map((p) => PURPOSE_LABEL[p]).join(", ") || L("none")))}</span>${ICON.chevron}`;
@@ -1511,8 +1507,17 @@ function toggleMenu(btn) {
   closeMenus();
   if (!opening) return;
   m.hidden = false; btn.setAttribute("aria-expanded", "true");
-  ($('[aria-checked="true"]', m) ?? $("button, input", m))?.focus();
+  ($('[aria-pressed="true"]', m) ?? $("button, input", m))?.focus();
 }
+// A menu closes when focus leaves it, and its arrows walk its items.
+document.addEventListener("focusout", (e) => { const pop = e.target.closest?.("#panel-code .pop"); if (pop && e.relatedTarget && !pop.contains(e.relatedTarget)) closeMenus(e.relatedTarget); });
+document.addEventListener("keydown", (e) => {
+  const m = e.target.closest?.("#panel-code .pop-menu");
+  if (!m || !["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+  const items = $$("button, input", m), i = items.indexOf(e.target);
+  const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+  e.preventDefault(); e.stopPropagation(); items[next]?.focus();
+}, true);
 // The file tree hides from its own head and comes back from the rail beside the code; focus moves to the other one.
 function setTree(on) {
   S.code.tree = on;
@@ -1589,7 +1594,7 @@ function aboutBlock(b) {
   return `<div class="psec"><h3>${esc(L("p.block.about"))}</h3><dl class="kv kv-wide">${rows.join("")}</dl>${items.length ? "" : `<p class="muted small gap-top">${esc(L("p.block.kept"))}</p>`}</div>`;
 }
 function codePanel(sel) {
-  const lcList = (filter) => { const list = state.lines.filter((c) => lkOfAnchor(c) && filter(lkOfAnchor(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lkOfAnchor(c); return `<div class="cmt"><div class="where">${esc(splitPath(c.path)[1])}:${c.side === "base" ? "−" : ""}${c.line}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div><div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
+  const lcList = (filter) => { const list = state.lines.filter((c) => lastLk(c) && filter(lastLk(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lastLk(c); return `<div class="cmt"><div class="where">${esc(placeWords({ ...c, path: splitPath(c.path)[1] }))}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div>${quoteHtml(c)}<div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
   if (!sel) return panelWrap(esc(L("p.context")) + closeX('data-act="ctx"', L("p.code.ctx-close")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
   const b = blk(sel), items = blockItems(b);
   let body = `<div class="psec"><dl class="kv"><dt>${esc(L("p.place"))}</dt><dd><span class="mono small">${slashBreaks(b.path)}</span> <span class="muted small">${esc(b.where)}</span><br><button class="btn sm quiet flush" data-act="copy-block" data-b="${b.id}">${esc(L("p.copy"))}</button></dd>${b.kind ? `<dt>${esc(L("p.block.kind"))}</dt><dd>${esc(L("weight.category." + b.kind))}</dd>` : ""}<dt>${esc(L("purpose"))}</dt><dd>${esc(PURPOSE_LABEL[b.purpose])}</dd></dl></div>`;
@@ -1664,7 +1669,7 @@ function renderDetailBody() {
       <table class="tbl"><thead><tr><th>${esc(L("p.mech"))}</th><th>${esc(L("p.mech.change"))}</th><th>${esc(L("decision"))}</th><th class="num">${esc(L("weight"))}</th><th>${esc(L("findings"))}</th></tr></thead><tbody>${D.mechanisms.map((m, i) => `<tr class="selectable" data-sel="mech:${i}" data-act="sel" tabindex="0"><td><b>${esc(m.name)}</b><div class="unit-jobs">${prose(m.purpose ?? "")}</div></td><td class="muted nowrap">${esc(L("change." + m.change))}</td><td>${prose(m.decision ?? "")}</td><td class="num small">${m.weight ? counts(m.weight) + (m.weight.shared.length ? `<div class="muted">${esc(P("p.count.shared", m.weight.shared.length))}</div>` : "") : `<span class="muted">—</span>`}</td><td>${chips("f", m.findings)}</td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "scenarios") {
     const side = (s) => s ? `<div><span class="lbl">${esc(L("edit"))}</span>${s.edit.map(prose).join("; ") || esc(L("nothing"))}</div><div><span class="lbl">${esc(L("read"))}</span>${s.read.map(prose).join("; ") || esc(L("nothing"))}</div>` : `<span class="muted">${esc(L("as-now"))}</span>`;
-    html = `<p class="muted intro">${esc(L("scenarios-note"))}</p><div class="cards">${D.scenarios.map((s) => `<div class="card selectable" data-sel="scen:${esc(s.id)}" data-act="sel" tabindex="0" id="scen-${esc(s.id)}"><div class="card-head"><span class="card-id">${esc(L("p.rel.scenario", s.id))}</span>${s.requirements.length ? `<span class="card-type">${esc(L("p.scenario.for", s.requirements.map((r) => "R" + r).join(", ")))}</span>` : ""}</div>${pcWrap(`scenario.${s.id}/change`, `<p class="card-title">${prose(s.change)}</p>`)}<div class="twocol"><div class="box"><h3>${esc(L("as-written"))}</h3>${side(s.now)}</div><div class="box"><h3>${esc(L("target"))}</h3>${side(s.target)}</div></div>${s.findings.length ? `<div class="card-foot"><span class="lbl">${esc(L("findings"))}</span>${chips("f", s.findings)}</div>` : ""}</div>`).join("")}</div>`;
+    html = `<p class="muted intro">${esc(L("scenarios-note"))}</p><div class="cards">${D.scenarios.map((s) => `<div class="card selectable" data-sel="scen:${esc(s.id)}" data-act="sel" tabindex="0" id="scen-${esc(s.id)}"><div class="card-head"><span class="card-id">${esc(L("p.rel.scenario", s.id))}</span>${s.requirements.length ? `<span class="card-type">${esc(L("p.scenario.for", s.requirements.map((r) => "R" + r).join(", ")))}</span>` : ""}</div>${pcWrap(`scenario.${s.id}/change`, `<p class="card-title pf">${prose(s.change)}</p>`)}<div class="twocol"><div class="box"><h3>${esc(L("as-written"))}</h3>${side(s.now)}</div><div class="box"><h3>${esc(L("target"))}</h3>${side(s.target)}</div></div>${s.findings.length ? `<div class="card-foot"><span class="lbl">${esc(L("findings"))}</span>${chips("f", s.findings)}</div>` : ""}</div>`).join("")}</div>`;
   } else if (sub === "checks") {
     html = `<p class="muted intro">${esc(L("checks-note"))}</p><div class="cards">${D.checks.map((c, i) => `<div class="card selectable" data-sel="check:${i}" data-act="sel" tabindex="0"><div class="check-item"><span class="n">${i + 1}</span><div>${c.from ? `<p><span class="lbl">${esc(L("from"))}</span>${prose(c.from)}</p>` : ""}<ol>${c.do.map((x) => `<li>${prose(x)}</li>`).join("")}</ol><p><span class="lbl">${esc(L("expect"))}</span>${prose(c.expect)}</p>${c.requirements.length ? `<div class="card-foot"><span class="lbl">${esc(L("p.check.checks"))}</span>${chips("r", c.requirements)}</div>` : ""}</div></div></div>`).join("")}</div>`;
   } else if (sub === "challenges") {
@@ -1767,8 +1772,8 @@ function detailsPanel(sel) {
   if (kind === "chal") {
     const c = D.challenges[i]; if (!c) return "";
     return panelWrap(`${esc(L("p.challenge.raised", i + 1, L("challenger." + c.from)))} · <span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span>`, esc(L("p.challenge", i + 1)), `
-      <div class="psec"><h3>${esc(L("point"))}</h3>${pcWrap(`challenge.${i + 1}/point`, `<p>${prose(c.point)}</p>`)}</div>
-      <div class="psec"><h3>${esc(L("p.challenge.did"))}</h3>${pcWrap(`challenge.${i + 1}/note`, `<p>${prose(c.note)}</p>`)}</div>
+      <div class="psec"><h3>${esc(L("point"))}</h3>${pcWrap(`challenge.${i + 1}/point`, `<p class="pf">${prose(c.point)}</p>`)}</div>
+      <div class="psec"><h3>${esc(L("p.challenge.did"))}</h3>${pcWrap(`challenge.${i + 1}/note`, `<p class="pf">${prose(c.note)}</p>`)}</div>
       ${c.place ? `<div class="psec"><h3>${esc(L("p.challenge.place"))}</h3>${placeExcerpt(c.place, rowAt(c.place))}</div>` : ""}`);
   }
   return "";
@@ -1908,7 +1913,7 @@ document.addEventListener("click", (e) => {
       case "goanchor": return goAnchor(act.dataset.anchor);
       case "goroute": showTab("summary"); return select("summary", "route:" + act.dataset.route, { scroll: true });
       case "tree": return setTree(!S.code.tree);
-      case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
+      case "ctx": { if (act.closest("#ctx-code")) requestAnimationFrame(() => $('.toolbar [data-act="ctx"]')?.focus()); S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
       case "purpose-menu": case "req-menu": return toggleMenu(act);
@@ -1932,7 +1937,7 @@ document.addEventListener("click", (e) => {
       case "lc": return editLine(act.dataset.lk);
       case "lc-save": return saveLine(act.dataset.lk);
       case "carry-take": return takeCarried();
-      case "carry-skip": $("#carry").hidden = true; return;
+      case "carry-skip": return hideCarry();
       case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; return refreshLine(lk); }
       case "sel-comment": return SELT && openSelection(SELT);
       case "lc-del": { const lk = act.dataset.lk; setState(DR.lineComment(state, anchorOfLk(lk), "")); return commentsChanged(() => refreshLine(lk)); }
@@ -2085,11 +2090,13 @@ function selectionTarget() {
   const range = sel.getRangeAt(0), el = (n) => n.nodeType === 1 ? n : n.parentElement;
   const a = el(range.startContainer), z = el(range.endContainer);
   if (a.closest("textarea, input, .pc-x, .lc, #sel-adder") || z.closest("textarea, input, .pc-x, .lc, #sel-adder")) return null;
+  // a paragraph: the field's own words, never the page's labels or source chips around them
   const pa = a.closest(".pc"), pz = z.closest(".pc");
   if (pa || pz) {
-    if (pa !== pz || a.closest(".pc-btn") || z.closest(".pc-btn")) return { refused: true, range };
-    const skip = ".pc-x, .pc-btn", from = offsetIn(pa, range.startContainer, range.startOffset, skip), to = offsetIn(pa, range.endContainer, range.endOffset, skip);
-    return { kind: "para", anchor: pa.dataset.anchor, el: pa, span: { from, to, quote: textWithout(pa, skip).slice(from, to) }, range };
+    const fa = a.closest(".pf"), fz = z.closest(".pf");
+    if (pa !== pz || !fa || fa !== fz || fa.closest(".pc") !== pa) return { refused: true, range };
+    const from = offsetIn(fa, range.startContainer, range.startOffset, ".pc-x"), to = offsetIn(fa, range.endContainer, range.endOffset, ".pc-x");
+    return { kind: "para", anchor: pa.dataset.anchor, el: pa, span: { from, to, quote: textWithout(fa, ".pc-x").slice(from, to) }, range };
   }
   const ra = a.closest("#files tr.r"), rz = z.closest("#files tr.r");
   if (!ra && !rz) return null;
@@ -2117,9 +2124,9 @@ function showAdder() {
   ad.innerHTML = t.refused ? esc(L("p.sel.refused")) : `${ICON.comment}<span>${esc(L("p.sel.comment"))}</span>${kbd("c")}`;
   ad.hidden = false;
   // below the selection's last line, never over the words selected; above it when there is no room below
-  const rects = t.range.getClientRects(), r = rects[rects.length - 1] ?? t.range.getBoundingClientRect();
+  const rects = t.range.getClientRects(), r = rects[rects.length - 1] ?? t.range.getBoundingClientRect(), top = (rects[0] ?? r).top;
   const x = Math.min(innerWidth - ad.offsetWidth - 8, Math.max(8, r.right - ad.offsetWidth)), below = r.bottom + 6;
-  ad.style.left = x + "px"; ad.style.top = Math.min(innerHeight - ad.offsetHeight - 8, below + ad.offsetHeight > innerHeight ? Math.max(8, r.top - ad.offsetHeight - 6) : below) + "px";
+  ad.style.left = x + "px"; ad.style.top = (below + ad.offsetHeight > innerHeight - 8 ? Math.max(8, top - ad.offsetHeight - 6) : below) + "px";
 }
 function openSelection(t) {
   hideAdder(); getSelection()?.removeAllRanges();
@@ -2145,8 +2152,9 @@ function markComments() {
   for (const c of state.paragraphs) {
     if (c.from === undefined || c.to === undefined) continue;
     for (const pc of $$(`.pc[data-anchor="${CSS.escape(`${c.item}/${c.field}`)}"]`)) {
-      if (c.quote !== undefined && textWithout(pc, ".pc-x, .pc-btn").slice(c.from, c.to) !== c.quote) continue;
-      const r = rangeIn(pc, c.from, c.to, ".pc-x, .pc-btn"); if (r) ranges.push(r);
+      const field = $(".pf", pc);
+      if (!field || (c.quote !== undefined && textWithout(field, ".pc-x").slice(c.from, c.to) !== c.quote)) continue;
+      const r = rangeIn(field, c.from, c.to, ".pc-x"); if (r) ranges.push(r);
     }
   }
   CSS.highlights.set("review-comment", new Highlight(...ranges));
@@ -2185,8 +2193,7 @@ function findIndex() {
 const FIND_LIMIT = 5000;
 function runFind() {
   const q = S.find.q.trim().toLowerCase();
-  const rank = new Map(fileOrder().map((fi, i) => [fi, i]));
-  S.find.matches = q.length < 2 ? [] : findIndex().filter((x) => x.text.includes(q)).sort((a, b) => rank.get(a.fi) - rank.get(b.fi) || a.hi - b.hi || a.ri - b.ri).slice(0, FIND_LIMIT);
+  S.find.matches = q.length < 2 ? [] : findIndex().filter((x) => x.text.includes(q)).sort((a, b) => a.fi - b.fi || a.hi - b.hi || a.ri - b.ri).slice(0, FIND_LIMIT);
   S.find.i = -1; findCount();
 }
 function findCount() {

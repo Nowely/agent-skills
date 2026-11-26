@@ -182,6 +182,7 @@ test("the printout lists each route's steps in order, each with its block, place
   "the critic and the verifier read the printout: a route or a requirement's source they cannot see is one they cannot check",
   () => {
     const out = render((r) => { r.requirements[2].source = "author"; }).stdout;
+    if (!/- B3 `test\/outputs\.test\.js:[^`]+`: Tests the three outputs\. Serves requirement 1\. Keep\./i.test(out)) return `a kept block's description is not in the printout: ${out.slice(out.indexOf("## "), out.indexOf("## ") + 0)}${out.slice(-1500)}`;
     const route = /## How it works\n### An archived invoice shows its currency in upper case \(requirement 1\)\n1\. B1 `src\/invoices\/archive\.js:[^`]+`: Converts the code while it reads each row\.\n2\. B3 `test\/outputs\.test\.js:[^`]+`: Checks the three outputs of the conversion\. Gets it from: readArchive's return/.test(out);
     const req = /3\. A requirement that fails\. \(proposed by the author, to confirm; [^)]*\) — TASK-9 “wherever a price is shown”/.test(out);
     return route && req || out.slice(0, 1600);
@@ -211,6 +212,8 @@ test("carry takes over the previous record's blocks whose lines read the same: a
     if (carried.status !== 0) return carried.stderr;
     const record = JSON.parse(fs.readFileSync(target, "utf8"));
     const kept = record.blocks.filter((b) => b.carried), judge = record.blocks.filter((b) => !b.carried && b.does);
+    // the previous requirements come with the blocks, so a carried block serves what it served
+    if (JSON.stringify(record.requirements.map((r) => [r.id, r.text])) !== JSON.stringify(REVIEW.requirements.map((r) => [r.id, r.text])) || record.requirements.some((r) => r.met)) return `requirements ${JSON.stringify(record.requirements)}`;
     if (kept.length !== 2 || kept.some((b) => b.verdict !== "keep") || judge.length !== 1 || judge[0].verdict !== "" || judge[0].does !== "Tests it.") return `carried ${JSON.stringify(record.blocks)}`;
     if (!/2 kept blocks carried unchanged/.test(carried.stdout)) return carried.stdout;
     // the reviewer fills the rest: the check accepts the carried blocks it can prove, and refuses one it cannot
@@ -227,18 +230,32 @@ test("carry takes over the previous record's blocks whose lines read the same: a
     if (refused.status !== 1 || !refused.stderr.includes("block 2 is marked carried, and no block the previous record kept has its lines")) return `a forged carried block passed: ${refused.stderr}`;
     fs.writeFileSync(target, JSON.stringify({ ...filled, previous: { ...filled.previous, sha256: "0".repeat(64) } }));
     const moved = report("check", target);
-    return moved.status === 1 && moved.stderr.includes("carried blocks cannot be proven: the previous record") || `a changed previous record passed: ${moved.stderr}`;
+    if (moved.status !== 1 || !moved.stderr.includes('"previous" cannot be read: the previous record "previous/review.json" is not the one')) return `a changed previous record passed: ${moved.stderr}`;
+    // a previous record that is not JSON is a fault of check, never a crash of render
+    fs.writeFileSync(path.join(prev, "review.json"), "not json");
+    fs.writeFileSync(target, JSON.stringify({ ...filled, blocks: filled.blocks.map(({ carried, ...b }) => b), previous: { ...filled.previous, sha256: createHash("sha256").update("not json").digest("hex") } }));
+    const broken = report("render", target);
+    return broken.status === 1 && broken.stderr.includes('"previous" cannot be read: the previous record "previous/review.json" is not JSON') || `an unreadable previous record: ${broken.status} ${broken.stderr}`;
   });
 
-test("a reply to a previous comment is placed at code only where the commented code still reads the same, and the printout lists every reply",
-  "a reply placed at a guessed line tells the owner the old comment's code is still there",
+test("a reply to a previous comment keeps the place the comment had, needs its words and sources, and the printout lists every reply",
+  "a reply placed at a line of this diff by a quote the reviewer chose tells the owner the old comment's code is still there",
   () => {
     const reply = { comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "Because the archive keeps lower case.", sources: [{ at: "src/invoices/archive.js:2", quote: "The archive holds currencies in lower case" }] };
-    const placed = render((r) => { r.replies = [{ ...reply, at: "src/invoices/archive.js:4", quote: "toUpperCase()" }, { ...reply, comment: "And this?", place: "src/old.js:9" }]; });
-    if (placed.status !== 0) return placed.stderr;
-    if (!/## Replies to your comments on the previous review\n1\. src\/invoices\/archive\.js:4: «Why convert here\?» — Because the archive keeps lower case\. \(`src\/invoices\/archive\.js:4`\)/.test(placed.stdout)) return placed.stdout.slice(placed.stdout.indexOf("## Replies"), placed.stdout.indexOf("## Replies") + 400);
-    const wrong = render((r) => { r.replies = [{ ...reply, at: "src/invoices/archive.js:4", quote: "toLowerCase()" }]; });
-    return wrong.status === 1 && wrong.stderr.includes('reply 1: its "quote" is not on the lines "at" names') || `a reply at a line without its quote passed: ${wrong.stderr}`;
+    const listed = render((r) => { r.replies = [reply, { ...reply, comment: "And this?", place: "src/old.js:9" }]; });
+    if (listed.status !== 0) return listed.stderr;
+    if (!/## Replies to your comments on the previous review\n1\. src\/invoices\/archive\.js:4: «Why convert here\?» — Because the archive keeps lower case\. \(src\/invoices\/archive\.js:2/.test(listed.stdout)) return listed.stdout.slice(listed.stdout.indexOf("## Replies"), listed.stdout.indexOf("## Replies") + 400);
+    const thin = render((r) => { r.replies = [{ ...reply, text: " ", sources: [] }]; });
+    return thin.status === 1 && thin.stderr.includes('reply 1 has no "text"') && thin.stderr.includes("reply 1 names no source") || `a reply without words or sources passed: ${thin.stderr}`;
+  });
+
+test("kept code that serves only requirements to confirm is warned of until a question asks about them, as kept code that serves none is",
+  "an error here and a warning for unlinked code made unlinking the cheaper way to hide where a requirement came from",
+  () => {
+    const asked = render((r) => { r.blocks[0].serves = [3]; });
+    const unlinked = render((r) => { r.blocks[0].serves = []; });
+    return asked.status === 0 && asked.stderr.includes("warning: requirement 3 is to confirm, and kept code serves only such requirements") && unlinked.status === 0 && unlinked.stderr.includes("serve no requirement")
+      || `${asked.status} ${asked.stderr} | ${unlinked.status} ${unlinked.stderr}`;
   });
 
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
@@ -508,7 +525,6 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, author, contract, assumption, question"],
       [(r) => { delete r.requirements[0].sources; }, "requirement 1 names no source: an analytical claim needs one"],
       [(r) => { r.requirements[0].sources = [{ at: "TASK-9" }]; }, "requirement 1 is task: quote where it is stated, as {at, quote}, or cite the screen it comes from"],
-      [(r) => { r.blocks[0].serves = [3]; }, "requirement 3 is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it"],
       [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }] }]; },
         "question 1 is a decision with no recommendation: name the variant you recommend"],
       [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }],
