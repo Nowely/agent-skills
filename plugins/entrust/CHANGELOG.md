@@ -3,6 +3,29 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Skills
+
+- New skill `skill-creator`, selected by the assistant or called by name: it creates a skill or develops an
+  existing one. Create writes a requirements sheet from the user's words, walks the job stage by stage, reads and
+  records the sources, shows one plan with the open questions in it, has a fresh architecture critic challenge
+  the approach before any text, and has a quality critic, a check and a verifier judge the result. Change does the
+  same for one instruction, with fewer agents. A correction goes back to the sheet, not into the text.
+- `skill-creator/scripts/check.mjs` holds a skill to eleven mechanical rules and prints every limit with what the
+  skill uses of it. Three rules are new: the open specification's limits on `name` and `description`, and that
+  every file under `references/` is linked from `SKILL.md`.
+- The repository's `scripts/skills.test.mjs` imports its rules from that script and keeps only which skills it
+  reads and its plugin-wide walk. Its rule titles now name what each rule rests on.
+
+### Gate and limits
+
+- Local checks passed: `scripts/skills.test.mjs` (11), skill-check (3), package, orchestrate (13) and
+  fragments (2), on Node.js v22.23.5.
+- No model has run the skill. Its design was read by three rounds of fresh critics on paper; the test of
+  whether a session that follows it differs from one that does not is written and not yet run. Unmeasured:
+  whether agents select it beside a host's built-in `skill-creator`, and anything on Codex.
+
 ## 0.47.3 — 2026-11-26
 
 ### Orchestration
