@@ -10,6 +10,18 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E170. Two entrust pages brief an architecture critic in opposite ways on the coordinator's reasons
+
+**Evidence, level 1.** `orchestrate/references/roles.md:63` has the architecture critic read "the approach the
+card chose with the coordinator's reasons". `skill-creator/references/critics.md:6` says of every judge it
+starts, the architecture critic among them, "No brief carries your reasons or what you expect to hear". Both
+pages ship in the same plugin and use the same role name. Found while comparing the coordinator's own critic
+briefs with the pages (the skill-creator run of 2026-11-26).
+
+**Issue text.** orchestrate's architecture critic is given the coordinator's reasons for the chosen approach, and
+skill-creator's is forbidden them. Decide whether the role takes the reasons, and keep that rule in one place
+that the other page links.
+
 ## E169. The cleanup help gives "no state directory" as a cause of its usage exit, and a listing with none exits 0
 
 **Evidence, level 3.** `cleanup/scripts/cleanup.mjs:121`, in the `--help` text, lists "no state directory" among
