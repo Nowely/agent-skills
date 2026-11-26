@@ -20,7 +20,10 @@ its description. Take one of three routes; a change to this skill takes them too
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states.
 - **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
-  the file that defines it. Make the edit and run the script of Create's step 6.
+  the file that defines it. Make the edit, run the script of Create's step 6, then run Change's step 8 against
+  the skill as it was: the revision its files were at, or a copy taken before the edit. A corrected word or
+  link lists no line. A listed line whose fact still stands takes a
+  `moved` line; a listed line whose fact is gone makes the edit a Change.
 
 ## Standing rules
 
@@ -42,7 +45,7 @@ its description. Take one of three routes; a change to this skill takes them too
   read it.
 - When this session cannot start agents, say so in the plan, do the steps that need none, and name each step
   left undone in the result.
-- A step number in a reference is Create's.
+- A step number in a reference is Create's; Change's steps 5, 6, 7, 9, 10 and 11 are Create's 4 to 9.
 - `<skill-dir>` is this skill's installed directory. Its script needs Node.js 18 or later.
 
 ## Create
@@ -87,7 +90,8 @@ its description. Take one of three routes; a change to this skill takes them too
    and wait for them.
 6. **Write the text, once.** Follow [writing.md](references/writing.md). After each edit run
    `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the
-   repository has them, its own checks for skill pages, until they pass.
+   repository has them, its own checks for skill pages, until they pass. A rewrite also passes
+   [Change's step 8](#change), against a copy of the skill taken before the first edit.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and settle its objections as [that page](references/critics.md#settling-an-objection) says.
 8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
@@ -116,11 +120,44 @@ its description. Take one of three routes; a change to this skill takes them too
    lies outside the skill's files, change nothing: record it where the repository records defects, tell the
    user, and stop.
 3. **Choose the smallest change.** Take the first of these that meets the requirement: remove; move, or link at
-   the step that needs it; reword; add. A change that turns out to alter the skill's job, its hosts or its set
-   of reference files goes to Create's step 1 with this sheet.
-4. **Plan.** Do Create's step 3 with the change in place of the approach.
-5. **Carry it out.** Do Create's steps 4 to 10, with the judges that
-   [critics.md](references/critics.md#which-model-and-how-many) gives a change.
+   the step that needs it; reword; add. Remove is for an instruction the requirement no longer wants and for a
+   duplicate whose fact stays stated elsewhere. A fact, such as a value, a table row, a case or a condition, is
+   never removed to make the change smaller: when its place goes, move it to the file that owns it, or put its
+   removal to the user as a question in the plan. A change that turns out to alter the skill's job, its hosts
+   or its set of reference files goes to Create's step 1 with this sheet.
+4. **Plan.** Show the user one plan and wait, as Create's step 3 says, with the change in place of the
+   approach. Before the wait, note the skill's state for step 8: the revision the files are at, or a copy of
+   the folder in the run directory.
+5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the
+   architecture critic as [critics.md](references/critics.md#the-architecture-critic) briefs it, and act on
+   its verdict as Create's step 4 says.
+6. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named, before any
+   edit: its cases and statements, and whatever it runs on the skill as it is now.
+7. **Make the change.** Edit by [writing.md](references/writing.md). After each edit run
+   `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the repository has them, its own
+   checks for skill pages, until they pass.
+8. **Show that no line was lost.** After the last edit, run
+   `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
+   the skill's, or the folder of skills when the change spans several. The base is step 4's revision or copy.
+   The file is one in the run directory; write it when a line is listed. Each listed line stood in the files
+   before and stands nowhere now. For each, do the first of these that is true:
+   - its fact is still stated, in other words or another file: answer it with
+     `moved | <file>:<line as printed> | <file>:<line where it stands now> | <the words there>`;
+   - the user's own words ask for it to go: answer it with
+     `retired | <file>:<line as printed> | <file>:<line of their saved message> | <their words>`;
+   - neither: put the line back, or move it to the file that owns the fact.
+
+   Run it again until it exits 0. Your own judgement that a fact is not needed retires nothing.
+9. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
+   briefs it, with the diff and the dispositions file, and settle its objections as
+   [that page](references/critics.md#settling-an-objection) says.
+10. **Run the plan's check** on the text as it now stands, and decide by the plan's rule; set no threshold
+    after seeing a result. A result that fails the rule is [a correction](#a-correction). Past
+    [its limit](#a-correction), undo the change and keep its text in the run directory.
+11. **Have the result verified**, where [critics.md](references/critics.md#which-model-and-how-many) gives a
+    change a verifier, as [its section](references/critics.md#the-verifier) briefs it. A requirement it
+    returns as `not met` is [a correction](#a-correction).
+12. **Deliver.** Hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
 
 ## A correction
 

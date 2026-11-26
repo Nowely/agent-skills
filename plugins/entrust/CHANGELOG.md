@@ -12,6 +12,11 @@ forensics remain in the repository references and release notes.
   records the sources, shows one plan with the open questions in it, has a fresh architecture critic challenge
   the approach before any text, and has a quality critic, a check and a verifier judge the result. Change does the
   same for one instruction, with fewer agents. A correction goes back to the sheet, not into the text.
+- `skill-creator/scripts/check.mjs <directory> --against <revision or copy>` lists every line of a skill's
+  Markdown that an edit removed and nothing carries now, and exits 1 until each is answered in a dispositions
+  file: `moved`, with the place and the words that carry it, or `retired`, with the user's own words. A corrected
+  word or link lists nothing. Change's steps are written out on the page with this as step 8, Repair runs it too,
+  and "remove first" no longer applies to a fact.
 - `skill-creator/scripts/check.mjs` holds a skill to twelve mechanical rules and prints every limit with what the
   skill uses of it. Four rules are new: the open specification's limits on `name` and `description`, that
   every file under `references/` is linked from `SKILL.md`, and that no link leaves the files installed with the

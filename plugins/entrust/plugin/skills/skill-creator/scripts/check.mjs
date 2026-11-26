@@ -3,6 +3,7 @@
 // of ../references/structure.md; this file owns the numbers and the checks.
 //
 //   node check.mjs <skill-directory> [<skill-directory> ...]
+//   node check.mjs <directory> --against <base> [--dispositions <file>]     was a line lost? (see `preserved`)
 //
 // Reads <dir>/SKILL.md and every markdown file it reaches by relative links inside the skill's folder. A link that
 // leaves the folder must open; its file is not read further. Prints each failed rule with its violations, then
@@ -14,11 +15,17 @@
 // The frontmatter reader takes plain, quoted and folded (`>`, `>-`) scalars for name, description and
 // when_to_use and refuses any other form of those three, so that no length is counted on a guess.
 //
+// `--against` names the state before the edit, a git revision or a directory that holds a copy; the agent sets
+// it, because work that spans commits has no "before" a script could guess, and without it a cut that drops a fact
+// passes. `--dispositions` names the file that answers the listed lines; the agent sets it, because the script
+// cannot know where a run keeps its files, and without it no listed line can be answered.
+//
 // Each rule's title names what it rests on: the open specification (https://agentskills.io/specification), which
 // every host of the format follows, or one host's documented behaviour. `rules`, `skillAt` and `LIMITS` are
 // exported, so that a repository's own suite can import them and add which skills it reads and what else its
 // walk covers.
 
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -295,6 +302,136 @@ export function rules(skills, rel = (p) => p) {
   return { found, pages };
 }
 
+// ---- The preservation list: was a line of the files as they were lost?
+//
+// A line of a Markdown file under `dir` at `base` is carried when its text, with white space, backticks,
+// asterisks and table bars collapsed, link destinations dropped and case folded, still stands somewhere in the
+// Markdown now under `dir`, and under its neighbours when `dir` is a skill: re-wrapping, a move to another file and
+// a changed link destination therefore list nothing. Not held to it: a line of 12 characters or fewer once
+// collapsed (a rule, a short heading), and a line that is only links (a contents list). A line that differs from
+// what stands in its own file by one misspelt word is carried too: one letter added, dropped, changed or swapped
+// with its neighbour, in a word of four letters or more that the files no longer hold anywhere. A real word
+// changed into its neighbour (`affect`, `effect`) passes that test only when the old word was the last of its
+// kind in the tree; the quality read is what catches it.
+//
+// Every other line is a candidate and needs one line in the dispositions file:
+//
+//   moved   | <file>:<line> | <file>:<line> | <the words that carry it now>
+//   retired | <file>:<line> | <file>:<line> | <the user's words that retire it>
+//
+// The first place is the candidate's, as printed. The second is where the quote stands, within five lines from
+// the one named: for `moved` a file under `dir` or beside it, by a path relative to `dir`, and the quote shares a
+// word of four letters or more with the lost line; for `retired` a file outside `dir` that holds the user's
+// messages, by a path relative to the dispositions file. `#` starts a comment line. The script cannot tell whether
+// a quote still says what the lost line said, nor whether the messages file is the user's.
+const collapse = (s) => s.replace(/\]\([^)\s]*\)/g, "]").replace(/[\s`*|]+/g, " ").trim().toLowerCase();
+const onlyLinks = (line) => !/[\p{L}\p{N}]/u.test(line.replace(/\[[^\]]*\]\([^)]*\)/g, ""));
+const WORD = /[\p{L}][\p{L}'’-]*/gu;
+const longWords = (s) => new Set((collapse(s).match(WORD) ?? []).filter((w) => w.length >= 4));
+const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
+  stdio: ["ignore", "pipe", "ignore"] });
+
+// The Markdown files under `dir` as they were at `base`, by path relative to `dir`: every file when `base` is a
+// directory, the files that differ from the working tree when it is a revision.
+function before(dir, base) {
+  const files = new Map();
+  if (fs.existsSync(base) && fs.statSync(base).isDirectory()) {
+    const root = path.resolve(base);
+    for (const f of markdownUnder(root)) files.set(path.relative(root, f).split(path.sep).join("/"), read(f));
+    return files;
+  }
+  let top;
+  try {
+    top = git(dir, "rev-parse", "--show-toplevel").trim();
+    git(top, "rev-parse", "--verify", "--quiet", `${base}^{commit}`);
+  } catch { throw new Error(`${base} is neither a directory nor a revision of the repository that holds ${dir}`); }
+  const rel = path.relative(top, fs.realpathSync(dir)).split(path.sep).join("/");
+  const changed = git(top, "diff", "--name-only", "-z", "--no-renames", base, "--", rel || ".").split("\0");
+  for (const f of changed.filter((f) => f.endsWith(".md"))) {
+    let text;
+    try { text = git(top, "show", `${base}:${f}`); } catch { continue; } // a file the edit added
+    files.set(rel ? f.slice(rel.length + 1) : f, text);
+  }
+  return files;
+}
+
+// One letter added, dropped or changed, or two neighbours swapped.
+function oneSlip(a, b) {
+  if (a === b || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  while (j < a.length - i && j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+  const x = a.slice(i, a.length - j), y = b.slice(i, b.length - j);
+  return (x.length <= 1 && y.length <= 1) || (x.length === 2 && y.length === 2 && x[0] === y[1] && x[1] === y[0]);
+}
+const parts = (token) => token.match(/^([^\p{L}]*)([\p{L}][\p{L}'’-]*)?([^\p{L}]*)$/u);
+// Does `now`, a file's words, hold `was`, a line's words, but for one misspelt word that `words` no longer has?
+function respelt(was, now, words) {
+  scan: for (let at = 0; at + was.length <= now.length; at++) {
+    let slip = -1;
+    for (let k = 0; k < was.length; k++) {
+      if (was[k] === now[at + k]) continue;
+      if (slip >= 0) continue scan;
+      slip = k;
+    }
+    if (slip < 0) return true;
+    const a = parts(was[slip]), b = parts(now[at + slip]);
+    if (a?.[2] && b?.[2] && a[1] === b[1] && a[3] === b[3] && a[2].length >= 4 && oneSlip(a[2], b[2]) && !words.has(a[2]))
+      return true;
+  }
+  return false;
+}
+
+function answers(file) {
+  const found = new Map(), problems = [];
+  read(file).split("\n").forEach((line, i) => {
+    if (!line.trim() || line.trim().startsWith("#")) return;
+    const m = line.match(/^\s*(moved|retired)\s*\|\s*(\S+):(\d+)\s*\|\s*(\S+):(\d+)\s*\|\s*(.+?)\s*$/);
+    if (!m) return void problems.push(`line ${i + 1} is neither \`moved | <file>:<line> | <file>:<line> | <quote>\` nor \`retired | ...\``);
+    const quote = m[6].replace(/^"(.*)"$/, "$1");
+    found.set(`${m[2]}:${m[3]}`, { kind: m[1], file: m[4], line: Number(m[5]), quote, at: i + 1 });
+  });
+  return { found, problems };
+}
+
+// The lines of `dir` at `base` that nothing carries now: `lost` have no answer, `answered` have a disposition that
+// holds, and `problems` says why a disposition does not. Changes nothing.
+export function preserved(dir, base, dispositions) {
+  const root = path.resolve(dir);
+  const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
+  const bound = fs.existsSync(path.join(root, "SKILL.md")) ? path.dirname(root) : root;
+  const texts = markdownUnder(bound).map(read);
+  const now = texts.map(collapse).join(" \n ");
+  const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
+  const { found, problems } = dispositions ? answers(dispositions) : { found: new Map(), problems: [] };
+  const lost = [], answered = [];
+  for (const [rel, text] of before(root, base)) {
+    const same = path.join(root, rel);
+    const here = fs.existsSync(same) ? collapse(read(same)).split(" ") : [];
+    text.split("\n").forEach((line, i) => {
+      const was = collapse(line);
+      if (was.length <= 12 || onlyLinks(line) || now.includes(was) || respelt(was.split(" "), here, words)) return;
+      const id = `${rel}:${i + 1}`, answer = found.get(id), candidate = { id, text: line.trim() };
+      if (!answer) return void lost.push(candidate);
+      const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
+      const place = path.resolve(from, answer.file), quote = collapse(answer.quote);
+      const within = (outer, p) => p === outer || inside(outer, p);
+      const window = fs.existsSync(place) && fs.statSync(place).isFile()
+        ? collapse(read(place).split("\n").slice(answer.line - 1, answer.line + 4).join("\n")) : null;
+      const shared = [...longWords(line)].some((w) => longWords(answer.quote).has(w));
+      const why = window === null ? `${answer.file} is not a file`
+        : quote.length <= 12 ? "the quote is too short to find"
+        : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}`
+        : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
+        : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
+        : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
+        : null;
+      if (why) { problems.push(`line ${answer.at}, for ${id}: ${why}`); lost.push(candidate); } else answered.push(candidate);
+    });
+  }
+  return { lost, answered, problems };
+}
+
 // Every limit and what the skill uses of it, for the summary line.
 function room(skill) {
   let fm = {};
@@ -307,11 +444,34 @@ function room(skill) {
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const dirs = process.argv.slice(2);
-  if (!dirs.length || dirs.some((d) => d.startsWith("-"))) {
-    console.error("usage: node check.mjs <skill-directory> [<skill-directory> ...]");
-    process.exit(2);
+  const dirs = [], option = {};
+  for (let args = process.argv.slice(2), i = 0; i < args.length; i++) {
+    if (args[i] === "--against" || args[i] === "--dispositions") option[args[i].slice(2)] = args[++i] ?? "";
+    else dirs.push(args[i]);
   }
+  const usage = () => {
+    console.error("usage: node check.mjs <skill-directory> [<skill-directory> ...]\n"
+      + "       node check.mjs <directory> --against <revision or directory> [--dispositions <file>]");
+    process.exit(2);
+  };
+  if (!dirs.length || dirs.some((d) => d.startsWith("-")) || Object.values(option).includes("")) usage();
+  if ("against" in option) {
+    if (dirs.length !== 1 || !fs.existsSync(dirs[0])) usage();
+    if (option.dispositions && !fs.existsSync(option.dispositions)) usage();
+    let result;
+    try { result = preserved(dirs[0], option.against, option.dispositions); }
+    catch (error) { console.error(error.message); process.exit(2); }
+    const { lost, answered, problems } = result;
+    for (const c of lost) console.log(`LOST  ${c.id}: ${c.text}`);
+    for (const p of problems) console.log(`BAD   ${option.dispositions}: ${p}`);
+    if (lost.length) console.log("      Put the fact back, or answer each line in the dispositions file with one of:\n"
+      + "      moved   | <file>:<line as printed> | <file>:<line where it stands now> | <the words that carry it there>\n"
+      + "      retired | <file>:<line as printed> | <file>:<line of the user's saved message> | <the user's words>");
+    console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
+      + `${answered.length} answered by a disposition`);
+    process.exit(lost.length || problems.length ? 1 : 0);
+  }
+  if ("dispositions" in option) usage();
   let failed = 0;
   for (const dir of dirs) {
     const skill = skillAt(dir);

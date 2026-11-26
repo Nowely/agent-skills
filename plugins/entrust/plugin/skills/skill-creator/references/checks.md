@@ -7,7 +7,7 @@ Take every row whose claim the user's request makes.
 | The work claims | The check that can fail | It starts |
 |---|---|---|
 | a script now enforces a rule | a test that fails when the change is taken out | nothing |
-| nothing was lost in a cut, a move, a merge or a rewrite | each removed sentence is found where its fact is now defined, in the same words, at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
+| nothing was lost in a cut, a move, a merge or a rewrite | [Change's step 8](../SKILL.md#change) exits 0; each fact its dispositions call moved is found at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
 | a literal reader can follow the skill: a route, a step, an order | [a dry run](#a-dry-run); for a change, once before and once after | one agent per run |
 | an agent acts differently with the skill: an instruction added or reworded, or a new skill when the user asks for runs | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
