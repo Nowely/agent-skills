@@ -61,10 +61,8 @@ would have shown. With no run at all, the quality critic's read is the only evid
 3. Run each case once with the skill and once without it, on the same model with the same inputs. For a change,
    "without" is the skill before the change.
 4. Have one fresh reader mark each statement for each run, with the place that shows it, not knowing which run
-   is which. Brief it by [the form](critics.md#every-brief) with this step as its role: it marks strictly and
-   literally, says why where two marks were possible, and returns the marks and no verdict. `Do not open` holds
-   the key to which run is which and the skill's own files. Then have the marks confirmed and compute the
-   verdict as [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the skill no session opened and a step every session
+   is which, briefed as [the check's reader](critics.md#the-checks-reader). Then have the marks confirmed and
+   compute the verdict as [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the skill no session opened and a step every session
    skipped; each is a finding for the result.
 5. A statement that every run passes measured nothing. Report it so and count it for neither side.
 6. Code that every session wrote for itself is a finding for the result: a script the skill should carry.

@@ -5,7 +5,7 @@ approach together, the quality critic at step 7 and the verifier at step 9. This
 and what you do with what comes back: [every brief](#every-brief),
 [which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic),
 [the quality critic](#the-quality-critic), [the verifier](#the-verifier),
-[handling a return](#handling-a-return).
+[the check's reader](#the-checks-reader), [handling a return](#handling-a-return).
 
 ## Every brief
 
@@ -24,10 +24,17 @@ Model: <the model, from the tiers below>
 ```
 
 - `Read` holds paths only. Write nothing about what a file says, why you chose the approach, or what you expect
-  the judge to find; another agent's return goes in only as a path, to be checked as a claim.
+  the judge to find. Another agent's return goes in only as a path, to be checked as a claim. So does the
+  author's own account of the work, such as a report or a commit message: it goes under `Read`, never under
+  `Do not open`.
+- When a file the role's section lists does not exist, write `none: <what is missing>` on its line. Do not
+  write the file to fill the gap; the judge marks what depended on it `not proven`.
+- The return file is in the run directory, named for the role; a run with no directory yet gets one as the
+  standing rules of [SKILL.md](../SKILL.md) say.
 - `Do not open` names whatever would hand the judge its answer: another judge's return on the same work, an
   earlier critique of the same text, an answer key or a list of faults already known, the statements' expected
-  marks. Judges that run side by side each get the others' return files here.
+  marks. Judges that run side by side each get the others' return files here. It never names the page that
+  holds the judge's role, nor a folder that contains it: withhold files one by one.
 - Every set of marks on this page and in [checks.md](checks.md) has one more member, `part`: the item is
   there without its value, or with one of its two clauses. A judge marks `part` and says what is missing. `part`
   counts as the weakest mark of its set, `not met`, `lost` or absent, unless the plan's rule said otherwise
@@ -91,7 +98,8 @@ return: name it under `Do not open`.
 It does these things, in this order:
 
 1. It walks two requests through the files as a literal reader, one from the middle of the sheet's job and one
-   from its edge, and reports each step where it halts, has to guess, or can read the line two ways.
+   from its edge, and reports each step where it halts, has to guess, or can read the line two ways. For a line
+   with two readings it says what each reading makes the agent do.
 2. It holds the files against structure.md: whether each file holds what the layout gives it, whether a detail
    that one step needs sits in a reference linked at that step, whether any file goes unused, and what the
    script reports under each budget.
@@ -111,8 +119,8 @@ check and the verifier answer that.
 
 It holds the finished work against what the user asked. Give it, by path: the file of the user's messages; the
 sheet, with its `met at` column filled; the finished skill; for a change, the skill as it was, the diff and the
-dispositions file; the plan's rule for the check, with the check's outputs; the objections of the quality
-critic that you overruled, each as a claim to check. Its `Note` line may name a check of the repository that
+dispositions file; the author's account of the work, where there is one, and the objections of the quality
+critic that you overruled, each as claims to check; the plan's rule for the check, with the check's outputs. Its `Note` line may name a check of the repository that
 fails for a reason you already know and the work did not cause.
 
 It does these things, in this order:
@@ -131,6 +139,25 @@ It returns one row for each requirement, stage and decision of the sheet: the fi
 `part`, `not met`, or `not proven` when nothing it could run or read shows it. It returns the marks of item 3,
 every message in which it found a requirement the sheet lacks, and each overruled objection as holding or not,
 with the place.
+
+## The check's reader
+
+It marks what the runs of a check produced, for [test cases](checks.md#test-cases), and gives no verdict. Give
+it, by path: the statements, each with its marks defined; each run's outputs under a letter; the files each run
+was given. `Do not open` holds the key that says which letter is which run, and the plan's rule.
+
+It does these things, in this order:
+
+1. It marks each statement for each run `true`, `part` or `false`, with the place in the outputs that shows it.
+   `part` is a statement met without its value or in one of its clauses; it says what is missing. It marks
+   strictly and literally, and where two marks were possible it says why it chose one.
+2. For each run, it lists everything the outputs state that the run could not have read in the files it was
+   given, each as `leak`, with the place.
+3. For each run, it checks what the answer claims about its files against those files: `holds` or `does not`,
+   with the place.
+
+It returns the marks, the leaks and the claims, and no total: how `part` counts is the plan's rule, which it
+does not see.
 
 ## Handling a return
 
