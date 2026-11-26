@@ -216,6 +216,10 @@ test("carry takes over the previous record's blocks whose lines read the same: a
     if (JSON.stringify(record.requirements.map((r) => [r.id, r.text])) !== JSON.stringify(REVIEW.requirements.map((r) => [r.id, r.text])) || record.requirements.some((r) => r.met)) return `requirements ${JSON.stringify(record.requirements)}`;
     if (kept.length !== 2 || kept.some((b) => b.verdict !== "keep") || judge.length !== 1 || judge[0].verdict !== "" || judge[0].does !== "Tests it.") return `carried ${JSON.stringify(record.blocks)}`;
     if (!/2 kept blocks carried unchanged/.test(carried.stdout)) return carried.stdout;
+    // the structure tied to the blocks comes with them: units as they were, the route whose every step came over
+    if (JSON.stringify(record.units.map((u) => [u.name, u.verdict ?? null])) !== JSON.stringify([["readArchive", "keep"], ["rows", null]])
+      || JSON.stringify(record.routes?.map((r) => r.steps.map((x) => x.block))) !== "[[1,3]]" || !/1 of 1 routes came with them/.test(carried.stdout))
+      return `structure ${JSON.stringify({ units: record.units, routes: record.routes })} ${carried.stdout}`;
     // the reviewer fills the rest: the check accepts the carried blocks it can prove, and refuses one it cannot
     const filled = { ...structuredClone(REVIEW), diff: record.diff, previous: record.previous,
       blocks: record.blocks.map((b) => b.carried ? b : { ...b, verdict: "fix", findings: [1] }) };
@@ -254,7 +258,8 @@ test("kept code that serves only requirements to confirm is warned of until a qu
   () => {
     const asked = render((r) => { r.blocks[0].serves = [3]; });
     const unlinked = render((r) => { r.blocks[0].serves = []; });
-    return asked.status === 0 && asked.stderr.includes("warning: requirement 3 is to confirm, and kept code serves only such requirements") && unlinked.status === 0 && unlinked.stderr.includes("serve no requirement")
+    return asked.status === 0 && asked.stderr.includes("warning: requirement 3 is to confirm, and kept code serves only such requirements") && asked.stderr.includes("kept blocks 1 serve only requirements to confirm")
+      && unlinked.status === 0 && unlinked.stderr.includes("serve no requirement")
       || `${asked.status} ${asked.stderr} | ${unlinked.status} ${unlinked.stderr}`;
   });
 
@@ -689,7 +694,8 @@ test("a block or unit whose premise is unread is a question, and a point against
     const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3];
       r.questions[0].context = [{ text: "The reader converts on an assumed reading.", sources: [{ ref: "/requirements/2" }] }]; });
     if (done.status !== 0) return done.stderr;
-    if (!done.stderr.includes("kept blocks 1 serve only requirements to confirm")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    // a question asks about R3, which the block serves: the owner is asked, so nothing is warned of
+    if (done.stderr.includes("serve only requirements to confirm")) return `a block kept for a requirement a question asks about was still warned of: ${done.stderr}`;
     if (!done.stderr.includes("unit readArchive is kept, and its blocks 3 are not")) return `no warning about a kept unit with an open block: ${done.stderr}`;
     const island = dataOf(fs.readFileSync(html, "utf8"));
     if (island.challenges.length !== 3 || island.blocks[2].questions.join() !== "1") return "the page carries no challenges or no link from the block to its question";
@@ -723,8 +729,8 @@ test("the minimal record is valid and warning-free; the themed record with decis
     if (minimal.errors.length || minimal.warnings.length) return `minimal record: ${[...minimal.errors, ...minimal.warnings].join("; ")}`;
     const themed = check(THEMED, files, run);
     if (themed.errors.length) return `themed record: ${themed.errors.join("; ")}`;
-    // The external source carries a quote and its file is not beside the record: named, unreachable, a warning only.
-    if (!themed.warnings.some((w) => w.includes("not beside the record"))) return `no warning for an unreachable source: ${themed.warnings}`;
+    // An external source is a place in the repository or a file beside the record; with its quote it travels, and no warning names it.
+    if (themed.warnings.some((w) => w.includes("source"))) return `a quoted source was warned of: ${themed.warnings}`;
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     return result.status === 0 || `themed render refused: ${result.stderr}`;
   });

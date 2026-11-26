@@ -24,8 +24,8 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
-   about a large block given one verdict, about kept blocks that serve no requirement or only requirements to confirm, and
-   about a kept unit holding an open block; for the decision-card fields, about a source named but unreachable, an
+   about a large block given one verdict, about kept blocks that serve no requirement or only requirements to confirm no
+   question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
 4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict,
@@ -119,7 +119,8 @@ of the same diff, so the owner's answers to the items it leaves unchanged come w
 
 ## Comparison pass
 
-Freeze the checked full draft and the saved diff before handing them to the reader. Run from the directory of the approved project toolchain:
+Freeze the checked full draft and the saved diff before handing them to the reader. Without an approved reader the
+reviewer is it, stage by stage — staged self-review — and keeps each stage's ledger itself. Run from the directory of the approved project toolchain:
 
     node "<skill-dir>/scripts/report.mjs" comparisons <out>/review.json <base-root> <head-root> > <out>/comparisons.json
 
@@ -218,9 +219,10 @@ Every analytical claim added by the fields below carries `sources`, a list in on
 - `{ "ref": "/requirements/0" }` — internal: a zero-based index into a list of this record (`/findings/1`,
   `/questions/2`, `/mechanisms/0`, `/blocks/3`, ...). The check resolves it mechanically; a ref that names nothing
   is a fault. There is no shared registry of sources.
-- `{ "at": "logs/test.txt:12", "revision": "abc123", "quote": "..." }` — external: the place is required; the
-  revision is required for a claim about a checked version, and the quote is what makes the claim travel without
-  the file. A source named but unreachable, or external without a quote, is a warning, not a fault.
+- `{ "at": "logs/test.txt:12", "revision": "abc123", "quote": "..." }` — external: the place is required, a file
+  beside the record or a place in the repository at the state `range` names; the revision is required for a claim
+  about a checked version, and the quote is what makes the claim travel without the file. A ref that names nothing is
+  a fault; an external source without a quote is a warning.
 
 A source shows the claim. A ref to the entry that makes it — a question cited for its own variant's consequence, a
 screen for its own provenance — says only where the claim stands, and the check refuses it.
@@ -299,8 +301,8 @@ A review of a new revision of a change already reviewed and answered starts from
 previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
 review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
 previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
-and the checking agents can read them. Cite them by `at` with a quote — the record by file and line, the export by
-its file alone, since it is one line of JSON — because a `ref` resolves in this record. The export's
+and the checking agents can read them. Cite them by `at` with a quote, by file and line — `previous/export.json:14`,
+`"item": "f2"` — because a `ref` resolves in this record. The export's
 keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
 only when its `record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the
 record does not hold is left out, and the response says so. A short review applies the same rules in its response.
@@ -316,7 +318,11 @@ record does not hold is left out, and the response says so. A short review appli
   <out>/review.json` takes over each previous block whose changed lines read the same, in the same order and found
   once: a block the previous record kept stays kept, marked `carried`, not read again; one it did not keep keeps its
   description and is judged again. The previous requirements come with them, by their ids, so a carried block serves
-  what it served; each is checked again, and the export's answers add their own. `previous` names the record they
+  what it served; each is checked again, and the export's answers add their own. So do the units and target units,
+  a unit the previous record did not keep left without a verdict to judge, the mechanisms with their carried blocks,
+  and each route whose every step was carried, renumbered; what pointed at the previous findings and questions is
+  this review's to write. The comparison inventory covers the whole diff: a key whose witnesses read as before keeps
+  the previous decision. `previous` names the record they
   came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
   carried block was judged on its own lines: where the change since touches its file, read it with that change. While
   the base and the requirements stand the independent target is not started again; the comparison pass, the critic

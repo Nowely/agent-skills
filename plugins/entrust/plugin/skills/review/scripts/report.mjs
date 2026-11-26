@@ -167,7 +167,7 @@ function carry(previousPath, target) {
     if (run.some((l) => taken.has(key(nf, l)))) return;
     run.forEach((l) => taken.add(key(nf, l)));
     const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
-    carriedBlocks.push({ at: [cur.files.indexOf(nf), nlines.indexOf(run[0])], block: { path: nf.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}),
+    carriedBlocks.push({ from: i + 1, at: [cur.files.indexOf(nf), nlines.indexOf(run[0])], block: { path: nf.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}),
       does: b.does ?? "", serves: b.serves ?? [], ...(b.unit ? { unit: b.unit } : {}), ...(b.kind ? { kind: b.kind } : {}), ...(b.verdict === "keep" ? { verdict: "keep", carried: true } : { verdict: "" }) } });
   });
   const rest = review.blocks.flatMap((b, j) => {
@@ -176,12 +176,25 @@ function carry(previousPath, target) {
     const of = (kind) => compact(mine.filter((l) => l.kind === kind).map(numberOf));
     return [{ at: [cur.files.indexOf(nf), changedLines(nf).indexOf(mine[0])], block: { path: b.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" } }];
   });
-  review.blocks = [...carriedBlocks, ...rest].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1]).map((x) => x.block);
+  const ordered = [...carriedBlocks, ...rest].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1]);
+  review.blocks = ordered.map((x) => x.block);
+  // The structure tied to the blocks comes with them, its block numbers renumbered: units and target units as they were
+  // named, a unit judged anew where the previous record did not keep it; mechanisms with the blocks that came over;
+  // routes whose every step came over. What pointed at the previous findings or questions is left for this review.
+  const renumber = new Map(ordered.map((x, i) => [x.from, i + 1]).filter(([from]) => from !== undefined));
+  const unjudged = ({ findings, questions, ...u }) => u.verdict === "keep" || u.existing ? u : { ...u, verdict: "", reason: "" };
+  review.units = (prev.units ?? []).map(unjudged);
+  review.target_units = prev.target_units ?? [];
+  review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
+    .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
+  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
+  if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
   review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => ({ id, text, source, ...(sources ? { sources } : {}), ...(permission ? { permission } : {}) }));
   review.previous = { record: path.relative(dir, path.resolve(previousPath)), sha256: createHash("sha256").update(prevBytes).digest("hex") };
   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
-  return { kept: carriedBlocks.filter((x) => x.block.carried).length, judge: carriedBlocks.filter((x) => !x.block.carried).length, fresh: rest.length };
+  return { kept: carriedBlocks.filter((x) => x.block.carried).length, judge: carriedBlocks.filter((x) => !x.block.carried).length, fresh: rest.length,
+    routes: [routes.length, (prev.routes ?? []).length] };
 }
 
 // The diff a record judges is the copy saved beside it, checked against its digest.
@@ -202,7 +215,7 @@ try {
     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
   } else if (command === "carry" && argument && process.argv[4]) {
     const made = carry(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements came with them, each to check again; add the ones the export's answers make, with new ids.`);
+    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again, judge the units marked with no verdict, and add what the export's answers make, with new ids.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));

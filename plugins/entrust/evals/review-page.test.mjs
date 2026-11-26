@@ -166,7 +166,6 @@ test("every class the stylesheet styles is one the page, its document, its highl
 test("the island carries what the runtime reads from the model: the kept blocks the check warns about, purposes and digests", () => {
   const record = structuredClone(THEMED);
   record.blocks[0].serves = [3];
-  record.questions[1].context = [{ text: "The reader converts on an assumed reading.", sources: [{ ref: "/requirements/2" }] }];
   const { html, model } = draw(record, diffText), island = islandOf(html);
   assert.deepEqual(island.unasked, { unlinked: [], assumed: [1] });
   assert.deepEqual(island.unasked, model.unasked);

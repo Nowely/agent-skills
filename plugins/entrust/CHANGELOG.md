@@ -38,6 +38,8 @@ forensics remain in the repository references and release notes.
   options — how the state arises and how often, how the nearest comparable code behaves, what each option changes
   for the user — and the card says what stayed out of reach. For a choice about an interface, other products are
   compared when the plan allows the web, and otherwise the card says that no outside comparison was made.
+- An external source may be a place in the repository, read at the state `range` names, as well as a file beside
+  the record: `check` no longer warns that such a place is not beside the record, only that a source has no quote.
 - An idea's text says what the code does now and why, what is proposed, the burden it removes and its cost, and may
   cite sources; its excerpt is labelled as the code as written.
 - **Breaking:** every block says what it does and why it is there, kept or not, or that no source gives a reason;
@@ -74,7 +76,10 @@ forensics remain in the repository references and release notes.
   came from by its digest, and `check` proves every carried block against it and its saved diff. The plan offers a
   continuation only when the previous review was whole, the base stayed or the change's own commits are unaltered,
   no manifest or lock file changed and no answer changed a requirement the previous analysis rested on, and names
-  what it skips. The previous requirements come with the carried blocks, by their ids, each to be checked again. The
+  what it skips. The previous requirements come with the carried blocks, by their ids, each to be checked again, and
+  so do the units and target units (a unit the previous record did not keep left to judge), the mechanisms with their
+  carried blocks and each route whose every step was carried, all renumbered; a comparison key whose witnesses read as
+  before keeps its previous decision. The
   printout and the page list the carried blocks, Coverage with «Show in Code». A revised record of the same diff is a
   continuation with nothing changed since: its page offers the answers this browser kept for the previous report on
   the items still unanswered that read the same in full — the question with its context, variants, consequences and

@@ -55,7 +55,6 @@ function render(name, record, diffBytes = diff, pictures = true) {
 // with blocks to keep and to fix.
 const record = structuredClone(THEMED);
 record.blocks[0].serves = [3];
-record.questions[1].context = [{ text: "The reader converts on an assumed reading of the task.", sources: [{ ref: "/requirements/2" }] }];
 // The first requirement also comes from the mockup the task names.
 record.requirements[0].sources = [...record.requirements[0].sources, { ref: "/screens/0" }];
 record.blocks[1].unit = "readArchive";
@@ -828,9 +827,11 @@ test("the export shows the preview and its two actions; the raw text opens on re
   }));
 
 // ---- requirements, pictures and recommendations (PR 109: C1, C8, C9, C10)
+// The themed record with a question that asks about its requirement to confirm.
+const ASKED_URL = render("asked", { ...structuredClone(record), questions: record.questions.map((q, i) => i === 1 ? { ...q, context: [{ text: "The reader converts on an assumed reading of the task.", sources: [{ ref: "/requirements/2" }] }] } : q) });
 test("Summary lists the established requirements apart from those to confirm, each with its origin, the words that state it and the question that asks about it",
   "a requirement only the author or the reviewer's reading supplied looked as binding as the task's",
-  cased(THEMED_URL + "#summary", {}, async (page) => {
+  cased(ASKED_URL + "#summary", {}, async (page) => {
     const heads = await page.locator("#summary-reqs + table tr.grp th").allInnerTexts();
     const r3 = await text(page, '[data-sel="req:3"]'), r1 = await text(page, '[data-sel="req:1"]');
     const order = await page.locator('#summary-reqs + table tr.selectable').evaluateAll((rows) => rows.map((r) => r.dataset.sel));

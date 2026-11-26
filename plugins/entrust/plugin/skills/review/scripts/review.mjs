@@ -130,6 +130,12 @@ export function compact(list) {
 // The page writes the language into <html lang> as Intl canonicalizes it, and Intl takes one well-formed tag.
 const languageTag = (value) => { if (typeof value !== "string") return false; try { Intl.getCanonicalLocales(value); return true; } catch { return false; } };
 
+// The requirements a question asks the owner about: those its context, variants, recommendation or zones cite.
+function askedAbout(review) {
+  return new Set((review.questions ?? []).flatMap((q) => [q.context, q.zones, q.recommendation && [q.recommendation], ...(Array.isArray(q.variants) ? q.variants.map((v) => v?.consequences) : [])]
+    .flatMap((list) => Array.isArray(list) ? list : []).flatMap((c) => Array.isArray(c?.sources) ? c.sources : [])
+    .map((x) => /^\/requirements\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map((i) => review.requirements[+i]?.id)));
+}
 // A review's name, which no other review has: the page keeps the owner's answers under it.
 export const keyOf = (review) => createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10);
 // Which block owns each changed line, by the blocks' own line lists, whatever else the record holds.
@@ -212,8 +218,6 @@ export function check(review, files, directory) {
         if (s.revision !== undefined && !text(s.revision)) errors.push(`${who}: a source's revision is empty`);
         if (s.quote !== undefined && !text(s.quote)) errors.push(`${who}: a source's quote is empty`);
         if (!text(s.quote)) warnings.push(`${who}: source "${s.at}" has no quote; it does not travel without the file`);
-        const place = /^(.+?):\d+(?:-\d+)?$/.exec(s.at);
-        if (place && /[./]/.test(place[1]) && !fs.existsSync(path.resolve(directory, place[1]))) warnings.push(`${who}: source "${s.at}" is named but not beside the record`);
       } else errors.push(`${who}: a source needs "ref" or "at"`);
     }
   };
@@ -553,9 +557,7 @@ export function check(review, files, directory) {
 
   // Code kept only for requirements to confirm stays because of a proposal nobody has accepted: a question names each
   // such requirement, so the owner confirms it or lets it go; one decision whose variants combine can ask for all of them.
-  const asked = new Set(qList.flatMap((q) => [q.context, q.zones, q.recommendation && [q.recommendation], ...(Array.isArray(q.variants) ? q.variants.map((v) => v?.consequences) : [])]
-    .flatMap((list) => Array.isArray(list) ? list : []).flatMap((c) => Array.isArray(c?.sources) ? c.sources : [])
-    .map((x) => /^\/requirements\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map((i) => review.requirements[+i]?.id)));
+  const asked = askedAbout(review);
   const unconfirmed = new Set();
   review.blocks.forEach((block) => {
     const served = (block.serves ?? []).map((id) => review.requirements.find((r) => r.id === id)).filter(Boolean);
@@ -633,7 +635,8 @@ export function modelOf(review, files, owner, directory) {
   // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked:
   // the check warns about both, and the page lists them for the reviewer.
   const kept = blocks.filter((b) => b.verdict === "keep");
-  const assumed = (b) => b.serves.length && b.serves.every((id) => !ESTABLISHED.has(review.requirements.find((r) => r.id === id)?.source));
+  const asked = askedAbout(review);
+  const assumed = (b) => b.serves.length && b.serves.every((id) => !ESTABLISHED.has(review.requirements.find((r) => r.id === id)?.source)) && b.serves.some((id) => !asked.has(id));
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
     unasked: { unlinked: kept.filter((b) => !b.serves.length).map((b) => b.id), assumed: kept.filter(assumed).map((b) => b.id) },
