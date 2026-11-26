@@ -135,19 +135,23 @@ its description. Take one of three routes; a change to this skill takes them too
    edit: its cases and statements, and whatever it runs on the skill as it is now.
 7. **Make the change.** Edit by [writing.md](references/writing.md). After each edit run
    `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the repository has them, its own
-   checks for skill pages, until they pass.
+   checks for skill pages, until they pass. A failure that the files as they were also show is not this
+   edit's: record it as the repository records a defect found in passing, and go on.
 8. **Show that no line was lost.** After the last edit, run
    `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
    the skill's, or the folder of skills when the change spans several. The base is step 4's revision or copy.
-   The file is one in the run directory; write it when a line is listed. Each listed line stood in the files
-   before and stands nowhere now. For each, do the first of these that is true:
-   - its fact is still stated, in other words or another file: answer it with
-     `moved | <file>:<line as printed> | <file>:<line where it stands now> | <the words there>`. A copy that
-     contradicted the file that owns the fact is answered the same way, with the owner's line: the owner's
-     value stands;
+   The file is one in the run directory; it need not exist yet. Each listed line stood in the files before and
+   stands nowhere now, and under it the script prints the line to fill. For each, do the first of these that
+   is true:
+   - its facts are still stated, in other words or another file: fill one printed `moved` line for each place
+     a fact of it went, with that place and words copied from it, not your own. A line that held two facts
+     takes two. A copy that contradicted the file that owns the fact takes the owner's line: the owner's value
+     stands;
    - the user's own words ask for it to go: answer it with
-     `retired | <file>:<line as printed> | <file>:<line of their saved message> | <their words>`;
+     `retired | <the same first place> | <file>:<line of their saved message> | <their words>`;
    - neither: put the line back, or move it to the file that owns the fact.
+
+   A line of the file that starts with `#` is a note.
 
    Run it again until it exits 0. Your own judgement that a fact is not needed retires nothing.
 9. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)

@@ -46,12 +46,16 @@ const inside = (dir, p) => p.startsWith(dir + path.sep);
 
 // A skill to check. `bound` is the directory the walk stays inside, the skill's folder unless the caller widens
 // it; `follows` says whether the walk reads a linked markdown file, and `skips` names a directly linked file that
-// is held to no rule. `installed` is the directory an install copies the skill with: the folder that holds the
-// skill and its neighbours, unless the caller names a wider one. A repository's suite passes its own four.
+// is held to no rule. `installed` is the directory an install copies the skill with, unless the caller names
+// one: the folder that holds the skill and its neighbours, or, for a skill at `<plugin>/skills/<name>/` whose
+// plugin folder holds Claude Code's manifest `.claude-plugin/plugin.json`, that plugin folder, which a plugin
+// install copies whole. No other host's plugin layout is recognised. A repository's suite passes its own four.
 export function skillAt(dir, { bound, follows, skips, installed } = {}) {
   const root = path.resolve(dir), file = path.join(root, "SKILL.md");
+  const beside = path.dirname(root), plugin = path.dirname(beside);
+  const whole = path.basename(beside) === "skills" && fs.existsSync(path.join(plugin, ".claude-plugin", "plugin.json"));
   const skill = { name: path.basename(root), dir: root, file, bound: bound ?? root, skips: skips ?? (() => false),
-    installed: installed ?? path.dirname(root) };
+    installed: installed ?? (whole ? plugin : beside) };
   skill.follows = follows ?? ((dest) => inside(skill.bound, dest));
   return skill;
 }
@@ -322,12 +326,22 @@ export function rules(skills, rel = (p) => p) {
 // The first place is the candidate's, as printed. The second is where the quote stands, within five lines from
 // the one named: for `moved` a file under `dir` or beside it, by a path relative to `dir`, and the quote shares a
 // word of four letters or more with the lost line; for `retired` a file outside `dir` that holds the user's
-// messages, by a path relative to the dispositions file. `#` starts a comment line. The script cannot tell whether
-// a quote still says what the lost line said, nor whether the messages file is the user's.
+// messages, by a path relative to the dispositions file. `#` starts a comment line.
+//
+// A lost line may take several `moved` lines, one for each place a part of it went, and together they must
+// carry it: cut at each table bar, semicolon and sentence end, every part of the lost line that has a word of
+// four letters or more outside its code spans shares such a word with one of the quotes. A `retired` line
+// answers the whole line. So a row that held two facts is not answered by the place of one. A code span is left
+// out because a copy that contradicted its owner is answered with the owner's line, whose value differs. The
+// script cannot tell whether a quote still says what the lost line said, whether two facts inside one part both
+// went somewhere, nor whether the messages file is the user's.
 const collapse = (s) => s.replace(/\]\([^)\s]*\)/g, "]").replace(/[\s`*|]+/g, " ").trim().toLowerCase();
 const onlyLinks = (line) => !/[\p{L}\p{N}]/u.test(line.replace(/\[[^\]]*\]\([^)]*\)/g, ""));
 const WORD = /[\p{L}][\p{L}'’-]*/gu;
 const longWords = (s) => new Set((collapse(s).match(WORD) ?? []).filter((w) => w.length >= 4));
+// The parts of a line that a disposition must carry, each as its words of four letters or more.
+const parts = (line) => line.replace(/`[^`\n]*`/g, " ").split(/[|;]|[.!?](?=\s|$)/)
+  .map((part) => ({ text: part.trim(), words: longWords(part) })).filter((part) => part.words.size);
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
   stdio: ["ignore", "pipe", "ignore"] });
 
@@ -364,7 +378,7 @@ function oneSlip(a, b) {
   const x = a.slice(i, a.length - j), y = b.slice(i, b.length - j);
   return (x.length <= 1 && y.length <= 1) || (x.length === 2 && y.length === 2 && x[0] === y[1] && x[1] === y[0]);
 }
-const parts = (token) => token.match(/^([^\p{L}]*)([\p{L}][\p{L}'’-]*)?([^\p{L}]*)$/u);
+const letters = (token) => token.match(/^([^\p{L}]*)([\p{L}][\p{L}'’-]*)?([^\p{L}]*)$/u);
 // Does `now`, a file's words, hold `was`, a line's words, but for one misspelt word that `words` no longer has?
 function respelt(was, now, words) {
   scan: for (let at = 0; at + was.length <= now.length; at++) {
@@ -375,7 +389,7 @@ function respelt(was, now, words) {
       slip = k;
     }
     if (slip < 0) return true;
-    const a = parts(was[slip]), b = parts(now[at + slip]);
+    const a = letters(was[slip]), b = letters(now[at + slip]);
     if (a?.[2] && b?.[2] && a[1] === b[1] && a[3] === b[3] && a[2].length >= 4 && oneSlip(a[2], b[2]) && !words.has(a[2]))
       return true;
   }
@@ -388,14 +402,15 @@ function answers(file) {
     if (!line.trim() || line.trim().startsWith("#")) return;
     const m = line.match(/^\s*(moved|retired)\s*\|\s*(\S+):(\d+)\s*\|\s*(\S+):(\d+)\s*\|\s*(.+?)\s*$/);
     if (!m) return void problems.push(`line ${i + 1} is neither \`moved | <file>:<line> | <file>:<line> | <quote>\` nor \`retired | ...\``);
-    const quote = m[6].replace(/^"(.*)"$/, "$1");
-    found.set(`${m[2]}:${m[3]}`, { kind: m[1], file: m[4], line: Number(m[5]), quote, at: i + 1 });
+    const quote = m[6].replace(/^"(.*)"$/, "$1"), id = `${m[2]}:${m[3]}`;
+    found.set(id, [...(found.get(id) ?? []), { kind: m[1], file: m[4], line: Number(m[5]), quote, at: i + 1 }]);
   });
   return { found, problems };
 }
 
-// The lines of `dir` at `base` that nothing carries now: `lost` have no answer, `answered` have a disposition that
-// holds, and `problems` says why a disposition does not. Changes nothing.
+// The lines of `dir` at `base` that nothing carries now: `lost` have no answer that holds, each with the `parts`
+// its `moved` lines leave uncarried; `answered` have dispositions that hold and carry them; `problems` says why
+// a disposition does not hold. A dispositions file that does not exist is read as empty. Changes nothing.
 export function preserved(dir, base, dispositions) {
   const root = path.resolve(dir);
   const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
@@ -403,7 +418,24 @@ export function preserved(dir, base, dispositions) {
   const texts = markdownUnder(bound).map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
-  const { found, problems } = dispositions ? answers(dispositions) : { found: new Map(), problems: [] };
+  const { found, problems } = dispositions && fs.existsSync(dispositions) ? answers(dispositions)
+    : { found: new Map(), problems: [] };
+  const within = (outer, p) => p === outer || inside(outer, p);
+  // Why one disposition for `line` does not hold, or null.
+  const refused = (answer, line) => {
+    const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
+    const place = path.resolve(from, answer.file), quote = collapse(answer.quote);
+    const window = fs.existsSync(place) && fs.statSync(place).isFile()
+      ? collapse(read(place).split("\n").slice(answer.line - 1, answer.line + 4).join("\n")) : null;
+    const shared = [...longWords(line)].some((w) => longWords(answer.quote).has(w));
+    return window === null ? `${answer.file} is not a file`
+      : quote.length <= 12 ? "the quote is too short to find"
+      : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
+      : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
+      : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
+      : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
+      : null;
+  };
   const lost = [], answered = [];
   for (const [rel, text] of before(root, base)) {
     const same = path.join(root, rel);
@@ -411,22 +443,16 @@ export function preserved(dir, base, dispositions) {
     text.split("\n").forEach((line, i) => {
       const was = collapse(line);
       if (was.length <= 12 || onlyLinks(line) || now.includes(was) || respelt(was.split(" "), here, words)) return;
-      const id = `${rel}:${i + 1}`, answer = found.get(id), candidate = { id, text: line.trim() };
-      if (!answer) return void lost.push(candidate);
-      const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
-      const place = path.resolve(from, answer.file), quote = collapse(answer.quote);
-      const within = (outer, p) => p === outer || inside(outer, p);
-      const window = fs.existsSync(place) && fs.statSync(place).isFile()
-        ? collapse(read(place).split("\n").slice(answer.line - 1, answer.line + 4).join("\n")) : null;
-      const shared = [...longWords(line)].some((w) => longWords(answer.quote).has(w));
-      const why = window === null ? `${answer.file} is not a file`
-        : quote.length <= 12 ? "the quote is too short to find"
-        : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}`
-        : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
-        : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
-        : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
-        : null;
-      if (why) { problems.push(`line ${answer.at}, for ${id}: ${why}`); lost.push(candidate); } else answered.push(candidate);
+      const id = `${rel}:${i + 1}`, given = found.get(id) ?? [], candidate = { id, text: line.trim(), parts: [] };
+      if (!given.length) return void lost.push(candidate);
+      const bad = given.map((answer) => [answer, refused(answer, line)]).filter(([, why]) => why);
+      for (const [answer, why] of bad) problems.push(`line ${answer.at}, for ${id}: ${why}`);
+      if (bad.length) return void lost.push(candidate);
+      if (!given.some((answer) => answer.kind === "retired")) {
+        const carried = new Set(given.flatMap((answer) => [...longWords(answer.quote)]));
+        candidate.parts = parts(line).filter((part) => ![...part.words].some((w) => carried.has(w))).map((part) => part.text);
+      }
+      (candidate.parts.length ? lost : answered).push(candidate);
     });
   }
   return { lost, answered, problems };
@@ -449,29 +475,38 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
     if (args[i] === "--against" || args[i] === "--dispositions") option[args[i].slice(2)] = args[++i] ?? "";
     else dirs.push(args[i]);
   }
-  const usage = () => {
-    console.error("usage: node check.mjs <skill-directory> [<skill-directory> ...]\n"
+  const usage = (refused) => {
+    console.error(`check.mjs: ${refused}\n`
+      + "usage: node check.mjs <skill-directory> [<skill-directory> ...]\n"
       + "       node check.mjs <directory> --against <revision or directory> [--dispositions <file>]");
     process.exit(2);
   };
-  if (!dirs.length || dirs.some((d) => d.startsWith("-")) || Object.values(option).includes("")) usage();
+  for (const [name, value] of Object.entries(option)) if (value === "") usage(`--${name} needs a value after it`);
+  const unknown = dirs.find((d) => d.startsWith("-"));
+  if (unknown) usage(`${unknown} is not an option; the options are --against and --dispositions`);
+  if (!dirs.length) usage("no directory was named");
   if ("against" in option) {
-    if (dirs.length !== 1 || !fs.existsSync(dirs[0])) usage();
-    if (option.dispositions && !fs.existsSync(option.dispositions)) usage();
+    if (dirs.length !== 1) usage(`--against takes one directory, and ${dirs.length} were named: ${dirs.join(", ")}`);
+    if (!fs.existsSync(dirs[0])) usage(`${dirs[0]} does not exist`);
     let result;
     try { result = preserved(dirs[0], option.against, option.dispositions); }
-    catch (error) { console.error(error.message); process.exit(2); }
-    const { lost, answered, problems } = result;
-    for (const c of lost) console.log(`LOST  ${c.id}: ${c.text}`);
-    for (const p of problems) console.log(`BAD   ${option.dispositions}: ${p}`);
-    if (lost.length) console.log("      Put the fact back, or answer each line in the dispositions file with one of:\n"
-      + "      moved   | <file>:<line as printed> | <file>:<line where it stands now> | <the words that carry it there>\n"
-      + "      retired | <file>:<line as printed> | <file>:<line of the user's saved message> | <the user's words>");
+    catch (error) { usage(error.message); }
+    const { lost, answered, problems } = result, file = option.dispositions;
+    if (file && !fs.existsSync(file)) console.log(`note  ${file} does not exist yet and is read as empty; write the answers there`);
+    for (const c of lost) {
+      console.log(`LOST  ${c.id}: ${c.text}`);
+      if (c.parts.length) console.log(`      no \`moved\` line carries: ${c.parts.join(" / ")}\n      add a line for the place that part went:`);
+      console.log(`      moved | ${c.id} | <file>:<line where it stands now> | <words copied from that place>`);
+    }
+    for (const p of problems) console.log(`BAD   ${file}: ${p}`);
+    if (lost.length) console.log(`      Put each lost line back, or answer it in ${file ?? "a file named after --dispositions"}: fill a line`
+      + " printed above for each place a part of it\n      went, or, when the user asked for it to go:\n"
+      + `      retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>`);
     console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
       + `${answered.length} answered by a disposition`);
     process.exit(lost.length || problems.length ? 1 : 0);
   }
-  if ("dispositions" in option) usage();
+  if ("dispositions" in option) usage("--dispositions is read only with --against");
   let failed = 0;
   for (const dir of dirs) {
     const skill = skillAt(dir);

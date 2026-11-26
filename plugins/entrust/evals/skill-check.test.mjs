@@ -182,6 +182,81 @@ test("a lost line passes only with a disposition whose quote stands at the place
     );
   });
 
+test("a line that held two facts needs a disposition for each place, and every line given for it is checked",
+  "a pilot session answered a row of two facts with the place of one, the script took the last line given and passed, and the second fact was gone",
+  () => {
+    const TWO = "| `max` | the hardest problems; delegating to its own threads is the model's choice |\n";
+    const id = "references/effort.md:10";
+    const was = { "references/effort.md": EFFORT + TWO };
+    const after = { "references/effort.md": EFFORT,
+      "references/models.md": BEFORE["references/models.md"] + "\n`max` suits the hardest problems.\n\nThe model may delegate to threads of its own at any effort.\n" };
+    const first = `moved | ${id} | references/models.md:5 | \`max\` suits the hardest problems\n`;
+    const second = `moved | ${id} | references/models.md:7 | The model may delegate to threads of its own\n`;
+    const t = edited(after, { "d.md": first }, was);
+    const one = preserved(t.dir, t.base, path.join(t.run, "d.md"));
+    return all(
+      lostIn("one place for two facts", edited(after, { "d.md": first }, was), [id], "d.md"),
+      JSON.stringify(one.lost[0]?.parts) === JSON.stringify(["delegating to its own threads is the model's choice"])
+        || `the uncarried part: ${JSON.stringify(one.lost[0]?.parts)}`,
+      lostIn("a place for each fact", edited(after, { "d.md": first + "# a note\n" + second }, was), [], "d.md"),
+      lostIn("a good line, then one whose quote does not stand", edited(after, { "d.md": first + second.replace("delegate", "hand over") }, was), [id], "d.md"),
+      lostIn("the same two in the other order", edited(after, { "d.md": second.replace("delegate", "hand over") + first }, was), [id], "d.md"),
+      lostIn("retired whole by the user's words", edited(after, { "messages.md": "Drop the max row.\n",
+        "d.md": `retired | ${id} | messages.md:1 | Drop the max row.\n` }, was), [], "d.md"),
+    );
+  });
+
+test("a dispositions file that does not exist yet is read as empty, and a refused call says what it refused",
+  "both pilot sessions named the file the page told them to name before writing it, got the bare usage text, and spent calls reading the script to learn why",
+  async () => {
+    const run = async (...args) => {
+      const r = await spawnNode([CHECK, ...args], { killAfterMs: 30_000 }).done;
+      return `${r.code} ${r.out}${r.err}`;
+    };
+    const t = edited(noLow);
+    const missing = await run(t.dir, "--against", t.base, "--dispositions", path.join(t.run, "not-yet.md"));
+    const two = await run(t.dir, t.base, "--against", t.base);
+    const noValue = await run(t.dir, "--against");
+    const alone = await run(t.dir, "--dispositions", path.join(t.run, "d.md"));
+    const noBase = await run(t.dir, "--against", path.join(t.run, "nowhere"));
+    return all(
+      /^1 /.test(missing) && /not-yet\.md does not exist yet and is read as empty/.test(missing)
+        && missing.includes(`      moved | ${LOW} | <file>:<line where it stands now> |`) || `missing file: ${missing}`,
+      /^2 /.test(two) && /--against takes one directory, and 2 were named/.test(two) || `two directories: ${two}`,
+      /^2 /.test(noValue) && /--against needs a value/.test(noValue) || `no value: ${noValue}`,
+      /^2 /.test(alone) && /--dispositions is read only with --against/.test(alone) || `alone: ${alone}`,
+      /^2 /.test(noBase) && /neither a directory nor a revision/.test(noBase) || `no base: ${noBase}`,
+    );
+  });
+
+test("a skill in a Claude Code plugin may link the plugin's own files, and a skill outside one may not link above its neighbours",
+  "the rule failed an untouched skill whose page links its plugin's README, which a plugin install copies, and a pilot session spent a fifth of its cost on that failure",
+  () => {
+    const at = (manifest) => {
+      const plugin = path.join(TMP, String(++n), "plug"), dir = path.join(plugin, "skills", "sample");
+      const files = { ...CLEAN, "SKILL.md": page(`name: sample\n${DESC}`, "Read [the table](references/table.md) and [the install page](../../README.md).\n") };
+      for (const [rel, text] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+        fs.writeFileSync(path.join(dir, rel), text);
+      }
+      fs.writeFileSync(path.join(plugin, "README.md"), "# Install\n");
+      if (manifest) {
+        fs.mkdirSync(path.join(plugin, ".claude-plugin"));
+        fs.writeFileSync(path.join(plugin, ".claude-plugin", "plugin.json"), "{}\n");
+      }
+      return dir;
+    };
+    const inPlugin = at(true);
+    const leaving = at(true);
+    fs.writeFileSync(path.join(leaving, "..", "..", "..", "notes.md"), "# Notes\n");
+    fs.writeFileSync(path.join(leaving, "SKILL.md"), page(`name: sample\n${DESC}`, "Read [the table](references/table.md) and [the notes](../../../notes.md).\n"));
+    return all(
+      expect("under a plugin with a manifest", inPlugin, []),
+      expect("under a folder named skills with no manifest", at(false), [12]),
+      expect("a link out of the plugin", leaving, [12]),
+    );
+  });
+
 test("a revision of a git repository serves as the state before the edit",
   "a skill kept in a repository has its earlier state there, and a run that had to copy the folder first would skip the step",
   () => {
