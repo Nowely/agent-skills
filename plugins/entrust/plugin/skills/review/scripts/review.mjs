@@ -63,7 +63,7 @@ export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "questi
 export const QUESTION_KINDS = ["decision", "fact", "evidence"];
 export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
 // Who raised a point against the draft, and what the review did with it.
-export const CHALLENGERS = ["target", "critic", "verifier"];
+export const CHALLENGERS = ["target", "critic", "verifier", "reviewer"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
@@ -328,6 +328,8 @@ export function check(review, files, directory) {
     if (!OUTCOMES.includes(c.outcome)) errors.push(`${who}: outcome is one of ${OUTCOMES.join(", ")}`);
     for (const field of ["point", "note"]) if (!text(c[field])) errors.push(`${who} has no "${field}"`);
     if (c.outcome === "rejected" && !text(c.at)) errors.push(`${who} is rejected and "at" cites no place that refutes it; name the place, or send it to the owner`);
+    // The reviewer's own candidate is recorded only when it was set aside: one that holds is a finding, a question or an idea.
+    if (c.from === "reviewer" && c.outcome !== "rejected") errors.push(`${who} is the reviewer's own candidate: record it only when you set it aside on a place, as rejected; one that holds is a finding, a question or an idea`);
   });
 
   (review.screens ?? []).forEach((screen, index) => {

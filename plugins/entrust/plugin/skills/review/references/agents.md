@@ -52,7 +52,9 @@ Brief:
 > arrangement and walk one change grounded in the task through both, the places edited and the code read in each.
 > Look both ways: what the draft keeps that should change (a structure, a mechanism something already provides, a
 > missed defect or test gap), and what it proposes that should not (a change that removes no burden, adds a boundary
-> or loses required behavior). Where you found nothing to argue, say so.
+> or loses required behavior). Open the saved diff (`<out>/review.diff`) for the code the draft keeps without comment
+> and name each construct there you would not have written, with the burden it carries, by the leads of the design
+> standard. Where you found nothing to argue, say so.
 
 ## Verifier
 

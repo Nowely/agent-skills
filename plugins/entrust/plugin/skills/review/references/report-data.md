@@ -180,7 +180,9 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   call, a return, an event, a stored value — with its place. Order, roles and connections are not in the diff, so the
   reviewer writes them; the page lets the owner walk a route with its code beside it.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
-  between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
+  between the two targets is from `target`; for a point two raise, the first, the note naming the other; `reviewer`
+  for a candidate of your own you set aside on a place in the code, always `rejected`, so the owner sees it was
+  considered), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
   the note quotes it. For `owner`, the note names the fact, evidence or decision that would settle it and what depends on it.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
@@ -228,7 +230,11 @@ A question is a card: `decision` (a choice), `fact` (a fact to settle) or `evide
 obtain). The required `kind` comes from what the question asks, never from its number. The required `text` and
 `at` give the question and place; the card can also include:
 
-- `resolver`: the role that answers, when naming one helps; questions group by kind first.
+- `resolver`: the role that answers, when naming one helps; questions group by kind first. Where you have a
+  concrete reason to doubt that this analysis suffices — a dependency you could not read, a design judgement the
+  targets or the critic dispute and the code does not settle — an `evidence` card whose resolver is another reviewer
+  or model asks for one: what is uncertain, which code or question needs the look, and why it may help. Its return is
+  evidence to check, never a verdict.
 - `context`: self-contained facts — what happens now, how the state in question arises and what is known of how
   often, how the nearest comparable code behaves, what was before or in the mockup, what the owner already decided,
   the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`. For a choice

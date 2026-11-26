@@ -187,6 +187,14 @@ test("the printout lists each route's steps in order, each with its block, place
     return route && req || out.slice(0, 1600);
   });
 
+test("a candidate the reviewer set aside on a place is recorded as its own, so the owner sees it was considered",
+  "a smell another model raised could not be told apart: missed, set aside, or recorded where no one looks",
+  () => {
+    const done = render((r) => { r.challenges.push({ from: "reviewer", point: "The reader finds the display by its CSS class.", outcome: "rejected", at: "src/invoices/archive.js:4", note: "It reads its own rows; no class is involved." }); });
+    if (done.status !== 0) return done.stderr;
+    return /4\. reviewer's own candidate: The reader finds the display by its CSS class\. Rejected: .*src\/invoices\/archive\.js:4/.test(done.stdout) || done.stdout.slice(done.stdout.indexOf("## Challenges"), done.stdout.indexOf("## Challenges") + 600);
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
@@ -461,6 +469,7 @@ test("a review that does not match the diff is refused, every fault is listed, a
         recommendation: { text: "Probably A.", sources: [{ ref: "/requirements/0" }] } }]; }, "question 1 recommendation names no variant: name the one you recommend, or open its text with «No clear recommendation»"],
       [(r) => { r.ideas[0].sources = [{ ref: "/ideas/0" }]; }, 'idea 1: source ref "/ideas/0" is the entry that makes the claim'],
       [(r) => { delete r.blocks[0].does; }, 'block 1 has no "does": say what it does and why it is there'],
+      [(r) => { r.challenges.push({ from: "reviewer", point: "The guard looks like a hack.", outcome: "owner", note: "Unsure." }); }, "challenge 4 is the reviewer's own candidate: record it only when you set it aside on a place, as rejected"],
       [(r) => { r.routes[0].steps = [r.routes[0].steps[0]]; }, "route 1 has fewer than two steps"],
       [(r) => { delete r.routes[0].steps[1].via; }, 'route 1 step 2 has no "via": how it gets what step 1 produced'],
       [(r) => { r.routes[0].steps[0].block = 9; }, "route 1 step 1 names block 9, which is not listed"],

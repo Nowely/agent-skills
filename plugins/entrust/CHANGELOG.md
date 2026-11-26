@@ -57,6 +57,14 @@ forensics remain in the repository references and release notes.
   or a removed and an added line is refused with a word, never placed by guess. A comment on a line is still one per
   line — a selection's is its last line's. **Breaking:** the export is schema 8, its comments carrying `end`, `from`,
   `to` and `quote` where a selection gave them; what the page stores reads as before.
+- The Design direction sweeps the changed code, kept blocks included, for the design standard's leads — reaching
+  into another unit's internals, a workaround and its marks, generality with one user, a second way to do what the
+  project already does, an old path kept beside a new default — and checks each before it is anything. A candidate set
+  aside on a place is recorded as a challenge from `reviewer`, always rejected, so Details › Challenges shows it was
+  considered; one that holds is a finding, a question or an idea, and a construct kept at a cost the owner may not
+  want goes to them as an idea. The critic opens the saved diff for the code the draft keeps without comment. Where
+  the reviewer has a concrete reason to doubt its analysis suffices, an evidence card asks for another reviewer or
+  model, saying what is uncertain and why another look may help.
 
 ## 0.47.2 — 2026-11-24
 
