@@ -30,8 +30,16 @@ verdicts. Commits are on `claude/wonderful-clarke-dcuqt2` over `aa40ba0` (entrus
 | S, quality 2 | `456a575` | Fable, fresh, second read | change, 10 objections (5 behavioural); fixed in `1ca6e90`; addendum 2 closes Part S without a third read |
 | freeze of the candidate | `1ca6e90` | — | case drawn for Part A: E104 |
 | A | 4 sessions on E104 | 4 Sonnet verifiers; Opus blind reader; the operator's grep | Back to design: both page sessions lost rows of `parity.md`'s effort table; settled questions asked 1 per page session, 2 per control; stops by the page 1, control 2; overhead 1.25 |
-| R | 6 sessions on the run's opening | Opus blind reader; every mark opened by a Sonnet checker (58 of 62 confirmed) | Undecided: page sessions 12 and 12, controls 10 and 10, vendor 10 and 10 of 13 |
+| R | 6 sessions on the run's opening | Opus blind reader; every mark opened by a Sonnet checker (58 of 62 confirmed) | Undecided (strictly counted: Back to design): page sessions 12 and 12, controls 10 and 10, vendor 10 and 10 of 13 |
 | B | — | — | not run |
+
+Deviations found by an audit of the run after the record was first written, each checked at its place:
+Addendum 2 closed Part S after the second read's result was seen, under a protocol that says a result never
+changes it, and no fresh agent read the last fixes; the protocol makes Part B's harness change part of the
+candidate, and the candidate was frozen without it and without a decision recorded before the freeze; the delivery
+record the protocol asks for (which skill files each page session read) was taken for Part R and not for Part A
+until the digests supplied it; and Part R's reader counted a decision stated in part as shown, a convention the
+protocol does not define (counted strictly, Part R is Back to design, see the README).
 
 Part A's operator recorded three deviations: report paths under each session's own state directory, edits by
 accepted Bash so stops were counted over answers, and Bash writes inside the clone accepted in every arm. Part R's

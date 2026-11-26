@@ -9,7 +9,9 @@ approach and the text, and change a skill by a measured, keep-or-revert step?
 (a pending change, with the page and without) returned **Back to design**: both sessions that followed the page
 lost page facts while merging duplicates. Part R (a replay of this run's opening) returned **Undecided**: both
 skill sessions scored 12 of 13 and raised the three decisions the owner called fundamental, but the controls
-scored 10, a margin of 2 where the rule asks for 3. Part B (selection) did not run: the harness change it needs is
+scored 10, a margin of 2 where the rule asks for 3. That count lets a decision stated in part count as shown,
+a convention the reader set and the protocol does not define; counted strictly, the decision on how a skill's text
+is written (D7) is absent in both skill sessions, which the rule makes **Back to design**. Part B (selection) did not run: the harness change it needs is
 not built. The owner decides what happens next; this record adds no recommendation after the fact.
 
 ## What was built
@@ -40,11 +42,11 @@ Claude run on Sonnet through entrust's launcher; readers on Opus; Part S's criti
 |---|---|---|
 | S | architecture critic (Fable, keep); two quality reads (Fable, change: 12, then 10 objections); a Sonnet verifier | closed after the second read's fixes (protocol addendum 2): paper rounds did not converge, each read found a new class |
 | C | two walks of the pages, create and change, by Sonnet | no open halt after the fix round; one defect found in passing, E169 |
-| R | 6 sessions (2 with the page, 2 controls, 2 with Anthropic's skill-creator), one blind reader, every mark opened at its place | **Undecided**: s1 12, s2 12, controls 10 and 10, vendor 10 and 10 (of 13) |
+| R | 6 sessions (2 with the page, 2 controls, 2 with Anthropic's skill-creator), one blind reader, every mark opened at its place | **Undecided**; strictly counted, Back to design: s1 12, s2 12, controls 10 and 10, vendor 10 and 10 (of 13) |
 | A | case E104, 4 sessions (2 with the page, 2 without), 4 verifiers, one blind reader | **Back to design**: both page sessions lost rows of `parity.md`'s effort table (level 3, by grep of each final tree) |
 | B | — | not run: the trigger harness is bound to terse's `clarity` |
 
-Costs reported by the launcher: Part C 0.73 USD, Part R 5.88, Part A's sessions 1.53; native readers, critics and
+Costs reported by the launcher: Part C 0.73 USD, Part R 5.88, Part A's sessions 1.52; native readers, critics and
 verifiers run inside the coordinator's session and have no dollar figure.
 
 ## What the test cannot show, and what it found beside the verdicts
@@ -69,6 +71,6 @@ the trace does not show that opening it would have changed the edit.
 
 ## For the next design round
 
-Part A's failure is the page's own: it has a "nothing lost" check for merged duplicates and neither page session
-performed it. Part R's open items are the decisions no arm raised (adapters, who writes, fetching a missing source)
+Part A's failure is the page's route: it has a "nothing lost" check for merged duplicates, two links from the
+Change route, and neither page session opened the file that holds it. Part R's open items are the decisions no arm raised (adapters, who writes, fetching a missing source)
 and a replay that does not hand the skill sessions the answer in their tree.
