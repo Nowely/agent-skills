@@ -18,7 +18,7 @@ host transports user messages and Claude's replies.
 |---|---|---|---|
 | coordinator | the main session: what it owns and may do is [the orchestrate page's contract](../SKILL.md#the-contract); it decides when a result lands, which a worker applies and the verifier checks ([results.md](results.md#a-worktree-agents-harvest)) | its card, briefs, decision log and draft under its temporary directory | the answer |
 | worker | one deliverable by file ownership, in the live tree or a worktree, or the harvest of an approved worktree result; writes its own tests and runs its checks as [Checks](#checks) says; how it writes is [its section](#the-worker) | its owned files, or its worktree, harvested as a diff | the diff, with the counts of what ran and its ledger's path, and in `open` its additions: each concept the diff adds, with the request's words that require it or `none`, and the existing code it searched and why that did not serve; commits only with existing authority and runtime permission |
-| plan critic | judges the plan as written, as [its section](#the-plan-critic) says | nothing | `result`: the verdict `sound`, `change` or `stop`, at most five ranked objections, what the plan can drop, and the acceptance checks the verifier should run; on [its second read](#its-second-read), the additions the request does not require |
+| plan critic | judges the plan as written, as [its section](#the-plan-critic) says; briefed for [its second read](#its-second-read), reads the combined diff for what can go, by that subsection alone and without a card | nothing | `result`: the verdict `sound`, `change` or `stop`, at most five ranked objections, what the plan can drop, and the acceptance checks the verifier should run; on [its second read](#its-second-read), the additions the request does not require |
 | architecture critic | challenges the chosen approach and the solution's architecture, as [its section](#the-architecture-critic) says | nothing | `result`: the verdict `keep`, `change approach` or `stop`; at most five ranked objections; on `change approach`, the alternative in a few lines, with what it removes or moves and who relies on it; and what evidence would change the verdict |
 | verifier | checks the final combined tree, or for read-only work the claims of the workers' findings, against the requirements, as [its section](#the-verifier) says | its ledger and logs under its temporary directory | `evidence`: a requirement → evidence table, and each of the plan critic's objections marked by whether the check it named failed; `open`: the unverified parts |
 
@@ -31,7 +31,8 @@ request asks and no more. Before returning, it checks each independently removab
 or necessary consumer it serves and what would be lost without it. It removes changes that serve neither; when the
 need or consequence is unknown, it reports the question in `open`. A problem it notices outside the request it
 does not fix: it goes into `open` with its path:line, what is wrong and what leaving it costs. When the task cannot
-be done without it, the worker returns `blocked` with the same description.
+be done without it, the worker returns `blocked` with the same description. When it corrects its own work and
+that is cheap, its fix comes with a test it ran before the fix and after, both runs in its ledger.
 
 ### The plan critic
 
@@ -46,14 +47,15 @@ gives the smallest fix to the plan. Only a gap that affects correctness, ownersh
 
 #### Its second read
 
-When a worker's diff adds a concept, as the [default team](../SKILL.md#the-default-team)'s architecture row
-defines one, the coordinator continues the critic's thread, or briefs it fresh where one worker's plan ran
-without it, with the user's request verbatim, the diff's path and
-the worker's additions as claims to check, never the rest of the worker's return. It reads for what can go, and
+When any worker's diff adds a concept, as the [default team](../SKILL.md#the-default-team)'s architecture row
+defines one, the coordinator briefs one fresh plan critic, never the thread that judged the plan, once the last
+worker has returned, with the user's request verbatim, the combined diff's path and the workers' additions as
+claims to check, never the rest of a worker's return. That critic follows this subsection, not the section above,
+and gets no card. It reads for what can go, and
 leaves behaviour to the verifier: what the diff adds that the request does not ask for; for each new mechanism,
 the existing code that already does it, by path:line; the smallest change that meets the request, against the
 diff's size. It runs nothing. For each addition it doubts it asks one question: which requirement or test fails
-without this? The worker's thread, continued, answers by quoting the requirement or naming a test of a
+without this? The thread of the worker that added it, continued, answers by quoting the requirement or naming a test of a
 requirement, or removes the addition and re-runs its checks. One round.
 
 ### The architecture critic
@@ -81,8 +83,10 @@ requirement, and reads the diff for what the change removed, moved or narrowed a
 outside the change that fails a requirement is reported as such; any other defect it notices goes separately in
 `open` with its evidence. It does not search for defects outside the change. It marks each of the plan critic's objections by
 whether the check it named failed, and each test a worker named in defence of an addition by whether it tests a
-requirement or only the addition's internals. After a fix it re-runs the suite and re-reads the fix's diff, not
-the whole change. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
+requirement or only the addition's internals. After a fix it re-runs the suite and checks the fixes alone: for
+each, it reads the fix's diff and the test that shows it, and returns the claim as confirmed, refuted with the
+place and what it saw, or not checkable and why; where the worker's ledger holds the test's run before the fix, it
+says whether that run failed. It looks for nothing new there, and a doubt outside the fixes goes into `open` in one line. Its thread may be continued to read the final draft, as [answer.md](answer.md) says.
 
 ## Other roles
 

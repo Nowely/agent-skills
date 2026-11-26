@@ -5,7 +5,7 @@ description: >-
   through material decisions in the current task.
 disable-model-invocation: true
 metadata:
-  version: "0.47.2"
+  version: "0.47.3"
 license: MIT
 ---
 
