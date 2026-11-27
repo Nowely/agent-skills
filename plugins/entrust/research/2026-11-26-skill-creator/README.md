@@ -1,4 +1,4 @@
-# skill-creator: design and test of v1 and v2
+# skill-creator, now rnd: design and test of v1 to v3
 
 **Question.** Can one entrust skill, `skill-creator`, make an agent create and develop skills the way this
 repository has learned to: analyse the request into requirements and ask what only the owner can answer at the
@@ -26,6 +26,14 @@ partly stated in both page sessions (counting a partial mark as met, every claus
 spend was first recorded as 15.56 USD; corrected, it is 13.36 USD to CP3 and 16.27 with I3's sessions (Part A had
 summed a cumulative cost field, and the total had left I3 out; [10-v2.md](10-v2.md#costs)). The test cannot show that the page's judges work, since no test session had an agent tool. The
 owner decides what happens next. A further gate set tried after CP3 (I3) passed its replay on the old losses and was dropped by its pilot's rule: one of four sessions still changed the owner's value, openly ([10-v2.md](10-v2.md#i3-a-further-gate-set-tried-and-dropped)). A clean replication of the judge briefs' test on fresh material (I4) returned **not needed**: briefs written from the stage-1 pages caught 8 of 10 known answers, the current pages' 10 and 9, so 2a's pass does not replicate ([10-v2.md](10-v2.md#i4-the-judge-briefs-outcome-test-replicated-clean)); corrected: 8 of the 10 answers were caught in every run of I4 and I5, so that verdict was set by the material, and on the two answers that discriminate the stage-1 briefs caught 0 of 2 and the current pages' 2 and 1. Its consequence (I5) brought the judge page down to what the record supports, a fifth shorter, and kept the same catch on the same material, 9 and 10 of 10 ([10-v2.md](10-v2.md#i5-the-judge-pages-brought-down-to-what-the-record-supports)); on those two answers it caught 1 and 2, and its 27 retirements cite the run's own addendum where the skill asks for the user's words, with no quality critic's read, which is put to the owner and pending. A second reflection after delivery (an audit, an evidence lens and a from-zero lens, against the coordinator's answers sealed beforehand) produced these corrections and found that most of v2's agents went to the judge-brief line while neither cause of "does not land" was worked on after CP3; its merged hypotheses wait for the owner's choice ([10-v2.md](10-v2.md#reflection-2)).
+
+**Version 3.** The skill is renamed `rnd` and rebuilt on v2's two causes and the second reflection's hypotheses,
+with a new main measure: what fresh agents achieve with a skill made or changed with `rnd` against one made or
+changed by the host alone, marked blind ([12-v3.md](12-v3.md)). Selection holds (10 of 10 meant, 0 of 5 near
+misses). The other three clauses fail: facts kept in 5 of 6 change sessions after one correction; the main measure
+shows no margin on Create (68.9 against 68.0) and a lower score on the thin Change kind, at 2.2x to 11.6x the cost;
+the text-and-files decision is whole in 1 of 6 plans after one correction. By the landing rule v3 does not land;
+it is released on the owner's word, with the defects in `ISSUES.md` (E171 to E174).
 
 ## What was built
 
