@@ -38,7 +38,7 @@ the sources of step 2 share; the default in the table. Write beside each answer 
 | Decision | Default |
 |---|---|
 | The job: which requests the skill serves, what the agent then produces, and what it leaves to other skills | none: it is a question |
-| What it governs: for each stage of the walk, whether the skill gives steps for it or leaves it to the agent | steps for a stage where [the baseline](checks.md#the-baseline) or an earlier session showed a failure, or where the user's words ask for them; any other stage is left to the agent, and the sheet names the run that shows agents do it unprompted |
+| What it governs: for each stage of the walk, whether the skill gives steps for it or leaves it to the agent | steps for every stage; a stage left to the agent names the source that shows agents do it unprompted. [The baseline](checks.md#the-baseline) is such a source: a stage where its sessions did not fail, and for which the user's words ask nothing, is left to the agent. At step 3 a stage that no earlier session shows reads `by the baseline`; the plan says so, and what the baseline then settles is inside the accepted plan |
 | Who invokes it | an agent selects it by its description, and the user can also call it by name |
 | Which hosts and models load it | any host of the open format: a fact that holds on one host only is written with that host's name, in one place |
 | Its name | the name the sources use for this job; else a short name that starts with the action |
@@ -143,7 +143,8 @@ A question is an open decision, put inside the plan of step 3.
 
 - Give the decision, what you read that did not settle it, your recommendation, and the alternatives, each with
   what it changes in the skill.
-- Draw the plan under the recommendations.
+- Draw the plan under the recommendations. Where the repository's rules bar a recommendation at this point,
+  give the question without one.
 - Use a term the user has not used only with its meaning beside it.
 
 A choice between two designs that both meet every requirement is not a question: step 3 says how it is

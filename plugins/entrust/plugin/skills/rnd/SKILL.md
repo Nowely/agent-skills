@@ -21,7 +21,7 @@ research and develop, and every step here is written for work on a skill.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states. A small change takes fewer steps, as [Change](#change) says first.
 - **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
-  the file that defines it. Note the revision the files are at, or copy the folder; make the edit; run the
+  the file that owns it. Note the revision the files are at, or copy the folder; make the edit; run the
   script of Create's step 6, then Change's step 8 against that revision or copy. A corrected word or link
   lists no line. A listed line whose fact still stands takes a `moved` line; a listed line whose fact is gone
   makes the edit a Change.
@@ -38,8 +38,10 @@ research and develop, and every step here is written for work on a skill.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
 - Between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
   verdict that stops the work, and blockers, all blockers in one message.
-- What you deliver is what the plan showed. A step you would drop, or an edit the plan did not show, goes to
-  the user as a changed plan before you act on it, never into the result afterwards.
+- What you deliver is what the plan showed. A step of these routes that you would drop, or an edit to a file
+  the plan did not name, goes to the user as a changed plan before you act on it, never into the result
+  afterwards.
+- State nothing about a file or about a reply of the user that you have not read at its place.
 - A plan with a check that runs sessions, or with more than one round, is a file, as
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
@@ -78,8 +80,9 @@ research and develop, and every step here is written for work on a skill.
    - the goal, the requirements, and each decision with what settled it; a decision still open is put as a
      question, as [the questions](references/analysis.md#the-questions) says;
    - the approach, with the alternative you rejected, and each file with one line on what it holds;
-   - how the skill's text and files will be written, a decision of its own, stated whole as
-     [the sheet's table](references/analysis.md#the-sheet) gives it;
+   - how the skill's text and files will be written, a decision of its own: each part that
+     [the sheet's table](references/analysis.md#the-sheet) names, with its answer, in the plan's own words and
+     not by pointing at a page;
    - the check: what will be observed, in which runs, the result that keeps the work, the result that does not,
      and what the check cannot show;
    - who writes the text, which is this session when the user named no one, and every agent steps 4 to 9 will
@@ -93,7 +96,8 @@ research and develop, and every step here is written for work on a skill.
    Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
    and spend, can stand for it; the request to do the work cannot. One word accepts the plan and its
    recommendations, and no later step asks for another. It covers every agent the plan names. A reply that
-   leaves a choice to you accepts the plan's recommendation for it.
+   answers the plan's questions and refuses nothing in it is that word. A reply that leaves a choice to you
+   accepts the plan's recommendation for it.
 4. **Have the approach challenged.** Start the architecture critic as
    [critics.md](references/critics.md#the-architecture-critic) briefs it.
    - `keep`: go on.
@@ -105,15 +109,16 @@ research and develop, and every step here is written for work on a skill.
 
    Start with it the parts of [reflection](references/reflection.md) the plan gave this step.
 5. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named: write its cases
-   and statements, or a dry run's request, now, before any text exists. For a new skill or a rewrite, and
-   where the check compares with runs without the skill, start those runs as
+   and statements, or a dry run's request, now, before any text exists. A check that runs sessions is read by
+   the architecture critic before its first session. For a new skill, for a rewrite, and for any check that
+   compares with runs without the skill, start those runs as
    [the baseline](references/checks.md#the-baseline) says and wait for them: step 6 writes against what they
-   show. A check that runs sessions is read by the architecture critic before its first session.
+   show.
 6. **Write the text, once.** Follow [writing.md](references/writing.md): each line answers a failure a run
    showed or the user's words. After each edit run
    `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the
-   repository has them, each of its suites that reads a file you changed, found by searching them for the
-   file's name, until they pass. Work on a skill that exists also
+   repository has them, each of its suites that reads a file you changed or lists files of its kind,
+   until they pass. Work on a skill that exists also
    passes [Change's step 8](#change), against the revision or copy step 3 noted.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
@@ -132,11 +137,13 @@ research and develop, and every step here is written for work on a skill.
 
 ## Change
 
-A change is small when it alters no fact as step 3 defines one and no decision of the sheet, and adds no step,
-route, script or file. A small change writes no sheet file, no sources table and no plan file: what steps 1 to
-3 find goes into the plan message of step 4. It leaves out steps 5 and 6. Its check is step 7's commands and
-step 8, with no session unless the user asks for runs, and its step 9 is one read by the quality critic, then
-the result. When a step shows that a fact would change or go, the change is no longer small: take every step.
+A change is small when it adds, alters or removes no fact as step 3 defines one, alters no decision of
+analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, no sources
+table and no plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
+with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
+out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs.
+Its step 9 is the quality critic's read as critics.md gives it, the close-out, then the result. When a step
+shows that a fact would be added, change or go, the change is no longer small: take every step.
 
 1. **Analyse the change.** Start a sheet as [analysis.md](references/analysis.md#the-sheet) sets it out, or open
    the one recorded for this skill: the user's messages saved, their words as requirement lines, and a line for
@@ -144,7 +151,8 @@ the result. When a step shows that a fact would change or go, the change is no l
    place another reader can open. When the user gave none, look for it in the sessions where the skill ran, which
    [hosts.md](references/hosts.md) says how to read, and
    in the output of the failing check; when neither has it, the plan of step 4 includes one session that
-   repeats the request.
+   repeats the request. For a retro on a use of this skill, the observation is taken as
+   [a retro](references/reflection.md#a-retro-on-a-use-of-this-skill) says.
 2. **Find the place.** Read what the skill's own files, the skills beside it and the hosts' guides say on the
    rule the change is about, and record them as [the sources](references/analysis.md#the-sources) says. If
    the page or a script already carries the rule, do not state it again; find where it stopped working: past what the host keeps of the
@@ -160,9 +168,11 @@ the result. When a step shows that a fact would change or go, the change is no l
    duplicate whose fact stays stated elsewhere. A fact, such as a value, a table row, a case or a condition, is
    never removed to make the change smaller: when its place goes, move it to the file that owns it, or put its
    removal to the user as a question in the plan. A change that turns out to alter the skill's job, its hosts
-   or its set of reference files goes to Create's step 1 with this sheet. Where two files disagree on a value,
-   the file that owns the fact keeps its value and the other links it. A value the owning file holds changes
-   only when the user's words name the new value; a reply that leaves the choice to you names none.
+   or its set of reference files goes to Create's step 1 with this sheet. The file that owns a fact is the one
+   the others link or cite for it; where none does, the plan asks which. Where two files disagree on a value,
+   the owning file keeps its value and the other links it. A value the owning file holds changes only when the
+   user's words name the new value, so the plan recommends none: it asks, and a reply that leaves the choice
+   to you keeps the owning file's value.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
    one plan with the skill's state noted for step 8, and wait.
 5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the
@@ -180,16 +190,14 @@ the result. When a step shows that a fact would change or go, the change is no l
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
    Your own judgement that a fact is not needed retires nothing.
-9. **Finish as Create's steps 7 to 10 say.** The quality critic and the verifier get the diff and the
-   dispositions file; [critics.md](references/critics.md#which-model-and-how-many) says whether a change gets
-   a verifier. Past [a correction's limit](#a-correction), undo the change and keep its text in the run
-   directory.
+9. **Finish as Create's steps 7 to 10 say.**
 
 ## A correction
 
 A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
 from the user, a judge's return, a reader's return, a result of the plan's check that fails its rule, a
-description that agents do not select. An answer to the plan is a message from the user.
+description that agents do not select. An answer to the plan is one when it adds a condition or refuses a
+part, and not when it only accepts or settles a question as asked.
 
 1. Add it to the sheet, with the user's words or the return's, and where they are. Words of the user that do
    not fit the design are asked about, never read to fit.
@@ -207,7 +215,6 @@ results.
 
 ## The result
 
-State nothing about a file or about a reply of the user that you have not read at its place.
 Tell the user, in this order, the outcome first; the text that delivers the work opens the same way:
 
 - whether the work was kept, undone or left unchecked, and the rule that decided it;

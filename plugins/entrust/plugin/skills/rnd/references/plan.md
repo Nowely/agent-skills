@@ -120,7 +120,8 @@ session has no sense of the clock.
   host gives no figure, never 0 and never a guess, and do not add figures that come from different places.
 - The spend by requirement puts each agent's and each session's figure on the requirement line it served; one
   that served several lines goes on a row of its own, `shared`, with the lines named. A gain is shown when a
-  run moved a result the plan's rule counts, never when a text changed.
+  run moved a result the plan's rule counts, never when a text changed. Where its figures cannot be added, a
+  line's share is its count of agents and sessions. The `shared` row is not a line and never stops.
 
 ## A close-out
 

@@ -69,7 +69,8 @@ for each failure seen, and none for what went right.
    the agent, with the run that shows it.
 5. These sessions are the runs without the skill of [test cases](#test-cases); they are not run again.
 
-For a Change, the observation of its step 1 is the baseline.
+For a Change, the observation of its step 1 is the baseline. The baseline's sessions alone do not make the
+plan's check one that runs sessions: that takes test cases, a transfer test or a selection check.
 
 ## A dry run
 
@@ -121,7 +122,7 @@ by any model, and resemblance then measures copying.
    lists them. A second fresh agent, with the key, confirms each answer can be found from the scenario; one
    that cannot is replaced. Both write to files you pass on by path and do not open before step 8, since you
    may be the one who writes the pages; any other writer of the pages is not given them either.
-2. Learn the floor, then write the rule. Have each scenario answered once by a fresh agent whose brief holds
+2. Learn the floor, then write the rule. Have each scenario answered once by a fresh agent, of the tier that uses an artifact in item 4, whose brief holds
    the artifact's name and the scenario's files and nothing of the pages, and have the second agent of item 1
    count the known answers that come back. An answer the floor reaches measured nothing and leaves the count, as item 5
    of [test cases](#test-cases) says of a statement; when the floor reaches more than half of the answers, the

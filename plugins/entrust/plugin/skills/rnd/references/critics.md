@@ -49,7 +49,7 @@ the executor tier; the plan names each model, so the user sees the difference an
 
 | Judge | Create | Change |
 |---|---|---|
-| architecture critic | once; again when the approach changes; once more on a check that runs sessions, before its first session | only when the change adds a step, a route, a script or a file |
+| architecture critic | once; again when the approach changes; once more on a check that runs sessions, before its first session | only when the change adds a step, a route, a script or a file; and once on a check that runs sessions, before its first session |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
@@ -81,14 +81,18 @@ It returns:
 Each objection cites a place: a line of the messages, the sheet, a source or the plan.
 
 For its read of a check that runs sessions, at step 5, give it the cases, the statements and the rule as well,
-and no answer key. It returns `keep` or `change` for the check, and the item on checks above.
+and no answer key. It returns `keep` or `change` for the check, and the item on checks above. Its objections
+rest on [checks.md](checks.md) and are handled as an objection that names a rule. `change` is
+[a correction](../SKILL.md#a-correction), whose item 3 says whether the plan is shown again.
 
 ## The quality critic
 
 It reads every file of the skill as the agent that will load it would, and runs nothing but the check script.
 Give it, by path: the skill's directory, and for a change its diff and the dispositions file; the sheet;
 [structure.md](structure.md) and [writing.md](writing.md). A second critic must not open the first one's
-return. Its brief says whether a verifier follows.
+return. Its brief says whether a verifier follows. Where a
+walk is a failed request, give it the place that records the request and what happened, which is not a list
+of this text's faults.
 
 It does these things, in this order:
 

@@ -31,10 +31,10 @@
 - Use no capitals and no bold for emphasis; a rule's reason carries its weight.
 - Give a term the reading agent may not know its meaning at first use, and use one word for one thing
   throughout.
-- Keep out measurements with dates, the story of how the skill was made, and a rule added for one observed run
-  that no second case supports.
-- Keep out a value that was true when you read it and will change, such as a count, a latest number or a
-  figure measured once: give the command that reads it, or leave it out. Such a value goes on a page only on
+- Keep out measurements with dates, the story of how the skill was made, and a rule fitted to one run's
+  particulars, its names, files or figures, where the failure's kind has no second case.
+- Keep out a value that was true when you read it and will change, such as a count or a latest
+  number: give the command that reads it, or leave it out. Such a value goes on a page only on
   the user's word.
 - Give an output's form as a template. Give one example only where a rule cannot say it, and take it from
   neither the check's cases nor the run that prompted the work.

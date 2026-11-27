@@ -512,7 +512,7 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
         file's value stands, and another value takes the user's words that name it.
       - the user's own words ask for it to go: answer it with
         retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>
-        A reply that leaves the choice to you names no line and no value.
+        A reply that leaves the choice to you names no line and no value: the owning file's value stays.
       - neither: put the line back, or move it to the file that owns the fact.
       A line of that file that starts with # is a note. Your own judgement that a fact is not needed retires nothing.`);
     console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
