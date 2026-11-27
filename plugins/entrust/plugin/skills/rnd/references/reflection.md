@@ -25,7 +25,7 @@ written so far: the sheet, the sources table, the plan with its log, the returns
 | prior art | what other skills and guides do that this one lacks | 4; 5 | the skill's sources table has a row that is new, read in part, or whose version or date has changed; the first version reads its sources at step 2 and runs no lens |
 | combinations | two or three changes that fail apart and may work together | 10; 9 | an audit of this run lists a thing dropped on opinion, or tested without a named partner |
 | audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 9 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
-| questions | what you believe about your own run, for the audit to check | 10, before the audit; 9 | with the audit of step 10 in Create and of step 9 in Change; not with an audit at a correction, and not on a retro |
+| questions | what you believe about your own run, for the audit to check | 10, before the audit; 9 | with the audit of step 10 or 9, as [the section](#questions-you-answer-yourself) says |
 
 A run whose check ran no session has no part of this page, but for the audit at the user's second
 correction: a dry run's agent, a confirmer of marks and a reader of sources do not count. It still has its [close-out](plan.md#a-close-out). What the two early
@@ -50,7 +50,7 @@ longer a second view. Use no copy of this session as an agent; it holds what the
 | audit | the plan and its log; the file of the user's messages; this session's transcript, where the host keeps one; the run's files; the record; `questions.md`, after its tables are written | your state statement, `questions.md` and the log's `deviation` rows, until its own tables are written |
 
 Before the audit starts, write a state statement from what you hold in context, opening no file: what was
-asked, what was agreed, what is done, what is open, each as a numbered claim. It is the audit's last input.
+asked, what was agreed, what is done, what is open, each as a numbered claim. It is the audit's last input but for `questions.md`.
 
 ## What a part returns
 
@@ -80,7 +80,10 @@ user's messages weigh most.
 This part is the one you answer yourself, because what you believe about the run is what the audit must check.
 Before the audit starts, write your answers in `questions.md` in the run directory, one paragraph each, from what
 you hold in context, opening no file, as a state statement is written; change nothing in it after. The audit holds
-them against the files, and reads them only after its tables are written.
+them against the files. It writes its other tables first, then opens `questions.md` and adds its table of the answers.
+The part runs with the audit at step 10 in Create or step 9 in Change, whatever made that audit run; not with an
+audit at a correction before then, and not on a retro. The plan writes it in its Reflection part, with "this session"
+as its agent.
 
 1. What assumption is the whole approach built on, and what would show that the goal itself is wrong, not only the
    means?
@@ -93,11 +96,7 @@ them against the files, and reads them only after its tables are written.
 7. How may your present state be shaping how you read this run: a long or summarised context, the latest results,
    haste near a limit, wanting the work to look finished, or wanting to agree with the user?
 
-Each question gets a row in [the scorecard](#what-you-do-with-a-return) with these columns: `offered`, what its
-answer found that the record did not hold before; `audit`, the audit's mark; `taken`, what the plan or a change took
-from it; `effect`, `held` or `refuted` when a later run shows it. A question whose answers offered nothing new, or
-were marked `does not hold`, in two runs is left out of the next plan's `questions.md`, by the plan's
-"Questions left out" line.
+Which questions find most is judged across runs by the owner of this skill, not within a run.
 
 ## What you do with a return
 
@@ -105,6 +104,8 @@ were marked `does not hold`, in two runs is left out of the next plan's `questio
   where it touches a verdict you recompute the verdict as
   [handling a return](critics.md#handling-a-return) says. Its tables are trusted only when they hold, from before it
   opened them, the deviations the log already records.
+- An answer of `questions.md` that the audit marks `part` or `does not hold` is one of the audit's findings and goes
+  to the user with them.
 - Hypotheses are merged by the rule the plan wrote before any return came. A rule to start from: duplicates
   are merged with every source kept; none is dropped without a reason; disagreement between lenses is kept as
   written; the order is expected gain over cost.
