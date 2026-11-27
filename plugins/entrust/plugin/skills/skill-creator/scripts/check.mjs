@@ -332,7 +332,8 @@ export function rules(skills, rel = (p) => p) {
 // carry it: cut at each table bar, semicolon and sentence end, every part of the lost line that has a word of
 // four letters or more outside its code spans shares such a word with one of the quotes. A `retired` line
 // answers the whole line. So a row that held two facts is not answered by the place of one. A code span is left
-// out because a copy that contradicted its owner is answered with the owner's line, whose value differs. The
+// out because a copy that contradicted its owner is answered with the owner's line, whose value differs; a bold
+// run is left out because it names a step or a term, and a step renamed has lost no fact. The
 // script cannot tell whether a quote still says what the lost line said, whether two facts inside one part both
 // went somewhere, nor whether the messages file is the user's.
 const collapse = (s) => s.replace(/\]\([^)\s]*\)/g, "]").replace(/[\s`*|]+/g, " ").trim().toLowerCase();
@@ -340,7 +341,7 @@ const onlyLinks = (line) => !/[\p{L}\p{N}]/u.test(line.replace(/\[[^\]]*\]\([^)]
 const WORD = /[\p{L}][\p{L}'’-]*/gu;
 const longWords = (s) => new Set((collapse(s).match(WORD) ?? []).filter((w) => w.length >= 4));
 // The parts of a line that a disposition must carry, each as its words of four letters or more.
-const parts = (line) => line.replace(/`[^`\n]*`/g, " ").split(/[|;]|[.!?](?=\s|$)/)
+const parts = (line) => line.replace(/`[^`\n]*`|\*\*[^*\n]*\*\*/g, " ").split(/[|;]|[.!?](?=\s|$)/)
   .map((part) => ({ text: part.trim(), words: longWords(part) })).filter((part) => part.words.size);
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
   stdio: ["ignore", "pipe", "ignore"] });

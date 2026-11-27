@@ -201,6 +201,10 @@ test("a line that held two facts needs a disposition for each place, and every l
       lostIn("a place for each fact", edited(after, { "d.md": first + "# a note\n" + second }, was), [], "d.md"),
       lostIn("a good line, then one whose quote does not stand", edited(after, { "d.md": first + second.replace("delegate", "hand over") }, was), [id], "d.md"),
       lostIn("the same two in the other order", edited(after, { "d.md": second.replace("delegate", "hand over") + first }, was), [id], "d.md"),
+      lostIn("a step whose bold title changed and whose sentence was reworded", edited(
+        { "references/effort.md": EFFORT + "3. **Pick the effort.** Take the table's value for the role you brief.\n" },
+        { "d.md": "moved | references/effort.md:10 | references/effort.md:10 | Take the table's value for the role you brief\n" },
+        { "references/effort.md": EFFORT + "3. **Carry it out.** Use the value the table gives the role.\n" }), [], "d.md"),
       lostIn("retired whole by the user's words", edited(after, { "messages.md": "Drop the max row.\n",
         "d.md": `retired | ${id} | messages.md:1 | Drop the max row.\n` }, was), [], "d.md"),
     );
