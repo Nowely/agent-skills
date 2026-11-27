@@ -28,7 +28,7 @@ Made after the release text was written, and measured by no run yet:
   requirement line, model and estimate filled when the plan is written; checkpoints fill what was spent and
   the gain. The checkpoint rule on the largest share keeps its place.
 
-The gate against the release commit listed 30 lines; each is answered, 10 by the owner's words after the
+The gate against the release commit listed 30 lines; each is answered, 11 by the owner's words after the
 release.
 
 ## The plan
