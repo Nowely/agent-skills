@@ -12,7 +12,9 @@ forensics remain in the repository references and release notes.
   records the sources, shows one plan with the open questions in it, has a fresh architecture critic challenge
   the approach before any text, and has a quality critic, a check and a verifier judge the result. Change is
   written out as its own nine steps for one instruction, with fewer agents, and a small change takes a light
-  route: no sheet or plan file, the gate and one read. Repair is for a typo or a link. A correction goes back to
+  route: no sheet, sources table or plan file, no steps 5 and 6, the check script and the preservation gate, a
+  session only when the user asks for runs (prepared then as for any change), the quality critic's read, the
+  reader of the user's words and a close-out. Repair is for a typo or a link. A correction goes back to
   the sheet, not into the text.
 - In a Change, a value the owning file holds changes only on the user's words naming it: a reply that leaves the
   choice to the agent removes no fact and changes no value, and a fact moved off a page keeps a link from it. A
@@ -53,8 +55,10 @@ forensics remain in the repository references and release notes.
 
 ### Gate and limits
 
-- Local checks passed: `scripts/skills.test.mjs` (12), skill-check (10), package (21, one skipped until the
-  release tag), orchestrate (13) and fragments (2), on Node.js v22.23.5.
+- Local checks passed on this head: `scripts/skills.test.mjs` (12), skill-check (14), package (21, one skipped
+  until the release tag), orchestrate (13) and fragments (2), on Node.js v22.23.5. The figures after this
+  section's first bullet, the sessions of the earlier versions and of v3, are observations of those test runs,
+  not of this head.
 - The first version was tested on Sonnet by a protocol frozen before the test
   (`research/2026-11-26-skill-creator/`) and did not land: on a pending change, both sessions that followed it
   lost page facts while merging duplicates, and on a replay of its own design run it fell short of the margin
@@ -111,6 +115,13 @@ forensics remain in the repository references and release notes.
 - A fresh reader of the user's words at delivery, on every route but Repair: it marks each instruction, question and
   idea of the user's saved messages `covered`, `part`, `missing` or `answered only`, and every `missing` and `part`
   goes into the result. A rule to write to the user in the language of their messages.
+- Review fixes (PR 118): the preservation gate takes a `moved` quote only from the files the text is now read from,
+  compares whole tokens, and walks the pages a directory link lists; a correction that changes only the text
+  runs the `--against` gate again; a requested session in a small change is prepared as in any change; the base
+  is a copy where changes are uncommitted or git is absent; the transfer test has the floor stand in for the old
+  pages of a new skill and applies a derivation approved in the plan; the control session is named and its
+  opened skills are listed, and a stage no session reached shows nothing; a retro of a session on another host
+  takes the route for supplied files; readers start on the user's word unless it already covers them.
 - Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
   the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
 

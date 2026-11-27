@@ -141,10 +141,12 @@ A session that used this skill on a skill is a run of this skill, and where it w
 next observation. A retro reads such a session after it ended. It runs when the user asks for one; the result
 of every use says that it can.
 
-1. The session is collected by entrust's [prepare-feedback](../../prepare-feedback/SKILL.md), which the user
+1. A session of Claude Code, the host prepare-feedback was made for, is collected by entrust's
+   [prepare-feedback](../../prepare-feedback/SKILL.md), which the user
    starts by name, with that session as its scope and this question: where did this skill's steps fail,
-   mislead, or cost without a gain, each with its address. Where that skill is not installed,
-   [hosts.md](hosts.md) says how a past session is read.
+   mislead, or cost without a gain, each with its address. Where that skill is not installed, or the session ran
+   on another host, such as Codex or OpenCode, [hosts.md](hosts.md) says how a past session is read from files
+   the user supplies. Choose by the host the session ran on, not by what is installed.
 2. Two parts of this page then read the same session with the run directory it left, briefed as
    [briefing a part](#briefing-a-part) says: the audit, always, and evidence, when that use ran a check with
    sessions. The audit gets no state statement and reads that session's transcript. No other part runs on a

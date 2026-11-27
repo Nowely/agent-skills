@@ -10,6 +10,51 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E178. review's diff parser accepts only `diff --git` headers
+
+**Evidence, level 1.** `review/scripts/diff.mjs:2` says it reads "a two-sided patch with `diff --git` headers", `:20`
+matches `^diff --git a\/(.*) b\/\1$`, and `:52` refuses a diff with no such header. This is an input format, not a call
+to the git executable. The observation is static: no diff from another version-control system was fed to it, and
+whether one can be converted is untested.
+
+**Issue text.** review's parser requires Git-style `diff --git` headers. Decide whether the shared page names that
+format as a requirement of the input, or the capability needed (a two-sided patch with addressable lines), with the
+conversion from another system left to its adapter.
+
+## E177. orchestrate's shared page and worktree driver assume git
+
+**Evidence, level 1.** `orchestrate/SKILL.md:17-20` lists git commands the coordinator may run (`git status`,
+`git log`, `git diff --stat`). `orchestrate/scripts/drivers.mjs:196-199` runs `git` directly, and `:202-210`
+(`makeWorktree`) fails with "is not a git repository" when `git rev-parse HEAD` fails and otherwise runs
+`git worktree add --detach`. The observation is static: no run was made in a repository of another version-control
+system.
+
+**Issue text.** orchestrate's shared instructions name git commands and its worktree driver requires a git
+repository. Decide whether the isolated working copy is a capability that the page names neutrally, with the git
+mechanism kept in a git adapter, under the repository's portable-workflows rule.
+
+## E176. rnd's shared flow names Claude CLI commands, and its test-session route disagrees with the codex adapter
+
+**Evidence, level 2.** `rnd/references/hosts.md:19-20` names `claude plugin eval` and `claude -p` in the shared
+host table, and `rnd/references/checks.md:184` (the selection check) sends the reader to "the host's own tool" named
+there. `rnd/references/checks.md:54-64` starts test sessions through orchestrate's external launcher, while
+`codex/SKILL.md:2-6` says native Codex subagents use the host's own delegation facilities. Which route a test
+session takes on each host is not settled. The observation is static: no run was made on Codex or OpenCode.
+
+**Issue text.** rnd's shared flow names Claude CLI commands, and its session route through the external launcher sits
+beside the Codex adapter's native subagents. Decide the route per host, keep host commands in the adapter, and have
+the shared flow request the capability and report when the current host cannot provide it.
+
+## E175. check.mjs applies Claude-specific limits to every skill
+
+**Evidence, level 1.** `rnd/scripts/check.mjs:232-276` holds rules 2 and 4 to 7: the listing cut of Claude Code, the
+token and contents-list limits that Anthropic's guide and Claude Code set, and the linking and backslash guidance.
+They run for every skill, whatever hosts the skill targets. The observation is static: no skill that excludes
+Claude was checked.
+
+**Issue text.** The shared checker applies Claude-specific limits and authoring guidance to every skill. Separate the
+common rules from the host rules, and apply the latter for the hosts the skill is meant to support.
+
 ## E170. Two entrust pages brief an architecture critic in opposite ways on the coordinator's reasons
 
 **Evidence, level 1.** `orchestrate/references/roles.md:63` has the architecture critic read "the approach the

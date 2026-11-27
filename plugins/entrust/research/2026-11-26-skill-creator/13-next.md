@@ -186,6 +186,25 @@ question number in the scorecard. Three fresh quality critics on the top tier re
 objections that change a step. The first two rounds were fixed, the second by simplifying the bookkeeping; the last
 fixes were applied on the owner's word with no further read.
 
+## After the PR review
+
+The owner's review of PR 118 (two comments, at `719fc97`) raised ten findings and a follow-up on portability.
+
+- Fixed: 1, 2 and 7 in `check.mjs` with regression cases (a `moved` quote only from the files the text is read from,
+  whole-token comparison, the pages a directory link lists); 3 (the correction runs the gate again); 4 (the floor
+  stands in for the old pages of a new skill); 5 (a requested session is prepared in a small change); 6 (the control
+  is named and its opened skills listed); 8 (a retro chooses its route by the session's host); 9 (readers start on
+  the user's word); 10 (the changelog follows the tree). The questions on the git base and on the transfer rule's
+  derivation are answered in the text.
+- Recorded in `ISSUES.md`: E175 (check.mjs applies Claude limits to every skill), E176 (Claude commands and the test
+  session route in rnd's shared flow), E177 (orchestrate assumes git), E178 (review's parser requires `diff --git`
+  headers). The root `AGENT.md` gained the portable-workflows rule.
+- For the plan: (a) the usage scan and experiment C read which stages sessions reached; a stage no session reached is
+  not evidence that its instruction is unneeded, so neither cuts on that alone.
+- For the plan: (b) a portability change, its own PR: split `check.mjs`'s common rules from host rules by the hosts a
+  skill targets, and move host commands into the adapters. It changes the design, so the architecture critic reads it
+  first (Fable, one run).
+
 ## Open after v4
 
 - A dispositions reader's brief that names conditions, not only facts (E172's fact 23).
@@ -195,7 +214,7 @@ fixes were applied on the owner's word with no further read.
   stated in several places, what to do with an answer that honestly admits a gap, the section's first sentence
   repeating its heading. Its first real run with an audit is its check.
 - The reader of the user's words cannot mark `answered only` honestly, since it does not see the replies: define it
-  through `result.md` or the plan, or give it the transcript.
+  through `result.md` or the plan, or give it the transcript. The review of PR 118 raised it too.
 - The audit's table of the user's instructions has no named marks, so the coordinator decides what is unmet: give it
   the reader's marks.
 - The owner asked for the plan to be checked against their messages, and the change checks the result at delivery, so

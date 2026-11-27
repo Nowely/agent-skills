@@ -147,7 +147,8 @@ A change is small when it adds, alters or removes no fact as step 3 defines one,
 analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, no sources
 table and no plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
 with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
-out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs.
+out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs,
+which is then prepared as for any change: the plan file and step 6.
 Its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then
 the result. When a step
 shows that a fact would be added, change or go, or step 8 lists a line, the change is no longer small: take
@@ -194,7 +195,8 @@ every step.
    edit's: record it as the repository records a defect found in passing, and go on.
 8. **Show that no line was lost.** After the last edit, run
    `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
-   the skill's, or the folder of skills when the change spans several. The base is step 4's revision or copy.
+   the skill's, or the folder of skills when the change spans several. The base is step 4's revision or copy;
+   it is a copy where changes are uncommitted or there is no git.
    The file is one in the run directory; it need not exist yet. Each listed line stood in the files before and
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
@@ -215,7 +217,8 @@ part, and not when it only accepts or settles a question as asked.
 3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
    show the user the changed plan and wait as step 3 does; the architecture critic reads a changed approach
    again. If only the text
-   changes, edit it by [writing.md](references/writing.md) and run the check script;
+   changes, edit it by [writing.md](references/writing.md), run the check script and, where Change's step 8
+   ran, its `--against` command again, answering each line as that step says;
    [critics.md](references/critics.md#which-model-and-how-many) says whether a judge reads again. The user's
    second correction since the plan adds the audit of [reflection](references/reflection.md) to a changed plan.
 

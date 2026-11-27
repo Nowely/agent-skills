@@ -98,7 +98,9 @@ for a source that is missing: item 4's question is for sessions the user named n
 named.
 
 A source too wide to read in this session, such as a corpus of sessions, is read now by reader agents, not
-later. Tell the user their number and their model before they start;
+later. Tell the user their number and their model before they start, with their cost, and start them on the
+user's word, unless the user's words already cover them
+([what a check may spend](checks.md#what-a-check-may-spend) rules on spending);
 [critics.md](critics.md#which-model-and-how-many) gives their tier. Give each reader the messages file, the
 sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give
 its address." Have a stronger model read again any part whose return contradicts the sheet. Step 3 waits for the

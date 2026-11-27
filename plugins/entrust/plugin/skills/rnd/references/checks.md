@@ -64,6 +64,9 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   show the skill's agents at work.
 - The skill reaches a session as files: give it the path of `SKILL.md` and tell it to read the file whole and
   follow it. A session that runs without the skill gets neither the path nor the skill's name.
+  The plan names the control it means: the host as it is, which may find another skill for the same job, or no
+  skill for the job, where such skills are kept out of the session's copy. The result names every skill a
+  control session opened.
 - Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
   repository. No case performs an action that cannot be undone or that leaves the copy, such as a tag, a push,
   a release, a publication or a message sent: the case stops before it, and the plan says what the check
@@ -89,7 +92,8 @@ for each failure seen, and none for what went right.
    read what the session did, not only what it reported.
 4. A failure that no line of the sheet covers is [a correction](../SKILL.md#a-correction). A stage where no
    session failed, and for which the user's words ask nothing, gets no step: mark it on the sheet as left to
-   the agent, with the run that shows it.
+   the agent, with the run that shows it. A stage that no session reached shows nothing about whether its
+   instruction is needed.
 5. These sessions are the runs without the skill of [test cases](#test-cases); they are not run again.
 
 For a Change, the observation of its step 1 is the baseline. The baseline's sessions alone do not make the
@@ -152,7 +156,10 @@ by any model, and resemblance then measures copying.
    count the known answers that come back. An answer the floor reaches measured nothing and leaves the count, as item 5
    of [test cases](#test-cases) says of a statement; when the floor reaches more than half of the answers, the
    material is built again. The rule is written now: how many of the known answers left each run must reach,
-   and by how much the pages as they will be must beat the pages as they are.
+   and by how much the pages as they will be must beat the pages as they are, as the derivation from the floor
+   that the plan approved before any run gives. A rule the plan did not provide for goes to the user before any
+   run.
+   For a new skill there are no pages as they are: the floor stands in for them.
 3. At step 8, start sessions on the cheapest model the sheet says will load the skill. Each gets the path of
    `SKILL.md`, one scenario and one line: which step it is at, which artifact to write, and to start nothing.
    One session for each scenario on the new pages and one on the pages as they were.
