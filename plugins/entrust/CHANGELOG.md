@@ -87,7 +87,7 @@ forensics remain in the repository references and release notes.
   printout and the page list the carried blocks, Coverage with «Show in Code». A revised record of the same diff is a
   continuation with nothing changed since: its page offers the answers this browser kept for the previous report on
   the items still unanswered that read the same in full — the question with its context, variants, consequences,
-  recommendation and the parent's condition, the finding with its evidence — never by number; a record of a new revision takes the owner's
+  recommendation and its parent read the same in full with the variants it applies under, the finding with its evidence — never by number; a record of a new revision takes the owner's
   answers through the export.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never

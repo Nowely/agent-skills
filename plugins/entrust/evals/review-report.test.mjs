@@ -336,6 +336,25 @@ test("the earlier answers are not offered to a conditional question whose parent
     return pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
   });
 
+test("the earlier answers are not offered to a conditional question whose parent's variant changed its meaning under the same id",
+  "a child answered under one meaning of the parent's variant was offered and marked decided under another",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "meaning-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    for (const d of [dir, prev]) { fs.writeFileSync(path.join(d, "source.diff"), generated.stdout); for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(d, name)); }
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(THEMED));
+    const next = structuredClone(THEMED);
+    next.title = "Where the conversion lives, revised";
+    // the child applies under "extend"; its id stays, what it means does not
+    next.questions[2].variants[1] = { ...next.questions[2].variants[1], text: "Move it to a display unit every page shares" };
+    next.previous = { record: "previous/review.json", sha256: sha(JSON.stringify(THEMED)) };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(next));
+    const done = report("render", path.join(dir, "review.json"));
+    if (done.status !== 0) return done.stderr;
+    const pairs = dataOf(fs.readFileSync(path.join(dir, "review.html"), "utf8")).previous?.pairs.map(([now]) => now) ?? [];
+    return pairs.includes("q1") && !pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

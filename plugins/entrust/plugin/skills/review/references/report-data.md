@@ -336,7 +336,7 @@ record does not hold is left out, and the response says so. A short review appli
   and the verifier take the change since and the claims new or changed. A revised record at the same head — new
   evidence, the same diff — is a continuation whose change since is empty: there the page offers the answers this
   browser kept for the previous report on the items that read exactly the same in full — a conditional question under
-  the same parent and variants — never by number; a record of
+  a parent that reads the same in full and the same variants — never by number; a record of
   a new revision takes the owner's answers through the export, as below.
 - **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
   it, `text` and `sources`. Decisions › Comments lists them at the place the comment had, never placed in this diff.

@@ -88,10 +88,18 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
 </table></section></noscript>`;
 }
 
+// A question as the owner answered it, with the condition it applied under: its parent read the same way in full —
+// what each variant says and changes, the parent's own condition — and the variants it applies under.
+function questionRead(r, i, seen = new Set()) {
+  const q = r.questions?.[i], p = q?.parent;
+  if (!p || seen.has(i)) return { ...q, parent: null };
+  seen.add(i);
+  return { ...q, parent: [questionRead(r, p.question - 1, seen), p.variants] };
+}
 // An item as the owner answered it: a later record holding an item that reads the same — the same question with the
-// same variants, the same finding, the same idea — asks the same thing, whatever its number there.
+// same variants under the same condition, the same finding, the same idea — asks the same thing, whatever its number.
 const itemReads = (r) => new Map([
-  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: q.parent ? [r.questions?.[q.parent.question - 1]?.text, q.parent.variants] : null }])]),
+  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", questionRead(r, i)])]),
   ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f])]),
   ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x])])]);
 // A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each
