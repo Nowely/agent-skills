@@ -24,7 +24,7 @@ design** in both cases (one page session lost a fact in each, and the controls l
 **Back to design** by the frozen reading, because the decision on how a skill's text and files are written is only
 partly stated in both page sessions (counting a partial mark as met, every clause of `Pass` holds). External
 spend was 15.56 USD. The test cannot show that the page's judges work, since no test session had an agent tool. The
-owner decides what happens next. A further gate set tried after CP3 (I3) passed its replay on the old losses and was dropped by its pilot's rule: one of four sessions still changed the owner's value, openly ([10-v2.md](10-v2.md#i3-a-further-gate-set-tried-and-dropped)).
+owner decides what happens next. A further gate set tried after CP3 (I3) passed its replay on the old losses and was dropped by its pilot's rule: one of four sessions still changed the owner's value, openly ([10-v2.md](10-v2.md#i3-a-further-gate-set-tried-and-dropped)). A clean replication of the judge briefs' test on fresh material (I4) returned **not needed**: briefs written from the stage-1 pages caught 8 of 10 known answers, the current pages' 10 and 9, so 2a's pass does not replicate ([10-v2.md](10-v2.md#i4-the-judge-briefs-outcome-test-replicated-clean)).
 
 ## What was built
 

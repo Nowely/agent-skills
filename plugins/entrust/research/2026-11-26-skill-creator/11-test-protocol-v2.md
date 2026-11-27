@@ -22,6 +22,9 @@ not measured.
 | addendum D | `19a8a20fde6990bebb96cbd3d379183dae67a5548579d66934f50ca7a84b8eaf` |
 | addendum 1 (the slot of section 8) | `c2930f288ed5c3d876a109e9b7761306f84937aa6f0ea4acc9aaaf6d70a5cc2e` |
 | the 2a key, frozen before the first 2a writer | `b4d69097004c130894c6b5f6f6ef4583c9c7a2eadf59d8c3dde18beaa4e13ae5` |
+| addendum E (I4, before any of its sessions) | `bac2859bc34c1be6e21a942309d4965a45abfa6ee8b16f42845d4211bcb110a5` |
+| the I4 key, frozen before the first I4 writer | `ee01ad176d5553150ef4c8b007ddcb91e22b90346231a16c076eae342ef443b3` |
+| addendum F (I5, before its change and its sessions) | `5481a1d10c5abca93e3172f685332288e293c2e2fd2c13dc36c82cef4d160103` |
 
 Each addendum's hash is that of its own text in the original files, which are private; the original wording of
 each is reproduced in the addenda section below with its private paths replaced.
@@ -391,3 +394,47 @@ scenario adds about 0.4M.
 **What it cannot show.** One scenario a role and one model. Three roles: the architecture critic, the dry-run agent
 and 2b's lenses use the same form and are not run. C has one run, so its own spread is unknown and rule 2 leans on
 S's. The planted answers are of kinds the record already met; a judge that catches them may miss another kind.
+
+### Addendum E (I4, a clean replication of the 2a outcome test, before any of its sessions)
+
+Why: the audit found 2a's passing rerun contaminated (the correction brief named the items the judges had missed,
+and the rerun used the same key). I4 measures the same question on fresh material.
+
+- Material: three new scenarios (a verifier on a change, a check's reader on four runs, a quality critic on a draft
+  skill), ten new known answers, built by a fresh Opus that sees neither the pages, the design, the old scenarios
+  nor their key; a fresh Sonnet solver confirms each answer findable before any writer; the key is hashed here
+  before the first writer and is read by no writer, judge, page author or coordinator brief.
+- Arms: S = the skill folder at the branch head (pages as they stand after the revert of I3); C = `e8b6e02`
+  (stage 1, before 2a), each copied outside any tree.
+- Writers, judges, count, confirmation: as addendum 1 (two S writers and one C writer per role; each brief run
+  unedited by a fresh Sonnet judge with only a guard line against the key; a blind Sonnet count; a fresh Sonnet
+  confirmer of every catch and of leaks).
+- Rule, unchanged from addendum 1's outcome test: Pass when each S run catches at least 8 of 10 and at least 2 in
+  every scenario, the lower S run exceeds C by at least 3 and by more than the S runs' difference, and no S brief
+  names what to find. Not needed when C catches 8 or more. Fail otherwise. No correction and no rerun inside this
+  session: a Fail is reported as it stands.
+
+### Addendum F (I5, I4's consequence and its check, before the change and before any of its sessions)
+
+Why: I4 returned Not needed (S 10 and 9, C 8 of 10 on fresh material). Addendum 1's Not-needed branch, written
+before 2a ran, says what follows: the briefs' additions come down to what a level-3 place in the record supports on
+its own (do-not-open, the part mark, the verifier's lost-fact item), and the brief form stays only if it shortens
+`critics.md`.
+
+- The change: written by a fresh Fable by Change's route, gate at step 8 against the branch head. Scope:
+  `references/critics.md` and the lines elsewhere in the skill that take its removed parts by link. Every other
+  addition of 2a and of its correction (`d8cc78f`), the reader's role section included, stays only with the
+  level-3 place it rests on named in the dispositions file; otherwise it is retired with I4's verdict as the
+  reason. The handling section stays on its record places, as 2a's close-out left it. The author gets this
+  addendum, the design's parts and rule, the record's README, rounds and `10-v2.md`, and the pages; not I4's
+  material, key, count or confirmation, or which answers any judge missed.
+- The check, on I4's material (the key unchanged): arm S' = the changed skill folder, copied outside any tree. Two
+  fresh Sonnet writers per role (6 briefs), prompts as I4's with the arm's path; shuffled codes; each brief run
+  unedited by a fresh Sonnet judge with I4's two guard lines; I4's count brief to a fresh Sonnet; I4's confirm
+  brief to a fresh Sonnet.
+- Rule: **Keep** when each S' run catches at least 8 of 10 and at least 2 in every scenario, no S' brief names
+  what to find, and S' `critics.md` has at most 80 % of the head's characters (13,482, so at most 10,786).
+  **Revert** otherwise: the head's pages stand and the result is reported. No correction and no rerun inside this
+  session.
+- Reported, deciding nothing: S' runs beside I4's S (10, 9) and C (8); the writers' and judges' tokens; the
+  skill's total characters before and after.

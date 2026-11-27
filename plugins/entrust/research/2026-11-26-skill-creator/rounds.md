@@ -116,3 +116,10 @@ read found it clean); the rate limit, which stopped the run at 00:04 UTC for 3 h
 |---|---|---|---|
 | I3 replay (CP-I3-1) | `ef570f2`: vanished-word and changed-value flags, step 8's rules printed, a `reworded` line | the script, no tokens | passed: 3 of 3 old page-session losses and v1's 3 rows caught, one false flag |
 | I3 pilot (CP-I3-2) | 2 page sessions each on E104 and E117 | Sonnet operator; a Sonnet confirmer | 3 of 4 kept every fact; one changed the owner's value on purpose: dropped by its rule, reverted in `e1988e9` |
+
+### I4
+
+| Step | Input | Reader | Outcome |
+|---|---|---|---|
+| I4 material | three fresh scenarios, ten known answers (addendum E) | a fresh Opus builder that saw neither the pages nor 2a's material; a Sonnet solver | every answer findable; key hashed before the first writer |
+| I4 briefs and judges | 2 S writers (head) and 1 C writer (`e8b6e02`) per role; 9 briefs under shuffled codes | 9 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | S 10 and 9, C 8 of 10; no mark moved, no leak: **not needed**, so the briefs' additions are dropped down to their level-3 parts (I5) |
