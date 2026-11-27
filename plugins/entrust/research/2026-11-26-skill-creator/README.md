@@ -35,6 +35,10 @@ shows no margin on Create (68.9 against 68.0) and a lower score on the thin Chan
 the text-and-files decision is whole in 1 of 6 plans after one correction. By the landing rule v3 does not land;
 it is released on the owner's word, with the defects in `ISSUES.md` (E171 to E174).
 
+**After v3.** Spend rules for every check and fixes for E171 to E174 went in before the merge, measured by no
+run yet; [13-next.md](13-next.md) lists them and the plan from here, each item with the decision it can change
+and its cost.
+
 ## What was built
 
 `plugins/entrust/plugin/skills/skill-creator/`: `SKILL.md` (two routes, Create in ten steps and Change, plus
