@@ -10,13 +10,33 @@ forensics remain in the repository references and release notes.
 - New skill `skill-creator`, selected by the assistant or called by name: it creates a skill or develops an
   existing one. Create writes a requirements sheet from the user's words, walks the job stage by stage, reads and
   records the sources, shows one plan with the open questions in it, has a fresh architecture critic challenge
-  the approach before any text, and has a quality critic, a check and a verifier judge the result. Change does the
-  same for one instruction, with fewer agents. A correction goes back to the sheet, not into the text.
+  the approach before any text, and has a quality critic, a check and a verifier judge the result. Change is
+  written out as its own twelve steps for one instruction, with fewer agents; Repair is for a typo or a link. A
+  correction goes back to the sheet, not into the text.
 - `skill-creator/scripts/check.mjs <directory> --against <revision or copy>` lists every line of a skill's
   Markdown that an edit removed and nothing carries now, and exits 1 until each is answered in a dispositions
-  file: `moved`, with the place and the words that carry it, or `retired`, with the user's own words. A corrected
-  word or link lists nothing. Change's steps are written out on the page with this as step 8, Repair runs it too,
-  and "remove first" no longer applies to a fact.
+  file: `moved`, with the place and the words that carry it, one line for each place a part of it went, or
+  `retired`, with the user's own words. A corrected word or link lists nothing. It is step 8 of Change; Repair
+  and any Create on a skill that exists run it too, and "remove first" no longer applies to a fact.
+- Every judge is briefed by one short form in `references/critics.md`: a role section read by path, a list of
+  what to read and a list of what not to open, with nothing of the writer's reasons. Every set of marks has
+  `part`. The verifier takes the dispositions file line by line, a check's reader has a section of its own, and
+  "Handling a return" says how a verdict is computed: from the rule written before the result and from marks
+  confirmed at their places, never from a judge's own total.
+- A plan whose check runs sessions, or that has more than one round, is a file (`references/plan.md`): the
+  rounds and the cap on fix rounds, checkpoints with their rules written first, planned spend, how the check's
+  sessions start and who writes what, a log whose times come from a command, and a progress table that says
+  `unknown` where the host gives no figure.
+- Every check, dry run and part of reflection ends with a close-out, and every idea the user offered gets an
+  outcome before delivery.
+- `references/reflection.md`: fresh agents look back over a run, first for a change that could make the skill
+  work where the present approach cannot (four lenses, each kept from reading the others' returns), then for
+  where the run left the user's words or its own rules (an audit). Each part hangs on a numbered step, runs
+  only when the plan names it, and leaves a scorecard row.
+- When the job a skill is to carry is already done well by someone, `references/analysis.md` has the agent
+  take that practice from their runs, hold it against the pages and write the gaps for a reader who was not
+  there. `references/checks.md` adds a transfer test for it, judged by what a reader with only the pages
+  achieves on material whose answer is known.
 - `skill-creator/scripts/check.mjs` holds a skill to twelve mechanical rules and prints every limit with what the
   skill uses of it. Four rules are new: the open specification's limits on `name` and `description`, that
   every file under `references/` is linked from `SKILL.md`, and that no link leaves the files installed with the
@@ -26,13 +46,21 @@ forensics remain in the repository references and release notes.
 
 ### Gate and limits
 
-- Local checks passed: `scripts/skills.test.mjs` (12), skill-check (3), package, orchestrate (13) and
-  fragments (2), on Node.js v22.23.5.
-- Tested on Sonnet by a protocol frozen before the test (`research/2026-11-26-skill-creator/`): on a pending
-  change, both sessions that followed the skill lost page facts while merging duplicates (back to design); on a
-  replay of its own design run, sessions with the skill scored 12 of 13 against the controls' 10, short of the
-  margin the protocol asks (undecided). By that protocol's rule this version does not land. Unmeasured: whether
-  agents select it beside a host's built-in `skill-creator`, and anything on Codex or OpenCode.
+- Local checks passed: `scripts/skills.test.mjs` (12), skill-check (10), package (21, one skipped until the
+  release tag), orchestrate (13) and fragments (2), on Node.js v22.23.5.
+- The first version was tested on Sonnet by a protocol frozen before the test
+  (`research/2026-11-26-skill-creator/`) and did not land: on a pending change, both sessions that followed it
+  lost page facts while merging duplicates, and on a replay of its own design run it fell short of the margin
+  asked. This version is the answer to that result, under a second protocol frozen before its sessions.
+- Passed so far: the preservation list finds the three lost rows in all four of the first test's final trees;
+  a pilot of two sessions on the same pending change passed on its second pair, after one rework of the list;
+  judges briefed from the pages alone caught 9 and 9 of 10 planted faults against 6 for the earlier pages, on
+  the test's rerun after one correction.
+- Pending, and deciding whether this version lands: the full test on two pending changes and on a replay of
+  the design run's opening. Until it returns, the skill is not shown to be better than working without it.
+- Unmeasured: creating a new skill past its plan; the plan file, the reflection role and the practice step in
+  a session that has only the pages; whether agents select the skill beside a host's built-in `skill-creator`;
+  anything on Codex or OpenCode.
 
 ## 0.47.3 — 2026-11-26
 

@@ -20,8 +20,8 @@ the returns and the check's files.
 | combinations | two or three changes that fail apart and may work together | 10; 12 | an audit of this run lists a thing dropped on opinion, or tested without a named partner |
 | audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 12 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
 
-A run whose check ran no session has no part of this page: a dry run's agent, a confirmer of marks and a
-reader of sources do not count. It still has its [close-out](../SKILL.md#a-close-out). What the two early
+A run whose check ran no session has no part of this page, but for the audit at the user's second
+correction: a dry run's agent, a confirmer of marks and a reader of sources do not count. It still has its [close-out](../SKILL.md#a-close-out). What the two early
 parts return reaches the sheet as [a correction](../SKILL.md#a-correction).
 
 [critics.md](critics.md#which-model-and-how-many) gives each part's tier.
