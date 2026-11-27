@@ -620,11 +620,12 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .dialog-in > p { margin: 12px 0 0; }
 .dialog-actions { margin-top: 14px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dialog-actions .btn.primary { height: 30px; font-size: 13px; padding: 0 14px; }
-#zoom-dialog { width: 94vw; height: 92vh; }
-.zoom-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+#zoom-dialog { width: fit-content; max-width: 96vw; max-height: 94vh; overflow: hidden; }
+.zoom-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); min-width: min(560px, 96vw - 2px); box-sizing: border-box; }
 .zoom-bar form { margin-left: auto; }
-.zoom-scroll { overflow: auto; height: calc(92vh - 52px); display: flex; align-items: flex-start; justify-content: center; background: var(--surface-2); }
-.zoom-scroll img.fit { max-width: 100%; max-height: 100%; object-fit: contain; }
+.zoom-stage { overflow: auto; display: flex; background: var(--surface-2); }
+.zoom-stage img { display: block; margin: auto; max-width: none; flex: none; }
+.zoom-caption { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 13px; width: 0; min-width: 100%; box-sizing: border-box; }
 .zoom-btn { padding: 0; border: 0; background: none; cursor: zoom-in; }
 .leaving-note { display: none; margin: 6px 0 0; color: var(--warn); }
 .card.leaving .leaving-note { display: block; }

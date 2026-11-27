@@ -1871,6 +1871,7 @@ document.addEventListener("click", (e) => {
       case "export": return openExport();
       case "zoom": return openZoom(act.dataset.pic);
       case "zoom-fit": case "zoom-full": zoomFit = a === "zoom-fit"; return showZoom(zoomAt);
+      case "zoom-toggle": zoomFit = !zoomFit; return showZoom(zoomAt);
       case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
       case "print": printProfile = act.dataset.profile; return window.print();
       case "export-json": return downloadExport();
@@ -2323,14 +2324,23 @@ window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); s
 window.addEventListener("hashchange", () => route(location.hash));
 
 // ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size
+// As common picture viewers do, it closes on a click outside the picture, opens fitted to the window and zooms on a
+// click on the picture; its frame closes around the picture instead of keeping a fixed field.
 const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
 let zoomAt = 0, zoomFit = true;
 function openZoom(id) {
   let d = $("#zoom-dialog");
   if (!d) {
     d = document.createElement("dialog"); d.id = "zoom-dialog"; d.setAttribute("aria-labelledby", "zoom-name");
-    d.innerHTML = `<div class="zoom-bar"><button class="btn sm" data-act="zoom-fit">${esc(L("p.zoom.fit"))}</button><button class="btn sm" data-act="zoom-full">${esc(L("p.zoom.actual"))}</button><button class="btn sm icon" data-act="zoom-prev" aria-label="${esc(L("p.zoom.prev"))}">←</button><span id="zoom-count" class="muted small"></span><button class="btn sm icon" data-act="zoom-next" aria-label="${esc(L("p.zoom.next"))}">→</button><span id="zoom-name" class="small"></span><span id="zoom-historical" class="tag dashed" hidden>${esc(L("p.zoom.historical"))}</span><form method="dialog"><button class="btn sm" autofocus>${esc(L("p.close"))}</button></form></div><div class="zoom-scroll"><img alt=""></div>`;
+    d.innerHTML = `<div class="zoom-bar"><button class="btn sm" data-act="zoom-fit">${esc(L("p.zoom.fit"))}</button><button class="btn sm" data-act="zoom-full">${esc(L("p.zoom.actual"))}</button><button class="btn sm icon" data-act="zoom-prev" aria-label="${esc(L("p.zoom.prev"))}">←</button><span id="zoom-count" class="muted small"></span><button class="btn sm icon" data-act="zoom-next" aria-label="${esc(L("p.zoom.next"))}">→</button><span id="zoom-name" class="small"></span><span id="zoom-historical" class="tag dashed" hidden>${esc(L("p.zoom.historical"))}</span><form method="dialog">${closeX("autofocus", L("p.close"))}</form></div><div class="zoom-stage"><img alt="" data-act="zoom-toggle"></div><div class="zoom-caption" id="zoom-caption" hidden></div>`;
     d.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); showZoom(zoomAt + (e.key === "ArrowRight" ? 1 : -1)); } });
+    // The backdrop is the dialog itself, outside its box; the stage is the field around a picture narrower than the bar.
+    d.addEventListener("click", (e) => {
+      const r = d.getBoundingClientRect(), outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      if (e.target === d && outside || e.target.classList.contains("zoom-stage")) d.close();
+    });
+    $("img", d).addEventListener("load", sizeZoom);
+    window.addEventListener("resize", () => { if (d.open) sizeZoom(); });
     document.body.append(d);
   }
   zoomFit = true; showZoom(PICTURES.findIndex((p) => p.id === id));
@@ -2343,6 +2353,18 @@ function showZoom(i) {
   $("#zoom-name").textContent = p.name; $("#zoom-count").textContent = L("p.zoom.of", n(zoomAt + 1), n(PICTURES.length));
   $("#zoom-historical").hidden = !p.historical;
   $('[data-act="zoom-fit"]', d).setAttribute("aria-pressed", String(zoomFit)); $('[data-act="zoom-full"]', d).setAttribute("aria-pressed", String(!zoomFit));
+  if (img.complete) sizeZoom();
+}
+// Fit is the largest size the window holds, up to twice the picture's own so a screenshot is not smeared; actual size is
+// the picture's own pixels, scrolled within the window. The cursor says which of the two a click on the picture gives.
+function sizeZoom() {
+  const d = $("#zoom-dialog"), img = $("img", d), stage = $(".zoom-stage", d), nw = img.naturalWidth, nh = img.naturalHeight;
+  if (!nw || !nh) return;
+  const W = Math.floor(innerWidth * 0.96) - 2, H = Math.floor(innerHeight * 0.94) - 2 - $(".zoom-bar", d).offsetHeight - $("#zoom-caption").offsetHeight;
+  const fit = Math.min(W / nw, H / nh, 2), now = zoomFit ? fit : 1, next = zoomFit ? 1 : fit;
+  img.style.width = `${Math.round(nw * now)}px`; img.style.height = `${Math.round(nh * now)}px`;
+  stage.style.maxWidth = `${W}px`; stage.style.maxHeight = `${H}px`;
+  img.style.cursor = next > now ? "zoom-in" : next < now ? "zoom-out" : "default";
 }
 
 // ---------------------------------------------------------------- print: the owner's or the audit's

@@ -89,6 +89,9 @@ forensics remain in the repository references and release notes.
   the items still unanswered that read the same in full — the question with its context, variants, consequences,
   recommendation and its parent read the same in full with the variants it applies under, the finding with its evidence — never by number; a record of a new revision takes the owner's
   answers through the export.
+- The picture viewer closes on a click outside the picture, opens it fitted to the window — up to twice its own size,
+  so a small screenshot fills the view without smearing — with its frame closed around it, and a click on the
+  picture switches between fitted and actual size, the cursor saying which.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

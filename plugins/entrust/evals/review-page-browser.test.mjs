@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import zlib from "node:zlib";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
@@ -41,11 +42,18 @@ const { run } = prepare("currency-contract", "clean"), repo = path.join(run, "re
 const diff = spawnSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--"], { cwd: repo }).stdout;
 const { THEMED } = reportFixtures(createHash("sha256").update(diff).digest("hex"));
 const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+// A flat grey picture of a given size, to measure how the viewer sizes it.
+function png(w, h) {
+  const chunk = (type, data) => { const td = Buffer.concat([Buffer.from(type), data]), len = Buffer.alloc(4), crc = Buffer.alloc(4); len.writeUInt32BE(data.length); crc.writeUInt32BE(zlib.crc32(td)); return Buffer.concat([len, td, crc]); };
+  const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 3, 200)]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", head), chunk("IDAT", zlib.deflateSync(Buffer.concat(Array.from({ length: h }, () => row)))), chunk("IEND", Buffer.alloc(0))]);
+}
 function render(name, record, diffBytes = diff, pictures = true) {
   const dir = path.join(run, name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "source.diff"), diffBytes);
-  if (pictures) for (const p of ["before.png", "after.png"]) fs.writeFileSync(path.join(dir, p), PIXEL);
+  if (pictures) for (const p of ["before.png", "after.png"]) fs.writeFileSync(path.join(dir, p), pictures === true ? PIXEL : pictures[p] ?? PIXEL);
   fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(record));
   const r = spawnSync(process.execPath, [SCRIPT, "render", path.join(dir, "review.json")], { encoding: "utf8" });
   if (r.status !== 0) throw new Error(`render ${name}: ${r.stderr}`);
@@ -1049,6 +1057,32 @@ test("a hostile id or name of any kind stays text on every tab, in every panel, 
     try { await scan(plain.page, "without JavaScript"); } finally { await plain.close(); }
     return !found.length && !dialogs.length && leads.requirement?.selected === 1 && leads.scenario?.selected === 1 || JSON.stringify({ found: found.slice(0, 5), dialogs, leads });
   });
+
+// ---- the picture viewer
+const PICS_URL = render("pictures", record, diff, { "before.png": png(200, 100), "after.png": png(3000, 1500) });
+test("the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it",
+  "a small screenshot stayed small in a viewer the size of the window, and only its Close button closed it",
+  cased(PICS_URL + "#details/screens", {}, async (page) => {
+    const geo = () => page.evaluate(() => { const d = document.querySelector("#zoom-dialog"), img = d.querySelector("img"), s = d.querySelector(".zoom-stage"), dr = d.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      return { open: d.open, nw: img.naturalWidth, dw: Math.round(dr.width), dh: Math.round(dr.height), iw: Math.round(ir.width), ih: Math.round(ir.height), scroll: s.scrollWidth > s.clientWidth, cursor: img.style.cursor, vw: innerWidth, vh: innerHeight }; });
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page); await page.waitForTimeout(100);
+    const small = await geo();
+    if (small.nw !== 200 || small.iw !== 400 || small.ih !== 200 || small.dw > 600 || small.cursor !== "zoom-out") return `a small picture: ${JSON.stringify(small)}`;
+    await page.click("#zoom-dialog img"); await settle(page);
+    const own = await geo();
+    if (own.iw !== 200 || own.cursor !== "zoom-in" || !own.open) return `a click on the picture did not show its own size: ${JSON.stringify(own)}`;
+    await page.keyboard.press("ArrowRight"); await settle(page); await page.waitForTimeout(100);
+    const large = await geo();
+    if (large.nw !== 3000 || large.iw !== 3000 || !large.scroll || large.dw > large.vw * 0.96 + 1 || large.dh > large.vh * 0.94 + 1) return `a large picture at its size: ${JSON.stringify(large)}`;
+    await page.click('[data-act="zoom-fit"]'); await settle(page);
+    const fitted = await geo();
+    if (fitted.iw > fitted.vw * 0.96 || fitted.dh > fitted.vh * 0.94 + 1 || fitted.scroll || fitted.cursor !== "zoom-in") return `a large picture fitted: ${JSON.stringify(fitted)}`;
+    // a key on a control inside clicks it without closing the viewer; a click outside the picture closes it
+    await page.focus('[data-act="zoom-full"]'); await page.keyboard.press("Enter"); await settle(page);
+    if (!(await geo()).open) return "a key on a control closed the viewer";
+    await page.mouse.click(5, 5); await settle(page);
+    return !(await geo()).open || "a click on the backdrop left the viewer open";
+  }));
 
 // ---- parity with the page it replaces
 test("the picture viewer fits or shows a picture at its size and steps between pictures; a screen's revision and sources show",
