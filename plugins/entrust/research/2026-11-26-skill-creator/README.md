@@ -14,6 +14,18 @@ a convention the reader set and the protocol does not define; counted strictly, 
 is written (D7) is absent in both skill sessions, which the rule makes **Back to design**. Part B (selection) did not run: the harness change it needs is
 not built. The owner decides what happens next; this record adds no recommendation after the fact.
 
+**Version 2.** A second version of the skill, with a preservation gate for changes (`check.mjs --against`), Change
+written out in steps, a plan form with rounds and checkpoints, one brief form for the judges, a reflection role and
+a practice step, was built in stages after two architecture critics and tested by a frozen protocol
+([10-v2.md](10-v2.md), [11-test-protocol-v2.md](11-test-protocol-v2.md)). The gate's pilot passed after one rework
+(CP2 second pair: mean cost 0.628 USD, no fact lost); the judge briefs' outcome test failed once and passed on a
+rerun the audit found contaminated. By the frozen landing rule **v2 does not land**: Part A returned **Back to
+design** in both cases (one page session lost a fact in each, and the controls lost as many) and Part R returned
+**Back to design** by the frozen reading, because the decision on how a skill's text and files are written is only
+partly stated in both page sessions (counting a partial mark as met, every clause of `Pass` holds). External
+spend was 15.56 USD. The test cannot show that the page's judges work, since no test session had an agent tool. The
+owner decides what happens next.
+
 ## What was built
 
 `plugins/entrust/plugin/skills/skill-creator/`: `SKILL.md` (two routes, Create in ten steps and Change, plus

@@ -51,3 +51,60 @@ session, and that it ran the launcher from its own shell, having no agent tool.
 - E168 (`plugins/terse/ISSUES.md`): terse's skill-page genre note restates limits the checker now owns.
 - E169 (`plugins/entrust/ISSUES.md`): the cleanup help gives a missing state directory as a usage exit; a listing
   without one exits 0 (level 3).
+
+## Version 2
+
+To be appended to the end of rounds.md. Fable designed and wrote the pages (thread F3); the decision log, plan card,
+designs, critics' returns, operators' records and the readers' marks stay in the private run directory; this
+record carries their verdicts ([10-v2.md](10-v2.md)). Commits are on the same branch over `aa40ba0`, after v1's.
+
+### Design
+
+| Step | Input | Reader | Outcome |
+|---|---|---|---|
+| reflection pilot | v1's run | audit and four lenses (Fable, Opus) | the baseline for the role; clusters taken into v2: a preservation gate, the plan as a form, rounds and checkpoints, the role itself ([06-reflection-pilot.md](06-reflection-pilot.md)) |
+| design, stage 1 | the clusters, the sheet, the owner's messages after v1 | fresh architecture critic (Fable), requirements derived before the design was opened | `change approach`: 1.85 of 3.2 million planned tokens before any session could show the mechanism is used; adopted its alternative, a staged plan: the gate and Change's steps first, then a pilot |
+| sheet | the owner's eight later messages | — | `752b80c`: requirements amended before any build |
+| decisions | the critic's return | the coordinator | D1 to D8 on the plan card: staged plan; Sonnet for mechanical work to stretch the account's limit; no fork; orchestrate owns card and log; private material not copied; no PR subscription |
+| design, stage 2 | later requirements: briefs that work for other models, a source-mining step, a wider name | fresh architecture critic (Fable), do-not-open list | `change approach`: the sheet lacked those messages, sources unread, scoring against the catalogue measures copying, a small change should not wait; sliced into 2a and 2b, scope and name kept, sheet and sources first (`6eff6c4`) |
+| 2a design | the critic's alternative | the coordinator | six parts, a test by outcome with ten known answers frozen before the build, its pass rule and its handling probe |
+| 2b design | the amended sheet | the coordinator | plan fields in the skill's own file, not on orchestrate's card; no `--plan` script; reflection parts each hung on a numbered step |
+
+### Build and test
+
+| Step | Commit or input | Reader | Outcome |
+|---|---|---|---|
+| reference answers | fact lists for two cases (28 and 54 facts) | fresh Opus that saw neither design nor v1's record | the test repaired before it runs; four measures changed after a desk check, before the freeze |
+| freeze | the protocol, SHA-256 `cb965cd3…190a` | — | [11-test-protocol-v2.md](11-test-protocol-v2.md); addenda A, B, C, D and 1 follow |
+| stage 1 | `761d9da`, then `fe99909` (addendum A) | — | the gate, Change in steps, remove-first limited |
+| CP1 | the gate on v1's four Part A trees | the script | 3 of 3 lost rows, 4 candidates each; typo and link fixes list nothing: pass |
+| CP2 first pair | two page sessions on the effort case, `fe99909` | operator (Sonnet); fresh checker; evidence lens (Opus) | Rework: mean 0.706 > 0.68; one lost fact (delegation at any effort), accepted by the gate on one shared word |
+| rework | `e8b6e02` (addendum B) | — | coverage rule over every disposition; missing file read as empty; refusals named; rule 12 per plugin folder |
+| CP2 second pair | `p3`, `p4` | operator; fresh checker | Continue: mean 0.628, no fact lost; stage 1 adopted |
+| 2a | `52f8596` | — | brief form, do-not-open, part mark, per-line check for the verifier, handling, close-out |
+| 2a test | nine briefs written from the pages, nine judges, a confirmer, a probe (Sonnet) | counted blind below the top tier; confirmed at the places | Fail: 9 and 7 against 6 |
+| 2a correction | `d8cc78f` | — | reader's role, claim rule, missing inputs, return's place |
+| 2a rerun | six arm-S cells fresh | same | Pass: 9 and 9 against 6; the audit later found it contaminated: the correction brief named the key's missed items |
+| 2b | `04ca3c3` | — | plan file, reflection role, practice step with a transfer test; `e5b9865` relaxed the gate for bold titles |
+| step 8 on the skill | the skill's rewrite against v1 | the script | the builder had skipped it; 42 lost lines answered by 60 moved |
+| quality read | v2 as a whole | fresh Fable | `change`, 18 objections (9 behavioural); `a538316` took all 18; one fix round by plan |
+| verifier | `a538316` | fresh Sonnet | 46 of 46 dispositions carried; three corrections in `a831166` and `99591cf` |
+| CP3 Part A | `d8cc78f`; effort and bulk-row cases, two page and two control sessions each; eight finals, five rerun after a rate limit | blind Opus reader per case; decisive losses opened at their places | Back to design in both: one page session lost a fact in each case; the controls lost as many; overhead 1.32 and 2.21 |
+| CP3 Part R | `a538316`; six sessions, one invocation each | blind Opus reader by the pages' own form; every `asked` and `shown` confirmed | scored set of eight: page sessions 6 and 7, controls 3 and 1; unseen request 6 of 7 against 0. Back to design strictly (the decision on how skills are written is a part mark in both page sessions); Pass if part counts |
+| landing | the frozen rule | — | v2 does not land |
+| reflection before delivery | state statement; audit (Fable); evidence lens (Opus) | the coordinator opened each finding | 5 findings, 5 confirmed, 4 new; both verdicts hold; written, not run: a vanished-word flag and changed-value flag with step 8's criteria printed beside each line |
+
+### Deviations
+
+Recorded by the run's log, then by the audit, each checked at its place (details in [10-v2.md](10-v2.md)): the gate's
+clause added after the freeze, before any session; CP3 split and measured on two commits that are not the final
+text; the 2a scenarios, guard line and probe material written by the coordinator, and the contaminated rerun;
+stage 2 designed before its sheet and sources, and 2a and 2b committed before the verdicts they waited for; step 8
+skipped on the builder's own edits; the readers of CP3 uncalibrated and on a higher tier than the page names; Part A's
+verifiers not run; log times written from memory; the requirements record pushed without a privacy read (a late
+read found it clean); the rate limit, which stopped the run at 00:04 UTC for 3 h 41 min with five sessions lost.
+
+### Defects found in passing
+
+- E170 (`plugins/entrust/ISSUES.md`): orchestrate's architecture critic is told the coordinator's reasons and
+  skill-creator's is forbidden them; two pages brief the same role in opposite ways.
