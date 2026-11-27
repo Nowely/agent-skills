@@ -46,6 +46,10 @@ are `<name>@X.Y.Z`.
   from a file's first 100 lines, references linked from SKILL.md, forward slashes) and every link and anchor. The
   rules are owned by entrust's `plugin/skills/rnd/scripts/check.mjs`, which the suite imports, so a
   change to a rule is a change to entrust's installed files and ships with an entrust release.
+- **Portable workflows.** Shared skills and scripts describe capabilities in host- and VCS-neutral terms and use the
+  current environment's supported mechanisms. Host- or VCS-specific commands, formats and assumptions belong in the
+  corresponding adapter; use them only for that host or VCS. Preserve a portable path when the workflow does not
+  require a particular implementation.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
   default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
