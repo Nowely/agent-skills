@@ -115,6 +115,11 @@ forensics remain in the repository references and release notes.
 - A route's panel draws its steps as a flow: each step a box with its block, place and role, a step whose block is
   not kept marked, and the arrow into a step saying where it gets what the step before produced; a step opens its
   code in place, and the requirements the route serves head it.
+- The skill's Plan keeps the seven choices with their defaults and the rules of approval; what each choice means and
+  costs and how the plan is shown move to `references/plan.md`, read only when the request or a parent's brief leaves
+  a choice open. A review whose plan the caller already fixed reads a third less of the skill.
+- A large kept block that is one decision — a column dropped from every row, a generated file — says why in `whole`;
+  `check` no longer warns of its size, and the printout gives the reason to the critic, who may still divide it.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

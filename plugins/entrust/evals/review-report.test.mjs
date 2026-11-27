@@ -371,6 +371,25 @@ test("check warns when many blocks serve a requirement and no route follows it, 
     return second.status === 0 && !second.stderr.includes("served by 9 blocks") || `with a route: ${second.status} ${second.stderr}`;
   });
 
+test("a large kept block is warned of until it says in «whole» why it is one decision, and the printout gives the reason to the checking agents",
+  "a table losing one column in 42 rows was warned of with no way to answer, and reviewers split it into pieces that meant nothing",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "whole-")), lines = Array.from({ length: 40 }, (_, i) => `+| row ${i} | value |`);
+    const text = ["diff --git a/docs/t.md b/docs/t.md", "new file mode 100644", "--- /dev/null", "+++ b/docs/t.md", "@@ -0,0 +1,40 @@", ...lines, ""].join("\n");
+    fs.writeFileSync(path.join(dir, "source.diff"), text);
+    const block = { path: "docs/t.md", added: "1-40", does: "The table of rates.", serves: [1], verdict: "keep" };
+    const write = (b) => fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify({ ...twoUnits(text, [b]), units: [] }));
+    write(block);
+    const warned = report("check", path.join(dir, "review.json"));
+    if (warned.status !== 0 || !/keeps 40 lines under one verdict; divide it, or say in "whole" why it is one decision/.test(warned.stderr)) return `no warning: ${warned.stderr}`;
+    write({ ...block, whole: "one table, each row the same rate format" });
+    const quiet = report("render", path.join(dir, "review.json"));
+    if (quiet.status !== 0 || /under one verdict/.test(quiet.stderr) || !/Keep\. One decision: one table, each row the same rate format/.test(quiet.stdout)) return `with whole: ${quiet.stderr} ${quiet.stdout.slice(-600)}`;
+    write({ ...block, whole: " " });
+    const refused = report("check", path.join(dir, "review.json"));
+    return refused.status === 1 && refused.stderr.includes('"whole" says why the block is one decision') || `an empty whole passed: ${refused.stderr}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

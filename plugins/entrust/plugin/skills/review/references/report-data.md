@@ -17,14 +17,15 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    Scaffold never replaces a record or saved diff: to start over, delete both.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
-   `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
+   `removed`. A large block that is one decision — a column dropped from every row of a table, one rename through a
+   file, a generated file — says why in `whole`, and the critic may still divide it. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
    What the review quotes from the conversation — the owner's task, a decision, the author's description or a
    session's hand-off — is saved beside the record (`task.md`, `discussion.md`, `description.md`) and quoted from there.
    A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
-   about a large block given one verdict, about kept blocks that serve no requirement or only requirements to confirm no
+   about a large block given one verdict without `whole`, about kept blocks that serve no requirement or only requirements to confirm no
    question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
@@ -179,7 +180,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   requirement or the code gives — or the plain statement that no source gives one, never a guess. A kept block needs
   it as much as an open one: the owner reads it to understand the change, not only to decide.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`. `remove` means the
-  target has no such code: work that belongs in another change keeps its verdict, and a step moves it.
+  target has no such code: work that belongs in another change keeps its verdict, and a step moves it. `whole`,
+  optional, says why a block of many lines is one decision; the printout gives it to the checking agents.
 - **Routes.** One for each behaviour the change adds or alters that runs through more than one block — where its
   data is produced, transformed and used, or how a request reaches its effect. `title` names the behaviour,
   `requirements` the ids it serves, and `steps` lists its blocks (numbers from 1) in the order the behaviour runs,
@@ -376,7 +378,7 @@ adds is itself a change to judge, and the file is read.
 
 - Replace the file's scaffolded blocks with one whose `added` and `removed` each span the file, such as `1-4210`:
   unchanged lines in a range are ignored, and `all` is only for a block to remove. It needs no unit. Skip its part of
-  the `lines` printout. Its `does` names this section, which answers the check's warning about a large block.
+  the `lines` printout. Its `does` names this section, and its `whole` says the file is judged as one.
 - A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
   outside the project's registries — a host in a field such as `resolved`, `tarball`, `source` or `remote`, a git,
   file or `http:` URL — or a hash (such as `integrity`, `checksum`, `h1:` or `hash`) changed while its version did

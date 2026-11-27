@@ -509,6 +509,8 @@ export function check(review, files, directory) {
     if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
     // Every block says what it does and why it is there: the owner reads the kept ones to understand the change too.
     if (!text(block.does)) errors.push(`${name} has no "does": say what it does and why it is there, or that no source gives a reason`);
+    // A large block that is one decision says why; the critic reads it and may divide the block.
+    if (block.whole !== undefined && !text(block.whole)) errors.push(`${name}: "whole" says why the block is one decision, or is left out`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
