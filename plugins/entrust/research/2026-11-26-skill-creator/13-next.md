@@ -146,11 +146,23 @@ For the owner, each with its cost and what it decides:
 - Haste: the session's context at each checkpoint, and a fresh session per phase (the rule now in `plan.md`).
 - The goal: once a version, a question of the goal itself (the double loop), not only of the means.
 
+## The questions part
+
+The owner asked to keep the reflection questions in the skill. The part `questions` was added to `reflection.md`:
+seven questions, answered by the session from what it holds and sealed before the audit, marked by the audit after
+its tables, with an answer marked `part` or `does not hold` handled as an audit finding and the marks kept by
+question number in the scorecard. Three fresh quality critics on the top tier read it, with seven, five and four
+objections that change a step. The first two rounds were fixed, the second by simplifying the bookkeeping; the last
+fixes were applied on the owner's word with no further read.
+
 ## Open after v4
 
 - A dispositions reader's brief that names conditions, not only facts (E172's fact 23).
 - Steps dropped without a changed plan (E173's session, and the retro's proposal of the same kind).
 - The undo past the correction's limit, still unmeasured.
+- The questions part's remaining minor objections: a close-out and scorecard row for a part with no model, facts
+  stated in several places, what to do with an answer that honestly admits a gap, the section's first sentence
+  repeating its heading. Its first real run with an audit is its check.
 
 ## Open objections from v3
 
