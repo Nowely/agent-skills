@@ -81,7 +81,7 @@ ${groups.filter(([, cards]) => cards.length).map(([head, cards]) => `<h3>${esc(t
   const screen = (s, si) => `<h4>${esc(s.name)}</h4>
 <p>${esc(t(`p.screen.${s.provenance}`, s.revision))}${s.provenance.startsWith("historical") ? `. ${esc(t("p.screen.historical-note"))}` : ""}</p>${srcs(s.sources)}
 ${s.pictures.map((p) => p.embedded ? `<figure><figcaption>${esc(t(p.kind))}</figcaption><img data-pic="${si}-${p.kind}" src="${picture(si, p.kind)}" alt="${esc(`${t(p.kind)}: ${s.name}`)}"></figure>` : `<p>${esc(t(p.kind))}: ${esc(p.link)}</p>`).join("")}
-${s.match ? `<p>${esc(t("matches"))}</p>` : ""}${s.differences.length ? `<ul>${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` — ${prose(d.why)}` : ""}${d.finding ? ` (F${esc(d.finding)})` : ""}</li>`).join("")}</ul>` : ""}
+${(() => { const r = data.requirements.filter((x) => x.screens.includes(si)).map((x) => x.id), f = [...new Set(s.differences.map((d) => d.finding).filter(Boolean))]; return r.length || f.length ? `<p>${esc(t("p.screen.related"))}: ${[ids("R", r), ids("F", f)].filter(Boolean).join(", ")}</p>` : ""; })()}${s.match ? `<p>${esc(t("matches"))}</p>` : ""}${s.differences.length ? `<ul>${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` — ${prose(d.why)}` : ""}${d.finding ? ` (F${esc(d.finding)})` : ""}</li>`).join("")}</ul>` : ""}
 ${s.missing ? `<p>${esc(t("not-compared"))}: ${prose(s.missing)}</p>` : ""}`;
   const p = data.passport;
   const details = `<section id="details"><h2>${esc(t("p.tab.details"))}</h2>
@@ -95,10 +95,16 @@ ${data.checks.length ? `<h3>${esc(t("p.details.checks"))}</h3><p class="muted">$
 ${data.challenges.length ? `<h3>${esc(t("p.details.challenges"))}</h3><p class="muted">${esc(t("challenges-note"))}</p><ol>${data.challenges.map((x) => `<li>${esc(t(`challenger.${x.from}`))}: ${prose(x.point)}<br><b>${esc(t(`outcome.${x.outcome}`))}</b>: ${prose(x.note)}${x.at ? ` (${esc(x.at)})` : ""}</li>`).join("")}</ol>` : ""}
 ${data.screens.length ? `<h3>${esc(t("p.details.screens"))}</h3>${data.screens.map(screen).join("")}` : ""}
 <h3>${esc(t("p.details.coverage"))}</h3>
-${data.unasked.assumed.length ? `<p>${esc(t.count("p.warn.assumed", data.unasked.assumed.length))} ${ids("B", data.unasked.assumed)}. ${esc(t("p.warn.do"))}</p>` : ""}${data.unasked.unlinked.length ? `<p>${esc(t.count("p.warn.unlinked", data.unasked.unlinked.length))} ${ids("B", data.unasked.unlinked)}. ${esc(t("p.warn.do"))}</p>` : ""}
-${data.coverageStructured.length ? `<ul>${data.coverageStructured.map((x) => `<li><b>${esc(t(x.kind === "not_checked" ? "coverage.not-checked" : `coverage.${x.kind}`))}</b>: ${prose(x.text)}${x.revision ? ` (${esc(t("p.coverage.at", x.revision))})` : ""}${srcs(x.sources)}</li>`).join("")}</ul>` : ""}
-${block(data.coverage)}${data.tradeoffs.length ? `<h4>${esc(t("tradeoffs"))}</h4><ul>${data.tradeoffs.map((x) => `<li>${prose(x.text)} ${esc(t("tradeoff.consequence"))}: ${prose(x.consequence)}${srcs(x.sources)}</li>`).join("")}</ul>` : ""}
-<h3>${esc(t("p.details.report"))}</h3><dl>${def(t("p.scope"), prose(data.range))}${p ? def(t("p.report.repository"), esc(p.repository ?? "")) + def(t("p.report.base-head"), `${esc(p.base ?? "")} → ${esc(p.head ?? "")}`) + def(t("passport.reviewed-at"), esc(p.reviewedAt ?? "")) + (p.links ?? []).map((l) => def(l.kind, `${esc(l.label)}: ${esc(l.url)}`)).join("") : ""}${def(t("p.report.diff"), `${esc(data.digest.diffFile)} · sha256 ${esc(data.digest.diff)}`)}${def(t("passport.record"), `sha256 ${esc(data.digest.record)}`)}</dl></section>`;
+${(() => {
+  const of = (kind) => data.coverageStructured.filter((x) => x.kind === kind);
+  const stmt = (x) => `<li>${prose(x.text)}${x.revision ? ` (${esc(t("p.coverage.at", x.revision))})` : ""}${srcs(x.sources)}</li>`;
+  const limits = [...of("not_checked").map(stmt), ...data.requirements.filter((r) => r.not_checked).map((r) => `<li>R${esc(r.id)}: ${prose(r.not_checked)}</li>`),
+    ...[["carried", data.carried], ["unlinked", data.unasked.unlinked], ["assumed", data.unasked.assumed]].filter(([, list]) => list.length).map(([k, list]) => `<li>${esc(t.count(`p.warn.${k}`, list.length))} ${ids("B", list)}</li>`)];
+  const part = (head, items) => items.length ? `<h4>${esc(t(head))}</h4><ul>${items.join("")}</ul>` : "";
+  return `<p class="muted">${esc(t("p.coverage.intro"))}</p>${part("p.coverage.limits", limits)}${part("coverage.ran", of("ran").map(stmt))}${part("coverage.read", of("read").map(stmt))}
+<h4>${esc(t("p.coverage.note"))}</h4>${data.coverageStructured.length ? "" : `<p class="muted">(${esc(t("p.coverage.unstructured"))})</p>`}${block(data.coverage)}`;
+})()}${data.tradeoffs.length ? `<h4>${esc(t("tradeoffs"))}</h4><ul>${data.tradeoffs.map((x) => `<li>${prose(x.text)} ${esc(t("tradeoff.consequence"))}: ${prose(x.consequence)}${srcs(x.sources)}</li>`).join("")}</ul>` : ""}
+<h3>${esc(t("p.details.report"))}</h3><dl>${def(t("p.scope"), prose(data.range))}${p ? def(t("p.report.repository"), esc(p.repository ?? "")) + def(t("p.report.base-head"), `${esc(p.base ?? "")} → ${esc(p.head ?? "")}`) + def(t("passport.reviewed-at"), esc(p.reviewedAt ?? "")) + (p.links ?? []).map((l) => def(l.kind, `${esc(l.label)}: ${esc(l.url)}`)).join("") : ""}${def(t("p.report.diff"), `${esc(data.digest.diffFile)} · sha256 ${esc(data.digest.diff)}`)}${def(t("passport.record"), `sha256 ${esc(data.digest.record)}`)}${data.history ? def(t("p.report.continues"), `${data.history.title ? esc(t("p.report.continues.title", data.history.title)) : esc(data.history.record)}${data.history.reviewedAt ? `, ${esc(data.history.reviewedAt)}` : ""} · sha256 ${esc(data.history.sha256)} · ${esc([t.count("p.count.carried", data.carried.length), t.count("p.count.replies", data.replies.length)].join(" · "))}`) : ""}</dl></section>`;
 
   return {
     report: `<noscript id="static-report"><div class="static"><header><p class="muted">${esc(t("kind"))}</p><h1>${esc(data.title)}</h1><p class="static-note">${esc(t("p.static.note"))}</p>

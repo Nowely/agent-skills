@@ -586,7 +586,7 @@ export function check(review, files, directory) {
   const routed = new Set((Array.isArray(review.routes) ? review.routes : []).flatMap((r) => Array.isArray(r?.requirements) ? r.requirements : []));
   for (const r of review.requirements) {
     const n = review.blocks.filter((b) => Array.isArray(b.serves) && b.serves.includes(r.id)).length;
-    if (n > 8 && !routed.has(r.id)) warnings.push(`requirement ${r.id} is served by ${n} blocks and no route follows it: follow it through a route, or link only the blocks that implement or test it`);
+    if (n > 8 && !routed.has(r.id)) warnings.push(`requirement ${r.id} is served by ${n} blocks and no route follows it: follow it through a route, so each block's part in it shows`);
   }
 
   for (const file of files) {

@@ -92,18 +92,19 @@ forensics remain in the repository references and release notes.
 - The picture viewer closes on a click outside the picture, opens it fitted to the window — up to twice its own size,
   so a small screenshot fills the view without smearing — with its frame closed around it, and a click on the
   picture switches between fitted and actual size, the cursor saying which.
-- A screen says what it is about, from the record's own fields: what was compared with what, the outcome, the
-  requirements that cite it and the findings its differences name, and what was not compared; the picture viewer's
+- A screen says what it is about, from the record's own fields alone: the pictures given, the match it claims or the
+  differences it found, the requirements that cite it and the findings its differences name, and what was not compared; the picture viewer's
   caption says the same, its links leaving the viewer for their place.
 - A requirement's panel maps its code instead of stacking excerpts: the routes that serve it, step by step with each
   step's role, then its other blocks by unit, one line each, those that need attention first; a row opens its excerpt
-  in place, one at a time, and «Show in Code» still opens them all. A block serves a requirement only when it
-  implements or tests it, and `check` warns when more than eight blocks serve one and no route follows it. More
+  in place, one at a time, and «Show in Code» still opens them all. A block serves the requirements it exists for,
+  its description saying how, and `check` warns when more than eight blocks serve one and no route follows it. More
   lines or blocks in a panel keep the place the owner reads instead of jumping to its top.
 - Coverage answers how far the review's conclusions reach: the counts of what ran, what was read and what was not
-  checked; then what was not checked, with the review's limits — carried blocks not read again, kept code serving no
-  requirement or only requirements to confirm; then what ran, with its revision; then what was only read. The
-  reviewer's prose folds away under them, or is shown as written, with a note, when no statement breaks it down. Scope
+  checked, a kind no statement names left uncounted; then what was not checked, the requirements' own unchecked parts
+  with it, and the review's limits — carried blocks not read again, kept code serving no requirement or only
+  requirements to confirm; then what ran, with its revision; then what was only read; then the reviewer's prose, with a
+  note when no statement breaks it down. The page without JavaScript keeps the same order. Scope
   and tradeoffs leave it for Report details and Summary. Report details names the review a continuation continues —
   its title, date and digest — and how many blocks it carried and comments it answered.
 - The print is a copy of the summary and every decision with the owner's answers, to pass on or keep: the export

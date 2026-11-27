@@ -508,7 +508,7 @@ function updateChrome() {
 
 // ---------------------------------------------------------------- tabs, selection, routing
 function showTab(id, { push = true } = {}) {
-  if (S.tab !== id) S.scroll[S.tab] = window.scrollY;
+  if (S.tab !== id) { S.scroll[S.tab] = window.scrollY; closeMenus(); }
   const changed = S.tab !== id;
   S.tab = id;
   for (const t of TABS) {
@@ -637,7 +637,7 @@ function codeMap(r) {
   const at = (id) => { const i = ORDER.indexOf(blk(id)); return i < 0 ? 1e9 : i; };
   const row = (id, text, step) => {
     const b = blk(id), open = S.cmap[key] === id;
-    return `<button class="cmap-tog${mine.has(id) ? "" : " aside"}" data-act="cmap" data-key="${esc(key)}" data-b="${id}" aria-expanded="${open}"><span class="cmap-line">${step ? `<span class="cmap-n">${step}</span>` : ""}<span class="cmap-id">B${id}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${attention(id) ? verdictTag(b.verdict) : ""}</span><span class="cmap-text">${prose(text || b.does)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(id)}</div>` : ""}`;
+    return `<button class="cmap-tog${mine.has(id) ? "" : " aside"}" data-act="cmap" data-key="${esc(key)}" data-b="${id}" aria-expanded="${open}"><span class="cmap-line">${step ? `<span class="cmap-n">${step}</span>` : ""}<span class="cmap-id">B${id}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${mine.has(id) ? "" : `<span class="cmap-aside" title="${esc(L("p.cmap.aside-title"))}">${esc(L("p.cmap.aside"))}</span>`}${attention(id) ? verdictTag(b.verdict) : ""}</span><span class="cmap-text">${prose(text || b.does)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(id)}</div>` : ""}`;
   };
   const groups = D.routes.map((rt, i) => [rt, i]).filter(([rt]) => rt.requirements.includes(r.id)).map(([rt, i]) => `<div class="cmap-g"><div class="cmap-gh"><button class="linkish" data-act="goroute" data-route="${i}">${esc(L("p.route"))}</button> ${prose(rt.title)}</div>${rt.steps.map((s, k) => { seen.add(s.block); return row(s.block, s.role, k + 1); }).join("")}</div>`);
   const byUnit = new Map();
@@ -922,15 +922,14 @@ function reqGroups() {
 }
 // The variants a decision's recommendation names, by their words.
 const recommendedTexts = (q) => (q.recommendation?.variant ? [q.recommendation.variant] : q.recommendation?.variants ?? []).map((id) => q.variants.find((v) => v.id === id)?.text).filter(Boolean);
-// What a screen is about, from the record's own fields: what was compared with what, the outcome, the requirements that
-// cite it and the findings its differences name, and what was not compared. Nothing is inferred beyond them.
+// What a screen is about, from the record's own fields alone: the pictures given, the match it claims or the differences
+// it found, the requirements that cite it and the findings its differences name, and what was not compared.
 function screenFacts(si) {
-  const s = D.screens[si], kinds = new Set(s.pictures.map((p) => p.kind)), has = (k) => kinds.has(k);
-  const pairs = [has("mockup") && has("after") && "mockup-after", has("before") && has("after") && "before-after", has("mockup") && has("before") && !has("after") && "mockup-before"].filter(Boolean);
+  const s = D.screens[si];
   const reqs = D.requirements.filter((r) => r.screens.includes(si)).map((r) => r.id), finds = [...new Set(s.differences.map((d) => d.finding).filter(Boolean))];
-  const outcome = s.match ? L("p.screen.outcome.match") : s.differences.length ? P("p.count.differences", s.differences.length) : s.missing ? "" : L("p.screen.outcome.none");
+  const outcome = s.match ? L("matches") : s.differences.length ? P("p.count.differences", s.differences.length) : "";
   return [
-    [L("p.screen.compared"), esc(pairs.length ? pairs.map((k) => ({ "mockup-after": L("p.screen.vs.mockup-after"), "before-after": L("p.screen.vs.before-after"), "mockup-before": L("p.screen.vs.mockup-before") })[k]).join("; ") : L("p.screen.vs.none"))],
+    [L("p.screen.pictures"), esc(s.pictures.length ? s.pictures.map((p) => L(p.kind)).join(", ") : L("no-pictures"))],
     outcome && [L("p.screen.outcome"), esc(outcome)],
     (reqs.length || finds.length) && [L("p.screen.related"), `${chips("r", reqs)}${chips("f", finds)}`],
     s.missing && [L("not-compared"), `<span class="screen-open">${prose(s.missing)}</span>`],
@@ -942,7 +941,7 @@ function screenBox(si) {
   return `<div class="box box-gap screen-box"><h3 class="screen-h">${esc(s.name)}</h3>
       ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
       <dl class="kv screen-facts">${screenFacts(si).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
-      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
+      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : ""}
       ${s.differences.length ? `<p class="lbl gap-top">${esc(L("p.screen.differences"))}</p><ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}</div>`;
 }
 function summaryPanel(sel) {
@@ -969,7 +968,7 @@ function summaryPanel(sel) {
     const i = +sel.slice(6), r = D.routes[i], key = `route${i}`;
     const node = (s, k) => {
       const b = blk(s.block), open = S.cmap[key] === s.block;
-      return `<li class="flow-step"><button class="cmap-tog flow-node${b.verdict !== "keep" ? " open-v" : ""}" data-act="cmap" data-key="${esc(key)}" data-b="${s.block}" aria-expanded="${open}" aria-label="${esc(`${L("p.route.step", k + 1)}, B${s.block}`)}"><span class="cmap-line"><span class="cmap-n">${k + 1}</span><span class="cmap-id">B${s.block}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}</span><span class="flow-role">${prose(s.role)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(s.block)}</div>` : ""}</li>`;
+      return `<li class="flow-step"><button class="cmap-tog flow-node${b.verdict !== "keep" ? " open-v" : ""}" data-act="cmap" data-key="${esc(key)}" data-b="${s.block}" aria-expanded="${open}"><span class="cmap-line"><span class="cmap-n" title="${esc(L("p.route.step", k + 1))}">${k + 1}</span><span class="cmap-id">B${s.block}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}</span><span class="flow-role">${prose(s.role)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(s.block)}</div>` : ""}</li>`;
     };
     const via = (s) => `<li class="flow-via"><span class="flow-arrow" aria-hidden="true"></span><span><span class="lbl">${esc(L("route.via"))}</span>${prose(s.via)}</span></li>`;
     return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), `<div class="psec">
@@ -1540,7 +1539,7 @@ function goFile(fi) {
   fill(fi);
   landOn(() => $(`#file-${fi}`), toolbarBottom() + 6).then(() => $(`#file-${fi} .fold-btn`)?.focus({ preventScroll: true }));
 }
-// The toolbar's menus close here alone, whatever closes them, and say so to assistive technology; the button of a menu
+// The menus — the toolbar's and the theme's — close here alone, whatever closes them, and say so to assistive technology; the button of a menu
 // that was open is returned, so Esc can give it focus back. A click inside a menu keeps that menu open.
 function closeMenus(inside = null) {
   let was = null;
@@ -1732,14 +1731,15 @@ function renderDetailBody() {
     const of = (kind) => D.coverageStructured.filter((c) => c.kind === kind), structured = D.coverageStructured.length > 0;
     const stmt = (c) => `<li>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}${c.sources.length ? `<div>${srcList(c.sources)}</div>` : ""}</li>`;
     const limit = (set) => SETS[set].ids.size ? `<li>${esc(P(SETS[set].warn, SETS[set].ids.size))} <button class="btn sm quiet" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
-    const limits = of("not_checked").map(stmt).join("") + limit("carried") + limit("unlinked") + limit("assumed");
-    const section = (title, items, cls) => `<div class="section-h"><h2>${esc(title)}</h2></div><div class="box ${cls}"><ul class="plain cov-list">${items || `<li class="muted">${esc(L("p.coverage.none"))}</li>`}</ul></div>`;
+    const unchecked = [...of("not_checked").map(stmt), ...D.requirements.filter((r) => r.not_checked).map((r) => `<li>${chip("r", r.id)} ${prose(r.not_checked)}</li>`)];
+    const limits = unchecked.join("") + limit("carried") + limit("unlinked") + limit("assumed");
+    const section = (title, items, cls) => items ? `<div class="section-h"><h2>${esc(title)}</h2></div><div class="box ${cls}"><ul class="plain cov-list">${items}</ul></div>` : "";
+    // a kind no statement names is not counted as none: the prose may say it
+    const counts = [["coverage.ran", of("ran").length], ["coverage.read", of("read").length], ["coverage.not-checked", unchecked.length]].filter(([, c]) => c);
     html = `<p class="muted intro">${esc(L("p.coverage.intro"))}</p>
-      ${structured ? `<div class="cov-counts">${[["coverage.ran", of("ran").length], ["coverage.read", of("read").length], ["coverage.not-checked", of("not_checked").length]].map(([k, c]) => `<span>${esc(L(k))}: <b>${n(c)}</b></span>`).join("")}</div>` : ""}
-      ${structured || limits ? section(L("p.coverage.limits"), limits, "cov-limits") : ""}
-      ${structured ? section(L("coverage.ran"), of("ran").map(stmt).join(""), "cov-ran") + section(L("coverage.read"), of("read").map(stmt).join(""), "cov-read") : ""}
-      ${structured ? `<details class="cov-note"><summary>${esc(L("p.coverage.note"))}</summary><div class="box prose">${textBlock(D.coverage)}</div></details>`
-        : `<div class="section-h"><h2>${esc(L("p.coverage.note"))}</h2><span class="muted">${esc(L("p.coverage.unstructured"))}</span></div><div class="box prose">${textBlock(D.coverage)}</div>`}`;
+      ${counts.length ? `<div class="cov-counts">${counts.map(([k, c]) => `<span>${esc(L(k))}: <b>${n(c)}</b></span>`).join("")}</div>` : ""}
+      ${section(L("p.coverage.limits"), limits, "cov-limits")}${section(L("coverage.ran"), of("ran").map(stmt).join(""), "cov-ran")}${section(L("coverage.read"), of("read").map(stmt).join(""), "cov-read")}
+      <div class="section-h"><h2>${esc(L("p.coverage.note"))}</h2>${structured ? "" : `<span class="muted">${esc(L("p.coverage.unstructured"))}</span>`}</div><div class="box prose">${textBlock(D.coverage)}</div>`;
   } else {
     const p = D.passport;
     html = `<div class="box"><dl class="kv kv-wide">
@@ -2404,7 +2404,7 @@ function openZoom(id) {
       // a link in the caption leaves the viewer for its place
       if (e.target === d && outside || e.target.classList.contains("zoom-stage") || e.target.closest("[data-go]")) d.close();
     });
-    $("img", d).addEventListener("load", sizeZoom);
+    $("img", d).addEventListener("load", sizeZoom); $("img", d).addEventListener("error", sizeZoom);
     window.addEventListener("resize", () => { if (d.open) sizeZoom(); });
     document.body.append(d);
   }
@@ -2425,7 +2425,7 @@ function showZoom(i) {
 // the picture's own pixels, scrolled within the window. The cursor says which of the two a click on the picture gives.
 function sizeZoom() {
   const d = $("#zoom-dialog"), img = $("img", d), stage = $(".zoom-stage", d), nw = img.naturalWidth, nh = img.naturalHeight;
-  if (!nw || !nh) return;
+  if (!nw || !nh) { img.style.width = img.style.height = ""; img.style.cursor = "default"; return; }
   const W = Math.floor(innerWidth * 0.96) - 2, H = Math.floor(innerHeight * 0.94) - 2 - $(".zoom-bar", d).offsetHeight - $("#zoom-caption").offsetHeight;
   const fit = Math.min(W / nw, H / nh, 2), now = zoomFit ? fit : 1, next = zoomFit ? 1 : fit;
   img.style.width = `${Math.round(nw * now)}px`; img.style.height = `${Math.round(nh * now)}px`;

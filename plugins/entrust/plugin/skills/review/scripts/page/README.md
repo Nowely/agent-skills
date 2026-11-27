@@ -16,7 +16,7 @@ only word it. `evals/review-page.test.mjs` checks what the file carries, and `ev
 drives it in Chromium, locally only.
 
 - **Summary** opens the page: the verdict, the recommendation and its steps, «How it works» — the record's routes,
-  each walked step by step with its code in the side panel — the requirements, established apart from those to
+  each drawn as a flow in the side panel, a step opening its code — the requirements, established apart from those to
   confirm, with one status each, the coverage limits and «Start review», which goes to the first open item.
 - **Decisions** shows every question, finding and idea as one card, with sub-tabs by kind, by state (deferred,
   done) and for the comments; a side panel adds the card's place, sources and related items.
@@ -29,8 +29,8 @@ drives it in Chromium, locally only.
   docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like config; the rest production. A
   block whose own `kind` is `test` in a production file counts as tests.
 - **Details** holds the structure, mechanisms, scenarios, checks by hand, challenges, screens with their
-  provenance, coverage — with the check's warnings about kept blocks that serve no requirement or only assumed
-  ones — and the report's details, with the two print profiles.
+  provenance and what each is about, coverage — what was not checked and the review's limits first, then what ran
+  and what was read — and the report's details, with the review a continuation continues.
 - **Answering.** By click or key, in Decisions or in the code's margin, one answer per item as the data contract's
   decision cards say; a key answers only the item in view, and Undo takes its answer back. «Decided N of M» counts
   the applicable choices — decisions, findings and ideas: an item its parent makes not applicable leaves M, and a
@@ -53,8 +53,7 @@ drives it in Chromium, locally only.
   confirms and otherwise opens the raw text, selected, and «Download JSON»; the raw text is otherwise shown on request.
 - **Without JavaScript, and in print.** The page holds the report as a document: the summary, every card as text,
   each file's whole diff with every block's verdict, and the details; the diff's code is in the page once. It prints
-  for the owner (the summary and every decision with its answer) or for audit (also every file whole and the
-  details).
+  the summary and every decision with the owner's answer, from the browser's Print or the export dialog.
 - **Links** reach a tab and an item: `#summary/r1`, `#decisions/f3`, `#decisions/comments`, `#code/b12`,
   `#code/line/<file index>:<+new or -old line>`, `#details/<tab>/<row>`.
 - **Syntax.** Code is highlighted at render time by a vendored Shiki bundle (`scripts/vendor/shiki.mjs`, pinned

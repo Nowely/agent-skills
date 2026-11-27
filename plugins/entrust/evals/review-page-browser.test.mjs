@@ -872,7 +872,7 @@ test("Summary says how the change works, one route per behaviour, and a route's 
     const rows = await page.locator("#summary-routes + ul.routes .route-row").allInnerTexts();
     await page.click("#summary-routes + ul.routes .route-row"); await settle(page);
     const flow = await page.locator("#ctx-summary .flow > li").evaluateAll((els) => els.map((e) => `${e.className}: ${e.innerText.replace(/\s+/g, " ").trim()}`));
-    const closed = await page.locator("#ctx-summary .flow .excerpt").count();
+    const closed = await page.locator("#ctx-summary .flow .excerpt").count() + await page.locator("#ctx-summary .flow-node[aria-label]").count();
     await page.click('#ctx-summary .flow-node[data-b="3"]'); await settle(page);
     const opened = await page.locator("#ctx-summary .flow .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
     const url = page.url();
@@ -1069,7 +1069,7 @@ test("a requirement's code is a map: its routes step by step, then its other blo
     if (!/2 blocks · 2 need attention/.test(head)) return `the heading: ${head}`;
     const groups = await page.locator("#ctx-summary .cmap-g").evaluateAll((els) => els.map((g) => ({ head: g.querySelector(".cmap-gh").innerText, rows: [...g.querySelectorAll(".cmap-tog")].map((r) => ({ id: r.dataset.b, aside: r.classList.contains("aside"), text: r.innerText.replace(/\s+/g, " ") })) })));
     const shape = groups.map((g) => g.rows.map((r) => r.id + (r.aside ? "~" : "")).join(","));
-    if (groups.length !== 2 || !/^Route/.test(groups[0].head) || shape[0] !== "1~,3" || !/readArchive/.test(groups[1].head) || shape[1] !== "2" || !/fix/i.test(groups[1].rows[0].text)) return JSON.stringify(groups);
+    if (groups.length !== 2 || !/^Route/.test(groups[0].head) || shape[0] !== "1~,3" || !/route step/.test(groups[0].rows[0].text) || /route step/.test(groups[0].rows[1].text) || !/readArchive/.test(groups[1].head) || shape[1] !== "2" || !/fix/i.test(groups[1].rows[0].text)) return JSON.stringify(groups);
     if (await page.locator("#ctx-summary .excerpt").count()) return "an excerpt shows before a row is opened";
     const open = () => page.locator("#ctx-summary .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
     await page.click('#ctx-summary .cmap-tog[data-b="2"]'); const one = await open();
@@ -1086,20 +1086,20 @@ const PROSE_ONLY = structuredClone(record);
 delete PROSE_ONLY.coverageStructured;
 PROSE_ONLY.screens[1] = { ...PROSE_ONLY.screens[1], sources: [{ at: "TASK-9", quote: "the old page" }] };
 const PROSE_URL = render("prose-only", PROSE_ONLY);
-test("Coverage says how far the review reaches: what was not checked and its limits first, then what ran, then what was only read, the prose folded away; without statements, the prose as written",
+test("Coverage says how far the review reaches: what was not checked — a requirement's own unchecked part too — and its limits first, then what ran, then the prose; a kind no statement names is not counted as none",
   "Coverage was a wall of text that repeated Report details and did not tell what was run from what was only read",
   cased(THEMED_URL + "#details/coverage", {}, async (page) => {
     const body = await text(page, "#det-body");
     const heads = await page.locator("#det-body .section-h h2").allInnerTexts();
-    const limits = await text(page, "#det-body .cov-limits"), ran = await text(page, "#det-body .cov-ran"), read = await text(page, "#det-body .cov-read");
-    const folded = await page.locator("#det-body details.cov-note:not([open])").count();
-    if (!/How far the review's conclusions reach/.test(body) || !/Ran: 1 Read: 0 Not checked: 1/.test(await text(page, "#det-body .cov-counts"))
-      || JSON.stringify(heads) !== JSON.stringify(["Not checked and limits", "Ran", "Read"]) || !/The list was not seen on screen\./.test(limits)
-      || !/1 kept block serves only requirements to confirm/.test(limits) || !/The suite ran on the working copy\. at head/.test(ran) || read !== "None recorded."
-      || folded !== 1 || /Legacy keeps the old path/.test(body)) return JSON.stringify({ heads, limits, ran, read, folded, body: body.slice(0, 400) });
+    const limits = await text(page, "#det-body .cov-limits"), ran = await text(page, "#det-body .cov-ran"), read = await page.locator("#det-body .cov-read").count();
+    const counts = await text(page, "#det-body .cov-counts");
+    if (!/How far the review's conclusions reach/.test(body) || counts !== "Ran: 1 Not checked: 2"
+      || JSON.stringify(heads) !== JSON.stringify(["Not checked and limits", "Ran", "The reviewer's note"]) || !/The list was not seen on screen\./.test(limits) || !/R1 How the list draws it\./.test(limits)
+      || !/1 kept block serves only requirements to confirm/.test(limits) || !/The suite ran on the working copy\. at head/.test(ran) || read !== 0
+      || !/The reviewer's note What was read\./.test(body) || /Legacy keeps the old path/.test(body)) return JSON.stringify({ heads, counts, limits, ran, read, body: body.slice(0, 500) });
     await page.goto(PROSE_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
-    const plain = await text(page, "#det-body"), counts = await page.locator("#det-body .cov-counts").count();
-    return counts === 0 && /The reviewer's note as the reviewer wrote it, not broken down into run, read and not checked/.test(plain) && /Not checked and limits/.test(plain) || `prose only: ${plain.slice(0, 400)}`;
+    const plain = await text(page, "#det-body"), only = await text(page, "#det-body .cov-counts");
+    return only === "Not checked: 1" && /The reviewer's note as the reviewer wrote it, not broken down into run, read and not checked/.test(plain) && /Not checked and limits/.test(plain) || `prose only: ${only} | ${plain.slice(0, 400)}`;
   }));
 
 test("Report details names the review a continuation continues, its date and digest, and how many blocks it carried and comments it answered",
@@ -1151,21 +1151,31 @@ test("the picture viewer fits a picture to the window, up to twice its own size,
     return !(await geo()).open || "a click on the backdrop left the viewer open";
   }));
 
-test("a screen says what it compares with what, the outcome, the requirements and findings it relates to and what was not compared, and the viewer's caption says the same",
+test("a screen says, from the record alone, the pictures given, its match or differences, the requirements and findings it relates to and what was not compared, and the viewer's caption says the same",
   "the Screens tab showed pictures and differences without saying what they were compared with, what they relate to or what stayed unchecked",
   cased(THEMED_URL + "#details/screens", {}, async (page) => {
     const box = await text(page, "#det-body .screen-box");
-    for (const want of ["Compared", "the result against the mockup; before against after", "Outcome", "2 differences", "Related to", "Not compared", "The empty state."])
+    for (const want of ["Pictures Mockup, Before, After", "Outcome 2 differences", "Related to", "Not compared The empty state."])
       if (!box.includes(want)) return `the first screen lacks «${want}»: ${box}`;
     if (!(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="r:1"]').count()) || !(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="f:1"]').count())) return "the related requirement or finding is not linked";
     const second = await text(page, "#det-body .screen-box >> nth=1");
-    if (!second.includes("nothing: one picture or none")) return `the second screen: ${second}`;
+    if (!second.includes("Pictures no pictures") || /Outcome|Compared/.test(second)) return `the second screen: ${second}`;
     await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page);
     const caption = await text(page, "#zoom-caption");
-    if (!caption.includes("the result against the mockup") || !caption.includes("2 differences")) return `the caption: ${caption}`;
+    if (!caption.includes("Pictures: Mockup, Before, After") || !caption.includes("Outcome: 2 differences")) return `the caption: ${caption}`;
     await page.click('#zoom-caption [data-go="r:1"]'); await settle(page); await page.waitForTimeout(100);
     const after = { open: await page.evaluate(() => document.querySelector("#zoom-dialog").open), tab: await page.getAttribute("#tab-summary", "aria-selected"), sel: await page.locator('[data-sel="req:1"].sel').count() };
     return !after.open && after.tab === "true" && after.sel === 1 || `a link in the caption: ${JSON.stringify(after)}`;
+  }));
+
+const BROKEN_URL = render("broken-picture", record, diff, { "before.png": png(200, 100), "after.png": Buffer.from("not a picture") });
+test("a picture that does not load keeps no size or zoom of the picture before it",
+  "after a broken picture the viewer showed the icon in the last picture's grey field with a zoom cursor that did nothing",
+  cased(BROKEN_URL + "#details/screens", {}, async (page) => {
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page); await page.waitForTimeout(100);
+    await page.keyboard.press("ArrowRight"); await settle(page); await page.waitForTimeout(150);
+    const r = await page.evaluate(() => { const img = document.querySelector("#zoom-dialog img"); return { w: img.style.width, h: img.style.height, cursor: img.style.cursor, nw: img.naturalWidth }; });
+    return r.nw === 0 && r.w === "" && r.h === "" && r.cursor === "default" || JSON.stringify(r);
   }));
 
 // ---- parity with the page it replaces
