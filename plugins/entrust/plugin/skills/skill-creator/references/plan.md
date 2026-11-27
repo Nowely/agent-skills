@@ -1,12 +1,13 @@
 # The plan file
 
-Write the plan as a file, `plan.md` in the run directory, whenever it starts an agent or a session; a plan that
-starts none is the message of step 3 and nothing more. Write the file before you show the plan, show the user
+Write the plan as a file, `plan.md` in the run directory, whenever its check runs sessions (test cases, a
+transfer test or a selection check) or it has more than one round; any other plan is the message of step 3 and
+nothing more. Write the file before you show the plan, show the user
 its text down to the log, and wait as step 3 says. After the user's word, and after any pause or any loss of
 context, open the file before anything else: it says what was agreed and how far the work is.
 
-Under entrust's [orchestrate](../../orchestrate/SKILL.md) the card stays orchestrate's; its checks row names
-this file by path.
+Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
+stays as it is; its checks row names this file by path.
 
 ## The form
 
@@ -30,6 +31,7 @@ The skill's text is written by: <this session, or the model or person the user n
 The delivery text is written by: <the same, or who the user named>
 Could not be read: <each source or file, with every way tried; or "nothing">
 Agents: <each judge, reader and reflection part, with its model and how many>
+Calibration: <for the check's reader and the audit: false items planted, or answers held back; or "none:">
 
 ## Rounds
 Rounds planned: <a number>          Fix rounds after a judge's read, at most: <a number>
@@ -65,7 +67,8 @@ Merging several returns: <the rule, written now>
 
 - A round is one pass from a text to a judge's or a check's result. Fix the number, and the cap on fix rounds,
   before the first; when the cap is reached with objections open, they go to the user. A cap is never raised
-  after a result is seen.
+  after a result is seen. For the plan's check the cap is not yours to set:
+  [a correction](../SKILL.md#a-correction) allows one changed plan and one more run.
 - Put a checkpoint after the step whose result can still change the plan cheaply: after the check is prepared,
   after the first run of the check, before delivery. A plan of one round has `none: one round`.
 - Write each checkpoint's three rules before any result. At the checkpoint, fill the progress table, apply the
@@ -82,14 +85,14 @@ Add a row when a thing happens, not afterwards from memory:
 | Kind | When |
 |---|---|
 | `decision` | you choose between two ways, drop a part, or apply or overrule an objection |
-| `user idea` | the user offers a thought or a correction; the outcome is filled before delivery |
-| `experiment` | a check, a dry run or a reflection part starts; the outcome is its close-out |
+| `user idea` | the user offers a thought or a correction; the row names its line of the sheet, whose outcome the close-out gives |
+| `experiment` | a check, a dry run or a reflection part starts; the row names its close-out |
 | `checkpoint` | a checkpoint is reached |
 | `deviation` | you did something other than the plan or a step says |
 | `limit` | something could not be done or read |
 
 Take the time from a command, `date -u +%H:%M`, run when you write the row. Never write a time from memory: a
-session does not feel the clock, and a log written that way has run more than an hour ahead of it.
+session has no sense of the clock.
 
 ## The figures
 

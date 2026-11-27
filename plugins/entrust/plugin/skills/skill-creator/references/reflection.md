@@ -6,20 +6,23 @@ stand on: what the run did, against what the user said and the record claims. Fr
 the run, so you do neither.
 
 Run only the parts the plan names. Each is an agent, so each is on the plan with its model before the user
-accepts it. A part never edits the skill: it returns, and you act as this page says.
+accepts it. A part never edits the skill: it returns, and you act as this page says. A lens is any part but
+the audit. The record is what the run has written so far: the sheet, the sources table, the plan with its log,
+the returns and the check's files.
 
 ## The parts, and the step each hangs on
 
 | Part | It looks for | Step, in Create and in Change | It runs when |
 |---|---|---|---|
 | evidence | the cause of each result of a check, by what the sessions did | 8; 10 | the check ran sessions |
-| from zero | what a skill for this job would be, designed without the present one | 1; never | a new major version of a skill that exists, once |
-| prior art | what other skills and guides do that this one lacks | 2; 2 | the skill's sources table has a row that is new, read in part, or whose version or date has changed; the first version reads its sources at step 2 and runs no lens |
+| from zero | what a skill for this job would be, designed without the present one | 4; never | a new major version of a skill that exists, once |
+| prior art | what other skills and guides do that this one lacks | 4; 5 | the skill's sources table has a row that is new, read in part, or whose version or date has changed; the first version reads its sources at step 2 and runs no lens |
 | combinations | two or three changes that fail apart and may work together | 10; 12 | an audit of this run lists a thing dropped on opinion, or tested without a named partner |
-| audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 12 | the plan started agents beyond the judges; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
+| audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 12 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
 
-A run with no session and no agent beyond the judges has no part of this page. It still has its
-[close-out](../SKILL.md#a-close-out).
+A run whose check ran no session has no part of this page: a dry run's agent, a confirmer of marks and a
+reader of sources do not count. It still has its [close-out](../SKILL.md#a-close-out). What the two early
+parts return reaches the sheet as [a correction](../SKILL.md#a-correction).
 
 [critics.md](critics.md#which-model-and-how-many) gives each part's tier.
 
@@ -46,7 +49,7 @@ A lens returns at most five hypotheses, ranked, and marks its own top two. Each 
 
 ```text
 the change, in three lines at most
-the result it would move, with the evidence and its level
+the result it would move, with the evidence and how sure it is: 1 the text says so, 2 an independent reader would agree, 3 it was seen
 why the skill as it stands misses it, with file and line
 the cheapest test that could refute it
 its cost, marked as an estimate
@@ -67,7 +70,7 @@ what a finding does to one.
   where it touches a verdict you recompute the verdict as
   [handling a return](critics.md#handling-a-return) says. Its tables are trusted only when they hold, from before it
   opened them, the deviations the log already records.
-- Hypotheses are merged by the rule the plan wrote before any return came. A rule that has served: duplicates
+- Hypotheses are merged by the rule the plan wrote before any return came. A rule to start from: duplicates
   are merged with every source kept; none is dropped without a reason; disagreement between lenses is kept as
   written; the order is expected gain over cost.
 - Show the user the merged list and, beside it, each lens's own top two. The user chooses. A hypothesis is never

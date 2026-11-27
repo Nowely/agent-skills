@@ -11,7 +11,7 @@ Take every row whose claim the user's request makes.
 | The work claims | The check that can fail | It starts |
 |---|---|---|
 | a script now enforces a rule | a test that fails when the change is taken out | nothing |
-| nothing was lost in a cut, a move, a merge or a rewrite | [Change's step 8](../SKILL.md#change) exits 0; each fact its dispositions call moved is found at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
+| nothing was lost in a cut, a move, a merge or a rewrite | [Change's step 8](../SKILL.md#change) exits 0; each fact its dispositions call moved is found, in the words the disposition quotes, at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
 | a literal reader can follow the skill: a route, a step, an order | [a dry run](#a-dry-run); for a change, once before and once after | one agent per run |
 | an agent acts differently with the skill: an instruction added or reworded, or a new skill when the user asks for runs | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
 | the skill carries a practice: an agent with only the pages does what the practitioner did | [a transfer test](#a-transfer-test), on the pages before and after | its sessions, one agent to build the material, and one confirmer |
@@ -46,8 +46,8 @@ would have shown. With no run at all, the quality critic's read is the only evid
 
 1. At step 5, write one request the way a user would type it, from the middle of the sheet's job.
 2. At step 8, start one fresh agent on the cheapest model the sheet says will load the skill, briefed by
-   [the form](critics.md#every-brief) with this step as its role and the sheet under `Do not open`. Give it the
-   path of `SKILL.md` and the request. Tell it to walk the request through the files as written, to run nothing, and
+   [the form](critics.md#every-brief) with this section as its role and the sheet under `Do not open`. Give it
+   the path of `SKILL.md` and the request, in a file. Tell it to walk the request through the files as written, to run nothing, and
    to report each step where it halts, has to guess or can read a line two ways, with the file and line. For a
    change, start the same walk at step 5 as well, on the skill as it was, and compare the two reports.
 3. The work is kept when the walk reaches the end with no halt and no guess at a stage the sheet's walk covers.
@@ -83,7 +83,8 @@ by any model, and resemblance then measures copying.
    [the practice file](analysis.md#a-practice-someone-already-performs) build the material: for each kind of
    artifact, a small scenario with answers known in advance, such as a fault planted in a text, and a key that
    lists them. A second fresh agent, with the key, confirms each answer can be found from the scenario; one
-   that cannot is replaced. You keep the key, and whoever writes the pages does not see the scenarios.
+   that cannot is replaced. Both write to files you pass on by path and do not open before step 8, since you
+   may be the one who writes the pages; any other writer of the pages is not given them either.
 2. Write the rule now: how many of the known answers each run must reach, and by how much the pages as they
    will be must beat the pages as they are.
 3. At step 8, start sessions on the cheapest model the sheet says will load the skill. Each gets the path of

@@ -113,8 +113,9 @@ the user's and private: read only the ones they named, and keep what you take in
    holds the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
    practice. It writes `practice.md` in the run directory, in four parts:
    - the catalogue: each thing the artifacts do, in how many of them, with one example and its place;
-   - what each did, judged by what came back: the place that shows it and an evidence level, or `nothing
-     visible`; and what went wrong where it was absent;
+   - what each did, judged by what came back: the place that shows it and how sure that is (1, the text says
+     so; 2, an independent reader would agree; 3, it was seen to happen), or `nothing visible`; and what went
+     wrong where it was absent;
    - the gaps: for each thing, whether the pages state it, state it in part, lack it or contradict it, with the
      place on the page;
    - each gap written as a line for a reader who was not there: what to do, in the reader's own terms, with no
