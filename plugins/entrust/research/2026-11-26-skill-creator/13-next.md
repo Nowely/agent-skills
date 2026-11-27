@@ -44,7 +44,7 @@ critic by experiment A, below) and the spend table by agent.
   rule of 16. It raised 9 new objections, all holding at their place. Decision: the quality critic goes back to
   the top tier. One run a side shows no spread.
 - **Experiment B.** Of the trial retro's nine proposals the audit alone found 4, part 4, missed 1: 6 of 9 against
-  a rule of 7. Two new findings held. It used about 0.15M tokens against the trial retro's 4.2 USD. The retro keeps
+  a rule of 7. Two new findings held. The audit alone used 3.4M context tokens against the trial retro's 22.5M, both counted from their transcripts, about a sixth. The retro keeps
   both prepare-feedback's reader and the audit.
 - In both, the cheaper reader found other defects rather than fewer of the same; an observation from one run a
   side, which decides nothing.
@@ -119,6 +119,32 @@ top tier cost more than seventy short users on Sonnet. What follows for the next
 its start, and takes from agents a short return with its long part in a file; an agent that reads much gets
 the files it needs and a fixed question, on the executor tier; a writer gets one part at a time, not the whole
 design.
+
+## Options added after the reflection questions
+
+For the owner, each with its cost and what it decides:
+
+- **Experiment C.** The same Create case run once with a minimal `rnd` (the gate script, a short procedure of the
+  plan, the check and the result, a retro) and once with the present one, to the end, one session each, a blind
+  reader on the downstream use. Decides whether the next version grows or shrinks. About 6 to 8 USD.
+- **A usage scan.** A script over v3's and v4's session transcripts that counts which reference sections each
+  session opened; no agents. Decides which parts a removal Change proposes.
+- **An independent re-read of item 3's sessions (E172, E173)** by one fresh Sonnet reader, since the coordinator
+  wrote their reading. About 0.1M tokens.
+- **Question effectiveness.** Each retro's audit checks the coordinator's provisional marks in
+  `14-reflection-questions.md` and scores the questions.
+
+## Preventing the errors of this run
+
+- Figures: every figure in a record comes from a script or a file named beside it, in one metric per comparison,
+  and a fresh reader recounts before the commit (the audit after v4 did this).
+- Claims: a result says how many sessions, read by whom, blind or not, and calls one session a signal.
+- The owner's decisions: a decision that changes what the owner weighs is a question in the plan, never a
+  recommendation the coordinator adopts on a reply that leaves the choice.
+- Writing: the plan names who writes each text, and a text the coordinator writes itself is a log row before it
+  is written.
+- Haste: the session's context at each checkpoint, and a fresh session per phase (the rule now in `plan.md`).
+- The goal: once a version, a question of the goal itself (the double loop), not only of the means.
 
 ## Open after v4
 
