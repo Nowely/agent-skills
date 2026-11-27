@@ -112,6 +112,15 @@ closed by a retro find no new defect at evidence level 3.
    first session read (now prevented by the first-session read); samples larger than the decision needed (now
    options put to the owner); the coordinator writing text itself and reading its own results unblind (the
    prevention lines below).
+7. A ranked order under the remaining limits, each with its cost from the plan: the usage scan (a script, no agents)
+   and the re-read of item 3 (one Sonnet reader, about 0.1M tokens) first; then the verifier experiment (one Sonnet
+   agent); then experiment C (6 to 8 USD); then a real use and its retro (about 4 USD).
+8. The verifier experiment. Give the verifier, briefed from `critics.md`, item 3's E117 change (the fact-23 case: a
+   condition dropped while its rule moved) and see whether it catches the dropped condition. One Sonnet agent. It
+   decides whether the verifier's brief needs to name conditions.
+9. In experiment C: the owner asked, on the v3 day, that what is specific to skills be kept but moved apart from
+   the general procedure. C's minimal version should test that split.
+10. After a compaction, open this file first and check each figure at its source before acting on it.
 
 ## Where the tokens went, v1 to v3
 

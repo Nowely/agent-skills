@@ -28,6 +28,7 @@ research and develop, and every step here is written for work on a skill.
 
 ## Standing rules
 
+- Write to the user in the language of their messages, and the skill's files in the language its repository uses.
 - Read the repository's agent instructions first: the files the host loads for it (a host is a program
   that loads skills, such as Claude Code or Codex), such as `AGENTS.md`,
   `CLAUDE.md` or `AGENT.md` at its root, and what they link. Where they differ from these steps, follow them.
@@ -134,7 +135,9 @@ research and develop, and every step here is written for work on a skill.
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
    returns as `not met` is [a correction](#a-correction).
 10. **Deliver.** First start the parts of [reflection](references/reflection.md) the plan gave this step and
-    act on what they return. When [a close-out](references/plan.md#a-close-out) leaves no line without an
+    act on what they return. Where no audit runs at this step, start
+    [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put each `missing`
+    and `part` into the result. When [a close-out](references/plan.md#a-close-out) leaves no line without an
     outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
 
 ## Change
@@ -144,7 +147,8 @@ analysis.md's table, and adds no step, route, script or file. A small change wri
 table and no plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
 with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
 out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs.
-Its step 9 is the quality critic's read as critics.md gives it, the close-out, then the result. When a step
+Its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then
+the result. When a step
 shows that a fact would be added, change or go, or step 8 lists a line, the change is no longer small: take
 every step.
 

@@ -5,7 +5,7 @@ approach together, the quality critic at step 7 and the verifier at step 9. This
 and what you do with what comes back: [every brief](#every-brief),
 [which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic),
 [the quality critic](#the-quality-critic), [the verifier](#the-verifier),
-[handling a return](#handling-a-return).
+[the reader of the user's words](#the-reader-of-the-users-words), [handling a return](#handling-a-return).
 
 ## Every brief
 
@@ -46,7 +46,7 @@ names each model, so the user sees the difference and settles it with one word.
 |---|---|---|
 | the architecture critic | top | a skill is read on every later use, so a gap in its approach is paid for each time, and only this critic reads before the text |
 | the quality critic | top | it reads the whole text for defects of the agent's reading, and a test on one text found a Sonnet reader missing most of what the top tier found |
-| the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
+| the verifier; the reader of the user's words; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
 | [reflection](reflection.md): from zero | top | it designs the skill anew, once for a major version |
 | reflection: the audit, combinations, evidence, prior art | executor | each reads much and answers a fixed question |
 | reflection: the questions | none: this session answers them | they ask what you believe about the run |
@@ -56,6 +56,7 @@ names each model, so the user sees the difference and settles it with one word.
 |---|---|---|
 | architecture critic | once; again when the approach changes; once more on a check that runs sessions, before its first session | only when the change adds a step, a route, a script or a file; and once on a check that runs sessions, before its first session |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
+| reader of the user's words | once, at delivery, unless the audit runs | the same, a small change included |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
 A change whose list at Change's step 8 held a line gets the verifier too, for its item 2: a fresh reader of the
@@ -153,6 +154,25 @@ It returns one row for each requirement, stage and decision of the sheet: the fi
 `part`, `not met`, or `not proven` when nothing it could run or read shows it. It returns the marks of item 2,
 every message in which it found a requirement the sheet lacks, and each overruled objection as holding or not,
 with the place. It returns what item 4 found, each with its place.
+
+## The reader of the user's words
+
+It checks the result against what the user said, not against the sheet, because the sheet is your reading of their
+words. It is started fresh at delivery and briefed as [every brief](#every-brief) says. It reads first the file of
+the user's saved messages, whole, then the result, the plan and the sheet.
+
+It marks every instruction, question and idea in the messages:
+
+- `covered`, with the place that acts on it;
+- `part`, with what is missing;
+- `missing`;
+- `answered only`: a question answered in a reply that needs nothing in the work.
+
+It returns the marks with no verdict. Every `missing` and `part` goes into the result.
+
+It runs on every route but Repair, a small change included. The plan names it on its Agents line, so the user's
+word on the plan starts it and no step asks again. Where [the audit](reflection.md) runs at that step, the audit's
+table of the user's instructions and questions is this check, and this reader does not run.
 
 ## Handling a return
 

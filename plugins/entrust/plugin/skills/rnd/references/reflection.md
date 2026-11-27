@@ -96,7 +96,8 @@ retro. The plan writes it on its Agents line as `questions`, with "this session"
 7. How may your present state be shaping how you read this run: a long or summarised context, the latest results,
    haste near a limit, wanting the work to look finished, or wanting to agree with the user?
 
-Which questions find most is judged across runs by the owner of this skill, not within a run.
+Which questions find most is judged across runs by the owner of this skill, not within a run. A question found
+something when its answer held a point the record did not hold before, the plan took it, and a later run showed it.
 
 ## What you do with a return
 

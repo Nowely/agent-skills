@@ -108,6 +108,9 @@ forensics remain in the repository references and release notes.
   written (E174).
 - A new part of the reflection, `questions`: before the audit, the coordinator writes its answers to seven
   questions about its own run in `questions.md`, and the audit marks each against the run directory.
+- A fresh reader of the user's words at delivery, on every route but Repair: it marks each instruction, question and
+  idea of the user's saved messages `covered`, `part`, `missing` or `answered only`, and every `missing` and `part`
+  goes into the result. A rule to write to the user in the language of their messages.
 - Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
   the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
 
