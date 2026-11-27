@@ -31,8 +31,9 @@
 - Use no capitals and no bold for emphasis; a rule's reason carries its weight.
 - Give a term the reading agent may not know its meaning at first use, and use one word for one thing
   throughout.
-- Keep out measurements with dates, the story of how the skill was made, and a rule fitted to one run's
-  particulars, its names, files or figures, where the failure's kind has no second case.
+- Keep out measurements with dates, the story of how the skill was made, and a rule added for one observed run
+  that no second case of the failure's kind supports, whether or not it is fitted to that run's particulars,
+  its names, files or figures.
 - Keep out a value that was true when you read it and will change, such as a count or a latest
   number: give the command that reads it, or leave it out. Such a value goes on a page only on
   the user's word.
