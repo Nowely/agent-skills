@@ -159,7 +159,8 @@ with the place. It returns what item 4 found, each with its place.
 
 It checks the result against what the user said, not against the sheet, because the sheet is your reading of their
 words. It is started fresh at delivery and briefed as [every brief](#every-brief) says. It reads first the file of
-the user's saved messages, whole, then the result, the plan and the sheet.
+the user's saved messages, whole, then `result.md`, which you write in the run directory from the result's text before
+it starts, the skill's files (for a change, its diff), the plan and the sheet.
 
 It marks every instruction, question and idea in the messages:
 
@@ -168,9 +169,10 @@ It marks every instruction, question and idea in the messages:
 - `missing`;
 - `answered only`: a question answered in a reply that needs nothing in the work.
 
-It returns the marks with no verdict. Every `missing` and `part` goes into the result.
+It returns the marks with no verdict. Every `missing` and `part` goes into the result. The return is not a
+correction by itself: the user's reply decides whether it is one.
 
-It runs on every route but Repair, a small change included. The plan names it on its Agents line, so the user's
+It runs on every route but Repair, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
 word on the plan starts it and no step asks again. Where [the audit](reflection.md) runs at that step, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 

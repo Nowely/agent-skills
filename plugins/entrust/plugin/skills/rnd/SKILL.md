@@ -28,7 +28,7 @@ research and develop, and every step here is written for work on a skill.
 
 ## Standing rules
 
-- Write to the user in the language of their messages, and the skill's files in the language its repository uses.
+- Write to the user in the language of their messages, and the skill's files in the language of the skills beside it, else the user's.
 - Read the repository's agent instructions first: the files the host loads for it (a host is a program
   that loads skills, such as Claude Code or Codex), such as `AGENTS.md`,
   `CLAUDE.md` or `AGENT.md` at its root, and what they link. Where they differ from these steps, follow them.
@@ -86,7 +86,7 @@ research and develop, and every step here is written for work on a skill.
      not by pointing at a page;
    - the check: what will be observed, in which runs, the result that keeps the work, the result that does not,
      and what the check cannot show;
-   - who writes the text, which is this session when the user named no one, and every agent steps 4 to 9 will
+   - who writes the text, which is this session when the user named no one, and every agent steps 4 to 10 will
      start, each with its model, its number of sessions, its cost and how it starts on this host, as
      [critics.md](references/critics.md#which-model-and-how-many) and
      [checks.md](references/checks.md#what-a-check-may-spend) give them;
@@ -135,7 +135,8 @@ research and develop, and every step here is written for work on a skill.
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
    returns as `not met` is [a correction](#a-correction).
 10. **Deliver.** First start the parts of [reflection](references/reflection.md) the plan gave this step and
-    act on what they return. Where no audit runs at this step, start
+    act on what they return. Where no audit runs at this step, write
+    the result's text to `result.md` in the run directory, start
     [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put each `missing`
     and `part` into the result. When [a close-out](references/plan.md#a-close-out) leaves no line without an
     outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
@@ -230,6 +231,8 @@ Tell the user, in this order, the outcome first; the text that delivers the work
 - for each requirement, the place that meets it, from the verifier's table or the quality critic's marks;
 - what ran, with its counts, and what did not run;
 - what stayed unmeasured, and what in the user's next real use would show the skill failing;
+- each instruction of the user that the reader of the user's words marked `missing` or `part`, or, where the audit
+  ran, each row of its table of the user's instructions and questions that the work does not meet;
 - the judges' objections still open, and every close-out line that is `adjust`, `drop`, declined or pending;
 - at delivery, and whenever the user asks: what the skill does, in three sentences, and the questions still
   open; at delivery also that [a retro](references/reflection.md#a-retro-on-a-use-of-this-skill) on this

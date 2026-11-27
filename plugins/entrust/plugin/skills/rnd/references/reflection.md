@@ -75,6 +75,8 @@ rule written before the result or on opinion; every rule changed after a result 
 gives, recounted. Then at most five findings, and what it could not read. It returns no verdict and no opinion of
 what a finding does to one. One of its tables is the spend by requirement line, recounted, beside the lines the
 user's messages weigh most.
+A row of its table of the user's instructions and questions that the work does not meet goes into the result, as
+[the result](../SKILL.md#the-result) says.
 
 ## Questions you answer yourself
 
@@ -96,8 +98,8 @@ retro. The plan writes it on its Agents line as `questions`, with "this session"
 7. How may your present state be shaping how you read this run: a long or summarised context, the latest results,
    haste near a limit, wanting the work to look finished, or wanting to agree with the user?
 
-Which questions find most is judged across runs by the owner of this skill, not within a run. A question found
-something when its answer held a point the record did not hold before, the plan took it, and a later run showed it.
+Which questions find most is judged across runs by the owner of this skill, not within a run. In the questions' row of the scorecard, a find is an answer that gave a point the plan took; its
+`effect` is filled when a later run shows it.
 
 ## What you do with a return
 
