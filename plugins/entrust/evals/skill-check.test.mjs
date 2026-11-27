@@ -330,5 +330,38 @@ test("a page that a directory link lists is held to the installed-folder rule, a
     );
   });
 
+test("a line moved into a loose Markdown file beside the skill is listed as lost, and one moved into a sibling skill's page is not",
+  "any Markdown file in the skill's parent folder carried a removed line, so a stray notes.md silently stood for a disposition",
+  () => {
+    const q = "Looking a fact up needs no more than `low`.";
+    const beside = (name, files) => {
+      const t = edited(noLow);
+      for (const [rel, text] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(t.dir, "..", rel)), { recursive: true });
+        fs.writeFileSync(path.join(t.dir, "..", rel), text);
+      }
+      fs.mkdirSync(t.run, { recursive: true });
+      fs.writeFileSync(path.join(t.run, "d.md"), `moved | ${LOW} | ../${name}:${name === "notes.md" ? 1 : 6} | ${q}\n`);
+      return t;
+    };
+    return all(
+      lostIn("a loose notes.md beside the skill", beside("notes.md", { "notes.md": q + "\n" }), [LOW], "d.md"),
+      lostIn("the same words with no disposition", beside("notes.md", { "notes.md": q + "\n" }), [LOW]),
+      lostIn("a sibling skill's page", beside("other/SKILL.md", { "other/SKILL.md": page("name: other\n" + DESC, q + "\n") }), [], "d.md"),
+    );
+  });
+
+test("a page that a directory link on a reference page lists is held to the installed-folder rule, and is not added to the walk",
+  "a folder linked from a reference page listed pages whose links left the installed package, and rule 12 never read them",
+  () => {
+    const t = plant({ "references/table.md": "# The table\n\nSee [the pages](../pages/).\n", "pages/one.md": "# One\n\nSee [out](../../../outside.md).\n" });
+    fs.writeFileSync(path.join(t, "..", "..", "outside.md"), "# Outside\n");
+    const stays = plant({ "references/table.md": "# The table\n\nSee [the pages](../pages/).\n", "pages/one.md": "# One\n" });
+    return all(
+      expect("a folder linked from a reference page whose page leaves", t, [12]),
+      expect("a folder linked from a reference page whose page stays", stays, []),
+    );
+  });
+
 const failed = await runCases(CASES);
 process.exit(summarize(failed, CASES.length));

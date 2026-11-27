@@ -10,12 +10,26 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E179. rnd's check.mjs `--against` takes a revision through the git executable
+
+**Evidence, level 1.** `rnd/scripts/check.mjs:369-370` defines `git` as `execFileSync("git", …)`, and `before`
+(`:374-394`) runs `git rev-parse` (`:383-384`), `git diff --name-only` (`:387`) and `git show` (`:390`) when
+`--against` is not a directory. A copy of the folder is the portable base: `rnd/SKILL.md` says to use one where there
+is no git. The observation is static: no run was made in a repository of another version-control system.
+
+**Issue text.** `check.mjs --against <revision>` calls git, so a revision is a base only in a git repository. Decide
+whether revision input should move behind a git adapter, with the copy of the folder as the common input, and what
+that does to its callers and to the tests (skill-check's revision case).
+
 ## E178. review's diff parser accepts only `diff --git` headers
 
 **Evidence, level 1.** `review/scripts/diff.mjs:2` says it reads "a two-sided patch with `diff --git` headers", `:20`
 matches `^diff --git a\/(.*) b\/\1$`, and `:52` refuses a diff with no such header. This is an input format, not a call
 to the git executable. The observation is static: no diff from another version-control system was fed to it, and
 whether one can be converted is untested.
+
+Deferred: it lies outside rnd, and is part of the portability change that
+`research/2026-11-26-skill-creator/13-next.md` names.
 
 **Issue text.** review's parser requires Git-style `diff --git` headers. Decide whether the shared page names that
 format as a requirement of the input, or the capability needed (a two-sided patch with addressable lines), with the
@@ -28,6 +42,9 @@ conversion from another system left to its adapter.
 (`makeWorktree`) fails with "is not a git repository" when `git rev-parse HEAD` fails and otherwise runs
 `git worktree add --detach`. The observation is static: no run was made in a repository of another version-control
 system.
+
+Deferred: it lies outside rnd, and is part of the portability change that
+`research/2026-11-26-skill-creator/13-next.md` names.
 
 **Issue text.** orchestrate's shared instructions name git commands and its worktree driver requires a git
 repository. Decide whether the isolated working copy is a capability that the page names neutrally, with the git

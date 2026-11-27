@@ -198,11 +198,12 @@ The owner's review of PR 118 (two comments, at `719fc97`) raised ten findings an
   derivation are answered in the text.
 - Recorded in `ISSUES.md`: E175 (check.mjs applies Claude limits to every skill), E176 (Claude commands and the test
   session route in rnd's shared flow), E177 (orchestrate assumes git), E178 (review's parser requires `diff --git`
-  headers). The root `AGENT.md` gained the portable-workflows rule.
+  headers), E179 (`check.mjs --against <revision>` calls git). The root `AGENT.md` gained the portable-workflows rule.
 - For the plan: (a) the usage scan and experiment C read which stages sessions reached; a stage no session reached is
   not evidence that its instruction is unneeded, so neither cuts on that alone.
 - For the plan: (b) a portability change, its own PR: split `check.mjs`'s common rules from host rules by the hosts a
-  skill targets, and move host commands into the adapters. It changes the design, so the architecture critic reads it
+  skill targets, move host commands into the adapters, and move the git-only revision input of `--against` behind an
+  adapter (E179). It changes the design, so the architecture critic reads it
   first (Fable, one run).
 
 ## Open after v4
@@ -214,7 +215,8 @@ The owner's review of PR 118 (two comments, at `719fc97`) raised ten findings an
   stated in several places, what to do with an answer that honestly admits a gap, the section's first sentence
   repeating its heading. Its first real run with an audit is its check.
 - The reader of the user's words cannot mark `answered only` honestly, since it does not see the replies: define it
-  through `result.md` or the plan, or give it the transcript. The review of PR 118 raised it too.
+  through `result.md` or the plan, or give it the transcript. The review of PR 118 raised it too. It waits because the reader would need the session's
+  replies, and no file of them exists on every host; it waits for the portability change or a real use.
 - The audit's table of the user's instructions has no named marks, so the coordinator decides what is unmet: give it
   the reader's marks.
 - The owner asked for the plan to be checked against their messages, and the change checks the result at delivery, so

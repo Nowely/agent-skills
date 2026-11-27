@@ -185,6 +185,14 @@ function walk(skill) {
   return { skill, direct, reached };
 }
 
+// The pages rule 12 holds: SKILL.md, the walk, and every page a directory link on one of them lists (not walked, so
+// rule 6 is not asked of them), the listed pages' own directory links too.
+function held(skill, reached) {
+  const pages = new Set([skill.file, ...reached.keys()]);
+  for (const f of pages) for (const l of links(f)) for (const d of listed(l.dest)) if (d !== l.dest && d.endsWith(".md")) pages.add(d);
+  return [...pages].filter((f) => f === skill.file || inside(skill.dir, f));
+}
+
 function reattached(file) {
   const text = read(file), after = body(text);
   const start = after.start + after.text.match(/^(?:[ \t]*\n)*/)[0].length;
@@ -298,7 +306,7 @@ export function rules(skills, rel = (p) => p) {
       markdownUnder(path.join(skill.dir, "references")).filter((f) => !direct.has(f))
         .map((f) => `${rel(skill.file)} does not link ${rel(f)}`))],
     [12, "every relative link stays among the files installed with the skill", () => walks.flatMap(({ skill, reached }) =>
-      [skill.file, ...reached.keys()].filter((f) => f === skill.file || inside(skill.dir, f)).flatMap((f) => links(f)
+      held(skill, reached).flatMap((f) => links(f)
         .filter((l) => l.dest && l.dest !== skill.installed && !inside(skill.installed, l.dest))
         .map((l) => `${rel(f)}:${l.line}: ${l.target} leaves the installed folders`)))],
   ].map(([n, title, collect]) => {
@@ -311,7 +319,7 @@ export function rules(skills, rel = (p) => p) {
 //
 // A line of a Markdown file under `dir` at `base` is carried when its text, with white space, backticks,
 // asterisks and table bars collapsed, link destinations dropped and case folded, still stands somewhere in the
-// Markdown now under `dir`, and under its neighbours when `dir` is a skill: re-wrapping, a move to another file and
+// Markdown now under `dir`, and inside the folders beside it that hold a SKILL.md when `dir` is a skill: re-wrapping, a move to another file and
 // a changed link destination therefore list nothing. Not held to it: a line of 12 characters or fewer once
 // collapsed (a rule, a short heading), and a line that is only links (a contents list). A line that differs from
 // what stands in its own file by one misspelt word is carried too: one letter added, dropped, changed or swapped
@@ -430,11 +438,16 @@ function answers(file) {
 export function preserved(dir, base, dispositions) {
   const root = path.resolve(dir);
   const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
-  const bound = fs.existsSync(path.join(root, "SKILL.md")) ? path.dirname(root) : root;
+  const isSkill = fs.existsSync(path.join(root, "SKILL.md"));
   const within = (outer, p) => p === outer || inside(outer, p);
   // A copy from before the edit that lies inside what is checked, and the dispositions file, are not the files now.
   const apart = [isBaseDir && path.resolve(base), dispositions && path.resolve(dispositions)].filter(Boolean);
-  const files = markdownUnder(bound).filter((f) => !apart.some((a) => within(a, f)));
+  // The files now are the checked skill's, and those inside a folder beside it (or inside it, for a folder of
+  // skills) that holds a SKILL.md; a loose Markdown file carries no line.
+  const near = (top) => fs.readdirSync(top, { withFileTypes: true })
+    .filter((f) => f.isDirectory() && fs.existsSync(path.join(top, f.name, "SKILL.md"))).map((f) => path.join(top, f.name));
+  const files = [...new Set((isSkill ? [root, ...near(path.dirname(root))] : near(root)).flatMap(markdownUnder))]
+    .filter((f) => !apart.some((a) => within(a, f)));
   const texts = files.map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
@@ -451,7 +464,7 @@ export function preserved(dir, base, dispositions) {
       : quote.length <= 12 ? "the quote is too short to find"
       : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
       : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
-      : answer.kind === "moved" && !files.includes(place) ? "the place is not a Markdown file of the skill or its neighbours, the files that carry a line now"
+      : answer.kind === "moved" && !files.includes(place) ? "the place is not a Markdown file of the skill or of a skill beside it, the files that carry a line now"
       : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
       : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
       : null;

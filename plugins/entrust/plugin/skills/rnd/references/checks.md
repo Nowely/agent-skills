@@ -65,7 +65,9 @@ Every session, reader and judge is paid for by the user, and a check is worth th
 - The skill reaches a session as files: give it the path of `SKILL.md` and tell it to read the file whole and
   follow it. A session that runs without the skill gets neither the path nor the skill's name.
   The plan names the control it means: the host as it is, which may find another skill for the same job, or no
-  skill for the job, where such skills are kept out of the session's copy. The result names every skill a
+  skill for the job: their folders are removed from the copy, and an installed copy the session's host loads from
+  outside it is turned off where the host allows. Where neither can be done, the control is the host as it is,
+  and the plan and the result say so. The result names every skill a
   control session opened.
 - Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
   repository. No case performs an action that cannot be undone or that leaves the copy, such as a tag, a push,
@@ -162,14 +164,16 @@ by any model, and resemblance then measures copying.
    For a new skill there are no pages as they are: the floor stands in for them.
 3. At step 8, start sessions on the cheapest model the sheet says will load the skill. Each gets the path of
    `SKILL.md`, one scenario and one line: which step it is at, which artifact to write, and to start nothing.
-   One session for each scenario on the new pages and one on the pages as they were.
+   One session for each scenario on the new pages and one on the pages as they were; for a new skill, on the new
+   pages only, against the floor measured at item 2.
 4. Use each artifact as it would be used: a brief is given, unedited, to a fresh agent with the scenario; a
    review is applied; a plan is carried out. Count the known answers that come back, each confirmed at its
    place as [handling a return](critics.md#handling-a-return) says.
 5. Decide by the rule. A margin counts only above the difference between two runs on the new pages; that
    second run is an option of [what a check may spend](#what-a-check-may-spend), and without it a margin is
    reported as undecided. When
-   the pages as they were already reach the rule, the result is `not needed`: the gaps were not gaps.
+   the pages as they were already reach the rule, or for a new skill the floor does, the result is `not needed`:
+   the gaps were not gaps.
 6. Report beside it, deciding nothing: which things of the catalogue each artifact holds, and what the
    sessions said they were unsure of. The second is where the next correction starts.
 

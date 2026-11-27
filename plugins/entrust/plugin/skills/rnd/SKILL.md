@@ -21,10 +21,10 @@ research and develop, and every step here is written for work on a skill.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states. A small change takes fewer steps, as [Change](#change) says first.
 - **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
-  the file that owns it. Note the revision the files are at, or copy the folder; make the edit; run the
-  script of Create's step 6, then Change's step 8 against that revision or copy. A corrected word or link
-  lists no line. A listed line whose fact still stands takes a `moved` line; a listed line whose fact is gone
-  makes the edit a Change.
+  the file that owns it. Note the revision the files are at, or, with changes uncommitted or no git, copy the
+  folder; make the edit; run the script of Create's step 6, then Change's step 8 against that revision or copy.
+  A corrected word or link lists no line. A listed line whose fact still stands takes a `moved` line; a listed line
+  whose fact is gone makes the edit a Change.
 
 ## Standing rules
 
@@ -94,7 +94,8 @@ research and develop, and every step here is written for work on a skill.
    - when the plan is a file: every heading of the form in [plan.md](references/plan.md), the parts of
      [reflection](references/reflection.md) it will run among them.
 
-   For a skill that exists, note the revision its files are at, or copy the folder into the run directory.
+   For a skill that exists, note the revision its files are at, or, with changes uncommitted or no git, copy the
+   folder into the run directory.
    Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
    and spend, can stand for it; the request to do the work cannot. One word accepts the plan and its
    recommendations, and no later step asks for another. It covers every agent the plan names. A reply that
@@ -144,11 +145,11 @@ research and develop, and every step here is written for work on a skill.
 ## Change
 
 A change is small when it adds, alters or removes no fact as step 3 defines one, alters no decision of
-analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, no sources
-table and no plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
+analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, sources
+table or plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
 with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
-out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs,
-which is then prepared as for any change: the plan file and step 6.
+out steps 5 and 6; when the user asks for runs, it writes the plan file and takes step 6 before step 7. Its check
+is step 7's commands and step 8.
 Its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then
 the result. When a step
 shows that a fact would be added, change or go, or step 8 lists a line, the change is no longer small: take
