@@ -34,7 +34,8 @@ Sessions of the check start through: <what the repository has for starting a ses
 Sessions are given: <the tools the skill's steps use, an agent tool among them; or what the check cannot show
   without one>
 The skill's text and files are written as: <the form of the text; what goes to references and what to scripts;
-  each limit on size as the number the check script prints; the model that will read it>
+  each limit on size as a number, read from what `node "<skill-dir>/scripts/check.mjs" "<skill-dir>"`
+  prints after each slash; the model that will read it>
 The skill's text is written by: <this session, or the model or person the user named>
 The delivery text is written by: <the same, or who the user named>
 Could not be read: <each source or file, with every way tried; or "nothing">
@@ -51,12 +52,11 @@ The architecture critic reads: <at which step; and what makes it read again>
 <one row for each: after which step | what the table must show to continue | to rework | to stop>
 
 ## Spend
-Planned: <tokens by model, sessions, minutes; or "unknown:" and why>
+| Agent or session, from "Agents" | Requirement line | Model | Planned | Spent, with where the figure comes from | Gain shown by a run |
+|---|---|---|---|---|---|
+Total planned: <tokens by model, sessions, minutes; or "unknown:" and why>
+Options put to the user: <each larger sample, with its cost and what it could show; or "none">
 Pause when: <the figure past which you stop and ask>
-
-## Spend by requirement
-| Requirement line | Planned | Spent, with where the figure comes from | Gain shown by a run |
-|---|---|---|---|
 
 ## Reflection
 Parts and their steps: <from reflection.md's table; or "none:" and why>
@@ -89,9 +89,10 @@ Merging several returns: <the rule, written now>
 - Write each checkpoint's three rules before any result. At the checkpoint, fill the progress table, apply the
   rule as written, add a `checkpoint` row to the log, and show the user the table with the decision. Go on
   without waiting unless the rule says rework or stop, or the spend has passed its pause figure.
-- At each checkpoint, fill the spend by requirement, one row for each requirement line of the sheet. The line
-  that holds the largest share of what is spent at two checkpoints running, with no gain shown by a run at
-  either, stops: nothing more is spent on it until the user, shown the table, says to go on.
+- Fill the spend's first four columns when you write the plan, one row for each agent and session it names.
+  At each checkpoint, fill the last two. The requirement line whose rows hold the largest share of what is
+  spent at two checkpoints running, with no gain shown by a run at either, stops: nothing more is spent on it
+  until the user, shown the table, says to go on.
 - A check with sessions follows the form of orchestrate's
   [experiment](../../orchestrate/references/plan.md#an-experiment-on-these-rules); where a pilot ran first, its
   [pause rule](../../orchestrate/references/plan.md#model-fit-and-estimates) sets the pause figure.
@@ -118,10 +119,10 @@ session has no sense of the clock.
   a judge's reading of the text fills `met at` and is not counted here. Before any run the first row reads 0.
 - Tokens and minutes come from the host, which [hosts.md](hosts.md) says how to read. Write `unknown` where the
   host gives no figure, never 0 and never a guess, and do not add figures that come from different places.
-- The spend by requirement puts each agent's and each session's figure on the requirement line it served; one
-  that served several lines goes on a row of its own, `shared`, with the lines named. A gain is shown when a
-  run moved a result the plan's rule counts, never when a text changed. Where its figures cannot be added, a
-  line's share is its count of agents and sessions. The `shared` row is not a line and never stops.
+- In the spend, an agent or session that serves several requirement lines has `shared` as its line, with the
+  lines named; `shared` is not a line and never stops. A gain is shown when a run moved a result the plan's
+  rule counts, never when a text changed. Where its figures cannot be added, a line's share is its count of
+  agents and sessions.
 
 ## A close-out
 

@@ -86,8 +86,9 @@ research and develop, and every step here is written for work on a skill.
    - the check: what will be observed, in which runs, the result that keeps the work, the result that does not,
      and what the check cannot show;
    - who writes the text, which is this session when the user named no one, and every agent steps 4 to 9 will
-     start, each with its model, its number of sessions and how it starts on this host, as
-     [critics.md](references/critics.md#which-model-and-how-many) and checks.md give them;
+     start, each with its model, its number of sessions, its cost and how it starts on this host, as
+     [critics.md](references/critics.md#which-model-and-how-many) and
+     [checks.md](references/checks.md#what-a-check-may-spend) give them;
    - how the result will be delivered;
    - when the plan is a file: every heading of the form in [plan.md](references/plan.md), the parts of
      [reflection](references/reflection.md) it will run among them.
@@ -124,8 +125,9 @@ research and develop, and every step here is written for work on a skill.
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
 8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
    and decide by the plan's rule from confirmed marks; set no threshold after seeing a result. A result that
-   fails the rule is [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept: undo
-   the change, or take the new skill's folder out of the tree and keep its text in the run directory. Whether
+   fails the rule is [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept: give
+   the user both results first, then undo the change, or take the new skill's folder out of the tree and keep
+   its text in the run directory; the user can overrule the undo. Whether
    the work is kept or not, write [a close-out](references/plan.md#a-close-out), and start the parts of
    [reflection](references/reflection.md) the plan gave this step.
 9. **Have the result verified.** Where [critics.md](references/critics.md#which-model-and-how-many) gives the

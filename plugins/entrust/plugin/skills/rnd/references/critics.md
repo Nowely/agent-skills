@@ -35,16 +35,19 @@ claim to check, and so does the author's own account of the work.
 Two tiers are used. The top tier is the strongest model the host offers; the executor tier is the model the
 host uses for ordinary work. [hosts.md](hosts.md) says where each host lists its models: look them up before the
 plan names one, and when this session cannot see the list, the plan gives the tier and asks the user to name
-the model. A model the user names for a role replaces its tier. Putting the critics on the top tier is the
-choice of this skill's owner. It differs from the defaults of entrust's orchestrate, which runs such critics on
-the executor tier; the plan names each model, so the user sees the difference and settles it with one word.
+the model. A model the user names for a role replaces its tier. The top tier costs the most, so this skill's
+owner keeps it for the two reads whose miss costs the most: the architecture critic, which can stop the work
+before any text exists, and from zero, which runs once for a major version. Any other role goes on it only as
+an option of [what a check may spend](checks.md#what-a-check-may-spend). The architecture critic on the top
+tier differs from the defaults of entrust's orchestrate, which runs such critics on the executor tier; the plan
+names each model, so the user sees the difference and settles it with one word.
 
 | Role | Tier | Why |
 |---|---|---|
-| the architecture critic and the quality critic | top | a skill is read on every later use, so a gap a critic misses is paid for each time |
-| the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
-| [reflection](reflection.md): the audit, from zero, combinations | top | each judges a whole run or a whole design |
-| reflection: evidence, prior art | the strongest model below the top tier; the executor tier where the host has two | each reads much and answers a fixed question |
+| the architecture critic | top | a skill is read on every later use, so a gap in its approach is paid for each time, and only this critic reads before the text |
+| the quality critic; the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
+| [reflection](reflection.md): from zero | top | it designs the skill anew, once for a major version |
+| reflection: the audit, combinations, evidence, prior art | executor | each reads much and answers a fixed question |
 | the agent of a dry run; the sessions of a check | no tier: [checks.md](checks.md#the-sessions) says which models | a check shows what the models that load the skill do |
 
 | Judge | Create | Change |
@@ -54,7 +57,9 @@ the executor tier; the plan names each model, so the user sees the difference an
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
 A change whose list at Change's step 8 held a line gets the verifier too, for its item 2: a fresh reader of the
-dispositions.
+dispositions. The plan of a Change names it for that case, so the user's word on the plan starts it. When no
+agent can start, open each disposition at its old place and at its new one yourself, check that every
+condition of the old line stands at the new place, and say in the result that no fresh reader read them.
 
 ## The architecture critic
 

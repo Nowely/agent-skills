@@ -91,10 +91,17 @@ forensics remain in the repository references and release notes.
   not a clean one. The skill's arm cost 11.6 and 7.6 times the host's on Create, 2.2 and 3.2 times on Change. The
   text-and-files decision fails: stated whole before writing in 0 of 6 Create sessions, and in 1 of 6 after a
   correction, read by the coordinator, not blind.
-- Known issues, in `ISSUES.md`: E171, plans still give the skill's size as a pointer to the check script; E172,
-  the fresh reader of a change whose gate lists a line does not start when the user's word on agents is missing;
-  E173, the work is undone past the correction's limit even when the check could not measure; E174, the
-  spend-by-requirement table is set up in every plan and filled in none.
+- After that check, before the release, and measured by no run yet: `references/checks.md` gains "What a check
+  may spend": the plan prices each check, a check whose every result leaves the plan as it is does not run, runs
+  without the skill are a baseline reused for later rounds and versions, a check starts with one session for
+  each case and side and reads the first session before more start, and anything larger, the top tier for a
+  role beyond the architecture critic and the from-zero lens included, runs only on the user's word naming it.
+  The selection check runs each request once. The quality critic and the audit move to the executor tier. Four
+  defects the check found are fixed: the plan reads each size limit as the number the check script prints
+  (E171); a Change's plan names the dispositions' fresh reader, and with no agent the session checks each
+  disposition at both places itself (E172); a statement no run passes measured nothing, and the user gets both
+  results before an undo (E173); the spend table has one row for each planned agent, filled when the plan is
+  written (E174).
 - Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
   the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
 

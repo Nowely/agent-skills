@@ -1,6 +1,7 @@
 # The check
 
-This page has [choosing the check](#choosing-the-check), [the sessions](#the-sessions),
+This page has [choosing the check](#choosing-the-check), [what a check may spend](#what-a-check-may-spend),
+[the sessions](#the-sessions),
 [the baseline](#the-baseline), [a dry run](#a-dry-run), [test cases](#test-cases), [a transfer test](#a-transfer-test) and
 [a selection check](#a-selection-check).
 
@@ -20,11 +21,30 @@ Take every row whose claim the user's request makes.
 | the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check) | its sessions, for each host |
 
 Size the check to the work. A change to one step takes one case. A new skill takes [the baseline](#the-baseline) and the dry run, and when the
-user asks for runs, one test case for each stage of the walk that its instructions cover, up to three. A
-selection check for a reworded description runs each request once, about twenty sessions for each host, and has
-no second run. When the user caps the spend below that, keep every check in
+user asks for runs, one test case for each stage of the walk that its instructions cover, up to three. When
+the user caps the spend below that, keep every check in
 the plan, in the order of the decision each can change, and say which ones the cap leaves unrun and what each
 would have shown. With no run at all, the quality critic's read is the only evidence, and the result says so.
+
+## What a check may spend
+
+Every session, reader and judge is paid for by the user, and a check is worth the decision it can change.
+
+- The plan gives each check its cost: its agents and sessions, the model of each, and the tokens estimated
+  from runs like it that the host has figures for, else `unknown`. A check whose every result would leave the
+  plan as it is does not run.
+- What was run is used again. The sessions without the skill are the baseline for every later round and
+  version on the same cases, and are not run again; a run in the run directory or in the repository's records
+  that answers the same question on the same text is used before a new one starts.
+- A check starts with the smallest sample that can change its decision: one session for each case and each
+  side, one reader and one confirmer. Before more than one session of a kind starts, run one and read its
+  transcript: it had the tools, it read the files it was given, and its result could pass each statement. A
+  statement that no session could pass on that setup is rewritten, or the setup fixed, before the rest start.
+- More than that is an option the plan puts to the user, with its cost and what it could show that the
+  smallest sample cannot: a repeated run, several sessions for each side, a second reader, a role on the top
+  tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier, or more than five
+  agents at once. It runs only on the user's word naming it; a reply that leaves the choice to you takes the
+  smallest sample.
 
 ## The sessions
 
@@ -105,10 +125,12 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
    which it does not see. Then have the marks confirmed and compute the verdict as
    [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the
    skill no session opened and a step every session skipped; each is a finding for the result.
-5. A statement that every run passes measured nothing. Report it so and count it for neither side.
+5. A statement that every run passes, or that no run passes, measured nothing. Report it so and count it for
+   neither side.
 6. Code that every session wrote for itself is a finding for the result: a script the skill should carry.
 7. A difference between two versions counts only when it is larger than the difference between two runs of the
-   same version. Run the unchanged skill twice to learn that difference.
+   same version. A second run of the unchanged skill, which learns that difference, is an option of
+   [what a check may spend](#what-a-check-may-spend); without it a difference is reported as undecided.
 
 ## A transfer test
 
@@ -130,11 +152,13 @@ by any model, and resemblance then measures copying.
    and by how much the pages as they will be must beat the pages as they are.
 3. At step 8, start sessions on the cheapest model the sheet says will load the skill. Each gets the path of
    `SKILL.md`, one scenario and one line: which step it is at, which artifact to write, and to start nothing.
-   Two sessions for each scenario on the new pages, one on the pages as they were.
+   One session for each scenario on the new pages and one on the pages as they were.
 4. Use each artifact as it would be used: a brief is given, unedited, to a fresh agent with the scenario; a
    review is applied; a plan is carried out. Count the known answers that come back, each confirmed at its
    place as [handling a return](critics.md#handling-a-return) says.
-5. Decide by the rule. A margin counts only above the difference between the two runs on the new pages. When
+5. Decide by the rule. A margin counts only above the difference between two runs on the new pages; that
+   second run is an option of [what a check may spend](#what-a-check-may-spend), and without it a margin is
+   reported as undecided. When
    the pages as they were already reach the rule, the result is `not needed`: the gaps were not gaps.
 6. Report beside it, deciding nothing: which things of the catalogue each artifact holds, and what the
    sessions said they were unsure of. The second is where the next correction starts.
@@ -148,12 +172,11 @@ by any model, and resemblance then measures copying.
    [structure.md](structure.md#the-approach) sorted out in step 2, the host's built-in ones included. A rival
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
-3. Run each request three times, because a single run of a request varies: about sixty sessions for each
-   host. Use the host's own tool for this where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
+3. Run each request once: about twenty sessions for each host. Use the host's own tool for this where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
    which skill was loaded before the answer or the first action: this one, a rival by name, or none.
-4. Report the fraction for each request, and every request a rival took. Run the same set a second time: a
-   margin over a rival, or over an earlier description, that is smaller than the difference between those two
-   runs is reported as undecided.
+4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
+   earlier description, decides only against a second run of the same set, an option of
+   [what a check may spend](#what-a-check-may-spend); without it the margin is reported as undecided.
 5. Requests the skill is for that did not select it are [a correction](../SKILL.md#a-correction): rewrite the
    description from them by [writing.md](writing.md#the-description), have a new set written, because a set its
    writer has seen no longer tests it, and run once more.

@@ -10,54 +10,6 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
-## E174. rnd's spend-by-requirement table is set up in every plan and filled in none
-
-**Evidence, level 3.** `rnd/references/plan.md:57` gives the plan a spend-by-requirement table and `:92-94` a
-checkpoint rule on the line with the largest share. In the six Create sessions that followed `rnd` in the v3 check
-(`research/2026-11-26-skill-creator/12-v3.md`), every plan carried the table and none filled a figure into it at
-a checkpoint, so the rule never had an input.
-
-**Issue text.** rnd's plans carry a spend-by-requirement table that sessions never fill, so the checkpoint rule
-that reads it never fires. Give the table a source a session can read at a checkpoint (an agent count per line,
-or a script that sums the run's figures), or drop the rule.
-
-## E173. rnd undoes the work past its limit even when the check could not measure
-
-**Evidence, level 3.** `rnd/SKILL.md:127` undoes the work once a check fails past the correction's limit. In the
-v3 check one Create session undid its skill after two failed checks and delivered nothing; a retro of that session
-found that the deciding statements could not be passed by any session of either arm (git was closed to all of
-them). Its downstream score was 14.3 against 100 and 92.9 for the other two sessions of the case. Where the undo
-and the report to the user fall relative to each other is not set (`:127`, `:223`).
-
-**Issue text.** rnd throws away a finished skill when its check fails twice, even when the check could not measure
-(no session of either arm passes the statement). Set apart a statement that no session passes before the verdict,
-and give the user the result and the choice before anything is undone.
-
-## E172. A change whose gate lists a line skips rnd's fresh reader when the user's word on agents is missing
-
-**Evidence, level 3.** `rnd/SKILL.md:146` makes a change whose step 8 lists a line no longer small, and
-`rnd/references/critics.md:56` gives it a fresh reader of the dispositions. The repository's rule on fan-outs
-(`AGENT.md:49`) waits for the user's word before any agent starts. In the v3 check one E117 session's gate listed
-seven lines; it asked whether to start a reader, got a reply that left the choice to it, started none, and kept
-two facts only in part: a condition dropped while the rule moved to another page. The gate's quotes cannot see a
-dropped condition.
-
-**Issue text.** When rnd's gate lists a removed line, the fresh reader it requires does not start if the user's
-word on agents is not given, and the change can drop a condition unseen. Name that reader in the plan's one
-question for the user's word, and where no agent can start, have the session itself open each disposition at both
-places and say so in the result.
-
-## E171. rnd's plans still give the skill's size as a pointer to the check script
-
-**Evidence, level 3.** `rnd/references/analysis.md:47` and `rnd/references/plan.md:37` ask for each size limit
-as its number. After that correction, five of six Create sessions in the v3 check still wrote "limits as the check
-script prints" in the plan, and one gave the numbers; before it, six of six gave the pointer. No step has the
-session read the numbers before the plan.
-
-**Issue text.** rnd's plan is meant to state how the skill's text and files will be written, size included, but
-sessions write "within the limits the check script prints" instead of a number. Have the plan step run the check
-script on the skills folder to read the limits, or state the size the skill will keep, so the user reads a value.
-
 ## E170. Two entrust pages brief an architecture critic in opposite ways on the coordinator's reasons
 
 **Evidence, level 1.** `orchestrate/references/roles.md:63` has the architecture critic read "the approach the
