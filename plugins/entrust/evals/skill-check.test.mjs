@@ -287,5 +287,48 @@ test("a revision of a git repository serves as the state before the edit",
     return JSON.stringify(got) === JSON.stringify([LOW]) || `wanted [${LOW}], got [${got}]`;
   });
 
+test("a moved line must cite a Markdown file that carries it now, not the dispositions file or a note outside; a sibling skill's page still does",
+  "a review removed an instruction and answered it as moved with its own disposition line or an external note, and the gate passed",
+  () => {
+    const q = "Looking a fact up needs no more than `low`.";
+    const note = (t, name, quote) => `moved | ${LOW} | ${path.relative(t.dir, path.join(t.run, name)).split(path.sep).join("/")}:1 | ${quote}\n`;
+    const t1 = edited(noLow), t2 = edited(noLow, { "notes.md": q + "\n" }), t3 = edited(noLow);
+    fs.mkdirSync(t1.run, { recursive: true });
+    fs.mkdirSync(t3.run, { recursive: true });
+    fs.writeFileSync(path.join(t1.run, "d.md"), note(t1, "d.md", "fact lookup row"));
+    fs.writeFileSync(path.join(t2.run, "d.md"), note(t2, "notes.md", q));
+    fs.mkdirSync(path.join(t3.dir, "..", "other"), { recursive: true });
+    fs.writeFileSync(path.join(t3.dir, "..", "other", "SKILL.md"), page("name: other\n" + DESC, q + "\n"));
+    fs.writeFileSync(path.join(t3.run, "d.md"), `moved | ${LOW} | ../other/SKILL.md:6 | ${q}\n`);
+    return all(
+      lostIn("the quote is in the dispositions file itself", t1, [LOW], "d.md"),
+      lostIn("the quote is in a note outside the checked area", t2, [LOW], "d.md"),
+      lostIn("the quote is in a sibling skill's page", t3, [], "d.md"),
+    );
+  });
+
+test("a value extended into a longer one is listed as lost, and the same line rewrapped is not",
+  "`Wait at most 10` became `Wait at most 100`, and the old line was found inside the new one as a substring",
+  () => {
+    const id = "references/effort.md:10";
+    const was = (line) => ({ "references/effort.md": EFFORT + line });
+    return all(
+      lostIn("10 became 100", edited(was("Wait at most 100\n"), {}, was("Wait at most 10\n")), [id]),
+      lostIn("10 rewrapped across two lines", edited(was("Wait at most 10\nand then stop.\n"), {}, was("Wait at most 10 and then stop.\n")), []),
+    );
+  });
+
+test("a page that a directory link lists is held to the installed-folder rule, as a page the walk reaches is",
+  "a directory-linked page that linked a file outside the installed package produced no violation, because only linked files entered the walk",
+  () => {
+    const dirLink = page(`name: sample\n${DESC}`, "Read [the pages](references/).\n");
+    const leaving = plant({ "SKILL.md": dirLink, "references/table.md": "# The table\n\nSee [out](../../../outside.md).\n" });
+    fs.writeFileSync(path.join(leaving, "..", "..", "outside.md"), "# Outside\n");
+    return all(
+      expect("a directory-linked page that leaves the installed folders", leaving, [12]),
+      expect("a directory-linked page that stays", plant({ "SKILL.md": dirLink }), []),
+    );
+  });
+
 const failed = await runCases(CASES);
 process.exit(summarize(failed, CASES.length));

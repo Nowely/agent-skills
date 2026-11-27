@@ -163,7 +163,7 @@ const walked = (skill, dest) => Boolean(dest) && dest.endsWith(".md") && dest !=
   && skill.follows(dest);
 
 // A link to a directory counts as a direct link to each markdown file directly in it: the model lists the
-// directory and opens a file with no page between. The walk follows files only.
+// directory and opens a file with no page between. The walk reads the pages SKILL.md's directory links list.
 const listed = (dest) => dest && fs.existsSync(dest) && fs.statSync(dest).isDirectory()
   ? fs.readdirSync(dest, { withFileTypes: true }).filter((f) => f.isFile() && f.name.endsWith(".md"))
     .map((f) => path.join(dest, f.name))
@@ -175,10 +175,11 @@ function walk(skill) {
   const reached = new Map(), queue = [skill.file];
   while (queue.length) {
     const from = queue.shift();
-    for (const l of links(from)) {
-      if (!walked(skill, l.dest) || reached.has(l.dest)) continue;
-      reached.set(l.dest, { from, line: l.line });
-      queue.push(l.dest);
+    // Only SKILL.md's directory links list their pages; a page's own link to a directory is not followed.
+    for (const l of links(from)) for (const dest of from === skill.file ? listed(l.dest) : [l.dest]) {
+      if (!walked(skill, dest) || reached.has(dest)) continue;
+      reached.set(dest, { from, line: l.line });
+      queue.push(dest);
     }
   }
   return { skill, direct, reached };
@@ -319,7 +320,10 @@ export function rules(skills, rel = (p) => p) {
 // kind in the tree; the quality read is what catches it.
 //
 // Not counted as the Markdown now: a directory given as `base` that lies under what is checked, and the
-// dispositions file, since a line that stands only in the copy from before, or in its own answer, was lost.
+// dispositions file, since a line that stands only in the copy from before, or in its own answer, was lost. A line
+// stands only as whole tokens: `wait at most 10` is not carried by `wait at most 100`. The place of a `moved`
+// line must be one of the files the Markdown now is read from; a note outside them, the dispositions file and
+// the copy from before carry nothing.
 //
 // Every other line is a candidate and needs one line in the dispositions file:
 //
@@ -346,6 +350,14 @@ const longWords = (s) => new Set((collapse(s).match(WORD) ?? []).filter((w) => w
 // The parts of a line that a disposition must carry, each as its words of four letters or more.
 const parts = (line) => line.replace(/`[^`\n]*`|\*\*[^*\n]*\*\*/g, " ").split(/[|;]|[.!?](?=\s|$)/)
   .map((part) => ({ text: part.trim(), words: longWords(part) })).filter((part) => part.words.size);
+// Does `was` stand in `now` as whole tokens: the characters just around a match are not letters or digits, so
+// `wait at most 10` is not found in `wait at most 100`? Rewrapping is already folded into spaces by `collapse`.
+function stands(now, was) {
+  const edge = (c) => c === undefined || !/[\p{L}\p{N}]/u.test(c);
+  for (let at = now.indexOf(was); at >= 0; at = now.indexOf(was, at + 1))
+    if (edge(now[at - 1]) && edge(now[at + was.length])) return true;
+  return false;
+}
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
   stdio: ["ignore", "pipe", "ignore"] });
 
@@ -422,7 +434,8 @@ export function preserved(dir, base, dispositions) {
   const within = (outer, p) => p === outer || inside(outer, p);
   // A copy from before the edit that lies inside what is checked, and the dispositions file, are not the files now.
   const apart = [isBaseDir && path.resolve(base), dispositions && path.resolve(dispositions)].filter(Boolean);
-  const texts = markdownUnder(bound).filter((f) => !apart.some((a) => within(a, f))).map(read);
+  const files = markdownUnder(bound).filter((f) => !apart.some((a) => within(a, f)));
+  const texts = files.map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
   const { found, problems } = dispositions && fs.existsSync(dispositions) ? answers(dispositions)
@@ -438,6 +451,7 @@ export function preserved(dir, base, dispositions) {
       : quote.length <= 12 ? "the quote is too short to find"
       : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
       : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
+      : answer.kind === "moved" && !files.includes(place) ? "the place is not a Markdown file of the skill or its neighbours, the files that carry a line now"
       : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
       : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
       : null;
@@ -448,7 +462,7 @@ export function preserved(dir, base, dispositions) {
     const here = fs.existsSync(same) ? collapse(read(same)).split(" ") : [];
     text.split("\n").forEach((line, i) => {
       const was = collapse(line);
-      if (was.length <= 12 || onlyLinks(line) || now.includes(was) || respelt(was.split(" "), here, words)) return;
+      if (was.length <= 12 || onlyLinks(line) || stands(now, was) || respelt(was.split(" "), here, words)) return;
       const id = `${rel}:${i + 1}`, given = found.get(id) ?? [], candidate = { id, text: line.trim(), parts: [] };
       if (!given.length) return void lost.push(candidate);
       const bad = given.map((answer) => [answer, refused(answer, line)]).filter(([, why]) => why);
