@@ -53,6 +53,9 @@ the executor tier; the plan names each model, so the user sees the difference an
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
+A change whose list at Change's step 8 held a line gets the verifier too, for its item 2: a fresh reader of the
+dispositions.
+
 ## The architecture critic
 
 It challenges the approach before any text exists. Give it, by path:
@@ -132,7 +135,8 @@ It does these things, in this order:
    for a removed sentence, row or condition that no line of the file answers, and marks each one `lost`. That
    the script exited 0 shows only that each quote stands where the file says. A `retired` line is carried only
    when the place it names is a line of the user's messages file that asks for that removal; any other place
-   is `lost`.
+   is `lost`, and so is one that rests on a reply leaving the choice to the author. A `moved` line whose fact
+   went to another file is `part` when the page it left no longer links that place.
 3. It reads the user's messages for a requirement the sheet lacks.
 4. It settles each point the author's account marks as unsure, and reads each fix it was given for a halt or a
    conflict the fix made.

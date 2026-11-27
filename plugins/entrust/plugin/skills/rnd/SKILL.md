@@ -143,7 +143,8 @@ table and no plan file: what steps 1 to 3 find goes into the plan message of ste
 with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
 out steps 5 and 6. Its check is step 7's commands and step 8, with a session only when the user asks for runs.
 Its step 9 is the quality critic's read as critics.md gives it, the close-out, then the result. When a step
-shows that a fact would be added, change or go, the change is no longer small: take every step.
+shows that a fact would be added, change or go, or step 8 lists a line, the change is no longer small: take
+every step.
 
 1. **Analyse the change.** Start a sheet as [analysis.md](references/analysis.md#the-sheet) sets it out, or open
    the one recorded for this skill: the user's messages saved, their words as requirement lines, and a line for
@@ -172,7 +173,8 @@ shows that a fact would be added, change or go, the change is no longer small: t
    the others link or cite for it; where none does, the plan asks which. Where two files disagree on a value,
    the owning file keeps its value and the other links it. A value the owning file holds changes only when the
    user's words name the new value, so the plan recommends none: it asks, and a reply that leaves the choice
-   to you keeps the owning file's value.
+   to you keeps the owning file's value. Such a reply removes no fact either: a removal goes back to the user
+   as a question that names the fact. A fact moved to another file keeps a link from the page it left.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
    one plan with the skill's state noted for step 8, and wait.
 5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the
@@ -189,7 +191,8 @@ shows that a fact would be added, change or go, the change is no longer small: t
    The file is one in the run directory; it need not exist yet. Each listed line stood in the files before and
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
-   Your own judgement that a fact is not needed retires nothing.
+   Your own judgement that a fact is not needed retires nothing. A change whose list held a line gets the
+   verifier at step 9.
 9. **Finish as Create's steps 7 to 10 say.**
 
 ## A correction

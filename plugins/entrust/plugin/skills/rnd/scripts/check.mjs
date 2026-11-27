@@ -509,10 +509,12 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
       - its facts are still stated, in other words or another file: fill one printed \`moved\` line for each place
         a fact of it went, with that place and words copied from it, not your own. A line that held two facts
         takes two. A copy that contradicted the file that owns the fact takes the owning file's line: the owning
-        file's value stands, and another value takes the user's words that name it.
+        file's value stands, and another value takes the user's words that name it. A fact that went to another
+        file keeps a link from the page it left.
       - the user's own words ask for it to go: answer it with
         retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>
-        A reply that leaves the choice to you names no line and no value: the owning file's value stays.
+        A reply that leaves the choice to you names no line and no value: the owning file's value stays, and
+        a fact's removal goes back to the user as a question that names the fact.
       - neither: put the line back, or move it to the file that owns the fact.
       A line of that file that starts with # is a note. Your own judgement that a fact is not needed retires nothing.`);
     console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
