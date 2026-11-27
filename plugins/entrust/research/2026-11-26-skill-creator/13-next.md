@@ -8,11 +8,12 @@ Made after the release text was written, and measured by no run yet:
   estimated from runs like it); a check whose every result leaves the plan as it is does not run; the sessions
   without the skill are the baseline for every later round and version on the same cases and are not run
   again; a check starts with one session for each case and side, one reader and one confirmer; one session
-  runs first and is read before any more of its kind start. Anything larger (a repeated run, several sessions
-  per side, a second reader, a top-tier role beyond the two below, more than five agents at once) is an option
-  put to the user with its cost, and runs only on their word naming it. The selection check runs each request
-  once, the transfer test one session per scenario and side, and a margin with no second run is reported as
-  undecided.
+  runs first and is read before any more of the check start. Anything larger (a repeated run, several sessions
+  per side, a second reader, a top-tier role beyond the two below) is an option put to the user with its cost,
+  and runs only on their word naming it; a check of more than five sessions is a line of its own in the plan,
+  with its count and cost. The selection check runs each request once, the transfer test one session per
+  scenario and side; a margin with no second run is reported as undecided, and the plan's rule says before any
+  run whether that keeps the work or fails the rule.
 - **Tiers.** The top tier is kept for the architecture critic and the from-zero lens. The quality critic, the
   audit, combinations, evidence and prior art move to the executor tier.
 - **E171.** The plan reads each size limit as the number the check script prints when run on the skill's own
@@ -53,3 +54,32 @@ tokens from the transcript's usage) wait for item 1 to show one of them. E170 st
 
 The skill is finished for this record when items 2 and 3 show the four fixes at work and two real uses
 closed by a retro find no new defect at evidence level 3.
+
+## Where the tokens went, v1 to v3
+
+Counted from the coordinating session's own transcript and its 337 agents' transcripts, as context tokens
+read and written per turn (each turn of an agent reads its whole context again). External sessions started
+through the call page are not in these figures; the records give them in USD.
+
+| Who | Agents | Turns | Context read and written | Output |
+|---|---|---|---|---|
+| the coordinating session, Opus | 1 | 2,731 | 1,259M | 3.9M |
+| Sonnet agents | 272 | 4,483 | 420M | 3.3M |
+| Opus agents | 21 | 2,001 | 400M | 3.4M |
+| Fable agents | 34 | 1,549 | 335M | 3.3M |
+
+- Half of the whole is the coordinating session: 2,731 turns at about 0.46M of context each. It read files,
+  ran scripts and checked returns itself, one small step per turn, over a context that grew to half a million
+  tokens between compactions.
+- Of the agents, about 24 long ones, each of 100 to 300 turns, used some 690M, three fifths of the agents' share.
+  Most were readers and writers on Opus or Fable: one Fable writer 84M, a reader of the records 58M, the
+  reflection's evidence lens 47M.
+- Short agents were cheap beside them: the 72 downstream users of v3's main measure used 47M together, under
+  0.7M each.
+
+So the spend followed long contexts read again on every turn, not the count of agents: one long writer on the
+top tier cost more than seventy short users on Sonnet. What follows for the next runs, beside the rules of
+"What a check may spend": the coordinating session hands each phase to a fresh session with the plan file as
+its start, and takes from agents a short return with its long part in a file; an agent that reads much gets
+the files it needs and a fixed question, on the executor tier; a writer gets one part at a time, not the whole
+design.
