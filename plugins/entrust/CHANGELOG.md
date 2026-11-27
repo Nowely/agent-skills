@@ -99,7 +99,8 @@ forensics remain in the repository references and release notes.
   A check of more than five sessions is a line of its own in the plan, with its count and cost. The selection
   check runs each request once, and the plan's rule says before any run what a margin reported as undecided
   does. The plan page adds that the session's own context is spend, shown at each checkpoint, with an offer of
-  a fresh session past half. The quality critic and the audit move to the executor tier. Four
+  a fresh session past half. The quality critic stays on the top tier (a test on v3's text found 7 of the 21
+  holding objections on the executor tier against a rule of 16); the audit moves to the executor tier. Four
   defects the check found are fixed: the plan reads each size limit as the number the check script prints
   (E171); a Change's plan names the dispositions' fresh reader, and with no agent the session checks each
   disposition at both places itself (E172); a statement no run passes measured nothing, and the user gets both

@@ -36,8 +36,8 @@ Two tiers are used. The top tier is the strongest model the host offers; the exe
 host uses for ordinary work. [hosts.md](hosts.md) says where each host lists its models: look them up before the
 plan names one, and when this session cannot see the list, the plan gives the tier and asks the user to name
 the model. A model the user names for a role replaces its tier. The top tier costs the most, so this skill's
-owner keeps it for the two reads whose miss costs the most: the architecture critic, which can stop the work
-before any text exists, and from zero, which runs once for a major version. Any other role goes on it only as
+owner keeps it for the three reads whose miss costs the most: the architecture critic, which can stop the work
+before any text exists, the quality critic, and from zero, which runs once for a major version. Any other role goes on it only as
 an option of [what a check may spend](checks.md#what-a-check-may-spend). The architecture critic on the top
 tier differs from the defaults of entrust's orchestrate, which runs such critics on the executor tier; the plan
 names each model, so the user sees the difference and settles it with one word.
@@ -45,7 +45,8 @@ names each model, so the user sees the difference and settles it with one word.
 | Role | Tier | Why |
 |---|---|---|
 | the architecture critic | top | a skill is read on every later use, so a gap in its approach is paid for each time, and only this critic reads before the text |
-| the quality critic; the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
+| the quality critic | top | it reads the whole text for defects of the agent's reading, and a test on one text found a Sonnet reader missing most of what the top tier found |
+| the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
 | [reflection](reflection.md): from zero | top | it designs the skill anew, once for a major version |
 | reflection: the audit, combinations, evidence, prior art | executor | each reads much and answers a fixed question |
 | the agent of a dry run; the sessions of a check | no tier: [checks.md](checks.md#the-sessions) says which models | a check shows what the models that load the skill do |
