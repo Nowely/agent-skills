@@ -49,6 +49,7 @@ names each model, so the user sees the difference and settles it with one word.
 | the verifier; a reader of sources or of a practice; the reader who marks a check's statements; the agent that confirms marks; the writer of a selection check's requests; in a transfer test, the builder of the material, the agent that confirms its key and the agent that uses an artifact | executor | each works from a fixed question against files |
 | [reflection](reflection.md): from zero | top | it designs the skill anew, once for a major version |
 | reflection: the audit, combinations, evidence, prior art | executor | each reads much and answers a fixed question |
+| reflection: the questions | none: this session answers them | they ask what you believe about the run |
 | the agent of a dry run; the sessions of a check | no tier: [checks.md](checks.md#the-sessions) says which models | a check shows what the models that load the skill do |
 
 | Judge | Create | Change |

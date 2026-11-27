@@ -61,6 +61,7 @@ Pause when: <the figure past which you stop and ask>
 ## Reflection
 Parts and their steps: <from reflection.md's table; or "none:" and why>
 Merging several returns: <the rule, written now>
+Questions left out: <each, with the two runs that dropped it; or none>
 
 ## Log
 | Time | Kind | What | Why, with the place checked | Outcome |

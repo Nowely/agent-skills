@@ -106,6 +106,8 @@ forensics remain in the repository references and release notes.
   disposition at both places itself (E172); a statement no run passes measured nothing, and the user gets both
   results before an undo (E173); the spend table has one row for each planned agent, filled when the plan is
   written (E174).
+- A new part of the reflection, `questions`: before the audit, the coordinator writes its answers to seven
+  questions about its own run in `questions.md`, and the audit marks each against the run directory.
 - Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
   the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
 
