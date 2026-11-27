@@ -7,7 +7,7 @@ description: >-
   reviewing a skill or running its evals with nothing to change, for collecting feedback from sessions, or for
   improving a text written for people.
 metadata:
-  version: "0.47.3"
+  version: "0.48.0"
 license: MIT
 ---
 

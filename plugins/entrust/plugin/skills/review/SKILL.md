@@ -6,7 +6,7 @@ description: >-
   here or in a subagent.
 disable-model-invocation: true
 metadata:
-  version: "0.47.3"
+  version: "0.48.0"
 license: MIT
 ---
 
