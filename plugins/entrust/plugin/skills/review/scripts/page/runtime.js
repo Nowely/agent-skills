@@ -28,9 +28,24 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const splitPath = (p) => { const i = p.lastIndexOf("/"); return [p.slice(0, i + 1), p.slice(i + 1)]; };
 const slashBreaks = (s) => esc(s).replace(/\//g, "/<wbr>");
 const pathHtml = (p) => { const [d, b] = splitPath(p); return `<span class="dir">${slashBreaks(d)}</span><b>${esc(b)}</b>`; };
+// A path on one line: the directories give way from the left, the file's name stays; the whole path is the title.
+const pathLine = (p) => { const [d, b] = splitPath(p); return `${d ? `<span class="dir"><span dir="ltr">${esc(d)}</span></span>` : ""}<b>${esc(b)}</b>`; };
+const closeX = (act, label, extra = "") => `<button class="btn sm icon quiet x" ${act} aria-label="${esc(label)}" title="${esc(label)}"${extra}>${ICON.close}</button>`;
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 const kbd = (k) => `<span class="kbd">${esc(k)}</span>`;
+// The page's few icons, drawn in the text's colour; the control that holds one carries the words.
+const svg = (d) => `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
+const ICON = {
+  close: svg("M4 4l8 8M12 4l-8 8"),
+  chevron: svg("M4 6l4 4 4-4"),
+  comment: svg("M3 3.5h10v7H7l-3 2.5v-2.5H3z"),
+  panel: svg("M2.5 3h11v10h-11zM6.5 3v10"),
+  light: svg("M8 5.2a2.8 2.8 0 1 0 0 5.6a2.8 2.8 0 1 0 0-5.6zM8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"),
+  dark: svg("M13 9.6A5.6 5.6 0 0 1 6.4 3a5.6 5.6 0 1 0 6.6 6.6z"),
+  // a disc half filled: the system's choice
+  auto: `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 0 0 11z" fill="currentColor"/></svg>`,
+};
 
 // ---------------------------------------------------------------- the diff: each file's rows, read from its <noscript>
 // A row is [kind 0 context | 1 added | 2 removed, old number, new number, block, code markup, length]; page.mjs
@@ -84,6 +99,10 @@ for (const c of ITEMS) { const at = rowAt(c.ref.place); c.placeRow = at; c.place
 const lkOf = (fi, r) => `${fi}:${r[0] === 2 ? "-" + r[1] : "+" + r[2]}`;
 const anchorOfLk = (lk) => { const [fi, side] = lk.split(":"); return { path: F[+fi].path, side: side[0] === "-" ? "base" : "head", line: +side.slice(1) }; };
 const lkOfAnchor = (c) => fileByPath.has(c.path) ? `${fileByPath.get(c.path)}:${c.side === "base" ? "-" : "+"}${c.line}` : null;
+// A comment on several lines is drawn below the last of them, and keyed there.
+const lastLk = (c) => lkOfAnchor({ ...c, line: c.end ?? c.line });
+const placeWords = (c) => `${c.path}:${c.side === "base" ? "−" : ""}${c.line}${c.end ? `–${c.end}` : ""}`;
+const quoteHtml = (c) => c?.quote ? `<blockquote class="sel-quote">${esc(c.quote)}</blockquote>` : "";
 const rowOfLk = (lk) => {
   const [fi, side] = [+lk.split(":")[0], lk.split(":")[1] ?? ""], num = +side.slice(1);
   if (!F[fi] || !/^[+-]\d+$/.test(side)) return null;
@@ -108,17 +127,17 @@ const REVIEW_ORDER = GROUPS.flatMap((g) => orderChildren(ITEMS.filter(g.test)));
 // ---------------------------------------------------------------- state: the owner's answers and comments (DR), and the view
 let state = DR.empty();
 const S = {
-  field: {}, reasonText: {}, lcEdit: null, pcEdit: null, pcDraft: {}, tab: "summary",
+  field: {}, reasonText: {}, lcEdit: null, lcRange: null, pcEdit: null, pcRange: null, pcDraft: {}, tab: "summary",
   sel: { summary: null, decisions: null, code: null, details: null }, cur: null, file: null,
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
-  code: { mode: "attention", order: "diff", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
+  code: { mode: "attention", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
     pinned: new Set(), whole: new Set(), doneOpen: new Set(), set: null, tree: window.innerWidth > 1150, dirsClosed: new Set(), ctx: false },
-  viewed: new Set(), scroll: {}, theme: "auto", rendered: {}, find: { open: false, q: "", matches: [], i: -1 },
+  viewed: new Set(), scroll: {}, theme: "auto", rendered: {}, cmap: {}, find: { open: false, q: "", matches: [], i: -1 },
 };
 // The comments as the page looks them up: line comments by line key, paragraph comments by anchor.
 let LC = new Map(), PC = new Map();
 function indexComments() {
-  LC = new Map(state.lines.map((c) => [lkOfAnchor(c), c]).filter(([lk]) => lk));
+  LC = new Map(state.lines.map((c) => [lastLk(c), c]).filter(([lk]) => lk));
   PC = new Map(state.paragraphs.map((c) => [`${c.item}/${c.field}`, c]));
 }
 const entryOf = (key) => state.answers[key] ?? {};
@@ -130,7 +149,8 @@ const entryOf = (key) => state.answers[key] ?? {};
 // copy, and only the owner's choice saves over it.
 // The stored format's number changes when the page would read a value an earlier page stored differently from what that
 // page meant, or would need code only to read it; never with the export's number, which concerns the export alone.
-const STORE = `review-report:6:${D.digest.key}`;
+// The stored format's number is in the prefix; a report's answers are kept under its key.
+const STORE_PREFIX = "review-report:6:", STORE = STORE_PREFIX + D.digest.key;
 let storage = "saved", unsaved = false, unreadable = null, unreadableShown = false;
 // What the page stores, at every level it reads: an object of decisions (answers, line and paragraph comments), «Viewed»
 // and view choices. Anything else is not this page's to read, nor to write over.
@@ -149,11 +169,10 @@ function load() {
   if (["auto", "light", "dark"].includes(ui.theme)) S.theme = ui.theme;
   if (typeof ui.tree === "boolean") S.code.tree = ui.tree;
   if (Array.isArray(ui.dirsClosed)) S.code.dirsClosed = new Set(ui.dirsClosed.filter((d) => typeof d === "string"));
-  if (["diff", "attention"].includes(ui.order)) S.code.order = ui.order;
 }
 function save() {
   if (storage === "unreadable") { unsaved = true; showStorage(); return offerUnreadable(); }
-  const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed], order: S.code.order } };
+  const kept = { decisions: state, viewed: [...S.viewed].map((fi) => F[fi].path), ui: { theme: S.theme, tree: S.code.tree, dirsClosed: [...S.code.dirsClosed] } };
   try { localStorage.setItem(STORE, JSON.stringify(kept)); storage = "saved"; unsaved = false; } catch { if (storage !== "blocked") storage = "failed"; unsaved = true; }
   showStorage();
 }
@@ -161,6 +180,33 @@ function save() {
 // refused a save or holds what the page could not read, only this page's memory.
 const KEPT = { keys: ["p.keys.memory", "p.keys.memory.page"], export: ["p.export.note", "p.export.note.page"], hint: ["p.memory", "p.memory.page"] };
 const kept = (where) => L(KEPT[where][storage === "saved" ? 0 : 1]);
+// A later record of the same change — revised, or of a new revision — holds items that read exactly as before: the
+// page offers the owner's answers to those, from what this browser kept for the previous report, never by number.
+function carriedAnswers() {
+  if (!D.previous?.pairs.length) return [];
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(STORE_PREFIX + D.previous.key)); } catch { return []; }
+  const answers = raw?.decisions?.answers;
+  if (!answers || typeof answers !== "object") return [];
+  return D.previous.pairs.filter(([now, before]) => !state.answers[now] && answers[before] && typeof answers[before] === "object").map(([now, before]) => [now, answers[before]]);
+}
+function offerCarried() {
+  const found = carriedAnswers(), bar = $("#carry");
+  if (!bar) return;
+  bar.hidden = !found.length;
+  if (found.length) $("#carry-text").textContent = P("p.carry", found.length);
+}
+function takeCarried() {
+  const found = carriedAnswers();
+  hideCarry();
+  if (!found.length) return;
+  setState(DR.settle(ITEMS, DR.normalize({ ...state, answers: { ...state.answers, ...Object.fromEntries(found) } })));
+  save();
+  for (const tab of ["summary", "decisions", "code", "details"]) if (S.rendered[tab]) RENDER[tab]();
+  updateChrome();
+}
+// The bar goes, and focus with it to the tab in view, never to the page's body.
+function hideCarry() { $("#carry").hidden = true; $(`#tab-${S.tab}`)?.focus(); }
 function showStorage() {
   for (const [id, where] of [["keys-memory", "keys"], ["export-note", "export"], ["report-memory", "hint"]]) { const x = $("#" + id); if (x) x.textContent = kept(where); }
   if (S.rendered?.decisions) updateSubCounts();
@@ -250,7 +296,8 @@ function chipTitle(kind, id) {
 const chips = (kind, ids) => ids.length ? `<span class="chips">${ids.map((id) => chip(kind, id)).join("")}</span>` : "";
 // An entry of Details, linked by its tab and row.
 const detailsChip = (s) => `<a class="chip" href="${esc(`#details/${hashPart(s.sub)}${s.sel ? "/" + hashPart(s.sel) : ""}`)}" data-go="d:${esc(s.sub)}/${esc(s.sel)}">${esc(s.text)}</a>`;
-const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${sources.map((s) => s.ref === "d" ? detailsChip(s) : s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ")}</span>`;
+const srcItems = (sources) => sources.map((s) => s.ref === "d" ? detailsChip(s) : s.ref ? chip(s.ref, s.id) : esc(s.text)).join(", ");
+const srcList = (sources) => !sources?.length ? "" : `<span class="srcs">${esc(L("p.sources"))}: ${srcItems(sources)}</span>`;
 const refsIn = (lists, kind) => [...new Set(lists.flat().filter((s) => s?.ref === kind).map((s) => s.id))];
 function relations(kind, id) {
   const rows = [];
@@ -283,12 +330,6 @@ function relations(kind, id) {
     add("p.rel.conditional", chips("q", q.children));
     add("p.rel.evidence-kept", chips("q", q.remainingEvidence));
     add("p.rel.cites", [chips("r", refsIn(srcs, "r")), chips("f", refsIn(srcs, "f")), chips("q", refsIn(srcs, "q").filter((x) => x !== id)), chips("b", refsIn(srcs, "b"))].join(" ").trim());
-  } else if (kind === "b") {
-    const b = blk(+id);
-    add("p.rel.serves", chips("r", b.serves));
-    add("p.rel.decisions", [chips("f", b.findings), chips("q", b.questions)].join(" ").trim());
-    add("p.rel.unit", b.unit ? unitLinks([b.unit]) : "");
-    add("p.rel.mechanisms", mechLinks(D.mechanisms.map((m, i) => [m, i]).filter(([m]) => m.blocks.includes(+id))));
   }
   return rows.length ? `<dl class="rel">${rows.join("")}</dl>` : `<p class="muted small">${esc(L("p.rel.none"))}</p>`;
 }
@@ -367,8 +408,9 @@ function exportModel() {
     else if (x.status === "not-applicable") sections.na.push(row(L("p.export.na", itemByKey.get(c.parent.key).label) + draft));
     else sections.open.push(row(itemTitle(c) + draft + zones + waiting));
   }
-  for (const x of payload.lineComments) sections.comments.push({ text: `${x.path}:${x.side === "base" ? "−" : ""}${x.line}: ${x.text}`, go: lkOfAnchor(x) && "line:" + lkOfAnchor(x) });
-  for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
+  const quoted = (x) => x.quote ? ` «${x.quote.replace(/\s+/g, " ")}»` : "";
+  for (const x of payload.lineComments) sections.comments.push({ text: `${placeWords(x)}${quoted(x)}: ${x.text}`, go: lastLk(x) && "line:" + lastLk(x) });
+  for (const x of payload.paragraphComments) sections.comments.push({ text: `${anchorLabel(`${x.item}/${x.field}`)}${quoted(x)}: ${x.text}`, go: "anchor:" + x.item + "/" + x.field });
   const p = progress();
   return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
 }
@@ -385,12 +427,12 @@ function openExport() {
   $("#export-preview").innerHTML = EXPORT_SECTIONS.filter(([id]) => m.sections[id].length).map(([id, head]) => `<section class="xp"><h3>${esc(L(head))}</h3>${m.sections[id].map((r) => `<p>${esc(r.text)}${r.go ? `<button class="btn sm quiet" data-act="export-go" data-target="${esc(r.go)}">${esc(L("p.show-it"))}</button>` : ""}</p>`).join("")}</section>`).join("")
     + `<p class="muted small">${esc(m.progress)}</p>`;
   $("#export-text").value = exportText(m);
-  $("#export-status").textContent = "";
+  $("#export-status").textContent = ""; $("#export-raw").open = false;
   if (!dialog.open) dialog.showModal();
 }
 // «Copied» only after the clipboard confirms; on refusal the text is selected for the owner to copy.
 function copyText(box, status) {
-  const fail = () => { box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
+  const fail = () => { const d = box.closest("details"); if (d) d.open = true; box.focus(); box.select(); status.textContent = L("p.export.copy-refused", MOD); };
   try { navigator.clipboard.writeText(box.value).then(() => { status.textContent = L("p.export.copied"); }, fail); } catch { fail(); }
 }
 function downloadExport() {
@@ -411,12 +453,16 @@ const KEYS = [
 function keysHtml() {
   return KEYS.map(([head, rows]) => `<h3>${esc(L(head))}</h3>${rows.map(([keys, what]) => `<span>${keys.map(kbd).join(" ")}</span><span${keys.length ? "" : ' class="muted small"'}>${esc(L(what))}</span>`).join("")}`).join("");
 }
+// A dialog's head: its title, which takes focus when it opens, and × at the top right.
+const dialogHead = (id, title) => `<div class="dialog-head"><h2 id="${id}" tabindex="-1" autofocus>${esc(title)}</h2><form method="dialog">${closeX("", L("p.close"))}</form></div>`;
 function renderShell() {
   const c = D.counters;
   app.innerHTML = `
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
-    <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
+    <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><div class="pop" id="theme-pop"><button class="btn sm icon menu-btn" data-act="theme-menu" aria-expanded="false" aria-haspopup="true" id="theme-btn"></button>
+      <div class="pop-menu theme-menu" hidden role="group" aria-label="${esc(L("p.theme.menu"))}">${["light", "dark", "auto"].map((t) => `<button class="mi" data-act="theme-pick" data-theme="${t}" aria-pressed="false"><span>${ICON[t]}</span><span>${esc(L({ light: "p.theme.item.light", dark: "p.theme.item.dark", auto: "p.theme.item.auto" }[t]))}</span></button>`).join("")}</div></div></div></header>
+  <div class="carry" id="carry" hidden><span id="carry-text"></span> <button class="btn sm" data-act="carry-take">${esc(L("p.carry.take"))}</button><button class="btn sm quiet" data-act="carry-skip">${esc(L("p.carry.skip"))}</button></div>
   <div class="storage" id="storage" hidden><span id="storage-text" role="status"></span> <button class="linkbtn" data-act="unreadable-show" hidden>${esc(L("p.storage.unreadable.show"))}</button></div>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
     <div class="tabs" role="tablist" aria-label="${esc(L("p.tabs"))}">${TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${esc(t.label)}<span class="count" id="badge-${t.id}" hidden></span></button>`).join("")}</div>
@@ -424,27 +470,27 @@ function renderShell() {
       <button class="btn quiet sm" data-act="keys" aria-haspopup="dialog">${esc(L("p.keys"))} ${kbd("?")}</button></div>
   </div></nav>
   <main>${TABS.map((t) => `<section class="tabpanel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join("")}</main>
-  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in"><h2 id="keys-h" tabindex="-1" autofocus>${esc(L("p.keys"))}</h2>
+  <button type="button" id="sel-adder" class="sel-adder" data-act="sel-comment" hidden></button>
+  <dialog id="keys-dialog" aria-labelledby="keys-h"><div class="dialog-in">${dialogHead("keys-h", L("p.keys"))}
     <div class="keys">${keysHtml()}</div>
-    <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p>
-    <form method="dialog" class="dialog-actions"><button class="btn sm">${esc(L("p.close"))}</button></form></div></dialog>
-  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export"><h2 id="export-h" tabindex="-1" autofocus>${esc(L("p.export"))}</h2>
+    <p class="muted small" id="keys-memory">${esc(kept("keys"))}</p></div></dialog>
+  <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export">${dialogHead("export-h", L("p.export"))}
     <p class="muted small" id="export-note">${esc(kept("export"))}</p>
     <div id="export-preview"></div>
-    <div class="dialog-actions"><button class="btn sm" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn sm" data-act="export-copy">${esc(L("p.export.copy"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
-    <p id="export-status" role="status"></p>
-    <label for="export-text">${esc(L("p.export.text"))}</label><textarea id="export-text" readonly rows="10"></textarea></div></dialog>
-  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export"><h2 id="unreadable-h" tabindex="-1" autofocus>${esc(L("p.unreadable"))}</h2>
+    <div class="dialog-actions"><p id="export-status" role="status"></p><button class="btn" data-act="print">${esc(L("p.export.print"))}</button><button class="btn" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn primary" data-act="export-copy">${esc(L("p.export.copy"))}</button></div>
+    <details id="export-raw"><summary>${esc(L("p.export.text"))}</summary><textarea id="export-text" readonly rows="10" aria-label="${esc(L("p.export.text"))}"></textarea></details></div></dialog>
+  <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export">${dialogHead("unreadable-h", L("p.unreadable"))}
     <p class="muted small">${esc(L("p.unreadable.note"))}</p>
     <label for="unreadable-text">${esc(L("p.unreadable.text"))}</label><textarea id="unreadable-text" readonly rows="10"></textarea>
-    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button><form method="dialog"><button class="btn sm">${esc(L("p.close"))}</button></form></div>
+    <div class="dialog-actions"><button class="btn sm" data-act="unreadable-copy">${esc(L("p.export.copy"))}</button><button class="btn sm" data-act="unreadable-replace">${esc(L("p.unreadable.replace"))}</button></div>
     <p id="unreadable-status" role="status"></p></div></dialog>`;
-  applyTheme(); showStorage();
+  applyTheme(); showStorage(); offerCarried();
 }
 function applyTheme() {
   if (S.theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = S.theme;
   const word = { auto: L("p.theme.auto"), light: L("p.theme.light"), dark: L("p.theme.dark") }[S.theme];
-  const b = $("#theme-btn"); if (b) { b.textContent = L("p.theme", word); b.setAttribute("aria-label", L("p.theme.switch", word)); }
+  const b = $("#theme-btn"); if (b) { b.innerHTML = ICON[S.theme]; b.title = L("p.theme", word); b.setAttribute("aria-label", L("p.theme.switch", word)); }
+  $$('#theme-pop [data-act="theme-pick"]').forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.theme === S.theme)));
 }
 function updateChrome() {
   const p = progress();
@@ -462,7 +508,7 @@ function updateChrome() {
 
 // ---------------------------------------------------------------- tabs, selection, routing
 function showTab(id, { push = true } = {}) {
-  if (S.tab !== id) S.scroll[S.tab] = window.scrollY;
+  if (S.tab !== id) { S.scroll[S.tab] = window.scrollY; closeMenus(); }
   const changed = S.tab !== id;
   S.tab = id;
   for (const t of TABS) {
@@ -484,6 +530,7 @@ function setHash() {
   else if (S.tab === "code" && S.sel.code) h += "/b" + S.sel.code;
   else if (S.tab === "details") h += "/" + S.sub.details + (sel ? "/" + hashPart(sel) : "");
   else if (S.tab === "summary" && sel?.startsWith("req:")) h += "/r" + hashPart(sel.slice(4));
+  else if (S.tab === "summary" && sel?.startsWith("route:")) h += "/route" + (+sel.slice(6) + 1);
   // An explicit move to another place adds a history entry, so Back returns there; a step within a list replaces it.
   if (pushNext && location.hash !== "#" + h) history.pushState(null, "", "#" + h); else history.replaceState(null, "", "#" + h);
   pushNext = false;
@@ -501,6 +548,7 @@ function route(hash) {
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
   if (tab === "details" && rest) { const [sub, sel] = rest.split("/").map(dec); if (DETAIL_TABS.some((t) => t.id === sub)) { S.sub.details = sub; if (sel) S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); return; } }
+  if (tab === "summary" && rest && /^route\d+$/.test(rest) && D.routes[+rest.slice(5) - 1]) { showTab("summary"); return select("summary", "route:" + (+rest.slice(5) - 1), { scroll: true }); }
   if (tab === "summary" && rest && /^r/.test(rest) && reqById.has(dec(rest.slice(1)))) { showTab("summary"); return select("summary", "req:" + dec(rest.slice(1)), { scroll: true }); }
   showTab(tab);
 }
@@ -581,6 +629,27 @@ function excerptList(ids, key, first = 3) {
   const shown = S.more[key] ? sorted : sorted.slice(0, first);
   return shown.map((id) => excerptHtml(id)).join("") + (sorted.length > shown.length ? `<button class="btn sm" data-act="more" data-more="${esc(key)}">${esc(P("p.more.blocks", sorted.length - shown.length))}</button>` : "");
 }
+// A requirement's code as a map: the routes that serve it, step by step with each step's role, then its other blocks
+// by unit, one line each, those that need attention first. A row opens its excerpt in place, one at a time, so the
+// requirement stays in view; a route's step whose block does not serve the requirement itself is shown aside.
+function codeMap(r) {
+  const key = "req" + r.id, mine = new Set(r.blocks), seen = new Set(), attention = (id) => blk(id).verdict !== "keep";
+  const at = (id) => { const i = ORDER.indexOf(blk(id)); return i < 0 ? 1e9 : i; };
+  const row = (id, text, step) => {
+    const b = blk(id), open = S.cmap[key] === id;
+    return `<button class="cmap-tog${mine.has(id) ? "" : " aside"}" data-act="cmap" data-key="${esc(key)}" data-b="${id}" aria-expanded="${open}"><span class="cmap-line">${step ? `<span class="cmap-n">${step}</span>` : ""}<span class="cmap-id">B${id}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${mine.has(id) ? "" : `<span class="cmap-aside" title="${esc(L("p.cmap.aside-title"))}">${esc(L("p.cmap.aside"))}</span>`}${attention(id) ? verdictTag(b.verdict) : ""}</span><span class="cmap-text">${prose(text || b.does)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(id)}</div>` : ""}`;
+  };
+  const groups = D.routes.map((rt, i) => [rt, i]).filter(([rt]) => rt.requirements.includes(r.id)).map(([rt, i]) => `<div class="cmap-g"><div class="cmap-gh"><button class="linkish" data-act="goroute" data-route="${i}">${esc(L("p.route"))}</button> ${prose(rt.title)}</div>${rt.steps.map((s, k) => { seen.add(s.block); return row(s.block, s.role, k + 1); }).join("")}</div>`);
+  const byUnit = new Map();
+  for (const id of r.blocks.filter((id) => !seen.has(id))) { const u = blk(id).unit ?? ""; byUnit.set(u, [...(byUnit.get(u) ?? []), id]); }
+  const units = [...byUnit].map(([u, ids]) => [u, ids.sort((a, b) => attention(b) - attention(a) || at(a) - at(b))])
+    .sort(([ua, a], [ub, b]) => (ua === "") - (ub === "") || b.some(attention) - a.some(attention) || at(a[0]) - at(b[0]));
+  for (const [u, ids] of units) {
+    const unit = D.units.find((x) => x.name === u);
+    groups.push(`<div class="cmap-g"><div class="cmap-gh">${u ? `<span class="lbl">${esc(L("unit"))}</span><span class="mono">${esc(u)}</span>${unit?.jobs?.length ? ` <span class="muted">— ${esc(unit.jobs.join("; "))}</span>` : ""}` : `<span class="lbl">${esc(L("p.cmap.no-unit"))}</span>`}</div>${ids.map((id) => row(id)).join("")}</div>`);
+  }
+  return `<div class="cmap">${groups.join("")}</div>`;
+}
 function miniItem(c) {
   const st = statusOf(c);
   return `<div class="mini"><div class="mh">${chip(c.type, c.ref.id)}<span class="muted small">${esc(typeText(c))}</span><span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="mt">${prose(itemTitle(c))}</div><div class="answer-line small" data-answer="${esc(c.key)}">${answerHtml(st)}</div></div>`;
@@ -590,13 +659,13 @@ function miniItem(c) {
 // An anchor is "item/field": q2/context.0, f3/what, verdict/paragraph.1, recommendation/text, step.2/text,
 // scenario.1/change, challenge.1/point. Its words come from anchorLabel, never from the page that drew it.
 function pcWrap(anchor, inner, tag = "div") {
-  return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}">${esc(L("p.pc.comment"))}</button></${tag}>`;
+  return `<${tag} class="pc" data-anchor="${esc(anchor)}">${inner}<div class="pc-x" data-pcx="${esc(anchor)}">${pcExtra(anchor)}</div><button class="pc-btn" data-act="pc-open" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.on", anchorLabel(anchor)))}" title="${esc(L("p.pc.comment"))}">${ICON.comment}</button></${tag}>`;
 }
 function pcExtra(anchor) {
-  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div><textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
+  if (S.pcEdit === anchor) return `<div class="pc-h">${esc(L("p.pc.yours-on", anchorLabel(anchor)))}</div>${quoteHtml(S.pcRange?.anchor === anchor ? S.pcRange : PC.get(anchor))}<textarea class="answer pc-input" data-anchor="${esc(anchor)}" aria-label="${esc(L("p.pc.yours"))}">${esc(S.pcDraft[anchor] ?? PC.get(anchor)?.text ?? "")}</textarea>
     <div class="field-actions"><button class="btn sm" data-act="pc-save" data-anchor="${esc(anchor)}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="pc-cancel">${esc(L("p.cancel"))}</button><span>${esc(L("p.saves", MOD))}</span></div>`;
   const v = PC.get(anchor);
-  const saved = v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div><div class="pc-t">${esc(v.text)}</div>` : "";
+  const saved = v ? `<div class="pc-h">${esc(L("p.pc.yours"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="pc-del" data-anchor="${esc(anchor)}">${esc(L("p.delete"))}</button></div>${quoteHtml(v)}<div class="pc-t">${esc(v.text)}</div>` : "";
   // text typed in an editor another one closed: kept, not saved, until it is saved or cancelled
   const draft = S.pcDraft[anchor] !== undefined ? `<div class="pc-h">${esc(L("p.pc.draft"))}<button class="btn sm quiet" data-act="pc-open" data-anchor="${esc(anchor)}">${esc(L("p.edit"))}</button></div><div class="pc-t">${esc(S.pcDraft[anchor])}</div>` : "";
   return saved + draft;
@@ -604,10 +673,10 @@ function pcExtra(anchor) {
 function refreshPc(anchor) { for (const el of $$(`[data-pcx="${CSS.escape(anchor)}"]`)) el.innerHTML = pcExtra(anchor); }
 function textBlockPc(v, item) {
   let out = "", list = [], i = 0;
-  const flush = () => { if (list.length) { out += `<ul class="bullets">${list.map(([t, a]) => pcWrap(a, prose(t), "li")).join("")}</ul>`; list = []; } };
+  const flush = () => { if (list.length) { out += `<ul class="bullets">${list.map(([t, a]) => pcWrap(a, `<span class="pf">${prose(t)}</span>`, "li")).join("")}</ul>`; list = []; } };
   for (const line of String(v ?? "").split("\n")) {
     if (/^\s*-\s+/.test(line)) list.push([line.replace(/^\s*-\s+/, ""), `${item}/paragraph.${i++}`]);
-    else { flush(); if (line.trim()) { const a = `${item}/paragraph.${i++}`; out += pcWrap(a, `<p class="${i === 1 ? "lead" : ""}">${prose(line)}</p>`); } }
+    else { flush(); if (line.trim()) { const a = `${item}/paragraph.${i++}`; out += pcWrap(a, `<p class="pf${i === 1 ? " lead" : ""}">${prose(line)}</p>`); } }
   }
   flush();
   return out;
@@ -685,14 +754,14 @@ function cardHtml(c) {
   const r = c.ref, st = statusOf(c), sel = S.sel.decisions === "card:" + c.key, settled = st.state !== "open";
   let body = `<div class="card-head"><span class="card-id">${c.label}</span><span class="card-type">${esc(typeText(c))}</span><span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div>`;
   if (c.kind === "finding") {
-    body += `<p class="card-title">${prose(r.title)}</p><div class="card-at">${slashBreaks(r.at)}</div>${pcWrap(c.key + "/what", `<p class="card-text clamp" data-clamp>${prose(r.what)}</p>`)}`;
-    body += pcWrap(c.key + "/fix", `<div class="card-fix"><b>${esc(L("p.fix.proposed"))}</b>${prose(r.fix)}</div>`);
+    body += `<p class="card-title">${prose(r.title)}</p><div class="card-at">${slashBreaks(r.at)}</div>${pcWrap(c.key + "/what", `<p class="card-text clamp pf" data-clamp>${prose(r.what)}</p>`)}`;
+    body += pcWrap(c.key + "/fix", `<div class="card-fix"><b>${esc(L("p.fix.proposed"))}</b><span class="pf">${prose(r.fix)}</span></div>`);
   } else if (c.kind === "idea") {
-    body += `<p class="card-title">${prose(r.title)}</p>${r.at ? `<div class="card-at">${slashBreaks(r.at)}</div>` : ""}${pcWrap(c.key + "/text", `<p class="card-text clamp">${prose(r.text)}</p>`)}`;
+    body += `<p class="card-title">${prose(r.title)}</p>${r.at ? `<div class="card-at">${slashBreaks(r.at)}</div>` : ""}${pcWrap(c.key + "/text", `<p class="card-text clamp pf">${prose(r.text)}</p>`)}`;
   } else {
-    body += pcWrap(c.key + "/text", `<p class="card-title q">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
+    body += pcWrap(c.key + "/text", `<p class="card-title q pf">${prose(r.text)}</p>`) + `<div class="card-at">${slashBreaks(r.at)}</div>`;
     if (r.parent) body += `<p class="card-text small">${esc(L("p.applies-while"))} ${chip("q", r.parent.question)} ${esc(L("p.applies-with"))} ${r.parent.texts.map((v) => `<b>${prose(v)}</b>`).join(` ${esc(L("p.or"))} `)}.</p>`;
-    if (r.recommendation) body += `<div class="card-rec"><b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}</div>`;
+    if (r.recommendation) { const picks = recommendedTexts(r); body += `<div class="card-rec${picks.length ? "" : " none"}"><b>${esc(L("p.recommendation"))}</b> ${picks.length ? `<span class="rec-pick">${picks.map((t) => prose(t)).join(" + ")}</span> — ` : ""}${prose(r.recommendation.text)}</div>`; }
   }
   body += `<div class="answer-line${st.unverified ? " unverified" : ""}" data-answer="${esc(c.key)}">${answerHtml(st)}</div>`;
   if (c.parent) body += `<p class="waiting small" data-waiting="${esc(c.key)}">${esc(waitingText(c))}</p>`;
@@ -824,12 +893,14 @@ function summaryHtml() {
     </div>
     <div class="section-h"><h2>${esc(L("verdict"))}</h2></div>
     ${textBlockPc(D.verdict, "verdict")}
-    <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p>${prose(D.recommendation)}</p>`)}
-      ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span>${prose(s.text)}${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
+    <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p class="pf">${prose(D.recommendation)}</p>`)}
+      ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span><span class="pf">${prose(s.text)}</span>${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
+    ${D.routes.length ? `<div class="section-h" id="summary-routes"><h2>${esc(L("routes"))}</h2><span class="muted">${esc(L("p.routes.note"))}</span></div>
+    <ul class="routes">${D.routes.map((r, i) => `<li class="route-row" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span><span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>`).join("")}</ul>` : ""}
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
     <table class="tbl"><thead><tr><th>#</th><th>${esc(L("requirement"))}</th><th>${esc(L("status"))}</th><th class="num">${esc(L("p.code"))}</th></tr></thead><tbody>
-    ${D.requirements.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}</div>${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
-      <td class="num">${r.blocks.length ? `<button class="linkbtn nowrap" data-act="req-code" data-req="${esc(r.id)}" title="${esc(L("p.req.code-title", r.id))}">${esc(P("p.count.blocks", r.blocks.length))}</button>` : `<span class="muted small">${esc(L("p.req.none-linked"))}</span>`}</td></tr>`).join("")}
+    ${reqGroups().map(([head, list]) => (head ? `<tr class="grp"><th colspan="4">${esc(head)} <span class="muted">${n(list.length)}</span></th></tr>` : "") + list.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}${r.sources.length ? ` · <span class="srcs">${srcItems(r.sources)}</span>` : ""}</div>${!r.established && askedIn(r.id).length ? `<div class="why"><b>${esc(L("p.req.asked-in"))}</b>${chips("q", askedIn(r.id))}</div>` : ""}${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
+      <td class="num">${r.blocks.length ? `<button class="linkbtn nowrap" data-act="req-code" data-req="${esc(r.id)}" title="${esc(L("p.req.code-title", r.id))}">${esc(P("p.count.blocks", r.blocks.length))}</button>` : `<span class="muted small">${esc(L("p.req.none-linked"))}</span>`}</td></tr>`).join("")).join("")}
     </tbody></table>
     <div class="section-h"><h2>${esc(L("p.limits"))}</h2><span class="muted">${esc(L("p.limits.note"))}</span></div>
     <div class="box">
@@ -843,6 +914,36 @@ function renderSummary() {
   $("#panel-summary").innerHTML = `<div class="frame"><div class="col">${summaryHtml()}</div><aside class="panel" id="ctx-summary" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderPanel("summary");
 }
+// Where a requirement comes from decides whether it binds; the ones to confirm are listed apart, each with the questions that ask about it.
+const askedIn = (id) => D.questions.filter((q) => refsIn([q.context.flatMap((x) => x.sources), q.variants.flatMap((v) => v.consequences.flatMap((x) => x.sources)), q.recommendation?.sources ?? [], q.zones.flatMap((z) => z.sources)], "r").includes(id)).map((q) => q.id);
+function reqGroups() {
+  const est = D.requirements.filter((r) => r.established), rest = D.requirements.filter((r) => !r.established);
+  return rest.length ? [[L("req.established"), est], [L("req.confirm-group"), rest]].filter(([, list]) => list.length) : [[null, est]];
+}
+// The variants a decision's recommendation names, by their words.
+const recommendedTexts = (q) => (q.recommendation?.variant ? [q.recommendation.variant] : q.recommendation?.variants ?? []).map((id) => q.variants.find((v) => v.id === id)?.text).filter(Boolean);
+// What a screen is about, from the record's own fields alone: the pictures given, the match it claims or the differences
+// it found, the requirements that cite it and the findings its differences name, and what was not compared.
+function screenFacts(si) {
+  const s = D.screens[si];
+  const reqs = D.requirements.filter((r) => r.screens.includes(si)).map((r) => r.id), finds = [...new Set(s.differences.map((d) => d.finding).filter(Boolean))];
+  const outcome = s.match ? L("matches") : s.differences.length ? P("p.count.differences", s.differences.length) : "";
+  return [
+    [L("p.screen.pictures"), esc(s.pictures.length ? s.pictures.map((p) => L(p.kind)).join(", ") : L("no-pictures"))],
+    outcome && [L("p.screen.outcome"), esc(outcome)],
+    (reqs.length || finds.length) && [L("p.screen.related"), `${chips("r", reqs)}${chips("f", finds)}`],
+    s.missing && [L("not-compared"), `<span class="screen-open">${prose(s.missing)}</span>`],
+  ].filter(Boolean);
+}
+// A screen as Details shows it — its state, provenance, what it is about, pictures and differences — wherever a claim cites it.
+function screenBox(si) {
+  const s = D.screens[si];
+  return `<div class="box box-gap screen-box"><h3 class="screen-h">${esc(s.name)}</h3>
+      ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
+      <dl class="kv screen-facts">${screenFacts(si).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
+      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : ""}
+      ${s.differences.length ? `<p class="lbl gap-top">${esc(L("p.screen.differences"))}</p><ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}</div>`;
+}
 function summaryPanel(sel) {
   if (!sel) {
     const ch = D.change;
@@ -854,11 +955,26 @@ function summaryPanel(sel) {
       <div class="psec"><p class="muted small">${esc(L("p.summary.select"))}</p></div>`);
   }
   if (sel.startsWith("req:")) {
-    const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])];
-    return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}`), prose(r.text), `
+    const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])], attn = r.blocks.filter((id) => blk(id).verdict !== "keep").length;
+    return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}${r.established ? "" : ` · ${L("req.to-confirm")}`}`), prose(r.text), `
+      <div class="psec"><h3>${esc(L("p.req.stated"))}</h3><p>${srcItems(r.sources)}</p>${r.screens.map(screenBox).join("")}</div>
       ${fs.length ? `<div class="psec"><h3>${esc(L("findings"))}</h3>${fs.map((f) => miniItem(itemByKey.get("f" + f))).join("")}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
-      <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${excerptList(r.blocks, "req" + r.id)}</div>`);
+      <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${attn ? ` · ${esc(P("p.count.attention", attn))}` : ""}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${r.blocks.length ? codeMap(r) : `<p class="muted">${esc(L("p.no-block"))}</p>`}</div>`);
+  }
+  if (sel.startsWith("route:")) {
+    // A route as a flow: each step a box with its block, place and role, a step whose block is not kept marked; the
+    // arrow into a step says where it gets what the step before produced. A step opens its code in place, one at a time.
+    const i = +sel.slice(6), r = D.routes[i], key = `route${i}`;
+    const node = (s, k) => {
+      const b = blk(s.block), open = S.cmap[key] === s.block;
+      return `<li class="flow-step"><button class="cmap-tog flow-node${b.verdict !== "keep" ? " open-v" : ""}" data-act="cmap" data-key="${esc(key)}" data-b="${s.block}" aria-expanded="${open}"><span class="cmap-line"><span class="cmap-n" title="${esc(L("p.route.step", k + 1))}">${k + 1}</span><span class="cmap-id">B${s.block}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}</span><span class="flow-role">${prose(s.role)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(s.block)}</div>` : ""}</li>`;
+    };
+    const via = (s) => `<li class="flow-via"><span class="flow-arrow" aria-hidden="true"></span><span><span class="lbl">${esc(L("route.via"))}</span>${prose(s.via)}</span></li>`;
+    return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), `<div class="psec">
+      ${r.requirements.length ? `<p class="small"><span class="lbl">${esc(L("p.route.serves"))}</span>${chips("r", r.requirements)}</p>` : ""}
+      <ol class="cmap flow">${r.steps.map((s, k) => (k && s.via ? via(s) : "") + node(s, k)).join("")}</ol>
+      <p class="muted small">${esc(L("p.route.note"))}</p></div>`);
   }
   if (sel.startsWith("step:")) {
     const i = +sel.slice(5), s = D.steps[i], ids = [...new Set(s.findings.flatMap((f) => itemByKey.get("f" + f)?.blocks ?? []))];
@@ -874,7 +990,7 @@ function panelWrap(kicker, title, body) {
 
 // ---------------------------------------------------------------- Decisions
 const comments = () => [
-  ...state.lines.map((c) => ({ kind: "line", lk: lkOfAnchor(c), c })).filter((x) => x.lk),
+  ...state.lines.map((c) => ({ kind: "line", lk: lastLk(c), c })).filter((x) => x.lk),
   ...state.paragraphs.map((c) => ({ kind: "para", anchor: `${c.item}/${c.field}`, c })),
 ];
 const DEC_TABS = [
@@ -886,7 +1002,7 @@ const DEC_TABS = [
   { id: "done", label: L("p.sub.done"), test: (c) => DR.done(ITEMS, state, c.key) },
 ];
 function subCount(t) {
-  if (t.id === "comments") return comments().length;
+  if (t.id === "comments") return comments().length + D.replies.length;
   const list = ITEMS.filter(t.test);
   return ["deferred", "done"].includes(t.id) ? list.length : list.filter(isOpen).length;
 }
@@ -949,25 +1065,36 @@ function notAnswerHint(lk) {
   const row = rowOfLk(lk), b = row?.row[3] ? blk(row.row[3]) : null, open = b ? blockItems(b).filter(isOpen) : [];
   return open.length ? L("p.lc.not-answer", open.map((c) => c.label).join(", ")) : "";
 }
+// The reviewer's replies to the owner's comments on the previous review, each with the place the comment had: a place
+// in the previous diff, never placed in this one by guess.
+function repliesHtml() {
+  if (!D.replies.length) return "";
+  return `<div class="section-h"><h2>${esc(L("replies"))}</h2><span class="muted">${esc(L("p.replies.note"))}</span></div><div class="box cmt-list">${D.replies.map((x) =>
+    `<div class="cmt"><div class="where">${esc(x.place)}</div><blockquote class="sel-quote">${esc(x.comment)}</blockquote><div class="txt">${prose(x.text)}</div>${srcList(x.sources)}</div>`).join("")}</div>`;
+}
 function commentsListHtml() {
   const list = comments();
-  if (!list.length) return `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
+  if (!list.length) return repliesHtml() ||  `<div class="empty"><strong>${esc(L("p.comments.none"))}</strong>${esc(L("p.comments.how"))}</div>`;
   return `<div class="box cmt-list">${list.map((x) => {
     if (x.kind === "line") {
       const row = rowOfLk(x.lk), b = row?.row[3] ? blk(row.row[3]) : null, hint = notAnswerHint(x.lk);
-      return `<div class="cmt"><div class="where">${esc(x.c.path)}:${x.c.side === "base" ? "−" : ""}${x.c.line}${b ? ` · ${chip("b", b.id)}` : ""}<button class="btn sm quiet" data-act="goline" data-lk="${x.lk}">${esc(L("p.show-in-code"))}</button></div><div class="txt">${esc(x.c.text)}</div>${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
+      return `<div class="cmt"><div class="where">${esc(placeWords(x.c))}${b ? ` · ${chip("b", b.id)}` : ""}<button class="btn sm quiet" data-act="goline" data-lk="${x.lk}">${esc(L("p.show-in-code"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div>${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
     }
-    return `<div class="cmt"><div class="where">${esc(anchorLabel(x.anchor))}<button class="btn sm quiet" data-act="goanchor" data-anchor="${esc(x.anchor)}">${esc(L("p.show-it"))}</button></div><div class="txt">${esc(x.c.text)}</div></div>`;
-  }).join("")}</div><p class="muted small gap-top">${esc(L("p.comments.note"))}</p>`;
+    return `<div class="cmt"><div class="where">${esc(anchorLabel(x.anchor))}<button class="btn sm quiet" data-act="goanchor" data-anchor="${esc(x.anchor)}">${esc(L("p.show-it"))}</button></div>${quoteHtml(x.c)}<div class="txt">${esc(x.c.text)}</div></div>`;
+  }).join("")}</div><p class="muted small gap-top">${esc(L("p.comments.note"))}</p>${repliesHtml()}`;
 }
 function decisionsPanel(sel) {
   if (!sel) return panelWrap(esc(L("p.context")), esc(L("p.select-card")), `<div class="empty"><strong>${esc(L("p.nothing-selected"))}</strong>${esc(L("p.select-card.note"))}</div>`);
   const c = itemByKey.get(sel.slice(5)), r = c.ref;
   let body = "";
-  if (r.place) body += `<div class="psec"><h3>${esc(L("p.where"))}</h3>${placeExcerpt(r.place, c.placeRow)}</div>`;
-  if (c.kind === "finding") body += `<div class="psec"><h3>${esc(L("shown-by"))}</h3>${pcWrap(c.key + "/shown_by", `<p>${prose(r.shown_by)}</p>`)}</div>`;
+  // an idea's excerpt is the code as the change wrote it; the proposal is in the idea's words, never in the diff
+  if (r.place) body += `<div class="psec"><h3>${esc(L(c.kind === "idea" ? "p.idea.code" : "p.where"))}</h3>${placeExcerpt(r.place, c.placeRow)}</div>`;
+  if (c.kind === "finding") body += `<div class="psec"><h3>${esc(L("shown-by"))}</h3>${pcWrap(c.key + "/shown_by", `<p class="pf">${prose(r.shown_by)}</p>`)}</div>`;
+  const shots = c.kind === "finding" ? D.screens.map((s, si) => s.differences.some((d) => d.finding === r.id) ? si : -1).filter((si) => si >= 0) : [];
+  if (shots.length) body += `<div class="psec"><h3>${esc(L("p.screens.beside"))}</h3>${shots.map(screenBox).join("")}</div>`;
+  if (c.kind === "idea" && r.sources.length) body += `<div class="psec"><h3>${esc(L("sources"))}</h3><p>${srcList(r.sources)}</p></div>`;
   if (c.type === "q") {
-    if (r.context.length) body += `<div class="psec"><h3>${esc(L("question.context"))}</h3><ul class="plain">${r.context.map((x, i) => `<li>${pcWrap(`${c.key}/context.${i}`, `${prose(x.text)} ${srcList(x.sources)}`)}</li>`).join("")}</ul></div>`;
+    if (r.context.length) body += `<div class="psec"><h3>${esc(L("question.context"))}</h3><ul class="plain">${r.context.map((x, i) => `<li>${pcWrap(`${c.key}/context.${i}`, `<span class="pf">${prose(x.text)}</span> ${srcList(x.sources)}`)}</li>`).join("")}</ul></div>`;
     const vs = r.variants.filter((v) => v.consequences.some((x) => x.sources.length));
     if (vs.length || r.recommendation?.sources.length) body += `<div class="psec"><h3>${esc(L("p.variant-sources"))}</h3><ul class="plain">${vs.map((v) => `<li><b>${prose(v.text)}</b> ${v.consequences.map((x) => srcList(x.sources)).join(" ")}</li>`).join("")}${r.recommendation?.sources.length ? `<li>${esc(L("recommendation"))} ${srcList(r.recommendation.sources)}</li>` : ""}</ul></div>`;
     if (r.zones.length) body += `<div class="psec"><h3>${esc(L("p.zone-sources"))}</h3><ul class="plain">${r.zones.map((z) => `<li>${prose(z.text)} ${srcList(z.sources)}</li>`).join("")}</ul></div>`;
@@ -984,6 +1111,7 @@ const allPurposes = () => S.code.purposes.size === D.purposes.length;
 const SETS = {
   assumed: { label: L("p.set.assumed"), warn: "p.warn.assumed", ids: new Set(D.unasked.assumed) },
   unlinked: { label: L("p.set.unlinked"), warn: "p.warn.unlinked", ids: new Set(D.unasked.unlinked) },
+  carried: { label: L("p.set.carried"), warn: "p.warn.carried", ids: new Set(D.carried) },
 };
 const inFilters = (b) => S.code.purposes.has(b.purpose) && (!S.code.req || b.serves.includes(S.code.req)) && (!S.code.unit || b.unit === S.code.unit) && (!S.code.set || SETS[S.code.set].ids.has(b.id));
 const isDone = (b) => b.verdict !== "keep" && !blockOpen(b) && !S.code.doneOpen.has(b.id);
@@ -1012,19 +1140,14 @@ function fileAttn(fi) {
 }
 const attnText = (a) => [a.open && L("p.file.open", n(a.open), P("p.count.of-decisions", a.total)), a.by.decided && P("p.count.decided", a.by.decided),
   a.by.answered && P("p.count.answered", a.by.answered), a.by.deferred && P("p.count.deferred", a.by.deferred), a.by.na && P("p.count.na", a.by.na)].filter(Boolean).join(" · ");
-function fileOrder() {
-  const all = F.map((_, fi) => fi);
-  if (S.code.order !== "attention") return all;
-  const rank = (fi) => { const a = fileAttn(fi); return a.open ? 0 : a.total ? 1 : 2; };
-  return all.sort((x, y) => rank(x) - rank(y) || x - y);
-}
+// files in the diff's order: a file's index is its rank
+const fileOrder = () => F.map((_, fi) => fi);
 let WALK_CACHE = null;
 const invalidateWalk = () => { WALK_CACHE = null; WALK_F = null; };
 // the walk: decisions with code, each with its blocks as positions; one unit for «open» everywhere
 function walkAll() {
   if (WALK_CACHE) return WALK_CACHE;
-  const rank = new Map(fileOrder().map((fi, i) => [fi, i]));
-  const pos = (bid) => { const p = firstPos[bid]; return [rank.get(p[0]), p[1], p[2]]; };
+  const pos = (bid) => firstPos[bid];
   const cmp = (a, b) => { const x = pos(a), y = pos(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
   const list = ITEMS.filter((c) => c.blocks.length && applicable(c)).map((c) => ({ c, blocks: c.blocks.filter((id) => firstPos[id]).sort(cmp) })).filter((x) => x.blocks.length);
   list.sort((a, b) => cmp(a.blocks[0], b.blocks[0]));
@@ -1130,7 +1253,7 @@ function noteItem(c, b) {
     const hint = `${opts.length ? `${kbd("1")}–${kbd(String(opts.length))} ${esc(L("p.hint.choose"))} · ` : ""}${kbd("o")} ${esc(L(opts.length ? "p.hint.other" : "p.hint.answer"))} · ${kbd("d")} ${esc(L("p.hint.defer"))}`;
     return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp1">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div><div class="pills"><button class="pill" data-act="answer-here" data-b="${b.id}" data-key="${esc(c.key)}">${esc(L("p.answer-here"))}</button><span class="muted small">${esc(P("p.one-answer", all))}${shown < all ? ` · ${esc(P("p.one-answer.shown", shown))}` : ""}</span><span class="key-hint small muted">${hint}</span></div></div>`;
   }
-  const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${prose(r.recommendation.text)}` : "";
+  const sub = c.kind === "finding" ? `<b>${esc(L("fix"))}:</b> ${prose(r.fix)}` : c.kind === "decision" && r.recommendation ? `<b>${esc(L("p.recommendation"))}</b> ${recommendedTexts(r).length ? `<span class="rec-pick">${recommendedTexts(r).map((t) => prose(t)).join(" + ")}</span> — ` : ""}${prose(r.recommendation.text)}` : "";
   if (st.state !== "open") return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
   return `<div class="note-item" data-item="${esc(c.key)}"><div class="ni-head">${chip(c.type, r.id)}<span class="ni-title clamp2">${prose(itemTitle(c))}</span>${posText}<span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div>
     ${sub ? `<p class="ni-fix clamp">${sub}</p>` : ""}<div class="answer-line" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${choiceHtml(c, "note")}</div>`;
@@ -1143,11 +1266,12 @@ function doneHtml(b) {
   return `<tr class="done-row" data-b="${b.id}"><td colspan="3"><div class="done-line${sel ? " sel" : ""}" id="note-${b.id}" data-b="${b.id}" tabindex="-1" role="button" data-act="done-open" aria-label="${esc(L("p.done-line", `B${b.id} · ${tags.map((st) => st.label).join(", ")}`, ans))}">${tags.map(tagHtml).join("")}<span class="bid">B${b.id}</span><span class="ans">${esc(ans)}</span><span class="muted small">${esc(L("p.fold.expand"))}</span></div></td></tr>`;
 }
 function lcHtml(lk) {
-  const [, side] = lk.split(":"), what = L(side[0] === "-" ? "p.lc.removed-line" : "p.lc.line", side.slice(1));
+  const [, side] = lk.split(":"), span = S.lcEdit === lk ? (S.lcRange ?? LC.get(lk)) : LC.get(lk);
+  const what = span?.end ? L("p.lc.lines", span.line, span.end) : L(side[0] === "-" ? "p.lc.removed-line" : "p.lc.line", side.slice(1));
   const hint = notAnswerHint(lk), hintHtml = hint ? `<span class="hint">${esc(hint)}</span>` : "";
   const copyBtn = `<button class="btn sm quiet" data-act="copy-line" data-lk="${lk}">${esc(L("p.copy"))}</button>`;
-  if (S.lcEdit === lk) return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.on", what))} ${hintHtml}</div><textarea id="lc-input" aria-label="${esc(L("p.lc.on", what))}" placeholder="${esc(L("p.lc.placeholder"))}">${esc(LC.get(lk)?.text ?? "")}</textarea><div class="lc-a"><button class="btn sm" data-act="lc-save" data-lk="${lk}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="lc-cancel">${esc(L("p.cancel"))}</button>${copyBtn}<span class="hint">${esc(L("p.saves", MOD))}</span></div></div></td></tr>`;
-  return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.yours", what))} ${hintHtml}<button class="btn sm quiet" data-act="lc" data-lk="${lk}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="lc-del" data-lk="${lk}">${esc(L("p.delete"))}</button>${copyBtn}</div><div class="lc-t">${esc(LC.get(lk).text)}</div></div></td></tr>`;
+  if (S.lcEdit === lk) return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.on", what))} ${hintHtml}</div>${quoteHtml(span)}<textarea id="lc-input" aria-label="${esc(L("p.lc.on", what))}" placeholder="${esc(L("p.lc.placeholder"))}">${esc(LC.get(lk)?.text ?? "")}</textarea><div class="lc-a"><button class="btn sm" data-act="lc-save" data-lk="${lk}">${esc(L("p.comment.save"))}</button><button class="btn sm quiet" data-act="lc-cancel">${esc(L("p.cancel"))}</button>${copyBtn}<span class="hint">${esc(L("p.saves", MOD))}</span></div></div></td></tr>`;
+  return `<tr class="lc-row"><td colspan="3"><div class="lc"><div class="lc-h">${esc(L("p.lc.yours", what))} ${hintHtml}<button class="btn sm quiet" data-act="lc" data-lk="${lk}">${esc(L("p.edit"))}</button><button class="btn sm quiet" data-act="lc-del" data-lk="${lk}">${esc(L("p.delete"))}</button>${copyBtn}</div>${quoteHtml(span)}<div class="lc-t">${esc(LC.get(lk).text)}</div></div></td></tr>`;
 }
 function fileBodyHtml(fi, items) {
   const out = [];
@@ -1172,34 +1296,38 @@ function fileBodyHtml(fi, items) {
 // ---------------------------------------------------------------- Code: rendering, drawing on demand, and releasing far files
 let io = null;
 function renderCode() {
-  const reqOpts = D.requirements.map((r) => { const t = r.text.length > 48 ? r.text.slice(0, 48) + "…" : r.text; return `<option value="${esc(r.id)}">R${esc(r.id)} · ${esc(t)} (${n(r.blocks.length)})</option>`; }).join("");
+  const reqItem = (id, label, text, count) => `<button class="mi" aria-pressed="false" data-act="req-pick" data-req="${esc(id)}">${label}<span class="mi-t">${text}</span>${count === null ? "" : `<span class="muted">${n(count)}</span>`}</button>`;
+  const reqOpts = reqItem("", `<span class="mi-id"></span>`, esc(L("p.code.any-req")), null) + D.requirements.map((r) => reqItem(r.id, `<span class="mi-id">R${esc(r.id)}</span>`, prose(r.text), r.blocks.length)).join("");
   const rules = D.purposes.map((p) => `<li><b>${esc(PURPOSE_LABEL[p])}</b>: ${esc(L("purpose.rules." + p))}</li>`).join("");
   $("#panel-code").innerHTML = `
   <div class="toolbar" role="toolbar" aria-label="${esc(L("p.code.toolbar"))}">
-    <button class="btn sm" data-act="tree" aria-pressed="${S.code.tree}" aria-controls="tree" title="${esc(L("p.code.tree-title"))}">${esc(L("files"))}</button>
     <div class="seg" role="group" aria-label="${esc(L("p.code.which"))}"><button data-act="mode" data-mode="attention" aria-pressed="${S.code.mode === "attention"}" title="${esc(L("p.code.attention-title"))}">${esc(L("p.code.attention"))}</button><button data-act="mode" data-mode="all" aria-pressed="${S.code.mode === "all"}">${esc(L("p.code.all"))}</button></div>
-    <div class="pop" id="purpose-pop"><button class="btn sm" data-act="purpose-menu" aria-expanded="false" aria-haspopup="true" id="purpose-btn"></button>
+    <div class="pop" id="purpose-pop"><button class="btn sm menu-btn" data-act="purpose-menu" aria-expanded="false" aria-haspopup="true" id="purpose-btn"></button>
       <div class="pop-menu" hidden role="group" aria-label="${esc(L("purpose"))}">${D.purposes.filter((p) => D.purposeCounts[p].files || D.purposeCounts[p].blocks).map((p) => `<label><input type="checkbox" data-act="purpose" value="${p}"${S.code.purposes.has(p) ? " checked" : ""}> ${esc(PURPOSE_LABEL[p])} <span class="muted">${esc(P("p.count.files", D.purposeCounts[p].files))}</span></label>`).join("")}
       <div class="rules">${esc(L("p.code.rules"))}<ul>${rules}</ul></div></div></div>
-    <select data-act="req" aria-label="${esc(L("requirement"))}"><option value="">${esc(L("p.code.any-req"))}</option>${reqOpts}</select>
-    <select data-act="order" aria-label="${esc(L("p.code.order"))}"><option value="diff">${esc(L("p.code.order-diff"))}</option><option value="attention">${esc(L("p.code.order-attention"))}</option></select>
+    <div class="pop" id="req-pop"><button class="btn sm menu-btn" data-act="req-menu" aria-expanded="false" aria-haspopup="true" id="req-btn"></button>
+      <div class="pop-menu req-menu" hidden role="group" aria-label="${esc(L("requirement"))}">${reqOpts}</div></div>
     <span id="unit-token"></span>
     <div class="search"><input type="search" id="file-q" data-act="q" placeholder="${esc(L("p.code.filter"))}" aria-label="${esc(L("p.code.filter-label"))}" value="${esc(S.code.q)}">${kbd("/")}</div>
     <button class="btn sm" data-act="find-open" title="${esc(L("p.find.title", MOD))}">${esc(L("p.find"))}</button>
     <div class="pos" id="pos"></div>
     <button class="btn sm" data-act="ctx" aria-pressed="${S.code.ctx}" aria-controls="ctx-code" title="${esc(L("p.code.ctx-title"))}">${esc(L("p.context"))}</button>
-    <div class="findbar" id="findbar"${S.find.open ? "" : " hidden"} role="search" aria-label="${esc(L("p.find.label"))}"><input type="search" id="find-q" data-act="find-q" placeholder="${esc(L("p.find.placeholder"))}" aria-label="${esc(L("p.find.label"))}" value="${esc(S.find.q)}"><span id="find-count" aria-live="polite" class="small muted"></span><button class="btn sm icon" data-act="find-prev" aria-label="${esc(L("p.find.prev"))}">‹</button><button class="btn sm icon" data-act="find-next" aria-label="${esc(L("p.find.next"))}">›</button><button class="btn sm quiet" data-act="find-close">${esc(L("p.close"))}</button></div>
+    <div class="findbar" id="findbar"${S.find.open ? "" : " hidden"} role="search" aria-label="${esc(L("p.find.label"))}"><input type="search" id="find-q" data-act="find-q" placeholder="${esc(L("p.find.placeholder"))}" aria-label="${esc(L("p.find.label"))}" value="${esc(S.find.q)}"><span id="find-count" aria-live="polite" class="small muted"></span><button class="btn sm icon" data-act="find-prev" aria-label="${esc(L("p.find.prev"))}">‹</button><button class="btn sm icon" data-act="find-next" aria-label="${esc(L("p.find.next"))}">›</button>${closeX('data-act="find-close"', L("p.find.close"))}</div>
   </div>
-  <div class="frame code${S.code.tree ? "" : " no-tree"}${S.code.ctx ? " ctx" : ""}" id="code-frame"><a class="skip" href="#files" data-act="skip">${esc(L("p.skip"))}</a><nav class="tree" id="tree" aria-label="${esc(L("files"))}"${S.code.tree ? "" : " hidden"}></nav><div class="files" id="files" tabindex="-1"></div><aside class="panel" id="ctx-code" aria-label="${esc(L("p.context"))}"${S.code.ctx ? "" : " hidden"}></aside></div>`;
+  <div class="frame code${S.code.tree ? "" : " no-tree"}${S.code.ctx ? " ctx" : ""}" id="code-frame"><a class="skip" href="#files" data-act="skip">${esc(L("p.skip"))}</a><div class="tree-rail" id="tree-rail"${S.code.tree ? " hidden" : ""}><button class="rail-btn" data-act="tree" aria-expanded="false" aria-controls="tree" title="${esc(L("p.tree.show"))}">${ICON.panel}<span>${esc(L("files"))}</span></button></div><nav class="tree" id="tree" aria-label="${esc(L("files"))}"${S.code.tree ? "" : " hidden"}></nav><div class="files" id="files" tabindex="-1"></div><aside class="panel" id="ctx-code" aria-label="${esc(L("p.context"))}"${S.code.ctx ? "" : " hidden"}></aside></div>`;
   syncToolbar(); syncTbar(); measureCpl(); renderFiles(); renderTree(); renderPanel("code"); updatePos(); if (S.find.open) runFind();
   // The toolbar wraps at narrow widths, grows with filter tokens and the find bar: its rendered height places the file headers.
   new ResizeObserver(syncTbar).observe($(".toolbar"));
 }
 function syncToolbar() {
-  const sel = $('#panel-code select[data-act="req"]'); if (sel) sel.value = S.code.req;
-  const ord = $('#panel-code select[data-act="order"]'); if (ord) ord.value = S.code.order;
+  const rb = $("#req-btn");
+  if (rb) {
+    const r = S.code.req && D.requirements.find((x) => String(x.id) === String(S.code.req));
+    rb.innerHTML = `<span>${esc(r ? L("p.code.req-one", r.id) : L("p.code.req-any"))}</span>${ICON.chevron}`; rb.title = r ? r.text : "";
+    $$('#req-pop [data-act="req-pick"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.req === String(S.code.req))));
+  }
   $$('#panel-code [data-act="mode"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === S.code.mode)));
-  const pb = $("#purpose-btn"); if (pb) pb.textContent = allPurposes() ? L("p.code.purpose-all") : L("p.code.purpose", [...S.code.purposes].filter((p) => D.purposeCounts[p].files).map((p) => PURPOSE_LABEL[p]).join(", ") || L("none"));
+  const pb = $("#purpose-btn"); if (pb) pb.innerHTML = `<span>${esc(allPurposes() ? L("p.code.purpose-all") : L("p.code.purpose", [...S.code.purposes].filter((p) => D.purposeCounts[p].files).map((p) => PURPOSE_LABEL[p]).join(", ") || L("none")))}</span>${ICON.chevron}`;
   $$('#panel-code input[data-act="purpose"]').forEach((i) => { i.checked = S.code.purposes.has(i.value); });
   const tok = $("#unit-token"); if (tok) tok.innerHTML = (S.code.unit ? `<span class="token">${esc(L("p.code.unit", S.code.unit))}<button data-act="unit-clear" aria-label="${esc(L("p.code.unit-clear"))}">×</button></span>` : "") + (S.code.set ? `<span class="token">${esc(SETS[S.code.set].label)}<button data-act="set-clear" aria-label="${esc(L("p.code.set-clear"))}">×</button></span>` : "");
   const q = $("#file-q"); if (q && q.value !== S.code.q) q.value = S.code.q;
@@ -1208,8 +1336,8 @@ function syncToolbar() {
 const STATUS_WORD = { A: "p.file.added", D: "p.file.deleted" };
 function fileHeader(fi) {
   const f = F[fi], a = fileAttn(fi), col = S.code.collapsed.has(fi), whole = S.code.whole.has(fi), viewed = S.viewed.has(fi);
-  return `<button class="btn icon sm quiet fold-btn" data-act="fcollapse" data-f="${fi}" aria-expanded="${!col}" aria-label="${esc(L(col ? "p.file.expand" : "p.file.collapse", f.path))}">${col ? "▸" : "▾"}</button>
-    <div class="path" title="${esc(f.path)}">${pathHtml(f.path)}</div><div class="meta">${STATUS_WORD[f.status] ? `<span>${esc(L(STATUS_WORD[f.status]))}</span>` : ""}${a.total ? `<span>${esc(attnText(a))}</span>` : ""}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span><span>${esc(PURPOSE_LABEL[f.purpose])}</span>
+  return `<button class="btn icon sm quiet fold-btn" data-act="fcollapse" data-f="${fi}" aria-expanded="${!col}" aria-label="${esc(L(col ? "p.file.expand" : "p.file.collapse", f.path))}">${ICON.chevron}</button>
+    <div class="path" title="${esc(f.path)}">${pathLine(f.path)}</div><div class="meta">${STATUS_WORD[f.status] ? `<span>${esc(L(STATUS_WORD[f.status]))}</span>` : ""}${a.total ? `<span>${esc(attnText(a))}</span>` : ""}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span><span>${esc(PURPOSE_LABEL[f.purpose])}</span>
     <button class="btn sm quiet" data-act="whole" data-f="${fi}" aria-pressed="${whole}" title="${esc(L("p.file.whole-title"))}">${esc(L(whole ? "p.file.fold-kept" : "p.file.whole"))}</button>
     <label class="viewed-box"><input type="checkbox" data-act="viewed" data-f="${fi}"${viewed ? " checked" : ""}> ${esc(L("p.file.viewed"))}</label></div>`;
 }
@@ -1288,19 +1416,17 @@ function renderTree() {
   const el = $("#tree"); if (!el) return;
   const root = buildTree();
   const compress = (name, node) => { while (node.dirs.size === 1 && !node.files.length) { const [k, v] = [...node.dirs][0]; name += "/" + k; node = v; } return [name, node]; };
-  let html = `<div class="tree-head"><span>${esc(P("p.count.files", F.filter((_, fi) => fileMatches(fi)).length))} · ${esc(P("p.count.viewed", S.viewed.size))}</span></div>`;
-  const flat = S.code.order === "attention";
+  let html = `<div class="tree-head"><span>${esc(P("p.count.files", F.filter((_, fi) => fileMatches(fi)).length))} · ${esc(P("p.count.viewed", S.viewed.size))}</span><button class="btn sm icon quiet" data-act="tree" aria-expanded="true" aria-controls="tree" aria-label="${esc(L("p.tree.hide"))}" title="${esc(L("p.tree.hide"))}">${ICON.panel}</button></div>`;
   const fileRow = (fi, depth) => {
-    const f = F[fi], a = fileAttn(fi), dim = !fileShown(fi), base = flat ? f.path : f.path.slice(f.path.lastIndexOf("/") + 1);
+    const f = F[fi], a = fileAttn(fi), dim = !fileShown(fi), base = f.path.slice(f.path.lastIndexOf("/") + 1);
     const mark = a.total ? `<span class="mark ${a.open ? a.worst ?? "question" : "done"}" title="${esc(attnText(a))}">${n(a.open || a.total)}</span>` : "";
-    return `<button class="tnode t-file${dim ? " dim" : ""}${S.viewed.has(fi) ? " viewed" : ""}" style="--d:${depth}" data-act="gofile" data-f="${fi}" title="${esc(dim ? L("p.tree.dim", f.path) : f.path)}"><span class="tn-st">${f.status}</span><span class="tn-main"><span class="tn-name">${flat ? slashBreaks(base) : esc(base).replace(/([_-])/g, "$1<wbr>")}</span><span class="tn-meta">${mark}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span></span></span></button>`;
+    return `<button class="tnode t-file${dim ? " dim" : ""}${S.viewed.has(fi) ? " viewed" : ""}" style="--d:${depth}" data-act="gofile" data-f="${fi}" title="${esc(dim ? L("p.tree.dim", f.path) : f.path)}"><span class="tn-st">${f.status}</span><span class="tn-main"><span class="tn-name">${esc(base)}</span><span class="tn-meta">${mark}<span class="a">+${n(f.add)}</span><span class="d">−${n(f.del)}</span></span></span></button>`;
   };
-  if (flat) html += fileOrder().filter(fileMatches).map((fi) => fileRow(fi, 0)).join("");
-  else {
+  {
     const walkTree = (node, depth, prefix) => {
       for (const [k, v] of [...node.dirs].sort()) {
         const [name, inner] = compress(k, v), path = prefix + name + "/", closed = S.code.dirsClosed.has(path);
-        html += `<button class="tnode t-dir" style="--d:${depth}" data-act="dir" data-dir="${esc(path)}" aria-expanded="${!closed}"><span class="caret">▾</span><span class="tn-name">${slashBreaks(name)}/</span></button>`;
+        html += `<button class="tnode t-dir" style="--d:${depth}" data-act="dir" data-dir="${esc(path)}" aria-expanded="${!closed}"><span class="caret">${ICON.chevron}</span><span class="tn-name">${esc(name)}/</span></button>`;
         if (!closed) walkTree(inner, depth + 1, path);
       }
       for (const fi of node.files) html += fileRow(fi, depth);
@@ -1413,12 +1539,40 @@ function goFile(fi) {
   fill(fi);
   landOn(() => $(`#file-${fi}`), toolbarBottom() + 6).then(() => $(`#file-${fi} .fold-btn`)?.focus({ preventScroll: true }));
 }
-// The purpose menu closes here alone, whatever closes it, and says so to assistive technology; true when it was open.
-function closePurposeMenu() {
-  const m = $("#purpose-pop .pop-menu");
-  if (!m || m.hidden) return false;
-  m.hidden = true; $("#purpose-btn").setAttribute("aria-expanded", "false");
-  return true;
+// The menus — the toolbar's and the theme's — close here alone, whatever closes them, and say so to assistive technology; the button of a menu
+// that was open is returned, so Esc can give it focus back. A click inside a menu keeps that menu open.
+function closeMenus(inside = null) {
+  let was = null;
+  for (const pop of $$(".pop")) {
+    const m = $(".pop-menu", pop), b = $(".menu-btn", pop);
+    if (!m || m.hidden || (inside && pop.contains(inside))) continue;
+    m.hidden = true; b.setAttribute("aria-expanded", "false"); was = b;
+  }
+  return was;
+}
+function toggleMenu(btn) {
+  const m = $(".pop-menu", btn.closest(".pop")), opening = m.hidden;
+  closeMenus();
+  if (!opening) return;
+  m.hidden = false; btn.setAttribute("aria-expanded", "true");
+  ($('[aria-pressed="true"]', m) ?? $("button, input", m))?.focus();
+}
+// A menu closes when focus leaves it, and its arrows walk its items.
+document.addEventListener("focusout", (e) => { const pop = e.target.closest?.(".pop"); if (pop && e.relatedTarget && !pop.contains(e.relatedTarget)) closeMenus(e.relatedTarget); });
+document.addEventListener("keydown", (e) => {
+  const m = e.target.closest?.(".pop-menu");
+  if (!m || !["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+  const items = $$("button, input", m), i = items.indexOf(e.target);
+  const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+  e.preventDefault(); e.stopPropagation(); items[next]?.focus();
+}, true);
+// The file tree hides from its own head and comes back from the rail beside the code; focus moves to the other one.
+function setTree(on) {
+  S.code.tree = on;
+  $("#tree").hidden = !on; $("#tree-rail").hidden = on; $("#code-frame").classList.toggle("no-tree", !on);
+  if (on) renderTree();
+  measureCpl(); save();
+  (on ? $('#tree [data-act="tree"]') : $('#tree-rail [data-act="tree"]'))?.focus();
 }
 function resetFilters() { S.code.q = ""; S.code.req = ""; S.code.unit = ""; S.code.set = null; S.code.purposes = new Set(D.purposes); }
 function goLine(lk, { hl = "lnsel" } = {}) {
@@ -1469,9 +1623,27 @@ function setViewed(fi, on) {
 }
 // line numbers: one tab stop per file, arrows between lines
 function rovingInit(body) { const first = $(".lnb", body); if (first) first.tabIndex = 0; }
+// What the record knows about a block, kept or not: the unit it belongs to with its jobs and the reason for its verdict,
+// the requirements it serves in words, the mechanisms it is part of with what they replace, and the routes it is a step of.
+function aboutBlock(b) {
+  const rows = [], add = (label, html) => rows.push(`<dt>${esc(L(label))}</dt><dd>${html}</dd>`);
+  const u = b.unit && D.units.find((x) => x.name === b.unit);
+  if (u) add("p.block.unit", `<button class="linkbtn" data-act="gounit" data-unit="${D.units.indexOf(u)}"><span class="unit-name">${esc(u.name)}</span></button>${u.jobs.length ? ` — ${u.jobs.map(prose).join("; ")}` : ""}${u.reason ? `<div class="small sub">${prose(u.reason)}</div>` : ""}`);
+  add("p.block.serves", b.serves.length ? `<ul class="plain">${b.serves.map((id) => { const r = reqById.get(String(id)); return `<li>${chip("r", id)} ${prose(r.text)} <span class="muted small">${esc(L("source." + r.source))}${r.established ? "" : ` · ${esc(L("req.to-confirm"))}`}</span></li>`; }).join("")}</ul>` : `<span class="muted">${esc(L("p.block.no-req"))}</span>`);
+  for (const [m, i] of D.mechanisms.map((m, i) => [m, i]).filter(([m]) => m.blocks.includes(b.id)))
+    add("p.block.mechanism", `<button class="linkbtn" data-act="gomech" data-mech="${i}">${esc(m.name)}</button>${m.purpose ? ` — ${prose(m.purpose)}` : ""}${m.instead ? `<div class="small sub"><b>${esc(L("instead"))}:</b> ${prose(m.instead)}</div>` : ""}`);
+  D.routes.forEach((r, i) => r.steps.forEach((s, k) => {
+    if (s.block !== b.id) return;
+    const prev = r.steps[k - 1], next = r.steps[k + 1];
+    add("p.route", `<button class="linkbtn" data-act="goroute" data-route="${i}">${prose(r.title)}</button> <span class="muted small">${esc(L("p.route.of", k + 1, r.steps.length))}</span><div class="small">${prose(s.role)}</div><div class="route-nav">${prev ? `${esc(L("p.route.prev"))} ${chip("b", prev.block)}` : ""}${next ? ` ${esc(L("p.route.next"))} ${chip("b", next.block)}` : ""}</div>`);
+  }));
+  if (SETS.carried.ids.has(b.id)) add("p.block.carried", `<span class="tag dashed">${esc(L("p.block.carried-tag"))}</span> <span class="small sub">${esc(L("p.block.carried-note"))}</span>`);
+  const items = blockItems(b);
+  return `<div class="psec"><h3>${esc(L("p.block.about"))}</h3><dl class="kv kv-wide">${rows.join("")}</dl>${items.length ? "" : `<p class="muted small gap-top">${esc(L("p.block.kept"))}</p>`}</div>`;
+}
 function codePanel(sel) {
-  const lcList = (filter) => { const list = state.lines.filter((c) => lkOfAnchor(c) && filter(lkOfAnchor(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lkOfAnchor(c); return `<div class="cmt"><div class="where">${esc(splitPath(c.path)[1])}:${c.side === "base" ? "−" : ""}${c.line}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div><div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
-  if (!sel) return panelWrap(esc(L("p.context")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
+  const lcList = (filter) => { const list = state.lines.filter((c) => lastLk(c) && filter(lastLk(c))); return list.length ? `<div class="cmt-list">${list.map((c) => { const lk = lastLk(c); return `<div class="cmt"><div class="where">${esc(placeWords({ ...c, path: splitPath(c.path)[1] }))}<button class="btn sm quiet" data-act="goline" data-lk="${lk}">${esc(L("p.show"))}</button></div>${quoteHtml(c)}<div class="txt">${esc(c.text)}</div></div>`; }).join("")}</div>` : `<p class="muted small">${esc(L("p.lc.none"))}</p>`; };
+  if (!sel) return panelWrap(esc(L("p.context")) + closeX('data-act="ctx"', L("p.code.ctx-close")), esc(L("p.nothing-selected")), `<div class="psec"><p>${esc(L("p.code.panel-note"))}</p></div><div class="psec"><h3>${esc(L("p.lc.all"))}</h3>${lcList(() => true)}</div>`);
   const b = blk(sel), items = blockItems(b);
   let body = `<div class="psec"><dl class="kv"><dt>${esc(L("p.place"))}</dt><dd><span class="mono small">${slashBreaks(b.path)}</span> <span class="muted small">${esc(b.where)}</span><br><button class="btn sm quiet flush" data-act="copy-block" data-b="${b.id}">${esc(L("p.copy"))}</button></dd>${b.kind ? `<dt>${esc(L("p.block.kind"))}</dt><dd>${esc(L("weight.category." + b.kind))}</dd>` : ""}<dt>${esc(L("purpose"))}</dt><dd>${esc(PURPOSE_LABEL[b.purpose])}</dd></dl></div>`;
   for (const c of items) {
@@ -1481,10 +1653,9 @@ function codePanel(sel) {
     else if (c.type === "q") basis = `${r.context.length ? `<ul class="plain">${r.context.map((x) => `<li>${prose(x.text)} ${srcList(x.sources)}</li>`).join("")}</ul>` : `<p class="muted small">${esc(L("p.no-context", c.label))}</p>`}${r.recommendation?.sources.length ? `<p class="small">${esc(L("recommendation"))} ${srcList(r.recommendation.sources)}</p>` : ""}`;
     body += `<div class="psec"><h3>${c.label} · ${esc(typeText(c))} <span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></h3><p class="strong">${prose(itemTitle(c))}</p><div class="answer-line small" data-answer="${esc(c.key)}">${answerHtml(st)}</div>${basis}<h3 class="gap-top">${esc(L("p.related"))}</h3>${relations(c.type, r.id)}</div>`;
   }
-  if (!items.length) body += `<div class="psec"><p class="muted">${esc(L("p.block.kept"))}</p><h3>${esc(L("p.related"))}</h3>${relations("b", String(b.id))}</div>`;
-  else body += `<div class="psec"><h3>${esc(L("p.block.this"))}</h3>${relations("b", String(b.id))}</div>`;
+  body += aboutBlock(b);
   body += `<div class="psec"><h3>${esc(L("p.lc.file"))}</h3>${lcList((lk) => +lk.split(":")[0] === b.file)}</div>`;
-  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}<button class="btn sm quiet" data-act="ctx" aria-label="${esc(L("p.code.ctx-close"))}">${esc(L("p.close"))}</button>`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.kept-code"))}</span>`, body);
+  return panelWrap(`B${b.id} · ${verdictTag(b.verdict)}${closeX('data-act="ctx"', L("p.code.ctx-close"))}`, b.does ? prose(b.does) : `<span class="muted">${esc(L("p.block.no-does"))}</span>`, body);
 }
 
 // ---------------------------------------------------------------- Details
@@ -1546,26 +1717,29 @@ function renderDetailBody() {
       <table class="tbl"><thead><tr><th>${esc(L("p.mech"))}</th><th>${esc(L("p.mech.change"))}</th><th>${esc(L("decision"))}</th><th class="num">${esc(L("weight"))}</th><th>${esc(L("findings"))}</th></tr></thead><tbody>${D.mechanisms.map((m, i) => `<tr class="selectable" data-sel="mech:${i}" data-act="sel" tabindex="0"><td><b>${esc(m.name)}</b><div class="unit-jobs">${prose(m.purpose ?? "")}</div></td><td class="muted nowrap">${esc(L("change." + m.change))}</td><td>${prose(m.decision ?? "")}</td><td class="num small">${m.weight ? counts(m.weight) + (m.weight.shared.length ? `<div class="muted">${esc(P("p.count.shared", m.weight.shared.length))}</div>` : "") : `<span class="muted">—</span>`}</td><td>${chips("f", m.findings)}</td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "scenarios") {
     const side = (s) => s ? `<div><span class="lbl">${esc(L("edit"))}</span>${s.edit.map(prose).join("; ") || esc(L("nothing"))}</div><div><span class="lbl">${esc(L("read"))}</span>${s.read.map(prose).join("; ") || esc(L("nothing"))}</div>` : `<span class="muted">${esc(L("as-now"))}</span>`;
-    html = `<p class="muted intro">${esc(L("scenarios-note"))}</p><div class="cards">${D.scenarios.map((s) => `<div class="card selectable" data-sel="scen:${esc(s.id)}" data-act="sel" tabindex="0" id="scen-${esc(s.id)}"><div class="card-head"><span class="card-id">${esc(L("p.rel.scenario", s.id))}</span>${s.requirements.length ? `<span class="card-type">${esc(L("p.scenario.for", s.requirements.map((r) => "R" + r).join(", ")))}</span>` : ""}</div>${pcWrap(`scenario.${s.id}/change`, `<p class="card-title">${prose(s.change)}</p>`)}<div class="twocol"><div class="box"><h3>${esc(L("as-written"))}</h3>${side(s.now)}</div><div class="box"><h3>${esc(L("target"))}</h3>${side(s.target)}</div></div>${s.findings.length ? `<div class="card-foot"><span class="lbl">${esc(L("findings"))}</span>${chips("f", s.findings)}</div>` : ""}</div>`).join("")}</div>`;
+    html = `<p class="muted intro">${esc(L("scenarios-note"))}</p><div class="cards">${D.scenarios.map((s) => `<div class="card selectable" data-sel="scen:${esc(s.id)}" data-act="sel" tabindex="0" id="scen-${esc(s.id)}"><div class="card-head"><span class="card-id">${esc(L("p.rel.scenario", s.id))}</span>${s.requirements.length ? `<span class="card-type">${esc(L("p.scenario.for", s.requirements.map((r) => "R" + r).join(", ")))}</span>` : ""}</div>${pcWrap(`scenario.${s.id}/change`, `<p class="card-title pf">${prose(s.change)}</p>`)}<div class="twocol"><div class="box"><h3>${esc(L("as-written"))}</h3>${side(s.now)}</div><div class="box"><h3>${esc(L("target"))}</h3>${side(s.target)}</div></div>${s.findings.length ? `<div class="card-foot"><span class="lbl">${esc(L("findings"))}</span>${chips("f", s.findings)}</div>` : ""}</div>`).join("")}</div>`;
   } else if (sub === "checks") {
     html = `<p class="muted intro">${esc(L("checks-note"))}</p><div class="cards">${D.checks.map((c, i) => `<div class="card selectable" data-sel="check:${i}" data-act="sel" tabindex="0"><div class="check-item"><span class="n">${i + 1}</span><div>${c.from ? `<p><span class="lbl">${esc(L("from"))}</span>${prose(c.from)}</p>` : ""}<ol>${c.do.map((x) => `<li>${prose(x)}</li>`).join("")}</ol><p><span class="lbl">${esc(L("expect"))}</span>${prose(c.expect)}</p>${c.requirements.length ? `<div class="card-foot"><span class="lbl">${esc(L("p.check.checks"))}</span>${chips("r", c.requirements)}</div>` : ""}</div></div></div>`).join("")}</div>`;
   } else if (sub === "challenges") {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
-    html = D.screens.map((s, si) => `<div class="box box-gap"><h3 class="screen-h">${esc(s.name)}</h3>
-      ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
-      ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
-      ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
-      ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
-      ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`).join("");
+    html = D.screens.map((s, si) => screenBox(si)).join("");
   } else if (sub === "coverage") {
-    const warn = (set) => SETS[set].ids.size ? `<li><b>${esc(P(SETS[set].warn, SETS[set].ids.size))}</b> ${esc(L("p.warn.do"))} <button class="btn sm" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
-    const warnings = warn("assumed") + warn("unlinked");
-    html = `${warnings ? `<div class="section-h"><h2>${esc(L("p.warn"))}</h2><span class="muted">${esc(L("p.warn.note"))}</span></div><div class="box"><ul class="plain warnings">${warnings}</ul></div>` : ""}${D.coverageStructured.length ? `<div class="section-h"><h2>${esc(L("p.coverage.statements"))}</h2><span class="muted">${esc(L("p.coverage.statements-note"))}</span></div><table class="tbl"><tbody>${D.coverageStructured.map((c) => `<tr><td class="nowrap"><span class="tag ${c.kind === "not_checked" ? "open" : "neutral"}">${esc(L(c.kind === "not_checked" ? "coverage.not-checked" : "coverage." + c.kind))}</span></td><td>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}<div>${srcList(c.sources)}</div></td></tr>`).join("")}</tbody></table>` : ""}
-      <div class="section-h"><h2>${esc(L("p.coverage.written"))}</h2></div><div class="box prose">${textBlock(D.coverage)}</div>
-      <div class="section-h"><h2>${esc(L("p.scope"))}</h2></div><div class="box prose"><p>${prose(D.range)}</p></div>
-      ${D.tradeoffs.length ? `<div class="section-h"><h2>${esc(L("tradeoffs"))}</h2></div><div class="box"><ul class="plain">${D.tradeoffs.map((x) => `<li>${prose(x.text)} <span class="muted">${esc(L("tradeoff.consequence"))}: ${prose(x.consequence)}</span> ${srcList(x.sources)}</li>`).join("")}</ul></div>` : ""}
-`;
+    // How far the review's conclusions reach: what was not checked and where the review stops first, then what ran,
+    // then what was only read. The reviewer's prose is shown as written when nothing breaks it down, folded away when
+    // statements do; nothing is read out of it.
+    const of = (kind) => D.coverageStructured.filter((c) => c.kind === kind), structured = D.coverageStructured.length > 0;
+    const stmt = (c) => `<li>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}${c.sources.length ? `<div>${srcList(c.sources)}</div>` : ""}</li>`;
+    const limit = (set) => SETS[set].ids.size ? `<li>${esc(P(SETS[set].warn, SETS[set].ids.size))} <button class="btn sm quiet" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
+    const unchecked = [...of("not_checked").map(stmt), ...D.requirements.filter((r) => r.not_checked).map((r) => `<li>${chip("r", r.id)} ${prose(r.not_checked)}</li>`)];
+    const limits = unchecked.join("") + limit("carried") + limit("unlinked") + limit("assumed");
+    const section = (title, items, cls) => items ? `<div class="section-h"><h2>${esc(title)}</h2></div><div class="box ${cls}"><ul class="plain cov-list">${items}</ul></div>` : "";
+    // a kind no statement names is not counted as none: the prose may say it
+    const counts = [["coverage.ran", of("ran").length], ["coverage.read", of("read").length], ["coverage.not-checked", unchecked.length]].filter(([, c]) => c);
+    html = `<p class="muted intro">${esc(L("p.coverage.intro"))}</p>
+      ${counts.length ? `<div class="cov-counts">${counts.map(([k, c]) => `<span>${esc(L(k))}: <b>${n(c)}</b></span>`).join("")}</div>` : ""}
+      ${section(L("p.coverage.limits"), limits, "cov-limits")}${section(L("coverage.ran"), of("ran").map(stmt).join(""), "cov-ran")}${section(L("coverage.read"), of("read").map(stmt).join(""), "cov-read")}
+      <div class="section-h"><h2>${esc(L("p.coverage.note"))}</h2>${structured ? "" : `<span class="muted">${esc(L("p.coverage.unstructured"))}</span>`}</div><div class="box prose">${textBlock(D.coverage)}</div>`;
   } else {
     const p = D.passport;
     html = `<div class="box"><dl class="kv kv-wide">
@@ -1573,10 +1747,10 @@ function renderDetailBody() {
       ${p ? `<dt>${esc(L("p.report.repository"))}</dt><dd>${esc(p.repository ?? "")}</dd><dt>${esc(L("p.report.base-head"))}</dt><dd class="mono">${esc(p.base ?? "")} → ${esc(p.head ?? "")}</dd><dt>${esc(L("passport.reviewed-at"))}</dt><dd>${esc(p.reviewedAt ?? "")}</dd>${(p.links ?? []).map((l) => `<dt>${esc(l.kind)}</dt><dd>${/^https?:\/\//i.test(l.url) ? `<a href="${esc(l.url)}" rel="noreferrer">${esc(l.label)}</a>` : esc(l.label)}</dd>`).join("")}` : `<dt>${esc(L("passport"))}</dt><dd class="muted">${esc(L("p.report.no-passport"))}</dd>`}
       <dt>${esc(L("p.report.diff"))}</dt><dd><span class="mono small">${esc(D.digest.diffFile)}</span><br><span class="mono small muted">sha256 ${esc(D.digest.diff)}</span></dd>
       <dt>${esc(L("passport.record"))}</dt><dd><span class="mono small muted">sha256 ${esc(D.digest.record)}</span></dd>
+      ${D.history ? `<dt>${esc(L("p.report.continues"))}</dt><dd>${D.history.title ? esc(L("p.report.continues.title", D.history.title)) : `<span class="mono small">${esc(D.history.record)}</span>`}${D.history.reviewedAt ? `, ${esc(D.history.reviewedAt)}` : ""}<br><span class="mono small muted">sha256 ${esc(D.history.sha256)}</span><br><span class="small">${esc([P("p.count.carried", D.carried.length), P("p.count.replies", D.replies.length)].join(" · "))}</span></dd>` : ""}
       <dt>${esc(L("p.report.language"))}</dt><dd>${esc(D.language)}</dd>
       <dt>${esc(L("p.report.size"))}</dt><dd>${esc([P("p.count.files", D.counters.files), P("p.count.blocks", D.counters.blocks), P("p.count.items", ITEMS.length)].join(", "))}</dd>
-      </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>
-      <div class="section-h"><h2>${esc(L("p.print"))}</h2></div><div class="box"><p class="print-actions"><button class="btn sm" data-act="print" data-profile="owner">${esc(L("p.print.owner"))}</button><button class="btn sm" data-act="print" data-profile="audit">${esc(L("p.print.audit"))}</button></p><p class="muted small">${esc(L("p.print.note"))}</p></div>`;
+      </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>`;
   }
   $("#det-body").innerHTML = html;
   if (sub === "structure" && S.structView === "graph") wireGraph();
@@ -1654,19 +1828,20 @@ function detailsPanel(sel) {
   if (kind === "chal") {
     const c = D.challenges[i]; if (!c) return "";
     return panelWrap(`${esc(L("p.challenge.raised", i + 1, L("challenger." + c.from)))} · <span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span>`, esc(L("p.challenge", i + 1)), `
-      <div class="psec"><h3>${esc(L("point"))}</h3>${pcWrap(`challenge.${i + 1}/point`, `<p>${prose(c.point)}</p>`)}</div>
-      <div class="psec"><h3>${esc(L("p.challenge.did"))}</h3>${pcWrap(`challenge.${i + 1}/note`, `<p>${prose(c.note)}</p>`)}</div>
+      <div class="psec"><h3>${esc(L("point"))}</h3>${pcWrap(`challenge.${i + 1}/point`, `<p class="pf">${prose(c.point)}</p>`)}</div>
+      <div class="psec"><h3>${esc(L("p.challenge.did"))}</h3>${pcWrap(`challenge.${i + 1}/note`, `<p class="pf">${prose(c.note)}</p>`)}</div>
       ${c.place ? `<div class="psec"><h3>${esc(L("p.challenge.place"))}</h3>${placeExcerpt(c.place, rowAt(c.place))}</div>` : ""}`);
   }
   return "";
 }
 
 // ---------------------------------------------------------------- panels and navigation
-function renderPanel(tab) {
+// A new selection starts at the panel's top; more of the same selection keeps the place the owner reads.
+function renderPanel(tab, { keep = false } = {}) {
   const el = $("#ctx-" + tab); if (!el) return;
-  const sel = S.sel[tab];
+  const sel = S.sel[tab], top = el.scrollTop;
   el.innerHTML = tab === "summary" ? summaryPanel(sel) : tab === "decisions" ? decisionsPanel(sel) : tab === "code" ? codePanel(sel) : detailsPanel(sel);
-  el.scrollTop = 0;
+  el.scrollTop = keep ? top : 0;
 }
 function goCard(key, { focus = false } = {}) {
   if (S.tab !== "decisions") showTab("decisions", { push: false });
@@ -1745,16 +1920,17 @@ document.addEventListener("click", (e) => {
   const act = e.target.closest("[data-act]"), a = act?.dataset.act;
   if (NAVIGATES.has(a)) pushNext = true;
   if (a === "pick" && act.tagName === "INPUT") return; // radios and checkboxes act on change
-  if (!e.target.closest("#purpose-pop")) closePurposeMenu();
+  closeMenus(e.target);
   if (a) {
     const key = act.dataset.key;
     switch (a) {
-      case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; applyTheme(); return save();
+      case "theme-pick": S.theme = act.dataset.theme; applyTheme(); save(); closeMenus(); return $("#theme-btn").focus();
       case "export": return openExport();
       case "zoom": return openZoom(act.dataset.pic);
       case "zoom-fit": case "zoom-full": zoomFit = a === "zoom-fit"; return showZoom(zoomAt);
+      case "zoom-toggle": zoomFit = !zoomFit; return showZoom(zoomAt);
       case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
-      case "print": printProfile = act.dataset.profile; return window.print();
+      case "print": $("#export-dialog").close(); return window.print();
       case "export-json": return downloadExport();
       case "export-copy": return copyText($("#export-text"), $("#export-status"));
       case "unreadable-show": return openUnreadable();
@@ -1777,7 +1953,14 @@ document.addEventListener("click", (e) => {
       case "clear": return clearAnswer(key);
       case "selcard": select("decisions", "card:" + key); $(`#card-${key}`)?.classList.add("open-full"); return;
       case "item-code": return itemToCode(key);
-      case "more": S.more[act.dataset.more] = true; return renderPanel(S.tab);
+      case "more": S.more[act.dataset.more] = true; return renderPanel(S.tab, { keep: true });
+      case "cmap": {
+        const key = act.dataset.key, id = +act.dataset.b, open = S.cmap[key] === id, box = act.closest(".cmap");
+        $$(".cmap-ex", box).forEach((x) => x.remove()); $$('.cmap-tog[aria-expanded="true"]', box).forEach((x) => x.setAttribute("aria-expanded", "false"));
+        S.cmap[key] = open ? null : id;
+        if (!open) { act.setAttribute("aria-expanded", "true"); act.insertAdjacentHTML("afterend", `<div class="cmap-ex">${excerptHtml(id)}</div>`); }
+        return;
+      }
       case "dsub": S.sub.decisions = act.dataset.sub; renderDecList(); syncDecSelection(); setHash(); return;
       case "xsub": S.sub.details = act.dataset.sub; renderDetailBody(); setHash(); return;
       case "sview": S.structView = act.dataset.view; return renderDetailBody();
@@ -1793,11 +1976,13 @@ document.addEventListener("click", (e) => {
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
-      case "tree": { S.code.tree = !S.code.tree; act.setAttribute("aria-pressed", String(S.code.tree)); $("#tree").hidden = !S.code.tree; $("#code-frame").classList.toggle("no-tree", !S.code.tree); if (S.code.tree) renderTree(); measureCpl(); return save(); }
-      case "ctx": { S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
+      case "goroute": showTab("summary"); return select("summary", "route:" + act.dataset.route, { scroll: true });
+      case "tree": return setTree(!S.code.tree);
+      case "ctx": { if (act.closest("#ctx-code")) requestAnimationFrame(() => $('.toolbar [data-act="ctx"]')?.focus()); S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
-      case "purpose-menu": { if (!closePurposeMenu()) { $("#purpose-pop .pop-menu").hidden = false; act.setAttribute("aria-expanded", "true"); } return; }
+      case "purpose-menu": case "req-menu": case "theme-menu": return toggleMenu(act);
+      case "req-pick": S.code.req = act.dataset.req; S.code.pinned.clear(); closeMenus(); $("#req-btn").focus(); return rerenderCode();
       case "unit-clear": S.code.unit = ""; return rerenderCode();
       case "set-clear": S.code.set = null; return rerenderCode();
       case "undo": return runUndo();
@@ -1816,7 +2001,10 @@ document.addEventListener("click", (e) => {
       case "next": return step(1);
       case "lc": return editLine(act.dataset.lk);
       case "lc-save": return saveLine(act.dataset.lk);
-      case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; return refreshLine(lk); }
+      case "carry-take": return takeCarried();
+      case "carry-skip": return hideCarry();
+      case "lc-cancel": { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; return refreshLine(lk); }
+      case "sel-comment": return SELT && openSelection(SELT);
       case "lc-del": { const lk = act.dataset.lk; setState(DR.lineComment(state, anchorOfLk(lk), "")); return commentsChanged(() => refreshLine(lk)); }
       case "goline": return goLine(act.dataset.lk);
       case "copy-block": return copy(blockRef(+act.dataset.b));
@@ -1844,8 +2032,6 @@ document.addEventListener("change", (e) => {
   if (a === "pick") return pick(t.dataset.key, t.dataset.opt);
   if (a === "zone") { setState(DR.markZone(ITEMS, state, t.dataset.key, t.dataset.zone, t.checked)); return afterChange(t.dataset.key, { structural: false }); }
   if (a === "purpose") { if (t.checked) S.code.purposes.add(t.value); else S.code.purposes.delete(t.value); S.code.pinned.clear(); return rerenderCode(); }
-  if (a === "req") { S.code.req = t.value; S.code.pinned.clear(); return rerenderCode(); }
-  if (a === "order") { S.code.order = t.value; rerenderCode(); return save(); }
   if (a === "viewed") return setViewed(+t.dataset.f, t.checked);
 });
 document.addEventListener("input", (e) => {
@@ -1900,32 +2086,34 @@ function commentsChanged(redraw) {
   redraw();
   if (S.rendered.decisions) { updateSubCounts(); if (S.sub.decisions === "comments") renderDecList(); }
 }
+// A comment saved from a selection keeps the lines, characters and words selected; one edited keeps those it had.
 function saveLine(lk) {
-  setState(DR.lineComment(state, anchorOfLk(lk), $("#lc-input")?.value ?? ""));
-  S.lcEdit = null;
+  const old = LC.get(lk), span = S.lcRange ?? (old ? { line: old.line, end: old.end, from: old.from, to: old.to, quote: old.quote } : {});
+  setState(DR.lineComment(state, { ...anchorOfLk(lk), ...span }, $("#lc-input")?.value ?? ""));
+  S.lcEdit = null; S.lcRange = null;
   commentsChanged(() => refreshLine(lk));
   $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus({ preventScroll: true });
 }
 // One paragraph editor at a time: opening another closes this one and keeps what was typed in it as that paragraph's
 // unsaved draft, shown there until it is saved or cancelled.
-function openPc(anchor, from) {
+function openPc(anchor, from, span = null) {
   const prev = S.pcEdit;
-  S.pcEdit = anchor;
+  S.pcEdit = anchor; S.pcRange = span ? { anchor, ...span } : null;
   if (prev && prev !== anchor) refreshPc(prev);
   refreshPc(anchor);
   (from?.closest(".pc")?.querySelector(".pc-input") ?? $(".pc-input"))?.focus();
 }
-function closePc() { const an = S.pcEdit; S.pcEdit = null; delete S.pcDraft[an]; refreshPc(an); }
+function closePc() { const an = S.pcEdit; S.pcEdit = null; S.pcRange = null; delete S.pcDraft[an]; refreshPc(an); }
 // Saves the text of the editor the save came from, never another one on the page.
 function savePc(anchor, input) {
-  const [item, field] = cutLast(anchor, "/");
-  setState(DR.paragraphComment(state, { item, field }, input?.value ?? S.pcDraft[anchor] ?? ""));
-  S.pcEdit = null; delete S.pcDraft[anchor];
+  const [item, field] = cutLast(anchor, "/"), old = PC.get(anchor), span = (S.pcRange?.anchor === anchor ? S.pcRange : null) ?? old ?? {};
+  setState(DR.paragraphComment(state, { item, field, from: span.from, to: span.to, quote: span.quote }, input?.value ?? S.pcDraft[anchor] ?? ""));
+  S.pcEdit = null; S.pcRange = null; delete S.pcDraft[anchor];
   commentsChanged(() => refreshPc(anchor));
   $(`[data-anchor="${CSS.escape(anchor)}"] .pc-btn`)?.focus({ preventScroll: true });
 }
-function editLine(lk) {
-  const prev = S.lcEdit; S.lcEdit = lk;
+function editLine(lk, span = null) {
+  const prev = S.lcEdit; S.lcEdit = lk; S.lcRange = span;
   if (prev && prev !== lk) refreshLine(prev, false);
   refreshLine(lk, false);
   $("#lc-input")?.focus();
@@ -1935,6 +2123,115 @@ function refreshLine(lk, chrome = true) {
   fill(+lk.split(":")[0], true);
   if (chrome) { updateChrome(); if (S.code.ctx) renderPanel("code"); }
 }
+// ---------------------------------------------------------------- comments on a selection
+// A selection inside one paragraph of the report, or inside the rows of one hunk on one side of a file, can be commented:
+// the comment keeps the lines, the characters and the words selected. A selection across two of them is refused with a
+// word, never placed by guess. The words are drawn marked where they still read as selected.
+let SELT = null;
+const textWithout = (root, skip) => { const c = root.cloneNode(true); c.querySelectorAll(skip).forEach((n) => n.remove()); return c.textContent; };
+const lineText = (cell) => textWithout(cell, ".sg");
+// How many characters of a container come before a point in it, its skipped parts left out.
+function offsetIn(root, node, offset, skip) {
+  const r = document.createRange(); r.setStart(root, 0); r.setEnd(node, offset);
+  const frag = r.cloneContents(); frag.querySelectorAll(skip).forEach((n) => n.remove());
+  return frag.textContent.length;
+}
+// The range of characters from..to of a container, its skipped parts left out.
+function rangeIn(root, from, to, skip) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => { const s = n.parentElement.closest(skip); return s && root.contains(s) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
+  let pos = 0, start = null, end = null;
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const len = n.data.length;
+    if (!start && from <= pos + len) start = [n, from - pos];
+    if (start && to <= pos + len) { end = [n, to - pos]; break; }
+    pos += len;
+  }
+  if (!start || !end) return null;
+  const r = document.createRange(); r.setStart(...start); r.setEnd(...end); return r;
+}
+function selectionTarget() {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount || !sel.toString().trim()) return null;
+  const range = sel.getRangeAt(0), el = (n) => n.nodeType === 1 ? n : n.parentElement;
+  const a = el(range.startContainer), z = el(range.endContainer);
+  if (a.closest("textarea, input, .pc-x, .lc, #sel-adder") || z.closest("textarea, input, .pc-x, .lc, #sel-adder")) return null;
+  // a paragraph: the field's own words, never the page's labels or source chips around them
+  const pa = a.closest(".pc"), pz = z.closest(".pc");
+  if (pa || pz) {
+    const fa = a.closest(".pf"), fz = z.closest(".pf");
+    if (pa !== pz || !fa || fa !== fz || fa.closest(".pc") !== pa) return { refused: true, range };
+    const from = offsetIn(fa, range.startContainer, range.startOffset, ".pc-x"), to = offsetIn(fa, range.endContainer, range.endOffset, ".pc-x");
+    return { kind: "para", anchor: pa.dataset.anchor, el: pa, span: { from, to, quote: textWithout(fa, ".pc-x").slice(from, to) }, range };
+  }
+  const ra = a.closest("#files tr.r"), rz = z.closest("#files tr.r");
+  if (!ra && !rz) return null;
+  if (!ra || !rz || ra.closest(".file") !== rz.closest(".file")) return { refused: true, range };
+  const rows = [];
+  for (let r = ra; r; r = r.nextElementSibling) { if (r.matches("tr.r")) rows.push(r); else if (r.matches("tr.gap, tr.fold")) return { refused: true, range }; if (r === rz) break; }
+  if (rows.at(-1) !== rz) return { refused: true, range };
+  let from = a.closest("td.cd") === $("td.cd", ra) ? offsetIn($("td.cd", ra), range.startContainer, range.startOffset, ".sg") : 0;
+  let to = z.closest("td.cd") === $("td.cd", rz) ? offsetIn($("td.cd", rz), range.endContainer, range.endOffset, ".sg") : lineText($("td.cd", rz)).length;
+  // a selection that ends at the very start of a line, or starts at the very end of one, does not take that line
+  if (rows.length > 1 && to === 0) { rows.pop(); to = lineText($("td.cd", rows.at(-1))).length; }
+  if (rows.length > 1 && from >= lineText($("td.cd", rows[0])).length) { rows.shift(); from = 0; }
+  const removed = rows.filter((r) => r.classList.contains("d")).length;
+  if (removed && removed < rows.length) return { refused: true, range };
+  const first = anchorOfLk(rows[0].dataset.lk), last = anchorOfLk(rows.at(-1).dataset.lk), texts = rows.map((r) => lineText($("td.cd", r)));
+  const quote = texts.map((t, i) => t.slice(i === 0 ? from : 0, i === texts.length - 1 ? to : t.length)).join("\n");
+  return { kind: "line", lk: rows.at(-1).dataset.lk, span: { line: first.line, end: last.line > first.line ? last.line : undefined, from, to, quote }, range };
+}
+function hideAdder() { const ad = $("#sel-adder"); if (ad) ad.hidden = true; SELT = null; }
+function showAdder() {
+  const t = selectionTarget(), ad = $("#sel-adder");
+  if (!t || !ad) return hideAdder();
+  SELT = t.refused ? null : t;
+  ad.disabled = Boolean(t.refused); ad.classList.toggle("refused", Boolean(t.refused));
+  ad.innerHTML = t.refused ? esc(L("p.sel.refused")) : `${ICON.comment}<span>${esc(L("p.sel.comment"))}</span>${kbd("c")}`;
+  ad.hidden = false;
+  // below the selection's last line, never over the words selected; above it when there is no room below
+  const rects = t.range.getClientRects(), r = rects[rects.length - 1] ?? t.range.getBoundingClientRect(), top = (rects[0] ?? r).top;
+  const x = Math.min(innerWidth - ad.offsetWidth - 8, Math.max(8, r.right - ad.offsetWidth)), below = r.bottom + 6;
+  ad.style.left = x + "px"; ad.style.top = (below + ad.offsetHeight > innerHeight - 8 ? Math.max(8, top - ad.offsetHeight - 6) : below) + "px";
+}
+function openSelection(t) {
+  hideAdder(); getSelection()?.removeAllRanges();
+  if (t.kind === "line") return editLine(t.lk, t.span);
+  openPc(t.anchor, t.el, t.span);
+}
+// The selected words of each comment, marked where the page draws them and they still read the same.
+const CAN_MARK = typeof CSS !== "undefined" && "highlights" in CSS && typeof Highlight === "function";
+let markQueued = false;
+function queueMark() { if (!CAN_MARK || markQueued) return; markQueued = true; requestAnimationFrame(() => { markQueued = false; markComments(); }); }
+function markComments() {
+  const ranges = [];
+  for (const c of state.lines) {
+    if (c.from === undefined && c.to === undefined) continue;
+    const fi = fileByPath.get(c.path), sign = c.side === "base" ? "-" : "+", cells = [];
+    if (fi === undefined) continue;
+    for (let n = c.line; n <= (c.end ?? c.line); n++) { const tr = $(`#file-${fi} tr.r[data-lk="${fi}:${sign}${n}"]`); if (!tr) { cells.length = 0; break; } cells.push($("td.cd", tr)); }
+    if (!cells.length) continue;
+    const texts = cells.map(lineText), at = (i) => [i === 0 ? c.from ?? 0 : 0, i === texts.length - 1 ? c.to ?? texts[i].length : texts[i].length];
+    if (c.quote !== undefined && texts.map((t, i) => t.slice(...at(i))).join("\n") !== c.quote) continue;
+    cells.forEach((cell, i) => { const r = rangeIn(cell, ...at(i), ".sg"); if (r) ranges.push(r); });
+  }
+  for (const c of state.paragraphs) {
+    if (c.from === undefined || c.to === undefined) continue;
+    for (const pc of $$(`.pc[data-anchor="${CSS.escape(`${c.item}/${c.field}`)}"]`)) {
+      const field = $(".pf", pc);
+      if (!field || (c.quote !== undefined && textWithout(field, ".pc-x").slice(c.from, c.to) !== c.quote)) continue;
+      const r = rangeIn(field, c.from, c.to, ".pc-x"); if (r) ranges.push(r);
+    }
+  }
+  CSS.highlights.set("review-comment", new Highlight(...ranges));
+}
+document.addEventListener("mouseup", (e) => { if (!e.target.closest?.("#sel-adder")) setTimeout(showAdder, 0); });
+// pressing the adder keeps the selection it is for
+document.addEventListener("mousedown", (e) => { if (e.target.closest?.("#sel-adder")) e.preventDefault(); });
+document.addEventListener("keyup", (e) => { if (e.shiftKey || e.key === "Shift") showAdder(); });
+document.addEventListener("selectionchange", () => { if (getSelection()?.isCollapsed) hideAdder(); });
+window.addEventListener("scroll", () => { if (!$("#sel-adder")?.hidden) hideAdder(); }, { passive: true });
+new MutationObserver(queueMark).observe(app, { childList: true, subtree: true });
+
 let gAt = 0;
 function keyTarget() {
   if (S.tab === "code" && S.cur) return $(`#note-${S.cur.bid}`);
@@ -1961,8 +2258,7 @@ function findIndex() {
 const FIND_LIMIT = 5000;
 function runFind() {
   const q = S.find.q.trim().toLowerCase();
-  const rank = new Map(fileOrder().map((fi, i) => [fi, i]));
-  S.find.matches = q.length < 2 ? [] : findIndex().filter((x) => x.text.includes(q)).sort((a, b) => rank.get(a.fi) - rank.get(b.fi) || a.hi - b.hi || a.ri - b.ri).slice(0, FIND_LIMIT);
+  S.find.matches = q.length < 2 ? [] : findIndex().filter((x) => x.text.includes(q)).sort((a, b) => a.fi - b.fi || a.hi - b.hi || a.ri - b.ri).slice(0, FIND_LIMIT);
   S.find.i = -1; findCount();
 }
 function findCount() {
@@ -1988,7 +2284,9 @@ function findStep(dir) {
   goLine(m[S.find.i].lk, { hl: "findhit" }).then(() => $("#find-q")?.focus({ preventScroll: true }));
 }
 // the sticky offsets follow the toolbar's real height (the find bar adds a row)
-function syncTbar() { TB = null; const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--tbar", t.offsetHeight + "px"); }
+function syncTbar() { TB = null; const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--tbar", t.offsetHeight + "px"); syncOverlay(); }
+// In a narrow window the tree and the panel float over the code: they start where the toolbar ends, wherever the page is scrolled.
+function syncOverlay() { const t = $(".toolbar"); if (t) document.documentElement.style.setProperty("--ov-top", Math.max(0, Math.round(t.getBoundingClientRect().bottom)) + "px"); }
 // where focus goes back to from a field: the selected note in Code, the item's card in Decisions
 function focusHome(key) {
   const home = S.tab === "code" ? S.sel.code && $(`#note-${S.sel.code}`) : $(`#card-${key}`);
@@ -2014,9 +2312,10 @@ document.addEventListener("keydown", (e) => {
     if (t.classList.contains("pc-input")) { e.preventDefault(); return savePc(t.dataset.anchor, t); }
   }
   if (e.key === "Escape") {
-    if (closePurposeMenu()) { $("#purpose-btn").focus(); return; }
+    { const b = closeMenus(); if (b) { b.focus(); return; } }
     if ($("#copybox")) { $("#copybox").remove(); return; }
-    if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
+    if (!$("#sel-adder").hidden) { hideAdder(); return; }
+    if (S.lcEdit) { const lk = S.lcEdit; S.lcEdit = null; S.lcRange = null; refreshLine(lk); $(`#files tr.r[data-lk="${CSS.escape(lk)}"] .lnb`)?.focus(); return; }
     if (S.pcEdit) return closePc();
     // Esc leaves a field: what was written there stays, an untouched field changes nothing, and focus returns to the
     // note or card, so the next key moves on instead of typing.
@@ -2060,6 +2359,7 @@ document.addEventListener("keydown", (e) => {
   if (k === "i" && S.tab === "code") return $('#panel-code [data-act="ctx"]')?.click();
   if (k === "v" && S.tab === "code") { const fi = currentFile(); if (fi !== null) setViewed(fi, !S.viewed.has(fi)); return; }
   if (k === "y" && S.tab === "code") { if (t.classList?.contains("lnb")) { const at = rowOfLk(t.dataset.lk); return copy(refText(at.fi, at.row[0] === 2 ? "-" : "+", at.row[0] === 2 ? at.row[1] : at.row[2])); } if (S.sel.code) return copy(blockRef(S.sel.code)); return; }
+  if (k === "c" && SELT) { e.preventDefault(); return openSelection(SELT); }
   if (k === "c" && S.tab === "code") { e.preventDefault(); if (t.classList?.contains("lnb")) return editLine(t.dataset.lk); if (S.sel.code) { const tr = $(`#files tr.r[data-b="${S.sel.code}"]`); if (tr) editLine(tr.dataset.lk); } return; }
   const c = currentItem();
   if (!c || !applicable(c)) return;
@@ -2082,20 +2382,30 @@ let spyQueued = false;
 window.addEventListener("scroll", () => {
   if (spyQueued || S.tab !== "code") return;
   spyQueued = true;
-  requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); });
+  requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); syncOverlay(); });
 }, { passive: true });
 window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
 window.addEventListener("hashchange", () => route(location.hash));
 
 // ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size
-const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
+// As common picture viewers do, it closes on a click outside the picture, opens fitted to the window and zooms on a
+// click on the picture; its frame closes around the picture instead of keeping a fixed field.
+const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ si, id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
 let zoomAt = 0, zoomFit = true;
 function openZoom(id) {
   let d = $("#zoom-dialog");
   if (!d) {
     d = document.createElement("dialog"); d.id = "zoom-dialog"; d.setAttribute("aria-labelledby", "zoom-name");
-    d.innerHTML = `<div class="zoom-bar"><button class="btn sm" data-act="zoom-fit">${esc(L("p.zoom.fit"))}</button><button class="btn sm" data-act="zoom-full">${esc(L("p.zoom.actual"))}</button><button class="btn sm icon" data-act="zoom-prev" aria-label="${esc(L("p.zoom.prev"))}">←</button><span id="zoom-count" class="muted small"></span><button class="btn sm icon" data-act="zoom-next" aria-label="${esc(L("p.zoom.next"))}">→</button><span id="zoom-name" class="small"></span><span id="zoom-historical" class="tag dashed" hidden>${esc(L("p.zoom.historical"))}</span><form method="dialog"><button class="btn sm" autofocus>${esc(L("p.close"))}</button></form></div><div class="zoom-scroll"><img alt=""></div>`;
+    d.innerHTML = `<div class="zoom-bar"><button class="btn sm" data-act="zoom-fit">${esc(L("p.zoom.fit"))}</button><button class="btn sm" data-act="zoom-full">${esc(L("p.zoom.actual"))}</button><button class="btn sm icon" data-act="zoom-prev" aria-label="${esc(L("p.zoom.prev"))}">←</button><span id="zoom-count" class="muted small"></span><button class="btn sm icon" data-act="zoom-next" aria-label="${esc(L("p.zoom.next"))}">→</button><span id="zoom-name" class="small"></span><span id="zoom-historical" class="tag dashed" hidden>${esc(L("p.zoom.historical"))}</span><form method="dialog">${closeX("autofocus", L("p.close"))}</form></div><div class="zoom-stage"><img alt="" data-act="zoom-toggle"></div><div class="zoom-caption" id="zoom-caption" hidden></div>`;
     d.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); showZoom(zoomAt + (e.key === "ArrowRight" ? 1 : -1)); } });
+    // The backdrop is the dialog itself, outside its box; the stage is the field around a picture narrower than the bar.
+    d.addEventListener("click", (e) => {
+      const r = d.getBoundingClientRect(), outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      // a link in the caption leaves the viewer for its place
+      if (e.target === d && outside || e.target.classList.contains("zoom-stage") || e.target.closest("[data-go]")) d.close();
+    });
+    $("img", d).addEventListener("load", sizeZoom); $("img", d).addEventListener("error", sizeZoom);
+    window.addEventListener("resize", () => { if (d.open) sizeZoom(); });
     document.body.append(d);
   }
   zoomFit = true; showZoom(PICTURES.findIndex((p) => p.id === id));
@@ -2107,25 +2417,35 @@ function showZoom(i) {
   img.src = p.src; img.alt = p.name; img.classList.toggle("fit", zoomFit);
   $("#zoom-name").textContent = p.name; $("#zoom-count").textContent = L("p.zoom.of", n(zoomAt + 1), n(PICTURES.length));
   $("#zoom-historical").hidden = !p.historical;
+  const cap = $("#zoom-caption"); cap.innerHTML = screenFacts(p.si).map(([k, v]) => `<span class="cap-item"><span class="muted">${esc(k)}:</span> ${v}</span>`).join(""); cap.hidden = false;
   $('[data-act="zoom-fit"]', d).setAttribute("aria-pressed", String(zoomFit)); $('[data-act="zoom-full"]', d).setAttribute("aria-pressed", String(!zoomFit));
+  if (img.complete) sizeZoom();
+}
+// Fit is the largest size the window holds, up to twice the picture's own so a screenshot is not smeared; actual size is
+// the picture's own pixels, scrolled within the window. The cursor says which of the two a click on the picture gives.
+function sizeZoom() {
+  const d = $("#zoom-dialog"), img = $("img", d), stage = $(".zoom-stage", d), nw = img.naturalWidth, nh = img.naturalHeight;
+  if (!nw || !nh) { img.style.width = img.style.height = ""; img.style.cursor = "default"; return; }
+  const W = Math.floor(innerWidth * 0.96) - 2, H = Math.floor(innerHeight * 0.94) - 2 - $(".zoom-bar", d).offsetHeight - $("#zoom-caption").offsetHeight;
+  const fit = Math.min(W / nw, H / nh, 2), now = zoomFit ? fit : 1, next = zoomFit ? 1 : fit;
+  img.style.width = `${Math.round(nw * now)}px`; img.style.height = `${Math.round(nh * now)}px`;
+  stage.style.maxWidth = `${W}px`; stage.style.maxHeight = `${H}px`;
+  img.style.cursor = next > now ? "zoom-in" : next < now ? "zoom-out" : "default";
 }
 
-// ---------------------------------------------------------------- print: the owner's or the audit's
-// The owner's print is the summary and every decision card with its answer, and the comments; the audit's adds every
-// file whole, kept code unfolded, with each block's verdict, and the details, taken from the document in the page's
-// <noscript> elements, so no file has to be drawn on screen first. Printing from the browser's menu prints the owner's.
-let printProfile = "owner";
-// Both prints are the document in the page's <noscript> elements — every card whole, with its variants, their
-// consequences and the recommendation, and nothing that only works on screen — with the owner's answer added to each
-// card and the comments listed. The audit's also has every file whole with each block's verdict, and the details.
+// ---------------------------------------------------------------- print: a copy of the decisions with the owner's answers
+// A paper or PDF copy to pass on or keep: the summary and every decision card whole — its variants, their consequences
+// and the recommendation, nothing that only works on screen — with the owner's answer added to each, and the comments.
+// It is the document in the page's <noscript> elements, so nothing has to be drawn on screen first; the browser's own
+// Print and the export dialog's both print it. The saved diff and the record are the full trail of the rest.
 function buildPrint() {
   let el = $("#print");
   if (!el) { el = document.createElement("div"); el.id = "print"; document.body.append(el); }
-  const audit = printProfile === "audit", p = progress();
-  el.innerHTML = $("#static-report").textContent + (audit ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "");
+  const p = progress();
+  el.innerHTML = $("#static-report").textContent;
   $$(".static-note, .static nav", el).forEach((x) => x.remove());
-  if (!audit) $("#code", el).remove();
-  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), ...progressWords(p)].filter(Boolean).join(" · "))}</p>`);
+  $("#code", el)?.remove();
+  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc(progressWords(p).filter(Boolean).join(" · "))}</p>`);
   for (const c of ITEMS) el.querySelector(`[id="decisions/${CSS.escape(c.key)}"]`)?.insertAdjacentHTML("beforeend", `<p class="sanswer"><b>${esc(L("p.print.answer"))}</b> ${esc(printAnswer(c))}</p>`);
   const notes = exportModel().sections.comments;
   if (notes.length) $("#decisions", el).insertAdjacentHTML("beforeend", `<h3>${esc(L("p.sub.comments"))}</h3><ul>${notes.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`);
@@ -2137,7 +2457,7 @@ function printAnswer(c) {
     waitingText(c), zones.length && L("p.export.zones", zones.join("; "))].filter(Boolean).join(" · ");
 }
 window.addEventListener("beforeprint", buildPrint);
-window.addEventListener("afterprint", () => { $("#print")?.remove(); printProfile = "owner"; });
+window.addEventListener("afterprint", () => { $("#print")?.remove(); });
 
 // ---------------------------------------------------------------- start
 load();

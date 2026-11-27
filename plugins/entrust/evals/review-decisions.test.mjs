@@ -1,6 +1,6 @@
 // The owner's answers as plugins/entrust/plugin/skills/review/scripts/decisions.mjs keeps them: one answer per item,
 // a deferral only with a reason, conditional questions retired and restored by their parent's answer, progress over
-// every item, comments on lines and paragraphs, and the schema-7 export of them all. Run it after an edit to
+// every item, comments on lines and paragraphs, and the schema-8 export of them all. Run it after an edit to
 // decisions.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -179,7 +179,25 @@ test("one comment per line or paragraph: new text replaces it in place, empty te
   for (const raw of [null, "x", [], 5]) assert.deepEqual(D.normalize(raw), D.empty());
 });
 
-test("the export is schema 7 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
+test("a comment on a selection keeps its lines, characters and words; it is the one comment of its last line, and a malformed selection is not read", () => {
+  let s = D.lineComment(D.empty(), { path: "a.js", side: "head", line: 3, end: 5, from: 4, to: 9, quote: "conv\nert" }, "why here?");
+  assert.deepEqual(s.lines, [{ path: "a.js", side: "head", line: 3, end: 5, from: 4, to: 9, quote: "conv\nert", text: "why here?" }]);
+  // a whole-line comment on the last line is that comment, edited
+  s = D.lineComment(s, { path: "a.js", side: "head", line: 3, end: 5, from: 4, to: 9, quote: "conv\nert" }, "why here, again?");
+  assert.equal(s.lines.length, 1);
+  // one line selected keeps no end
+  s = D.lineComment(s, { path: "a.js", side: "head", line: 7, end: 7, from: 0, to: 2, quote: "if" }, "this guard");
+  assert.deepEqual(s.lines[1], { path: "a.js", side: "head", line: 7, from: 0, to: 2, quote: "if", text: "this guard" });
+  s = D.paragraphComment(s, { item: "f1", field: "what", from: 2, to: 6, quote: "word" }, "unclear");
+  assert.deepEqual(s.paragraphs, [{ item: "f1", field: "what", from: 2, to: 6, quote: "word", text: "unclear" }]);
+  const raw = { lines: [{ path: "a", side: "head", line: 4, end: 2, text: "end before line" }, { path: "a", side: "head", line: 1, from: -1, text: "negative" },
+    { path: "a", side: "head", line: 1, quote: "", text: "empty quote" }, { path: "a", side: "head", line: 1, end: 3, from: 0, to: 1, quote: "x", text: "ok" }],
+    paragraphs: [{ item: "q1", field: "text", from: 1.5, text: "fraction" }, { item: "q1", field: "text", from: 1, to: 2, quote: "a", text: "fine" }] };
+  const read = D.normalize(raw);
+  assert.deepEqual([read.lines.map((c) => c.text), read.paragraphs.map((c) => c.text)], [["ok"], ["fine"]]);
+});
+
+test("the export is schema 8 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
   const items = D.itemsOf({ questions: [
     { id: 1, kind: "decision", variants: [{ id: "keep", text: "Keep it" }, { id: "revert", text: "Revert it" }] },
     { id: 2, kind: "decision", variants: [{ id: "yes", text: "Yes" }, { id: "no", text: "No" }], parent: { question: 1, variants: ["keep"] } },
@@ -193,7 +211,7 @@ test("the export is schema 7 under the record's and the diff's digests: each ite
   const meta = { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "k1", title: "A review", range: "HEAD~1..HEAD" };
   const out = D.exportOf(items, s, meta);
   assert.deepEqual({ ...out, items: undefined, lineComments: undefined, paragraphComments: undefined },
-    { schema_version: 7, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
+    { schema_version: 8, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
       progress: { total: 5, done: 3, open: 1, deferred: 1 }, items: undefined, lineComments: undefined, paragraphComments: undefined });
   assert.deepEqual(out.items, [
     { item: "q1", kind: "decision", status: "open" },

@@ -2,6 +2,7 @@
 // A review written as data: checked against its diff, printed as the report, and drawn as a page.
 //
 //   node report.mjs scaffold <diff> <review.json>   write the record's mechanical part: one block per run of changed lines
+//   node report.mjs carry <previous/review.json> <review.json>   on a fresh scaffold, take over the previous record's blocks whose lines are unchanged
 //   node report.mjs lines <diff | review.json>   print every changed line of a diff, or of a record's saved diff, with its address
 //   node report.mjs comparisons <review.json> [<base-root> <head-root>]   emit the independent reader's source inventory as JSON
 //   node report.mjs check <review.json>    validate without writing HTML
@@ -20,7 +21,7 @@ import { comparisons } from "./comparisons.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
-import { check, compact, modelOf, mechanismCounts, sourceOf, weightCountsText, weightOverview, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
+import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, staleCarried, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
 
 const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 // What a block or unit rests on: its findings, or for a question the questions it waits on.
@@ -28,7 +29,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose, carried }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -58,7 +59,10 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
       + `${review.passport.repository} · ${t("passport.base")} ${review.passport.base} → ${t("passport.head")} ${review.passport.head} · ${t("passport.reviewed-at")} ${review.passport.reviewedAt}`, ""] : []),
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
-    `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}; ${state(r)})${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
+    `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}${ESTABLISHED.has(r.source) ? "" : `, ${t("req.to-confirm")}`}; ${state(r)})${r.sources?.length ? ` — ${srcs(r.sources)}` : ""}${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
+    // A route follows one behaviour through its blocks in order; the checking agents read the roles and links here.
+    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
+      ...r.steps.map((step, k) => `${k + 1}. B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`: ${step.role}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`)]), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -92,12 +96,14 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
     `${t("purpose")}: ${PURPOSES.map((p) => `${t(`purpose.${p}`)} ${purpose.counts[p].blocks}`).join("; ")}. ${t("purpose.lines-note")}`,
-    ...blocks.filter((b) => b.verdict !== "keep" || !b.serves.length).map((b) => `- \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}.`),
+    ...blocks.map((b) => `- B${b.id} \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}${b.carried ? ` (${t("carried").toLowerCase()})` : ""}.${b.whole ? ` ${t("whole")}: ${b.whole}` : ""}`),
     ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
     ...(review.challenges?.length ? [`## ${t("challenges")}`, ...review.challenges.map((c, index) =>
       `${index + 1}. ${t(`challenger.${c.from}`)}: ${c.point} ${capital(t(`outcome.${c.outcome}`))}: ${c.note}${c.at ? ` (\`${c.at}\`)` : ""}`), ""] : []),
     `## ${t("questions")}`, ...list(review.questions, questionText), "",
+    ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text} (${srcs(x.sources)})`), ""] : []),
     `## ${t("coverage")}`,
+    ...(carried?.length ? [`${t("carried")}: ${carried.map((id) => `B${id}`).join(", ")}`] : []),
     ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
     review.coverage || t("none"), "",
     `${t("report-details")}: ${review.range} · ${key} · ${t("passport.diffSha")} ${review.diff?.sha256 ?? t("none")} · ${t("passport.record")} ${recordSha ?? t("none")}`,
@@ -136,6 +142,79 @@ function scaffold(input, target) {
   return { blocks: blocks.length, files: files.length, saved };
 }
 
+// A continuation: the new record's blocks whose changed lines read exactly as one of the previous record's blocks, in
+// the same order and found once, take that block's description, unit, kind and requirements. A block the previous
+// record kept stays kept and is marked carried, not read again; one it did not keep is left to judge. The rest of the
+// scaffold stays as it was, less the lines carried. Nothing is matched by a near likeness.
+function carry(previousPath, target) {
+  const prevBytes = fs.readFileSync(previousPath), prev = JSON.parse(prevBytes.toString("utf8"));
+  const p = changeOf(prev, path.dirname(path.resolve(previousPath)));
+  if (p.fault) throw new Error(`the previous record: ${p.fault}`);
+  const review = JSON.parse(fs.readFileSync(target, "utf8")), dir = path.dirname(path.resolve(target)), cur = changeOf(review, dir);
+  if (cur.fault) throw new Error(cur.fault);
+  if (review.blocks.some((b) => b.verdict || b.does || b.carried) || review.previous) throw new Error(`${target} is not a fresh scaffold; carry runs right after scaffold, before any block is written`);
+  const prevOwner = ownerOf(prev, p.files), curOwner = ownerOf(review, cur.files), key = (file, l) => `${file.path}\n${address(l)}`, taken = new Set();
+  const carriedBlocks = [];
+  prev.blocks.forEach((b, i) => {
+    const pf = p.files.find((f) => f.path === b.path), nf = cur.files.find((f) => f.path === b.path);
+    if (!pf || !nf) return;
+    const plines = changedLines(pf), at = plines.map((l, k) => prevOwner.get(key(pf, l)) === i ? k : -1).filter((k) => k >= 0);
+    if (!at.length || at.at(-1) - at[0] + 1 !== at.length) return;
+    const seq = at.map((k) => lineRead(plines[k])), nlines = changedLines(nf), hits = [];
+    for (let s = 0; s + seq.length <= nlines.length; s++) if (seq.every((x, j) => lineRead(nlines[s + j]) === x)) hits.push(s);
+    if (hits.length !== 1) return;
+    const run = nlines.slice(hits[0], hits[0] + seq.length);
+    if (run.some((l) => taken.has(key(nf, l)))) return;
+    run.forEach((l) => taken.add(key(nf, l)));
+    const of = (kind) => compact(run.filter((l) => l.kind === kind).map(numberOf));
+    carriedBlocks.push({ from: i + 1, at: [cur.files.indexOf(nf), nlines.indexOf(run[0])], block: { path: nf.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}),
+      does: b.does ?? "", serves: b.serves ?? [], ...(b.unit ? { unit: b.unit } : {}), ...(b.kind ? { kind: b.kind } : {}), ...(b.verdict === "keep" ? { verdict: "keep", carried: true } : { verdict: "" }) } });
+  });
+  const rest = review.blocks.flatMap((b, j) => {
+    const nf = cur.files.find((f) => f.path === b.path), mine = changedLines(nf).filter((l) => curOwner.get(key(nf, l)) === j && !taken.has(key(nf, l)));
+    if (!mine.some((l) => !blank(l))) return [];
+    const of = (kind) => compact(mine.filter((l) => l.kind === kind).map(numberOf));
+    return [{ at: [cur.files.indexOf(nf), changedLines(nf).indexOf(mine[0])], block: { path: b.path, ...(of("add") ? { added: of("add") } : {}), ...(of("del") ? { removed: of("del") } : {}), does: "", serves: [], verdict: "" } }];
+  });
+  const ordered = [...carriedBlocks, ...rest].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1]);
+  review.blocks = ordered.map((x) => x.block);
+  // The structure tied to the blocks comes with them, its block numbers renumbered: units and target units as they were
+  // named, a unit judged anew where the previous record did not keep it; mechanisms with the blocks that came over;
+  // routes whose every step came over. What pointed at the previous findings or questions is left for this review.
+  const renumber = new Map(ordered.map((x, i) => [x.from, i + 1]).filter(([from]) => from !== undefined));
+  review.units = (prev.units ?? []).map(({ findings, questions, ...u }) => u);
+  review.target_units = prev.target_units ?? [];
+  review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
+    .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
+  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
+  if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
+  // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
+  // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a
+  // requirement left with no source is refused until this review cites one again.
+  const unsourced = [];
+  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => {
+    const kept = (sources ?? []).filter((x) => x?.ref === undefined);
+    if (kept.length !== (sources ?? []).length) unsourced.push(id);
+    return { id, text, source, ...(kept.length ? { sources: kept } : {}), ...(permission ? { permission } : {}) };
+  });
+  // A kept block is carried only while what it was kept for stands: a block of a unit that changed, or uses one that
+  // did, and a block with no unit in a file that changed, are read again — until nothing more changes.
+  review.previous = { record: path.relative(dir, path.resolve(previousPath)), sha256: createHash("sha256").update(prevBytes).digest("hex") };
+  const prevRecord = { review: prev, files: p.files, owner: prevOwner };
+  for (let again = true; again;) {
+    const stale = staleCarried(review, cur.files, ownerOf(review, cur.files), prevRecord);
+    again = stale.some(Boolean);
+    stale.forEach((why, i) => { if (why) { const { carried, ...b } = review.blocks[i]; review.blocks[i] = { ...b, verdict: "" }; } });
+  }
+  // A unit with a block read again is judged again, its reason with it.
+  const reread = new Set(review.blocks.filter((b) => b.carried !== true && b.unit).map((b) => b.unit));
+  for (const b of prev.blocks) if (b.unit && !review.blocks.some((x) => x.carried === true && x.unit === b.unit)) reread.add(b.unit);
+  review.units = review.units.map((u) => u.existing || (u.verdict === "keep" && !reread.has(u.name)) ? u : { ...u, verdict: "", reason: "" });
+  fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
+  const kept = review.blocks.filter((b) => b.carried).length;
+  return { kept, judge: carriedBlocks.length - kept, fresh: rest.length, routes: [routes.length, (prev.routes ?? []).length], unsourced };
+}
+
 // The diff a record judges is the copy saved beside it, checked against its digest.
 function changeOf(review, directory) {
   if (review.diff === undefined) return { files: [], fault: "the record has no saved diff" };
@@ -151,7 +230,10 @@ const [command, argument] = process.argv.slice(2);
 try {
   if (command === "scaffold" && argument && process.argv[4]) {
     const made = scaffold(argument, process.argv[4]);
-    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and, unless it is kept, what it does; divide a block that holds two decisions; then run check.`);
+    console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
+  } else if (command === "carry" && argument && process.argv[4]) {
+    const made = carry(argument, process.argv[4]);
+    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept — not kept before, or kept for a unit or file that changed; ${made.fresh} blocks new or changed.${made.unsourced.length ? ` Requirements ${made.unsourced.join(", ")} lost sources that pointed into the previous record; cite them again.` : ""} The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));
@@ -173,10 +255,11 @@ try {
     // The record's identity is computed from its bytes, never stored in it; the page and the printout carry it.
     const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex") };
     for (const warning of warnings) console.error(`warning: ${warning}`);
-    // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size.
-    for (const b of model.blocks.filter((b) => b.verdict === "keep" && b.weightLines.added + b.weightLines.removed >= 40))
-      console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or be sure it is one decision`);
-    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only assumed requirements"]])
+    // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size. A block
+    // that says in "whole" why it is one decision is not warned of; the printout carries the reason to the critic.
+    for (const b of model.blocks.filter((b) => b.verdict === "keep" && !b.whole && b.weightLines.added + b.weightLines.removed >= 40))
+      console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${b.weightLines.added + b.weightLines.removed} lines under one verdict; divide it, or say in "whole" why it is one decision`);
+    for (const [ids, what] of [[model.unasked.unlinked, "serve no requirement"], [model.unasked.assumed, "serve only requirements to confirm"]])
       if (ids.length) console.error(`warning: kept blocks ${ids.join(", ")} ${what}; name what each serves, or make it a question or an idea for the owner`);
     for (const u of model.units.filter((u) => u.verdict === "keep" && u.blocks.some((b) => b.verdict !== "keep")))
       console.error(`warning: unit ${u.name} is kept, and its blocks ${u.blocks.filter((b) => b.verdict !== "keep").map((b) => b.id).join(", ")} are not; say what the unit's verdict leaves open`);
@@ -184,10 +267,10 @@ try {
     const target = argument.replace(/(\.json)?$/, ".html");
     // One Shiki highlighter per render: the page receives ready spans and CSS, and the HTML loads nothing.
     const syntax = await createSyntax(files);
-    fs.writeFileSync(target, page(review, files, model, { syntax }));
+    fs.writeFileSync(target, page(review, files, model, { syntax, directory }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

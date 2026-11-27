@@ -7,6 +7,10 @@ file but its own return, which for the independent target is `<out>/target.md`. 
 `path:line`, what it ran and what it could not reach. The reviewer, or the coordinator, checks each returned point
 against the source before using it.
 
+## Conducting
+
+When the review runs in a subagent, the session that started it makes the plan, starts the reviewer, or the coordinator, with the approved plan and the review skill's path, and starts every agent the plan names on its behalf: the independent target at the same time as the reviewer, direction helpers on the coordinator's briefs, the critic and verifier on its saved draft, when selected. It hands the returns to the reviewer as they come and relays the result without redoing the analysis. The reviewer saves its record and draft before each return, so the review survives a host that cannot continue it. Follow-up questions go to the same reviewer.
+
 ## Reviewer under a conductor
 
 The full reviewer, not a checking agent: it gets the approved plan as given and the review skill's path and runs the
@@ -48,11 +52,13 @@ Brief:
 > arrangement and walk one change grounded in the task through both, the places edited and the code read in each.
 > Look both ways: what the draft keeps that should change (a structure, a mechanism something already provides, a
 > missed defect or test gap), and what it proposes that should not (a change that removes no burden, adds a boundary
-> or loses required behavior). Where you found nothing to argue, say so.
+> or loses required behavior). Open the saved diff (`<out>/review.diff`) for the code the draft keeps without comment
+> and name each construct there you would not have written, with the burden it carries, by the leads of the design
+> standard. Where you found nothing to argue, say so.
 
 ## Verifier
 
-The same printout. Each factual claim in it: the source given for each requirement, every `met: read`, what calls what, what a
+The same printout. Each factual claim in it: the source given for each requirement, its quote and its origin, every `met: read`, what calls what, what a
 contract guarantees, what is unavailable, what a removal would eliminate, what a test covers, the reasons for kept
 units. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
 coverage limits and the sources of the accepted tradeoffs. The full text report carries all of these regardless of

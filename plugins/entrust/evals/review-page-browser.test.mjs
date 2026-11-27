@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import zlib from "node:zlib";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
@@ -41,11 +42,18 @@ const { run } = prepare("currency-contract", "clean"), repo = path.join(run, "re
 const diff = spawnSync("git", ["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--"], { cwd: repo }).stdout;
 const { THEMED } = reportFixtures(createHash("sha256").update(diff).digest("hex"));
 const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+// A flat grey picture of a given size, to measure how the viewer sizes it.
+function png(w, h) {
+  const chunk = (type, data) => { const td = Buffer.concat([Buffer.from(type), data]), len = Buffer.alloc(4), crc = Buffer.alloc(4); len.writeUInt32BE(data.length); crc.writeUInt32BE(zlib.crc32(td)); return Buffer.concat([len, td, crc]); };
+  const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 3, 200)]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", head), chunk("IDAT", zlib.deflateSync(Buffer.concat(Array.from({ length: h }, () => row)))), chunk("IEND", Buffer.alloc(0))]);
+}
 function render(name, record, diffBytes = diff, pictures = true) {
   const dir = path.join(run, name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "source.diff"), diffBytes);
-  if (pictures) for (const p of ["before.png", "after.png"]) fs.writeFileSync(path.join(dir, p), PIXEL);
+  if (pictures) for (const p of ["before.png", "after.png"]) fs.writeFileSync(path.join(dir, p), pictures === true ? PIXEL : pictures[p] ?? PIXEL);
   fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(record));
   const r = spawnSync(process.execPath, [SCRIPT, "render", path.join(dir, "review.json")], { encoding: "utf8" });
   if (r.status !== 0) throw new Error(`render ${name}: ${r.stderr}`);
@@ -55,6 +63,8 @@ function render(name, record, diffBytes = diff, pictures = true) {
 // with blocks to keep and to fix.
 const record = structuredClone(THEMED);
 record.blocks[0].serves = [3];
+// The first requirement also comes from the mockup the task names.
+record.requirements[0].sources = [...record.requirements[0].sources, { ref: "/screens/0" }];
 record.blocks[1].unit = "readArchive";
 record.screens[0] = { ...record.screens[0], revision: "head", sources: [{ ref: "/requirements/0" }] };
 // A finding text long enough that a clamped card would cut it.
@@ -62,6 +72,15 @@ const LONG = "The archive reader converts the currency code while it reads each 
 record.findings[1].what = LONG;
 const THEMED_URL = render("themed", record);
 const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru", RU);
+// A continuation of the themed review: the same diff, its first block carried, two replies to earlier comments.
+const PREV_KEY = createHash("sha256").update(JSON.stringify(record)).digest("hex").slice(0, 10);
+const NEXT = { ...structuredClone(record), title: "Where the conversion lives, again",
+  previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
+  // the first block carried: its unit has blocks not kept, so it is carried without one, by its file, which nothing else in changes
+  blocks: record.blocks.map((b, i) => i === 0 ? (({ unit, ...rest }) => ({ ...rest, carried: true }))(b) : b),
+  replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", sources: [{ at: "TASK-9", quote: "upper case" }] },
+    { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] };
+const NEXT_URL = render("next", NEXT), NEXT_KEY = createHash("sha256").update(JSON.stringify(NEXT)).digest("hex").slice(0, 10);
 // Every value the record names things by made hostile, and a hostile file path on a diff of its own.
 const HOSTILE_URL = render("hostile", hostileThemed(record));
 // The themed record with its idea at a line of the base side, which the head numbers otherwise.
@@ -82,11 +101,12 @@ const big = { title: "A large generated change", range: "generated", language: "
   diff: { file: "source.diff", sha256: createHash("sha256").update(bigDiff).digest("hex") },
   change: { goal: "Many modules.", parts: ["Forty modules."], sources: ["generated"] },
   verdict: "Generated.", now: "Generated.", target: "Generated.", recommendation: "Read it.",
-  requirements: [{ id: 1, text: "Every module exports its values.", source: "task", met: "read" }],
+  requirements: [{ id: 1, text: "Every module exports its values.", source: "task", met: "read", sources: [{ at: "generated", quote: "every module exports its values" }] }],
   findings: [1, 2].map((id) => ({ id, title: `Finding ${id}`, direction: "behavior", evidence: "read", at: `src/m${id}/part${id}.js:10`, what: "What.", shown_by: "The line.", fix: "Fix." })),
   questions: [{ at: "src/m0/part0.js:1", text: "Keep the generated modules?", kind: "decision",
     variants: [{ id: "keep", text: "Keep them", consequences: [{ text: "They stay.", sources: [{ ref: "/requirements/0" }] }] },
-      { id: "drop", text: "Drop them", consequences: [{ text: "They go.", sources: [{ ref: "/requirements/0" }] }] }] }],
+      { id: "drop", text: "Drop them", consequences: [{ text: "They go.", sources: [{ ref: "/requirements/0" }] }] }],
+    recommendation: { text: "Keep them.", variant: "keep", sources: [{ ref: "/requirements/0" }] } }],
   units: [{ name: UNIT, jobs: ["exports the values of the first ten modules"], uses: [], verdict: "keep", reason: "Generated." }],
   blocks: bigBlocks, challenges: [], coverage: "Generated." };
 const BIG_URL = render("big", big, bigDiff, false);
@@ -135,7 +155,7 @@ const cased = (url, options, fn) => async () => {
 test("the page opens on Summary with Start review, and every deep link lands on its tab and item",
   "a link to an item, a line or a sub-tab is how the owner, the export and a colleague point at one place",
   cased(THEMED_URL, {}, async (page) => {
-    if (await page.getAttribute("#tab-summary", "aria-selected") !== "true" || (await page.locator(".btn.primary").count()) !== 1) return "not on Summary with one primary button";
+    if (await page.getAttribute("#tab-summary", "aria-selected") !== "true" || (await page.locator(".btn.primary:visible").count()) !== 1) return "not on Summary with one primary button";
     for (const [hash, tab, check] of [["#decisions/f1", "decisions", "#card-f1.sel"], ["#code/b2", "code", "#note-2.sel"], ["#decisions/comments", "decisions", '[data-sub="comments"][aria-selected="true"]'],
       ["#summary/r1", "summary", '[data-sel="req:1"].sel'], ["#details/challenges/chal:0", "details", '[data-sel="chal:0"].sel'], ["#code/line/1:+3", "code", 'tr.r[data-lk="1:+3"]']]) {
       await page.goto(THEMED_URL + hash); await page.waitForSelector(".tabbar"); await settle(page); await page.waitForTimeout(150);
@@ -355,7 +375,7 @@ test("review 7: the newest explicit choice wins over an older filter that would 
     await page.click('[data-act="set-code"][data-set="assumed"]'); await page.waitForTimeout(400);
     await page.goto(THEMED_URL + "#summary/r1"); await page.waitForSelector(".tabbar"); await settle(page);
     await page.click('#ctx-summary [data-act="req-code"]'); await page.waitForTimeout(500);
-    const req = await page.locator('#panel-code select[data-act="req"]').inputValue(), tokens = await text(page, "#unit-token").catch(() => "");
+    const req = await page.getAttribute('#req-pop [aria-pressed="true"]', "data-req"), tokens = await text(page, "#unit-token").catch(() => "");
     return req === "1" && !/Kept/.test(tokens) && /code\/b2/.test(page.url()) || `requirement «${req}», tokens «${tokens}», ${page.url()}`;
   }));
 
@@ -723,6 +743,277 @@ test("without JavaScript a decision whose variants combine says so, and marks ea
   });
 
 // ---- record values as text
+// ---- reading space and controls (PR 109: C1, C3, C4, C5)
+test("the Code toolbar's controls share one height and one type size, and none is a native select",
+  "buttons, the segment, the menus and the filter differed in height and type, and the selects' menus were the system's",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    const m = await page.evaluate(() => [...document.querySelectorAll(".toolbar > *:not(.findbar)")].filter((e) => e.getClientRects().length && e.id !== "unit-token" && e.id !== "pos")
+      .map((e) => { const c = e.matches("button, input") ? e : e.querySelector("button, input"); return { h: Math.round(e.getBoundingClientRect().height), fs: getComputedStyle(c).fontSize }; }));
+    const selects = await page.locator("#panel-code select").count();
+    return m.length > 5 && new Set(m.map((x) => x.h)).size === 1 && new Set(m.map((x) => x.fs)).size === 1 && !selects || JSON.stringify({ m, selects });
+  }));
+
+test("the requirement filter is a menu with every requirement's whole text; picking one filters the code and says so on its button",
+  "a native select cut each requirement to 48 characters",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click("#req-btn");
+    const items = await page.locator('#req-pop [data-act="req-pick"]').allInnerTexts(), whole = items.some((t) => t.includes(record.requirements[0].text));
+    await page.locator('#req-pop [data-act="req-pick"][data-req="1"]').click(); await settle(page);
+    const btn = await text(page, "#req-btn"), open = await page.locator("#req-pop .pop-menu").isVisible(), focused = await page.evaluate(() => document.activeElement?.id);
+    await page.click("#req-btn"); await page.keyboard.press("Escape");
+    const closed = !(await page.locator("#req-pop .pop-menu").isVisible()) && await page.getAttribute("#req-btn", "aria-expanded") === "false";
+    await page.click("#req-btn"); await page.keyboard.press("End");
+    const last = await page.evaluate(() => document.activeElement?.dataset.req);
+    await page.keyboard.press("Home"); await page.keyboard.press("ArrowDown");
+    const second = await page.evaluate(() => document.activeElement?.dataset.req);
+    await page.locator("#file-q").focus(); await settle(page);
+    const left = !(await page.locator("#req-pop .pop-menu").isVisible());
+    return whole && /R1/.test(btn) && !open && focused === "req-btn" && closed && last === "3" && second === "1" && left || JSON.stringify({ items, btn, open, focused, closed, last, second, left });
+  }));
+
+test("× at the top right closes the keys, the export and the Code panel, whether a block is selected or not",
+  "a text Close sat among the export's actions, and the Code panel had none while nothing was selected",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    const r = {};
+    await page.click('[data-act="keys"]'); await page.click("#keys-dialog .x"); r.keys = await page.locator("#keys-dialog").evaluate((d) => d.open);
+    await page.click('.mh-right [data-act="export"]'); await page.click("#export-dialog .x"); r.export = await page.locator("#export-dialog").evaluate((d) => d.open);
+    await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.empty = await page.locator("#ctx-code").isVisible();
+    await settle(page); r.focus = await page.evaluate(() => document.activeElement?.dataset.act);
+    await page.goto(THEMED_URL + "#code/b2"); await page.waitForSelector(".tabbar"); await settle(page);
+    await page.click('.toolbar [data-act="ctx"]'); await page.click("#ctx-code .x"); r.selected = await page.locator("#ctx-code").isVisible();
+    return !r.keys && !r.export && !r.empty && !r.selected && r.focus === "ctx" || JSON.stringify(r);
+  }));
+
+test("the file tree hides from its own head and comes back from the rail beside the code, focus following",
+  "the toolbar's «Files» button hid the tree, and what it did was not obvious",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.waitForSelector('#tree [data-act="tree"]', { state: "visible" }); await page.click('#tree [data-act="tree"]'); await settle(page);
+    const hidden = !(await page.locator("#tree").isVisible()) && await page.locator("#tree-rail").isVisible(), f1 = await page.evaluate(() => document.activeElement?.closest("#tree-rail") !== null);
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const kept = !(await page.locator("#tree").isVisible());
+    await page.waitForSelector('#tree-rail [data-act="tree"]', { state: "visible", timeout: 5000 }).catch(() => {});
+    if (!(await page.locator('#tree-rail [data-act="tree"]').isVisible())) return `after a reload the rail is not shown: tree ${await page.locator("#tree").isVisible()}`;
+    await page.click('#tree-rail [data-act="tree"]'); await settle(page);
+    const back = await page.locator("#tree").isVisible() && !(await page.locator("#tree-rail").isVisible()), f2 = await page.evaluate(() => document.activeElement?.closest("#tree") !== null);
+    return hidden && f1 && kept && back && f2 || JSON.stringify({ hidden, f1, kept, back, f2 });
+  }));
+
+test("a long path takes one line in the tree and in the file header, the file's name whole and the full path in the title",
+  "a long path took seven lines in the tree and four above the diff",
+  cased(LONG_URL + "#code", {}, async (page) => {
+    const m = await page.evaluate(() => {
+      const row = document.querySelector('#tree [data-act="gofile"]'), path = document.querySelector(".fh .path"), name = path.querySelector("b");
+      return { row: Math.round(row.getBoundingClientRect().height), path: Math.round(path.getBoundingClientRect().height), title: path.title, nameCut: name.scrollWidth > name.clientWidth,
+        sideways: document.documentElement.scrollWidth > innerWidth };
+    });
+    return m.row < 30 && m.path < 24 && m.title === LONG_PATH && !m.nameCut && !m.sideways || JSON.stringify(m);
+  }));
+
+test("the paragraph comment control sits beside the paragraph's text, never over it",
+  "the «Comment» button appeared over the end of the paragraph's first line",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const hits = await page.evaluate(() => [...document.querySelectorAll("#panel-decisions .pc")].filter((pc) => pc.getClientRects().length).map((pc) => {
+      const btn = pc.querySelector(":scope > .pc-btn"), b = btn.getBoundingClientRect(), range = document.createRange(), rects = [];
+      const walker = document.createTreeWalker(pc, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement.closest(".pc-btn, .pc-x") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) { range.selectNodeContents(n); rects.push(...range.getClientRects()); }
+      return rects.some((r) => r.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) ? pc.dataset.anchor : null;
+    }).filter(Boolean));
+    return !hits.length || `over the text of ${hits.join(", ")}`;
+  }));
+
+test("the export shows the preview and its two actions; the raw text opens on request, and by itself when the clipboard refuses",
+  "the raw text took a third of the dialog though it is only the fallback for a refused clipboard",
+  cased(THEMED_URL + "#decisions", { init: () => { Object.defineProperty(navigator, "clipboard", { value: { writeText: () => Promise.reject(new Error("no")) } }); } }, async (page) => {
+    await page.click('.mh-right [data-act="export"]');
+    const first = await page.locator("#export-text").isVisible();
+    await page.click("#export-raw summary"); const asked = await page.locator("#export-text").isVisible();
+    await page.keyboard.press("Escape"); await page.click('.mh-right [data-act="export"]');
+    const again = await page.locator("#export-text").isVisible();
+    await page.click('[data-act="export-copy"]'); await page.waitForTimeout(150);
+    const refused = await page.evaluate(() => ({ open: document.querySelector("#export-raw").open, focus: document.activeElement?.id, selected: (() => { const t = document.querySelector("#export-text"); return t.selectionEnd - t.selectionStart === t.value.length; })() }));
+    const status = await text(page, "#export-status");
+    return !first && asked && !again && refused.open && refused.focus === "export-text" && refused.selected && status.length > 0 || JSON.stringify({ first, asked, again, refused, status });
+  }));
+
+// ---- requirements, pictures and recommendations (PR 109: C1, C8, C9, C10)
+// The themed record with a question that asks about its requirement to confirm.
+const ASKED_URL = render("asked", { ...structuredClone(record), questions: record.questions.map((q, i) => i === 1 ? { ...q, context: [{ text: "The reader converts on an assumed reading of the task.", sources: [{ ref: "/requirements/2" }] }] } : q) });
+test("Summary lists the established requirements apart from those to confirm, each with its origin, the words that state it and the question that asks about it",
+  "a requirement only the author or the reviewer's reading supplied looked as binding as the task's",
+  cased(ASKED_URL + "#summary", {}, async (page) => {
+    const heads = await page.locator("#summary-reqs + table tr.grp th").allInnerTexts();
+    const r3 = await text(page, '[data-sel="req:3"]'), r1 = await text(page, '[data-sel="req:1"]');
+    const order = await page.locator('#summary-reqs + table tr.selectable').evaluateAll((rows) => rows.map((r) => r.dataset.sel));
+    return /^Established/.test(heads[0] ?? "") && /^To confirm/.test(heads[1] ?? "") && order.at(-1) === "req:3" && /the reviewer's reading/.test(r3) && /Asked in\s*Q2/.test(r3)
+      && /Show currency codes in upper case wherever a price is shown/.test(r1) || JSON.stringify({ heads, order, r1, r3 });
+  }));
+
+test("a requirement's panel says where it is stated and shows the mockup it comes from; a finding's panel shows the pictures whose differences name it",
+  "pictures sat in Details › Screens, away from the requirement or the finding they support",
+  cased(THEMED_URL + "#summary/r1", {}, async (page) => {
+    const stated = await text(page, "#ctx-summary"), reqPics = await page.locator("#ctx-summary .screen-box img").count();
+    await page.goto(THEMED_URL + "#decisions/f1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const findingPics = await page.locator("#ctx-decisions .screen-box img").count(), f2Pics = await (async () => { await page.goto(THEMED_URL + "#decisions/f2"); await page.waitForSelector(".tabbar"); await settle(page); return page.locator("#ctx-decisions .screen-box").count(); })();
+    return /Where it is stated/.test(stated) && /TASK-9/.test(stated) && reqPics > 0 && findingPics > 0 && f2Pics === 0 || JSON.stringify({ stated: stated.slice(0, 200), reqPics, findingPics, f2Pics });
+  }));
+
+test("a decision's recommendation names the variant it recommends, and one with no clear recommendation says so in its place",
+  "the recommendation's text did not show which of the choices it meant",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const q3 = await text(page, "#card-q3 .card-rec"), pick = await text(page, "#card-q3 .card-rec .rec-pick"), q4none = await page.locator("#card-q4 .card-rec.none").count();
+    const mark = await page.locator("#card-q3 .opt .rec-mark").count();
+    return pick === "Keep the conversion in the reader" && /Keep it in this change/.test(q3) && q4none === 1 && mark === 1 || JSON.stringify({ q3, pick, q4none, mark });
+  }));
+
+// ---- understanding the change (PR 109: C5, C6)
+test("Summary says how the change works, one route per behaviour, and a route's panel draws its steps as a flow, each role in its box and each link on the arrow into it, a step opening its code",
+  "related blocks were a set with no order, roles or connections",
+  cased(THEMED_URL + "#summary", {}, async (page) => {
+    const rows = await page.locator("#summary-routes + ul.routes .route-row").allInnerTexts();
+    await page.click("#summary-routes + ul.routes .route-row"); await settle(page);
+    const flow = await page.locator("#ctx-summary .flow > li").evaluateAll((els) => els.map((e) => `${e.className}: ${e.innerText.replace(/\s+/g, " ").trim()}`));
+    const closed = await page.locator("#ctx-summary .flow .excerpt").count() + await page.locator("#ctx-summary .flow-node[aria-label]").count();
+    await page.click('#ctx-summary .flow-node[data-b="3"]'); await settle(page);
+    const opened = await page.locator("#ctx-summary .flow .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
+    const url = page.url();
+    await page.goto(THEMED_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const linked = await page.locator('#panel-summary .route-row.sel').count();
+    return rows.length === 1 && /2 steps/.test(rows[0]) && flow.length === 3 && /^flow-step: 1 B1 archive\.js/.test(flow[0]) && /^flow-via: Gets it from readArchive's return/.test(flow[1])
+      && /^flow-step: 2 B3 outputs\.test\.js .*question.*Checks the three outputs/.test(flow[2]) && closed === 0 && JSON.stringify(opened) === '["3"]' && /#summary\/route1$/.test(url) && linked === 1
+      || JSON.stringify({ rows, flow, closed, opened, url, linked });
+  }));
+
+test("a kept block's panel says what the record knows about it — what it does, its unit with its jobs, the requirements it serves in words and its place in a route — not a bare «Kept code»",
+  "selecting kept code showed the verdict, not what the code is for",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    await page.goto(THEMED_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
+    if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
+    await settle(page);
+    const panel = await text(page, "#ctx-code");
+    await page.click('#ctx-code [data-act="goroute"]'); await settle(page);
+    const routed = await page.getAttribute("#tab-summary", "aria-selected") === "true" && await page.locator("#panel-summary .route-row.sel").count() === 1;
+    return /Converts the code/.test(panel) && /About this code/.test(panel) && /readArchive/.test(panel) && /reads the archive/.test(panel) && /A requirement that fails/.test(panel)
+      && /step 1 of 2/.test(panel) && !/Kept code/.test(panel) && routed || JSON.stringify({ panel: panel.slice(0, 600), routed });
+  }));
+
+// ---- comments on a selection (PR 109: C1, C5, C6)
+// Selects characters from..to of a code line (its sign left out) or of a paragraph (its comment parts left out), then
+// lifts the mouse, as a person selecting with it does.
+const selectIn = (page, spec) => page.evaluate((spec) => {
+  const point = (root, at, skip) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement.closest(skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    let pos = 0;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) { if (at <= pos + n.data.length) return [n, at - pos]; pos += n.data.length; }
+    return null;
+  };
+  const cell = (s) => s.lk ? document.querySelector(`#files tr.r[data-lk="${s.lk}"] td.cd`) : document.querySelector(s.css);
+  const skip = spec.from.lk ? ".sg" : ".pc-x, .pc-btn";
+  const a = point(cell(spec.from), spec.from.at, skip), z = point(cell(spec.to), spec.to.at, spec.to.lk ? ".sg" : ".pc-x, .pc-btn");
+  const r = document.createRange(); r.setStart(...a); r.setEnd(...z);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  return sel.toString();
+}, spec);
+const marked = (page) => page.evaluate(() => (typeof CSS !== "undefined" && CSS.highlights?.get("review-comment")?.size) ?? -1);
+
+test("selected code on one line takes a comment from «Comment» below the selection: the comment keeps its characters and words, quotes them, and marks them in place after a reload",
+  "a comment could only name a whole line, so the owner had to copy the words they meant into it",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    const words = await selectIn(page, { from: { lk: "0:+4", at: 9 }, to: { lk: "0:+4", at: 17 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const over = await page.evaluate(() => { const a = document.querySelector("#sel-adder").getBoundingClientRect(); return [...getSelection().getRangeAt(0).getClientRects()].some((r) => r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top); });
+    await page.click("#sel-adder");
+    const quoted = await text(page, "#files .lc .sel-quote");
+    await page.fill("#lc-input", "why map here?"); await page.click('[data-act="lc-save"]'); await settle(page);
+    const data = await payload(page), c = data.lineComments[0];
+    const now = await marked(page);
+    await page.reload(); await page.waitForSelector(".tabbar"); await page.click('.toolbar .seg [data-mode="all"]'); await settle(page); await page.waitForTimeout(100);
+    const after = await marked(page);
+    return words === "rows.map" && !over && quoted === "rows.map" && c?.line === 4 && c.from === 9 && c.to === 17 && c.quote === "rows.map" && c.end === undefined && now === 1 && after === 1
+      || JSON.stringify({ words, over, quoted, c, now, after });
+  }));
+
+test("a selection over two lines of one side takes one comment drawn below its last line; across a removed and an added line, or two files, it is refused with a word",
+  "a comment on a five-line expression named only its first line, and a selection across sides or files has no single place",
+  cased(THEMED_URL + "#code", {}, async (page) => {
+    await page.click('.toolbar .seg [data-mode="all"]'); await settle(page);
+    await selectIn(page, { from: { lk: "0:+2", at: 3 }, to: { lk: "0:-3", at: 4 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const mixed = { disabled: await page.locator("#sel-adder").isDisabled(), words: await text(page, "#sel-adder") };
+    await selectIn(page, { from: { lk: "0:+4", at: 2 }, to: { lk: "1:+1", at: 3 } });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const files = await page.locator("#sel-adder").isDisabled();
+    await selectIn(page, { from: { lk: "0:+2", at: 3 }, to: { lk: "0:+3", at: 6 } });
+    await page.waitForSelector("#sel-adder:not([disabled])");
+    await page.keyboard.press("c");
+    const head = await text(page, "#files .lc .lc-h");
+    await page.fill("#lc-input", "both lines"); await page.click('[data-act="lc-save"]'); await settle(page);
+    const c = (await payload(page)).lineComments[0], under = await page.locator('#files tr.r[data-lk="0:+3"] + tr.lc-row').count();
+    return mixed.disabled && /one side/.test(mixed.words) && files && /lines 2–3/.test(head) && c?.line === 2 && c.end === 3 && c.from === 3 && c.to === 6 && under === 1
+      || JSON.stringify({ mixed, files, head, c, under });
+  }));
+
+test("selected words of a paragraph take a comment that quotes them, is listed with the quote and marks them in place",
+  "a paragraph comment could not say which words of a long paragraph it meant",
+  cased(THEMED_URL + "#decisions", {}, async (page) => {
+    const css = '#card-f2 .pc[data-anchor="f2/fix"] .pf';
+    await page.locator(css).scrollIntoViewIfNeeded(); await settle(page); await page.waitForTimeout(150);
+    // from the label «Proposed fix» into the field: the page's own words are no part of the field, so it is refused
+    await page.evaluate(() => { const pc = document.querySelector('#card-f2 .pc[data-anchor="f2/fix"]'), r = document.createRange();
+      r.setStart(pc.querySelector("b").firstChild, 0); r.setEnd(pc.querySelector(".pf").firstChild, 3);
+      getSelection().removeAllRanges(); getSelection().addRange(r); document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true })); });
+    await page.waitForSelector("#sel-adder:not([hidden])");
+    const labelRefused = await page.locator("#sel-adder").isDisabled();
+    const words = await selectIn(page, { from: { css, at: 4 }, to: { css, at: 7 } });
+    await page.waitForSelector("#sel-adder:not([hidden])"); await page.click("#sel-adder");
+    await page.locator(".pc-input").fill("which fix?"); await page.click('[data-act="pc-save"]'); await settle(page);
+    const c = (await payload(page)).paragraphComments[0], now = await marked(page);
+    await page.click('[data-sub="comments"]'); await settle(page);
+    const listed = await text(page, ".cmt-list .cmt");
+    return labelRefused && words === "fix" && c?.item === "f2" && c.field === "fix" && c.from === 4 && c.to === 7 && c.quote === "fix" && now === 1 && listed.includes(words) || JSON.stringify({ labelRefused, words, c, now, listed });
+  }));
+
+// A revised record whose Q3 now recommends another variant on new context: its answer is not offered back.
+const REVISED_URL = render("revised", { ...structuredClone(record), title: "Where the conversion lives, revised",
+  previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
+  questions: record.questions.map((q, i) => i === 2 ? { ...q, context: [{ text: "The display now converts too.", sources: [{ ref: "/blocks/0" }] }], recommendation: { ...q.recommendation, variant: "extend" } } : q) });
+test("the earlier answers are offered only for items that read the same in full: a question whose context or recommendation changed gets none",
+  "an answer came back on a card that now recommends the other variant, as if it read the same",
+  cased(REVISED_URL + "#decisions", { init: `localStorage.setItem("review-report:6:${PREV_KEY}", JSON.stringify({ decisions: { answers: { q3: { choice: "status-quo" }, f1: { choice: "fix" } }, lines: [], paragraphs: [] } }))` }, async (page) => {
+    const offer = await text(page, "#carry");
+    await page.click('[data-act="carry-take"]'); await settle(page);
+    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1");
+    return /^1 answer you gave/.test(offer) && q3 === "Open" && f1 === "Decided" || JSON.stringify({ offer, q3, f1 });
+  }));
+
+// ---- the next review of the same change (PR 109: C2, C7, C1.f)
+test("a continuation offers the answers this browser kept for the previous report on the items that read the same, marks carried code, and lists replies to earlier comments",
+  "each turn of the cycle lost the owner's answers and could not say what was read again; replies to comments lived only in a chat",
+  cased(NEXT_URL + "#decisions", { init: `localStorage.setItem("review-report:6:${PREV_KEY}", JSON.stringify({ decisions: { answers: { q3: { choice: "status-quo" }, f1: { choice: "fix" } }, lines: [], paragraphs: [] } }))` }, async (page) => {
+    const offer = await text(page, "#carry");
+    // an answer given first is kept; the offer still takes the others
+    await page.click('#card-f2 [data-act="pick"][data-opt="leave"]'); await settle(page);
+    await page.click('[data-act="carry-take"]'); await settle(page);
+    const q3 = await statusOf(page, "q3"), f1 = await statusOf(page, "f1"), f2 = await statusOf(page, "f2"), focus = await page.evaluate(() => document.activeElement?.id);
+    // what the page kept, read in the page itself: a reload of a file page loses its storage now and then in headless
+    // Chromium, and the reload case above covers keeping answers across one
+    const again = await page.locator("#carry").isVisible();
+    const kept = await page.evaluate((key) => Object.keys(JSON.parse(localStorage.getItem(key) ?? "{}").decisions?.answers ?? {}).sort().join(), `review-report:6:${NEXT_KEY}`);
+    await page.click('[data-sub="comments"]'); await settle(page);
+    const replies = await text(page, "#panel-decisions"), count = await text(page, '[data-subcount="comments"]');
+    const showable = await page.locator('#panel-decisions .cmt [data-act="goline"]').count();
+    await page.goto(NEXT_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
+    const coverage = await text(page, "#panel-details");
+    await page.goto(NEXT_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
+    if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
+    const panel = await text(page, "#ctx-code");
+    return /2 answers you gave on the previous version/.test(offer) && q3 === "Decided" && f1 === "Decided" && f2 === "Decided" && focus === "tab-decisions" && !again && kept === "f1,f2,q3"
+      && /Replies to your comments on the previous review/.test(replies) && /Why convert here\?/.test(replies) && /src\/old\.js:9/.test(replies) && showable === 0 && count === "2"
+      && /1 kept block was carried from the previous review/.test(coverage) && /Carried\s*from the previous review/.test(panel) || JSON.stringify({ offer, q3, f1, f2, focus, again, kept, replies: replies.slice(0, 300), count, showable, coverage: coverage.slice(0, 200), panel: panel.slice(0, 300) });
+  }));
+
 test("a hostile id or name of any kind stays text on every tab, in every panel, and in every address the page builds, which leads back to it",
   "a requirement id with a quote ran its own handler from a chip's href, and from the «more» button of its panel",
   async () => {
@@ -735,7 +1026,8 @@ test("a hostile id or name of any kind stays text on every tab, in every panel, 
     // each row and card that opens a panel, one after another
     const each = async (page, where, selector) => {
       for (let i = 0, n = await page.locator(selector).count(); i < Math.min(n, 30); i++) {
-        await page.locator(selector).nth(i).click({ force: true }); await settle(page); await scan(page, `${where} ${i}`);
+        // at the row's own corner, not its middle, where a link inside it would take the click to another tab
+        await page.locator(selector).nth(i).click({ force: true, position: { x: 4, y: 4 } }); await settle(page); await scan(page, `${where} ${i}`);
       }
     };
     const leads = {};
@@ -770,6 +1062,122 @@ test("a hostile id or name of any kind stays text on every tab, in every panel, 
     return !found.length && !dialogs.length && leads.requirement?.selected === 1 && leads.scenario?.selected === 1 || JSON.stringify({ found: found.slice(0, 5), dialogs, leads });
   });
 
+test("a requirement's code is a map: its routes step by step, then its other blocks by unit, those needing attention first, each row opening its excerpt in place, one at a time",
+  "a requirement linked to many blocks showed a long stack of excerpts with no sign of which mattered or what role each played",
+  cased(THEMED_URL + "#summary/r1", {}, async (page) => {
+    const head = await text(page, "#ctx-summary .psec:last-child h3");
+    if (!/2 blocks · 2 need attention/.test(head)) return `the heading: ${head}`;
+    const groups = await page.locator("#ctx-summary .cmap-g").evaluateAll((els) => els.map((g) => ({ head: g.querySelector(".cmap-gh").innerText, rows: [...g.querySelectorAll(".cmap-tog")].map((r) => ({ id: r.dataset.b, aside: r.classList.contains("aside"), text: r.innerText.replace(/\s+/g, " ") })) })));
+    const shape = groups.map((g) => g.rows.map((r) => r.id + (r.aside ? "~" : "")).join(","));
+    if (groups.length !== 2 || !/^Route/.test(groups[0].head) || shape[0] !== "1~,3" || !/route step/.test(groups[0].rows[0].text) || /route step/.test(groups[0].rows[1].text) || !/readArchive/.test(groups[1].head) || shape[1] !== "2" || !/fix/i.test(groups[1].rows[0].text)) return JSON.stringify(groups);
+    if (await page.locator("#ctx-summary .excerpt").count()) return "an excerpt shows before a row is opened";
+    const open = () => page.locator("#ctx-summary .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
+    await page.click('#ctx-summary .cmap-tog[data-b="2"]'); const one = await open();
+    await page.click('#ctx-summary .cmap-tog[data-b="3"]'); const two = await open();
+    await page.click('#ctx-summary .cmap-tog[data-b="3"]'); const none = await open();
+    if (JSON.stringify([one, two, none]) !== JSON.stringify([["2"], ["3"], []])) return `opened ${JSON.stringify([one, two, none])}`;
+    await page.click('#ctx-summary .cmap-gh [data-act="goroute"]'); await settle(page);
+    return await page.locator('[data-sel="route:0"].sel').count() === 1 || "the route's link did not open the route";
+  }));
+
+// ---- Coverage and Report details
+// A record whose coverage is prose alone: no statement breaks it down.
+const PROSE_ONLY = structuredClone(record);
+delete PROSE_ONLY.coverageStructured;
+PROSE_ONLY.screens[1] = { ...PROSE_ONLY.screens[1], sources: [{ at: "TASK-9", quote: "the old page" }] };
+const PROSE_URL = render("prose-only", PROSE_ONLY);
+test("Coverage says how far the review reaches: what was not checked — a requirement's own unchecked part too — and its limits first, then what ran, then the prose; a kind no statement names is not counted as none",
+  "Coverage was a wall of text that repeated Report details and did not tell what was run from what was only read",
+  cased(THEMED_URL + "#details/coverage", {}, async (page) => {
+    const body = await text(page, "#det-body");
+    const heads = await page.locator("#det-body .section-h h2").allInnerTexts();
+    const limits = await text(page, "#det-body .cov-limits"), ran = await text(page, "#det-body .cov-ran"), read = await page.locator("#det-body .cov-read").count();
+    const counts = await text(page, "#det-body .cov-counts");
+    if (!/How far the review's conclusions reach/.test(body) || counts !== "Ran: 1 Not checked: 2"
+      || JSON.stringify(heads) !== JSON.stringify(["Not checked and limits", "Ran", "The reviewer's note"]) || !/The list was not seen on screen\./.test(limits) || !/R1 How the list draws it\./.test(limits)
+      || !/1 kept block serves only requirements to confirm/.test(limits) || !/The suite ran on the working copy\. at head/.test(ran) || read !== 0
+      || !/The reviewer's note What was read\./.test(body) || /Legacy keeps the old path/.test(body)) return JSON.stringify({ heads, counts, limits, ran, read, body: body.slice(0, 500) });
+    await page.goto(PROSE_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
+    const plain = await text(page, "#det-body"), only = await text(page, "#det-body .cov-counts");
+    return only === "Not checked: 1" && /The reviewer's note as the reviewer wrote it, not broken down into run, read and not checked/.test(plain) && /Not checked and limits/.test(plain) || `prose only: ${only} | ${plain.slice(0, 400)}`;
+  }));
+
+test("Report details names the review a continuation continues, its date and digest, and how many blocks it carried and comments it answered",
+  "the iteration history of a review was nowhere on the page",
+  cased(NEXT_URL + "#details/report", {}, async (page) => {
+    const body = await text(page, "#det-body");
+    return /Continues “Where the conversion lives”, 2026-01-01 sha256 [0-9a-f]{64} 1 block carried · 2 replies to earlier comments/.test(body) || body.slice(0, 600);
+  }));
+
+test("the theme is an icon whose menu offers light, dark and automatic, marks the current one and names it on the button",
+  "the theme was a text button cycling through modes, its next mode unknown until pressed",
+  cased(THEMED_URL, {}, async (page) => {
+    const label = () => page.getAttribute("#theme-btn", "aria-label");
+    const first = { label: await label(), text: (await page.innerText("#theme-btn")).trim(), icon: await page.locator("#theme-btn svg").count() };
+    await page.click("#theme-btn");
+    const items = await page.locator('#theme-pop [data-act="theme-pick"]').evaluateAll((els) => els.map((e) => `${e.innerText.trim()}${e.getAttribute("aria-pressed") === "true" ? "*" : ""}`));
+    await page.click('#theme-pop [data-theme="dark"]'); await settle(page);
+    const dark = { attr: await page.evaluate(() => document.documentElement.dataset.theme), label: await label(), menu: await page.locator("#theme-pop .pop-menu").isVisible(), focus: await page.evaluate(() => document.activeElement?.id) };
+    await page.click("#theme-btn"); await page.keyboard.press("Escape"); await settle(page);
+    const closed = { menu: await page.locator("#theme-pop .pop-menu").isVisible(), focus: await page.evaluate(() => document.activeElement?.id) };
+    return /automatic, as the system/.test(first.label) && first.text === "" && first.icon === 1 && JSON.stringify(items) === JSON.stringify(["Light", "Dark", "Automatic: as the system*"])
+      && dark.attr === "dark" && /Theme: dark/.test(dark.label) && !dark.menu && dark.focus === "theme-btn" && !closed.menu && closed.focus === "theme-btn"
+      || JSON.stringify({ first, items, dark, closed });
+  }));
+
+// ---- the picture viewer
+const PICS_URL = render("pictures", record, diff, { "before.png": png(200, 100), "after.png": png(3000, 1500) });
+test("the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it",
+  "a small screenshot stayed small in a viewer the size of the window, and only its Close button closed it",
+  cased(PICS_URL + "#details/screens", {}, async (page) => {
+    const geo = () => page.evaluate(() => { const d = document.querySelector("#zoom-dialog"), img = d.querySelector("img"), s = d.querySelector(".zoom-stage"), dr = d.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      return { open: d.open, nw: img.naturalWidth, dw: Math.round(dr.width), dh: Math.round(dr.height), iw: Math.round(ir.width), ih: Math.round(ir.height), scroll: s.scrollWidth > s.clientWidth, cursor: img.style.cursor, vw: innerWidth, vh: innerHeight }; });
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page); await page.waitForTimeout(100);
+    const small = await geo();
+    if (small.nw !== 200 || small.iw !== 400 || small.ih !== 200 || small.dw > 600 || small.cursor !== "zoom-out") return `a small picture: ${JSON.stringify(small)}`;
+    await page.click("#zoom-dialog img"); await settle(page);
+    const own = await geo();
+    if (own.iw !== 200 || own.cursor !== "zoom-in" || !own.open) return `a click on the picture did not show its own size: ${JSON.stringify(own)}`;
+    await page.keyboard.press("ArrowRight"); await settle(page); await page.waitForTimeout(100);
+    const large = await geo();
+    if (large.nw !== 3000 || large.iw !== 3000 || !large.scroll || large.dw > large.vw * 0.96 + 1 || large.dh > large.vh * 0.94 + 1) return `a large picture at its size: ${JSON.stringify(large)}`;
+    await page.click('[data-act="zoom-fit"]'); await settle(page);
+    const fitted = await geo();
+    if (fitted.iw > fitted.vw * 0.96 || fitted.dh > fitted.vh * 0.94 + 1 || fitted.scroll || fitted.cursor !== "zoom-in") return `a large picture fitted: ${JSON.stringify(fitted)}`;
+    // a key on a control inside clicks it without closing the viewer; a click outside the picture closes it
+    await page.focus('[data-act="zoom-full"]'); await page.keyboard.press("Enter"); await settle(page);
+    if (!(await geo()).open) return "a key on a control closed the viewer";
+    await page.mouse.click(5, 5); await settle(page);
+    return !(await geo()).open || "a click on the backdrop left the viewer open";
+  }));
+
+test("a screen says, from the record alone, the pictures given, its match or differences, the requirements and findings it relates to and what was not compared, and the viewer's caption says the same",
+  "the Screens tab showed pictures and differences without saying what they were compared with, what they relate to or what stayed unchecked",
+  cased(THEMED_URL + "#details/screens", {}, async (page) => {
+    const box = await text(page, "#det-body .screen-box");
+    for (const want of ["Pictures Mockup, Before, After", "Outcome 2 differences", "Related to", "Not compared The empty state."])
+      if (!box.includes(want)) return `the first screen lacks «${want}»: ${box}`;
+    if (!(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="r:1"]').count()) || !(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="f:1"]').count())) return "the related requirement or finding is not linked";
+    const second = await text(page, "#det-body .screen-box >> nth=1");
+    if (!second.includes("Pictures no pictures") || /Outcome|Compared/.test(second)) return `the second screen: ${second}`;
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page);
+    const caption = await text(page, "#zoom-caption");
+    if (!caption.includes("Pictures: Mockup, Before, After") || !caption.includes("Outcome: 2 differences")) return `the caption: ${caption}`;
+    await page.click('#zoom-caption [data-go="r:1"]'); await settle(page); await page.waitForTimeout(100);
+    const after = { open: await page.evaluate(() => document.querySelector("#zoom-dialog").open), tab: await page.getAttribute("#tab-summary", "aria-selected"), sel: await page.locator('[data-sel="req:1"].sel').count() };
+    return !after.open && after.tab === "true" && after.sel === 1 || `a link in the caption: ${JSON.stringify(after)}`;
+  }));
+
+const BROKEN_URL = render("broken-picture", record, diff, { "before.png": png(200, 100), "after.png": Buffer.from("not a picture") });
+test("a picture that does not load keeps no size or zoom of the picture before it",
+  "after a broken picture the viewer showed the icon in the last picture's grey field with a zoom cursor that did nothing",
+  cased(BROKEN_URL + "#details/screens", {}, async (page) => {
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page); await page.waitForTimeout(100);
+    await page.keyboard.press("ArrowRight"); await settle(page); await page.waitForTimeout(150);
+    const r = await page.evaluate(() => { const img = document.querySelector("#zoom-dialog img"); return { w: img.style.width, h: img.style.height, cursor: img.style.cursor, nw: img.naturalWidth }; });
+    return r.nw === 0 && r.w === "" && r.h === "" && r.cursor === "default" || JSON.stringify(r);
+  }));
+
 // ---- parity with the page it replaces
 test("the picture viewer fits or shows a picture at its size and steps between pictures; a screen's revision and sources show",
   "the old page's zoom viewer and the provenance of a screen that is not historical had to carry over",
@@ -801,7 +1209,7 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
     await page.locator('#card-q2 textarea[data-act="text"]').fill("the display reads it"); await page.locator('#card-q2 textarea[data-act="text"]').blur();
     await page.click('#card-f1 [data-act="defer"]'); await page.locator('#card-f1 textarea[data-act="reason"]').fill("after the release"); await page.click('#card-f1 [data-act="defer-save"]');
     await page.locator('#card-f2 [data-anchor="f2/what"] .pc-btn').click({ force: true }); await page.locator(".pc-input").fill("unclear"); await page.click('[data-act="pc-save"]');
-    await page.click("#theme-btn");
+    await page.click("#theme-btn"); await page.click('#theme-pop [data-theme="light"]');
     await page.keyboard.press("g"); await page.keyboard.press("c"); await page.waitForTimeout(300);
     await page.locator('#files [data-act="viewed"]').first().check();
     const keys = await page.evaluate(() => Object.keys(localStorage));
@@ -863,7 +1271,7 @@ test("the page reads what a page of the same stored format kept: an answer, a de
       && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
   }));
 
-test("the export is one schema-7 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
+test("the export is one schema-8 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
@@ -872,7 +1280,7 @@ test("the export is one schema-7 payload behind the preview, the text and the JS
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
     const q3 = p.items.find((x) => x.item === "q3");
-    return p.schema_version === 7 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
+    return p.schema_version === 8 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
       && p.lineComments[0]?.path === "src/invoices/archive.js" && p.lineComments[0].side === "head" && p.lineComments[0].line === 4
       && p.paragraphComments[0]?.item === "q3" && p.paragraphComments[0].field === "text" && t.includes("Q3: Keep the conversion in the reader") && t.includes("check this")
       || JSON.stringify({ q3, lines: p.lineComments, paragraphs: p.paragraphComments });
@@ -908,7 +1316,7 @@ test("the page and its document without JavaScript word each requirement's state
     } finally { await doc.close(); await live.close(); }
   });
 
-test("the owner's print holds every decision whole with the owner's answer and no screen-only words; the audit's adds every file whole and the details",
+test("the print holds every decision whole with the owner's answer and no screen-only words, from the browser's Print or the export dialog, and Report details has no print section",
   "the print hid the variants, cut text with «…», printed screen hints, and lazily drawn files printed blank",
   cased(THEMED_URL + "#decisions/f1", {}, async (page) => {
     await page.keyboard.press("f"); await settle(page);
@@ -921,12 +1329,13 @@ test("the owner's print holds every decision whole with the owner's answer and n
     await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
     const q3 = THEMED.questions[2], must = [...q3.variants.flatMap((v) => [v.text, ...v.consequences.map((x) => x.text)]), q3.recommendation.text, LONG];
     const missing = must.filter((t) => !owner.text.includes(t)), screen = ["Show all", "See the table", "select a row", "Click a line number", "Start review", "Show in Code", "Answer here"].filter((t) => owner.text.includes(t));
-    await page.goto(THEMED_URL + "#details/report"); await page.waitForSelector(".tabbar");
+    await page.goto(THEMED_URL + "#details/report"); await page.waitForSelector(".tabbar"); await settle(page);
+    const section = await page.locator('#det-body [data-act="print"]').count();
     await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
-    await page.click('[data-act="print"][data-profile="audit"]');
-    const audit = await page.evaluate(() => ({ rows: document.querySelectorAll("#print tr.r").length, verdicts: document.querySelectorAll("#print tr.bn").length, details: Boolean(document.querySelector("#print #details")) }));
-    return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && audit.rows === 27 && audit.verdicts === 3 && audit.details
-      || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), audit });
+    await page.click('[data-act="export"]'); await page.click('#export-dialog [data-act="print"]'); await settle(page);
+    const dialog = { open: await page.evaluate(() => document.querySelector("#export-dialog").open), f1: await page.evaluate(() => document.querySelector('#print [id="decisions/f1"]')?.innerText ?? ""), rows: await page.locator("#print tr.r").count() };
+    return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && !section && !dialog.open && /Your answer: Fix it/.test(dialog.f1) && dialog.rows === 0
+      || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), section, dialog: { ...dialog, f1: dialog.f1.slice(-80) } });
   }));
 
 test("printing with the picture viewer open prints the report, not the viewer, and the viewer is still open after",
@@ -941,13 +1350,13 @@ test("printing with the picture viewer open prints the report, not the viewer, a
     return printed.viewer === "none" && printed.backdrop === "none" && printed.report === "block" && after || JSON.stringify({ printed, after });
   }));
 
-test("the Russian page speaks Russian on every tab, in its toasts, dialogs and export, without JavaScript and in both prints: no English word but the record's own",
+test("the Russian page speaks Russian on every tab, in its toasts, dialogs, export and print and without JavaScript: no English word but the record's own",
   "every word the page writes is in both catalogs; an English literal in the runtime or the document would reach a Russian reader",
   async () => {
     // The record's words, its key names among them, and its diff's are its own; ids, digests, keys and JavaScript are names.
     const own = new Set(`${JSON.stringify(RU)}\n${diff}`.match(/[A-Za-z]{2,}/g)), english = new Map();
     const scan = (where, text) => {
-      for (const word of text.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? [])
+      for (const word of text.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|PDF|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? [])
         if (!own.has(word) && !english.has(word)) english.set(word, where);
     };
     // what a reader sees, hears from a screen reader, or types into
@@ -974,13 +1383,12 @@ test("the Russian page speaks Russian on every tab, in its toasts, dialogs and e
       await page.click('#card-f2 [data-act="defer"]'); await settle(page); scan("a deferral's reason", await seen(page));
       await page.keyboard.press("Escape"); await page.keyboard.press("?"); await settle(page); scan("the keys", await seen(page)); await page.keyboard.press("Escape");
       await page.click('[data-act="export"]'); await settle(page); scan("the export", await seen(page)); await page.keyboard.press("Escape");
-      // both prints
+      // the print, from the export dialog, and the theme's menu
       await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
-      for (const profile of ["owner", "audit"]) {
-        await go("details/report"); await page.click(`[data-act="print"][data-profile="${profile}"]`); await page.emulateMedia({ media: "print" });
-        scan(`the ${profile}'s print`, await page.evaluate(() => document.querySelector("#print").innerText));
-        await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
-      }
+      await page.click('[data-act="export"]'); await page.click('#export-dialog [data-act="print"]'); await page.emulateMedia({ media: "print" });
+      scan("the print", await page.evaluate(() => document.querySelector("#print").innerText));
+      await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+      await page.click("#theme-btn"); await settle(page); scan("the theme's menu", (await seen(page)) + " " + await page.getAttribute("#theme-btn", "aria-label")); await page.keyboard.press("Escape");
       errors.push(...o.errors);
     } finally { await o.close(); }
     const plain = await open(RU_URL, { js: false });
