@@ -1076,6 +1076,35 @@ test("a requirement's code is a map: its routes step by step, then its other blo
     return await page.locator('[data-sel="route:0"].sel').count() === 1 || "the route's link did not open the route";
   }));
 
+// ---- Coverage and Report details
+// A record whose coverage is prose alone: no statement breaks it down.
+const PROSE_ONLY = structuredClone(record);
+delete PROSE_ONLY.coverageStructured;
+PROSE_ONLY.screens[1] = { ...PROSE_ONLY.screens[1], sources: [{ at: "TASK-9", quote: "the old page" }] };
+const PROSE_URL = render("prose-only", PROSE_ONLY);
+test("Coverage says how far the review reaches: what was not checked and its limits first, then what ran, then what was only read, the prose folded away; without statements, the prose as written",
+  "Coverage was a wall of text that repeated Report details and did not tell what was run from what was only read",
+  cased(THEMED_URL + "#details/coverage", {}, async (page) => {
+    const body = await text(page, "#det-body");
+    const heads = await page.locator("#det-body .section-h h2").allInnerTexts();
+    const limits = await text(page, "#det-body .cov-limits"), ran = await text(page, "#det-body .cov-ran"), read = await text(page, "#det-body .cov-read");
+    const folded = await page.locator("#det-body details.cov-note:not([open])").count();
+    if (!/How far the review's conclusions reach/.test(body) || !/Ran: 1 Read: 0 Not checked: 1/.test(await text(page, "#det-body .cov-counts"))
+      || JSON.stringify(heads) !== JSON.stringify(["Not checked and limits", "Ran", "Read"]) || !/The list was not seen on screen\./.test(limits)
+      || !/1 kept block serves only requirements to confirm/.test(limits) || !/The suite ran on the working copy\. at head/.test(ran) || read !== "None recorded."
+      || folded !== 1 || /Legacy keeps the old path/.test(body)) return JSON.stringify({ heads, limits, ran, read, folded, body: body.slice(0, 400) });
+    await page.goto(PROSE_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
+    const plain = await text(page, "#det-body"), counts = await page.locator("#det-body .cov-counts").count();
+    return counts === 0 && /The reviewer's note as the reviewer wrote it, not broken down into run, read and not checked/.test(plain) && /Not checked and limits/.test(plain) || `prose only: ${plain.slice(0, 400)}`;
+  }));
+
+test("Report details names the review a continuation continues, its date and digest, and how many blocks it carried and comments it answered",
+  "the iteration history of a review was nowhere on the page",
+  cased(NEXT_URL + "#details/report", {}, async (page) => {
+    const body = await text(page, "#det-body");
+    return /Continues “Where the conversion lives”, 2026-01-01 sha256 [0-9a-f]{64} 1 block carried · 2 replies to earlier comments/.test(body) || body.slice(0, 600);
+  }));
+
 // ---- the picture viewer
 const PICS_URL = render("pictures", record, diff, { "before.png": png(200, 100), "after.png": png(3000, 1500) });
 test("the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it",

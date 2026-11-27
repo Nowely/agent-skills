@@ -200,11 +200,12 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
-  `coverageStructured`, optional, lists the same coverage as authored statements — `kind` of `ran`, `read` or
+  `coverageStructured` lists the coverage as statements — `kind` of `ran`, `read` or
   `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
   warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
-  never reads a status such as "tests passed" or "merge-ready" out of the prose. Without it the page shows
-  `coverage`.
+  never reads a status such as "tests passed" or "merge-ready" out of the prose. The page's Coverage is built
+  from them, what was not checked first; without them it shows `coverage` alone, as written. Write them whenever
+  anything ran, was read or was left unchecked: they are how the owner sees how far the review reaches.
 - **Tradeoffs.** Optional: an omission the owner accepted, with its `text`, its `consequence` (what remains unknown
   or lost) and `sources`. A proposal to drop a binding requirement stays a question until its owner accepts it.
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),

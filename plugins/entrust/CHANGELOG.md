@@ -100,6 +100,12 @@ forensics remain in the repository references and release notes.
   in place, one at a time, and «Show in Code» still opens them all. A block serves a requirement only when it
   implements or tests it, and `check` warns when more than eight blocks serve one and no route follows it. More
   lines or blocks in a panel keep the place the owner reads instead of jumping to its top.
+- Coverage answers how far the review's conclusions reach: the counts of what ran, what was read and what was not
+  checked; then what was not checked, with the review's limits — carried blocks not read again, kept code serving no
+  requirement or only requirements to confirm; then what ran, with its revision; then what was only read. The
+  reviewer's prose folds away under them, or is shown as written, with a note, when no statement breaks it down. Scope
+  and tradeoffs leave it for Report details and Summary. Report details names the review a continuation continues —
+  its title, date and digest — and how many blocks it carried and comments it answered.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

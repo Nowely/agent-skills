@@ -105,6 +105,12 @@ const itemReads = (r) => new Map([
 // A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each
 // matched once by what it says, never by number. A record of a new revision takes the owner's answers through the
 // export instead, as the data contract says.
+// The review this one continues, as its record reads — its title, date and digest — for Report details.
+function historyOf(review, directory) {
+  if (!review.previous) return null;
+  const prev = directory ? previousOf(review, directory) : { fault: true }, at = prev.fault ? null : prev.review;
+  return { record: review.previous.record, sha256: review.previous.sha256, title: at?.title ?? null, reviewedAt: at?.passport?.reviewedAt ?? null };
+}
 function previousAnswers(review, directory) {
   if (!review.previous || !directory) return null;
   const prev = previousOf(review, directory);
@@ -166,7 +172,7 @@ export function page(review, files, model, { syntax, directory } = {}) {
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,
       serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),
     unasked: model.unasked,
-    carried: model.carried ?? [],
+    carried: model.carried ?? [], history: historyOf(review, directory),
     previous: previousAnswers(review, directory),
     replies: (review.replies ?? []).map((x) => ({ comment: x.comment, place: x.place, text: x.text, at: x.at ?? null, quote: x.quote ?? null, sources: sources(x.sources) })),
     purposes: PURPOSES, purposeCounts: model.purpose.counts,

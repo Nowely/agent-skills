@@ -624,6 +624,11 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .box-gap { margin-bottom: 14px; }
 .intro { margin: 0 0 12px; }
 .screen-h { font-size: 14px; color: var(--text); }
+.cov-counts { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 6px; font-size: 13px; color: var(--text-2); }
+.cov-limits { border-left: 3px solid var(--warn); }
+.cov-list > li + li { margin-top: 8px; }
+.cov-note { margin-top: 18px; }
+.cov-note > summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
 .screen-facts { margin: 6px 0 8px; }
 .screen-open { color: var(--warn); }
 .zoom-caption .cap-item { display: inline; }

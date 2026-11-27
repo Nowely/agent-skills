@@ -1711,13 +1711,20 @@ function renderDetailBody() {
   } else if (sub === "screens") {
     html = D.screens.map((s, si) => screenBox(si)).join("");
   } else if (sub === "coverage") {
-    const warn = (set) => SETS[set].ids.size ? `<li><b>${esc(P(SETS[set].warn, SETS[set].ids.size))}</b> ${esc(L("p.warn.do"))} <button class="btn sm" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
-    const warnings = warn("assumed") + warn("unlinked") + warn("carried");
-    html = `${warnings ? `<div class="section-h"><h2>${esc(L("p.warn"))}</h2><span class="muted">${esc(L("p.warn.note"))}</span></div><div class="box"><ul class="plain warnings">${warnings}</ul></div>` : ""}${D.coverageStructured.length ? `<div class="section-h"><h2>${esc(L("p.coverage.statements"))}</h2><span class="muted">${esc(L("p.coverage.statements-note"))}</span></div><table class="tbl"><tbody>${D.coverageStructured.map((c) => `<tr><td class="nowrap"><span class="tag ${c.kind === "not_checked" ? "open" : "neutral"}">${esc(L(c.kind === "not_checked" ? "coverage.not-checked" : "coverage." + c.kind))}</span></td><td>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}<div>${srcList(c.sources)}</div></td></tr>`).join("")}</tbody></table>` : ""}
-      <div class="section-h"><h2>${esc(L("p.coverage.written"))}</h2></div><div class="box prose">${textBlock(D.coverage)}</div>
-      <div class="section-h"><h2>${esc(L("p.scope"))}</h2></div><div class="box prose"><p>${prose(D.range)}</p></div>
-      ${D.tradeoffs.length ? `<div class="section-h"><h2>${esc(L("tradeoffs"))}</h2></div><div class="box"><ul class="plain">${D.tradeoffs.map((x) => `<li>${prose(x.text)} <span class="muted">${esc(L("tradeoff.consequence"))}: ${prose(x.consequence)}</span> ${srcList(x.sources)}</li>`).join("")}</ul></div>` : ""}
-`;
+    // How far the review's conclusions reach: what was not checked and where the review stops first, then what ran,
+    // then what was only read. The reviewer's prose is shown as written when nothing breaks it down, folded away when
+    // statements do; nothing is read out of it.
+    const of = (kind) => D.coverageStructured.filter((c) => c.kind === kind), structured = D.coverageStructured.length > 0;
+    const stmt = (c) => `<li>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}${c.sources.length ? `<div>${srcList(c.sources)}</div>` : ""}</li>`;
+    const limit = (set) => SETS[set].ids.size ? `<li>${esc(P(SETS[set].warn, SETS[set].ids.size))} <button class="btn sm quiet" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
+    const limits = of("not_checked").map(stmt).join("") + limit("carried") + limit("unlinked") + limit("assumed");
+    const section = (title, items, cls) => `<div class="section-h"><h2>${esc(title)}</h2></div><div class="box ${cls}"><ul class="plain cov-list">${items || `<li class="muted">${esc(L("p.coverage.none"))}</li>`}</ul></div>`;
+    html = `<p class="muted intro">${esc(L("p.coverage.intro"))}</p>
+      ${structured ? `<div class="cov-counts">${[["coverage.ran", of("ran").length], ["coverage.read", of("read").length], ["coverage.not-checked", of("not_checked").length]].map(([k, c]) => `<span>${esc(L(k))}: <b>${n(c)}</b></span>`).join("")}</div>` : ""}
+      ${structured || limits ? section(L("p.coverage.limits"), limits, "cov-limits") : ""}
+      ${structured ? section(L("coverage.ran"), of("ran").map(stmt).join(""), "cov-ran") + section(L("coverage.read"), of("read").map(stmt).join(""), "cov-read") : ""}
+      ${structured ? `<details class="cov-note"><summary>${esc(L("p.coverage.note"))}</summary><div class="box prose">${textBlock(D.coverage)}</div></details>`
+        : `<div class="section-h"><h2>${esc(L("p.coverage.note"))}</h2><span class="muted">${esc(L("p.coverage.unstructured"))}</span></div><div class="box prose">${textBlock(D.coverage)}</div>`}`;
   } else {
     const p = D.passport;
     html = `<div class="box"><dl class="kv kv-wide">
@@ -1725,6 +1732,7 @@ function renderDetailBody() {
       ${p ? `<dt>${esc(L("p.report.repository"))}</dt><dd>${esc(p.repository ?? "")}</dd><dt>${esc(L("p.report.base-head"))}</dt><dd class="mono">${esc(p.base ?? "")} → ${esc(p.head ?? "")}</dd><dt>${esc(L("passport.reviewed-at"))}</dt><dd>${esc(p.reviewedAt ?? "")}</dd>${(p.links ?? []).map((l) => `<dt>${esc(l.kind)}</dt><dd>${/^https?:\/\//i.test(l.url) ? `<a href="${esc(l.url)}" rel="noreferrer">${esc(l.label)}</a>` : esc(l.label)}</dd>`).join("")}` : `<dt>${esc(L("passport"))}</dt><dd class="muted">${esc(L("p.report.no-passport"))}</dd>`}
       <dt>${esc(L("p.report.diff"))}</dt><dd><span class="mono small">${esc(D.digest.diffFile)}</span><br><span class="mono small muted">sha256 ${esc(D.digest.diff)}</span></dd>
       <dt>${esc(L("passport.record"))}</dt><dd><span class="mono small muted">sha256 ${esc(D.digest.record)}</span></dd>
+      ${D.history ? `<dt>${esc(L("p.report.continues"))}</dt><dd>${D.history.title ? esc(L("p.report.continues.title", D.history.title)) : `<span class="mono small">${esc(D.history.record)}</span>`}${D.history.reviewedAt ? `, ${esc(D.history.reviewedAt)}` : ""}<br><span class="mono small muted">sha256 ${esc(D.history.sha256)}</span><br><span class="small">${esc([P("p.count.carried", D.carried.length), P("p.count.replies", D.replies.length)].join(" · "))}</span></dd>` : ""}
       <dt>${esc(L("p.report.language"))}</dt><dd>${esc(D.language)}</dd>
       <dt>${esc(L("p.report.size"))}</dt><dd>${esc([P("p.count.files", D.counters.files), P("p.count.blocks", D.counters.blocks), P("p.count.items", ITEMS.length)].join(", "))}</dd>
       </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>
