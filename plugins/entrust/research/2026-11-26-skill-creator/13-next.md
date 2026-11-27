@@ -34,7 +34,7 @@ after the release, 3 of them in part (they move roles to the executor tier, and 
 roles). The owner, asked, confirmed both decisions the audit flagged: the roles on the executor tier (the quality
 critic by experiment A, below) and the spend table by agent.
 
-## Results of items 2, A and B
+## Results of items 2, 3, 5 and 6
 
 - **Item 2.** One Create session on the ledger case at b546935, the same tree and request as v3's D7 rerun, 0.75
   USD, to the plan stage. Its plan gives the size limits as numbers read from the check script (E171), its spend
@@ -48,7 +48,22 @@ critic by experiment A, below) and the spend table by agent.
   both prepare-feedback's reader and the audit.
 - In both, the cheaper reader found other defects rather than fewer of the same; an observation from one run a
   side, which decides nothing.
-- **Item 4.** E172's session is running; E173's is pending.
+- **Item 3 (E172, E173).**
+  - E172: one change session on v3's second pending change with v3's scripted replies, at b546935, 0.74 USD. Its
+    gate listed five lines; it then started a fresh reader of the removed text (in v3 the same reply left none
+    started), though its plan had not named one and the reader was briefed by the session, not as the verifier.
+    Of 54 facts 40 are kept, 1 in part and 13 are the defect entry removed by the repository's rule; the part is
+    fact 23 again, a condition dropped while its rule moved, which the session's reader did not see. So the fix
+    starts the reader, and a reader asked for lost facts still misses a dropped condition.
+  - E173: one Create session on the ledger case to its end, at 4257f12, 2.46 USD, two turns. Its one check (one
+    session with the skill, one without, eight statements) failed by its plan's rule; it kept the work, gave the
+    user the result with no undo, and declined a correction fitted to one run. The undo past the correction's
+    limit was not reached, so that part of E173's fix is unmeasured. It ran the smallest sample and noted that
+    seven of eight statements passed on both sides. It also dropped steps (the dry run, the selection check, the
+    verifier, reflection, the architecture critic's second read) and reported them after the work, not as a
+    changed plan before it; and the harness started all its agents on Sonnet, so the critics' tier could not be
+    followed in it.
+  - Item 3 cost 3.2 USD in all.
 
 ## The plan
 
@@ -60,11 +75,11 @@ Items 1 to 3 need no new agreement on fan-outs; items 4 to 8 are options for the
 | # | Item | Decides | Cost |
 |---|---|---|---|
 | 1 | The next real uses of `rnd` in this repository, each closed by a retro on that session | the next Change, from a real observation instead of a constructed case | one retro each, about 4 USD |
-| 2 | One Create session with the skill, to the plan stage, on one of v3's Create cases; v3's sessions without the skill stand as its baseline | whether the plan now carries the size numbers (E171) and a filled spend table (E174) | about 0.7 USD; done, see Results of items 2, A and B |
-| 3 | One change session on v3's second pending change, with v3's scripted replies; one Create session on the case whose session undid its work | whether the dispositions' reader starts on the plan's word (E172); whether the first-session read catches a statement no session can pass, and the undo waits for the user (E173) | about 5 USD |
+| 2 | One Create session with the skill, to the plan stage, on one of v3's Create cases; v3's sessions without the skill stand as its baseline | whether the plan now carries the size numbers (E171) and a filled spend table (E174) | about 0.7 USD; done, see Results of items 2, 3, 5 and 6 |
+| 3 | One change session on v3's second pending change, with v3's scripted replies; one Create session on the case whose session undid its work | whether the dispositions' reader starts on the plan's word (E172); whether the first-session read catches a statement no session can pass, and the undo waits for the user (E173) | about 5 USD; done, see Results of items 2, 3, 5 and 6 |
 | 4 | The main measure, small: one Create case, one session per side on a tree without the old skill-creator pages (v3's side without the skill opened them, so it is not reused here), three fresh users per result, one blind reader | whether `rnd` beats the host alone on Create at all; one session per side cannot give a margin, so a pass reads as undecided | about 5 USD external, plus native readers |
-| 5 | Experiment A: the quality critic on the executor tier against v3's top-tier critic on the same text (two Sonnet agents); it stays on the executor tier when it finds at least 16 of the 21 holding objections below, a part counting a half | whether the quality critic keeps the executor tier (the move was made with no run) | two Sonnet agents; done, see Results of items 2, A and B |
-| 6 | Experiment B: a retro by rnd's audit alone on the session v3's trial retro read, against that retro's nine proposals (two Sonnet agents) | whether the retro keeps prepare-feedback's reader | two Sonnet agents; done, see Results of items 2, A and B |
+| 5 | Experiment A: the quality critic on the executor tier against v3's top-tier critic on the same text (two Sonnet agents); it stays on the executor tier when it finds at least 16 of the 21 holding objections below, a part counting a half | whether the quality critic keeps the executor tier (the move was made with no run) | two Sonnet agents; done, see Results of items 2, 3, 5 and 6 |
+| 6 | Experiment B: a retro by rnd's audit alone on the session v3's trial retro read, against that retro's nine proposals (two Sonnet agents) | whether the retro keeps prepare-feedback's reader | two Sonnet agents; done, see Results of items 2, 3, 5 and 6 |
 | 7 | The cost of the Create route itself: 7.6 to 11.6 times the host alone in v3 | whether Create needs a light route like Change's | read from the spend tables of items 1 and 2; a design change only after them |
 | 8 | Hosts and rivals not measured: Codex, OpenCode; selection beside a host's built-in skill-creator | whether the description holds beside a rival of the same name | about 20 sessions for each host, about 3 USD on Claude Code |
 
@@ -104,6 +119,12 @@ top tier cost more than seventy short users on Sonnet. What follows for the next
 its start, and takes from agents a short return with its long part in a file; an agent that reads much gets
 the files it needs and a fixed question, on the executor tier; a writer gets one part at a time, not the whole
 design.
+
+## Open after v4
+
+- A dispositions reader's brief that names conditions, not only facts (E172's fact 23).
+- Steps dropped without a changed plan (E173's session, and the retro's proposal of the same kind).
+- The undo past the correction's limit, still unmeasured.
 
 ## Open objections from v3
 
