@@ -39,7 +39,7 @@ The skill's text and files are written as: <the form of the text; what goes to r
 The skill's text is written by: <this session, or the model or person the user named>
 The delivery text is written by: <the same, or who the user named>
 Could not be read: <each source or file, with every way tried; or "nothing">
-Agents: <each judge, reader and reflection part, with its model and how many>
+Agents: <each judge, reader and reflection part, with its model, or "this session", and how many>
 Agents start: <how each starts on this host; one this host cannot start is written "cannot start:" with the
   reason>
 Calibration: <for the check's reader and the audit: false items planted, or answers held back; or "none:">

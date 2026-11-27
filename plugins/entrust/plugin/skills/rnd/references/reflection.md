@@ -3,7 +3,7 @@
 Reflection looks back over a run for what the run itself could not see. Its first purpose is a leap: a change
 that would make the skill work where the present approach cannot. Its second is the facts such a change must
 stand on: what the run did, against what the user said and the record claims. Fresh agents do both; you wrote
-the run, so you do neither, but for [the questions you answer yourself](#questions-you-answer-yourself).
+the run, so you do neither. The one part you do is [the questions you answer yourself](#questions-you-answer-yourself).
 
 This page has [the parts](#the-parts-and-the-step-each-hangs-on), [briefing a part](#briefing-a-part),
 [what a part returns](#what-a-part-returns), [the questions you answer yourself](#questions-you-answer-yourself),
@@ -12,7 +12,7 @@ This page has [the parts](#the-parts-and-the-step-each-hangs-on), [briefing a pa
 [a retro on a use of this skill](#a-retro-on-a-use-of-this-skill).
 
 Run only the parts the plan names. Each but the questions is an agent, so each is on the plan with its model before
-the user accepts it; the plan writes "this session" for the questions. A part never edits the skill: it returns,
+the user accepts it; the plan writes "this session" for the questions, on its Agents line. A part never edits the skill: it returns,
 and you act as this page says. A lens is any part but the audit and the questions. The record is what the run has
 written so far: the sheet, the sources table, the plan with its log, the returns and the check's files.
 
@@ -81,9 +81,8 @@ This part is the one you answer yourself, because what you believe about the run
 Before the audit starts, write your answers in `questions.md` in the run directory, one paragraph each, from what
 you hold in context, opening no file, as a state statement is written; change nothing in it after. The audit holds
 them against the files. It writes its other tables first, then opens `questions.md` and adds its table of the answers.
-The part runs with the audit at step 10 in Create or step 9 in Change, whatever made that audit run; not with an
-audit at a correction before then, and not on a retro. The plan writes it in its Reflection part, with "this session"
-as its agent.
+The part runs only with an audit the plan named at step 3 for step 10 in Create or step 9 in Change, and not on a
+retro. The plan writes it on its Agents line as `questions`, with "this session" for its model.
 
 1. What assumption is the whole approach built on, and what would show that the goal itself is wrong, not only the
    means?
@@ -104,8 +103,8 @@ Which questions find most is judged across runs by the owner of this skill, not 
   where it touches a verdict you recompute the verdict as
   [handling a return](critics.md#handling-a-return) says. Its tables are trusted only when they hold, from before it
   opened them, the deviations the log already records.
-- An answer of `questions.md` that the audit marks `part` or `does not hold` is one of the audit's findings and goes
-  to the user with them.
+- An answer of `questions.md` that the audit marks `part` or `does not hold` is one of the audit's findings and is
+  handled as the audit's other findings are, and does not count toward its limit of five.
 - Hypotheses are merged by the rule the plan wrote before any return came. A rule to start from: duplicates
   are merged with every source kept; none is dropped without a reason; disagreement between lenses is kept as
   written; the order is expected gain over cost.
@@ -117,6 +116,8 @@ Which questions find most is judged across runs by the owner of this skill, not 
 ```text
 part | model | tokens, and where the figure comes from | minutes | offered | confirmed or taken | only this part | read another part's return: yes or no | effect
 ```
+
+  The row of the questions has no model or tokens, and carries the audit's mark of each answer by its number.
 
   `effect` stays empty until a hypothesis that was taken has been tested; then it is `held` or `refuted`.
   Taken is a choice and effect is a result. Keep the scorecards of a skill together in its record: the next
