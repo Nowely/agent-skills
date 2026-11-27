@@ -895,15 +895,28 @@ function reqGroups() {
 }
 // The variants a decision's recommendation names, by their words.
 const recommendedTexts = (q) => (q.recommendation?.variant ? [q.recommendation.variant] : q.recommendation?.variants ?? []).map((id) => q.variants.find((v) => v.id === id)?.text).filter(Boolean);
-// A screen as Details shows it — its provenance, pictures, differences and what was not compared — wherever a claim cites it.
+// What a screen is about, from the record's own fields: what was compared with what, the outcome, the requirements that
+// cite it and the findings its differences name, and what was not compared. Nothing is inferred beyond them.
+function screenFacts(si) {
+  const s = D.screens[si], kinds = new Set(s.pictures.map((p) => p.kind)), has = (k) => kinds.has(k);
+  const pairs = [has("mockup") && has("after") && "mockup-after", has("before") && has("after") && "before-after", has("mockup") && has("before") && !has("after") && "mockup-before"].filter(Boolean);
+  const reqs = D.requirements.filter((r) => r.screens.includes(si)).map((r) => r.id), finds = [...new Set(s.differences.map((d) => d.finding).filter(Boolean))];
+  const outcome = s.match ? L("p.screen.outcome.match") : s.differences.length ? P("p.count.differences", s.differences.length) : s.missing ? "" : L("p.screen.outcome.none");
+  return [
+    [L("p.screen.compared"), esc(pairs.length ? pairs.map((k) => L("p.screen.vs." + k)).join("; ") : L("p.screen.vs.none"))],
+    outcome && [L("p.screen.outcome"), esc(outcome)],
+    (reqs.length || finds.length) && [L("p.screen.related"), `${chips("r", reqs)}${chips("f", finds)}`],
+    s.missing && [L("not-compared"), `<span class="screen-open">${prose(s.missing)}</span>`],
+  ].filter(Boolean);
+}
+// A screen as Details shows it — its state, provenance, what it is about, pictures and differences — wherever a claim cites it.
 function screenBox(si) {
   const s = D.screens[si];
   return `<div class="box box-gap screen-box"><h3 class="screen-h">${esc(s.name)}</h3>
       ${s.provenance.startsWith("historical") ? `<p><span class="provenance">${esc(L("p.screen." + s.provenance, s.revision))}</span> <span class="muted small">${esc(L("p.screen.historical-note"))}</span> ${srcList(s.sources)}</p>` : `<p class="muted small">${esc(L("p.screen." + s.provenance, s.revision))} ${srcList(s.sources)}</p>`}
+      <dl class="kv screen-facts">${screenFacts(si).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
       ${s.pictures.length ? `<div class="screen-pics">${s.pictures.map((p) => p.embedded ? `<figure><figcaption class="muted small">${esc(L(p.kind))}</figcaption><button class="zoom-btn" data-act="zoom" data-pic="${si}-${p.kind}" aria-label="${esc(L("p.zoom.open", `${L(p.kind)}: ${s.name}`))}"><img src="${PICS.get(`${si}-${p.kind}`)}" alt="${esc(`${L(p.kind)}: ${s.name}`)}"></button></figure>` : p.link ? `<p><span class="lbl">${esc(L(p.kind))}</span><a href="${esc(p.link)}" rel="noreferrer">${esc(p.link)}</a></p>` : "").join("")}</div>` : `<p class="muted small">${esc(L("no-pictures"))}</p>`}
-      ${s.match ? `<p>${esc(L("matches"))}</p>` : ""}
-      ${s.differences.length ? `<ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}
-      ${s.missing ? `<p class="muted">${esc(L("not-compared"))}: ${prose(s.missing)}</p>` : ""}</div>`;
+      ${s.differences.length ? `<p class="lbl gap-top">${esc(L("p.screen.differences"))}</p><ul class="dash">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="muted">— ${prose(d.why)}</span>` : ""}${d.finding ? ` ${chip("f", d.finding)}` : ""}</li>`).join("")}</ul>` : ""}</div>`;
 }
 function summaryPanel(sel) {
   if (!sel) {
@@ -2326,7 +2339,7 @@ window.addEventListener("hashchange", () => route(location.hash));
 // ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size
 // As common picture viewers do, it closes on a click outside the picture, opens fitted to the window and zooms on a
 // click on the picture; its frame closes around the picture instead of keeping a fixed field.
-const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
+const PICTURES = D.screens.flatMap((s, si) => s.pictures.filter((p) => p.embedded).map((p) => ({ si, id: `${si}-${p.kind}`, src: PICS.get(`${si}-${p.kind}`), name: `${s.name} · ${L(p.kind)}`, historical: s.provenance.startsWith("historical") })));
 let zoomAt = 0, zoomFit = true;
 function openZoom(id) {
   let d = $("#zoom-dialog");
@@ -2337,7 +2350,8 @@ function openZoom(id) {
     // The backdrop is the dialog itself, outside its box; the stage is the field around a picture narrower than the bar.
     d.addEventListener("click", (e) => {
       const r = d.getBoundingClientRect(), outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-      if (e.target === d && outside || e.target.classList.contains("zoom-stage")) d.close();
+      // a link in the caption leaves the viewer for its place
+      if (e.target === d && outside || e.target.classList.contains("zoom-stage") || e.target.closest("[data-go]")) d.close();
     });
     $("img", d).addEventListener("load", sizeZoom);
     window.addEventListener("resize", () => { if (d.open) sizeZoom(); });
@@ -2352,6 +2366,7 @@ function showZoom(i) {
   img.src = p.src; img.alt = p.name; img.classList.toggle("fit", zoomFit);
   $("#zoom-name").textContent = p.name; $("#zoom-count").textContent = L("p.zoom.of", n(zoomAt + 1), n(PICTURES.length));
   $("#zoom-historical").hidden = !p.historical;
+  const cap = $("#zoom-caption"); cap.innerHTML = screenFacts(p.si).map(([k, v]) => `<span class="cap-item"><span class="muted">${esc(k)}:</span> ${v}</span>`).join(""); cap.hidden = false;
   $('[data-act="zoom-fit"]', d).setAttribute("aria-pressed", String(zoomFit)); $('[data-act="zoom-full"]', d).setAttribute("aria-pressed", String(!zoomFit));
   if (img.complete) sizeZoom();
 }

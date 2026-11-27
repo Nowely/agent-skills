@@ -92,6 +92,9 @@ forensics remain in the repository references and release notes.
 - The picture viewer closes on a click outside the picture, opens it fitted to the window — up to twice its own size,
   so a small screenshot fills the view without smearing — with its frame closed around it, and a click on the
   picture switches between fitted and actual size, the cursor saying which.
+- A screen says what it is about, from the record's own fields: what was compared with what, the outcome, the
+  requirements that cite it and the findings its differences name, and what was not compared; the picture viewer's
+  caption says the same, its links leaving the viewer for their place.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

@@ -1084,6 +1084,23 @@ test("the picture viewer fits a picture to the window, up to twice its own size,
     return !(await geo()).open || "a click on the backdrop left the viewer open";
   }));
 
+test("a screen says what it compares with what, the outcome, the requirements and findings it relates to and what was not compared, and the viewer's caption says the same",
+  "the Screens tab showed pictures and differences without saying what they were compared with, what they relate to or what stayed unchecked",
+  cased(THEMED_URL + "#details/screens", {}, async (page) => {
+    const box = await text(page, "#det-body .screen-box");
+    for (const want of ["Compared", "the result against the mockup; before against after", "Outcome", "2 differences", "Related to", "Not compared", "The empty state."])
+      if (!box.includes(want)) return `the first screen lacks «${want}»: ${box}`;
+    if (!(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="r:1"]').count()) || !(await page.locator('#det-body .screen-box').first().locator('.screen-facts [data-go="f:1"]').count())) return "the related requirement or finding is not linked";
+    const second = await text(page, "#det-body .screen-box >> nth=1");
+    if (!second.includes("nothing: one picture or none")) return `the second screen: ${second}`;
+    await page.locator('#det-body [data-act="zoom"]').first().click(); await settle(page);
+    const caption = await text(page, "#zoom-caption");
+    if (!caption.includes("the result against the mockup") || !caption.includes("2 differences")) return `the caption: ${caption}`;
+    await page.click('#zoom-caption [data-go="r:1"]'); await settle(page); await page.waitForTimeout(100);
+    const after = { open: await page.evaluate(() => document.querySelector("#zoom-dialog").open), tab: await page.getAttribute("#tab-summary", "aria-selected"), sel: await page.locator('[data-sel="req:1"].sel').count() };
+    return !after.open && after.tab === "true" && after.sel === 1 || `a link in the caption: ${JSON.stringify(after)}`;
+  }));
+
 // ---- parity with the page it replaces
 test("the picture viewer fits or shows a picture at its size and steps between pictures; a screen's revision and sources show",
   "the old page's zoom viewer and the provenance of a screen that is not historical had to carry over",

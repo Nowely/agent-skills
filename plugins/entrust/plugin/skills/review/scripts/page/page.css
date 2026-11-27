@@ -608,6 +608,11 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .box-gap { margin-bottom: 14px; }
 .intro { margin: 0 0 12px; }
 .screen-h { font-size: 14px; color: var(--text); }
+.screen-facts { margin: 6px 0 8px; }
+.screen-open { color: var(--warn); }
+.zoom-caption .cap-item { display: inline; }
+.zoom-caption .cap-item + .cap-item::before { content: " · "; color: var(--text-3); }
+.zoom-caption .chips { display: inline-flex; }
 .kv-wide { grid-template-columns: 150px minmax(0, 1fr); }
 .mini-status { margin-top: 6px; }
 .check-item p { margin: 0; }
