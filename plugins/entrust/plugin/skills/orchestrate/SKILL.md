@@ -5,7 +5,7 @@ description: >-
   work, and synthesise their evidence while this session keeps the plan, the decisions and a small context.
 disable-model-invocation: true
 metadata:
-  version: "0.48.0"
+  version: "0.49.0"
 license: MIT
 ---
 
