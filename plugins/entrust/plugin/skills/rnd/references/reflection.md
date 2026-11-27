@@ -12,9 +12,10 @@ This page has [the parts](#the-parts-and-the-step-each-hangs-on), [briefing a pa
 [a retro on a use of this skill](#a-retro-on-a-use-of-this-skill).
 
 Run only the parts the plan names. Each but the questions is an agent, so each is on the plan with its model before
-the user accepts it; the plan writes "this session" for the questions, on its Agents line. A part never edits the skill: it returns,
-and you act as this page says. A lens is any part but the audit and the questions. The record is what the run has
-written so far: the sheet, the sources table, the plan with its log, the returns and the check's files.
+the user accepts it; the plan writes "this session" for the questions, on its Agents line. A part never edits the
+skill: it returns, and you act as this page says. A lens is any part but the audit and the questions. The record is
+what the run has written so far: the sheet, the sources table, the plan with its log, the returns and the check's
+files.
 
 ## The parts, and the step each hangs on
 
