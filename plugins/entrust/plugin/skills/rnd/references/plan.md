@@ -34,7 +34,7 @@ Sessions of the check start through: <what the repository has for starting a ses
 Sessions are given: <the tools the skill's steps use, an agent tool among them; or what the check cannot show
   without one>
 The skill's text and files are written as: <the form of the text; what goes to references and what to scripts;
-  the limits on size; the model that will read it>
+  each limit on size as the number the check script prints; the model that will read it>
 The skill's text is written by: <this session, or the model or person the user named>
 The delivery text is written by: <the same, or who the user named>
 Could not be read: <each source or file, with every way tried; or "nothing">
