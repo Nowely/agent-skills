@@ -111,6 +111,9 @@ forensics remain in the repository references and release notes.
   The audit print, every file whole, is gone: the saved diff and the record are the full trail.
 - The theme is an icon — a sun, a moon, or a half disc for automatic — whose menu offers Light, Dark and Automatic, as
   the system, the current one marked and named on the button. The requirement menu marks the chosen requirement again.
+- A route's panel draws its steps as a flow: each step a box with its block, place and role, a step whose block is
+  not kept marked, and the arrow into a step saying where it gets what the step before produced; a step opens its
+  code in place, and the requirements the route serves head it.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

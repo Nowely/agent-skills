@@ -964,9 +964,18 @@ function summaryPanel(sel) {
       <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${attn ? ` · ${esc(P("p.count.attention", attn))}` : ""}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${r.blocks.length ? codeMap(r) : `<p class="muted">${esc(L("p.no-block"))}</p>`}</div>`);
   }
   if (sel.startsWith("route:")) {
-    const i = +sel.slice(6), r = D.routes[i];
-    return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), r.steps.map((s, k) => `<div class="psec route-step">
-      <h3>${esc(L("p.route.step", k + 1))} ${chip("b", s.block)}</h3><p>${prose(s.role)}</p>${s.via ? `<p class="small sub"><b>${esc(L("route.via"))}:</b> ${prose(s.via)}</p>` : ""}${excerptList([s.block], `route${i}.${k}`)}</div>`).join(""));
+    // A route as a flow: each step a box with its block, place and role, a step whose block is not kept marked; the
+    // arrow into a step says where it gets what the step before produced. A step opens its code in place, one at a time.
+    const i = +sel.slice(6), r = D.routes[i], key = `route${i}`;
+    const node = (s, k) => {
+      const b = blk(s.block), open = S.cmap[key] === s.block;
+      return `<li class="flow-step"><button class="cmap-tog flow-node${b.verdict !== "keep" ? " open-v" : ""}" data-act="cmap" data-key="${esc(key)}" data-b="${s.block}" aria-expanded="${open}" aria-label="${esc(`${L("p.route.step", k + 1)}, B${s.block}`)}"><span class="cmap-line"><span class="cmap-n">${k + 1}</span><span class="cmap-id">B${s.block}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}</span><span class="flow-role">${prose(s.role)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(s.block)}</div>` : ""}</li>`;
+    };
+    const via = (s) => `<li class="flow-via"><span class="flow-arrow" aria-hidden="true"></span><span><span class="lbl">${esc(L("route.via"))}</span>${prose(s.via)}</span></li>`;
+    return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), `<div class="psec">
+      ${r.requirements.length ? `<p class="small"><span class="lbl">${esc(L("p.route.serves"))}</span>${chips("r", r.requirements)}</p>` : ""}
+      <ol class="cmap flow">${r.steps.map((s, k) => (k && s.via ? via(s) : "") + node(s, k)).join("")}</ol>
+      <p class="muted small">${esc(L("p.route.note"))}</p></div>`);
   }
   if (sel.startsWith("step:")) {
     const i = +sel.slice(5), s = D.steps[i], ids = [...new Set(s.findings.flatMap((f) => itemByKey.get("f" + f)?.blocks ?? []))];

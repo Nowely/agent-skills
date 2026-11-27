@@ -213,6 +213,15 @@ ul.routes { list-style: none; margin: 0; padding: 0; border: 1px solid var(--bor
 .route-row:hover { background: var(--surface-2); }
 .route-row.sel { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
 .route-t { font-weight: 500; }
+.flow { list-style: none; margin: 8px 0 10px; padding: 0; }
+.flow-step { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; background: var(--surface); }
+.flow-step .flow-node { border-top: 0; }
+.flow-node.open-v { box-shadow: inset 3px 0 0 var(--warn); }
+.flow-role { display: block; margin-top: 3px; font-size: 13px; color: var(--text); }
+.flow-via { position: relative; margin: 0 0 0 18px; padding: 6px 0 6px 18px; border-left: 2px solid var(--border-strong, var(--border)); font-size: 12.5px; color: var(--text-2); }
+.flow-via .lbl { display: block; }
+.flow-arrow { position: absolute; left: -6px; bottom: -1px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--border-strong, var(--text-3)); }
+.flow-step + .flow-step { margin-top: 10px; }
 .route-nav { margin-top: 4px; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-3); }
 
 /* ---------- tables ---------- */

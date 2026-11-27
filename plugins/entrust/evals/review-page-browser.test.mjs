@@ -866,17 +866,21 @@ test("a decision's recommendation names the variant it recommends, and one with 
   }));
 
 // ---- understanding the change (PR 109: C5, C6)
-test("Summary says how the change works, one route per behaviour, and a route's panel walks its steps in order with each role, link and code",
+test("Summary says how the change works, one route per behaviour, and a route's panel draws its steps as a flow, each role in its box and each link on the arrow into it, a step opening its code",
   "related blocks were a set with no order, roles or connections",
   cased(THEMED_URL + "#summary", {}, async (page) => {
     const rows = await page.locator("#summary-routes + ul.routes .route-row").allInnerTexts();
     await page.click("#summary-routes + ul.routes .route-row"); await settle(page);
-    const steps = await page.locator("#ctx-summary .route-step").evaluateAll((els) => els.map((e) => ({ head: e.querySelector("h3").innerText, text: e.innerText, code: Boolean(e.querySelector(".excerpt")) })));
+    const flow = await page.locator("#ctx-summary .flow > li").evaluateAll((els) => els.map((e) => `${e.className}: ${e.innerText.replace(/\s+/g, " ").trim()}`));
+    const closed = await page.locator("#ctx-summary .flow .excerpt").count();
+    await page.click('#ctx-summary .flow-node[data-b="3"]'); await settle(page);
+    const opened = await page.locator("#ctx-summary .flow .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
     const url = page.url();
     await page.goto(THEMED_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
     const linked = await page.locator('#panel-summary .route-row.sel').count();
-    return rows.length === 1 && /2 steps/.test(rows[0]) && steps.length === 2 && /Step 1\s*B1/.test(steps[0].head) && /Step 2\s*B3/.test(steps[1].head)
-      && /Gets it from: readArchive's return/.test(steps[1].text) && steps.every((x) => x.code) && /#summary\/route1$/.test(url) && linked === 1 || JSON.stringify({ rows, steps, url, linked });
+    return rows.length === 1 && /2 steps/.test(rows[0]) && flow.length === 3 && /^flow-step: 1 B1 archive\.js/.test(flow[0]) && /^flow-via: Gets it from readArchive's return/.test(flow[1])
+      && /^flow-step: 2 B3 outputs\.test\.js .*question.*Checks the three outputs/.test(flow[2]) && closed === 0 && JSON.stringify(opened) === '["3"]' && /#summary\/route1$/.test(url) && linked === 1
+      || JSON.stringify({ rows, flow, closed, opened, url, linked });
   }));
 
 test("a kept block's panel says what the record knows about it — what it does, its unit with its jobs, the requirements it serves in words and its place in a route — not a bare «Kept code»",
