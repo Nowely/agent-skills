@@ -14,8 +14,9 @@ Made after the release text was written, and measured by no run yet:
   with its count and cost. The selection check runs each request once, the transfer test one session per
   scenario and side; a margin with no second run is reported as undecided, and the plan's rule says before any
   run whether that keeps the work or fails the rule.
-- **Tiers.** The top tier is kept for the architecture critic and the from-zero lens. The quality critic, the
-  audit, combinations, evidence and prior art move to the executor tier.
+- **Tiers.** The top tier is kept for the architecture critic, the quality critic and the from-zero lens. The
+  audit, combinations, evidence and prior art move to the executor tier (the quality critic went back to the top
+  tier by experiment A, below).
 - **E171.** The plan reads each size limit as the number the check script prints when run on the skill's own
   directory before the plan is written.
 - **E172.** The plan of a Change names the dispositions' fresh reader for the case where the gate lists a line,
@@ -30,7 +31,24 @@ Made after the release text was written, and measured by no run yet:
 
 The gate against the release commit listed 30 lines; each is answered. Ten are answered by the owner's words
 after the release, 3 of them in part (they move roles to the executor tier, and the words do not name the
-roles), put to the owner as a question.
+roles). The owner, asked, confirmed both decisions the audit flagged: the roles on the executor tier (the quality
+critic by experiment A, below) and the spend table by agent.
+
+## Results of items 2, A and B
+
+- **Item 2.** One Create session on the ledger case at b546935, the same tree and request as v3's D7 rerun, 0.75
+  USD, to the plan stage. Its plan gives the size limits as numbers read from the check script (E171), its spend
+  table has a row for each agent with model and count at plan time (E174), and it put two larger samples to the
+  user as options with their reasons. One session, read by the coordinator, not blind.
+- **Experiment A.** Of the 21 holding objections the Sonnet critic found 5, part 4, missed 12: 7 of 21 against a
+  rule of 16. It raised 9 new objections, all holding at their place. Decision: the quality critic goes back to
+  the top tier. One run a side shows no spread.
+- **Experiment B.** Of the trial retro's nine proposals the audit alone found 4, part 4, missed 1: 6 of 9 against
+  a rule of 7. Two new findings held. It used about 0.15M tokens against the trial retro's 4.2 USD. The retro keeps
+  both prepare-feedback's reader and the audit.
+- In both, the cheaper reader found other defects rather than fewer of the same; an observation from one run a
+  side, which decides nothing.
+- **Item 4.** E172's session is running; E173's is pending.
 
 ## The plan
 
@@ -42,11 +60,11 @@ Items 1 to 3 need no new agreement on fan-outs; items 4 to 8 are options for the
 | # | Item | Decides | Cost |
 |---|---|---|---|
 | 1 | The next real uses of `rnd` in this repository, each closed by a retro on that session | the next Change, from a real observation instead of a constructed case | one retro each, about 4 USD |
-| 2 | One Create session with the skill, to the plan stage, on one of v3's Create cases; v3's sessions without the skill stand as its baseline | whether the plan now carries the size numbers (E171) and a filled spend table (E174) | about 0.7 USD |
+| 2 | One Create session with the skill, to the plan stage, on one of v3's Create cases; v3's sessions without the skill stand as its baseline | whether the plan now carries the size numbers (E171) and a filled spend table (E174) | about 0.7 USD; done, see Results of items 2, A and B |
 | 3 | One change session on v3's second pending change, with v3's scripted replies; one Create session on the case whose session undid its work | whether the dispositions' reader starts on the plan's word (E172); whether the first-session read catches a statement no session can pass, and the undo waits for the user (E173) | about 5 USD |
 | 4 | The main measure, small: one Create case, one session per side on a tree without the old skill-creator pages (v3's side without the skill opened them, so it is not reused here), three fresh users per result, one blind reader | whether `rnd` beats the host alone on Create at all; one session per side cannot give a margin, so a pass reads as undecided | about 5 USD external, plus native readers |
-| 5 | Experiment A: the quality critic on the executor tier against v3's top-tier critic on the same text (two Sonnet agents); it stays on the executor tier when it finds at least 16 of the 21 holding objections below, a part counting a half | whether the quality critic keeps the executor tier (the move was made with no run) | two Sonnet agents; result pending |
-| 6 | Experiment B: a retro by rnd's audit alone on the session v3's trial retro read, against that retro's nine proposals (two Sonnet agents) | whether the retro keeps prepare-feedback's reader | two Sonnet agents; result pending |
+| 5 | Experiment A: the quality critic on the executor tier against v3's top-tier critic on the same text (two Sonnet agents); it stays on the executor tier when it finds at least 16 of the 21 holding objections below, a part counting a half | whether the quality critic keeps the executor tier (the move was made with no run) | two Sonnet agents; done, see Results of items 2, A and B |
+| 6 | Experiment B: a retro by rnd's audit alone on the session v3's trial retro read, against that retro's nine proposals (two Sonnet agents) | whether the retro keeps prepare-feedback's reader | two Sonnet agents; done, see Results of items 2, A and B |
 | 7 | The cost of the Create route itself: 7.6 to 11.6 times the host alone in v3 | whether Create needs a light route like Change's | read from the spend tables of items 1 and 2; a design change only after them |
 | 8 | Hosts and rivals not measured: Codex, OpenCode; selection beside a host's built-in skill-creator | whether the description holds beside a rival of the same name | about 20 sessions for each host, about 3 USD on Claude Code |
 
