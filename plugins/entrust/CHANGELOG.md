@@ -7,13 +7,21 @@ forensics remain in the repository references and release notes.
 
 ### Skills
 
-- New skill `skill-creator`, selected by the assistant or called by name: it creates a skill or develops an
+- New skill `rnd` (`skills/rnd/`), selected by the assistant or called by name: it creates a skill or develops an
   existing one. Create writes a requirements sheet from the user's words, walks the job stage by stage, reads and
   records the sources, shows one plan with the open questions in it, has a fresh architecture critic challenge
   the approach before any text, and has a quality critic, a check and a verifier judge the result. Change is
-  written out as its own twelve steps for one instruction, with fewer agents; Repair is for a typo or a link. A
-  correction goes back to the sheet, not into the text.
-- `skill-creator/scripts/check.mjs <directory> --against <revision or copy>` lists every line of a skill's
+  written out as its own nine steps for one instruction, with fewer agents, and a small change takes a light
+  route: no sheet or plan file, the gate and one read. Repair is for a typo or a link. A correction goes back to
+  the sheet, not into the text.
+- In a Change, a value the owning file holds changes only on the user's words naming it: a reply that leaves the
+  choice to the agent removes no fact and changes no value, and a fact moved off a page keeps a link from it. A
+  change whose gate lists a line is not small and gets a fresh reader of its dispositions.
+- In a Create, the baseline runs before any text. The plan states the decision on how the text and files are
+  written as its own item, each size limit as a number, and carries spend by requirement line with a checkpoint
+  rule on it. After a use of the skill a retro can be collected, read by the audit and evidence parts of
+  reflection, and entered as the observation of the next Change.
+- `rnd/scripts/check.mjs <directory> --against <revision or copy>` lists every line of a skill's
   Markdown that an edit removed and nothing carries now, and exits 1 until each is answered in a dispositions
   file: `moved`, with the place and the words that carry it, one line for each place a part of it went, or
   `retired`, with the user's own words. A corrected word or link lists nothing. It is step 8 of Change; Repair
@@ -36,7 +44,7 @@ forensics remain in the repository references and release notes.
   take that practice from their runs, hold it against the pages and write the gaps for a reader who was not
   there. `references/checks.md` adds a transfer test for it, judged by what a reader with only the pages
   achieves on material whose answer is known.
-- `skill-creator/scripts/check.mjs` holds a skill to twelve mechanical rules and prints every limit with what the
+- `rnd/scripts/check.mjs` holds a skill to twelve mechanical rules and prints every limit with what the
   skill uses of it. Four rules are new: the open specification's limits on `name` and `description`, that
   every file under `references/` is linked from `SKILL.md`, and that no link leaves the files installed with the
   skill.
@@ -50,8 +58,9 @@ forensics remain in the repository references and release notes.
 - The first version was tested on Sonnet by a protocol frozen before the test
   (`research/2026-11-26-skill-creator/`) and did not land: on a pending change, both sessions that followed it
   lost page facts while merging duplicates, and on a replay of its own design run it fell short of the margin
-  asked. This version is the answer to that result, under a second protocol frozen before its sessions.
-- Passed so far: the preservation list finds the three lost rows in all four of the first test's final trees;
+  asked. The second version was the answer to that result, under a second protocol frozen before its sessions.
+- Passed in the second version: the preservation list finds the three lost rows in all four of the first test's
+  final trees;
   a pilot of two sessions on the same pending change passed on its second pair, after one rework of the list;
   judges briefed from the pages alone caught 9 and 9 of 10 planted faults against 6 for the earlier pages, on
   the test's rerun after one correction. That rerun was found contaminated; repeated clean on fresh material,
@@ -64,15 +73,30 @@ forensics remain in the repository references and release notes.
 - Put to the owner: that cut's 27 `retired` dispositions cite the run's own protocol addendum where step 8 of
   Change asks for the user's own words, and no quality critic read the cut as step 9 asks. The owner left it to
   the run, which kept the cut.
-- The full test returned and this version does not land by its frozen rule: on two pending changes one of the
+- The second version's full test returned and it did not land by its frozen rule: on two pending changes one of the
   two sessions that followed the page lost a fact in each (a value changed when moved; a rule replaced by a link
   with another meaning), and on the replay of the design run's opening the decision on how a skill's text and
   files are written was only partly stated in both sessions with the page (with a partial mark counted, every
   clause of a pass held). A further change to the preservation list, tried after it, was dropped by its pilot's
   rule and reverted.
-- Unmeasured: creating a new skill past its plan; the plan file, the reflection role and the practice step in
-  a session that has only the pages; whether agents select the skill beside a host's built-in `skill-creator`;
-  anything on Codex or OpenCode.
+- This version, the third, is renamed `rnd` and was checked by a landing rule of four clauses written before any
+  session (`research/2026-11-26-skill-creator/12-v3.md`). One holds and three fail, and it is released on the
+  owner's word. Selection holds: the skill was invoked on 10 of 10 requests meant for it and on 0 of 5 near
+  misses. Facts kept in a change fails on its rerun: four of four sessions kept every fact on one pending
+  change, one of two on the other, where a condition was dropped while its rule moved to another page and the
+  fresh reader the skill requires did not start. The main measure fails: skills made or changed with `rnd` and
+  by the host alone were used by fresh agents on held-out tasks and marked blind, and `rnd` scored 68.9 / 64.6
+  against 68.0 / 67.0 on Create, with no margin, and 58.3 / 50.0 against 100 / 100 on Change, on two counted
+  statements; the Create sessions without the skill opened the tree's own `skill-creator` page, so that arm is
+  not a clean one. The skill's arm cost 11.6 and 7.6 times the host's on Create, 2.2 and 3.2 times on Change. The
+  text-and-files decision fails: stated whole before writing in 0 of 6 Create sessions, and in 1 of 6 after a
+  correction, read by the coordinator, not blind.
+- Known issues, in `ISSUES.md`: E171, plans still give the skill's size as a pointer to the check script; E172,
+  the fresh reader of a change whose gate lists a line does not start when the user's word on agents is missing;
+  E173, the work is undone past the correction's limit even when the check could not measure; E174, the
+  spend-by-requirement table is set up in every plan and filled in none.
+- Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
+  the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
 
 ## 0.47.3 — 2026-11-26
 
