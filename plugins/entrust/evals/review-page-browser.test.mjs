@@ -1058,6 +1058,24 @@ test("a hostile id or name of any kind stays text on every tab, in every panel, 
     return !found.length && !dialogs.length && leads.requirement?.selected === 1 && leads.scenario?.selected === 1 || JSON.stringify({ found: found.slice(0, 5), dialogs, leads });
   });
 
+test("a requirement's code is a map: its routes step by step, then its other blocks by unit, those needing attention first, each row opening its excerpt in place, one at a time",
+  "a requirement linked to many blocks showed a long stack of excerpts with no sign of which mattered or what role each played",
+  cased(THEMED_URL + "#summary/r1", {}, async (page) => {
+    const head = await text(page, "#ctx-summary .psec:last-child h3");
+    if (!/2 blocks · 2 need attention/.test(head)) return `the heading: ${head}`;
+    const groups = await page.locator("#ctx-summary .cmap-g").evaluateAll((els) => els.map((g) => ({ head: g.querySelector(".cmap-gh").innerText, rows: [...g.querySelectorAll(".cmap-tog")].map((r) => ({ id: r.dataset.b, aside: r.classList.contains("aside"), text: r.innerText.replace(/\s+/g, " ") })) })));
+    const shape = groups.map((g) => g.rows.map((r) => r.id + (r.aside ? "~" : "")).join(","));
+    if (groups.length !== 2 || !/^Route/.test(groups[0].head) || shape[0] !== "1~,3" || !/readArchive/.test(groups[1].head) || shape[1] !== "2" || !/fix/i.test(groups[1].rows[0].text)) return JSON.stringify(groups);
+    if (await page.locator("#ctx-summary .excerpt").count()) return "an excerpt shows before a row is opened";
+    const open = () => page.locator("#ctx-summary .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
+    await page.click('#ctx-summary .cmap-tog[data-b="2"]'); const one = await open();
+    await page.click('#ctx-summary .cmap-tog[data-b="3"]'); const two = await open();
+    await page.click('#ctx-summary .cmap-tog[data-b="3"]'); const none = await open();
+    if (JSON.stringify([one, two, none]) !== JSON.stringify([["2"], ["3"], []])) return `opened ${JSON.stringify([one, two, none])}`;
+    await page.click('#ctx-summary .cmap-gh [data-act="goroute"]'); await settle(page);
+    return await page.locator('[data-sel="route:0"].sel').count() === 1 || "the route's link did not open the route";
+  }));
+
 // ---- the picture viewer
 const PICS_URL = render("pictures", record, diff, { "before.png": png(200, 100), "after.png": png(3000, 1500) });
 test("the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it",

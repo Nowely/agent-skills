@@ -582,6 +582,12 @@ export function check(review, files, directory) {
     if (block.verdict === "keep" && served.length && served.every((r) => SOURCES.includes(r.source) && !ESTABLISHED.has(r.source))) for (const r of served) if (!asked.has(r.id)) unconfirmed.add(r.id);
   });
   for (const id of unconfirmed) warnings.push(`requirement ${id} is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it (one decision whose variants combine can ask for several)`);
+  // A requirement many blocks serve reads as a long list; a route says what role each block plays.
+  const routed = new Set((Array.isArray(review.routes) ? review.routes : []).flatMap((r) => Array.isArray(r?.requirements) ? r.requirements : []));
+  for (const r of review.requirements) {
+    const n = review.blocks.filter((b) => Array.isArray(b.serves) && b.serves.includes(r.id)).length;
+    if (n > 8 && !routed.has(r.id)) warnings.push(`requirement ${r.id} is served by ${n} blocks and no route follows it: follow it through a route, or link only the blocks that implement or test it`);
+  }
 
   for (const file of files) {
     const loose = changedLines(file).filter((l) => !blank(l) && !owner.has(`${file.path}\n${address(l)}`));

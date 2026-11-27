@@ -95,6 +95,11 @@ forensics remain in the repository references and release notes.
 - A screen says what it is about, from the record's own fields: what was compared with what, the outcome, the
   requirements that cite it and the findings its differences name, and what was not compared; the picture viewer's
   caption says the same, its links leaving the viewer for their place.
+- A requirement's panel maps its code instead of stacking excerpts: the routes that serve it, step by step with each
+  step's role, then its other blocks by unit, one line each, those that need attention first; a row opens its excerpt
+  in place, one at a time, and «Show in Code» still opens them all. A block serves a requirement only when it
+  implements or tests it, and `check` warns when more than eight blocks serve one and no route follows it. More
+  lines or blocks in a panel keep the place the owner reads instead of jumping to its top.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

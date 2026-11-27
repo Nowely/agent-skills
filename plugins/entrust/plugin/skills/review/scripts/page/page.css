@@ -477,6 +477,22 @@ tr.lc-row td { background: var(--surface-2); }
 
 /* excerpts in a panel */
 .excerpt { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; margin: 8px 0 10px; background: var(--code-bg); }
+.cmap-g { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; margin: 8px 0 10px; background: var(--surface); }
+.cmap-gh { padding: 6px 10px; background: var(--surface-2); font-size: 12.5px; min-width: 0; overflow-wrap: break-word; }
+.cmap-gh .lbl { margin-right: 6px; }
+.cmap-tog { display: block; width: 100%; text-align: left; padding: 6px 10px; border: 0; border-top: 1px solid var(--border); background: none; color: inherit; font: inherit; cursor: pointer; }
+.cmap-tog:hover { background: var(--surface-2); }
+.cmap-tog[aria-expanded="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.cmap-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.cmap-n { color: var(--text-3); font-size: 12px; min-width: 1ch; }
+.cmap-id { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.cmap-place { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmap-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 12.5px; color: var(--text-2); }
+.cmap-tog.aside .cmap-id, .cmap-tog.aside .cmap-place, .cmap-tog.aside .cmap-text { opacity: .7; }
+.cmap-ex .excerpt { margin: 0; border-radius: 0; border-width: 1px 0 0; }
+/* the row above is the excerpt's head: its block, place, verdict and description */
+.cmap-ex .ex-h, .cmap-ex .ex-does { display: none; }
+.linkish { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .ex-h { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12px; min-width: 0; flex-wrap: wrap; }
 .ex-h .ex-path { font-family: var(--mono); color: var(--text-2); min-width: 0; overflow-wrap: break-word; flex: 1; }
 .ex-h .ex-path b { color: var(--text); }

@@ -128,7 +128,7 @@ const S = {
   sub: { decisions: "all", details: "structure" }, structView: "table", unitSort: { key: "fix", dir: -1 }, more: {},
   code: { mode: "attention", purposes: new Set(D.purposes), req: "", unit: "", q: "", expanded: new Set(), collapsed: new Set(),
     pinned: new Set(), whole: new Set(), doneOpen: new Set(), set: null, tree: window.innerWidth > 1150, dirsClosed: new Set(), ctx: false },
-  viewed: new Set(), scroll: {}, theme: "auto", rendered: {}, find: { open: false, q: "", matches: [], i: -1 },
+  viewed: new Set(), scroll: {}, theme: "auto", rendered: {}, cmap: {}, find: { open: false, q: "", matches: [], i: -1 },
 };
 // The comments as the page looks them up: line comments by line key, paragraph comments by anchor.
 let LC = new Map(), PC = new Map();
@@ -623,6 +623,27 @@ function excerptList(ids, key, first = 3) {
   const shown = S.more[key] ? sorted : sorted.slice(0, first);
   return shown.map((id) => excerptHtml(id)).join("") + (sorted.length > shown.length ? `<button class="btn sm" data-act="more" data-more="${esc(key)}">${esc(P("p.more.blocks", sorted.length - shown.length))}</button>` : "");
 }
+// A requirement's code as a map: the routes that serve it, step by step with each step's role, then its other blocks
+// by unit, one line each, those that need attention first. A row opens its excerpt in place, one at a time, so the
+// requirement stays in view; a route's step whose block does not serve the requirement itself is shown aside.
+function codeMap(r) {
+  const key = "req" + r.id, mine = new Set(r.blocks), seen = new Set(), attention = (id) => blk(id).verdict !== "keep";
+  const at = (id) => { const i = ORDER.indexOf(blk(id)); return i < 0 ? 1e9 : i; };
+  const row = (id, text, step) => {
+    const b = blk(id), open = S.cmap[key] === id;
+    return `<button class="cmap-tog${mine.has(id) ? "" : " aside"}" data-act="cmap" data-key="${esc(key)}" data-b="${id}" aria-expanded="${open}"><span class="cmap-line">${step ? `<span class="cmap-n">${step}</span>` : ""}<span class="cmap-id">B${id}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${attention(id) ? verdictTag(b.verdict) : ""}</span><span class="cmap-text">${prose(text || b.does)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(id)}</div>` : ""}`;
+  };
+  const groups = D.routes.map((rt, i) => [rt, i]).filter(([rt]) => rt.requirements.includes(r.id)).map(([rt, i]) => `<div class="cmap-g"><div class="cmap-gh"><button class="linkish" data-act="goroute" data-route="${i}">${esc(L("p.route"))}</button> ${prose(rt.title)}</div>${rt.steps.map((s, k) => { seen.add(s.block); return row(s.block, s.role, k + 1); }).join("")}</div>`);
+  const byUnit = new Map();
+  for (const id of r.blocks.filter((id) => !seen.has(id))) { const u = blk(id).unit ?? ""; byUnit.set(u, [...(byUnit.get(u) ?? []), id]); }
+  const units = [...byUnit].map(([u, ids]) => [u, ids.sort((a, b) => attention(b) - attention(a) || at(a) - at(b))])
+    .sort(([ua, a], [ub, b]) => (ua === "") - (ub === "") || b.some(attention) - a.some(attention) || at(a[0]) - at(b[0]));
+  for (const [u, ids] of units) {
+    const unit = D.units.find((x) => x.name === u);
+    groups.push(`<div class="cmap-g"><div class="cmap-gh">${u ? `<span class="lbl">${esc(L("unit"))}</span><span class="mono">${esc(u)}</span>${unit?.jobs?.length ? ` <span class="muted">— ${esc(unit.jobs.join("; "))}</span>` : ""}` : `<span class="lbl">${esc(L("p.cmap.no-unit"))}</span>`}</div>${ids.map((id) => row(id)).join("")}</div>`);
+  }
+  return `<div class="cmap">${groups.join("")}</div>`;
+}
 function miniItem(c) {
   const st = statusOf(c);
   return `<div class="mini"><div class="mh">${chip(c.type, c.ref.id)}<span class="muted small">${esc(typeText(c))}</span><span class="status" data-status="${esc(c.key)}">${tagHtml(st)}</span></div><div class="mt">${prose(itemTitle(c))}</div><div class="answer-line small" data-answer="${esc(c.key)}">${answerHtml(st)}</div></div>`;
@@ -903,7 +924,7 @@ function screenFacts(si) {
   const reqs = D.requirements.filter((r) => r.screens.includes(si)).map((r) => r.id), finds = [...new Set(s.differences.map((d) => d.finding).filter(Boolean))];
   const outcome = s.match ? L("p.screen.outcome.match") : s.differences.length ? P("p.count.differences", s.differences.length) : s.missing ? "" : L("p.screen.outcome.none");
   return [
-    [L("p.screen.compared"), esc(pairs.length ? pairs.map((k) => L("p.screen.vs." + k)).join("; ") : L("p.screen.vs.none"))],
+    [L("p.screen.compared"), esc(pairs.length ? pairs.map((k) => ({ "mockup-after": L("p.screen.vs.mockup-after"), "before-after": L("p.screen.vs.before-after"), "mockup-before": L("p.screen.vs.mockup-before") })[k]).join("; ") : L("p.screen.vs.none"))],
     outcome && [L("p.screen.outcome"), esc(outcome)],
     (reqs.length || finds.length) && [L("p.screen.related"), `${chips("r", reqs)}${chips("f", finds)}`],
     s.missing && [L("not-compared"), `<span class="screen-open">${prose(s.missing)}</span>`],
@@ -929,12 +950,12 @@ function summaryPanel(sel) {
       <div class="psec"><p class="muted small">${esc(L("p.summary.select"))}</p></div>`);
   }
   if (sel.startsWith("req:")) {
-    const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])];
+    const r = reqById.get(sel.slice(4)), fs = [...new Set([...r.broken, ...r.untested])], attn = r.blocks.filter((id) => blk(id).verdict !== "keep").length;
     return panelWrap(esc(`${L("requirement")} R${r.id} · ${L("source." + r.source)}${r.established ? "" : ` · ${L("req.to-confirm")}`}`), prose(r.text), `
       <div class="psec"><h3>${esc(L("p.req.stated"))}</h3><p>${srcItems(r.sources)}</p>${r.screens.map(screenBox).join("")}</div>
       ${fs.length ? `<div class="psec"><h3>${esc(L("findings"))}</h3>${fs.map((f) => miniItem(itemByKey.get("f" + f))).join("")}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
-      <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${excerptList(r.blocks, "req" + r.id)}</div>`);
+      <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${attn ? ` · ${esc(P("p.count.attention", attn))}` : ""}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${r.blocks.length ? codeMap(r) : `<p class="muted">${esc(L("p.no-block"))}</p>`}</div>`);
   }
   if (sel.startsWith("route:")) {
     const i = +sel.slice(6), r = D.routes[i];
@@ -1793,11 +1814,12 @@ function detailsPanel(sel) {
 }
 
 // ---------------------------------------------------------------- panels and navigation
-function renderPanel(tab) {
+// A new selection starts at the panel's top; more of the same selection keeps the place the owner reads.
+function renderPanel(tab, { keep = false } = {}) {
   const el = $("#ctx-" + tab); if (!el) return;
-  const sel = S.sel[tab];
+  const sel = S.sel[tab], top = el.scrollTop;
   el.innerHTML = tab === "summary" ? summaryPanel(sel) : tab === "decisions" ? decisionsPanel(sel) : tab === "code" ? codePanel(sel) : detailsPanel(sel);
-  el.scrollTop = 0;
+  el.scrollTop = keep ? top : 0;
 }
 function goCard(key, { focus = false } = {}) {
   if (S.tab !== "decisions") showTab("decisions", { push: false });
@@ -1909,7 +1931,14 @@ document.addEventListener("click", (e) => {
       case "clear": return clearAnswer(key);
       case "selcard": select("decisions", "card:" + key); $(`#card-${key}`)?.classList.add("open-full"); return;
       case "item-code": return itemToCode(key);
-      case "more": S.more[act.dataset.more] = true; return renderPanel(S.tab);
+      case "more": S.more[act.dataset.more] = true; return renderPanel(S.tab, { keep: true });
+      case "cmap": {
+        const key = act.dataset.key, id = +act.dataset.b, open = S.cmap[key] === id, box = act.closest(".cmap");
+        $$(".cmap-ex", box).forEach((x) => x.remove()); $$('.cmap-tog[aria-expanded="true"]', box).forEach((x) => x.setAttribute("aria-expanded", "false"));
+        S.cmap[key] = open ? null : id;
+        if (!open) { act.setAttribute("aria-expanded", "true"); act.insertAdjacentHTML("afterend", `<div class="cmap-ex">${excerptHtml(id)}</div>`); }
+        return;
+      }
       case "dsub": S.sub.decisions = act.dataset.sub; renderDecList(); syncDecSelection(); setHash(); return;
       case "xsub": S.sub.details = act.dataset.sub; renderDetailBody(); setHash(); return;
       case "sview": S.structView = act.dataset.view; return renderDetailBody();

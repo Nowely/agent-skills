@@ -355,6 +355,22 @@ test("the earlier answers are not offered to a conditional question whose parent
     return pairs.includes("q1") && !pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
   });
 
+test("check warns when many blocks serve a requirement and no route follows it, and not once a route does",
+  "a requirement linked to every block read as a long list of excerpts with no role for any of them",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "many-")), lines = Array.from({ length: 9 }, (_, i) => `+export const r${i} = ${i};`);
+    const text = ["diff --git a/src/r.js b/src/r.js", "new file mode 100644", "--- /dev/null", "+++ b/src/r.js", "@@ -0,0 +1,9 @@", ...lines, ""].join("\n");
+    fs.writeFileSync(path.join(dir, "source.diff"), text);
+    const rec = { ...twoUnits(text, lines.map((_, i) => ({ path: "src/r.js", added: String(i + 1), does: `Rate ${i}.`, serves: [1], verdict: "keep" }))), units: [] };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(rec));
+    const first = report("check", path.join(dir, "review.json"));
+    if (first.status !== 0 || !first.stderr.includes("requirement 1 is served by 9 blocks and no route follows it")) return `no warning: ${first.status} ${first.stderr}`;
+    rec.routes = [{ title: "The rates", requirements: [1], steps: [{ block: 1, role: "The first rate." }, { block: 2, role: "The second.", via: "src/r.js:2" }] }];
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(rec));
+    const second = report("check", path.join(dir, "review.json"));
+    return second.status === 0 && !second.stderr.includes("served by 9 blocks") || `with a route: ${second.status} ${second.stderr}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
