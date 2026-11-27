@@ -9,7 +9,8 @@ import { CATALOGS, labelsOf, languageOf } from "./labels.mjs";
 import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
-import { sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
+import path from "node:path";
+import { keyOf, previousOf, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
 import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
@@ -29,6 +30,9 @@ function placer(files) {
     return { text: at, file: file ?? null, line: +m[2], end: m[3] ? +m[3] : +m[2], base: Boolean(m[4]) };
   };
 }
+
+// The screens a list of sources cites, by their index: their pictures are shown beside the claim.
+const screensCited = (list) => [...new Set((list ?? []).map((x) => /^\/screens\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map(Number))];
 
 // Sources as the page links them: an internal ref to a requirement, finding, question, idea, block or mechanism
 // becomes its id; one to an entry of Details becomes its tab and, where it has one, its row; an external place stays
@@ -67,7 +71,7 @@ function rowsOf(file, model, hl) {
   });
 }
 
-// One file's diff as the no-JavaScript reader and the audit print see it, with a line for each block's verdict. One
+// One file's diff as the no-JavaScript reader sees it, with a line for each block's verdict. One
 // row per line of source, in a shape runtime.js parses: a hunk opens with <tbody>, a row carries its numbers in data-r
 // and its code as the last cell; a block's line is not a row.
 function fileMarkup(fi, file, hunks, blocks, blockLine) {
@@ -84,7 +88,40 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
 </table></section></noscript>`;
 }
 
-export function page(review, files, model, { syntax } = {}) {
+// A question as the owner answered it, with the condition it applied under: its parent read the same way in full —
+// what each variant says and changes, the parent's own condition — and the variants it applies under.
+function questionRead(r, i, seen = new Set()) {
+  const q = r.questions?.[i], p = q?.parent;
+  if (!p || seen.has(i)) return { ...q, parent: null };
+  seen.add(i);
+  return { ...q, parent: [questionRead(r, p.question - 1, seen), p.variants] };
+}
+// An item as the owner answered it: a later record holding an item that reads the same — the same question with the
+// same variants under the same condition, the same finding, the same idea — asks the same thing, whatever its number.
+const itemReads = (r) => new Map([
+  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", questionRead(r, i)])]),
+  ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f])]),
+  ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x])])]);
+// A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each
+// matched once by what it says, never by number. A record of a new revision takes the owner's answers through the
+// export instead, as the data contract says.
+// The review this one continues, as its record reads — its title, date and digest — for Report details.
+function historyOf(review, directory) {
+  if (!review.previous) return null;
+  const prev = directory ? previousOf(review, directory) : { fault: true }, at = prev.fault ? null : prev.review;
+  return { record: review.previous.record, sha256: review.previous.sha256, title: at?.title ?? null, reviewedAt: at?.passport?.reviewedAt ?? null };
+}
+function previousAnswers(review, directory) {
+  if (!review.previous || !directory) return null;
+  const prev = previousOf(review, directory);
+  if (prev.fault || prev.review.diff?.sha256 !== review.diff?.sha256) return null;
+  const count = (map) => [...map.values()].reduce((m, v) => m.set(v, (m.get(v) ?? 0) + 1), new Map());
+  const before = itemReads(prev.review), now = itemReads(review), onceBefore = count(before), onceNow = count(now);
+  const byRead = new Map([...before].filter(([, v]) => onceBefore.get(v) === 1).map(([k, v]) => [v, k]));
+  return { key: keyOf(prev.review), pairs: [...now].filter(([, v]) => onceNow.get(v) === 1 && byRead.has(v)).map(([k, v]) => [k, byRead.get(v)]) };
+}
+
+export function page(review, files, model, { syntax, directory } = {}) {
   const language = languageOf(review), labels = CATALOGS[language];
   // The render-time Shiki syntax when the caller built it; the built-in pattern highlighter otherwise.
   const hl = syntax ? (l) => syntax.line(l) : (l, path) => highlight(l.text, path);
@@ -110,10 +147,11 @@ export function page(review, files, model, { syntax } = {}) {
     digest: { diff: review.diff.sha256, record: model.recordSha ?? model.key, key: model.key, diffFile: review.diff.file },
     counters: model.counters,
     requirements: model.requirements.map((r) => ({ id: String(r.id), text: r.text, source: r.source, met: r.met, not_checked: r.not_checked, doubt: r.doubt, state: r.state,
+      established: r.established, sources: sources(r.sources), screens: screensCited(r.sources),
       blocks: r.blocks.map((b) => b.id), broken: r.broken.map(String), untested: r.untested.map(String) })),
     findings: review.findings.map((f) => ({ ...f, id: String(f.id), breaks: (f.breaks ?? []).map(String), untested: (f.untested ?? []).map(String), scenarios: (f.scenarios ?? []).map(String),
       place: placeOf(f.at), blocks: model.blocks.filter((b) => b.findings.includes(f.id)).map((b) => b.id) })),
-    ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at) })),
+    ideas: (review.ideas ?? []).map((i, n) => ({ ...i, id: String(n + 1), place: placeOf(i.at), sources: sources(i.sources) })),
     questions: model.questions.map((q) => ({ id: String(q.id), at: q.at, place: placeOf(q.at), text: q.text, kind: q.kind, resolver: q.resolver,
       multiple: q.multiple === true, context: claims(q.context), variants: (q.variants ?? []).map((v) => ({ id: v.id, text: v.text, consequences: claims(v.consequences) })),
       recommendation: q.recommendation ? { text: q.recommendation.text, variant: q.recommendation.variant, variants: q.recommendation.variants, sources: sources(q.recommendation.sources) } : null,
@@ -123,6 +161,7 @@ export function page(review, files, model, { syntax } = {}) {
       parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
         texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
     checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String) })),
+    routes: (review.routes ?? []).map((r) => ({ title: r.title, requirements: (r.requirements ?? []).map(String), steps: r.steps.map((s) => ({ block: s.block, role: s.role, via: s.via ?? "" })) })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),
       findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id), lines: u.lines })),
@@ -133,6 +172,9 @@ export function page(review, files, model, { syntax } = {}) {
     blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,
       serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),
     unasked: model.unasked,
+    carried: model.carried ?? [], history: historyOf(review, directory),
+    previous: previousAnswers(review, directory),
+    replies: (review.replies ?? []).map((x) => ({ comment: x.comment, place: x.place, text: x.text, at: x.at ?? null, quote: x.quote ?? null, sources: sources(x.sources) })),
     purposes: PURPOSES, purposeCounts: model.purpose.counts,
     files: files.map((f, fi) => ({ path: f.path, status: model.files[fi].status, purpose: model.files[fi].purpose,
       add: f.hunks.flat().filter((l) => l.kind === "add").length, del: f.hunks.flat().filter((l) => l.kind === "del").length })),

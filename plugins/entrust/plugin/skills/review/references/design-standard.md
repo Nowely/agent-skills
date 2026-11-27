@@ -42,6 +42,17 @@ Where the literature disagrees, the side this review takes is stated.
     internals. Compare with the project's closest precedent.
 12. **Names say what.** A name that is hard to pick, or needs "and", points at a unit with two jobs.
 
+## Leads
+
+Sweep the changed code, kept blocks included, for these and check each before it is anything — the actual coupling,
+what calls it, what the project already does: code that reaches into another unit's internals (its markup, class
+names, private fields, an undocumented format); a workaround and its marks (a timer, retry or sleep, a suppressed
+check, a forced cast, a comment that says hack or temporary); generality with one user; a second way to do what the
+project already does; a mechanism kept beside a new default with no one asking for it. A lead ends as a finding, a
+question, an idea, or a candidate set aside on the place that refutes it, which the record keeps as a challenge from
+`reviewer`. A construct kept at a cost the owner may not want to pay — a mechanism's `cost`, a kept unit's `reason`
+that names a burden — goes to the owner as an idea, never only in Details.
+
 ## Structure and target
 
 Trace each mechanism's owner, inputs, effects and lifetime, and tell missing context from entanglement: overwritten

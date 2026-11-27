@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { address, blank, changedLines, numberOf } from "./diff.mjs";
+import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
@@ -63,12 +63,18 @@ export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "questi
 export const QUESTION_KINDS = ["decision", "fact", "evidence"];
 export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
 // Who raised a point against the draft, and what the review did with it.
-export const CHALLENGERS = ["target", "critic", "verifier"];
+export const CHALLENGERS = ["target", "critic", "verifier", "reviewer"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "read", "judgment"];
+// The words a decision's recommendation opens with when the data leaves no clear one.
+export const NO_CLEAR = { en: "No clear recommendation", ru: "Однозначной рекомендации нет" };
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
-export const SOURCES = ["task", "discussion", "project", "question", "assumption"];
+export const SOURCES = ["task", "discussion", "project", "author", "contract", "assumption", "question"];
+// Where a requirement comes from decides whether it binds: the task, an owner's decision and a project rule are
+// established; what the author proposes, an existing behaviour or contract that may need keeping, the reviewer's own
+// reading and an open point wait for the owner to confirm them.
+export const ESTABLISHED = new Set(["task", "discussion", "project"]);
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
 // The one state the model gives each requirement, which every rendering words.
 export const REQUIREMENT_STATES = ["permission", "fail", "met", "unchecked"];
@@ -124,6 +130,71 @@ export function compact(list) {
 // The page writes the language into <html lang> as Intl canonicalizes it, and Intl takes one well-formed tag.
 const languageTag = (value) => { if (typeof value !== "string") return false; try { Intl.getCanonicalLocales(value); return true; } catch { return false; } };
 
+// The requirements a question asks the owner about: those its context, variants, recommendation or zones cite.
+function askedAbout(review) {
+  return new Set((review.questions ?? []).flatMap((q) => [q.context, q.zones, q.recommendation && [q.recommendation], ...(Array.isArray(q.variants) ? q.variants.map((v) => v?.consequences) : [])]
+    .flatMap((list) => Array.isArray(list) ? list : []).flatMap((c) => Array.isArray(c?.sources) ? c.sources : [])
+    .map((x) => /^\/requirements\/(\d+)$/.exec(String(x?.ref))?.[1]).filter((i) => i !== undefined).map((i) => review.requirements[+i]?.id)));
+}
+// A review's name, which no other review has: the page keeps the owner's answers under it.
+export const keyOf = (review) => createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10);
+// Which block owns each changed line, by the blocks' own line lists, whatever else the record holds.
+export function ownerOf(review, files) {
+  const owner = new Map();
+  (review.blocks ?? []).forEach((block, index) => {
+    const file = files.find((f) => f.path === block.path);
+    if (!file) return;
+    for (const [kind, field] of [["add", "added"], ["del", "removed"]]) {
+      const lines = changedLines(file).filter((l) => l.kind === kind);
+      let wanted;
+      try { wanted = new Set(numbers(block[field], lines.map(numberOf))); } catch { continue; }
+      for (const line of lines.filter((l) => wanted.has(numberOf(l)))) { const key = `${file.path}\n${address(line)}`; if (!owner.has(key)) owner.set(key, index); }
+    }
+  });
+  return owner;
+}
+// A block's changed lines as they read, in order: two blocks with the same lines hold the same code.
+export const lineRead = (l) => `${l.kind}\t${l.text}`;
+export const blockLines = (files, owner, index, path) => {
+  const file = files.find((f) => f.path === path);
+  return file ? changedLines(file).filter((l) => owner.get(`${file.path}\n${address(l)}`) === index).map(lineRead).join("\n") : "";
+};
+// Which carried blocks cannot stand as carried. The previous record kept a block for the code around it too: one whose
+// unit changed — a block of it read again, changed or gone — or uses, at any remove, a unit that changed is read again,
+// and so is one with no unit in a file that holds a block read again. Each stale block gets the reason, the rest null.
+export function staleCarried(review, files, owner, prev) {
+  const sig = (f, o, i, p) => `${p}\n${blockLines(f, o, i, p)}`;
+  const carried = new Set(review.blocks.map((b, i) => b.carried === true ? sig(files, owner, i, b.path) : null).filter(Boolean));
+  const changed = new Set();
+  prev.review.blocks.forEach((b, i) => { if (b.unit && !(b.verdict === "keep" && carried.has(sig(prev.files, prev.owner, i, b.path)))) changed.add(b.unit); });
+  review.blocks.forEach((b) => { if (b.carried !== true && b.unit) changed.add(b.unit); });
+  const affected = new Set(changed), uses = (review.units ?? []).map((u) => [u.name, Array.isArray(u.uses) ? u.uses : []]);
+  for (let grew = true; grew;) { grew = false; for (const [name, list] of uses) if (!affected.has(name) && list.some((x) => affected.has(x))) { affected.add(name); grew = true; } }
+  const touched = new Set(review.blocks.filter((b) => b.carried !== true).map((b) => b.path));
+  return review.blocks.map((b) => b.carried !== true ? null
+    : b.unit ? (affected.has(b.unit) ? `its unit ${b.unit} changed since the previous review, or uses a unit that did` : null)
+    : touched.has(b.path) ? `it has no unit, and its file holds a block read again` : null);
+}
+
+// The previous record a continuation carries blocks from, read with its saved diff, both by their digests.
+export function previousOf(review, directory) {
+  const p = review.previous;
+  if (!p || typeof p.record !== "string" || typeof p.sha256 !== "string") return { fault: `"previous" names the record blocks were carried from: {record, sha256}` };
+  const file = path.resolve(directory, p.record);
+  if (!fs.existsSync(file)) return { fault: `the previous record "${p.record}" is not there` };
+  const bytes = fs.readFileSync(file);
+  if (createHash("sha256").update(bytes).digest("hex") !== p.sha256) return { fault: `the previous record "${p.record}" is not the one the blocks were carried from` };
+  let prev;
+  try { prev = JSON.parse(bytes.toString("utf8")); } catch (error) { return { fault: `the previous record "${p.record}" is not JSON: ${error.message}` }; }
+  if (!Array.isArray(prev?.blocks)) return { fault: `the previous record "${p.record}" lists no blocks` };
+  const dir = path.dirname(file), diff = path.resolve(dir, String(prev.diff?.file ?? ""));
+  if (!prev.diff?.file || !fs.existsSync(diff)) return { fault: `the previous record's saved diff is not beside it` };
+  const diffBytes = fs.readFileSync(diff);
+  if (createHash("sha256").update(diffBytes).digest("hex") !== prev.diff.sha256) return { fault: `the previous record's saved diff is not the one it was made from` };
+  const files = parseDiff(diffBytes.toString("utf8"));
+  return { review: prev, files, owner: ownerOf(prev, files), sha256: p.sha256 };
+}
+
 // Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
 // Warnings name what is substantively thin or unreachable without breaking referential integrity; a record
 // without the optional fields of the decision-first report gets none of them.
@@ -164,8 +235,6 @@ export function check(review, files, directory) {
         if (s.revision !== undefined && !text(s.revision)) errors.push(`${who}: a source's revision is empty`);
         if (s.quote !== undefined && !text(s.quote)) errors.push(`${who}: a source's quote is empty`);
         if (!text(s.quote)) warnings.push(`${who}: source "${s.at}" has no quote; it does not travel without the file`);
-        const place = /^(.+?):\d+(?:-\d+)?$/.exec(s.at);
-        if (place && /[./]/.test(place[1]) && !fs.existsSync(path.resolve(directory, place[1]))) warnings.push(`${who}: source "${s.at}" is named but not beside the record`);
       } else errors.push(`${who}: a source needs "ref" or "at"`);
     }
   };
@@ -201,9 +270,15 @@ export function check(review, files, directory) {
     if (f.direction !== "tests" && f.untested?.length) errors.push(`finding ${f.id} is not about tests: it lists requirements under "breaks", not "untested"`);
     refs(`finding ${f.id}`, f.scenarios, scenarioIds, "scenario");
   }
-  for (const r of review.requirements) {
+  review.requirements.forEach((r, index) => {
     if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
     if (!SOURCES.includes(r.source)) errors.push(`requirement ${r.id}: source is one of ${SOURCES.join(", ")}`);
+    // A requirement shows where it is stated; an established one quotes it — the task's sentence, the owner's word, the
+    // project's rule — or cites the screen it comes from, so the reader can check it without the conversation.
+    sourceFaults(`requirement ${r.id}`, r.sources, `/requirements/${index}`);
+    const quoted = (Array.isArray(r.sources) ? r.sources : []).some((x) => (x?.at !== undefined && text(x.quote)) || /^\/screens\/\d+$/.test(String(x?.ref)));
+    if (ESTABLISHED.has(r.source) && Array.isArray(r.sources) && r.sources.length && !quoted)
+      errors.push(`requirement ${r.id} is ${r.source}: quote where it is stated, as {at, quote}, or cite the screen it comes from`);
     if (r.met !== undefined && !MET.includes(r.met)) errors.push(`requirement ${r.id}: met is one of ${MET.join(", ")}, or left out when you did not check it`);
     const breaking = review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id);
     if (r.met !== undefined && breaking.length) errors.push(`requirement ${r.id} is marked met, and finding ${breaking.join(", ")} breaks it`);
@@ -211,7 +286,7 @@ export function check(review, files, directory) {
     // A permission allows; it does not oblige, so there is nothing to mark met.
     if (r.permission !== undefined && typeof r.permission !== "boolean") errors.push(`requirement ${r.id}: permission is true, or left out`);
     if (r.permission === true && r.met !== undefined) errors.push(`requirement ${r.id} is a permission, not an obligation: it cannot be marked met`);
-  }
+  });
   (review.steps ?? []).forEach((step, index) => {
     if (!text(step.text)) errors.push(`step ${index + 1} has no "text"`);
     refs(`step ${index + 1}`, step.findings, findings, "finding");
@@ -222,8 +297,10 @@ export function check(review, files, directory) {
     if (!text(scenario.expect)) errors.push(`${name} has no "expect"`);
     refs(name, scenario.requirements, requirements, "requirement");
   });
-  for (const [index, idea] of (review.ideas ?? []).entries())
+  for (const [index, idea] of (review.ideas ?? []).entries()) {
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
+    if (idea.sources !== undefined) sourceFaults(`idea ${index + 1}`, idea.sources, `/ideas/${index}`);
+  }
   // A question is named by its place in the list, from 1.
   const qList = review.questions ?? [];
   const questions = new Set(qList.map((_, index) => index + 1));
@@ -252,9 +329,13 @@ export function check(review, files, directory) {
     }
     // Variants that combine are marked so; the owner may then take several, and the recommendation may name several.
     if (q.multiple !== undefined && (q.multiple !== true || q.kind !== "decision")) errors.push(`${who}: multiple is only for a decision whose variants combine, and only true`);
+    // A choice comes with the reviewer's opinion tied to a variant, or the plain word that there is none.
+    if (q.kind === "decision" && q.recommendation === undefined) errors.push(`${who} is a decision with no recommendation: name the variant you recommend, or open its text with «${NO_CLEAR.en}»`);
     if (q.recommendation !== undefined) {
       const w = `${who} recommendation`;
       if (!text(q.recommendation?.text)) errors.push(`${w} has no text`);
+      else if (q.kind === "decision" && q.recommendation.variant === undefined && q.recommendation.variants === undefined && !Object.values(NO_CLEAR).some((x) => q.recommendation.text.startsWith(x)))
+        errors.push(`${w} names no variant: name the one you recommend, or open its text with «${NO_CLEAR.en}» and give the rule`);
       if (q.recommendation?.variant !== undefined && !variantIds.has(q.recommendation.variant)) errors.push(`${w} names variant "${q.recommendation.variant}", which is not listed`);
       const several = q.recommendation?.variants;
       if (several !== undefined) {
@@ -310,6 +391,8 @@ export function check(review, files, directory) {
     if (!OUTCOMES.includes(c.outcome)) errors.push(`${who}: outcome is one of ${OUTCOMES.join(", ")}`);
     for (const field of ["point", "note"]) if (!text(c[field])) errors.push(`${who} has no "${field}"`);
     if (c.outcome === "rejected" && !text(c.at)) errors.push(`${who} is rejected and "at" cites no place that refutes it; name the place, or send it to the owner`);
+    // The reviewer's own candidate is recorded only when it was set aside: one that holds is a finding, a question or an idea.
+    if (c.from === "reviewer" && c.outcome !== "rejected") errors.push(`${who} is the reviewer's own candidate: record it only when you set it aside on a place, as rejected; one that holds is a finding, a question or an idea`);
   });
 
   (review.screens ?? []).forEach((screen, index) => {
@@ -424,8 +507,10 @@ export function check(review, files, directory) {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
     if (block.kind !== undefined && !BLOCK_KINDS.includes(block.kind)) errors.push(`${name}: kind is one of ${BLOCK_KINDS.join(", ")}`);
     if (!file) return errors.push(`${name}: "${block.path}" is not a file of the diff`);
-    // What a block does is written where it asks for something; a kept block's lines speak for themselves.
-    if (block.verdict !== "keep" && !text(block.does)) errors.push(`${name} has no "does": say what a block not kept does`);
+    // Every block says what it does and why it is there: the owner reads the kept ones to understand the change too.
+    if (!text(block.does)) errors.push(`${name} has no "does": say what it does and why it is there, or that no source gives a reason`);
+    // A large block that is one decision says why; the critic reads it and may divide the block.
+    if (block.whole !== undefined && !text(block.whole)) errors.push(`${name}: "whole" says why the block is one decision, or is left out`);
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
@@ -446,6 +531,65 @@ export function check(review, files, directory) {
     }
     if (!own) errors.push(`${name} covers no changed line of ${block.path}`);
   });
+
+  // A carried block was not read again: it holds the very lines of a block the previous record kept, which the check
+  // proves from that record and its saved diff, and it stays kept.
+  const carried = review.blocks.map((b, i) => [b, i]).filter(([b]) => b.carried !== undefined);
+  for (const [b, i] of carried) {
+    if (b.carried !== true) errors.push(`block ${i + 1}: carried is true, or left out`);
+    else if (b.verdict !== "keep") errors.push(`block ${i + 1} is carried and not kept: a block carried from the previous record is kept as it was; judge it again, and it is not carried`);
+  }
+  const prev = review.previous !== undefined ? previousOf(review, directory) : null;
+  if (prev?.fault) errors.push(`"previous" cannot be read: ${prev.fault}`);
+  if (carried.some(([b]) => b.carried === true)) {
+    if (!prev) errors.push(`carried blocks cannot be proven: "previous" names no record`);
+    else if (!prev.fault) {
+      const kept = new Set(prev.review.blocks.map((b, i) => b.verdict === "keep" ? `${b.path}\n${blockLines(prev.files, prev.owner, i, b.path)}` : null).filter(Boolean));
+      for (const [b, i] of carried) if (b.carried === true && !kept.has(`${b.path}\n${blockLines(files, owner, i, b.path)}`))
+        errors.push(`block ${i + 1} is marked carried, and no block the previous record kept has its lines: read it and judge it, and it is not carried`);
+      staleCarried(review, files, owner, prev).forEach((why, i) => { if (why) errors.push(`block ${i + 1} is marked carried, and ${why}: read it and judge it, and it is not carried`); });
+    }
+  }
+  // A reply answers a comment the owner made on the previous review, at the place that comment had there.
+  if (review.replies !== undefined && !Array.isArray(review.replies)) errors.push(`"replies" is not a list`);
+  (Array.isArray(review.replies) ? review.replies : []).forEach((x, index) => {
+    const who = `reply ${index + 1}`;
+    for (const field of ["comment", "place", "text"]) if (!text(x?.[field])) errors.push(`${who} has no "${field}"`);
+    sourceFaults(who, x?.sources, `/replies/${index}`);
+  });
+
+  // A route follows one behaviour through its blocks in the order it runs: each step's role there, and from the second
+  // on how it gets what the step before produced.
+  if (review.routes !== undefined && !Array.isArray(review.routes)) errors.push(`"routes" is not a list`);
+  (Array.isArray(review.routes) ? review.routes : []).forEach((route, index) => {
+    const who = `route ${index + 1}`;
+    if (!text(route?.title)) errors.push(`${who} has no "title": name the behaviour it follows`);
+    if (route?.requirements !== undefined && !Array.isArray(route.requirements)) errors.push(`${who}: requirements is not a list`);
+    else refs(who, route?.requirements, requirements, "requirement");
+    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several blocks`); return; }
+    route.steps.forEach((step, k) => {
+      const w = `${who} step ${k + 1}`;
+      if (!Number.isInteger(step?.block) || step.block < 1 || step.block > review.blocks.length) errors.push(`${w} names block ${step?.block}, which is not listed`);
+      if (!text(step?.role)) errors.push(`${w} has no "role": what its block does for this behaviour`);
+      if (k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+    });
+  });
+
+  // Code kept only for requirements to confirm stays because of a proposal nobody has accepted: a question names each
+  // such requirement, so the owner confirms it or lets it go; one decision whose variants combine can ask for all of them.
+  const asked = askedAbout(review);
+  const unconfirmed = new Set();
+  review.blocks.forEach((block) => {
+    const served = (block.serves ?? []).map((id) => review.requirements.find((r) => r.id === id)).filter(Boolean);
+    if (block.verdict === "keep" && served.length && served.every((r) => SOURCES.includes(r.source) && !ESTABLISHED.has(r.source))) for (const r of served) if (!asked.has(r.id)) unconfirmed.add(r.id);
+  });
+  for (const id of unconfirmed) warnings.push(`requirement ${id} is to confirm, and kept code serves only such requirements: ask the owner in a question that cites it (one decision whose variants combine can ask for several)`);
+  // A requirement many blocks serve reads as a long list; a route says what role each block plays.
+  const routed = new Set((Array.isArray(review.routes) ? review.routes : []).flatMap((r) => Array.isArray(r?.requirements) ? r.requirements : []));
+  for (const r of review.requirements) {
+    const n = review.blocks.filter((b) => Array.isArray(b.serves) && b.serves.includes(r.id)).length;
+    if (n > 8 && !routed.has(r.id)) warnings.push(`requirement ${r.id} is served by ${n} blocks and no route follows it: follow it through a route, so each block's part in it shows`);
+  }
 
   for (const file of files) {
     const loose = changedLines(file).filter((l) => !blank(l) && !owner.has(`${file.path}\n${address(l)}`));
@@ -478,11 +622,13 @@ export function modelOf(review, files, owner, directory) {
   const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
   // A requirement's one state, in this order: a permission is never met, a finding that breaks it outweighs the
   // reviewer's «met», and whatever is left is not checked.
+  // The established requirements first, then the ones to confirm, each in the record's order: every rendering lists them so.
   const requirements = review.requirements.map((r) => {
     const broken = naming("breaks", r.id);
     return { ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)), broken, untested: naming("untested", r.id),
-      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked" };
+      state: r.permission ? "permission" : broken.length ? "fail" : r.met ? "met" : "unchecked", established: ESTABLISHED.has(r.source) };
   });
+  requirements.sort((a, b) => b.established - a.established);
   // The lines of some blocks under each block verdict: what a unit or the whole change holds of each.
   const linesOf = (list) => Object.fromEntries(VERDICTS.map((v) => [v, list.filter((b) => b.verdict === v).reduce((sum, b) => sum + b.size, 0)]));
   const unit = (u) => { const own = blocks.filter((b) => b.unit === u.name); return { ...u, uses: u.uses ?? [], findings: u.findings ?? [], questions: u.questions ?? [], blocks: own, lines: linesOf(own) }; };
@@ -515,10 +661,12 @@ export function modelOf(review, files, owner, directory) {
   // Code kept for no requirement, or only for assumed ones, is where a convenience of the author's stays unasked:
   // the check warns about both, and the page lists them for the reviewer.
   const kept = blocks.filter((b) => b.verdict === "keep");
-  const assumed = (b) => b.serves.length && b.serves.every((id) => review.requirements.find((r) => r.id === id)?.source === "assumption");
+  const asked = askedAbout(review);
+  const assumed = (b) => b.serves.length && b.serves.every((id) => !ESTABLISHED.has(review.requirements.find((r) => r.id === id)?.source)) && b.serves.some((id) => !asked.has(id));
   return { blocks, scenarios, mechanisms: weighed, together: combinedWeight(weighed, blocks), requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
     questions, files: fileMeta, counters,
     unasked: { unlinked: kept.filter((b) => !b.serves.length).map((b) => b.id), assumed: kept.filter(assumed).map((b) => b.id) },
+    carried: blocks.filter((b) => b.carried === true).map((b) => b.id),
     purpose: { file: Object.fromEntries(fileMeta.map((f) => [f.path, f.purpose])), block: blockPurpose, counts: purposeCounts }, blockFile,
-    key: createHash("sha256").update(JSON.stringify(review)).digest("hex").slice(0, 10) };
+    key: keyOf(review) };
 }

@@ -230,7 +230,9 @@ test("the page carries its runtime, its styles, its catalog and each row's code 
   once(html, CSS, "the stylesheet");
   once(html, JSON.stringify(island.labels), "the catalog");
   const besides = html.length - codeOf(html).join("").length;
-  assert.ok(besides <= 320 * 1024, `the themed page carries ${besides} bytes besides its code`);
+  // The bound grew with routes, selection comments, carried answers and the shared screen box (PR 109): it catches a part
+  // carried twice, not the page's own growth.
+  assert.ok(besides <= 360 * 1024, `the themed page carries ${besides} bytes besides its code`);
   // 30 files, each changed in five hunks of three context lines, four removed and six added, and three more context.
   const FILES = 30, HUNKS = 5, lines = [], blocks = [];
   const source = (f, i, side) => `  const ${side}${f}_${i} = compute(${i}, "text ${f}", { mode: ${i % 3} });`;
@@ -249,7 +251,7 @@ test("the page carries its runtime, its styles, its catalog and each row's code 
   const diff = lines.join("\n") + "\n";
   const mixed = { title: "Mixed", range: "generated", language: "en", diff: { file: "mixed.diff", sha256: createHash("sha256").update(diff).digest("hex") },
     change: { goal: "Modules.", parts: ["Thirty."], sources: ["generated"] }, verdict: "Generated.", now: "Now.", target: "Target.", recommendation: "Read it.",
-    requirements: [{ id: 1, text: "Every module computes.", source: "task", met: "read" }], blocks, challenges: [], coverage: "Generated.",
+    requirements: [{ id: 1, text: "Every module computes.", source: "task", met: "read", sources: [{ at: "generated", quote: "every module computes" }] }], blocks, challenges: [], coverage: "Generated.",
     findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/mod1/file1.js:20", what: "What.", shown_by: "The line.", fix: "Fix." }],
     questions: [{ at: "src/mod0/file0.js:1", text: "Keep it?", kind: "fact" }] };
   const page = draw(mixed, diff).html;

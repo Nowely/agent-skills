@@ -17,13 +17,16 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    Scaffold never replaces a record or saved diff: to start over, delete both.
 2. Fill in the rest as the analysis goes. A block that holds two decisions is divided: copy it and split its line
    ranges between the copies; a copy left with only removed lines drops `added`, and one with only added lines drops
-   `removed`. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
+   `removed`. A large block that is one decision — a column dropped from every row of a table, one rename through a
+   file, a generated file — says why in `whole`, and the critic may still divide it. `node "<skill-dir>/scripts/report.mjs" lines <out>/review.json` prints every changed line of the saved
    diff with the address a block uses. Places cited anywhere in the record are at the state `range` names unless marked `(base)`.
+   What the review quotes from the conversation — the owner's task, a decision, the author's description or a
+   session's hand-off — is saved beside the record (`task.md`, `discussion.md`, `description.md`) and quoted from there.
    A generated file is one block, as [generated files](#generated-files) says.
 3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
-   about a large block given one verdict, about kept blocks that serve no requirement or only assumed ones, and
-   about a kept unit holding an open block; for the decision-card fields, about a source named but unreachable, an
+   about a large block given one verdict without `whole`, about kept blocks that serve no requirement or only requirements to confirm no
+   question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
 4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict,
@@ -35,7 +38,8 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;
-new evidence that changes a conclusion makes a revised record, named as such.
+new evidence that changes a conclusion makes a revised record, named as such, made as a [continuation](#the-next-revision)
+of the same diff, so the owner's answers to the items it leaves unchanged come with it.
 
 ## Format
 
@@ -49,17 +53,21 @@ new evidence that changes a conclusion makes a revised record, named as such.
       "target": "the cleanest solution, by the design standard",
       "recommendation": "accept, fix in place or rewrite as the target, in a sentence",
       "steps": [{ "text": "what to do first", "findings": [1] }],
-      "requirements": [{ "id": 1, "text": "...", "source": "task" },
+      "requirements": [{ "id": 1, "text": "...", "source": "task", "sources": [{ "at": "task.md:3", "quote": "the task's sentence" }] },
                        { "id": 2, "text": "...", "source": "discussion", "met": "read", "not_checked": "how it looks on screen",
-                         "doubt": "what contradicts it" },
-                       { "id": 3, "text": "the contract may change outside legacy", "source": "discussion", "permission": true }],
+                         "doubt": "what contradicts it", "sources": [{ "at": "discussion.md:8", "quote": "the owner's word" }] },
+                       { "id": 3, "text": "the contract may change outside legacy", "source": "discussion", "permission": true,
+                         "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] },
+                       { "id": 4, "text": "older links keep working", "source": "author",
+                         "sources": [{ "at": "description.md:5", "quote": "restores older links" }] }],
       "findings": [{ "id": 1, "title": "what is wrong, and no test would catch it", "direction": "behavior", "evidence": "read",
                      "at": "path:line", "what": "...", "shown_by": "the caller at path:line", "fix": "...", "breaks": [1], "untested": [1] },
                    { "id": 2, "title": "a size rule cannot change without reading the writes", "direction": "design", "evidence": "judgment",
                      "at": "path:line", "what": "...", "shown_by": "scenario 1", "fix": "...", "scenarios": [1] }],
       "checks": [{ "from": "the state to start from", "do": ["the first step", "the next"], "expect": "what a person sees",
                    "requirements": [2] }],
-      "ideas": [{ "title": "the idea", "at": "path:line", "text": "what it gains and what it costs" }],
+      "ideas": [{ "title": "the idea", "at": "path:line", "text": "what the code does now and why, what is proposed, the burden it removes and its cost",
+                  "sources": [{ "ref": "/mechanisms/0" }] }],
       "screens": [{ "name": "the screen and its state", "mockup": "https://...", "before": "before.png", "after": "after.png",
                     "differences": [{ "what": "how the result differs from the mockup", "why": "the reason given" },
                                     { "what": "a difference nothing explains", "finding": 1 }],
@@ -83,6 +91,9 @@ new evidence that changes a conclusion makes a revised record, named as such.
                    "does": "...", "serves": [1], "verdict": "remove", "findings": [1] },
                  { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
                    "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
+      "routes": [{ "title": "an upload gets its thumbnails", "requirements": [2],
+                   "steps": [{ "block": 1, "role": "picks the sizes" },
+                             { "block": 2, "role": "writes each size", "via": "the sizes storeUpload returns, src/a.js:16" }] }],
       "challenges": [{ "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" }],
       "questions": [{ "at": "path:line", "text": "which behavior to keep", "kind": "decision", "resolver": "owner",
                       "context": [{ "text": "what the code does now", "sources": [{ "ref": "/blocks/0" }] }],
@@ -97,6 +108,9 @@ new evidence that changes a conclusion makes a revised record, named as such.
                       "zones": [{ "text": "the narrow widths", "sources": [{ "ref": "/coverageStructured/0" }] }] }],
       "tradeoffs": [{ "text": "the omission the owner accepted", "consequence": "what remains unknown or lost",
                       "sources": [{ "at": "discussion.md:12", "quote": "the owner's word" }] }],
+      "previous": { "record": "previous/review.json", "sha256": "the previous record's digest" },
+      "replies": [{ "comment": "the owner's comment, from the export", "place": "src/a.js:12, as the export named it",
+                    "text": "the answer", "sources": [{ "at": "src/a.js:14", "quote": "the line" }] }],
       "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123",
                                "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
@@ -106,7 +120,8 @@ new evidence that changes a conclusion makes a revised record, named as such.
 
 ## Comparison pass
 
-Freeze the checked full draft and the saved diff before handing them to the reader. Run from the directory of the approved project toolchain:
+Freeze the checked full draft and the saved diff before handing them to the reader. Without an approved reader the
+reviewer is it, stage by stage — staged self-review — and keeps each stage's ledger itself. Run from the directory of the approved project toolchain:
 
     node "<skill-dir>/scripts/report.mjs" comparisons <out>/review.json <base-root> <head-root> > <out>/comparisons.json
 
@@ -120,9 +135,18 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 
 ## Fields
 
-- **Requirements.** `source`: `task`, what the task states; `discussion`, a decision made while the work was discussed;
-  `project`, a rule of the project instructions named with its place, such as a version bump or docs that say what the code does;
-  `question`, a point left open; `assumption`, yours or the author's. `met`: `ran`, executed and seen, or `read`,
+- **Requirements.** `source` is where it comes from, and that decides whether it binds. Established: `task`, what
+  the task states; `discussion`, a decision the owner made while the work was discussed or answered on a page;
+  `project`, a rule of the project instructions, such as a version bump or docs that say what the code does. To
+  confirm: `author`, what only the author's account states — the description, commits or a session's hand-off;
+  `contract`, an existing behaviour or interface the change may need to keep, such as a default a consumer relies on;
+  `assumption`, your reading of the task's words; `question`, a point left open. Behaviour the code implements is
+  never a requirement because the code implements it: what only the implementation shows is a mechanism whose
+  `basis` says so. `sources`, in the [one format](#sources), show where it is stated; an established requirement
+  quotes it — the task's sentence, the owner's word, the project's rule — or cites the screen it comes from, a
+  mockup whose authority the task gives, and `check` refuses one that does neither. Kept code that serves only
+  requirements to confirm is asked about: a question cites each of them, one decision whose variants combine
+  asking for several, and `check` warns otherwise, as it does for kept code that serves no requirement. `met`: `ran`, executed and seen, or `read`,
   followed in the code; left out when unchecked or broken by a finding. A part not checked, such as how it looks,
   goes in `not_checked`, not in `text`. `doubt` says what in the code or a contract contradicts a requirement.
   `permission: true` marks a permission, not an obligation: the source alone does not express that difference,
@@ -133,7 +157,9 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   `shown_by` is the evidence. A candidate without evidence becomes a question only when settling it could change a conclusion or next action.
   `breaks` lists requirements shown unmet. For a test gap, `untested` lists the requirements whose regression no test would catch.
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs.
-- **Ideas.** `title`, `text`, and `at` when the idea has a place.
+- **Ideas.** `title`, `text`, and `at` when the idea has a place. The text says what the code does now and why, with
+  its place, what is proposed instead, the burden it removes and what it costs; an idea is optional and never a
+  defect. `sources`, optional, cite what shows it, such as the mechanism it would replace.
 - **Scenarios.** Optional: a change grounded in the task walked through the code and the target, with the places
   edited and read in each (`now`, `target`); a finding may name them in `scenarios`.
 - **Units.** As written: `jobs`, `uses`, a `verdict` of `keep`, `fix`, `split`, `merge`, `remove` or `question`, its
@@ -147,12 +173,25 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   block listed then names its own `kind`: `code`, `test` or `other`; a block two mechanisms list is shown as shared, and a block that
   mixes other work, shared imports included, is left out. Weigh the mechanisms specified in [Analyse](../SKILL.md#analyse); with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
-- **Blocks.** `path`, `added` and `removed` line ranges, `serves` (requirement ids), `verdict`, `unit`, and `does`,
-  which a kept block may leave out.
+- **Blocks.** `path`, `added` and `removed` line ranges, `serves` (the ids of the requirements the block exists for: one
+  it implements, tests or wires in, its `does` saying which — never one it merely sits beside), `verdict`, `unit`,
+  and `does`:
+  what the block does and why it is there, read from its lines and the code around them, with the reason the task, a
+  requirement or the code gives — or the plain statement that no source gives one, never a guess. A kept block needs
+  it as much as an open one: the owner reads it to understand the change, not only to decide.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`. `remove` means the
-  target has no such code: work that belongs in another change keeps its verdict, and a step moves it.
+  target has no such code: work that belongs in another change keeps its verdict, and a step moves it. `whole`,
+  optional, says why a block of many lines is one decision; the printout gives it to the checking agents.
+- **Routes.** One for each behaviour the change adds or alters that runs through more than one block — where its
+  data is produced, transformed and used, or how a request reaches its effect. `title` names the behaviour,
+  `requirements` the ids it serves, and `steps` lists its blocks (numbers from 1) in the order the behaviour runs,
+  each with its `role` there and, from the second step on, `via`: how it gets what the step before produced — a
+  call, a return, an event, a stored value — with its place. Order, roles and connections are not in the diff, so the
+  reviewer writes them; the page lets the owner walk a route with its code beside it.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
-  between the two targets is from `target`; for a point two raise, the first, the note naming the other), `point`,
+  between the two targets is from `target`; for a point two raise, the first, the note naming the other; `reviewer`
+  for a candidate of your own you set aside on a place in the code, always `rejected`, so the owner sees it was
+  considered), `point`,
   `outcome` and `note`. `accepted` notes what it changed; `rejected` names in `at` the place that refutes it, and
   the note quotes it. For `owner`, the note names the fact, evidence or decision that would settle it and what depends on it.
 - **Screens.** Only for a visual question: the `mockup`, `before` and `after` pictures given, the `differences` with
@@ -163,11 +202,12 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Questions, coverage.** What is unexplained and what would settle it; what was read, what was not, where each
   contract was read, and any check that did not run. The optional fields of a question turn it into a card the
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
-  `coverageStructured`, optional, lists the same coverage as authored statements — `kind` of `ran`, `read` or
+  `coverageStructured` lists the coverage as statements — `kind` of `ran`, `read` or
   `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
   warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
-  never reads a status such as "tests passed" or "merge-ready" out of the prose. Without it the page shows
-  `coverage`.
+  never reads a status such as "tests passed" or "merge-ready" out of the prose. The page's Coverage is built
+  from them, what was not checked first; without them it shows `coverage` alone, as written. Write them whenever
+  anything ran, was read or was left unchecked: they are how the owner sees how far the review reaches.
 - **Tradeoffs.** Optional: an omission the owner accepted, with its `text`, its `consequence` (what remains unknown
   or lost) and `sources`. A proposal to drop a binding requirement stays a question until its owner accepts it.
 - **Passport.** Optional: where the change lives — `links` (each a `kind`, a `label` and an http(s) `url`),
@@ -184,9 +224,10 @@ Every analytical claim added by the fields below carries `sources`, a list in on
 - `{ "ref": "/requirements/0" }` — internal: a zero-based index into a list of this record (`/findings/1`,
   `/questions/2`, `/mechanisms/0`, `/blocks/3`, ...). The check resolves it mechanically; a ref that names nothing
   is a fault. There is no shared registry of sources.
-- `{ "at": "logs/test.txt:12", "revision": "abc123", "quote": "..." }` — external: the place is required; the
-  revision is required for a claim about a checked version, and the quote is what makes the claim travel without
-  the file. A source named but unreachable, or external without a quote, is a warning, not a fault.
+- `{ "at": "logs/test.txt:12", "revision": "abc123", "quote": "..." }` — external: the place is required, a file
+  beside the record or a place in the repository at the state `range` names; the revision is required for a claim
+  about a checked version, and the quote is what makes the claim travel without the file. A ref that names nothing is
+  a fault; an external source without a quote is a warning.
 
 A source shows the claim. A ref to the entry that makes it — a question cited for its own variant's consequence, a
 screen for its own provenance — says only where the claim stands, and the check refuses it.
@@ -200,20 +241,28 @@ A question is a card: `decision` (a choice), `fact` (a fact to settle) or `evide
 obtain). The required `kind` comes from what the question asks, never from its number. The required `text` and
 `at` give the question and place; the card can also include:
 
-- `resolver`: the role that answers, when naming one helps; questions group by kind first.
-- `context`: self-contained facts — what happens now, what was before or in the mockup, what the owner already
-  decided, the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`.
+- `resolver`: the role that answers, when naming one helps; questions group by kind first. Where you have a
+  concrete reason to doubt that this analysis suffices — a dependency you could not read, a design judgement the
+  targets or the critic dispute and the code does not settle — an `evidence` card whose resolver is another reviewer
+  or model asks for one: what is uncertain, which code or question needs the look, and why it may help. Its return is
+  evidence to check, never a verdict.
+- `context`: self-contained facts — what happens now, how the state in question arises and what is known of how
+  often, how the nearest comparable code behaves, what was before or in the mockup, what the owner already decided,
+  the boundary (screen, state, width, consumer), what was read in code versus run. Each with `sources`. For a choice
+  about an interface, how comparable products behave belongs here too when the plan allows the web, cited by URL;
+  otherwise the context says that no comparison outside the project was made.
 - `variants`: the choices of a decision, at least two, each a local stable `id` (not a localized text), a `text`,
-  and `consequences` with `sources`: behavior, code and PR size, tests and evidence needed, the fate of child
-  questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
+  and `consequences` with `sources`: behavior and what the user sees, code and PR size, tests and evidence needed,
+  the fate of child questions, residual risk. Only confirmed consequences; no invented ones. `check` refuses a decision with fewer
   than two variants or a variant without consequences.
 - `multiple: true`: the variants combine, and the owner may take one or several; without it they exclude each other.
   Set it when one answer could not say the combination the owner may want, which they would otherwise write in their
   own words, unmatched to the variants.
-- `recommendation`: always the reviewer's opinion — `text`, an optional `variant` it recommends (or, where the
-  variants combine, the `variants` it recommends together), and `sources`.
-  Where the data leaves no clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear
-  recommendation» and gives the conditional rule, and no `variant` or `variants` is named.
+- `recommendation`: always the reviewer's opinion — `text`, the `variant` it recommends (or, where the variants
+  combine, the `variants` it recommends together), and `sources`; a decision needs one. Where the data leaves no
+  clear recommendation, `text` opens with «Однозначной рекомендации нет» / «No clear recommendation» and gives the
+  conditional rule, and no `variant` or `variants` is named; `check` refuses a decision's recommendation that does
+  neither.
 - `remainingEvidence`: the numbers of `evidence` questions this decision does not replace. A decision never closes
   an evidence question.
 - `parent`: `{ "question": N, "variants": ["id", ...] }` — the child applies while the parent has no variant in
@@ -234,7 +283,7 @@ is the owner's input, not a checked result. Decisions are never carried between 
 ## The page
 
 `report.mjs render` writes the page from the record and the saved diff alone, never a new record field. The owner
-answers each item on it and exports the answers as schema 7: proposals for the next step, not edits to the source.
+answers each item on it and exports the answers as schema 8: proposals for the next step, not edits to the source.
 
 The export is one payload behind the page's preview, its text and its JSON: the record's and the diff's
 digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
@@ -242,7 +291,9 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 `take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
 `zones`, and `waiting_for_parent` while an ancestor whose answer decides whether the item applies is still open.
 `lineComments` anchor a comment to a line of the saved diff the digest names (`path`, `side` `head` or `base`,
-`line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment never
+`line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment made on
+a selection also keeps what was selected: on several lines the last as `end`, the characters as `from` in the first
+line, or in the field's text as the page shows it, and `to` in the last, and the words as `quote`. A comment never
 answers an item.
 
 The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
@@ -254,9 +305,9 @@ owner's own session or orchestrate's fix round; the review applies none of it. A
 A review of a new revision of a change already reviewed and answered starts from three inputs its plan names: the
 previous record with its saved diff, the owner's export of it, and the previous base and head. Without them the
 review is a fresh one, and the plan says so. It is a new record, not a revised one, in a new `<out>`: copy the
-previous record, its saved diff and the export into `<out>/previous/`, so what cites them resolves beside the record
-and the checking agents can read them. Cite them by `at` with a quote — the record by file and line, the export by
-its file alone, since it is one line of JSON — because a `ref` resolves in this record. The export's
+previous record, its saved diff, its comparison inventory and the export into `<out>/previous/`, so what cites them resolves beside the record
+and the checking agents can read them. Cite them by `at` with a quote, by file and line — `previous/export.json:14`,
+`"item": "f2"` — because a `ref` resolves in this record. The export's
 keys are places in the previous record — questions and ideas by number, findings by id — so it is read with it, and
 only when its `record_sha256` is the sha256 of that `review.json`; otherwise ask for the matching pair. A key the
 record does not hold is left out, and the response says so. A short review applies the same rules in its response.
@@ -264,12 +315,42 @@ record does not hold is left out, and the response says so. A short review appli
 - Read what changed since the previous head first — `git diff <previous head>..<head>` when the base stayed,
   `git range-diff <previous base>..<previous head> <base>..<head>` when it moved, the previous saved diff against
   this one when the old commits are gone — then the whole diff, and say in `coverage` how the change since was read.
-  The record covers the whole diff, as any record does, and the page needs nothing new.
+  The record covers the whole diff, as any record does.
+- **A continuation** reads only what changed. The plan offers it when the previous review was whole, the base stayed
+  or the range-diff shows the change's own commits unaltered, no manifest or lock file changed since, and no answer
+  changed a requirement the previous analysis rested on; the plan names what it skips, and anything else makes the
+  review whole. After `scaffold`, `node "<skill-dir>/scripts/report.mjs" carry <out>/previous/review.json
+  <out>/review.json` takes over each previous block whose changed lines read the same, in the same order and found
+  once: a block the previous record kept stays kept, marked `carried`, not read again; one it did not keep keeps its
+  description and is judged again. The previous requirements come with them, by their ids, so a carried block serves
+  what it served; each is checked again, and the export's answers add their own. So do the units and target units,
+  a unit the previous record did not keep left without a verdict to judge, the mechanisms with their carried blocks,
+  and each route whose every step was carried, renumbered; what pointed at the previous findings and questions is
+  this review's to write; a carried requirement's `met` and `doubt` and a unit's verdict are this review's to give
+  again. The comparison inventory covers the whole diff: a key whose witnesses read as before keeps the previous
+  decision, and one that pointed at a previous finding, question or idea by `ref` keeps it as `settled` text naming
+  that item by its words. `previous` names the record they
+  came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
+  block is kept for the code around it too, so `carry` and `check` carry it only while that stands: a block of a unit
+  that changed — a block of it read again, changed or gone — or that uses one that did, at any remove through `uses`,
+  is read again, its unit judged again with its reason; so is a block with no unit in a file that holds a block read
+  again. Give a unit to code another file depends on, or it is carried by its own file alone. A carried requirement's
+  source that pointed into the previous record by `ref` would name another entry here: `carry` leaves it out and says
+  so, and a requirement left with no source is cited again. While
+  the base and the requirements stand the independent target is not started again; the comparison pass, the critic
+  and the verifier take the change since and the claims new or changed. A revised record at the same head — new
+  evidence, the same diff — is a continuation whose change since is empty: there the page offers the answers this
+  browser kept for the previous report on the items that read exactly the same in full — a conditional question under
+  a parent that reads the same in full and the same variants — never by number; a record of
+  a new revision takes the owner's answers through the export, as below.
+- **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
+  it, `text` and `sources`. Decisions › Comments lists them at the place the comment had, never placed in this diff.
 - Each previous answer goes into this record's own fields; none is carried by number, and a previous item is named
   by its words — a question by its text, a finding or idea by its title — since its key names another item here:
   - an answer in effect that asks for something — a variant or several, «Fix it», «Take it» — is a requirement with
-    `source: "discussion"`, its `text` naming the previous item and the answer: `met` when the new revision does it,
-    and a finding that breaks it when it does not. Summary's requirements then say what the revision did with each
+    `source: "discussion"`, its `text` naming the previous item and the answer, sourced at the export with the answer
+    quoted: `met` when the new revision does it,
+    and, when it does not, a finding that breaks it, or for a test still missing one that leaves it `untested`. Summary's requirements then say what the revision did with each
     decision;
   - «Leave it» or «Skip it» is a `tradeoff` with its `consequence`, sourced at the export with the answer quoted. The
     review does not raise that finding or idea again unless the new revision changes its premise, and then the
@@ -297,7 +378,7 @@ adds is itself a change to judge, and the file is read.
 
 - Replace the file's scaffolded blocks with one whose `added` and `removed` each span the file, such as `1-4210`:
   unchanged lines in a range are ignored, and `all` is only for a block to remove. It needs no unit. Skip its part of
-  the `lines` printout. Its `does` names this section, which answers the check's warning about a large block.
+  the `lines` printout. Its `does` names this section, and its `whole` says the file is judged as one.
 - A lock file reflects each dependency the manifest adds, removes or moves to another range. A package fetched from
   outside the project's registries — a host in a field such as `resolved`, `tarball`, `source` or `remote`, a git,
   file or `http:` URL — or a hash (such as `integrity`, `checksum`, `h1:` or `hash`) changed while its version did

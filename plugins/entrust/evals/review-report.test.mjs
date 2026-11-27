@@ -178,6 +178,218 @@ test("the printout presents the verdict, current solution, target and recommenda
     return positions.every((pos, i) => pos >= 0 && (i === 0 || pos > positions[i - 1])) || "summary order differs";
   });
 
+test("the printout lists each route's steps in order, each with its block, place, role and how it gets its input, and each requirement with its origin and quote",
+  "the critic and the verifier read the printout: a route or a requirement's source they cannot see is one they cannot check",
+  () => {
+    const out = render((r) => { r.requirements[2].source = "author"; }).stdout;
+    if (!/- B3 `test\/outputs\.test\.js:[^`]+`: Tests the three outputs\. Serves requirement 1\. Keep\./i.test(out)) return `a kept block's description is not in the printout: ${out.slice(out.indexOf("## "), out.indexOf("## ") + 0)}${out.slice(-1500)}`;
+    const route = /## How it works\n### An archived invoice shows its currency in upper case \(requirement 1\)\n1\. B1 `src\/invoices\/archive\.js:[^`]+`: Converts the code while it reads each row\.\n2\. B3 `test\/outputs\.test\.js:[^`]+`: Checks the three outputs of the conversion\. Gets it from: readArchive's return/.test(out);
+    const req = /3\. A requirement that fails\. \(proposed by the author, to confirm; [^)]*\) — TASK-9 “wherever a price is shown”/.test(out);
+    return route && req || out.slice(0, 1600);
+  });
+
+test("a candidate the reviewer set aside on a place is recorded as its own, so the owner sees it was considered",
+  "a smell another model raised could not be told apart: missed, set aside, or recorded where no one looks",
+  () => {
+    const done = render((r) => { r.challenges.push({ from: "reviewer", point: "The reader finds the display by its CSS class.", outcome: "rejected", at: "src/invoices/archive.js:4", note: "It reads its own rows; no class is involved." }); });
+    if (done.status !== 0) return done.stderr;
+    return /4\. reviewer's own candidate: The reader finds the display by its CSS class\. Rejected: .*src\/invoices\/archive\.js:4/.test(done.stdout) || done.stdout.slice(done.stdout.indexOf("## Challenges"), done.stdout.indexOf("## Challenges") + 600);
+  });
+
+test("carry takes over the previous record's blocks whose lines read the same: a kept one stays kept and is marked carried, one to fix is judged again, and check proves each carried block from the previous record",
+  "a follow-up review re-read and re-judged every block, so each turn of the cycle paid a full review, and nothing could show which parts were read again",
+  () => {
+    // the previous review, beside its saved diff, under previous/; then a fresh scaffold of the same change
+    const dir = fs.mkdtempSync(path.join(run, "continuation-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    fs.writeFileSync(path.join(prev, "source.diff"), generated.stdout);
+    for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(prev, name));
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(REVIEW));
+    const target = path.join(dir, "review.json");
+    const made = report("scaffold", patch, target);
+    if (made.status !== 0) return made.stderr;
+    const carried = report("carry", path.join(prev, "review.json"), target);
+    if (carried.status !== 0) return carried.stderr;
+    const record = JSON.parse(fs.readFileSync(target, "utf8"));
+    const kept = record.blocks.filter((b) => b.carried), judge = record.blocks.filter((b) => !b.carried && b.does);
+    // the previous requirements come with the blocks, so a carried block serves what it served
+    if (JSON.stringify(record.requirements.map((r) => [r.id, r.text])) !== JSON.stringify(REVIEW.requirements.map((r) => [r.id, r.text])) || record.requirements.some((r) => r.met)) return `requirements ${JSON.stringify(record.requirements)}`;
+    if (kept.length !== 2 || kept.some((b) => b.verdict !== "keep") || judge.length !== 1 || judge[0].verdict !== "" || judge[0].does !== "Tests it.") return `carried ${JSON.stringify(record.blocks)}`;
+    if (!/2 kept blocks carried unchanged/.test(carried.stdout)) return carried.stdout;
+    // the structure tied to the blocks comes with them: units as they were, the route whose every step came over
+    if (JSON.stringify(record.units.map((u) => [u.name, u.verdict ?? null])) !== JSON.stringify([["readArchive", "keep"], ["rows", null]])
+      || JSON.stringify(record.routes?.map((r) => r.steps.map((x) => x.block))) !== "[[1,3]]" || !/1 of 1 routes came with them/.test(carried.stdout))
+      return `structure ${JSON.stringify({ units: record.units, routes: record.routes })} ${carried.stdout}`;
+    // the reviewer fills the rest: the check accepts the carried blocks it can prove, and refuses one it cannot
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, previous: record.previous,
+      blocks: record.blocks.map((b) => b.carried ? b : { ...b, verdict: "fix", findings: [1] }) };
+    for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(dir, name));
+    fs.writeFileSync(target, JSON.stringify(filled));
+    const ok = report("render", target);
+    if (ok.status !== 0) return ok.stderr;
+    if (!/Carried from the previous review, not read again: B1, B3/.test(ok.stdout)) return ok.stdout.slice(-800);
+    const forged = { ...filled, blocks: filled.blocks.map((b, i) => i === 1 ? { ...b, verdict: "keep", carried: true, findings: undefined } : b) };
+    fs.writeFileSync(target, JSON.stringify(forged));
+    const refused = report("check", target);
+    if (refused.status !== 1 || !refused.stderr.includes("block 2 is marked carried, and no block the previous record kept has its lines")) return `a forged carried block passed: ${refused.stderr}`;
+    fs.writeFileSync(target, JSON.stringify({ ...filled, previous: { ...filled.previous, sha256: "0".repeat(64) } }));
+    const moved = report("check", target);
+    if (moved.status !== 1 || !moved.stderr.includes('"previous" cannot be read: the previous record "previous/review.json" is not the one')) return `a changed previous record passed: ${moved.stderr}`;
+    // a previous record that is not JSON is a fault of check, never a crash of render
+    fs.writeFileSync(path.join(prev, "review.json"), "not json");
+    fs.writeFileSync(target, JSON.stringify({ ...filled, blocks: filled.blocks.map(({ carried, ...b }) => b), previous: { ...filled.previous, sha256: createHash("sha256").update("not json").digest("hex") } }));
+    const broken = report("render", target);
+    return broken.status === 1 && broken.stderr.includes('"previous" cannot be read: the previous record "previous/review.json" is not JSON') || `an unreadable previous record: ${broken.status} ${broken.stderr}`;
+  });
+
+test("a reply to a previous comment keeps the place the comment had, needs its words and sources, and the printout lists every reply",
+  "a reply placed at a line of this diff by a quote the reviewer chose tells the owner the old comment's code is still there",
+  () => {
+    const reply = { comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "Because the archive keeps lower case.", sources: [{ at: "src/invoices/archive.js:2", quote: "The archive holds currencies in lower case" }] };
+    const listed = render((r) => { r.replies = [reply, { ...reply, comment: "And this?", place: "src/old.js:9" }]; });
+    if (listed.status !== 0) return listed.stderr;
+    if (!/## Replies to your comments on the previous review\n1\. src\/invoices\/archive\.js:4: «Why convert here\?» — Because the archive keeps lower case\. \(src\/invoices\/archive\.js:2/.test(listed.stdout)) return listed.stdout.slice(listed.stdout.indexOf("## Replies"), listed.stdout.indexOf("## Replies") + 400);
+    const thin = render((r) => { r.replies = [{ ...reply, text: " ", sources: [] }]; });
+    return thin.status === 1 && thin.stderr.includes('reply 1 has no "text"') && thin.stderr.includes("reply 1 names no source") || `a reply without words or sources passed: ${thin.stderr}`;
+  });
+
+test("kept code that serves only requirements to confirm is warned of until a question asks about them, as kept code that serves none is",
+  "an error here and a warning for unlinked code made unlinking the cheaper way to hide where a requirement came from",
+  () => {
+    const asked = render((r) => { r.blocks[0].serves = [3]; });
+    const unlinked = render((r) => { r.blocks[0].serves = []; });
+    return asked.status === 0 && asked.stderr.includes("warning: requirement 3 is to confirm, and kept code serves only such requirements") && asked.stderr.includes("kept blocks 1 serve only requirements to confirm")
+      && unlinked.status === 0 && unlinked.stderr.includes("serve no requirement")
+      || `${asked.status} ${asked.stderr} | ${unlinked.status} ${unlinked.stderr}`;
+  });
+
+// A continuation in a folder of its own: the previous record and diff under previous/, a scaffold of the new diff.
+function continuation(name, prevRecord, prevDiff, nextDiff) {
+  const dir = fs.mkdtempSync(path.join(run, `${name}-`)), prev = path.join(dir, "previous");
+  fs.mkdirSync(prev);
+  fs.writeFileSync(path.join(prev, "source.diff"), prevDiff);
+  fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(prevRecord));
+  const input = path.join(dir, "next.diff"), target = path.join(dir, "review.json");
+  fs.writeFileSync(input, nextDiff);
+  const made = report("scaffold", input, target);
+  if (made.status !== 0) throw new Error(made.stderr);
+  const carried = report("carry", path.join(prev, "review.json"), target);
+  if (carried.status !== 0) throw new Error(carried.stderr);
+  return { dir, target, out: carried.stdout, record: JSON.parse(fs.readFileSync(target, "utf8")) };
+}
+// A two-file change: a.js's total uses b.js's rate. The next revision changes only the rate.
+const RATE = (n) => [`diff --git a/src/b.js b/src/b.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/b.js", "@@ -0,0 +1,1 @@", `+export const rate = ${n};`,
+  `diff --git a/src/a.js b/src/a.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/a.js", "@@ -0,0 +1,2 @@", `+import { rate } from "./b.js";`, "+export const total = (n) => n * rate;", ""].join("\n");
+const sha = (text) => createHash("sha256").update(text).digest("hex");
+const twoUnits = (diffText, blocks) => ({ title: "Rates", range: "two commits", language: "en", diff: { file: "source.diff", sha256: sha(diffText) },
+  change: { goal: "Totals use a rate.", parts: ["A rate and a total."], sources: ["TASK-2"] }, verdict: "Done.", now: "Now.", target: "Same.", recommendation: "Accept.",
+  requirements: [{ id: 1, text: "A total uses the rate.", source: "task", sources: [{ at: "TASK-2", quote: "a total uses the rate" }] }], findings: [],
+  units: [{ name: "total", jobs: ["computes a total"], uses: ["rate"], verdict: "keep", reason: "One job." }, { name: "rate", jobs: ["holds the rate"], verdict: "keep", reason: "A constant." }],
+  blocks, challenges: [], coverage: "All of it." });
+
+test("a block carried by its own lines is read again when its unit uses a unit that changed, the changed unit is judged again, and check refuses such a block marked carried",
+  "a consumer whose producer changed in another file stayed carried and kept, and a changed unit kept its earlier verdict and reason",
+  () => {
+    const before = RATE(2), after = RATE(3);
+    const prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total, times the rate.", serves: [1], verdict: "keep" }]);
+    const c = continuation("dependency", prev, before, after);
+    const a = c.record.blocks.find((b) => b.path === "src/a.js"), units = Object.fromEntries(c.record.units.map((u) => [u.name, u.verdict]));
+    if (a.carried || a.verdict !== "" || a.does !== "The total, times the rate." || units.total !== "" || units.rate !== "" || !/0 kept blocks carried/.test(c.out))
+      return JSON.stringify({ a, units, out: c.out });
+    // marked carried by hand anyway, it is refused
+    const filled = { ...twoUnits(after, c.record.blocks.map((b) => b.path === "src/a.js" ? { ...b, verdict: "keep", carried: true } : { ...b, does: "The rate, now 3.", serves: [1], unit: "rate", verdict: "keep" })), diff: c.record.diff, previous: c.record.previous };
+    fs.writeFileSync(c.target, JSON.stringify(filled));
+    const refused = report("check", c.target);
+    return refused.status === 1 && refused.stderr.includes("is marked carried, and its unit total changed since the previous review, or uses a unit that did") || `a stale carried block passed: ${refused.stderr}`;
+  });
+
+test("carry leaves out a requirement's source that pointed into the previous record, says so, and check refuses the requirement until it is cited again",
+  "a carried requirement's /screens/0 named another screen in the new record, and check accepted it",
+  () => {
+    const before = RATE(2), prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total.", serves: [1], verdict: "keep" }]);
+    prev.requirements.push({ id: 2, text: "The rate matches the mockup.", source: "author", sources: [{ ref: "/blocks/0" }] });
+    const c = continuation("sources", prev, before, before);
+    const r2 = c.record.requirements.find((r) => r.id === 2);
+    if (r2.sources !== undefined || !/Requirements 2 lost sources that pointed into the previous record/.test(c.out)) return JSON.stringify({ r2, out: c.out });
+    fs.writeFileSync(c.target, JSON.stringify({ ...twoUnits(before, c.record.blocks), requirements: c.record.requirements, diff: c.record.diff, previous: c.record.previous }));
+    const refused = report("check", c.target);
+    return refused.status === 1 && refused.stderr.includes("requirement 2 names no source") || `a requirement with its source dropped passed: ${refused.stderr}`;
+  });
+
+test("the earlier answers are not offered to a conditional question whose parent's condition changed, though the rest of it reads the same",
+  "an answer given while the parent took one variant was offered and marked decided under another",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "condition-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    for (const d of [dir, prev]) { fs.writeFileSync(path.join(d, "source.diff"), generated.stdout); for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(d, name)); }
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(THEMED));
+    const next = structuredClone(THEMED);
+    next.title = "Where the conversion lives, revised";
+    next.questions[3].parent = { ...next.questions[3].parent, variants: ["status-quo"] };
+    next.previous = { record: "previous/review.json", sha256: sha(JSON.stringify(THEMED)) };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(next));
+    const done = report("render", path.join(dir, "review.json"));
+    if (done.status !== 0) return done.stderr;
+    const pairs = dataOf(fs.readFileSync(path.join(dir, "review.html"), "utf8")).previous?.pairs.map(([now]) => now) ?? [];
+    return pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
+  });
+
+test("the earlier answers are not offered to a conditional question whose parent's variant changed its meaning under the same id",
+  "a child answered under one meaning of the parent's variant was offered and marked decided under another",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "meaning-")), prev = path.join(dir, "previous");
+    fs.mkdirSync(prev);
+    for (const d of [dir, prev]) { fs.writeFileSync(path.join(d, "source.diff"), generated.stdout); for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(d, name)); }
+    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(THEMED));
+    const next = structuredClone(THEMED);
+    next.title = "Where the conversion lives, revised";
+    // the child applies under "extend"; its id stays, what it means does not
+    next.questions[2].variants[1] = { ...next.questions[2].variants[1], text: "Move it to a display unit every page shares" };
+    next.previous = { record: "previous/review.json", sha256: sha(JSON.stringify(THEMED)) };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(next));
+    const done = report("render", path.join(dir, "review.json"));
+    if (done.status !== 0) return done.stderr;
+    const pairs = dataOf(fs.readFileSync(path.join(dir, "review.html"), "utf8")).previous?.pairs.map(([now]) => now) ?? [];
+    return pairs.includes("q1") && !pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
+  });
+
+test("check warns when many blocks serve a requirement and no route follows it, and not once a route does",
+  "a requirement linked to every block read as a long list of excerpts with no role for any of them",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "many-")), lines = Array.from({ length: 9 }, (_, i) => `+export const r${i} = ${i};`);
+    const text = ["diff --git a/src/r.js b/src/r.js", "new file mode 100644", "--- /dev/null", "+++ b/src/r.js", "@@ -0,0 +1,9 @@", ...lines, ""].join("\n");
+    fs.writeFileSync(path.join(dir, "source.diff"), text);
+    const rec = { ...twoUnits(text, lines.map((_, i) => ({ path: "src/r.js", added: String(i + 1), does: `Rate ${i}.`, serves: [1], verdict: "keep" }))), units: [] };
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(rec));
+    const first = report("check", path.join(dir, "review.json"));
+    if (first.status !== 0 || !first.stderr.includes("requirement 1 is served by 9 blocks and no route follows it")) return `no warning: ${first.status} ${first.stderr}`;
+    rec.routes = [{ title: "The rates", requirements: [1], steps: [{ block: 1, role: "The first rate." }, { block: 2, role: "The second.", via: "src/r.js:2" }] }];
+    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(rec));
+    const second = report("check", path.join(dir, "review.json"));
+    return second.status === 0 && !second.stderr.includes("served by 9 blocks") || `with a route: ${second.status} ${second.stderr}`;
+  });
+
+test("a large kept block is warned of until it says in «whole» why it is one decision, and the printout gives the reason to the checking agents",
+  "a table losing one column in 42 rows was warned of with no way to answer, and reviewers split it into pieces that meant nothing",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "whole-")), lines = Array.from({ length: 40 }, (_, i) => `+| row ${i} | value |`);
+    const text = ["diff --git a/docs/t.md b/docs/t.md", "new file mode 100644", "--- /dev/null", "+++ b/docs/t.md", "@@ -0,0 +1,40 @@", ...lines, ""].join("\n");
+    fs.writeFileSync(path.join(dir, "source.diff"), text);
+    const block = { path: "docs/t.md", added: "1-40", does: "The table of rates.", serves: [1], verdict: "keep" };
+    const write = (b) => fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify({ ...twoUnits(text, [b]), units: [] }));
+    write(block);
+    const warned = report("check", path.join(dir, "review.json"));
+    if (warned.status !== 0 || !/keeps 40 lines under one verdict; divide it, or say in "whole" why it is one decision/.test(warned.stderr)) return `no warning: ${warned.stderr}`;
+    write({ ...block, whole: "one table, each row the same rate format" });
+    const quiet = report("render", path.join(dir, "review.json"));
+    if (quiet.status !== 0 || /under one verdict/.test(quiet.stderr) || !/Keep\. One decision: one table, each row the same rate format/.test(quiet.stdout)) return `with whole: ${quiet.stderr} ${quiet.stdout.slice(-600)}`;
+    write({ ...block, whole: " " });
+    const refused = report("check", path.join(dir, "review.json"));
+    return refused.status === 1 && refused.stderr.includes('"whole" says why the block is one decision') || `an empty whole passed: ${refused.stderr}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
@@ -442,7 +654,20 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.checks[0].expect; }, 'check 1 has no "expect"'],
       [(r) => { r.checks[0].requirements = [6]; }, "check 1 names requirement 6, which is not listed"],
       [(r) => { delete r.now; }, '"now" is missing'],
-      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, question, assumption"],
+      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, project, author, contract, assumption, question"],
+      [(r) => { delete r.requirements[0].sources; }, "requirement 1 names no source: an analytical claim needs one"],
+      [(r) => { r.requirements[0].sources = [{ at: "TASK-9" }]; }, "requirement 1 is task: quote where it is stated, as {at, quote}, or cite the screen it comes from"],
+      [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }] }]; },
+        "question 1 is a decision with no recommendation: name the variant you recommend"],
+      [(r) => { r.questions = [{ at: "a.js:1", text: "Which?", kind: "decision", variants: [{ id: "a", text: "A", consequences: [{ text: "x", sources: [{ ref: "/requirements/0" }] }] }, { id: "b", text: "B", consequences: [{ text: "y", sources: [{ ref: "/requirements/0" }] }] }],
+        recommendation: { text: "Probably A.", sources: [{ ref: "/requirements/0" }] } }]; }, "question 1 recommendation names no variant: name the one you recommend, or open its text with «No clear recommendation»"],
+      [(r) => { r.ideas[0].sources = [{ ref: "/ideas/0" }]; }, 'idea 1: source ref "/ideas/0" is the entry that makes the claim'],
+      [(r) => { delete r.blocks[0].does; }, 'block 1 has no "does": say what it does and why it is there'],
+      [(r) => { r.challenges.push({ from: "reviewer", point: "The guard looks like a hack.", outcome: "owner", note: "Unsure." }); }, "challenge 4 is the reviewer's own candidate: record it only when you set it aside on a place, as rejected"],
+      [(r) => { r.routes[0].steps = [r.routes[0].steps[0]]; }, "route 1 has fewer than two steps"],
+      [(r) => { delete r.routes[0].steps[1].via; }, 'route 1 step 2 has no "via": how it gets what step 1 produced'],
+      [(r) => { r.routes[0].steps[0].block = 9; }, "route 1 step 1 names block 9, which is not listed"],
+      [(r) => { r.routes[0].requirements = [7]; }, "route 1 names requirement 7, which is not listed"],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],
       [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
@@ -526,9 +751,9 @@ test("scaffold reads a supplied diff outside a repository, splits at declaration
     if (of("a.js").length < 2) return `two declarations stayed one block: ${JSON.stringify(of("a.js"))}`;
     // Prose is divided at its headings, not at every paragraph.
     if (of("notes.md").length !== 2) return `a Markdown file with two headings made ${of("notes.md").length} blocks`;
-    // A kept block may leave "does" out; the check asks it only of a block that is not kept.
-    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined,
-      requirements: [{ id: 1, text: "A requirement.", source: "task" }], blocks: record.blocks.map(({ does, ...b }) => ({ ...b, verdict: "keep" })) };
+    // Every block, kept or not, says what it does and why it is there.
+    const filled = { ...structuredClone(REVIEW), diff: record.diff, units: [], scenarios: undefined, findings: [], steps: [], checks: undefined, screens: undefined, ideas: undefined, routes: undefined,
+      requirements: [{ id: 1, text: "A requirement.", source: "task", sources: [{ at: "TASK-1", quote: "a requirement" }] }], blocks: record.blocks.map((b) => ({ ...b, does: "A part of the change, for no stated reason.", verdict: "keep" })) };
     fs.writeFileSync(path.join(dir, "out", "review.json"), JSON.stringify(filled));
     const checked = tool("check", path.join(dir, "out", "review.json"));
     if (checked.status !== 0) return checked.stderr;
@@ -593,9 +818,11 @@ test("a block or unit whose premise is unread is a question, and a point against
     if (asked.status !== 1) return "a question naming no question, and a rejection citing no place, were accepted";
     for (const fault of ["block 3 is a question and names none", "unit readArchive is a question and names none", "challenge 1 is rejected"])
       if (!asked.stderr.includes(fault)) return `not refused: ${fault}\n${asked.stderr}`;
-    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3]; });
+    const done = render((r) => { r.blocks[2] = { ...r.blocks[2], verdict: "question", questions: [1], unit: "readArchive" }; r.blocks[0].serves = [3];
+      r.questions[0].context = [{ text: "The reader converts on an assumed reading.", sources: [{ ref: "/requirements/2" }] }]; });
     if (done.status !== 0) return done.stderr;
-    if (!done.stderr.includes("kept blocks 1 serve only assumed requirements")) return `no warning about a block kept for an assumption: ${done.stderr}`;
+    // a question asks about R3, which the block serves: the owner is asked, so nothing is warned of
+    if (done.stderr.includes("serve only requirements to confirm")) return `a block kept for a requirement a question asks about was still warned of: ${done.stderr}`;
     if (!done.stderr.includes("unit readArchive is kept, and its blocks 3 are not")) return `no warning about a kept unit with an open block: ${done.stderr}`;
     const island = dataOf(fs.readFileSync(html, "utf8"));
     if (island.challenges.length !== 3 || island.blocks[2].questions.join() !== "1") return "the page carries no challenges or no link from the block to its question";
@@ -610,7 +837,7 @@ test("the page that tells a reviewer what to write names every word the check ac
     if (absent.length) return `report-data.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
     // The example carries the optional fields of the decision cards too; the minimal REVIEW renders without them.
-    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "tradeoffs", "coverageStructured", "passport"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).sort().join(" ") === [...Object.keys(REVIEW), "language", "mechanisms", "tradeoffs", "coverageStructured", "passport", "previous", "replies"].sort().join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 
@@ -629,8 +856,8 @@ test("the minimal record is valid and warning-free; the themed record with decis
     if (minimal.errors.length || minimal.warnings.length) return `minimal record: ${[...minimal.errors, ...minimal.warnings].join("; ")}`;
     const themed = check(THEMED, files, run);
     if (themed.errors.length) return `themed record: ${themed.errors.join("; ")}`;
-    // The external source carries a quote and its file is not beside the record: named, unreachable, a warning only.
-    if (!themed.warnings.some((w) => w.includes("not beside the record"))) return `no warning for an unreachable source: ${themed.warnings}`;
+    // An external source is a place in the repository or a file beside the record; with its quote it travels, and no warning names it.
+    if (themed.warnings.some((w) => w.includes("source"))) return `a quoted source was warned of: ${themed.warnings}`;
     const result = render((r) => Object.assign(r, structuredClone(THEMED)));
     return result.status === 0 || `themed render refused: ${result.stderr}`;
   });
