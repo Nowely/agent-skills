@@ -1,4 +1,4 @@
-# skill-creator v1: design and test
+# skill-creator: design and test of v1 and v2
 
 **Question.** Can one entrust skill, `skill-creator`, make an agent create and develop skills the way this
 repository has learned to: analyse the request into requirements and ask what only the owner can answer at the
@@ -33,7 +33,9 @@ Repair, a correction, the result and standing rules), six references (`analysis.
 `hosts.md`, `structure.md`, `writing.md`) and `scripts/check.mjs`, twelve mechanical rules that
 `scripts/skills.test.mjs` now imports, so the repository's page checks have one owner. Its suite is
 `plugins/entrust/evals/skill-check.test.mjs`. The critics on the top tier are the owner's choice and differ from
-orchestrate's defaults; `critics.md` says so.
+orchestrate's defaults; `critics.md` says so. That was v1. v2 adds the preservation gate (`check.mjs --against`), a
+written-out Change route, one brief form for the judges, a plan file (`references/plan.md`), a reflection role
+(`references/reflection.md`) and a practice step, eight references in all ([10-v2.md](10-v2.md)).
 
 ## How it was designed
 

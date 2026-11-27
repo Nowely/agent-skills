@@ -54,7 +54,7 @@ session, and that it ran the launcher from its own shell, having no agent tool.
 
 ## Version 2
 
-To be appended to the end of rounds.md. Fable designed and wrote the pages (thread F3); the decision log, plan card,
+Fable designed and wrote the pages (thread F3); the decision log, plan card,
 designs, critics' returns, operators' records and the readers' marks stay in the private run directory; this
 record carries their verdicts ([10-v2.md](10-v2.md)). Commits are on the same branch over `aa40ba0`, after v1's.
 
@@ -108,3 +108,6 @@ read found it clean); the rate limit, which stopped the run at 00:04 UTC for 3 h
 
 - E170 (`plugins/entrust/ISSUES.md`): orchestrate's architecture critic is told the coordinator's reasons and
   skill-creator's is forbidden them; two pages brief the same role in opposite ways.
+
+| I3 replay (CP-I3-1) | `ef570f2`: vanished-word and changed-value flags, step 8's rules printed, a `reworded` line | the script, no tokens | passed: 3 of 3 old page-session losses and v1's 3 rows caught, one false flag |
+| I3 pilot (CP-I3-2) | 2 page sessions each on E104 and E117 | Sonnet operator; a Sonnet confirmer | 3 of 4 kept every fact; one changed the owner's value on purpose: dropped by its rule, reverted in `e1988e9` |

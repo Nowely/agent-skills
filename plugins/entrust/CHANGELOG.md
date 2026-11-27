@@ -56,8 +56,12 @@ forensics remain in the repository references and release notes.
   a pilot of two sessions on the same pending change passed on its second pair, after one rework of the list;
   judges briefed from the pages alone caught 9 and 9 of 10 planted faults against 6 for the earlier pages, on
   the test's rerun after one correction.
-- Pending, and deciding whether this version lands: the full test on two pending changes and on a replay of
-  the design run's opening. Until it returns, the skill is not shown to be better than working without it.
+- The full test returned and this version does not land by its frozen rule: on two pending changes one of the
+  two sessions that followed the page lost a fact in each (a value changed when moved; a rule replaced by a link
+  with another meaning), and on the replay of the design run's opening the decision on how a skill's text and
+  files are written was only partly stated in both sessions with the page (with a partial mark counted, every
+  clause of a pass held). A further change to the preservation list, tried after it, was dropped by its pilot's
+  rule and reverted.
 - Unmeasured: creating a new skill past its plan; the plan file, the reflection role and the practice step in
   a session that has only the pages; whether agents select the skill beside a host's built-in `skill-creator`;
   anything on Codex or OpenCode.
