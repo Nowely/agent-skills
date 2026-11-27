@@ -24,7 +24,7 @@ design** in both cases (one page session lost a fact in each, and the controls l
 **Back to design** by the frozen reading, because the decision on how a skill's text and files are written is only
 partly stated in both page sessions (counting a partial mark as met, every clause of `Pass` holds). External
 spend was 15.56 USD. The test cannot show that the page's judges work, since no test session had an agent tool. The
-owner decides what happens next.
+owner decides what happens next. A further gate set tried after CP3 (I3) passed its replay on the old losses and was dropped by its pilot's rule: one of four sessions still changed the owner's value, openly ([10-v2.md](10-v2.md#i3-a-further-gate-set-tried-and-dropped)).
 
 ## What was built
 
