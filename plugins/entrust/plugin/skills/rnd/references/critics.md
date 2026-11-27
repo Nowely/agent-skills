@@ -57,8 +57,9 @@ names each model, so the user sees the difference and settles it with one word.
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
 A change whose list at Change's step 8 held a line gets the verifier too, for its item 2: a fresh reader of the
-dispositions. The plan of a Change names it for that case, so the user's word on the plan starts it. When no
-agent can start, open each disposition at its old place and at its new one yourself, check that every
+dispositions. The plan of a Change names it for that case; it is part of the plan, not an option. The user's
+word on the plan starts it, a reply that leaves the choice to you starts it too, and no step asks again. When
+no agent can start, open each disposition at its old place and at its new one yourself, check that every
 condition of the old line stands at the new place, and say in the result that no fresh reader read them.
 
 ## The architecture critic

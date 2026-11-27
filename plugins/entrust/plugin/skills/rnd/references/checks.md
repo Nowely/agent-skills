@@ -37,14 +37,17 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   version on the same cases, and are not run again; a run in the run directory or in the repository's records
   that answers the same question on the same text is used before a new one starts.
 - A check starts with the smallest sample that can change its decision: one session for each case and each
-  side, one reader and one confirmer. Before more than one session of a kind starts, run one and read its
-  transcript: it had the tools, it read the files it was given, and its result could pass each statement. A
-  statement that no session could pass on that setup is rewritten, or the setup fixed, before the rest start.
+  side, one reader and one confirmer. Before more than one session of a check starts, run one and read its
+  transcript, the transfer test's scenarios and the selection check's requests included: it had the tools, it
+  read the files it was given, and its result could pass each statement. A statement that no session could
+  pass on that setup is rewritten, or the setup fixed, before the rest start.
 - More than that is an option the plan puts to the user, with its cost and what it could show that the
-  smallest sample cannot: a repeated run, several sessions for each side, a second reader, a role on the top
-  tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier, or more than five
-  agents at once. It runs only on the user's word naming it; a reply that leaves the choice to you takes the
-  smallest sample.
+  smallest sample cannot: a repeated run, several sessions for each side, a second reader, or a role on the top
+  tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier. It runs only on the
+  user's word naming it; a reply that leaves the choice to you takes the smallest sample.
+- A check of more than five sessions, such as a selection check, is shown in the plan on a line of its own
+  with its count and cost, so the user's word on the plan is given on it.
+- The plan's rule says, before any run, whether a margin reported as undecided keeps the work or fails the rule.
 
 ## The sessions
 
