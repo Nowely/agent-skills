@@ -13,8 +13,10 @@ before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) 
 ## E170. Two entrust pages brief an architecture critic in opposite ways on the coordinator's reasons
 
 **Evidence, level 1.** `orchestrate/references/roles.md:63` has the architecture critic read "the approach the
-card chose with the coordinator's reasons". `skill-creator/references/critics.md:6` says of every judge it
-starts, the architecture critic among them, "No brief carries your reasons or what you expect to hear". Both
+card chose with the coordinator's reasons". `skill-creator/references/critics.md:6` at `1ca6e90` said of every
+judge it starts, the architecture critic among them, "No brief carries your reasons or what you expect to hear";
+today the rule is on its brief form (`:26-27`): "Write nothing about what a file says, why you chose the
+approach, or what you expect the judge to find". Both
 pages ship in the same plugin and use the same role name. Found while comparing the coordinator's own critic
 briefs with the pages (the skill-creator run of 2026-11-26).
 
