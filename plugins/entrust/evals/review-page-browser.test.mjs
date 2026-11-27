@@ -1105,6 +1105,22 @@ test("Report details names the review a continuation continues, its date and dig
     return /Continues “Where the conversion lives”, 2026-01-01 sha256 [0-9a-f]{64} 1 block carried · 2 replies to earlier comments/.test(body) || body.slice(0, 600);
   }));
 
+test("the theme is an icon whose menu offers light, dark and automatic, marks the current one and names it on the button",
+  "the theme was a text button cycling through modes, its next mode unknown until pressed",
+  cased(THEMED_URL, {}, async (page) => {
+    const label = () => page.getAttribute("#theme-btn", "aria-label");
+    const first = { label: await label(), text: (await page.innerText("#theme-btn")).trim(), icon: await page.locator("#theme-btn svg").count() };
+    await page.click("#theme-btn");
+    const items = await page.locator('#theme-pop [data-act="theme-pick"]').evaluateAll((els) => els.map((e) => `${e.innerText.trim()}${e.getAttribute("aria-pressed") === "true" ? "*" : ""}`));
+    await page.click('#theme-pop [data-theme="dark"]'); await settle(page);
+    const dark = { attr: await page.evaluate(() => document.documentElement.dataset.theme), label: await label(), menu: await page.locator("#theme-pop .pop-menu").isVisible(), focus: await page.evaluate(() => document.activeElement?.id) };
+    await page.click("#theme-btn"); await page.keyboard.press("Escape"); await settle(page);
+    const closed = { menu: await page.locator("#theme-pop .pop-menu").isVisible(), focus: await page.evaluate(() => document.activeElement?.id) };
+    return /automatic, as the system/.test(first.label) && first.text === "" && first.icon === 1 && JSON.stringify(items) === JSON.stringify(["Light", "Dark", "Automatic: as the system*"])
+      && dark.attr === "dark" && /Theme: dark/.test(dark.label) && !dark.menu && dark.focus === "theme-btn" && !closed.menu && closed.focus === "theme-btn"
+      || JSON.stringify({ first, items, dark, closed });
+  }));
+
 // ---- the picture viewer
 const PICS_URL = render("pictures", record, diff, { "before.png": png(200, 100), "after.png": png(3000, 1500) });
 test("the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it",
@@ -1179,7 +1195,7 @@ test("answers, an own answer, a deferral, comments, «Viewed» and the theme sur
     await page.locator('#card-q2 textarea[data-act="text"]').fill("the display reads it"); await page.locator('#card-q2 textarea[data-act="text"]').blur();
     await page.click('#card-f1 [data-act="defer"]'); await page.locator('#card-f1 textarea[data-act="reason"]').fill("after the release"); await page.click('#card-f1 [data-act="defer-save"]');
     await page.locator('#card-f2 [data-anchor="f2/what"] .pc-btn').click({ force: true }); await page.locator(".pc-input").fill("unclear"); await page.click('[data-act="pc-save"]');
-    await page.click("#theme-btn");
+    await page.click("#theme-btn"); await page.click('#theme-pop [data-theme="light"]');
     await page.keyboard.press("g"); await page.keyboard.press("c"); await page.waitForTimeout(300);
     await page.locator('#files [data-act="viewed"]').first().check();
     const keys = await page.evaluate(() => Object.keys(localStorage));
@@ -1286,7 +1302,7 @@ test("the page and its document without JavaScript word each requirement's state
     } finally { await doc.close(); await live.close(); }
   });
 
-test("the owner's print holds every decision whole with the owner's answer and no screen-only words; the audit's adds every file whole and the details",
+test("the print holds every decision whole with the owner's answer and no screen-only words, from the browser's Print or the export dialog, and Report details has no print section",
   "the print hid the variants, cut text with «…», printed screen hints, and lazily drawn files printed blank",
   cased(THEMED_URL + "#decisions/f1", {}, async (page) => {
     await page.keyboard.press("f"); await settle(page);
@@ -1299,12 +1315,13 @@ test("the owner's print holds every decision whole with the owner's answer and n
     await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
     const q3 = THEMED.questions[2], must = [...q3.variants.flatMap((v) => [v.text, ...v.consequences.map((x) => x.text)]), q3.recommendation.text, LONG];
     const missing = must.filter((t) => !owner.text.includes(t)), screen = ["Show all", "See the table", "select a row", "Click a line number", "Start review", "Show in Code", "Answer here"].filter((t) => owner.text.includes(t));
-    await page.goto(THEMED_URL + "#details/report"); await page.waitForSelector(".tabbar");
+    await page.goto(THEMED_URL + "#details/report"); await page.waitForSelector(".tabbar"); await settle(page);
+    const section = await page.locator('#det-body [data-act="print"]').count();
     await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
-    await page.click('[data-act="print"][data-profile="audit"]');
-    const audit = await page.evaluate(() => ({ rows: document.querySelectorAll("#print tr.r").length, verdicts: document.querySelectorAll("#print tr.bn").length, details: Boolean(document.querySelector("#print #details")) }));
-    return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && audit.rows === 27 && audit.verdicts === 3 && audit.details
-      || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), audit });
+    await page.click('[data-act="export"]'); await page.click('#export-dialog [data-act="print"]'); await settle(page);
+    const dialog = { open: await page.evaluate(() => document.querySelector("#export-dialog").open), f1: await page.evaluate(() => document.querySelector('#print [id="decisions/f1"]')?.innerText ?? ""), rows: await page.locator("#print tr.r").count() };
+    return !missing.length && !screen.length && !owner.clamped && owner.rows === 0 && /Decided · Your answer: Fix it/.test(owner.f1) && !section && !dialog.open && /Your answer: Fix it/.test(dialog.f1) && dialog.rows === 0
+      || JSON.stringify({ missing, screen, clamped: owner.clamped, rows: owner.rows, f1: owner.f1.slice(-80), section, dialog: { ...dialog, f1: dialog.f1.slice(-80) } });
   }));
 
 test("printing with the picture viewer open prints the report, not the viewer, and the viewer is still open after",
@@ -1319,13 +1336,13 @@ test("printing with the picture viewer open prints the report, not the viewer, a
     return printed.viewer === "none" && printed.backdrop === "none" && printed.report === "block" && after || JSON.stringify({ printed, after });
   }));
 
-test("the Russian page speaks Russian on every tab, in its toasts, dialogs and export, without JavaScript and in both prints: no English word but the record's own",
+test("the Russian page speaks Russian on every tab, in its toasts, dialogs, export and print and without JavaScript: no English word but the record's own",
   "every word the page writes is in both catalogs; an English literal in the runtime or the document would reach a Russian reader",
   async () => {
     // The record's words, its key names among them, and its diff's are its own; ids, digests, keys and JavaScript are names.
     const own = new Set(`${JSON.stringify(RU)}\n${diff}`.match(/[A-Za-z]{2,}/g)), english = new Map();
     const scan = (where, text) => {
-      for (const word of text.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? [])
+      for (const word of text.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|PDF|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? [])
         if (!own.has(word) && !english.has(word)) english.set(word, where);
     };
     // what a reader sees, hears from a screen reader, or types into
@@ -1352,13 +1369,12 @@ test("the Russian page speaks Russian on every tab, in its toasts, dialogs and e
       await page.click('#card-f2 [data-act="defer"]'); await settle(page); scan("a deferral's reason", await seen(page));
       await page.keyboard.press("Escape"); await page.keyboard.press("?"); await settle(page); scan("the keys", await seen(page)); await page.keyboard.press("Escape");
       await page.click('[data-act="export"]'); await settle(page); scan("the export", await seen(page)); await page.keyboard.press("Escape");
-      // both prints
+      // the print, from the export dialog, and the theme's menu
       await page.evaluate(() => { window.print = () => window.dispatchEvent(new Event("beforeprint")); });
-      for (const profile of ["owner", "audit"]) {
-        await go("details/report"); await page.click(`[data-act="print"][data-profile="${profile}"]`); await page.emulateMedia({ media: "print" });
-        scan(`the ${profile}'s print`, await page.evaluate(() => document.querySelector("#print").innerText));
-        await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
-      }
+      await page.click('[data-act="export"]'); await page.click('#export-dialog [data-act="print"]'); await page.emulateMedia({ media: "print" });
+      scan("the print", await page.evaluate(() => document.querySelector("#print").innerText));
+      await page.emulateMedia({ media: "screen" }); await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+      await page.click("#theme-btn"); await settle(page); scan("the theme's menu", (await seen(page)) + " " + await page.getAttribute("#theme-btn", "aria-label")); await page.keyboard.press("Escape");
       errors.push(...o.errors);
     } finally { await o.close(); }
     const plain = await open(RU_URL, { js: false });

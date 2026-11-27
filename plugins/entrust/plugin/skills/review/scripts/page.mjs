@@ -71,7 +71,7 @@ function rowsOf(file, model, hl) {
   });
 }
 
-// One file's diff as the no-JavaScript reader and the audit print see it, with a line for each block's verdict. One
+// One file's diff as the no-JavaScript reader sees it, with a line for each block's verdict. One
 // row per line of source, in a shape runtime.js parses: a hunk opens with <tbody>, a row carries its numbers in data-r
 // and its code as the last cell; a block's line is not a row.
 function fileMarkup(fi, file, hunks, blocks, blockLine) {

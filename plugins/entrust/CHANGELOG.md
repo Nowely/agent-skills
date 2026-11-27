@@ -106,6 +106,11 @@ forensics remain in the repository references and release notes.
   reviewer's prose folds away under them, or is shown as written, with a note, when no statement breaks it down. Scope
   and tradeoffs leave it for Report details and Summary. Report details names the review a continuation continues —
   its title, date and digest — and how many blocks it carried and comments it answered.
+- The print is a copy of the summary and every decision with the owner's answers, to pass on or keep: the export
+  dialog's «Print or save as PDF» and the browser's own Print both make it, and Report details has no Print section.
+  The audit print, every file whole, is gone: the saved diff and the record are the full trail.
+- The theme is an icon — a sun, a moon, or a half disc for automatic — whose menu offers Light, Dark and Automatic, as
+  the system, the current one marked and named on the button. The requirement menu marks the chosen requirement again.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.

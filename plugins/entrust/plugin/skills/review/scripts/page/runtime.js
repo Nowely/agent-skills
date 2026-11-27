@@ -41,6 +41,10 @@ const ICON = {
   chevron: svg("M4 6l4 4 4-4"),
   comment: svg("M3 3.5h10v7H7l-3 2.5v-2.5H3z"),
   panel: svg("M2.5 3h11v10h-11zM6.5 3v10"),
+  light: svg("M8 5.2a2.8 2.8 0 1 0 0 5.6a2.8 2.8 0 1 0 0-5.6zM8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"),
+  dark: svg("M13 9.6A5.6 5.6 0 0 1 6.4 3a5.6 5.6 0 1 0 6.6 6.6z"),
+  // a disc half filled: the system's choice
+  auto: `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 0 0 11z" fill="currentColor"/></svg>`,
 };
 
 // ---------------------------------------------------------------- the diff: each file's rows, read from its <noscript>
@@ -456,7 +460,8 @@ function renderShell() {
   app.innerHTML = `
   <header class="masthead"><div class="mh-main"><div class="kicker"><span>${esc(L("kind"))}</span><span class="sep" aria-hidden="true">/</span><span>${esc(P("p.count.files", c.files))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(L("p.count.lines", n(c.lines.added), n(c.lines.removed)))}</span><span class="sep" aria-hidden="true">·</span><span>${esc(P("p.count.blocks", c.blocks))}</span></div>
     <h1>${esc(D.title)}</h1></div>
-    <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><button class="btn sm" data-act="theme" id="theme-btn"></button></div></header>
+    <div class="mh-right"><button class="btn sm" data-act="export" aria-haspopup="dialog">${esc(L("p.export"))}</button><div class="pop" id="theme-pop"><button class="btn sm icon menu-btn" data-act="theme-menu" aria-expanded="false" aria-haspopup="true" id="theme-btn"></button>
+      <div class="pop-menu theme-menu" hidden role="group" aria-label="${esc(L("p.theme.menu"))}">${["light", "dark", "auto"].map((t) => `<button class="mi" data-act="theme-pick" data-theme="${t}" aria-pressed="false"><span>${ICON[t]}</span><span>${esc(L({ light: "p.theme.item.light", dark: "p.theme.item.dark", auto: "p.theme.item.auto" }[t]))}</span></button>`).join("")}</div></div></div></header>
   <div class="carry" id="carry" hidden><span id="carry-text"></span> <button class="btn sm" data-act="carry-take">${esc(L("p.carry.take"))}</button><button class="btn sm quiet" data-act="carry-skip">${esc(L("p.carry.skip"))}</button></div>
   <div class="storage" id="storage" hidden><span id="storage-text" role="status"></span> <button class="linkbtn" data-act="unreadable-show" hidden>${esc(L("p.storage.unreadable.show"))}</button></div>
   <nav class="tabbar" aria-label="${esc(L("p.tabs"))}"><div class="tabbar-in">
@@ -472,7 +477,7 @@ function renderShell() {
   <dialog id="export-dialog" aria-labelledby="export-h"><div class="dialog-in export">${dialogHead("export-h", L("p.export"))}
     <p class="muted small" id="export-note">${esc(kept("export"))}</p>
     <div id="export-preview"></div>
-    <div class="dialog-actions"><p id="export-status" role="status"></p><button class="btn" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn primary" data-act="export-copy">${esc(L("p.export.copy"))}</button></div>
+    <div class="dialog-actions"><p id="export-status" role="status"></p><button class="btn" data-act="print">${esc(L("p.export.print"))}</button><button class="btn" data-act="export-json">${esc(L("p.export.json"))}</button><button class="btn primary" data-act="export-copy">${esc(L("p.export.copy"))}</button></div>
     <details id="export-raw"><summary>${esc(L("p.export.text"))}</summary><textarea id="export-text" readonly rows="10" aria-label="${esc(L("p.export.text"))}"></textarea></details></div></dialog>
   <dialog id="unreadable-dialog" aria-labelledby="unreadable-h"><div class="dialog-in export">${dialogHead("unreadable-h", L("p.unreadable"))}
     <p class="muted small">${esc(L("p.unreadable.note"))}</p>
@@ -484,7 +489,8 @@ function renderShell() {
 function applyTheme() {
   if (S.theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = S.theme;
   const word = { auto: L("p.theme.auto"), light: L("p.theme.light"), dark: L("p.theme.dark") }[S.theme];
-  const b = $("#theme-btn"); if (b) { b.textContent = L("p.theme", word); b.setAttribute("aria-label", L("p.theme.switch", word)); }
+  const b = $("#theme-btn"); if (b) { b.innerHTML = ICON[S.theme]; b.title = L("p.theme", word); b.setAttribute("aria-label", L("p.theme.switch", word)); }
+  $$('#theme-pop [data-act="theme-pick"]').forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.theme === S.theme)));
 }
 function updateChrome() {
   const p = progress();
@@ -1529,7 +1535,7 @@ function goFile(fi) {
 // that was open is returned, so Esc can give it focus back. A click inside a menu keeps that menu open.
 function closeMenus(inside = null) {
   let was = null;
-  for (const pop of $$("#panel-code .pop")) {
+  for (const pop of $$(".pop")) {
     const m = $(".pop-menu", pop), b = $(".menu-btn", pop);
     if (!m || m.hidden || (inside && pop.contains(inside))) continue;
     m.hidden = true; b.setAttribute("aria-expanded", "false"); was = b;
@@ -1544,9 +1550,9 @@ function toggleMenu(btn) {
   ($('[aria-pressed="true"]', m) ?? $("button, input", m))?.focus();
 }
 // A menu closes when focus leaves it, and its arrows walk its items.
-document.addEventListener("focusout", (e) => { const pop = e.target.closest?.("#panel-code .pop"); if (pop && e.relatedTarget && !pop.contains(e.relatedTarget)) closeMenus(e.relatedTarget); });
+document.addEventListener("focusout", (e) => { const pop = e.target.closest?.(".pop"); if (pop && e.relatedTarget && !pop.contains(e.relatedTarget)) closeMenus(e.relatedTarget); });
 document.addEventListener("keydown", (e) => {
-  const m = e.target.closest?.("#panel-code .pop-menu");
+  const m = e.target.closest?.(".pop-menu");
   if (!m || !["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
   const items = $$("button, input", m), i = items.indexOf(e.target);
   const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
@@ -1735,8 +1741,7 @@ function renderDetailBody() {
       ${D.history ? `<dt>${esc(L("p.report.continues"))}</dt><dd>${D.history.title ? esc(L("p.report.continues.title", D.history.title)) : `<span class="mono small">${esc(D.history.record)}</span>`}${D.history.reviewedAt ? `, ${esc(D.history.reviewedAt)}` : ""}<br><span class="mono small muted">sha256 ${esc(D.history.sha256)}</span><br><span class="small">${esc([P("p.count.carried", D.carried.length), P("p.count.replies", D.replies.length)].join(" · "))}</span></dd>` : ""}
       <dt>${esc(L("p.report.language"))}</dt><dd>${esc(D.language)}</dd>
       <dt>${esc(L("p.report.size"))}</dt><dd>${esc([P("p.count.files", D.counters.files), P("p.count.blocks", D.counters.blocks), P("p.count.items", ITEMS.length)].join(", "))}</dd>
-      </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>
-      <div class="section-h"><h2>${esc(L("p.print"))}</h2></div><div class="box"><p class="print-actions"><button class="btn sm" data-act="print" data-profile="owner">${esc(L("p.print.owner"))}</button><button class="btn sm" data-act="print" data-profile="audit">${esc(L("p.print.audit"))}</button></p><p class="muted small">${esc(L("p.print.note"))}</p></div>`;
+      </dl></div><p class="muted small gap-top" id="report-memory">${esc(kept("hint"))}</p>`;
   }
   $("#det-body").innerHTML = html;
   if (sub === "structure" && S.structView === "graph") wireGraph();
@@ -1910,13 +1915,13 @@ document.addEventListener("click", (e) => {
   if (a) {
     const key = act.dataset.key;
     switch (a) {
-      case "theme": S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme]; applyTheme(); return save();
+      case "theme-pick": S.theme = act.dataset.theme; applyTheme(); save(); closeMenus(); return $("#theme-btn").focus();
       case "export": return openExport();
       case "zoom": return openZoom(act.dataset.pic);
       case "zoom-fit": case "zoom-full": zoomFit = a === "zoom-fit"; return showZoom(zoomAt);
       case "zoom-toggle": zoomFit = !zoomFit; return showZoom(zoomAt);
       case "zoom-prev": case "zoom-next": return showZoom(zoomAt + (a === "zoom-next" ? 1 : -1));
-      case "print": printProfile = act.dataset.profile; return window.print();
+      case "print": $("#export-dialog").close(); return window.print();
       case "export-json": return downloadExport();
       case "export-copy": return copyText($("#export-text"), $("#export-status"));
       case "unreadable-show": return openUnreadable();
@@ -1967,7 +1972,7 @@ document.addEventListener("click", (e) => {
       case "ctx": { if (act.closest("#ctx-code")) requestAnimationFrame(() => $('.toolbar [data-act="ctx"]')?.focus()); S.code.ctx = !S.code.ctx; $("#ctx-code").hidden = !S.code.ctx; $("#code-frame").classList.toggle("ctx", S.code.ctx); syncToolbar(); if (S.code.ctx) renderPanel("code"); measureCpl(); return; }
       case "skip": e.preventDefault(); { const t = (S.sel.code && $(`#note-${S.sel.code}`)) || $("#files .note, #files .done-line") || $("#files"); t.focus(); if (!S.sel.code) t.scrollIntoView({ block: "center" }); } return;
       case "mode": S.code.mode = act.dataset.mode; S.code.pinned.clear(); return rerenderCode();
-      case "purpose-menu": case "req-menu": return toggleMenu(act);
+      case "purpose-menu": case "req-menu": case "theme-menu": return toggleMenu(act);
       case "req-pick": S.code.req = act.dataset.req; S.code.pinned.clear(); closeMenus(); $("#req-btn").focus(); return rerenderCode();
       case "unit-clear": S.code.unit = ""; return rerenderCode();
       case "set-clear": S.code.set = null; return rerenderCode();
@@ -2419,22 +2424,19 @@ function sizeZoom() {
   img.style.cursor = next > now ? "zoom-in" : next < now ? "zoom-out" : "default";
 }
 
-// ---------------------------------------------------------------- print: the owner's or the audit's
-// The owner's print is the summary and every decision card with its answer, and the comments; the audit's adds every
-// file whole, kept code unfolded, with each block's verdict, and the details, taken from the document in the page's
-// <noscript> elements, so no file has to be drawn on screen first. Printing from the browser's menu prints the owner's.
-let printProfile = "owner";
-// Both prints are the document in the page's <noscript> elements — every card whole, with its variants, their
-// consequences and the recommendation, and nothing that only works on screen — with the owner's answer added to each
-// card and the comments listed. The audit's also has every file whole with each block's verdict, and the details.
+// ---------------------------------------------------------------- print: a copy of the decisions with the owner's answers
+// A paper or PDF copy to pass on or keep: the summary and every decision card whole — its variants, their consequences
+// and the recommendation, nothing that only works on screen — with the owner's answer added to each, and the comments.
+// It is the document in the page's <noscript> elements, so nothing has to be drawn on screen first; the browser's own
+// Print and the export dialog's both print it. The saved diff and the record are the full trail of the rest.
 function buildPrint() {
   let el = $("#print");
   if (!el) { el = document.createElement("div"); el.id = "print"; document.body.append(el); }
-  const audit = printProfile === "audit", p = progress();
-  el.innerHTML = $("#static-report").textContent + (audit ? F.map((_, fi) => $("#code-" + fi).textContent).join("") + $("#static-details").textContent : "");
+  const p = progress();
+  el.innerHTML = $("#static-report").textContent;
   $$(".static-note, .static nav", el).forEach((x) => x.remove());
-  if (!audit) $("#code", el).remove();
-  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc([L(audit ? "p.print.audit" : "p.print.owner"), ...progressWords(p)].filter(Boolean).join(" · "))}</p>`);
+  $("#code", el)?.remove();
+  $(".static header", el).insertAdjacentHTML("beforeend", `<p>${esc(progressWords(p).filter(Boolean).join(" · "))}</p>`);
   for (const c of ITEMS) el.querySelector(`[id="decisions/${CSS.escape(c.key)}"]`)?.insertAdjacentHTML("beforeend", `<p class="sanswer"><b>${esc(L("p.print.answer"))}</b> ${esc(printAnswer(c))}</p>`);
   const notes = exportModel().sections.comments;
   if (notes.length) $("#decisions", el).insertAdjacentHTML("beforeend", `<h3>${esc(L("p.sub.comments"))}</h3><ul>${notes.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>`);
@@ -2446,7 +2448,7 @@ function printAnswer(c) {
     waitingText(c), zones.length && L("p.export.zones", zones.join("; "))].filter(Boolean).join(" · ");
 }
 window.addEventListener("beforeprint", buildPrint);
-window.addEventListener("afterprint", () => { $("#print")?.remove(); printProfile = "owner"; });
+window.addEventListener("afterprint", () => { $("#print")?.remove(); });
 
 // ---------------------------------------------------------------- start
 load();

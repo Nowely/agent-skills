@@ -1,4 +1,4 @@
-// The report as a document: what a reader without JavaScript sees, and what the audit print takes its files and
+// The report as a document: what a reader without JavaScript sees, and what the print takes its decisions and
 // details from. It is drawn from the same data the page's runtime gets, in the same words, inside <noscript>
 // elements, so a reader with JavaScript never builds it: the summary and every decision card as text
 // (#static-report), each file's whole diff with every block's verdict (#code-N, whose rows runtime.js reads), and

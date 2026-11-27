@@ -348,7 +348,11 @@ tr.findhit td.cd { outline: 2px solid var(--accent); outline-offset: -2px; }
 .req-menu { width: min(560px, 80vw); max-height: 60vh; overflow: auto; }
 .pop-menu .mi { appearance: none; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; width: 100%; padding: 6px 8px; border: 0; border-radius: 5px; background: none; color: var(--text); font-size: 13px; text-align: left; cursor: pointer; }
 .pop-menu .mi:hover { background: var(--surface-2); }
-.pop-menu .mi[aria-checked="true"] { background: var(--accent-bg); color: var(--accent-strong); }
+.pop-menu .mi[aria-pressed="true"] { background: var(--accent-bg); color: var(--accent-strong); }
+.mh-right { display: flex; align-items: center; gap: 8px; }
+.mh-right .pop-menu { left: auto; right: 0; min-width: 240px; }
+.theme-menu .mi { grid-template-columns: 22px minmax(0, 1fr); align-items: center; }
+.theme-menu .mi .ic { display: block; }
 .pop-menu .mi-id { font: 600 12px var(--mono); color: var(--text-2); }
 .pop-menu .mi .muted { font-size: 12px; font-variant-numeric: tabular-nums; }
 
@@ -695,7 +699,6 @@ dialog::backdrop { background: rgba(10, 14, 20, .35); }
 .static figure img { max-width: 360px; border: 1px solid var(--border); }
 .sfile tr.bn td { padding: 6px 10px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 12.5px; }
 .sfile tr.bn.v-fix td, .sfile tr.bn.v-remove td, .sfile tr.bn.v-question td { border-left: 3px solid var(--accent); }
-.print-actions { display: flex; gap: 8px; margin: 0 0 6px; }
 .static .sanswer { margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--border); }
 #print { display: none; }
 .sfile { margin: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
