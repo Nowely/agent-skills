@@ -142,7 +142,9 @@ its description. Take one of three routes; a change to this skill takes them too
    the step that needs it; reword; add. Remove is for an instruction the requirement no longer wants and for a
    duplicate whose fact stays stated elsewhere. A fact, such as a value, a table row, a case or a condition, is
    never removed to make the change smaller: when its place goes, move it to the file that owns it, or put its
-   removal to the user as a question in the plan. A change that turns out to alter the skill's job, its hosts
+   removal to the user as a question in the plan. Where two places give one fact different values, keep the
+   value of the file that owns the fact and link it from the other; any other value is the user's to choose,
+   as a question in the plan. A change that turns out to alter the skill's job, its hosts
    or its set of reference files goes to Create's step 1 with this sheet.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
    one plan with the skill's state noted for step 8, and wait.
@@ -162,9 +164,11 @@ its description. Take one of three routes; a change to this skill takes them too
    stands nowhere now, and under it the script prints the line to fill. For each, do the first of these that
    is true:
    - its facts are still stated, in other words or another file: fill one printed `moved` line for each place
-     a fact of it went, with that place and words copied from it, not your own. A line that held two facts
-     takes two. A copy that contradicted the file that owns the fact takes the owner's line: the owner's value
-     stands;
+     a fact of it is stated now, with that place and the words there that state it, its values included,
+     copied and not your own. A line that held two facts takes two. A copy that disagreed with the file that
+     owns the fact takes the owner's line. Where the script says a word is gone from every file, the sentence
+     that held it goes back, unless the same thing is now said in other words: then fill the `reworded` line
+     it prints. Where it says a value changed in place, put the value back: a move changes no value;
    - the user's own words ask for it to go: answer it with
      `retired | <the same first place> | <file>:<line of their saved message> | <their words>`;
    - neither: put the line back, or move it to the file that owns the fact.
