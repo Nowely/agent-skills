@@ -89,6 +89,10 @@ Merging several returns: <the rule, written now>
 - Write each checkpoint's three rules before any result. At the checkpoint, fill the progress table, apply the
   rule as written, add a `checkpoint` row to the log, and show the user the table with the decision. Go on
   without waiting unless the rule says rework or stop, or the spend has passed its pause figure.
+- The session's own turns are spend too, each one reading its whole context again. At each checkpoint the table
+  shows how much of what the host keeps the session's context holds; past half, say so with the table and offer
+  to go on in a fresh session that opens this file first. Read a large file or a transcript by search, and open
+  an agent's long return file only where a step needs it.
 - Fill the spend's first four columns when you write the plan, one row for each agent and session it names.
   At each checkpoint, fill the last two. The requirement line whose rows hold the largest share of what is
   spent at two checkpoints running, with no gain shown by a run at either, stops: nothing more is spent on it
