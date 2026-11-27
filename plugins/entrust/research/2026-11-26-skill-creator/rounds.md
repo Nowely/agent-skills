@@ -89,7 +89,7 @@ record carries their verdicts ([10-v2.md](10-v2.md)). Commits are on the same br
 | step 8 on the skill | the skill's rewrite against v1 | the script | the builder had skipped it; 42 lost lines answered by 60 moved |
 | quality read | v2 as a whole | fresh Fable | `change`, 18 objections (9 behavioural); `a538316` took all 18; one fix round by plan |
 | verifier | `a538316` | fresh Sonnet | 46 of 46 dispositions carried; three corrections in `a831166` and `99591cf` |
-| CP3 Part A | `d8cc78f`; effort and bulk-row cases, two page and two control sessions each; eight finals, five rerun after a rate limit | blind Opus reader per case; decisive losses opened at their places | Back to design in both: one page session lost a fact in each case; the controls lost as many; overhead 1.32 and 2.21 |
+| CP3 Part A | `d8cc78f`; effort and bulk-row cases, two page and two control sessions each; eight finals, five rerun after a rate limit | blind Opus reader per case; decisive losses opened at their places | Back to design in both: one page session lost a fact in each case; the controls lost as many; overhead 1.32 and 2.21 as first recorded, corrected to 1.38 and 2.18 by the last cost field (Reflection 2) |
 | CP3 Part R | `a538316`; six sessions, one invocation each | blind Opus reader by the pages' own form; every `asked` and `shown` confirmed | scored set of eight: page sessions 6 and 7, controls 3 and 1; unseen request 6 of 7 against 0. Back to design strictly (the decision on how skills are written is a part mark in both page sessions); Pass if part counts |
 | landing | the frozen rule | — | v2 does not land |
 | reflection before delivery | state statement; audit (Fable); evidence lens (Opus) | the coordinator opened each finding | 5 findings, 5 confirmed, 4 new; both verdicts hold; written, not run: a vanished-word flag and changed-value flag with step 8's criteria printed beside each line |
@@ -115,18 +115,31 @@ read found it clean); the rate limit, which stopped the run at 00:04 UTC for 3 h
 | Step | Input | Reader | Outcome |
 |---|---|---|---|
 | I3 replay (CP-I3-1) | `ef570f2`: vanished-word and changed-value flags, step 8's rules printed, a `reworded` line | the script, no tokens | passed: 3 of 3 old page-session losses and v1's 3 rows caught, one false flag |
-| I3 pilot (CP-I3-2) | 2 page sessions each on E104 and E117 | Sonnet operator; a Sonnet confirmer | 3 of 4 kept every fact; one changed the owner's value on purpose: dropped by its rule, reverted in `e1988e9` |
+| I3 pilot (CP-I3-2) | 2 page sessions each on E104 and E117 | Sonnet operator; a Sonnet confirmer | 3 of 4 kept every fact; one changed the owner's value on purpose: dropped by its rule, reverted in `e1988e9`; overhead 1.34 and 1.41 as first recorded, 2.17 and 2.24 read like with like (Reflection 2), limit 2.5 |
 
 ### I4
 
 | Step | Input | Reader | Outcome |
 |---|---|---|---|
 | I4 material | three fresh scenarios, ten known answers (addendum E) | a fresh Opus builder that saw neither the pages nor 2a's material; a Sonnet solver | every answer findable; key hashed before the first writer |
-| I4 briefs and judges | 2 S writers (head) and 1 C writer (`e8b6e02`) per role; 9 briefs under shuffled codes | 9 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | S 10 and 9, C 8 of 10; no mark moved, no leak: **not needed**, so the briefs' additions are dropped down to their level-3 parts (I5) |
+| I4 briefs and judges | 2 S writers (head) and 1 C writer (`e8b6e02`) per role; 9 briefs under shuffled codes | 9 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | S 10 and 9, C 8 of 10; no mark moved, no leak: **not needed**, so the briefs' additions are dropped down to their level-3 parts (I5). Corrected by Reflection 2: 8 of the 10 answers were caught in every run, so the verdict was set by the material; on the two that discriminate, S 2 and 1, C 0 of 2 |
 
 ### I5
 
 | Step | Input | Reader | Outcome |
 |---|---|---|---|
-| I5 change | addendum F: the judge pages down to what the record supports; the form only if it shortens `critics.md` | a fresh Fable writer, gate at step 8; a Sonnet verifier | `critics.md` 13,482 to 10,758 characters; the form retired; 76 of 76 dispositions carried |
-| I5 check | I4's material and key; 2 writers per role from the changed pages, 6 briefs under shuffled codes | 6 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | 9 and 10 of 10, no leak: **keep** |
+| I5 change | addendum F: the judge pages down to what the record supports; the form only if it shortens `critics.md` | a fresh Fable writer, gate at step 8; a Sonnet verifier | `critics.md` 13,482 to 10,758 characters; the form retired; 76 of 76 dispositions carried. Open breach (Reflection 2): the 27 `retired` lines cite addendum F where step 8 asks for the user's words, and no quality critic read the change; put to the owner, pending |
+| I5 check | I4's material and key; 2 writers per role from the changed pages, 6 briefs under shuffled codes | 6 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | 9 and 10 of 10, no leak: **keep**; on the two answers that discriminate, 1 and 2 of 2, as the head's 2 and 1 (Reflection 2) |
+
+### Reflection 2
+
+Run after delivery, on v1, v2 and I3 to I5; nothing in the skill changed ([10-v2.md](10-v2.md#reflection-2)).
+
+| Step | Input | Reader | Outcome |
+|---|---|---|---|
+| rule and sealed answers | the owner's questions on benefit, the name, the path and a possible fixation | — | parts, isolation and the merge rule written first; the coordinator's own answers sealed under SHA-256 `c690f80e…6b1d` |
+| audit | the transcript, the run's files, the record; the log's 16 deviation rows held back | fresh Fable; each finding opened at its place by the coordinator | 5 findings, 4 confirmed and 1 in part; 14 of 16 held-back rows found, the 2 independent ones among them; 25 figures recounted |
+| evidence lens | the sessions' records, marks and counts | fresh Opus; the I4 reading recounted from both blind counts | 5 hypotheses; 8 of I4's 10 answers caught in every run of I4 and I5 |
+| from-zero lens | the owner's messages and the repository before v1, then the skill and record | fresh Fable | 5 hypotheses; a departure from the page, which runs this lens at design |
+| sealed answers opened | the three returns | the coordinator | 3 of 5 sealed candidates named by a part, 1 not, 1 contradicted; the allocation fault named by the audit: 77 of 102 agents and about 6.2M tokens on the judge-brief line |
+| merge and corrections | the returns, by the rule written first | a fresh Fable writer for the record | 6 corrections, 9 hypotheses, none applied; record corrected: external spend 13.36 USD to CP3 and 16.27 with I3 (not 15.56), I4's reading, I5's open breach; the owner chooses |

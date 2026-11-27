@@ -55,9 +55,15 @@ forensics remain in the repository references and release notes.
   a pilot of two sessions on the same pending change passed on its second pair, after one rework of the list;
   judges briefed from the pages alone caught 9 and 9 of 10 planted faults against 6 for the earlier pages, on
   the test's rerun after one correction. That rerun was found contaminated; repeated clean on fresh material,
-  briefs from the earlier pages already caught 8 of 10 against 10 and 9, so the brief form and the reader's own
-  section were retired and `critics.md` is a fifth shorter. Briefs written from the shorter page caught 9 and
-  10 of 10 on the same material.
+  briefs from the earlier pages caught 8 of 10 against 10 and 9, and on that reading the brief form and the
+  reader's own section were retired and `critics.md` is a fifth shorter. A later recount showed the material
+  hardly tells the pages apart: 8 of the 10 faults were caught by every brief from any version, and on the other
+  two the earlier pages caught 0 of 2, the pages before the cut 2 and 1, the shorter page 1 and 2 (9 and 10 of
+  10). So the cut lost nothing this material can show, and the test does not show that the retired parts were
+  unneeded.
+- Put to the owner: that cut's 27 `retired` dispositions cite the run's own protocol addendum where step 8 of
+  Change asks for the user's own words, and no quality critic read the cut as step 9 asks. The owner left it to
+  the run, which kept the cut.
 - The full test returned and this version does not land by its frozen rule: on two pending changes one of the
   two sessions that followed the page lost a fact in each (a value changed when moved; a rule replaced by a link
   with another meaning), and on the replay of the design run's opening the decision on how a skill's text and
