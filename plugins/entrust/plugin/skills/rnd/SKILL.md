@@ -135,10 +135,10 @@ research and develop, and every step here is written for work on a skill.
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
    returns as `not met` is [a correction](#a-correction).
 10. **Deliver.** First start the parts of [reflection](references/reflection.md) the plan gave this step and
-    act on what they return. Where no audit runs at this step, write
+    act on what they return. Where the audit at delivery does not run, write
     the result's text to `result.md` in the run directory, start
     [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put each `missing`
-    and `part` into the result. When [a close-out](references/plan.md#a-close-out) leaves no line without an
+    and `part` into the result; they are a correction only by the user's reply. When [a close-out](references/plan.md#a-close-out) leaves no line without an
     outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
 
 ## Change
@@ -205,7 +205,7 @@ every step.
 ## A correction
 
 A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
-from the user, a judge's return, a reader's return, a result of the plan's check that fails its rule, a
+from the user, a judge's return, a reader's return (the reader of the user's words' only by the user's reply), a result of the plan's check that fails its rule, a
 description that agents do not select. An answer to the plan is one when it adds a condition or refuses a
 part, and not when it only accepts or settles a question as asked.
 
@@ -231,7 +231,7 @@ Tell the user, in this order, the outcome first; the text that delivers the work
 - for each requirement, the place that meets it, from the verifier's table or the quality critic's marks;
 - what ran, with its counts, and what did not run;
 - what stayed unmeasured, and what in the user's next real use would show the skill failing;
-- each instruction of the user that the reader of the user's words marked `missing` or `part`, or, where the audit
+- each instruction of the user that the reader of the user's words marked `missing` or `part`, or, where the audit at delivery
   ran, each row of its table of the user's instructions and questions that the work does not meet;
 - the judges' objections still open, and every close-out line that is `adjust`, `drop`, declined or pending;
 - at delivery, and whenever the user asks: what the skill does, in three sentences, and the questions still

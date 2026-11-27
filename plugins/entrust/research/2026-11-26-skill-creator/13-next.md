@@ -194,6 +194,16 @@ fixes were applied on the owner's word with no further read.
 - The questions part's remaining minor objections: a close-out and scorecard row for a part with no model, facts
   stated in several places, what to do with an answer that honestly admits a gap, the section's first sentence
   repeating its heading. Its first real run with an audit is its check.
+- The reader of the user's words cannot mark `answered only` honestly, since it does not see the replies: define it
+  through `result.md` or the plan, or give it the transcript.
+- The audit's table of the user's instructions has no named marks, so the coordinator decides what is unmet: give it
+  the reader's marks.
+- The owner asked for the plan to be checked against their messages, and the change checks the result at delivery, so
+  on a small change no fresh agent checks the plan before the user's word.
+- Minor points of the second critic: the find's definition is not tied to a scorecard column; `result.md` is written
+  before the close-out is checked; the small-change paragraph names the reader without a link; "its diff" reads two
+  ways; the language of the plan file and `result.md`; "Three agents judge" is now four; the reader has no
+  do-not-open list; on a route with an audit no fresh agent reads `result.md`.
 - The nine objections the Sonnet critic raised on v3's text that the top-tier critic had not, all holding at their
   place (the details are in experiment A's match), for the next Change's observation.
 - The two findings of experiment B's audit that the trial retro had not (the undo that left a trace in a file and

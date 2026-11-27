@@ -56,7 +56,7 @@ names each model, so the user sees the difference and settles it with one word.
 |---|---|---|
 | architecture critic | once; again when the approach changes; once more on a check that runs sessions, before its first session | only when the change adds a step, a route, a script or a file; and once on a check that runs sessions, before its first session |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
-| reader of the user's words | once, at delivery, unless the audit runs | the same, a small change included |
+| reader of the user's words | once, at delivery, unless the audit at delivery runs | the same, a small change included |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
 A change whose list at Change's step 8 held a line gets the verifier too, for its item 2: a fresh reader of the
@@ -173,7 +173,7 @@ It returns the marks with no verdict. Every `missing` and `part` goes into the r
 correction by itself: the user's reply decides whether it is one.
 
 It runs on every route but Repair, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
-word on the plan starts it and no step asks again. Where [the audit](reflection.md) runs at that step, the audit's
+word on the plan starts it and no step asks again. Where [the audit](reflection.md) at delivery runs, and not an audit at an earlier correction, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 
 ## Handling a return
