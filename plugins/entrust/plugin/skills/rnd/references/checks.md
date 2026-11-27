@@ -1,7 +1,7 @@
 # The check
 
 This page has [choosing the check](#choosing-the-check), [the sessions](#the-sessions),
-[a dry run](#a-dry-run), [test cases](#test-cases), [a transfer test](#a-transfer-test) and
+[the baseline](#the-baseline), [a dry run](#a-dry-run), [test cases](#test-cases), [a transfer test](#a-transfer-test) and
 [a selection check](#a-selection-check).
 
 ## Choosing the check
@@ -14,11 +14,12 @@ Take every row whose claim the user's request makes.
 | nothing was lost in a cut, a move, a merge or a rewrite | [Change's step 8](../SKILL.md#change) exits 0; each fact its dispositions call moved is found, in the words the disposition quotes, at the step where the reader meets it; and one fresh reader answers scenarios written from the old files | one agent |
 | a literal reader can follow the skill: a route, a step, an order | [a dry run](#a-dry-run); for a change, once before and once after | one agent per run |
 | an agent acts differently with the skill: an instruction added or reworded, or a new skill when the user asks for runs | [test cases](#test-cases), with the skill and without | two sessions per case, and one reader |
+| the skill makes a thing that agents then use, such as a skill, a brief or a prompt | [test cases](#test-cases) whose statements are about what fresh agents do with the thing each run made | two sessions per case, the agents that use each result, and one reader |
 | the skill carries a practice: an agent with only the pages does what the practitioner did | [a transfer test](#a-transfer-test), on the pages before and after | its sessions, one agent to build the material, and one confirmer |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
 | the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check) | its sessions, for each host |
 
-Size the check to the work. A change to one step takes one case. A new skill takes the dry run, and when the
+Size the check to the work. A change to one step takes one case. A new skill takes [the baseline](#the-baseline) and the dry run, and when the
 user asks for runs, one test case for each stage of the walk that its instructions cover, up to three. A
 selection check for a reworded description runs each request once, about twenty sessions for each host, and has
 no second run. When the user caps the spend below that, keep every check in
@@ -33,6 +34,11 @@ would have shown. With no run at all, the quality critic's read is the only evid
   cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet.
   A session on a host this one cannot run is started only when the user named that host. A model or a host on
   the sheet that got no session is named in the result as unmeasured.
+- Give each session the tools the skill's steps use: a skill that starts agents is checked in sessions that can
+  start them. Where what the repository has gives a session no such tool, start it another way that does,
+  which [hosts.md](hosts.md) names for each host, and write that way in the plan; no brief of a session is
+  handed to the user to run. Where no way gives the tool, the plan and the result say that the check cannot
+  show the skill's agents at work.
 - The skill reaches a session as files: give it the path of `SKILL.md` and tell it to read the file whole and
   follow it. A session that runs without the skill gets neither the path nor the skill's name.
 - Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
@@ -41,6 +47,29 @@ would have shown. With no run at all, the quality critic's read is the only evid
   therefore cannot show.
 - No session receives the statements it is marked by or the finding you expect.
 - A session has no user. A question it asks appears in its return; count it as an event and do not answer it.
+  A skill whose own steps wait for the user's word is the exception: write its replies before any run, one for
+  each question the cases can raise, each an answer and none that hands the choice back, and give every
+  session of every arm the same ones.
+
+## The baseline
+
+The baseline is what the agent does on the job with no skill for it. It says which lines the skill needs: one
+for each failure seen, and none for what went right.
+
+1. At step 5, take the cases the plan's check has. A plan without test cases writes one request the way a
+   user would type it, for the whole of the sheet's job.
+2. Start one session for each case, as [the sessions](#the-sessions) says, without the skill. For a rewrite,
+   also start one with the skill as it is.
+3. Read each session's transcript and what it made, and write `baseline.md` in the run directory: each
+   failure, the case, the place that shows it, and which requirement line or stage of the sheet it belongs to.
+   A failure is a result the user would send back, or a stage of the walk the session skipped or got wrong;
+   read what the session did, not only what it reported.
+4. A failure that no line of the sheet covers is [a correction](../SKILL.md#a-correction). A stage where no
+   session failed, and for which the user's words ask nothing, gets no step: mark it on the sheet as left to
+   the agent, with the run that shows it.
+5. These sessions are the runs without the skill of [test cases](#test-cases); they are not run again.
+
+For a Change, the observation of its step 1 is the baseline.
 
 ## A dry run
 
@@ -61,7 +90,10 @@ would have shown. With no run at all, the quality critic's read is the only evid
    `false` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`. A
    statement is about the result. Where the claim is about what the agent does on the way, such as a
    question it asks or a step it skips, the statement names an event the transcript shows, never the agent's
-   wording.
+   wording. Where the result is itself a thing agents use, such as a skill, a brief or a prompt, the statements are
+   about what fresh agents do with it: give each run's result, unedited, to fresh agents on the cheapest model
+   that will load it, each with a job the result serves and its maker never saw, and have the reader mark what
+   they made.
 3. Run each case once with the skill and once without it, on the same model with the same inputs. For a change,
    "without" is the skill before the change.
 4. Have one fresh reader mark each statement for each run, with the place that shows it, not knowing which run
@@ -89,8 +121,12 @@ by any model, and resemblance then measures copying.
    lists them. A second fresh agent, with the key, confirms each answer can be found from the scenario; one
    that cannot is replaced. Both write to files you pass on by path and do not open before step 8, since you
    may be the one who writes the pages; any other writer of the pages is not given them either.
-2. Write the rule now: how many of the known answers each run must reach, and by how much the pages as they
-   will be must beat the pages as they are.
+2. Learn the floor, then write the rule. Have each scenario answered once by a fresh agent whose brief holds
+   the artifact's name and the scenario's files and nothing of the pages, and have the second agent of item 1
+   count the known answers that come back. An answer the floor reaches measured nothing and leaves the count, as item 5
+   of [test cases](#test-cases) says of a statement; when the floor reaches more than half of the answers, the
+   material is built again. The rule is written now: how many of the known answers left each run must reach,
+   and by how much the pages as they will be must beat the pages as they are.
 3. At step 8, start sessions on the cheapest model the sheet says will load the skill. Each gets the path of
    `SKILL.md`, one scenario and one line: which step it is at, which artifact to write, and to start nothing.
    Two sessions for each scenario on the new pages, one on the pages as they were.

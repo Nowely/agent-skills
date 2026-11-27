@@ -4,7 +4,9 @@
 
 1. Start `SKILL.md` from [the skeleton](#the-skeleton).
 2. Write the steps and the standing rules: one for each requirement and each stage the approach gave to
-   instructions. Write beside it on the sheet, under `met at`, the file and line.
+   instructions. Write beside it on the sheet, under `met at`, the file and line. Each line answers a failure
+   that [the baseline](checks.md#the-baseline) or a session showed, or the user's words: a line with neither
+   is not written.
 3. Write each reference, and link it from the step of `SKILL.md` that needs it.
 4. Write each script as [scripts](#scripts) says, and run it.
 5. Write [the description](#the-description) last.
@@ -19,7 +21,7 @@
   give the reason on that line.
 - Name what to run, read or install by its exact command or path.
 - State a fact in one file, at the step that uses it. Everywhere else, link it.
-- Leave out what the agent does without being told. The runs without the skill, where step 5 made them, show
+- Leave out what the agent does without being told. [The baseline](checks.md#the-baseline) of step 5 shows
   what that is.
 - When a sentence is untrue in some case, cut it back, or make the case a condition the agent can observe. Add no
   tail such as "unless", "usually" or "where appropriate".
@@ -31,6 +33,9 @@
   throughout.
 - Keep out measurements with dates, the story of how the skill was made, and a rule added for one observed run
   that no second case supports.
+- Keep out a value that was true when you read it and will change, such as a count, a latest number or a
+  figure measured once: give the command that reads it, or leave it out. Such a value goes on a page only on
+  the user's word.
 - Give an output's form as a template. Give one example only where a rule cannot say it, and take it from
   neither the check's cases nor the run that prompted the work.
 

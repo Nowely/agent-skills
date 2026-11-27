@@ -5,6 +5,11 @@ that would make the skill work where the present approach cannot. Its second is 
 stand on: what the run did, against what the user said and the record claims. Fresh agents do both; you wrote
 the run, so you do neither.
 
+This page has [the parts](#the-parts-and-the-step-each-hangs-on), [briefing a part](#briefing-a-part),
+[what a part returns](#what-a-part-returns), [what you do with a return](#what-you-do-with-a-return),
+[the sources table as the digest](#the-sources-table-as-the-digest) and
+[a retro on a use of this skill](#a-retro-on-a-use-of-this-skill).
+
 Run only the parts the plan names. Each is an agent, so each is on the plan with its model before the user
 accepts it. A part never edits the skill: it returns, and you act as this page says. A lens is any part but
 the audit. The record is what the run has written so far: the sheet, the sources table, the plan with its log,
@@ -21,7 +26,7 @@ the returns and the check's files.
 | audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 12 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
 
 A run whose check ran no session has no part of this page, but for the audit at the user's second
-correction: a dry run's agent, a confirmer of marks and a reader of sources do not count. It still has its [close-out](../SKILL.md#a-close-out). What the two early
+correction: a dry run's agent, a confirmer of marks and a reader of sources do not count. It still has its [close-out](plan.md#a-close-out). What the two early
 parts return reaches the sheet as [a correction](../SKILL.md#a-correction).
 
 [critics.md](critics.md#which-model-and-how-many) gives each part's tier.
@@ -62,7 +67,8 @@ The audit returns tables, each row with a status and a place: every instruction 
 promise you made; every claim of the state statement; everything dropped, and whether by a rule written
 before the result or on opinion; every rule changed after a result was seen; every figure the record gives,
 recounted. Then at most five findings, and what it could not read. It returns no verdict and no opinion of
-what a finding does to one.
+what a finding does to one. One of its tables is the spend by requirement line, recounted, beside the lines
+the user's messages weigh most.
 
 ## What you do with a return
 
@@ -85,7 +91,7 @@ part | model | tokens, and where the figure comes from | minutes | offered | con
   `effect` stays empty until a hypothesis that was taken has been tested; then it is `held` or `refuted`.
   Taken is a choice and effect is a result. Keep the scorecards of a skill together in its record: the next
   run of a part is compared with the last.
-- Close each run of a part with [a close-out](../SKILL.md#a-close-out). A lens that has given nothing taken in
+- Close each run of a part with [a close-out](plan.md#a-close-out). A lens that has given nothing taken in
   two runs is left out of the next plan.
 
 ## The sources table as the digest
@@ -93,3 +99,24 @@ part | model | tokens, and where the figure comes from | minutes | offered | con
 Prior art is dear to read and changes slowly. The sources table of step 2, kept in the skill's record with the
 date each source was read and its version, is all that later versions need: a row read whole stands until its
 source changes.
+
+## A retro on a use of this skill
+
+A session that used this skill on a skill is a run of this skill, and where it went wrong there is this skill's
+next observation. A retro reads such a session after it ended. It runs when the user asks for one; the result
+of every use says that it can.
+
+1. The session is collected by entrust's [prepare-feedback](../../prepare-feedback/SKILL.md), which the user
+   starts by name, with that session as its scope and this question: where did this skill's steps fail,
+   mislead, or cost without a gain, each with its address. Where that skill is not installed,
+   [hosts.md](hosts.md) says how a past session is read.
+2. Two parts of this page then read the same session with the run directory it left, briefed as
+   [briefing a part](#briefing-a-part) says: the audit, always, and evidence, when that use ran a check with
+   sessions. No other part runs on a retro.
+3. What prepare-feedback and the two parts return is the observation of a Change to this skill, at its step 1; nothing is applied
+   from a retro without that route.
+4. Add to the scorecard one row for each part, and one for each judge that use started, from its run
+   directory: the judge, its model, what it offered, what was taken, and `effect` when a later run shows it.
+   The rows join the scorecards kept in this skill's record, in the repository that holds its source; a
+   session that cannot write there leaves them in prepare-feedback's private folder and names the path in its
+   result. What was read from the session stays private, as prepare-feedback's report rule says.

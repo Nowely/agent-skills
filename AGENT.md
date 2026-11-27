@@ -44,7 +44,7 @@ are `<name>@X.Y.Z`.
   it links, run `node scripts/skills.test.mjs`: it checks every plugin's skill pages against the
   mechanical rules for a skill (name, description and listing length, body lines and characters, sections reachable
   from a file's first 100 lines, references linked from SKILL.md, forward slashes) and every link and anchor. The
-  rules are owned by entrust's `plugin/skills/skill-creator/scripts/check.mjs`, which the suite imports, so a
+  rules are owned by entrust's `plugin/skills/rnd/scripts/check.mjs`, which the suite imports, so a
   change to a rule is a change to entrust's installed files and ships with an entrust release.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the

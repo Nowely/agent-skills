@@ -318,6 +318,9 @@ export function rules(skills, rel = (p) => p) {
 // changed into its neighbour (`affect`, `effect`) passes that test only when the old word was the last of its
 // kind in the tree; the quality read is what catches it.
 //
+// Not counted as the Markdown now: a directory given as `base` that lies under what is checked, and the
+// dispositions file, since a line that stands only in the copy from before, or in its own answer, was lost.
+//
 // Every other line is a candidate and needs one line in the dispositions file:
 //
 //   moved   | <file>:<line> | <file>:<line> | <the words that carry it now>
@@ -416,12 +419,14 @@ export function preserved(dir, base, dispositions) {
   const root = path.resolve(dir);
   const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
   const bound = fs.existsSync(path.join(root, "SKILL.md")) ? path.dirname(root) : root;
-  const texts = markdownUnder(bound).map(read);
+  const within = (outer, p) => p === outer || inside(outer, p);
+  // A copy from before the edit that lies inside what is checked, and the dispositions file, are not the files now.
+  const apart = [isBaseDir && path.resolve(base), dispositions && path.resolve(dispositions)].filter(Boolean);
+  const texts = markdownUnder(bound).filter((f) => !apart.some((a) => within(a, f))).map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
   const { found, problems } = dispositions && fs.existsSync(dispositions) ? answers(dispositions)
     : { found: new Map(), problems: [] };
-  const within = (outer, p) => p === outer || inside(outer, p);
   // Why one disposition for `line` does not hold, or null.
   const refused = (answer, line) => {
     const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
@@ -500,9 +505,16 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
       console.log(`      moved | ${c.id} | <file>:<line where it stands now> | <words copied from that place>`);
     }
     for (const p of problems) console.log(`BAD   ${file}: ${p}`);
-    if (lost.length) console.log(`      Put each lost line back, or answer it in ${file ?? "a file named after --dispositions"}: fill a line`
-      + " printed above for each place a part of it\n      went, or, when the user asked for it to go:\n"
-      + `      retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>`);
+    if (lost.length) console.log(`      Answer each line above in ${file ?? "a file named after --dispositions"}. Do the first of these that is true:
+      - its facts are still stated, in other words or another file: fill one printed \`moved\` line for each place
+        a fact of it went, with that place and words copied from it, not your own. A line that held two facts
+        takes two. A copy that contradicted the file that owns the fact takes the owning file's line: the owning
+        file's value stands, and another value takes the user's words that name it.
+      - the user's own words ask for it to go: answer it with
+        retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>
+        A reply that leaves the choice to you names no line and no value.
+      - neither: put the line back, or move it to the file that owns the fact.
+      A line of that file that starts with # is a note. Your own judgement that a fact is not needed retires nothing.`);
     console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
       + `${answered.length} answered by a disposition`);
     process.exit(lost.length || problems.length ? 1 : 0);

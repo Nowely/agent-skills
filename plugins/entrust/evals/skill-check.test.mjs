@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Does skills/skill-creator/scripts/check.mjs fail each of its rules on a skill that breaks it, pass a skill that
+// Does skills/rnd/scripts/check.mjs fail each of its rules on a skill that breaks it, pass a skill that
 // breaks none, and state the numbers its page states?
 //
 //   node evals/skill-check.test.mjs
@@ -15,7 +15,7 @@ import path from "node:path";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 
 const { cases: CASES, test } = registry();
-const DIR = path.join(ROOT, "skills", "skill-creator");
+const DIR = path.join(ROOT, "skills", "rnd");
 const CHECK = path.join(DIR, "scripts", "check.mjs");
 const { LIMITS, preserved, rules, skillAt } = await import(CHECK);
 const TMP = tempDir("skill-check-test-");
@@ -86,7 +86,7 @@ test("the command line prints the failed rule, exits 1 on a violation, 0 on none
     return problems.length === 0 || problems.join("; ");
   });
 
-test("skill-creator's own folder keeps its rules, and the summary line prints every limit the script holds",
+test("rnd's own folder keeps its rules, and the summary line prints every limit the script holds",
   "the budgets table gives a writer the reasons and sends them to the script for the numbers, so a limit the summary leaves out is a limit no writer sees",
   async () => {
     const r = await spawnNode([CHECK, DIR], { killAfterMs: 30_000 }).done;
@@ -259,6 +259,18 @@ test("a skill in a Claude Code plugin may link the plugin's own files, and a ski
       expect("under a folder named skills with no manifest", at(false), [12]),
       expect("a link out of the plugin", leaving, [12]),
     );
+  });
+
+test("a copy from before the edit that lies inside the checked folder, and the dispositions file, carry no line",
+  "a run kept its copy of the skills from before the edit inside the folder it checked, so every cut line still stood in that copy and the list came back empty",
+  () => {
+    const t = edited(noLow);
+    const top = path.dirname(path.dirname(t.dir)), inner = path.join(path.dirname(t.dir), "base");
+    fs.cpSync(path.dirname(t.base), inner, { recursive: true });
+    fs.writeFileSync(path.join(path.dirname(t.dir), "d.md"), "# | `low` | fact lookup |\n");
+    const r = preserved(path.dirname(t.dir), inner, path.join(path.dirname(t.dir), "d.md"));
+    const got = r.lost.map((c) => c.id);
+    return JSON.stringify(got) === JSON.stringify([`sample/${LOW}`]) || `wanted [sample/${LOW}], got [${got}] under ${top}`;
   });
 
 test("a revision of a git repository serves as the state before the edit",

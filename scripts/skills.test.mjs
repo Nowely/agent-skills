@@ -5,8 +5,8 @@
 //
 // Reads every plugins/*/plugin/skills/*/SKILL.md and the markdown files each one reaches by relative links
 // inside its plugin's plugin/ directory; run it after an edit to any of them. The rules and their numbers are
-// owned by entrust's skill-creator, whose checker this suite imports:
-// plugins/entrust/plugin/skills/skill-creator/scripts/check.mjs. A change to a rule is therefore a change to
+// owned by entrust's rnd, whose checker this suite imports:
+// plugins/entrust/plugin/skills/rnd/scripts/check.mjs. A change to a rule is therefore a change to
 // entrust's installed files. The vendor rows rules 1 to 7 were first taken from are quoted in the research run
 // plugins/terse/research/2026-09-28-vendor-guides/ (s1-sources.md, m1-map.md).
 //
@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { rules, skillAt } from "../plugins/entrust/plugin/skills/skill-creator/scripts/check.mjs";
+import { rules, skillAt } from "../plugins/entrust/plugin/skills/rnd/scripts/check.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join("/");

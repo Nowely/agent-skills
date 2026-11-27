@@ -24,7 +24,7 @@ R<n> | the requirement | the user's words, quoted | where they are | stated or i
 - What the user disliked in an earlier attempt at this job is a requirement: it says what must not happen again.
 - Leave `met at` empty until the text is written.
 - A thought the user offers without asking for it, such as "maybe", "what if" or "a side idea", is a line too,
-  marked `idea` in place of `stated`. [A close-out](../SKILL.md#a-close-out) gives it an outcome before delivery.
+  marked `idea` in place of `stated`. [A close-out](plan.md#a-close-out) gives it an outcome before delivery.
 
 **The job, walked.** Walk the job the skill will serve once, from the request that starts it to the result its
 user accepts. Write each stage as a line: what goes in, what comes out, and who judges it. A stage the user's
@@ -38,12 +38,13 @@ the sources of step 2 share; the default in the table. Write beside each answer 
 | Decision | Default |
 |---|---|
 | The job: which requests the skill serves, what the agent then produces, and what it leaves to other skills | none: it is a question |
-| What it governs: for each stage of the walk, whether the skill gives steps for it or leaves it to the agent | steps for every stage; a stage left to the agent names the source that shows agents do it unprompted |
+| What it governs: for each stage of the walk, whether the skill gives steps for it or leaves it to the agent | steps for a stage where [the baseline](checks.md#the-baseline) or an earlier session showed a failure, or where the user's words ask for them; any other stage is left to the agent, and the sheet names the run that shows agents do it unprompted |
 | Who invokes it | an agent selects it by its description, and the user can also call it by name |
 | Which hosts and models load it | any host of the open format: a fact that holds on one host only is written with that host's name, in one place |
 | Its name | the name the sources use for this job; else a short name that starts with the action |
 | Where it lives | where the user said; else beside the skills of the plugin or repository it belongs to; else the host's folder for personal skills |
 | What it uses and touches outside its folder, and what in it is private | it uses what the repository already has for the purpose and adds nothing new; it changes nothing outside; it carries no private material |
+| How its text and files are written: the form of the text, what goes to reference files and what to scripts, the limits on size, the model that will read it, and who writes it | a procedure in steps in `SKILL.md`, a reference file for what one step needs, a script for what must come out the same each time, all within the limits the check script prints; written for the cheapest model on the sheet, by this session |
 | How the result is delivered, and who writes that text | as the repository's instructions say; else the files in place and the result message. The text is written by whoever writes the skill, unless the user names another |
 
 A decision is open when none of the four answers it, when two of them disagree, or when the default would go
@@ -79,16 +80,22 @@ Then do four things with what you read.
   sheet lacks is added to the sheet.
 - Write what the sources share, such as a name, a default or a layout. That is the convention, and it fills the
   decisions the user's words left empty. Departing from it takes a requirement that says so; without one, the
-  departure is a question.
+  departure is a question. Where the skill's output joins things the repository already has, such as a numbered
+  folder or a changelog, the convention is what those do: read more than one of them before you state it.
 - Sort each skill you found into an owner of the job or a rival for it, as
   [structure.md](structure.md#the-approach) defines them. Each part you carry over from such a skill gets a row
   of its own: the part, its place there, and what you changed.
 - Where you copy text and do not adapt it, name the source's licence in its row and keep its notice with the
   copy.
 
-A source that does not open is fetched another way: another tool, a copy in the repository or on disk, a reader
-agent. Only when every way has failed is it recorded as `not read`, with the ways tried, and what it would have
-settled goes into the plan as a question. A source is cited only after it was opened.
+A source that does not open, or a file or session the user named that is not where they said, is fetched
+another way before anything else is done about it: a search by its name around the named place, in the
+repository and in the host's store of sessions; another tool; a copy in the repository or on disk; a reader
+agent. Only when every way has failed is it recorded as `not read`, with each command tried, and what it would
+have settled goes into the plan as a question. A source is cited only after it was opened. This is the one rule
+for a source that is missing: item 4's question is for sessions the user named none of, and
+[a practice someone already performs](#a-practice-someone-already-performs) keeps the search to what the user
+named.
 
 A source too wide to read in this session, such as a corpus of sessions, is read now by reader agents, not
 later. Tell the user their number and their model before they start;
@@ -107,8 +114,9 @@ Do this when the user asks for it or names the sessions, or when the practice is
 the user's and private: read only the ones they named, and keep what you take in the run directory.
 
 1. Collect, by a command and never from memory, every artifact of the practice from those sessions: each brief,
-   each review, each message of the kind the skill is to produce, with what came back from it. Where a session
-   cannot be read, record the gap and go on; do not widen the search to fill it.
+   each review, each message of the kind the skill is to produce, with what came back from it. A named session
+   that is not where the user said is looked for as [the sources](#the-sources) says. Where a session cannot be
+   read, record the gap and go on; do not widen the search to sessions the user did not name.
 2. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
    reads the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
    practice. It writes `practice.md` in the run directory, in four parts:

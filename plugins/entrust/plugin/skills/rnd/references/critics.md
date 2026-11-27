@@ -49,7 +49,7 @@ the executor tier; the plan names each model, so the user sees the difference an
 
 | Judge | Create | Change |
 |---|---|---|
-| architecture critic | once; again when the approach changes | only when the change adds a step, a route, a script or a file |
+| architecture critic | once; again when the approach changes; once more on a check that runs sessions, before its first session | only when the change adds a step, a route, a script or a file |
 | quality critic | once; a second, fresh one only after a fix that changed what a step tells the agent to do | the same |
 | verifier | once | only when the change altered a decision of the sheet or went through a correction; otherwise the quality critic also marks each requirement line `met`, `part` or `not met` |
 
@@ -59,7 +59,7 @@ It challenges the approach before any text exists. Give it, by path:
 
 - the file of the user's messages;
 - the sheet and the sources table;
-- the plan's approach and layout; for an existing skill, its directory.
+- the plan's approach, layout and check, with the check's rule; for an existing skill, its directory.
 
 It works in this order. First, from the messages alone, it writes the requirements, walks the job stage by stage
 as [analysis.md](analysis.md#the-sheet) describes, and lists the decisions a skill of this kind must settle.
@@ -72,10 +72,16 @@ It returns:
 - each requirement and each stage on its own list that the sheet lacks or the approach gives no place;
 - each question whose answer would change the approach and that the sheet shows neither asked nor settled;
 - each decision of the sheet filled against what the sources share;
+- each check, the plan's or its own alternative's, that cannot fail, that passes by construction or by chance,
+  or whose result changes no decision, with what a run without the skill, or with a bare brief, would score on
+  it;
 - what evidence would change its verdict;
 - one line on whether the planned spend fits what the work can change.
 
 Each objection cites a place: a line of the messages, the sheet, a source or the plan.
+
+For its read of a check that runs sessions, at step 5, give it the cases, the statements and the rule as well,
+and no answer key. It returns `keep` or `change` for the check, and the item on checks above.
 
 ## The quality critic
 
@@ -87,7 +93,10 @@ return. Its brief says whether a verifier follows.
 It does these things, in this order:
 
 1. It walks two requests through the files as a literal reader, one from the middle of the sheet's job and one
-   from its edge, and reports each step where it halts, has to guess, or can read the line two ways.
+   from its edge, and reports each step where it halts, has to guess, or can read the line two ways. When the
+   sheet holds an observation of a failure, or the skill's record a failed result of the version before, one
+   of the two walks is that request. A line it can settle only from what it knows, not from what the files
+   say, is a guess for the agent that will load the skill: it names each reading and chooses none.
 2. It holds the files against structure.md: whether each file holds what the layout gives it, whether a detail
    that one step needs sits in a reference linked at that step, whether any file goes unused, and what the
    script reports under each budget.
@@ -109,6 +118,7 @@ It holds the finished work against what the user asked. Give it, by path: the fi
 sheet, with its `met at` column filled; the finished skill; for a change, the skill as it was, the diff and the
 dispositions file; the author's account of the work, where there is one, and the objections of the quality
 critic that you overruled, each as claims to check; the plan's rule for the check, with the check's outputs.
+It also gets each fix made after the quality critic's read, with its place.
 
 It does these things, in this order:
 
@@ -116,13 +126,17 @@ It does these things, in this order:
 2. On a change, it takes the dispositions file line by line: it opens the place the line left and the place
    the line names, and marks the line `carried`, `part` or `lost`, with what is missing. Then it reads the diff
    for a removed sentence, row or condition that no line of the file answers, and marks each one `lost`. That
-   the script exited 0 shows only that each quote stands where the file says.
+   the script exited 0 shows only that each quote stands where the file says. A `retired` line is carried only
+   when the place it names is a line of the user's messages file that asks for that removal; any other place
+   is `lost`.
 3. It reads the user's messages for a requirement the sheet lacks.
+4. It settles each point the author's account marks as unsure, and reads each fix it was given for a halt or a
+   conflict the fix made.
 
 It returns one row for each requirement, stage and decision of the sheet: the file and line that meets it, or
 `part`, `not met`, or `not proven` when nothing it could run or read shows it. It returns the marks of item 2,
 every message in which it found a requirement the sheet lacks, and each overruled objection as holding or not,
-with the place.
+with the place. It returns what item 4 found, each with its place.
 
 ## Handling a return
 
