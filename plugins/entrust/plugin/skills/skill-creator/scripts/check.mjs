@@ -320,9 +320,8 @@ export function rules(skills, rel = (p) => p) {
 //
 // Every other line is a candidate and needs one line in the dispositions file:
 //
-//   moved    | <file>:<line> | <file>:<line> | <the words that state it now>
-//   retired  | <file>:<line> | <file>:<line> | <the user's words that retire it>
-//   reworded | <file>:<line> | <file>:<line> | <words of the lost line, with commas> => <the words that say it now>
+//   moved   | <file>:<line> | <file>:<line> | <the words that carry it now>
+//   retired | <file>:<line> | <file>:<line> | <the user's words that retire it>
 //
 // The first place is the candidate's, as printed. The second is where the quote stands, within five lines from
 // the one named: for `moved` a file under `dir` or beside it, by a path relative to `dir`, and the quote shares a
@@ -334,31 +333,16 @@ export function rules(skills, rel = (p) => p) {
 // four letters or more outside its code spans shares such a word with one of the quotes. A `retired` line
 // answers the whole line. So a row that held two facts is not answered by the place of one. A code span is left
 // out because a copy that contradicted its owner is answered with the owner's line, whose value differs; a bold
-// run is left out because it names a step or a term, and a step renamed has lost no fact.
-//
-// Two more things keep an answered line listed, because a part is carried on one shared word and a quote can
-// share a word and say something else. A word of the lost line that stood in no other line of the files as they
-// were, stands nowhere in them now, and is in none of the quotes, has gone with whatever it said: the line
-// stays listed until a `reworded` line names that word and quotes, at its place, the words that say it now. And
-// where a part of the lost line gave a value in a code span, and every quote that carries a word of that part
-// stands in the lost line's own file and gives other values, the value was changed in place: the line stays
-// listed until the old value stands again or a `retired` line holds the user's words. A copy answered with its
-// owner's line in another file is not that case. The script still cannot tell whether a quote says what the
-// lost line said, whether two facts inside one part both went somewhere, nor whether the messages file is the
-// user's.
+// run is left out because it names a step or a term, and a step renamed has lost no fact. The
+// script cannot tell whether a quote still says what the lost line said, whether two facts inside one part both
+// went somewhere, nor whether the messages file is the user's.
 const collapse = (s) => s.replace(/\]\([^)\s]*\)/g, "]").replace(/[\s`*|]+/g, " ").trim().toLowerCase();
 const onlyLinks = (line) => !/[\p{L}\p{N}]/u.test(line.replace(/\[[^\]]*\]\([^)]*\)/g, ""));
 const WORD = /[\p{L}][\p{L}'’-]*/gu;
 const longWords = (s) => new Set((collapse(s).match(WORD) ?? []).filter((w) => w.length >= 4));
-const CODE = /`[^`\n]*`/g;
-const plainWords = (s) => longWords(s.replace(/`[^`\n]*`|\*\*[^*\n]*\*\*/g, " "));
-const values = (s) => new Set((s.match(CODE) ?? []).map((v) => v.slice(1, -1).toLowerCase()));
 // The parts of a line that a disposition must carry, each as its words of four letters or more.
 const parts = (line) => line.replace(/`[^`\n]*`|\*\*[^*\n]*\*\*/g, " ").split(/[|;]|[.!?](?=\s|$)/)
   .map((part) => ({ text: part.trim(), words: longWords(part) })).filter((part) => part.words.size);
-// The parts of a line that give a value in a code span, each with those values and its words outside them.
-const valued = (line) => line.split(/[|;]|[.!?](?=\s|$)/)
-  .map((part) => ({ values: values(part), words: plainWords(part) })).filter((part) => part.values.size);
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
   stdio: ["ignore", "pipe", "ignore"] });
 
@@ -417,21 +401,17 @@ function answers(file) {
   const found = new Map(), problems = [];
   read(file).split("\n").forEach((line, i) => {
     if (!line.trim() || line.trim().startsWith("#")) return;
-    const m = line.match(/^\s*(moved|retired|reworded)\s*\|\s*(\S+):(\d+)\s*\|\s*(\S+):(\d+)\s*\|\s*(.+?)\s*$/);
-    const word = m?.[1] === "reworded" ? m[6].match(/^([^=]+?)\s*=>\s*(.+)$/) : null;
-    if (!m || (m[1] === "reworded" && !word)) return void problems.push(`line ${i + 1} is none of \`moved | <file>:<line> | <file>:<line> | <quote>\`, `
-      + "`retired | ...` and `reworded | <file>:<line> | <file>:<line> | <word> => <quote>`");
-    const quote = (word ? word[2] : m[6]).replace(/^"(.*)"$/, "$1"), id = `${m[2]}:${m[3]}`;
-    found.set(id, [...(found.get(id) ?? []), { kind: m[1], file: m[4], line: Number(m[5]), quote, at: i + 1,
-      words: word ? word[1].toLowerCase().match(WORD) ?? [] : [] }]);
+    const m = line.match(/^\s*(moved|retired)\s*\|\s*(\S+):(\d+)\s*\|\s*(\S+):(\d+)\s*\|\s*(.+?)\s*$/);
+    if (!m) return void problems.push(`line ${i + 1} is neither \`moved | <file>:<line> | <file>:<line> | <quote>\` nor \`retired | ...\``);
+    const quote = m[6].replace(/^"(.*)"$/, "$1"), id = `${m[2]}:${m[3]}`;
+    found.set(id, [...(found.get(id) ?? []), { kind: m[1], file: m[4], line: Number(m[5]), quote, at: i + 1 }]);
   });
   return { found, problems };
 }
 
 // The lines of `dir` at `base` that nothing carries now: `lost` have no answer that holds, each with the `parts`
-// its `moved` lines leave uncarried, the words `gone` from every file and the `changed` values; `answered` have
-// dispositions that hold and carry them; `problems` says why a disposition does not hold. A dispositions file
-// that does not exist is read as empty. Changes nothing.
+// its `moved` lines leave uncarried; `answered` have dispositions that hold and carry them; `problems` says why
+// a disposition does not hold. A dispositions file that does not exist is read as empty. Changes nothing.
 export function preserved(dir, base, dispositions) {
   const root = path.resolve(dir);
   const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
@@ -439,13 +419,12 @@ export function preserved(dir, base, dispositions) {
   const texts = markdownUnder(bound).map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
-  const said = new Set(texts.flatMap((t) => [...plainWords(t)]));
   const { found, problems } = dispositions && fs.existsSync(dispositions) ? answers(dispositions)
     : { found: new Map(), problems: [] };
   const within = (outer, p) => p === outer || inside(outer, p);
   // Why one disposition for `line` does not hold, or null.
   const refused = (answer, line) => {
-    const from = answer.kind === "retired" ? path.dirname(path.resolve(dispositions)) : root;
+    const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
     const place = path.resolve(from, answer.file), quote = collapse(answer.quote);
     const window = fs.existsSync(place) && fs.statSync(place).isFile()
       ? collapse(read(place).split("\n").slice(answer.line - 1, answer.line + 4).join("\n")) : null;
@@ -453,39 +432,28 @@ export function preserved(dir, base, dispositions) {
     return window === null ? `${answer.file} is not a file`
       : quote.length <= 12 ? "the quote is too short to find"
       : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
-      : answer.kind !== "retired" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
+      : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
       : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
       : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
       : null;
   };
-  const lost = [], answered = [], was = before(root, base), stood = new Map();
-  for (const text of was.values()) for (const line of text.split("\n"))
-    for (const w of plainWords(line)) stood.set(w, (stood.get(w) ?? 0) + 1);
-  for (const [rel, text] of was) {
+  const lost = [], answered = [];
+  for (const [rel, text] of before(root, base)) {
     const same = path.join(root, rel);
     const here = fs.existsSync(same) ? collapse(read(same)).split(" ") : [];
     text.split("\n").forEach((line, i) => {
       const was = collapse(line);
       if (was.length <= 12 || onlyLinks(line) || now.includes(was) || respelt(was.split(" "), here, words)) return;
-      const id = `${rel}:${i + 1}`, given = found.get(id) ?? [];
-      const candidate = { id, text: line.trim(), parts: [], gone: [], changed: [] };
+      const id = `${rel}:${i + 1}`, given = found.get(id) ?? [], candidate = { id, text: line.trim(), parts: [] };
       if (!given.length) return void lost.push(candidate);
       const bad = given.map((answer) => [answer, refused(answer, line)]).filter(([, why]) => why);
       for (const [answer, why] of bad) problems.push(`line ${answer.at}, for ${id}: ${why}`);
       if (bad.length) return void lost.push(candidate);
       if (!given.some((answer) => answer.kind === "retired")) {
         const carried = new Set(given.flatMap((answer) => [...longWords(answer.quote)]));
-        const named = new Set(given.flatMap((answer) => answer.words));
         candidate.parts = parts(line).filter((part) => ![...part.words].some((w) => carried.has(w))).map((part) => part.text);
-        candidate.gone = [...plainWords(line)].filter((w) => stood.get(w) === 1 && !said.has(w) && !carried.has(w) && !named.has(w));
-        for (const part of valued(line)) for (const w of part.words) {
-          const carriers = given.filter((answer) => longWords(answer.quote).has(w));
-          const kept = carriers.some((answer) => !values(answer.quote).size || [...part.values].some((v) => values(answer.quote).has(v)));
-          if (carriers.length && !kept && carriers.every((answer) => answer.file === rel)) candidate.changed.push(
-            `${w}: was ${[...part.values].join(", ")}; now ${[...new Set(carriers.flatMap((answer) => [...values(answer.quote)]))].join(", ")}`);
-        }
       }
-      (candidate.parts.length || candidate.gone.length || candidate.changed.length ? lost : answered).push(candidate);
+      (candidate.parts.length ? lost : answered).push(candidate);
     });
   }
   return { lost, answered, problems };
@@ -528,21 +496,13 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
     if (file && !fs.existsSync(file)) console.log(`note  ${file} does not exist yet and is read as empty; write the answers there`);
     for (const c of lost) {
       console.log(`LOST  ${c.id}: ${c.text}`);
-      if (c.parts.length) console.log(`      no \`moved\` line carries: ${c.parts.join(" / ")}`);
-      if (c.gone.length) console.log(`      gone from every file: ${c.gone.join(", ")}. Put back the sentence that held ${c.gone.length > 1 ? "them" : "it"}; or, only`
-        + ` where the same thing is now said in other words, add:\n      reworded | ${c.id} | <file>:<line> | ${c.gone.join(", ")} => <the words there that say it now>`);
-      if (c.changed.length) console.log(`      a value changed in place: ${c.changed.join(" / ")}. A move changes no value: put the old value`
-        + " back, or answer the line with `retired` and the user's words.");
-      if (!c.gone.length && !c.changed.length)
-        console.log(`      moved | ${c.id} | <file>:<line where its fact is stated now> | <the words there that state it, its values included>`);
+      if (c.parts.length) console.log(`      no \`moved\` line carries: ${c.parts.join(" / ")}\n      add a line for the place that part went:`);
+      console.log(`      moved | ${c.id} | <file>:<line where it stands now> | <words copied from that place>`);
     }
     for (const p of problems) console.log(`BAD   ${file}: ${p}`);
-    if (lost.length) console.log(`      Each LOST line stood in the files before and stands nowhere now. Answer it in ${file ?? "a file named after --dispositions"}:\n`
-      + "      - one `moved` line for each place a fact of it is stated now, the words copied from that place, not your own;\n"
-      + "      - a copy that disagreed with the file that owns the fact takes the owner's line, and the owner's value stays;\n"
-      + "      - a fact stated nowhere is put back, or moved to the file that owns it. Your judgement that it is not needed\n"
-      + "        drops nothing; only the user's words do:\n"
-      + "        retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>");
+    if (lost.length) console.log(`      Put each lost line back, or answer it in ${file ?? "a file named after --dispositions"}: fill a line`
+      + " printed above for each place a part of it\n      went, or, when the user asked for it to go:\n"
+      + `      retired | <the same first place> | <file>:<line of the user's saved message> | <the user's words>`);
     console.log(`${lost.length ? "FAIL" : "ok  "}  ${dirs[0]} against ${option.against}: ${lost.length} line(s) lost, `
       + `${answered.length} answered by a disposition`);
     process.exit(lost.length || problems.length ? 1 : 0);

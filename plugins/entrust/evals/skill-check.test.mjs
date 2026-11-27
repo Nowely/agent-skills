@@ -124,7 +124,7 @@ const lostIn = (what, t, want, dispositions) => {
 };
 const LOW = "references/effort.md:8";
 const noLow = { "references/effort.md": EFFORT.replace("| `low` | fact lookup |\n", "") };
-const lowMoved = { ...noLow, "references/models.md": BEFORE["references/models.md"] + "\nA fact lookup needs no more than `low`.\n" };
+const lowMoved = { ...noLow, "references/models.md": BEFORE["references/models.md"] + "\nLooking a fact up needs no more than `low`.\n" };
 
 test("a table row cut from a skill is listed as lost, and an edit that keeps every line lists none",
   "both sessions that followed the page dropped rows of a table while merging two files, and nothing listed them",
@@ -151,7 +151,7 @@ test("a corrected word and a corrected link list no line, and a word changed int
 test("a lost line passes only with a disposition whose quote stands at the place it names",
   "a session wrote that it had dropped the rows and went on; an answer that nothing checks is that sentence again",
   async () => {
-    const moved = `moved | ${LOW} | references/models.md:5 | A fact lookup needs no more than \`low\`.\n`;
+    const moved = `moved | ${LOW} | references/models.md:5 | Looking a fact up needs no more than \`low\`.\n`;
     const said = "Drop the low row, nobody uses it.\n";
     const cli = async (t, dispositions) => {
       const r = await spawnNode([CHECK, t.dir, "--against", t.base, ...(dispositions ? ["--dispositions", path.join(t.run, dispositions)] : [])],
@@ -166,14 +166,13 @@ test("a lost line passes only with a disposition whose quote stands at the place
       /^1 /.test(unanswered) && unanswered.includes(`LOST  ${LOW}: | \`low\` | fact lookup |`) || `unanswered: ${unanswered}`,
       /^0 /.test(answered) && /0 line\(s\) lost, 1 answered/.test(answered) || `answered: ${answered}`,
       /^1 /.test(wrongQuote) && /BAD .*the quote is not at references\/models\.md:5/.test(wrongQuote) || `wrong quote: ${wrongQuote}`,
-      /^1 /.test(freeWord) && /BAD .*line 1 is none of/.test(freeWord) || `free word: ${freeWord}`,
+      /^1 /.test(freeWord) && /BAD .*line 1 is neither/.test(freeWord) || `free word: ${freeWord}`,
       lostIn("a quote that shares no word with the line", edited(lowMoved, { "d.md":
         `moved | ${LOW} | references/models.md:3 | A refuter runs at \`xhigh\` on the strongest model\n` }), [LOW], "d.md"),
       lostIn("a copy that contradicted its owner, answered with the owner's line", edited({
         "references/effort.md": EFFORT.replace("| `high`, `xhigh` | refutation, competing designs |\n", ""),
-      }, { "d.md": "moved | references/effort.md:9 | references/models.md:3 | `medium` for review, refutation and judgement\n"
-        + "moved | references/effort.md:9 | references/models.md:5 | competing designs\n" },
-      { "references/models.md": "# Models\n\nThe strong model runs at `medium` for review, refutation and judgement.\n\nTwo competing designs take the top model.\n" }), [], "d.md"),
+      }, { "d.md": "moved | references/effort.md:9 | references/models.md:3 | `medium` for review, refutation and judgement\n" },
+      { "references/models.md": "# Models\n\nThe strong model runs at `medium` for review, refutation and judgement.\n" }), [], "d.md"),
       lostIn("retired by the user's saved words", edited(noLow, { "messages.md": said,
         "d.md": `retired | ${LOW} | messages.md:1 | Drop the low row, nobody uses it.\n` }), [], "d.md"),
       lostIn("retired by words the user did not write", edited(noLow, { "messages.md": said,
@@ -190,9 +189,9 @@ test("a line that held two facts needs a disposition for each place, and every l
     const id = "references/effort.md:10";
     const was = { "references/effort.md": EFFORT + TWO };
     const after = { "references/effort.md": EFFORT,
-      "references/models.md": BEFORE["references/models.md"] + "\n`max` suits the hardest problems.\n\nDelegating to threads of its own is the model's choice at any effort.\n" };
+      "references/models.md": BEFORE["references/models.md"] + "\n`max` suits the hardest problems.\n\nThe model may delegate to threads of its own at any effort.\n" };
     const first = `moved | ${id} | references/models.md:5 | \`max\` suits the hardest problems\n`;
-    const second = `moved | ${id} | references/models.md:7 | Delegating to threads of its own is the model's choice\n`;
+    const second = `moved | ${id} | references/models.md:7 | The model may delegate to threads of its own\n`;
     const t = edited(after, { "d.md": first }, was);
     const one = preserved(t.dir, t.base, path.join(t.run, "d.md"));
     return all(
@@ -200,50 +199,14 @@ test("a line that held two facts needs a disposition for each place, and every l
       JSON.stringify(one.lost[0]?.parts) === JSON.stringify(["delegating to its own threads is the model's choice"])
         || `the uncarried part: ${JSON.stringify(one.lost[0]?.parts)}`,
       lostIn("a place for each fact", edited(after, { "d.md": first + "# a note\n" + second }, was), [], "d.md"),
-      lostIn("a good line, then one whose quote does not stand", edited(after, { "d.md": first + second.replace("Delegating", "Handing over") }, was), [id], "d.md"),
-      lostIn("the same two in the other order", edited(after, { "d.md": second.replace("Delegating", "Handing over") + first }, was), [id], "d.md"),
+      lostIn("a good line, then one whose quote does not stand", edited(after, { "d.md": first + second.replace("delegate", "hand over") }, was), [id], "d.md"),
+      lostIn("the same two in the other order", edited(after, { "d.md": second.replace("delegate", "hand over") + first }, was), [id], "d.md"),
       lostIn("a step whose bold title changed and whose sentence was reworded", edited(
-        { "references/effort.md": EFFORT + "3. **Pick the effort.** For the role you brief, use the value the table gives.\n" },
-        { "d.md": "moved | references/effort.md:10 | references/effort.md:10 | For the role you brief, use the value the table gives\n" },
+        { "references/effort.md": EFFORT + "3. **Pick the effort.** Take the table's value for the role you brief.\n" },
+        { "d.md": "moved | references/effort.md:10 | references/effort.md:10 | Take the table's value for the role you brief\n" },
         { "references/effort.md": EFFORT + "3. **Carry it out.** Use the value the table gives the role.\n" }), [], "d.md"),
       lostIn("retired whole by the user's words", edited(after, { "messages.md": "Drop the max row.\n",
         "d.md": `retired | ${id} | messages.md:1 | Drop the max row.\n` }, was), [], "d.md"),
-    );
-  });
-
-test("an answered line stays listed when a word of it is gone from every file, or when its value changed in its own file",
-  "three facts were lost in the pilots through answers the script accepted: two on one shared word while the fact's own words had vanished, one where a value in a code span was changed in place",
-  async () => {
-    const PILOT = "A stronger model marks the pilot's units; recall and false positives against that marking decide the fixes.\n";
-    const was = { "references/effort.md": EFFORT + PILOT };
-    const linked = { "references/effort.md": EFFORT + "Pilot against a stronger model, as [the models](models.md) says.\n" };
-    const kept = { "references/effort.md": EFFORT + "Pilot against a stronger model.\n",
-      "references/models.md": BEFORE["references/models.md"] + "\nHow often the pilot's units are found and wrongly found, against that marking, decides the fixes.\n" };
-    const id = "references/effort.md:10";
-    const link = `moved | ${id} | references/effort.md:10 | Pilot against a stronger model\n`;
-    const t = edited(linked, { "d.md": link }, was);
-    const out = await spawnNode([CHECK, t.dir, "--against", t.base, "--dispositions", path.join(t.run, "d.md")], { killAfterMs: 30_000 }).done;
-    const ROW = "| strong | `medium` for review, refutation and judgement |\n";
-    const tier = { "references/effort.md": EFFORT + ROW };
-    const split = { "references/effort.md": EFFORT + "| strong | `medium` for review and judgement |\n\n| refutation | `high` |\n" };
-    const here = `moved | ${id} | references/effort.md:10 | strong | \`medium\` for review and judgement\n`
-      + `moved | ${id} | references/effort.md:12 | refutation | \`high\`\n`;
-    return all(
-      lostIn("a sentence replaced by a link, answered on the words it shares", t, [id], "d.md"),
-      /gone from every file: .*recall/.test(out.out) && out.out.includes(`reworded | ${id} | <file>:<line> |`) || `printed: ${out.out}`,
-      lostIn("the same, with the vanished words said to be reworded where they are", edited(kept, { "d.md":
-        `moved | ${id} | references/effort.md:10 | Pilot against a stronger model\n`
-        + `reworded | ${id} | references/models.md:5 | marks, recall, false, positives, decide => How often the pilot's units are found and wrongly found, against that marking, decides the fixes\n` }, was), [], "d.md"),
-      lostIn("a reworded line whose quote does not stand", edited(kept, { "d.md": link
-        + `reworded | ${id} | references/models.md:5 | marks, recall, false, positives, decide => How often the units are missed\n` }, was), [id], "d.md"),
-      lostIn("a value moved to another row of the same file with another value", edited(split, { "d.md": here }, tier), [id], "d.md"),
-      (({ dir, base, run }) => JSON.stringify(preserved(dir, base, path.join(run, "d.md")).lost[0]?.changed))(edited(split, { "d.md": here }, tier))
-        === JSON.stringify(["refutation: was medium; now high"]) || "the changed value is not named",
-      lostIn("the same change, retired by the user's words", edited(split, { "messages.md": "Refutation runs at high from now on.\n",
-        "d.md": `retired | ${id} | messages.md:1 | Refutation runs at high from now on.\n` }, tier), [], "d.md"),
-      lostIn("a row moved to another row of the same file with its value kept", edited(
-        { "references/effort.md": EFFORT + "| strong | `medium` for review and judgement |\n\n| refutation | `medium` |\n" },
-        { "d.md": `moved | ${id} | references/effort.md:10 | strong | \`medium\` for review and judgement\nmoved | ${id} | references/effort.md:12 | refutation | \`medium\`\n` }, tier), [], "d.md"),
     );
   });
 
@@ -262,7 +225,7 @@ test("a dispositions file that does not exist yet is read as empty, and a refuse
     const noBase = await run(t.dir, "--against", path.join(t.run, "nowhere"));
     return all(
       /^1 /.test(missing) && /not-yet\.md does not exist yet and is read as empty/.test(missing)
-        && missing.includes(`      moved | ${LOW} | <file>:<line where its fact is stated now> |`) || `missing file: ${missing}`,
+        && missing.includes(`      moved | ${LOW} | <file>:<line where it stands now> |`) || `missing file: ${missing}`,
       /^2 /.test(two) && /--against takes one directory, and 2 were named/.test(two) || `two directories: ${two}`,
       /^2 /.test(noValue) && /--against needs a value/.test(noValue) || `no value: ${noValue}`,
       /^2 /.test(alone) && /--dispositions is read only with --against/.test(alone) || `alone: ${alone}`,
