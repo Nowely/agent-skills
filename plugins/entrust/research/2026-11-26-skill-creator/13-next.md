@@ -91,6 +91,28 @@ tokens from the transcript's usage) wait for item 1 to show one of them. E170 st
 The skill is finished for this record when items 2 and 3 show the four fixes at work and two real uses
 closed by a retro find no new defect at evidence level 3.
 
+## Before the next work
+
+1. Order. Experiment C runs before any new change to the skill's text. The three fixes under "Open after v4" wait
+   for C's result, since C may change the form they would fix. The usage scan and the re-read of item 3 can run at
+   any time; they need no agents beyond one reader.
+2. The owner's steps. Merge the pull request. Two of its early commits carry attribution trailers that the
+   repository's instructions forbid, so a squash merge's message should leave them out. Then tag the release.
+3. A retro after a real use. In the session that used `rnd`, start `prepare-feedback` by name with that session given
+   by `--session`; without it the session is left out, since it loaded `prepare-feedback`'s page. In a cloud session,
+   have the report shown in full in the reply, since its private folder goes with the container. Then start the
+   Change from the report in a fresh session, whose turns cost less. The questions part has its first check there.
+4. Where the raw material lives. The harness that starts check sessions, their transcripts and the run's working
+   files are outside the repository, in the coordinating session's container. The items that need them (experiment
+   C, the usage scan, the re-read) are cheapest in that session after a compaction. If the container is lost, the
+   harness has to be rebuilt from its description in `12-v3.md` before they run.
+5. Experiment C's design must say how its sessions start top-tier critics: the harness starts every agent on
+   Sonnet, so the skill's tier rule could not be followed in item 3's sessions.
+6. Causes the coordinator controlled, from the reflection after v4: statements no session could pass, set with no
+   first session read (now prevented by the first-session read); samples larger than the decision needed (now
+   options put to the owner); the coordinator writing text itself and reading its own results unblind (the
+   prevention lines below).
+
 ## Where the tokens went, v1 to v3
 
 Counted from the coordinating session's own transcript and its 337 agents' transcripts, as context tokens
@@ -163,6 +185,10 @@ fixes were applied on the owner's word with no further read.
 - The questions part's remaining minor objections: a close-out and scorecard row for a part with no model, facts
   stated in several places, what to do with an answer that honestly admits a gap, the section's first sentence
   repeating its heading. Its first real run with an audit is its check.
+- The nine objections the Sonnet critic raised on v3's text that the top-tier critic had not, all holding at their
+  place (the details are in experiment A's match), for the next Change's observation.
+- The two findings of experiment B's audit that the trial retro had not (the undo that left a trace in a file and
+  was reported clean; three cases run though the owner asked for no runs), for the same.
 
 ## Open objections from v3
 
