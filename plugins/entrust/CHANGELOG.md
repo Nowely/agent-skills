@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.48.0 — 2026-11-27
 
 ### Review report
 
@@ -123,6 +123,21 @@ forensics remain in the repository references and release notes.
 - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
   placed in this diff; the printout lists them for the checking agents.
+
+### Checks and limits
+
+- **Breaking:** the review export is schema 8, its comments carrying `end`, `from`, `to` and `quote`. `check` refuses
+  a requirement without a source, a decision without a recommendation and a block without `does`, so a record an
+  earlier review wrote needs them before it renders again. The page's storage key is unchanged: answers kept by a
+  0.47 page are read as before.
+- Local checks passed: review-page-browser (81), review-report (48), review-decisions (13), review-page (11), skills
+  (8) and package. The development environment had Node.js v22.23.4 and no Codex CLI; Codex conformance was not run,
+  the driver changing only its version.
+- Two Opus critics read the page, the continuation and the data contract (15 and 11 findings), and Sonnet verifiers
+  checked the fixes; an outside review's four continuation cases are regression tests. Two Sonnet trials wrote a
+  full review (about 200k tokens, 7 minutes) and a continuation (about 155k tokens, 3.5 minutes) with this skill.
+- Not checked: widths below 1024 px, and a live review by the owner. The live orchestrate gate was not run.
+- Open entries remain in [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
 
 ## 0.47.3 — 2026-11-26
 

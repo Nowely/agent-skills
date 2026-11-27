@@ -5,7 +5,7 @@ description: >-
   states. Use for design-to-code, pixel-perfect layout or adaptive frontend work. Compare the implementation with
   the supplied references and verify the affected interactions and consumers before handing it over.
 metadata:
-  version: "0.47.3"
+  version: "0.48.0"
 license: MIT
 ---
 
