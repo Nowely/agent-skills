@@ -18,11 +18,10 @@ forensics remain in the repository references and release notes.
   file: `moved`, with the place and the words that carry it, one line for each place a part of it went, or
   `retired`, with the user's own words. A corrected word or link lists nothing. It is step 8 of Change; Repair
   and any Create on a skill that exists run it too, and "remove first" no longer applies to a fact.
-- Every judge is briefed by one short form in `references/critics.md`: a role section read by path, a list of
-  what to read and a list of what not to open, with nothing of the writer's reasons. Every set of marks has
-  `part`. The verifier takes the dispositions file line by line, a check's reader has a section of its own, and
-  "Handling a return" says how a verdict is computed: from the rule written before the result and from marks
-  confirmed at their places, never from a judge's own total.
+- Every judge is briefed with paths, never a summary, by `references/critics.md`: its role section, what to read
+  and what not to open, with nothing of the writer's reasons. Every set of marks has `part`. The verifier takes
+  the dispositions file line by line, and "Handling a return" says how a verdict is computed: from the rule
+  written before the result and from marks confirmed at their places, never from a judge's own total.
 - A plan whose check runs sessions, or that has more than one round, is a file (`references/plan.md`): the
   rounds and the cap on fix rounds, checkpoints with their rules written first, planned spend, how the check's
   sessions start and who writes what, a log whose times come from a command, and a progress table that says
@@ -55,7 +54,10 @@ forensics remain in the repository references and release notes.
 - Passed so far: the preservation list finds the three lost rows in all four of the first test's final trees;
   a pilot of two sessions on the same pending change passed on its second pair, after one rework of the list;
   judges briefed from the pages alone caught 9 and 9 of 10 planted faults against 6 for the earlier pages, on
-  the test's rerun after one correction.
+  the test's rerun after one correction. That rerun was found contaminated; repeated clean on fresh material,
+  briefs from the earlier pages already caught 8 of 10 against 10 and 9, so the brief form and the reader's own
+  section were retired and `critics.md` is a fifth shorter. Briefs written from the shorter page caught 9 and
+  10 of 10 on the same material.
 - The full test returned and this version does not land by its frozen rule: on two pending changes one of the
   two sessions that followed the page lost a fact in each (a value changed when moved; a rule replaced by a link
   with another meaning), and on the replay of the design run's opening the decision on how a skill's text and

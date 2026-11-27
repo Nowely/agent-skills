@@ -123,3 +123,10 @@ read found it clean); the rate limit, which stopped the run at 00:04 UTC for 3 h
 |---|---|---|---|
 | I4 material | three fresh scenarios, ten known answers (addendum E) | a fresh Opus builder that saw neither the pages nor 2a's material; a Sonnet solver | every answer findable; key hashed before the first writer |
 | I4 briefs and judges | 2 S writers (head) and 1 C writer (`e8b6e02`) per role; 9 briefs under shuffled codes | 9 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | S 10 and 9, C 8 of 10; no mark moved, no leak: **not needed**, so the briefs' additions are dropped down to their level-3 parts (I5) |
+
+### I5
+
+| Step | Input | Reader | Outcome |
+|---|---|---|---|
+| I5 change | addendum F: the judge pages down to what the record supports; the form only if it shortens `critics.md` | a fresh Fable writer, gate at step 8; a Sonnet verifier | `critics.md` 13,482 to 10,758 characters; the form retired; 76 of 76 dispositions carried |
+| I5 check | I4's material and key; 2 writers per role from the changed pages, 6 briefs under shuffled codes | 6 fresh Sonnet judges; a blind Sonnet count; a Sonnet confirmer | 9 and 10 of 10, no leak: **keep** |
