@@ -28,11 +28,11 @@ parts return reaches the sheet as [a correction](../SKILL.md#a-correction).
 
 ## Briefing a part
 
-Brief each part by [the form](critics.md#every-brief), with its row below as the role. Start the lenses of one
-step together, and put each one's return file under the others' `Do not open`: a lens that has read another's
-return is no longer a second view. Use no copy of this session as a part; it holds what the part must not see.
+Brief each part as [every brief](critics.md#every-brief), with its row below as the role. Start the lenses of
+one step together, and forbid each one the others' return files: a lens that has read another's return is no
+longer a second view. Use no copy of this session as a part; it holds what the part must not see.
 
-| Part | `Read` | `Do not open`, besides the other parts' returns |
+| Part | It reads | It must not open, besides the other parts' returns |
 |---|---|---|
 | evidence | the skill; the record; the check's rule and marks; every session's outputs and transcript | nothing |
 | from zero | the user's messages; the repository as it was before the skill; then the skill | the skill and its record, until its own sketch is written to its return file |

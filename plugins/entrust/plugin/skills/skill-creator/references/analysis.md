@@ -109,8 +109,8 @@ the user's and private: read only the ones they named, and keep what you take in
 1. Collect, by a command and never from memory, every artifact of the practice from those sessions: each brief,
    each review, each message of the kind the skill is to produce, with what came back from it. Where a session
    cannot be read, record the gap and go on; do not widen the search to fill it.
-2. Start one fresh reader, briefed by [the form](critics.md#every-brief) with this section as its role. `Read`
-   holds the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
+2. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
+   reads the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
    practice. It writes `practice.md` in the run directory, in four parts:
    - the catalogue: each thing the artifacts do, in how many of them, with one example and its place;
    - what each did, judged by what came back: the place that shows it and how sure that is (1, the text says
