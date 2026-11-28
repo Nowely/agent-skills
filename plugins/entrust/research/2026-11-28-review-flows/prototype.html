@@ -1,0 +1,699 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}img{max-width:100%}</style></head><body><title>Review flows prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: the report's own reading space — a flow canvas with the context panel beside it, as on the review page.
+   Tokens are the review page's (page.css), so the prototype reads as part of the report. */
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f0f2f5; --surface-3: #e6e9ee;
+  --border: #dce0e6; --border-strong: #c2c8d1;
+  --text: #1a1d23; --text-2: #434a56; --text-3: #5d6571;
+  --accent: #1f55cc; --accent-bg: #e8eefb; --accent-border: #a8bdee;
+  --ok: #16703a; --ok-bg: #e2f2e7; --ok-bd: #a6d5b5;
+  --warn: #855600; --warn-bg: #fcefd2; --warn-bd: #deb768;
+  --bad: #b3261e; --bad-bg: #fce7e5; --bad-bd: #eeb0aa; --bad-line: #d4473b;
+  --q: #4a4db3; --q-bg: #ebebfa; --q-bd: #bfc1ee; --q-line: #6c6fd6;
+  --neutral: #3d4450; --neutral-bg: #eceef2; --neutral-bd: #cdd2da;
+  --edge: #8a929e; --code-bg: #ffffff; --code-text: #1f2328; --num: #565e69; --mark: #fff3c4;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+  --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1115; --surface: #151920; --surface-2: #1b2028; --surface-3: #232a33;
+  --border: #2a313b; --border-strong: #3b4451;
+  --text: #e4e7ec; --text-2: #b6bdc8; --text-3: #949daa;
+  --accent: #7ea4ff; --accent-bg: #1a2644; --accent-border: #3d5796;
+  --ok: #5cc479; --ok-bg: #112a1a; --ok-bd: #245a3a;
+  --warn: #e3b34f; --warn-bg: #2d2410; --warn-bd: #6a5222;
+  --bad: #ff8b80; --bad-bg: #33171a; --bad-bd: #6d2d30; --bad-line: #e5534b;
+  --q: #b4b6ff; --q-bg: #212344; --q-bd: #454989; --q-line: #8b8ef0;
+  --neutral: #c5cbd4; --neutral-bg: #222830; --neutral-bd: #3b4451;
+  --edge: #6f7885; --code-bg: #151920; --code-text: #e1e4e8; --num: #a0a8b3; --mark: #3a3214;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0e1115; --surface: #151920; --surface-2: #1b2028; --surface-3: #232a33;
+  --border: #2a313b; --border-strong: #3b4451;
+  --text: #e4e7ec; --text-2: #b6bdc8; --text-3: #949daa;
+  --accent: #7ea4ff; --accent-bg: #1a2644; --accent-border: #3d5796;
+  --ok: #5cc479; --ok-bg: #112a1a; --ok-bd: #245a3a;
+  --warn: #e3b34f; --warn-bg: #2d2410; --warn-bd: #6a5222;
+  --bad: #ff8b80; --bad-bg: #33171a; --bad-bd: #6d2d30; --bad-line: #e5534b;
+  --q: #b4b6ff; --q-bg: #212344; --q-bd: #454989; --q-line: #8b8ef0;
+  --neutral: #c5cbd4; --neutral-bg: #222830; --neutral-bd: #3b4451;
+  --edge: #6f7885; --code-bg: #151920; --code-text: #e1e4e8; --num: #a0a8b3; --mark: #3a3214;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1480px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+
+.top { display: grid; gap: 6px; }
+.eyebrow { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+h1 { font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--text-2); max-width: 78ch; }
+.lede code, .small code { font-family: var(--mono); font-size: .92em; }
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { flex: 1 1 260px; min-width: 0; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; }
+.tab:hover { border-color: var(--border-strong); }
+.tab[aria-selected="true"] { border-color: var(--accent-border); background: var(--accent-bg); }
+.tab .t-kind { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.tab .t-title { font-weight: 600; }
+.tab .t-sum { font-size: 12.5px; color: var(--text-2); }
+
+.flow-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 560px; }
+.main { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; border-right: 1px solid var(--border); }
+.fhead { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+.fhead-row { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.fhead h2 { margin: 0; font-size: 17px; line-height: 1.3; text-wrap: balance; }
+.fhead .ask { margin: 2px 0 0; color: var(--text-2); font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 7px; overflow: hidden; flex: none; }
+.seg button { border: 0; background: var(--surface); padding: 4px 12px; cursor: pointer; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+.seg button[aria-pressed="true"] { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.strip { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--text-2); }
+.strip .sum { font-weight: 600; color: var(--text); }
+.strip .gapbtn { border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent); border-radius: 6px; padding: 2px 9px; cursor: pointer; font-size: 12.5px; }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--neutral-bd); background: var(--neutral-bg); color: var(--neutral); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 600; line-height: 18px; white-space: nowrap; }
+.chip.ran { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-bd); }
+.chip.read { color: var(--neutral); background: var(--neutral-bg); border-color: var(--neutral-bd); }
+.chip.proposed { color: var(--text-2); background: transparent; border-style: dashed; border-color: var(--border-strong); }
+.chip.question { color: var(--q); background: var(--q-bg); border-color: var(--q-bd); }
+.chip.missing, .chip.fail { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-bd); }
+.chip.pass { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-bd); }
+.chip.skip { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-bd); }
+.chip.seen { color: var(--q); background: var(--q-bg); border-color: var(--q-bd); }
+.chip.notrun { color: var(--text-3); background: transparent; border-style: dashed; border-color: var(--border-strong); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; border: 1.5px solid var(--edge); }
+.dot.ran { background: var(--ok); border-color: var(--ok); }
+.dot.read { background: var(--edge); border-color: var(--edge); }
+.dot.proposed { background: transparent; border-style: dashed; }
+.dot.question { background: var(--q-line); border-color: var(--q-line); }
+.dot.missing { background: transparent; border-color: var(--bad-line); border-style: dashed; }
+
+.viewport { min-width: 0; overflow: auto; padding: 18px; position: relative; }
+.scaler { transform-origin: 0 0; }
+.canvas { position: relative; }
+.canvas svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.edge { fill: none; stroke-width: 1.6; }
+.edge.ran { stroke: var(--ok); }
+.edge.read { stroke: var(--edge); }
+.edge.proposed { stroke: var(--edge); stroke-dasharray: 5 4; }
+.edge.question { stroke: var(--q-line); stroke-dasharray: 5 4; }
+.edge.missing { stroke: var(--bad-line); stroke-dasharray: 5 4; }
+.edge.sel { stroke-width: 3; }
+marker path { stroke: none; }
+#m-ran path { fill: var(--ok); } #m-read path, #m-proposed path { fill: var(--edge); } #m-question path { fill: var(--q-line); } #m-missing path { fill: var(--bad-line); }
+
+.group { position: absolute; border: 1.5px dashed var(--border-strong); border-radius: 14px; background: var(--surface-2); }
+.group .g-label { position: absolute; right: 14px; top: 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+
+.node { position: absolute; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: start; text-align: left; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 9px 11px 10px; cursor: pointer; box-shadow: var(--shadow); }
+.node:hover { border-color: var(--text-3); }
+.node.b-proposed { border-style: dashed; box-shadow: none; }
+.node.b-question { border-color: var(--q-bd); }
+.node.b-missing { border: 1.5px dashed var(--bad-line); background: var(--bad-bg); box-shadow: none; }
+.node.end { background: var(--surface-2); box-shadow: none; }
+.node.choice { background: var(--q-bg); border-color: var(--q-bd); text-align: center; justify-items: center; }
+.node[aria-current="true"] { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.n-top { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+.n-num { font-size: 11.5px; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.n-title { font-weight: 600; line-height: 1.3; }
+.n-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
+.n-value { font-family: var(--mono); font-size: 11.5px; color: var(--accent); overflow-wrap: anywhere; line-height: 1.35; }
+.n-foot { display: flex; gap: 6px; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--text-3); }
+.n-place { font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.n-tag { flex: none; }
+.n-tag.changed { color: var(--accent); }
+.n-expect b { color: var(--ok); font-weight: 600; }
+
+.elabel { position: absolute; transform: translate(-50%, -50%); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1px 7px; font-size: 11.5px; color: var(--text-2); white-space: nowrap; line-height: 18px; }
+.group ~ .elabel, .elabel.on-group { background: var(--surface-2); }
+button.elabel { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+button.elabel:hover { border-color: var(--border-strong); color: var(--text); }
+button.elabel[aria-current="true"] { outline: 2.5px solid var(--accent); outline-offset: 1px; color: var(--text); }
+.elabel .dots { display: inline-flex; gap: 2px; }
+.elabel.missing { color: var(--bad); border-color: var(--bad-bd); }
+.elabel.value { font-family: var(--mono); font-size: 11px; }
+
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+/* list views */
+.list { padding: 16px 20px; display: grid; gap: 10px; align-content: start; }
+.list .note { margin: 0; font-size: 12.5px; color: var(--text-3); max-width: 75ch; }
+.list ol, .list ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.list li > .li-row { display: inline-flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.li-btn { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; font-weight: 600; color: var(--text); }
+.li-btn:hover { color: var(--accent); }
+.li-btn[aria-current="true"] { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.li-place { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+.li-sub { color: var(--text-3); font-size: 12.5px; }
+table.tt { border-collapse: collapse; width: 100%; font-size: 13px; }
+.tt th, .tt td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.tt th { font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.tt tr.cur td { background: var(--accent-bg); }
+.tt .tt-from, .tt .tt-to { white-space: nowrap; font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+
+/* context panel */
+.ctx { min-width: 0; padding: 16px 18px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; background: var(--surface); border-radius: 0 10px 10px 0; }
+.ctx-eyebrow { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.ctx h3 { margin: 0; font-size: 16px; line-height: 1.3; text-wrap: balance; }
+.ctx p { margin: 0; color: var(--text-2); }
+.ctx h4 { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--text-3); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.kv dd.mono { font-family: var(--mono); font-size: 12px; }
+.code { margin: 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 7px; overflow-x: auto; font: 12px/1.55 var(--mono); color: var(--code-text); padding: 6px 0; }
+.code .ln { display: block; padding: 0 10px 0 0; white-space: pre; }
+.code .ln.hit { background: var(--mark); }
+.code .no { display: inline-block; width: 46px; padding-right: 10px; text-align: right; color: var(--num); user-select: none; }
+.code-cap { font-size: 12px; color: var(--text-3); margin-top: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.ev { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ev li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline; font-size: 13px; }
+.ev .src { grid-column: 2; font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+.ev .src code { font-family: var(--mono); font-size: 11.5px; }
+.links { display: flex; gap: 6px; flex-wrap: wrap; }
+.link { border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; cursor: pointer; text-align: left; }
+.link:hover { border-color: var(--border-strong); }
+.link[disabled] { cursor: default; color: var(--text-3); }
+.callout { border: 1px solid var(--q-bd); background: var(--q-bg); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text); }
+.callout.bad { border-color: var(--bad-bd); background: var(--bad-bg); }
+.callout b { font-weight: 600; }
+.res { display: flex; gap: 6px; flex-wrap: wrap; }
+.res button { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 13px; }
+.res button[aria-pressed="true"][data-res="pass"] { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok); font-weight: 600; }
+.res button[aria-pressed="true"][data-res="fail"] { background: var(--bad-bg); border-color: var(--bad-bd); color: var(--bad); font-weight: 600; }
+.res button[aria-pressed="true"][data-res="seen"] { background: var(--q-bg); border-color: var(--q-bd); color: var(--q); font-weight: 600; }
+.res button[aria-pressed="true"][data-res="skip"] { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn); font-weight: 600; }
+textarea { width: 100%; min-height: 64px; font: 13px/1.45 var(--sans); color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 7px; padding: 6px 8px; resize: vertical; }
+.export { font: 12px/1.5 var(--mono); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nav { display: flex; gap: 8px; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; }
+.nav button { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 7px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
+.nav button[disabled] { opacity: .45; cursor: default; }
+.hint { font-size: 12px; color: var(--text-3); }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.notes section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.notes h3 { margin: 0 0 6px; font-size: 14px; }
+.notes p, .notes ul { margin: 0; font-size: 13px; color: var(--text-2); }
+.notes ul { padding-left: 18px; display: grid; gap: 4px; }
+
+@media (max-width: 1100px) {
+  .flow-card { grid-template-columns: minmax(0, 1fr); }
+  .main { border-right: 0; border-bottom: 1px solid var(--border); }
+  .ctx { border-radius: 0 0 10px 10px; }
+}
+@media (prefers-reduced-motion: no-preference) { .node, .tab, button.elabel { transition: border-color .12s, background-color .12s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">entrust:review · flows · prototype</div>
+    <h1>Flows on a real change: entrust 0.48.0</h1>
+    <p class="lede">Three flows drawn by hand from the skill's own code at <code>835c58d</code>, the way a reviewer would write them into the record. Places, code lines and test names are real. <b>Ran</b> means the named test passed when its suite was run on <code>835c58d</code> on 28 Nov; <b>Read</b> means only the code was read.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Flows" id="tabs"></nav>
+
+  <article class="flow-card">
+    <div class="main">
+      <div class="fhead">
+        <div class="fhead-row">
+          <div><h2 id="f-title"></h2><p class="ask" id="f-ask"></p></div>
+          <div class="seg" role="group" aria-label="View">
+            <button type="button" data-view="flow" aria-pressed="true">Flow</button>
+            <button type="button" data-view="list" aria-pressed="false">List</button>
+          </div>
+        </div>
+        <div class="strip" id="f-strip"></div>
+      </div>
+      <div class="viewport" id="viewport"></div>
+      <div class="legend" aria-label="Legend">
+        <span><i class="dot ran"></i>Ran: a named test asserts it</span>
+        <span><i class="dot read"></i>Read: the code was read; nothing asserts it</span>
+        <span><i class="dot proposed"></i>Proposed: what should happen, not run</span>
+        <span><i class="dot question"></i>Question: the review could not settle it</span>
+        <span><i class="dot missing"></i>Not reached: should get here and does not</span>
+      </div>
+    </div>
+    <aside class="ctx" id="ctx" aria-live="polite"></aside>
+  </article>
+
+  <div class="notes">
+    <section><h3>What a flow shows that a list does not</h3><ul>
+      <li>Forks and ends: in the data path, the reason reaches three readers and stops before the owner.</li>
+      <li>Evidence on each step and trigger, so a gap shows where it is.</li>
+      <li>Where gaps go: most to the author as tests, the rest to a person as a check with a recorded result.</li>
+    </ul></section>
+    <section><h3>When the list is enough</h3><ul>
+      <li>A straight path of three steps or fewer.</li>
+      <li>The check here reads as well as a checklist; the flow only adds the shared setup.</li>
+      <li>States read best as a table when every trigger needs its evidence; switch to List on the viewer.</li>
+    </ul></section>
+    <section><h3>What stays the same</h3><ul>
+      <li>Every step names a block or a place; one that names neither is drawn as Proposed.</li>
+      <li>Ran names the test and where it ran. The list of triggers is the reviewer's, so no ratio is shown as coverage.</li>
+      <li>Selecting a step opens its context; the whole flow stays in view.</li>
+    </ul></section>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- data: written by hand from entrust 0.48.0 (835c58d)
+const BROWSER_RUN = "run locally on 835c58d on 28 Nov: suite 81 of 81 passed (CI does not run the browser suite)";
+const TEST_WHOLE = { name: "a large kept block is warned of until it says in «whole» why it is one decision, and the printout gives the reason to the checking agents", at: "evals/review-report.test.mjs:374", where: "run on 835c58d on 28 Nov: suite 48 of 48 passed" };
+const T_FIT = { name: "the picture viewer fits a picture to the window, up to twice its own size, closes around it, zooms on a click on it and closes on a click outside it", at: "evals/review-page-browser.test.mjs:1130", where: BROWSER_RUN };
+const T_BROKEN = { name: "a picture that does not load keeps no size or zoom of the picture before it", at: "evals/review-page-browser.test.mjs:1172", where: BROWSER_RUN };
+const T_STEP = { name: "the picture viewer fits or shows a picture at its size and steps between pictures; a screen's revision and sources show", at: "evals/review-page-browser.test.mjs:1182", where: BROWSER_RUN };
+const T_CAPTION = { name: "a screen says, from the record alone, the pictures given, its match or differences, … and the viewer's caption says the same", at: "evals/review-page-browser.test.mjs:1154", where: BROWSER_RUN };
+const RT = "skills/review/scripts/page/runtime.js";
+
+const FLOWS = [
+{
+  id: "data", kind: "Data path", title: "Where a block's “whole” reason goes",
+  ask: "A reviewer writes why a 40-line kept block is one decision. Who reads that sentence?",
+  summary: "One value, four readers: three get it. The owner's page does not, and whether it should is a question.",
+  w: 1060, h: 430, dir: "h",
+  nodes: [
+    { id: "n1", num: 1, x: 0, y: 150, w: 200, title: "The reviewer says why", value: "\"whole\": \"one table, each row the same rate format\"", place: "references/report-data.md:21", change: "changed", basis: "read",
+      body: "A large kept block that is one decision gets one sentence saying why. The rule is in the record's reference; the reviewer writes the sentence while filling in the blocks.",
+      code: { file: "skills/review/references/report-data.md", start: 20, hit: [20, 21], lines: [
+        "   `removed`. A large block that is one decision — a column dropped from every row of a table, one rename through a",
+        "   file, a generated file — says why in `whole`, and the critic may still divide it."] },
+      evidence: [{ basis: "read", text: "The rule as written. A rule does not run; the steps after it show whether it holds." }],
+      links: [{ k: "Requirement", t: "A large block that is one decision can say why instead of being split (owner, PR 109, point 1)" }] },
+    { id: "n2", num: 2, x: 280, y: 150, w: 200, title: "check refuses an empty reason", value: "\"whole\": \" \" → error", place: "scripts/review.mjs:513", change: "changed", basis: "ran",
+      body: "Every record passes check before anything reads it. A reason that is present but blank stops the record with an error that says what to write.",
+      code: { file: "skills/review/scripts/review.mjs", start: 512, hit: [513], lines: [
+        "    // A large block that is one decision says why; the critic reads it and may divide the block.",
+        "    if (block.whole !== undefined && !text(block.whole)) errors.push(`${name}: \"whole\" says why the block is one decision, or is left out`);"] },
+      evidence: [{ basis: "ran", text: "A blank reason is refused with this message.", test: TEST_WHOLE }] },
+    { id: "x1", x: 280, y: 330, w: 200, end: true, title: "Record refused", value: "\"whole\" says why the block is one decision, or is left out", basis: "ran",
+      body: "The value stops here by design: a blank reason never reaches a reader. The reviewer fixes the record and runs check again.",
+      evidence: [{ basis: "ran", text: "The test checks the exit code and the message.", test: TEST_WHOLE }] },
+    { id: "n3", num: 3, x: 560, y: 0, w: 200, title: "No size warning for the block", value: "keep · 40 lines · whole set → no warning", place: "scripts/report.mjs:260", change: "changed", basis: "ran",
+      body: "check warns about a kept block of 40 or more lines under one verdict. A block that says why it is one decision is left out of the warning.",
+      code: { file: "skills/review/scripts/report.mjs", start: 258, hit: [260], lines: [
+        "    // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size. A block",
+        "    // that says in \"whole\" why it is one decision is not warned of; the printout carries the reason to the critic.",
+        "    for (const b of model.blocks.filter((b) => b.verdict === \"keep\" && !b.whole && b.weightLines.added + b.weightLines.removed >= 40))",
+        "      console.error(`warning: block ${b.id} (${b.path} ${b.where}) keeps ${…} lines under one verdict; divide it, or say in \"whole\" why it is one decision`);"] },
+      evidence: [{ basis: "ran", text: "Without a reason the warning appears; with one it does not.", test: TEST_WHOLE }] },
+    { id: "n4", num: 4, x: 560, y: 150, w: 200, title: "The printout carries the reason", value: "Keep. One decision: one table, …", place: "scripts/report.mjs:99", change: "changed", basis: "ran",
+      body: "report.mjs render prints the draft for the checking agents. Each block's line ends with its reason when it has one.",
+      code: { file: "skills/review/scripts/report.mjs", start: 99, hit: [99], short: true, lines: [
+        "    …${capital(word(\"verdict\", b.verdict))}${grounds(b)}${b.carried ? … : \"\"}.${b.whole ? ` ${t(\"whole\")}: ${b.whole}` : \"\"}`),"] },
+      evidence: [{ basis: "ran", text: "The printout contains “Keep. One decision: one table, each row the same rate format”.", test: TEST_WHOLE }] },
+    { id: "n5", num: 5, x: 840, y: 150, w: 200, title: "The critic reads it", value: "printout → critic, verifier", place: "references/agents.md:45", change: "context", basis: "question",
+      body: "SKILL.md gives the printout to the critic and the verifier. The critic's brief does not name blocks kept whole as a place to look, so a weak reason is challenged only if the critic happens to notice it.",
+      code: { file: "skills/review/references/agents.md", start: 45, hit: [45], lines: [
+        "The printout of the reviewer's saved draft (`report.mjs render`: the requirements with their sources, the units with",
+        "their verdicts and reasons, the mechanisms, the target, the findings, the questions and the blocks not kept; a kept",
+        "block's lines through `report.mjs lines`) and `<out>/target.md`; not the reviewer's working notes."] },
+      evidence: [{ basis: "read", text: "SKILL.md:82 gives the printout to the critic and the verifier at once." },
+                 { basis: "question", text: "Should the critic's brief ask it to test each “whole” reason against the block's lines?" }],
+      note: "The brief above says the printout holds “the blocks not kept”. It holds every block: the filter went in an earlier revision, and seven places still describe it (agents.md:45, SKILL.md:82, report-data.md:32 and :36, report.mjs:96, the printout's heading in labels.mjs:13 and :361). Restoring the filter would cut the reason off from the critic, so the descriptions are what to fix." },
+    { id: "n6", num: 6, x: 560, y: 300, w: 200, title: "The page's data for the block", value: "D.blocks[i]: id, path, verdict, does, serves …", place: "scripts/page.mjs:172", change: "context", basis: "read",
+      body: "page.mjs builds the page's data from the same model. A block carries its place, verdict, explanation and links; its reason is not among them. The printed copy is built from the same data.",
+      code: { file: "skills/review/scripts/page.mjs", start: 172, hit: [172, 173], lines: [
+        "    blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,",
+        "      serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),"] },
+      evidence: [{ basis: "read", text: "No “whole” in the block's fields." }] },
+    { id: "n7", num: 7, x: 840, y: 300, w: 200, end: true, title: "The owner sees why it is one decision", value: "not shown", basis: "missing",
+      body: "On the page and in the printed copy, a 40-line kept block shows its explanation and verdict but not why one verdict covers it. The reason reaches the critic and stops before the owner.",
+      evidence: [{ basis: "read", text: "Nothing in page.mjs, runtime.js or document.mjs reads a block's “whole” at 835c58d. (runtime.js's “whole” is the file view toggle, which is unrelated.)" },
+                 { basis: "read", text: "By design so far: the reference gives the reason to the checking agents.", at: "skills/review/references/report-data.md:183" }],
+      question: "Should the owner see why a block is one decision? They read the same 40 lines under one verdict. If yes: show it under the block's explanation in Code, labelled “One decision”." },
+  ],
+  edges: [
+    { from: "n1", fs: "r", to: "n2", ts: "l", basis: "ran", label: "every record" },
+    { from: "n2", fs: "b", to: "x1", ts: "t", basis: "ran", label: "blank", ldx: 30 },
+    { from: "n2", fs: "r", ft: .5, to: "n3", ts: "l", basis: "ran", label: "kept, ≥ 40 lines", lt: .62 },
+    { from: "n2", fs: "r", ft: .5, to: "n4", ts: "l", basis: "ran", label: "render", lt: .62 },
+    { from: "n2", fs: "r", ft: .5, to: "n6", ts: "l", basis: "read", label: "page data", lt: .62 },
+    { from: "n4", fs: "r", to: "n5", ts: "l", basis: "read", label: "brief" },
+    { from: "n6", fs: "r", to: "n7", ts: "l", basis: "missing", label: "dropped", cls: "missing" },
+  ],
+  order: ["n1", "n2", "x1", "n3", "n4", "n5", "n6", "n7"],
+},
+{
+  id: "states", kind: "States", title: "The picture viewer",
+  ask: "Which states can the viewer be in, what moves it between them, and which moves does a test assert?",
+  summary: "4 states, 22 triggers listed: 9 asserted by a test, 12 read only, 1 question.",
+  gaps: true,
+  w: 1060, h: 500, dir: "v",
+  groups: [{ id: "open", x: 250, y: 56, w: 800, h: 434, label: "Viewer open" }],
+  nodes: [
+    { id: "s0", x: 0, y: 250, w: 190, title: "Closed", desc: "The report; a screen's pictures show as thumbnails.", place: RT + ":2395", change: "context", state: true,
+      body: "The viewer is a dialog made on first use and kept. Every way of closing lands here." },
+    { id: "s1", x: 310, y: 140, w: 230, title: "Fitted", desc: "The largest size the window holds, up to twice the picture's own.", value: "fit = min(W / nw, H / nh, 2)", place: RT + ":2430", change: "changed", state: true,
+      body: "The mode whenever the viewer opens. A small screenshot is enlarged up to twice its size so it is not lost in a large window; the cursor says whether a click makes it smaller or larger.",
+      code: { file: RT, start: 2429, hit: [2430, 2433], lines: [
+        "  const W = Math.floor(innerWidth * 0.96) - 2, H = Math.floor(innerHeight * 0.94) - 2 - $(\".zoom-bar\", d).offsetHeight - $(\"#zoom-caption\").offsetHeight;",
+        "  const fit = Math.min(W / nw, H / nh, 2), now = zoomFit ? fit : 1, next = zoomFit ? 1 : fit;",
+        "  img.style.width = `${Math.round(nw * now)}px`; img.style.height = `${Math.round(nh * now)}px`;",
+        "  stage.style.maxWidth = `${W}px`; stage.style.maxHeight = `${H}px`;",
+        "  img.style.cursor = next > now ? \"zoom-in\" : next < now ? \"zoom-out\" : \"default\";"] },
+      evidence: [{ basis: "ran", text: "A 200 px picture shows at 400 px with a zoom-out cursor. The test asserts the size; whether it still looks sharp is for a person.", test: T_FIT }] },
+    { id: "s2", x: 790, y: 140, w: 230, title: "Own size", desc: "The picture's own pixels; a large one scrolls inside the window.", value: "zoomFit = false", place: RT + ":1931", change: "changed", state: true,
+      body: "One pixel of the picture per pixel of the screen. A picture larger than the window scrolls inside the viewer, which never grows past the window.",
+      code: { file: RT, start: 1930, hit: [1931], lines: [
+        "      case \"zoom-fit\": case \"zoom-full\": zoomFit = a === \"zoom-fit\"; return showZoom(zoomAt);",
+        "      case \"zoom-toggle\": zoomFit = !zoomFit; return showZoom(zoomAt);"] },
+      evidence: [{ basis: "ran", text: "A 3000 px picture shows at 3000 px and its field scrolls.", test: T_FIT }] },
+    { id: "s3", x: 545, y: 360, w: 230, title: "No picture", desc: "A picture that fails to load: no size kept, default cursor. The mode is kept.", value: "naturalWidth = 0", place: RT + ":2428", change: "changed", state: true,
+      body: "Fit and own size have nothing to measure. The viewer drops the size of the picture before it and shows the browser's broken-image mark. The mode it was in stays set for the next picture.",
+      code: { file: RT, start: 2427, hit: [2428], lines: [
+        "  const d = $(\"#zoom-dialog\"), img = $(\"img\", d), stage = $(\".zoom-stage\", d), nw = img.naturalWidth, nh = img.naturalHeight;",
+        "  if (!nw || !nh) { img.style.width = img.style.height = \"\"; img.style.cursor = \"default\"; return; }"] },
+      evidence: [{ basis: "ran", text: "After a broken picture: no width, no height, default cursor.", test: T_BROKEN }] },
+  ],
+  edges: [
+    { id: "t1", from: "s0", fs: "r", ft: .3, to: "s1", ts: "l", tt: .6, title: "Closed → Fitted", short: "Open a picture", ldx: -70, ldy: -34, triggers: [
+      { basis: "ran", text: "Click a thumbnail in Screens", test: T_FIT },
+      { basis: "read", text: "Click a picture in a requirement's or a finding's panel", at: RT + ":960", why: "the panels draw the same screen box (also :1094); no test opens the viewer from a panel" }],
+      note: "The viewer always opens fitted, whatever mode it was closed in.",
+      code: { file: RT, start: 2411, hit: [2411], lines: ["  zoomFit = true; showZoom(PICTURES.findIndex((p) => p.id === id));", "  if (!d.open) d.showModal();"] } },
+    { id: "t2", from: "s1", fs: "r", ft: .3, to: "s2", ts: "l", tt: .3, title: "Fitted → Own size", short: "Actual size", triggers: [
+      { basis: "ran", text: "Click the picture", test: T_FIT },
+      { basis: "ran", text: "Actual size button, clicked", test: T_STEP },
+      { basis: "read", text: "Enter on Actual size", at: "evals/review-page-browser.test.mjs:1148", why: "a test presses it but asserts only that the viewer stays open" }] },
+    { id: "t3", from: "s2", fs: "l", ft: .72, to: "s1", ts: "r", tt: .72, title: "Own size → Fitted", short: "Fit", triggers: [
+      { basis: "ran", text: "Fit button", test: T_FIT },
+      { basis: "read", text: "Click the picture", at: RT + ":1931", why: "the same toggle as Fitted → Own size; no test clicks it in this direction" }] },
+    { id: "t4", from: "s1", fs: "b", ft: .2, to: "s3", ts: "l", tt: .45, title: "Fitted → No picture", short: "Fails to load", triggers: [
+      { basis: "ran", text: "The next picture fails to load", test: T_BROKEN }] },
+    { id: "t6a", from: "s3", fs: "t", ft: .22, to: "s1", ts: "b", tt: .78, title: "No picture → Fitted", short: "Loads, mode Fit", triggers: [
+      { basis: "read", text: "← → to a picture that loads, the mode being Fit", at: RT + ":2407", why: "load sizes it again in the kept mode; no test steps away from a broken picture" }] },
+    { id: "t5", from: "s2", fs: "b", ft: .8, to: "s3", ts: "r", tt: .45, title: "Own size → No picture", short: "Fails to load", triggers: [
+      { basis: "read", text: "The next picture fails to load", at: RT + ":2407", why: "the same handler; the test reaches the broken picture only from Fitted" }] },
+    { id: "t6b", from: "s3", fs: "t", ft: .78, to: "s2", ts: "b", tt: .22, title: "No picture → Own size", short: "Loads, mode Own size", triggers: [
+      { basis: "read", text: "← → to a picture that loads, the mode being Own size", at: RT + ":2407", why: "as above" }] },
+    { id: "t7", from: "open", loop: "t", ft: .32, title: "Viewer open ↺ another picture", short: "Another picture", triggers: [
+      { basis: "ran", text: "→ key: the next picture, in the same mode", test: T_FIT },
+      { basis: "read", text: "← key", at: RT + ":2400", why: "no test presses ArrowLeft" },
+      { basis: "read", text: "← and → buttons in the bar", at: RT + ":1932", why: "no test clicks them" },
+      { basis: "read", text: "→ on the last picture goes to the first, ← on the first to the last", at: RT + ":2415", why: "the index wraps; tests step only from the first to the second" }],
+      code: { file: RT, start: 2415, hit: [2415], lines: ["  zoomAt = (i + PICTURES.length) % PICTURES.length;"] } },
+    { id: "t9", from: "open", loop: "t", ft: .66, title: "Viewer open ↺ window resized", short: "Window resized", triggers: [
+      { basis: "read", text: "The window is resized: the picture is sized again in its mode", at: RT + ":2408", why: "a resize listener sizes it again; no test resizes an open viewer" }],
+      code: { file: RT, start: 2408, hit: [2408], lines: ["    window.addEventListener(\"resize\", () => { if (d.open) sizeZoom(); });"] } },
+    { id: "t8", from: "open", fs: "l", ft: .86, to: "s0", ts: "b", tt: .5, title: "Viewer open → Closed", short: "Close", triggers: [
+      { basis: "ran", text: "Escape", test: T_STEP },
+      { basis: "ran", text: "Click outside the picture", test: T_FIT },
+      { basis: "ran", text: "A link in the caption, which also opens its place", test: T_CAPTION },
+      { basis: "read", text: "The Close button", at: RT + ":2399", why: "a form with method=dialog; it has autofocus, so focus starts on it; no test clicks it" },
+      { basis: "read", text: "Click the empty field beside a narrow picture", at: RT + ":2405", why: "the stage closes like the backdrop; tests click only the backdrop" },
+      { basis: "question", text: "Where focus lands after closing", why: "the dialog leaves it to the browser; no test and no code decide it" }],
+      code: { file: RT, start: 2402, hit: [2405], lines: [
+        "    d.addEventListener(\"click\", (e) => {",
+        "      const r = d.getBoundingClientRect(), outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;",
+        "      // a link in the caption leaves the viewer for its place",
+        "      if (e.target === d && outside || e.target.classList.contains(\"zoom-stage\") || e.target.closest(\"[data-go]\")) d.close();",
+        "    });"] } },
+  ],
+  order: ["s0", "t1", "s1", "t2", "s2", "t3", "t4", "s3", "t6a", "t5", "t6b", "t7", "t9", "t8"],
+},
+{
+  id: "check", kind: "Manual check", title: "What the viewer's gaps need from a person",
+  ask: "Most gaps go to the author as tests. These three need a person's eyes, or an observation the review cannot settle.",
+  summary: "Proposed by the review, not run by it.",
+  check: true,
+  w: 1060, h: 520, dir: "v",
+  nodes: [
+    { id: "c0", x: 290, y: 0, w: 480, title: "Setup", desc: "Open a report whose Screens has a small screenshot, under 600 px wide.", basis: "proposed", kind: "setup",
+      body: "Any report with a small picture works. The record and its revision are written with each result, so the next review knows what you saw it on." },
+    { id: "c1", x: 290, y: 118, w: 480, title: "Run each branch from the setup", desc: "Branches are independent; close the viewer between them.", basis: "proposed", kind: "choice",
+      body: "Each branch starts from the same setup, so one result does not depend on another." },
+    { id: "a1", x: 0, y: 236, w: 340, title: "A · Open the small screenshot", basis: "proposed", kind: "action", branch: "A" },
+    { id: "a2", x: 360, y: 236, w: 340, title: "B · Open any picture and press Tab through the bar", basis: "proposed", kind: "action", branch: "B" },
+    { id: "a3", x: 720, y: 236, w: 340, title: "C · Close with Escape, then press Tab once", basis: "proposed", kind: "action", branch: "C" },
+    { id: "e1", x: 0, y: 340, w: 340, expect: "Shown at up to twice its size, its text is still readable and nothing looks smeared.", basis: "proposed", kind: "expect", branch: "A",
+      gap: { flow: "states", item: "s1", text: "Fitted: a test asserts 200 px shows at 400 px, not how it looks" } },
+    { id: "e2", x: 360, y: 340, w: 340, expect: "Focus starts on Close; Tab and Shift+Tab reach every button in the bar, each with a visible focus ring.", basis: "proposed", kind: "expect", branch: "B",
+      gap: { flow: "states", item: "t8", text: "Viewer open → Closed: the Close button has autofocus; no test moves through the bar" } },
+    { id: "e3", x: 720, y: 340, w: 340, expect: "Record where focus was. Nothing in the record says where it should be, so this is an observation, not a pass or a fail.", basis: "question", kind: "expect", observe: true, branch: "C",
+      gap: { flow: "states", item: "t8", text: "Viewer open → Closed: where focus lands after closing (question)" } },
+    { id: "c9", x: 0, y: 452, w: 1060, end: true, title: "Sent to the author as tests, not to a person", desc: "The Close button, ← and the bar's arrows, wrapping at either end, a resize, Enter on Actual size, a click on the picture at own size, Own size → No picture, back from a broken picture, and a picture opened from a requirement's or a finding's panel.", basis: "proposed", kind: "note",
+      body: "A test asserts these better than a person can, and keeps asserting them. They go to the author as test steps; a person checks only what needs eyes or an observation." },
+  ],
+  edges: [
+    { from: "c0", fs: "b", to: "c1", ts: "t", basis: "proposed" },
+    { from: "c1", fs: "b", ft: .2, to: "a1", ts: "t", basis: "proposed" },
+    { from: "c1", fs: "b", ft: .5, to: "a2", ts: "t", basis: "proposed" },
+    { from: "c1", fs: "b", ft: .8, to: "a3", ts: "t", basis: "proposed" },
+    { from: "a1", fs: "b", to: "e1", ts: "t", basis: "proposed" },
+    { from: "a2", fs: "b", to: "e2", ts: "t", basis: "proposed" },
+    { from: "a3", fs: "b", to: "e3", ts: "t", basis: "proposed" },
+  ],
+  order: ["c0", "c1", "a1", "e1", "a2", "e2", "a3", "e3", "c9"],
+},
+];
+
+// ---------------------------------------------------------------- state
+const BASIS = { ran: "Ran", read: "Read", proposed: "Proposed", question: "Question", missing: "Not reached" };
+const RES = { pass: "Pass", fail: "Fail", skip: "Couldn't run", seen: "Observed" };
+const KEY = "flows.835c58d.";
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const S = { flow: 0, view: "flow", sel: {}, results: store.get(KEY + "results", {}), notes: store.get(KEY + "notes", {}) };
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const chip = (b, text) => `<span class="chip ${b}">${b === "ran" ? "✓ " : ""}${esc(text ?? BASIS[b])}</span>`;
+const F = () => FLOWS[S.flow];
+const itemOf = (f, id) => f.nodes.find((n) => n.id === id) || f.edges.find((e) => e.id === id);
+const best = (ts) => ["ran", "read", "question", "proposed"].find((b) => ts.some((t) => t.basis === b));
+
+// ---------------------------------------------------------------- tabs
+function tabs() {
+  $("#tabs").innerHTML = FLOWS.map((f, i) => `<button type="button" role="tab" class="tab" data-flow="${i}" aria-selected="${i === S.flow}">
+    <span class="t-kind">${esc(f.kind)}</span><span class="t-title">${esc(f.title)}</span><span class="t-sum">${esc(f.check ? checkSummary(f) : f.summary)}</span></button>`).join("");
+}
+function checkSummary(f) {
+  const ex = f.nodes.filter((n) => n.kind === "expect"), done = ex.filter((n) => S.results[n.id]);
+  const pass = done.filter((n) => S.results[n.id] === "pass").length, fail = done.filter((n) => S.results[n.id] === "fail").length;
+  return `${f.summary} You ran ${done.length} of ${ex.length}${done.length ? ` (${pass} pass${fail ? `, ${fail} fail` : ""})` : ""}.`;
+}
+
+// ---------------------------------------------------------------- header strip
+function strip() {
+  const f = F();
+  let html = `<span class="sum">${esc(f.check ? checkSummary(f) : f.summary)}</span>`;
+  if (f.id === "states") {
+    const ts = f.edges.flatMap((e) => e.triggers);
+    const c = (b) => ts.filter((t) => t.basis === b).length;
+    html += `<span>Triggers the review listed, not all the code allows: the first draft missed six.</span>
+      <button type="button" class="gapbtn" data-goto="2">Where the ${c("read") + c("question")} gaps go →</button>`;
+  } else if (f.id === "data") {
+    const c = (b) => f.nodes.filter((n) => n.basis === b).length;
+    html += `<span><i class="dot ran"></i> ${c("ran")} steps asserted, all by one test</span><span><i class="dot read"></i> ${c("read")} read</span><span><i class="dot question"></i> ${c("question")} question</span><span><i class="dot missing"></i> ${c("missing")} not reached</span>`;
+  } else {
+    html += `<span>12 gaps go to the author as tests; these 3 need a person. Each result is kept with the record and its revision.</span>`;
+  }
+  $("#f-strip").innerHTML = html;
+}
+
+// ---------------------------------------------------------------- flow view
+function nodeHtml(n) {
+  const sel = S.sel[F().id] === n.id;
+  const cls = ["node", `b-${n.basis}`, n.end ? "end" : "", n.kind === "choice" ? "choice" : ""].join(" ");
+  const res = n.kind === "expect" ? S.results[n.id] : null;
+  const top = n.kind === "expect" ? `<span class="n-top"><span class="n-num">${n.observe ? "Observe" : "Expect"} · ${esc(n.branch)}</span>${res ? chip(res, RES[res]) : chip("notrun", "Not run")}</span>`
+    : n.kind === "choice" || n.kind === "note" ? "" : n.state ? `<span class="n-top"><span class="n-num">State</span></span>`
+    : `<span class="n-top"><span class="n-num">${n.num ? n.num : n.end ? "End" : n.kind === "setup" ? "Setup" : n.kind === "action" ? "Do" : ""}</span>${chip(n.basis)}</span>`;
+  return `<button type="button" class="${cls}" data-id="${n.id}" aria-current="${sel}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px">
+    ${top}
+    ${n.title && n.kind !== "setup" ? `<span class="n-title">${esc(n.title)}</span>` : n.kind === "setup" ? `<span class="n-title">${esc(n.desc)}</span>` : ""}
+    ${n.expect ? `<span class="n-expect n-desc">${esc(n.expect)}</span>` : ""}
+    ${n.desc && n.kind !== "setup" ? `<span class="n-desc">${esc(n.desc)}</span>` : ""}
+    ${n.value ? `<span class="n-value">${esc(n.value)}</span>` : ""}
+    ${n.place ? `<span class="n-foot"><span class="n-place" title="${esc(n.place)}">${esc(n.place.split("/").pop())}</span><span class="n-tag ${n.change}">${n.change === "changed" ? "Changed" : "Context"}</span></span>` : ""}
+  </button>`;
+}
+function renderFlow() {
+  const f = F(), vp = $("#viewport");
+  vp.innerHTML = `<div class="scaler"><div class="canvas" style="width:${f.w}px;height:${f.h}px">
+    ${(f.groups ?? []).map((g) => `<div class="group" data-gid="${g.id}" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px"><span class="g-label">${esc(g.label)}</span></div>`).join("")}
+    <svg width="${f.w}" height="${f.h}" aria-hidden="true"><defs>${["ran", "read", "proposed", "question", "missing"].map((b) => `<marker id="m-${b}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs><g id="edges"></g></svg>
+    ${f.nodes.map(nodeHtml).join("")}
+  </div></div>`;
+  fit(); drawEdges();
+}
+function rectOf(f, id) {
+  const n = f.nodes.find((x) => x.id === id) || (f.groups ?? []).find((g) => g.id === id);
+  const el = $(`#viewport [data-id="${id}"]`) || $(`#viewport [data-gid="${id}"]`);
+  return { x: n.x, y: n.y, w: n.w ?? n.w, h: el ? el.offsetHeight : n.h };
+}
+const NORM = { r: [1, 0], l: [-1, 0], t: [0, -1], b: [0, 1] };
+function pt(r, side, t = .5) {
+  return side === "r" ? [r.x + r.w, r.y + r.h * t] : side === "l" ? [r.x, r.y + r.h * t] : side === "t" ? [r.x + r.w * t, r.y] : [r.x + r.w * t, r.y + r.h];
+}
+function drawEdges() {
+  const f = F(), g = $("#edges"), canvas = $("#viewport .canvas");
+  canvas.querySelectorAll(".elabel").forEach((e) => e.remove());
+  let paths = "", labels = "";
+  for (const e of f.edges) {
+    const basis = e.basis ?? best(e.triggers), sel = e.id && S.sel[f.id] === e.id;
+    let d, mid;
+    if (e.loop) {
+      const r = rectOf(f, e.from), [ax, ay] = pt(r, "t", e.ft - .09), [bx, by] = pt(r, "t", e.ft + .09), lift = 46;
+      d = `M${ax},${ay} C${ax - 10},${ay - lift} ${bx + 10},${by - lift} ${bx},${by}`; mid = [(ax + bx) / 2, ay - lift * .75];
+    } else {
+      const a = pt(rectOf(f, e.from), e.fs, e.ft), b = pt(rectOf(f, e.to), e.ts, e.tt);
+      const k = Math.max(28, Math.min(110, Math.hypot(b[0] - a[0], b[1] - a[1]) * .42));
+      const c1 = [a[0] + NORM[e.fs][0] * k, a[1] + NORM[e.fs][1] * k], c2 = [b[0] + NORM[e.ts][0] * k, b[1] + NORM[e.ts][1] * k];
+      d = `M${a[0]},${a[1]} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${b[0]},${b[1]}`;
+      const u = e.lt ?? .5, v = 1 - u, bz = (i) => v * v * v * a[i] + 3 * v * v * u * c1[i] + 3 * v * u * u * c2[i] + u * u * u * b[i];
+      mid = [bz(0), bz(1)];
+    }
+    paths += `<path class="edge ${basis}${sel ? " sel" : ""}" d="${d}" marker-end="url(#m-${basis})"/>`;
+    const x = mid[0] + (e.ldx ?? 0), y = mid[1] + (e.ldy ?? 0);
+    const onGroup = f.groups && f.groups.some((gr) => x > gr.x && x < gr.x + gr.w && y > gr.y && y < gr.y + gr.h);
+    if (e.triggers) {
+      const ran = e.triggers.filter((t) => t.basis === "ran").length;
+      const short = `${e.short ?? e.triggers[0].text}${e.triggers.length > 1 ? ` · ${ran} of ${e.triggers.length} asserted` : ""}`;
+      labels += `<button type="button" class="elabel${onGroup ? " on-group" : ""}" data-id="${e.id}" aria-current="${sel}" style="left:${x}px;top:${y}px" title="${esc(e.title)}">
+        <span class="dots">${e.triggers.map((t) => `<i class="dot ${t.basis}"></i>`).join("")}</span>${esc(short)}</button>`;
+    } else if (e.label) labels += `<span class="elabel ${e.cls ?? ""}" style="left:${x}px;top:${y}px">${e.cls === "missing" ? "✕ " : ""}${esc(e.label)}</span>`;
+  }
+  g.innerHTML = paths; canvas.insertAdjacentHTML("beforeend", labels);
+}
+function fit() {
+  const f = F(), vp = $("#viewport"), sc = $("#viewport .scaler"); if (!sc) return;
+  const avail = vp.clientWidth - 36, s = Math.max(.72, Math.min(1, avail / f.w));
+  sc.style.transform = s < 1 ? `scale(${s})` : ""; sc.style.width = `${f.w}px`; sc.style.height = `${f.h * s}px`;
+}
+
+// ---------------------------------------------------------------- list view
+function renderList() {
+  const f = F(), vp = $("#viewport"), cur = (id) => S.sel[f.id] === id;
+  const li = (id) => { const n = itemOf(f, id); return `<li><span class="li-row"><button type="button" class="li-btn" data-id="${id}" aria-current="${cur(id)}">${n.num ? `${n.num}. ` : ""}${esc(n.title)}</button>${chip(n.basis)}${n.place ? `<span class="li-place">${esc(n.place.replace(/^skills\/review\//, ""))}</span>` : ""}</span>${n.value ? `<div class="li-sub">${esc(n.value)}</div>` : ""}`; };
+  if (f.id === "data") {
+    vp.innerHTML = `<div class="list"><p class="note">The same path as a list. The order holds; the fork after step 2 becomes indentation, and the step that is never reached reads like any other item.</p>
+      <ol style="list-style:none;padding-left:0">${li("n1")}</li>${li("n2")}
+        <ul>${li("x1")}</li>${li("n3")}</li>${li("n4")}<ul>${li("n5")}</li></ul></li>${li("n6")}<ul>${li("n7")}</li></ul></li></ul></li></ol></div>`;
+  } else if (f.id === "states") {
+    const rows = f.edges.flatMap((e) => e.triggers.map((t, k) => ({ e, t, k })));
+    const name = (id) => id === "open" ? "Any open state" : itemOf(f, id).title;
+    vp.innerHTML = `<div class="list"><p class="note">The transitions as a table: every trigger on its own row with its evidence. Clearer than the diagram for checking what a test asserts; the diagram is clearer for seeing that every open state closes the same way and that a failed picture keeps the mode.</p>
+      <div class="tablewrap"><table class="tt"><thead><tr><th>From</th><th>Trigger</th><th>To</th><th>Evidence</th></tr></thead><tbody>
+      ${rows.map(({ e, t }) => `<tr class="${cur(e.id) ? "cur" : ""}"><td class="tt-from">${esc(name(e.from))}</td><td><button type="button" class="li-btn" data-id="${e.id}" style="font-weight:500">${esc(t.text)}</button></td><td class="tt-to">${esc(e.loop ? name(e.from) : name(e.to))}</td><td>${chip(t.basis)}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+  } else {
+    const ex = f.nodes.filter((n) => n.kind === "expect");
+    vp.innerHTML = `<div class="list"><p class="note">As a checklist. Here the list carries everything the flow does; the flow only shows that the three branches share one setup.</p>
+      <p><b>Setup.</b> ${esc(itemOf(f, "c0").desc)}</p>
+      <ol>${ex.map((n) => { const a = f.nodes.find((x) => x.kind === "action" && x.branch === n.branch), r = S.results[n.id];
+        return `<li><span class="li-row"><button type="button" class="li-btn" data-id="${n.id}" aria-current="${cur(n.id)}">${esc(a.title.replace(/^[A-D] · /, ""))}</button>${r ? chip(r, RES[r]) : chip("notrun", "Not run")}</span><div class="li-sub">Expect: ${esc(n.expect)}</div></li>`; }).join("")}</ol>
+      <p class="note">${esc(itemOf(f, "c9").desc)}</p></div>`;
+  }
+}
+
+// ---------------------------------------------------------------- context panel
+function codeHtml(c) {
+  return `<pre class="code" tabindex="0">${c.lines.map((l, i) => `<span class="ln${c.hit?.includes(c.start + i) ? " hit" : ""}"><span class="no">${c.start + i}</span>${esc(l)}</span>`).join("")}</pre>
+    <div class="code-cap"><span>${esc(c.file)}${c.short ? " · line shortened" : ""}</span><span>835c58d</span></div>`;
+}
+function evidenceHtml(list) {
+  return `<ul class="ev">${list.map((x) => `<li>${chip(x.basis)}<span>${esc(x.text)}</span>${x.test ? `<span class="src">Test “${esc(x.test.name)}” · <code>${esc(x.test.at)}</code> · ${esc(x.test.where)}</span>` : ""}${x.at || x.why ? `<span class="src">${x.at ? `<code>${esc(x.at.replace(/^skills\/review\//, ""))}</code>` : ""}${x.at && x.why ? " · " : ""}${esc(x.why ?? "")}</span>` : ""}</li>`).join("")}</ul>`;
+}
+function panel() {
+  const f = F(), id = S.sel[f.id], ctx = $("#ctx");
+  if (!id) {
+    ctx.innerHTML = `<div class="ctx-eyebrow">${esc(f.kind)}</div><h3>${esc(f.title)}</h3><p>${esc(f.ask)}</p>
+      <p class="hint">Select a ${f.id === "states" ? "state or a transition's label" : "step"} to see its code, evidence and links. Arrow keys move along the flow.</p>`;
+    return;
+  }
+  const n = itemOf(f, id), pos = f.order.indexOf(id), parts = [];
+  const where = n.triggers ? "Transition" : n.state ? "State" : n.kind === "expect" ? `Branch ${n.branch}` : n.kind === "action" ? `Branch ${n.branch}` : n.num ? `Step ${n.num}` : n.end ? "End" : n.kind === "setup" ? "Setup" : f.id === "states" ? "State" : "";
+  parts.push(`<div class="ctx-eyebrow">${esc(where)} · ${esc(f.kind)}</div>`);
+  parts.push(`<h3>${esc(n.title ?? (n.kind === "expect" ? `${n.observe ? "Observe" : "Expect"}: ${n.expect}` : ""))}</h3>`);
+  const basis = n.basis ?? best(n.triggers);
+  const counted = n.triggers ? ["ran", "read", "question"].map((b) => [b, n.triggers.filter((t) => t.basis === b).length]).filter(([, c]) => c).map(([b, c]) => chip(b, `${c} ${BASIS[b].toLowerCase()}`)).join("") : null;
+  parts.push(`<div class="badges">${n.kind === "expect" ? (S.results[n.id] ? chip(S.results[n.id], RES[S.results[n.id]]) : chip("notrun", "Not run")) : n.state ? "" : counted ?? chip(basis)}${n.change ? `<span class="chip">${n.change === "changed" ? "Changed in this diff" : "Context: unchanged code"}</span>` : ""}</div>`);
+  if (n.body || n.desc || n.note && n.triggers) parts.push(`<p>${esc(n.body ?? n.note ?? n.desc)}</p>`);
+  if (n.place || n.value) parts.push(`<dl class="kv">${n.place ? `<dt>Place</dt><dd class="mono">${esc(n.place.replace(/^skills\/review\//, ""))}</dd>` : ""}${n.value ? `<dt>${f.id === "data" ? "Value" : "Rule"}</dt><dd class="mono">${esc(n.value)}</dd>` : ""}</dl>`);
+  if (n.code) parts.push(`<div><h4>Code</h4>${codeHtml(n.code)}</div>`);
+  if (n.triggers) parts.push(`<div><h4>Triggers and evidence</h4>${evidenceHtml(n.triggers)}</div>`);
+  if (n.evidence) parts.push(`<div><h4>Evidence</h4>${evidenceHtml(n.evidence)}</div>`);
+  if (n.question) parts.push(`<div class="callout"><b>Question for the owner.</b> ${esc(n.question)}</div>`);
+  if (n.note && !n.triggers) parts.push(`<div class="callout">${esc(n.note)}</div>`);
+  if (n.kind === "action" || n.kind === "expect") {
+    const e = n.kind === "expect" ? n : f.nodes.find((x) => x.kind === "expect" && x.branch === n.branch), a = f.nodes.find((x) => x.kind === "action" && x.branch === n.branch), r = S.results[e.id];
+    parts.push(`<dl class="kv"><dt>Do</dt><dd>${esc(a.title.replace(/^[A-D] · /, ""))}</dd><dt>Expect</dt><dd>${esc(e.expect)}</dd></dl>`);
+    parts.push(`<div><h4>From the gap</h4><div class="links"><button type="button" class="link" data-jump="${e.gap.flow}:${e.gap.item}">${esc(e.gap.text)} →</button></div></div>`);
+    parts.push(`<div><h4>Your result</h4><div class="res" role="group" aria-label="Result of branch ${e.branch}">${Object.entries(RES).filter(([k]) => e.observe ? k === "seen" || k === "skip" : k !== "seen").map(([k, v]) => `<button type="button" data-res="${k}" data-e="${e.id}" aria-pressed="${r === k}">${v}</button>`).join("")}</div></div>`);
+    parts.push(`<div><label for="note-${e.id}" class="hint">${e.observe ? "What you saw" : "What you saw (optional)"}</label><textarea id="note-${e.id}" data-note="${e.id}" placeholder="${e.observe ? "Where focus was, and on which browser" : "For a fail: what happened instead"}">${esc(S.notes[e.id] ?? "")}</textarea></div>`);
+    parts.push(`<div><h4>Goes with your answers</h4><div class="export">${esc(exportLine(e))}</div><p class="hint" style="margin-top:6px">The next review reads it as run by you, not by the reviewer, and only for code it carries unchanged.</p></div>`);
+  }
+  if (n.links) parts.push(`<div><h4>Linked</h4><div class="links">${n.links.map((l) => `<button type="button" class="link" disabled title="In the report this opens the ${esc(l.k.toLowerCase())}">${esc(l.k)}: ${esc(l.t)}</button>`).join("")}</div></div>`);
+  if (n.place) parts.push(`<div class="links"><button type="button" class="link" disabled title="In the report this opens the block in Code">Open in Code</button></div>`);
+  parts.push(`<div class="nav"><button type="button" data-step="-1" ${pos <= 0 ? "disabled" : ""}>← Previous</button><span class="hint">${pos + 1} of ${f.order.length}</span><button type="button" data-step="1" ${pos >= f.order.length - 1 ? "disabled" : ""}>Next →</button></div>`);
+  ctx.innerHTML = parts.join("");
+}
+function exportLine(e) {
+  const r = S.results[e.id], note = (S.notes[e.id] ?? "").trim();
+  return `Check, branch ${e.branch}, on record 835c58d: ${r ? RES[r].toLowerCase() : "not run"}${note ? ` — ${note}` : ""}`;
+}
+
+// ---------------------------------------------------------------- wiring
+function render() {
+  tabs(); strip();
+  const f = F();
+  $("#f-title").textContent = f.title; $("#f-ask").textContent = f.ask;
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === S.view)));
+  if (S.view === "flow") renderFlow(); else renderList();
+  panel();
+}
+function select(id, focus) {
+  S.sel[F().id] = id;
+  if (S.view === "flow") { document.querySelectorAll("#viewport [data-id]").forEach((el) => el.setAttribute("aria-current", String(el.dataset.id === id))); drawEdges(); }
+  else renderList();
+  panel();
+  if (focus) $(`#viewport [data-id="${id}"]`)?.focus();
+}
+function showFlow(i, id) {
+  S.flow = i; if (id) S.sel[FLOWS[i].id] = id;
+  try { history.replaceState(null, "", `#${FLOWS[i].id}`); } catch {}
+  render();
+}
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-flow],[data-view],[data-id],[data-step],[data-res],[data-jump],[data-goto]"); if (!t) return;
+  if (t.dataset.flow) return showFlow(+t.dataset.flow);
+  if (t.dataset.goto) return showFlow(+t.dataset.goto);
+  if (t.dataset.view) { S.view = t.dataset.view; return render(); }
+  if (t.dataset.jump) { const [fid, item] = t.dataset.jump.split(":"); return showFlow(FLOWS.findIndex((f) => f.id === fid), item); }
+  if (t.dataset.step) { const f = F(), o = f.order, i = o.indexOf(S.sel[f.id]); return select(o[Math.max(0, Math.min(o.length - 1, i + +t.dataset.step))]); }
+  if (t.dataset.res) { const e = t.dataset.e; S.results[e] = S.results[e] === t.dataset.res ? undefined : t.dataset.res; if (!S.results[e]) delete S.results[e]; store.set(KEY + "results", S.results);
+    tabs(); strip(); if (S.view === "flow") renderFlow(); else renderList(); panel(); return; }
+  if (t.dataset.id) return select(t.dataset.id);
+});
+document.addEventListener("input", (ev) => {
+  const e = ev.target.dataset?.note; if (!e) return;
+  S.notes[e] = ev.target.value; store.set(KEY + "notes", S.notes);
+  const box = $("#ctx .export"); if (box) box.textContent = exportLine(itemOf(F(), e));
+});
+document.addEventListener("keydown", (ev) => {
+  const t = ev.target.closest?.("#viewport [data-id]"); if (!t) return;
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[ev.key]; if (!step) return;
+  ev.preventDefault(); const o = F().order, i = o.indexOf(t.dataset.id);
+  select(o[Math.max(0, Math.min(o.length - 1, (i < 0 ? 0 : i) + step))], true);
+});
+window.addEventListener("resize", () => { if (S.view === "flow") { fit(); } });
+window.addEventListener("hashchange", () => { const i = FLOWS.findIndex((f) => `#${f.id}` === location.hash); if (i >= 0 && i !== S.flow) showFlow(i); });
+const start = FLOWS.findIndex((f) => `#${f.id}` === location.hash);
+S.sel.data = "n7"; S.sel.states = "t8"; S.sel.check = "e3";
+showFlow(start < 0 ? 0 : start);
+</script>
+</body></html>
