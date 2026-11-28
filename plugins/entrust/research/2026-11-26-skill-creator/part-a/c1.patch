@@ -1,0 +1,78 @@
+diff --git a/plugins/entrust/CHANGELOG.md b/plugins/entrust/CHANGELOG.md
+index eecd7ad..ea9c3a6 100644
+--- a/plugins/entrust/CHANGELOG.md
++++ b/plugins/entrust/CHANGELOG.md
+@@ -3,6 +3,13 @@
+ Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
+ forensics remain in the repository references and release notes.
+ 
++## Unreleased
++
++### Changed
++
++- The codex parity page no longer carries an effort table. A role's effort over the default is stated once, in the
++  Codex model table, where a refuter's is `medium` on Sol; the page's own table said `high` or `xhigh` for refutation.
++
+ ## 0.47.3 — 2026-11-26
+ 
+ ### Orchestration
+diff --git a/plugins/entrust/ISSUES.md b/plugins/entrust/ISSUES.md
+index 1d9b886..d19167f 100644
+--- a/plugins/entrust/ISSUES.md
++++ b/plugins/entrust/ISSUES.md
+@@ -371,26 +371,6 @@ fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an al
+ the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
+ to every load and a step the model can skip.
+ 
+-## E104. A role's effort over the default is stated twice, in codex's parity reference and its model table, and the two differ on refutation
+-
+-**Evidence, level 1.** The default is orchestrate's "the host's highest supported effort, or a stronger configured
+-setting" (`plugins/entrust/plugin/skills/orchestrate/SKILL.md`, Capacity and models); a role's effort overrides it
+-locally, and that override is stated twice. `plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the
+-effort table: `low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation, competing designs and a second
+-implementation, `max`/`ultra` the hardest problems. `plugins/entrust/plugin/skills/codex/references/models.md`, the
+-tier table's `EFFORT:` column: `high` for the bulk row's extraction, classification and verification, `medium` for
+-review, refutation and judgement, `low` for mechanical work only. A refuter gets `high` or `xhigh` by the first and
+-`medium` by the second. Earlier homes of the second statement: `codex/references/orchestration.md:90` until
+-2026-10-07, `orchestrate/references/plan.md:35` before that. Found by Fable F1; re-checked 2026-10-07.
+-
+-**Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
+-`grep -n 'refutation' plugins/entrust/plugin/skills/codex/references/models.md` print the two statements.
+-
+-**Issue text.** Two pages each carry the rule for which effort a role gets over the default, in their own words, and
+-they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the model table. A later
+-change to one is a drift from the other unless both are edited by hand. Decide which effort a refuter gets, then keep
+-the rule in the model table and have the parity reference link it.
+-
+ ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
+ 
+ **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
+diff --git a/plugins/entrust/plugin/skills/codex/references/parity.md b/plugins/entrust/plugin/skills/codex/references/parity.md
+index 208f9d0..58b3cf1 100644
+--- a/plugins/entrust/plugin/skills/codex/references/parity.md
++++ b/plugins/entrust/plugin/skills/codex/references/parity.md
+@@ -8,7 +8,7 @@ re-check them on your own machine before sizing a fan-out against them.
+ 
+ - [Capability table](#capability-table)
+ - [Qualifications](#qualifications): [Read and isolated write](#read-and-isolated-write),
+-  [Isolation, MCP, and search](#isolation-mcp-and-search), [Effort](#effort),
++  [Isolation, MCP, and search](#isolation-mcp-and-search),
+   [Attachments and pasted images](#attachments-and-pasted-images),
+   [Watching a turn, and answer shape](#watching-a-turn-and-answer-shape)
+ - [Fan-out and reporting](#fan-out-and-reporting)
+@@ -81,15 +81,6 @@ snapshot is reported on stderr and does not block the agent.
+ Web search is disabled unless a mode is requested. A managed device may allow only some modes and narrow a
+ requested one, which no response field reports; where such a policy exists the driver says so on stderr.
+ 
+-### Effort
+-
+-| Effort | Use |
+-| --- | --- |
+-| `low` | fact lookup |
+-| `medium` | ordinary review |
+-| `high`, `xhigh` | refutation, competing designs, a second implementation |
+-| `max`, `ultra` | the hardest problems; delegating to its own subagent threads is the model's choice at any effort, measured on 0.153.4 |
+-
+ ### Attachments and pasted images
+ 
+ `--attach` emits protocol `localImage` or `localAudio` items before the prompt and validates every file
