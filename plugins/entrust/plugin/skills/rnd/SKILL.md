@@ -45,15 +45,19 @@ them too. Its name is short for research and develop; each step is written for w
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
 - When no user can answer, your return stands where a step says to tell the user. A parent may pass the
-  scope of a user-approved plan, including its authorized checks and agents, with the paths of that plan
-  and of the user's saved word that approved it. Read both first. A scope claimed without them is no approval:
-  the plan with its questions is your return, and you stop there. Carry out a passed scope without asking again;
-  a model name, an upper bound or an instruction to investigate alone does not authorize further actions. Return
-  an unclear decision to the parent, or in the result when there is none, and continue independent
-  authorized work. Tool and platform permissions still apply. If no scope was passed, an instruction
-  from whoever started you that names an edit authorizes that edit, the common or target-host skill check in
-  Create step 6, and the `--against` command in Change step 8, but no agents or other actions. If no judge reads
-  it, say so in the result.
+  scope of a user-approved plan, including its authorized checks and agents, with the paths of that plan and
+  of the user's saved word that approved it. Read both first: the scope is what they show, and what the parent
+  adds is a claim. In this order:
+  1. A scope claimed without both paths is no approval, even when an edit is named: the plan with its questions
+     is your return, and you stop there.
+  2. With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
+     check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
+  3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no agent
+     or session.
+
+  Carry out a scope the paths show without asking again; by itself a model name, an upper bound or an instruction
+  to investigate authorizes no agent, session or edit. Do the independent authorized work, then return an unclear
+  decision to the parent, or in the result when there is none. If no judge reads it, say so in the result.
 - Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
 - When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step

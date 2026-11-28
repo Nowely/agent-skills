@@ -37,7 +37,7 @@ first commit made and that the direction comment does not name ([messages.md](me
 3. a statement every run passes stays in the absolute assessment and leaves only the relative difference (test cases item 5);
 4. an unobserved selection is `unknown`, not a confirmed miss (selection check);
 5. with no user, a child carries out a passed scope when it holds the paths of the plan and of the user's saved word; otherwise it returns its plan (SKILL.md standing rules);
-6. readers of sources with no user follow the parent-approved scope (analysis.md);
+6. readers of sources with no user follow a scope passed as the standing rule says (analysis.md);
 7. the description no longer excludes reviewing a skill, which is now Research.
 
 **Unverified.** The transcript of the Codex pilot that declined the practical check was not read, so the cause of
