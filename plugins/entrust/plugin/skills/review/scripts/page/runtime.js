@@ -396,7 +396,7 @@ function exportPayload() {
 // The payload's rows in words, by section: each row is its text and the place «Show» goes to.
 function exportModel() {
   const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [], checks: [] };
-  for (const x of payload.checks) sections.checks.push({ text: `${L("p.rel.check", x.check)}: ${resultWord(x.result)}${x.conditions ? ` · ${L("p.check.conditions")}: ${x.conditions}` : ""}${x.note ? ` — ${x.note}` : ""}`, go: "check:" + (x.check - 1) });
+  for (const x of payload.checks) sections.checks.push({ text: `${L("p.rel.check", x.check)}: ${x.result ? resultWord(x.result) : L("p.check.no-result")}${x.conditions ? ` · ${L("p.check.conditions")}: ${x.conditions}` : ""}${x.note ? ` — ${x.note}` : ""}`, go: "check:" + (x.check - 1) });
   const answerWords = (c, a) => a.variant ? a.variant.text : a.variants ? a.variants.map((v) => v.text).join(", ") : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
   for (const x of payload.items) {
     const c = itemByKey.get(x.item), draft = x.draft ? ` · ${L("p.export.draft", answerWords(c, x.draft))}` : "";
@@ -588,7 +588,9 @@ const FLOW = { route: null, view: {} };
 const routeOf = (sel) => { const m = /^route:(\d+)(?::(s|l):(\d+))?$/.exec(sel ?? ""); return m && D.routes[+m[1]] ? { i: +m[1], kind: m[2] ?? null, k: m[3] === undefined ? null : +m[3] } : null; };
 const flowView = (i) => FLOW.view[i] ?? (D.routes[i].kind === "states" ? "list" : "flow");
 const confirmedOf = (x) => x.confirmedBy && x.confirmedBy.runs.length ? x.confirmedBy : null;
-const evidenceTag = (x) => confirmedOf(x) ? `<span class="tag ok ev">${esc(L("p.flow.confirmed"))}</span>` : `<span class="tag neutral ev">${esc(L("p.flow.read"))}</span>`;
+const testedHere = (x) => Boolean(confirmedOf(x)?.runs.some((run) => run.here));
+const evidenceTag = (x) => !confirmedOf(x) ? `<span class="tag neutral ev">${esc(L("p.flow.read"))}</span>`
+  : testedHere(x) ? `<span class="tag ok ev">${esc(L("p.flow.confirmed"))}</span>` : `<span class="tag warn ev">${esc(L("p.flow.confirmed-other"))}</span>`;
 const stepPlace = (s) => { if (s.block !== null) { const b = blk(s.block); return `${splitPath(b.path)[1]} ${b.where}`; } const [p, line] = cutLast(s.at, ":"); return line ? `${splitPath(p)[1]}:${line}` : s.at; };
 const stopRef = (s) => s.stops.finding !== null ? `F${s.stops.finding}` : `Q${s.stops.question}`;
 const stopKey = (s) => s.stops.finding !== null ? "f" + s.stops.finding : "q" + s.stops.question;
@@ -623,7 +625,7 @@ function flowNode(i, k) {
   return `<button class="flow-n${s.stops ? " stops" : ""}${b && b.verdict !== "keep" ? " open-v" : ""}" data-act="flow-step" data-route="${i}" data-k="${k}" aria-current="${cur}">
     <span class="fn-top"><span class="fn-num">${n(k + 1)}</span>${b ? `<span class="fn-id">B${b.id}</span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}` : `<span class="fn-id muted">${esc(L("p.flow.unchanged"))}</span>`}${evidenceTag(s)}</span>
     <span class="fn-role">${prose(s.role)}</span>${s.value ? `<span class="fn-value">${prose(s.value)}</span>` : ""}
-    <span class="fn-place" title="${esc(s.block !== null ? blk(s.block).path : s.at)}">${esc(stepPlace(s))}</span>${s.stops ? `<span class="fn-stop">${esc(L("route.stops"))} · ${esc(stopRef(s))}</span>` : ""}</button>`;
+    <span class="fn-place" title="${esc(s.block !== null ? blk(s.block).path : s.at)}">${esc(stepPlace(s))}</span>${s.findings.length || s.questions.length ? `<span class="fn-items">${[...s.findings.map((f) => `F${f}`), ...s.questions.map((q) => `Q${q}`)].map(esc).join(" ")}</span>` : ""}${s.stops ? `<span class="fn-stop">${esc(L("route.stops"))} · ${esc(stopRef(s))}</span>` : ""}</button>`;
 }
 function flowCard(i) {
   const r = D.routes[i], view = flowView(i), states = r.kind === "states", words = { flow: L("p.flow.view.flow"), list: L("p.flow.view.list") };
@@ -639,24 +641,44 @@ function drawFlow(i) {
   const r = D.routes[i], box = canvas.getBoundingClientRect(), svgEl = $(".flow-svg", canvas);
   $$(".flow-lbl", canvas).forEach((x) => x.remove());
   const rect = (k) => { const e = $(`.flow-n[data-k="${k}"]`, canvas).getBoundingClientRect(); return { l: e.left - box.left, t: e.top - box.top, r: e.right - box.left, b: e.bottom - box.top, cx: (e.left + e.right) / 2 - box.left, cy: (e.top + e.bottom) / 2 - box.top }; };
-  const cls = (e) => e.js.some((j) => confirmedOf(r.links[j])) ? "ok" : e.js.some((j) => r.links[j].question !== null) ? "q" : "plain";
+  const own = (l) => testedHere(l) ? "ok" : l.question !== null ? "q" : "plain";
+  const cls = (e) => { const cs = e.js.map((j) => own(r.links[j])); return !cs.length ? "plain" : cs.every((c) => c === "ok") ? "ok" : cs.includes("ok") ? "mixed" : cs.includes("q") ? "q" : "plain"; };
+  // (3) an edge that skips a row, goes back or stays runs at the side, beyond every step in the rows it spans
+  const edges = flowEdges(r), rank = [];
+  flowRows(r, edges).forEach((row, x) => row.forEach((k) => { rank[k] = x; }));
+  const aside = (e) => e.back || rank[e.to] - rank[e.from] > 1;
+  // room at the right for the edges at the side and their words
+  canvas.style.paddingRight = edges.some((e) => aside(e) || e.self) ? `${200 + 18 * edges.filter(aside).length}px` : "72px";
+  const nodes = $$(".flow-n", canvas).map((el) => ({ k: +el.dataset.k, ...rect(+el.dataset.k) }));
+  const reach = (e) => Math.max(...nodes.filter((nd) => rank[nd.k] >= Math.min(rank[e.from], rank[e.to]) && rank[nd.k] <= Math.max(rank[e.from], rank[e.to])).map((nd) => nd.r));
   let side = 0, paths = "", labels = "";
-  for (const e of flowEdges(r)) {
+  for (const e of edges) {
     const a = rect(e.from), b = rect(e.to), c = cls(e);
     let d, x, y;
     if (e.self) { d = `M${a.r},${a.cy - 10} C${a.r + 40},${a.cy - 30} ${a.r + 40},${a.cy + 30} ${a.r},${a.cy + 10}`; x = a.r + 34; y = a.cy; }
-    else if (e.back || b.t < a.b) { const sx = Math.max(a.r, b.r) + 26 + 18 * side++; d = `M${a.r},${a.cy} C${sx},${a.cy} ${sx},${b.cy} ${b.r},${b.cy}`; x = sx - 4; y = (a.cy + b.cy) / 2; }
+    else if (aside(e)) {
+      const sx = reach(e) + 26 + 18 * side++, v = Math.sign(b.cy - a.cy) || 1, q = 8;
+      d = `M${a.r},${a.cy} L${sx - q},${a.cy} Q${sx},${a.cy} ${sx},${a.cy + v * q} L${sx},${b.cy - v * q} Q${sx},${b.cy} ${sx - q},${b.cy} L${b.r},${b.cy}`; x = sx; y = (a.cy + b.cy) / 2;
+    }
     else { const dy = (b.t - a.b) / 2; d = `M${a.cx},${a.b} C${a.cx},${a.b + dy} ${b.cx},${b.t - dy} ${b.cx},${b.t}`; x = (a.cx + b.cx) / 2; y = (a.b + b.t) / 2; }
     paths += `<path class="fe ${c}" d="${d}" marker-end="url(#fa-${i}-${c})"/>`;
     const via = e.js.length ? r.links[e.js[0]].via : r.steps[e.to].via;
     if (!via) continue;
-    const words = `${via.length > 42 ? via.slice(0, 40) + "…" : via}${e.js.length > 1 ? ` · +${e.js.length - 1}` : ""}`, at = `left:${x}px;top:${y}px`;
-    labels += e.js.length ? `<button class="flow-lbl ${c}" data-act="flow-link" data-route="${i}" data-j="${e.js[0]}" style="${at}" title="${esc(via)}" aria-current="${e.js.some((j) => S.sel.summary === `route:${i}:l:${j}`)}">${esc(words)}</button>`
-      : `<span class="flow-lbl" style="${at}" title="${esc(via)}">${esc(words)}</span>`;
+    // words on an edge at the side, or on a loop, start at its line instead of centring on it, so they cover no step
+    const words = `${via.length > 42 ? via.slice(0, 40) + "…" : via}${e.js.length > 1 ? ` · +${e.js.length - 1}` : ""}`, at = `left:${x}px;top:${y}px`, sideCls = e.self || aside(e) ? " side" : "";
+    labels += e.js.length ? `<button class="flow-lbl${sideCls} ${own(r.links[e.js[0]])}" data-act="flow-link" data-route="${i}" data-j="${e.js[0]}" style="${at}" title="${esc(via)}" aria-current="${e.js.some((j) => S.sel.summary === `route:${i}:l:${j}`)}">${esc(words)}</button>`
+      : `<span class="flow-lbl${sideCls}" style="${at}" title="${esc(via)}">${esc(words)}</span>`;
   }
   svgEl.setAttribute("width", canvas.scrollWidth); svgEl.setAttribute("height", canvas.scrollHeight);
-  svgEl.innerHTML = `<defs>${["plain", "ok", "q"].map((c) => `<marker id="fa-${i}-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs>${paths}`;
+  svgEl.innerHTML = `<defs>${["plain", "ok", "mixed", "q"].map((c) => `<marker id="fa-${i}-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs>${paths}`;
   canvas.insertAdjacentHTML("beforeend", labels);
+  const placed = [];
+  for (const el of $$(".flow-lbl", canvas)) {
+    const top = parseFloat(el.style.top), clear = (r) => !placed.some((p) => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
+    for (const dy of [0, -21, 21, -42, 42]) { el.style.top = `${top + dy}px`; if (clear(el.getBoundingClientRect())) break; }
+    if (!clear(el.getBoundingClientRect())) el.style.top = `${top}px`;
+    placed.push(el.getBoundingClientRect());
+  }
 }
 // The same route as words: steps in order with how each gets its input; a route with links lists the links leaving
 // each step; a route of states is its transition table, one row per trigger with its evidence.
@@ -675,7 +697,7 @@ function flowList(i) {
 function evidenceHtml(x) {
   const c = confirmedOf(x);
   if (!c) return `<p>${evidenceTag(x)} <span class="small sub">${esc(L("p.flow.read-note"))}</span></p>`;
-  return `<p>${evidenceTag(x)}</p><ul class="plain ev-list">${c.runs.map((run) => `<li><span class="lbl">${esc(L("p.flow.run"))}</span>${prose(run.text)}${run.revision ? ` <span class="muted small">${esc(L("p.coverage.at", run.revision))}</span>` : ""}${whoWhere(run)}</li>`).join("")}
+  return `<p>${evidenceTag(x)}</p><ul class="plain ev-list">${c.runs.map((run) => `<li><span class="lbl">${esc(L("p.flow.run"))}</span>${prose(run.text)}${run.revision ? ` <span class="muted small">${esc(L("p.coverage.at", run.revision))}</span>` : ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>`}${whoWhere(run)}${run.here ? "" : ` <span class="tag warn">${esc(L("p.flow.not-head"))}</span>`}</li>`).join("")}
     ${c.asserts.map((a) => `<li><span class="lbl">${esc(L("p.flow.assertion"))}</span><span class="mono small">${slashBreaks(a.at)}</span><blockquote class="sel-quote">${esc(a.quote)}</blockquote></li>`).join("")}</ul>`;
 }
 const checksOn = (i, pick) => D.checks.map((c, k) => [c, k]).filter(([c]) => c.route && c.route.route === i + 1 && (!pick || pick(c.route)));
@@ -696,6 +718,7 @@ function flowPanel(sel) {
       ${ins.length ? `<h3 class="gap-top">${esc(L("p.flow.arrives"))}</h3><ul class="plain">${linkRows(ins, (l) => L("p.flow.from-step", n(l.from)))}</ul>` : ""}
       ${outs.length ? `<h3 class="gap-top">${esc(L("p.flow.leaves"))}</h3><ul class="plain">${linkRows(outs, (l) => L("p.flow.to-step", n(l.to)))}</ul>` : ""}</div>
       <div class="psec"><h3>${esc(L("p.flow.evidence"))}</h3>${evidenceHtml(s)}</div>
+      ${s.findings.length || s.questions.length ? `<div class="psec"><h3>${esc(L("p.flow.found"))}</h3>${[...s.findings.map((f) => "f" + f), ...s.questions.map((q) => "q" + q)].filter((key) => itemByKey.has(key)).map((key) => miniItem(itemByKey.get(key))).join("")}</div>` : ""}
       ${s.stops ? `<div class="psec"><h3>${esc(L("route.stops"))}</h3><p class="small sub">${esc(L("p.flow.stops-note"))}</p>${itemByKey.has(stopKey(s)) ? miniItem(itemByKey.get(stopKey(s))) : ""}</div>` : ""}
       <div class="psec"><h3>${esc(L("p.code"))}</h3>${code}</div>${checkLinks(checksOn(p.i, (x) => x.step === k + 1))}
       <div class="psec flow-nav">${nav(-1, L("p.flow.prev"))}${nav(1, L("p.flow.next"))}</div>`);
@@ -729,11 +752,11 @@ function renderRoutes() {
 function syncFlow(sel) {
   const p = routeOf(sel);
   if (p && FLOW.route !== p.i) { FLOW.route = p.i; return renderRoutes(); }
-  if (!p || FLOW.route === null) return;
+  if (FLOW.route === null) return;
   const card = $(`#flow-${FLOW.route}`); if (!card) return renderRoutes();
   $$("[data-act=flow-step], [data-act=flow-link]", card).forEach((el) => el.setAttribute("aria-current", String(el.dataset.act === "flow-step" ? sel === `route:${el.dataset.route}:s:${el.dataset.k}` : sel === `route:${el.dataset.route}:l:${el.dataset.j}`)));
   $$("tr", card).forEach((tr) => tr.classList.toggle("sel", Boolean($(`[data-act=flow-link][aria-current="true"]`, tr))));
-  $$(".route-row", $("#sum-routes")).forEach((row) => row.classList.toggle("sel", row.dataset.sel === `route:${p.i}`));
+  $$(".route-row", $("#sum-routes")).forEach((row) => row.classList.toggle("sel", Boolean(p) && row.dataset.sel === `route:${p.i}`));
 }
 // A check, as the record and this page know it: proposed and not run until a test or a person says otherwise; a
 // test that asserts the same scenario; what the owner observed at an earlier revision, never a result for this one;
@@ -1915,7 +1938,7 @@ function renderDetailBody() {
     // then what was only read. The reviewer's prose is shown as written when nothing breaks it down, folded away when
     // statements do; nothing is read out of it.
     const of = (kind) => D.coverageStructured.filter((c) => c.kind === kind), structured = D.coverageStructured.length > 0;
-    const stmt = (c) => `<li>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}${c.sources.length ? `<div>${srcList(c.sources)}</div>` : ""}</li>`;
+    const stmt = (c) => `<li>${prose(c.text)}${c.revision ? ` <span class="muted small">${esc(L("p.coverage.at", c.revision))}</span>` : c.kind === "ran" ? ` <span class="muted small">${esc(L("p.coverage.no-revision"))}</span>` : ""}${whoWhere(c)}${c.sources.length ? `<div>${srcList(c.sources)}</div>` : ""}</li>`;
     const limit = (set) => SETS[set].ids.size ? `<li>${esc(P(SETS[set].warn, SETS[set].ids.size))} <button class="btn sm quiet" data-act="set-code" data-set="${set}">${esc(L("p.show-in-code"))}</button></li>` : "";
     const unchecked = [...of("not_checked").map(stmt), ...D.requirements.filter((r) => r.not_checked).map((r) => `<li>${chip("r", r.id)} ${prose(r.not_checked)}</li>`)];
     const limits = unchecked.join("") + limit("carried") + limit("unlinked") + limit("assumed");
@@ -2168,7 +2191,8 @@ document.addEventListener("click", (e) => {
       }
       case "flow-view": FLOW.view[+act.dataset.route] = act.dataset.view; renderRoutes(); return $(`#flow-${act.dataset.route} [data-act="flow-view"][data-view="${act.dataset.view}"]`)?.focus();
       case "flow-close": { const i = +act.dataset.route; FLOW.route = null; select("summary", null); renderRoutes(); return $(`#sum-routes [data-sel="route:${i}"]`)?.focus(); }
-      case "check-result": { const k = +act.dataset.check, now = state.checks?.["c" + (k + 1)]?.result; recordCheck(k, { result: now === act.dataset.result ? undefined : act.dataset.result }); return renderPanel(S.tab, { keep: true }); }
+      case "check-result": { const k = +act.dataset.check, now = state.checks?.["c" + (k + 1)]?.result; recordCheck(k, { result: now === act.dataset.result ? undefined : act.dataset.result }); renderPanel(S.tab, { keep: true });
+        return $(`[data-act="check-result"][data-check="${k}"][data-result="${act.dataset.result}"]`)?.focus(); }
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
@@ -2585,10 +2609,10 @@ window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); s
 // the arrow keys walk a flow's steps in their order, from the step that has the focus
 document.addEventListener("keydown", (e) => {
   const t = e.target, d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
-  if (!d || !t.classList?.contains("flow-n") || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!d || !(t.classList?.contains("flow-n") || t.classList?.contains("flow-li")) || e.altKey || e.ctrlKey || e.metaKey) return;
   e.preventDefault();
   const i = +t.dataset.route, k = Math.max(0, Math.min(D.routes[i].steps.length - 1, +t.dataset.k + d));
-  select("summary", `route:${i}:s:${k}`); $(`#flow-${i} .flow-n[data-k="${k}"]`)?.focus();
+  select("summary", `route:${i}:s:${k}`); $(`#flow-${i} [data-act="flow-step"][data-k="${k}"]`)?.focus();
 });
 window.addEventListener("hashchange", () => route(location.hash));
 

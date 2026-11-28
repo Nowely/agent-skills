@@ -10,7 +10,7 @@ import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
 import path from "node:path";
-import { keyOf, previousOf, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
+import { keyOf, previousOf, sameRevision, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
 import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
@@ -133,11 +133,12 @@ export function page(review, files, model, { syntax, directory } = {}) {
   const weightOf = (weight) => weight && { rows: weightOverview(weight, t, language).map((row) => ({ kind: t(`weight.category.${row.kind}`), text: row.text })), shared: weight.shared };
   // A test that confirms a step, a link or a check, as the page shows it: each run it cites, with who ran it and where,
   // and each assertion at its place with its quote.
+  // A run on other code than the reviewed head — another revision, or none named — is shown as such.
   const confirm = (list) => list?.length ? {
-    runs: list.map((s) => /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? ""))).filter(Boolean).map((m) => review.coverageStructured[+m[1]])
-      .map((c) => ({ text: c.text, revision: c.revision ?? null, by: c.by ?? null, where: c.where ?? null })),
+    runs: list.map((s) => /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? ""))).filter(Boolean).map((m) => review.coverageStructured[+m[1]]).filter((c) => c?.kind === "ran")
+      .map((c) => ({ text: c.text, revision: c.revision ?? null, by: c.by ?? null, where: c.where ?? null,
+        here: c.revision ? (review.passport?.head ? sameRevision(c.revision, review.passport.head) : true) : false })),
     asserts: list.filter((s) => s.ref === undefined && s.at).map((s) => ({ at: s.at, quote: s.quote ?? "" })) } : null;
-  const head = review.passport?.head ?? null;
   const data = {
     title: review.title, range: review.range, language, labels,
     change: review.change, verdict: review.verdict, now: review.now, target: review.target, recommendation: review.recommendation,
@@ -167,13 +168,14 @@ export function page(review, files, model, { syntax, directory } = {}) {
       // the parent's variants this question applies under, by their words
       parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
         texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
-    // an observation at the reviewed revision is current; at another, or with no reviewed revision named, it is earlier
+    // an observation made on this diff is current; one made on another is earlier, whatever its revision is called
     checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String), route: c.route ?? null,
-      confirmedBy: confirm(c.confirmedBy), observations: (c.observations ?? []).map((o) => ({ result: o.result, revision: o.revision, conditions: o.conditions ?? null, note: o.note ?? null,
-        by: o.by ?? null, current: head !== null && o.revision === head })) })),
+      confirmedBy: confirm(c.confirmedBy), observations: (c.observations ?? []).map((o) => ({ result: o.result, revision: o.revision ?? o.diff.slice(0, 12), conditions: o.conditions ?? null,
+        note: o.note ?? null, by: o.by ?? null, current: o.diff === review.diff.sha256 })) })),
     routes: (review.routes ?? []).map((r) => ({ title: r.title, kind: r.kind ?? "path", requirements: (r.requirements ?? []).map(String),
       steps: r.steps.map((s) => ({ block: s.block ?? null, at: s.at ?? null, quote: s.quote ?? null, role: s.role, via: s.via ?? "", value: s.value ?? null,
-        stops: s.stops ? { finding: s.stops.finding === undefined ? null : String(s.stops.finding), question: s.stops.question ?? null } : null, confirmedBy: confirm(s.confirmedBy) })),
+        stops: s.stops ? { finding: s.stops.finding === undefined ? null : String(s.stops.finding), question: s.stops.question ?? null } : null, confirmedBy: confirm(s.confirmedBy),
+        findings: (s.findings ?? []).map(String), questions: s.questions ?? [] })),
       links: r.links ? r.links.map((l) => ({ from: l.from, to: l.to, via: l.via, question: l.question ?? null, confirmedBy: confirm(l.confirmedBy) })) : null })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),

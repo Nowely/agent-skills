@@ -432,6 +432,9 @@ test("check refuses a malformed flow: a step with both or neither of a block and
       ["confirmedBy quotes no assertion", (r, f) => { f.steps[1].confirmedBy[1] = { at: "test/archive.test.js:5" }; }],
       ["step 4 is on no link", (r, f) => { f.links.pop(); }],
       ["names finding 9, which is not listed", (r, f) => { f.steps[3].stops = { finding: 9 }; }],
+      ["confirmedBy cites coverage statement 2, which is not_checked, not a run", (r, f) => { f.steps[1].confirmedBy.push({ ref: "/coverageStructured/1" }); }],
+      ["confirmedBy cites /requirements/0; it cites runs and assertions only", (r, f) => { f.steps[1].confirmedBy.push({ ref: "/requirements/0" }); }],
+      ["names question 9, which is not listed", (r, f) => { f.steps[0].questions = [9]; }],
     ];
     const wrong = cases.map(([want, edit], i) => [want, i, withFlow(edit)]).filter(([want, , r]) => r.status !== 1 || !r.stderr.includes(want))
       .map(([want, i, r]) => `case ${i + 1} (${want}): ${r.status} ${r.stderr.slice(0, 300)}`);
@@ -455,16 +458,30 @@ test("a check keeps the point of a flow it exercises, the test that asserts the 
   () => {
     const good = (r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [FLOW()];
       Object.assign(r.checks[0], { route: { route: 1, step: 2 }, confirmedBy: [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }],
-        observations: [{ result: "pass", revision: "abc123", conditions: "Chrome 130, the demo data", note: "Upper case in the list." }, { result: "could-not-run", revision: "abc123", by: "the author" }] }); };
+        observations: [{ result: "pass", diff: "a".repeat(64), revision: "abc123", conditions: "Chrome 130, the demo data", note: "Upper case in the list." },
+          { result: "could-not-run", diff: "a".repeat(64), revision: "abc123", by: "the author" }] }); };
     const done = render(good);
     if (done.status !== 0) return `refused: ${done.stderr}`;
     const part = done.stdout.slice(done.stdout.indexOf("## Check by hand"), done.stdout.indexOf("## Check by hand") + 900);
-    if (!part.includes("(route 1, step 2) (Confirmed by a test: ") || !part.includes("Observed by the owner at abc123: pass; Chrome 130, the demo data — Upper case in the list.")
-      || !part.includes("Observed by the author at abc123: could not run")) return part;
-    const cases = [["has no \"revision\"", (r) => { delete r.checks[0].observations[0].revision; }], ["result is one of", (r) => { r.checks[0].observations[0].result = "ok"; }],
-      ["route 1 has no step 7", (r) => { r.checks[0].route.step = 7; }], ["route names route 4, which is not listed", (r) => { r.checks[0].route = { route: 4 }; }]];
+    if (!part.includes("(route 1, step 2) (Confirmed by a test: ") || !part.includes("Observed by the owner at abc123 (another diff): pass; Chrome 130, the demo data — Upper case in the list.")
+      || !part.includes("Observed by the author at abc123 (another diff): could not run")) return part;
+    const cases = [["has no \"diff\"", (r) => { delete r.checks[0].observations[0].diff; }], ["result is one of", (r) => { r.checks[0].observations[0].result = "ok"; }],
+      ["route 1 has no step 7", (r) => { r.checks[0].route.step = 7; }], ["route names route 4, which is not listed", (r) => { r.checks[0].route = { route: 4 }; }],
+      ["route names a step or a link, not both", (r) => { r.checks[0].route = { route: 1, step: 2, link: 1 }; }]];
     const wrong = cases.map(([want, edit]) => [want, render((r) => { good(r); edit(r); })]).filter(([want, r]) => r.status !== 1 || !r.stderr.includes(want)).map(([want, r]) => `${want}: ${r.stderr.slice(0, 300)}`);
     return !wrong.length || wrong.join("\n");
+  });
+
+test("check warns of a confirmation by a run on other code and of a step at a line the diff changes, and a step names what was found or asked at it without ending the path",
+  "a test run at another revision read as tested here, an «unchanged» step stood on a changed line, and a finding in the middle of a loop needed a duplicated step (PR 119 trial)",
+  () => {
+    const done = withFlow((r, f) => { r.coverageStructured.push({ kind: "ran", text: "An older run.", revision: "abc1234", sources: [{ at: "logs/old.txt:1", quote: "ok" }] });
+      f.steps[1].confirmedBy[0] = { ref: "/coverageStructured/2" }; f.steps[0].findings = [1]; f.steps[0].questions = [2];
+      f.steps.push({ at: "src/invoices/archive.js:2", quote: "the changed line", role: "A step on a changed line." }); f.links.push({ from: 3, to: 5, via: "the call" }); });
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const warned = ["route 1 step 2: confirmedBy cites a run at abc1234, not the reviewed head HEAD", "route 1 step 5 is at src/invoices/archive.js:2, a line this diff changes: name its block instead"]
+      .filter((w) => !done.stderr.includes(w));
+    return !warned.length && done.stdout.includes("Converts the code. Value: \"usd\" becomes \"USD\" (1, Q2)") || JSON.stringify({ warned, err: done.stderr.slice(0, 900) });
   });
 
 test("a coverage statement says who ran it and where, and the printout gives both",
@@ -485,9 +502,11 @@ test("carry brings a route's steps at unchanged code with its carried blocks, an
       findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/a.js:2", what: "What.", shown_by: "The line.", fix: "Fix." }],
       routes: [{ title: "A total", requirements: [1], steps: [{ block: 1, role: "The rate." }, { block: 2, role: "The total." },
         { at: "src/print.js:3", quote: "print(total(n))", role: "Prints it.", stops: { finding: 1 } }],
-        links: [{ from: 1, to: 2, via: "the import" }, { from: 2, to: 3, via: "the call", question: 1 }] }] };
+        links: [{ from: 1, to: 2, via: "the import" }, { from: 2, to: 3, via: "the call", question: 1 }] },
+        // a step at a file the new diff touches: its line may have moved or changed, so the route is left for this review
+        { title: "A rate", requirements: [1], steps: [{ block: 1, role: "The rate." }, { at: "src/a.js:9", quote: "total(1)", role: "Uses it.", via: "the import" }] }] };
     const c = continuation("flow-carry", prev, before, before), r = c.record.routes?.[0];
-    return r && r.steps.length === 3 && r.steps[2].at === "src/print.js:3" && r.steps[2].stops === undefined && r.links[1].question === undefined && r.links[1].via === "the call"
+    return r && c.record.routes.length === 1 && r.steps.length === 3 && r.steps[2].at === "src/print.js:3" && r.steps[2].stops === undefined && r.links[1].question === undefined && r.links[1].via === "the call"
       || JSON.stringify(c.record.routes);
   });
 

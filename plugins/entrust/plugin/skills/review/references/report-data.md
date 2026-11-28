@@ -160,10 +160,11 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs. A
   gap a test can assert goes to the author as a finding in the `tests` direction; a check may still cover it for a
   person who wants to see it. Optional: `route`, the point of a flow it exercises (`{"route": n, "step": n}`, or
-  `"link": n`); `confirmedBy`, as on a route, when a test asserts the same scenario; `observations`, the results the
-  owner's export carried, each a `result` (`pass`, `fail`, `could-not-run` or `observed`), the `revision` it was made
-  at, its `conditions` and `note` as written, and `by` when someone other than the owner made it. An observation
-  belongs to its revision and conditions: the page shows it as earlier, never as a result for this revision.
+  `"link": n`, not both); `confirmedBy`, as on a route, when a test asserts the same scenario; `observations`, the
+  results the owner's export carried, each a `result` (`pass`, `fail`, `could-not-run` or `observed`), `diff` (the
+  export's `diff_sha256`, which names the code it was made on), `revision` when the export names one, its
+  `conditions` and `note` as written, and `by` when someone other than the owner made it. An observation belongs to
+  its code and conditions: made on another diff, the page shows it as earlier, never as a result for this revision.
 - **Ideas.** `title`, `text`, and `at` when the idea has a place. The text says what the code does now and why, with
   its place, what is proposed instead, the burden it removes and what it costs; an idea is optional and never a
   defect. `sources`, optional, cite what shows it, such as the mechanism it would replace.
@@ -201,10 +202,13 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
     its `via`. `"kind": "states"` makes the steps states and the links transitions, `via` the trigger; several links
     between two states are several triggers, and a state may lead to itself.
   - `stops`, on a step the path does not leave, names the finding (a defect) or the question (open) that says whether
-    it should go on: `{"finding": id}` or `{"question": n}`.
+    it should go on: `{"finding": id}` or `{"question": n}`. `findings` and `questions` on any step name what the
+    review found or asks there without ending the path.
   - `confirmedBy`, on a step or a link, cites the test that asserts it: the run, a `ran` coverage statement by `ref`,
     and the assertion, `at` its place with its `quote`. Without it a step is read, and the page never shows it as
-    tested; a test that asserts something else does not confirm it. A route above 12 steps is warned of.
+    tested; a test that asserts something else does not confirm it. A run at another revision than the passport's
+    head, or at none named, is warned of and shown as tested on other code. A step `at` a line this diff changes is
+    warned of: name its block. A route above 12 steps is warned of.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other; `reviewer`
   for a candidate of your own you set aside on a place in the code, always `rejected`, so the owner sees it was
@@ -313,8 +317,10 @@ digests, the key, `revision` (the passport's head, the revision the answers belo
 a selection also keeps what was selected: on several lines the last as `end`, the characters as `from` in the first
 line, or in the field's text as the page shows it, and `to` in the last, and the words as `quote`. A comment never
 answers an item. `checks` lists the checks the owner ran on the page, by number: `result` (`pass`, `fail`,
-`could-not-run` or `observed`), `conditions` and `note` as typed. A review of the next revision copies each into its
-check's `observations` with the export's `revision`; it stays the owner's observation there, never a test result.
+`could-not-run` or `observed`, or `null` for a note without one), `conditions` and `note` as typed. A review of the
+next revision copies each with a result into its check's `observations` with the export's `diff_sha256` and
+`revision`; it stays the owner's observation there, never a test result. A note without a result is the owner's
+comment.
 
 The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
 owner's own session or orchestrate's fix round; the review applies none of it. A review of the next revision reads it as

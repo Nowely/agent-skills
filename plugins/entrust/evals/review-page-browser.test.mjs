@@ -908,9 +908,14 @@ const flowRecord = (base) => {
       links: [{ from: 1, to: 2, via: "readArchive's return" }, { from: 1, to: 3, via: "the test's call" }, { from: 1, to: 4, via: "the legacy path", question: 2 }] },
     { title: "The list's states", kind: "states", requirements: [1], steps: [{ block: 1, role: "Closed." }, { block: 2, role: "Open." }, { block: 3, role: "Sorted." }],
       links: [{ from: 1, to: 2, via: "a click on the list" }, { from: 2, to: 3, via: "a click on a header" }, { from: 2, to: 3, via: "the S key", confirmedBy: confirmed },
-        { from: 3, to: 3, via: "another header" }, { from: 3, to: 1, via: "Escape" }] }];
+        { from: 3, to: 3, via: "another header" }, { from: 3, to: 1, via: "Escape" }] },
+    // a link past a step, a test at another revision, and what was found or asked at a step that goes on
+    { title: "A skip", requirements: [1], steps: [{ block: 1, role: "Reads.", findings: [1], questions: [2] },
+      { block: 2, role: "Tests it.", confirmedBy: [{ ref: "/coverageStructured/2" }, { at: "test/archive.test.js:5", quote: "assert upper" }] }, { block: 3, role: "Checks." }],
+      links: [{ from: 1, to: 2, via: "the read" }, { from: 2, to: 3, via: "the test" }, { from: 1, to: 3, via: "the skip past the tests" }] }];
+  r.coverageStructured.push({ kind: "ran", text: "An older run.", revision: "abc1234", sources: [{ at: "logs/old.txt:1", quote: "ok" }] });
   r.checks = [{ ...r.checks[0], route: { route: 1, step: 2 }, confirmedBy: confirmed,
-    observations: [{ result: "pass", revision: "HEAD", conditions: "Chrome, the demo data" }, { result: "fail", revision: "abc123", note: "Lower case." }] },
+    observations: [{ result: "pass", diff: base.diff.sha256, revision: "HEAD", conditions: "Chrome, the demo data" }, { result: "fail", diff: "f".repeat(64), revision: "abc123", note: "Lower case." }] },
     { do: ["Open the list."], expect: "It loads.", requirements: [1] }];
   return r;
 };
@@ -937,10 +942,11 @@ test("a route of states opens as its transition table, one row per trigger; its 
     const rows = await page.locator("#flow-1 .flow-table tbody tr").count(), tag = await text(page, '#sum-routes .route-row[data-sel="route:1"]');
     await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page);
     const edges = await page.locator("#flow-1 path.fe").count(), lbls = await page.locator("#flow-1 .flow-lbl").allInnerTexts(), ok = await page.locator("#flow-1 path.fe.ok").count();
+    const mixed = await page.locator("#flow-1 path.fe.mixed").count(), plainLabel = await page.locator('#flow-1 button.flow-lbl.plain[data-j="1"]').count();
     await page.click('#flow-1 button.flow-lbl[data-j="1"]'); await settle(page);
     const panel = await text(page, "#ctx-summary");
-    return rows === 5 && /States/.test(tag) && edges === 4 && lbls.some((l) => /a click on a header · \+1/.test(l)) && ok === 1 && /Transition/.test(panel)
-      && /Triggers between these steps a click on a header Read the S key Confirmed by a test/.test(panel) || JSON.stringify({ rows, tag, edges, lbls, ok, panel: panel.slice(0, 500) });
+    return rows === 5 && /States/.test(tag) && edges === 4 && lbls.some((l) => /a click on a header · \+1/.test(l)) && ok === 0 && mixed === 1 && plainLabel === 1 && /Transition/.test(panel)
+      && /Triggers between these steps a click on a header Read the S key Confirmed by a test/.test(panel) || JSON.stringify({ rows, tag, edges, lbls, ok, mixed, plainLabel, panel: panel.slice(0, 500) });
   }));
 
 test("a check says what stands behind it, kept apart — proposed and not run, confirmed by a test, observed by the owner at this revision or an earlier one — and the owner's result goes into the export at the reviewed revision, not into the decisions",
@@ -961,6 +967,37 @@ test("a check says what stands behind it, kept apart — proposed and not run, c
       || JSON.stringify({ card, bare, status, checks: p.checks, revision: p.revision, progress: p.progress, t: t.slice(0, 700), kept, url });
   }));
 
+test("a flow keeps its edges off the steps they pass, its labels apart, and its evidence true to the code: a link past a step runs at the side, a test on other code is not «Confirmed», and a step names what was found at it",
+  "an edge past a step ran under it and read as a straight path, labels in one gap covered each other, and a run at another revision read as tested here (PR 119 critic, trial)",
+  cased(FLOW_URL + "#summary/route3", {}, async (page) => {
+    const box = (sel) => page.locator(sel).first().evaluate((el) => { const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; });
+    const step2 = await box('#flow-2 .flow-n[data-k="1"]'), skip = await box('#flow-2 button.flow-lbl[data-j="2"]');
+    const node = await text(page, '#flow-2 .flow-n[data-k="1"]'), first = await text(page, '#flow-2 .flow-n[data-k="0"]');
+    await page.click('#flow-2 .flow-n[data-k="0"]'); await settle(page); const found = await text(page, "#ctx-summary");
+    await page.goto(FLOW_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const lbls = await page.locator("#flow-0 .flow-lbl").evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]; }));
+    const overlaps = lbls.flatMap((a, i) => lbls.slice(i + 1).filter((b) => a[0] < b[1] && a[1] > b[0] && a[2] < b[3] && a[3] > b[2])).length;
+    return skip.l >= step2.r && /Tested on other code/.test(node) && !/Confirmed by a test/.test(node) && /F1 Q2/.test(first) && /Found or asked here/.test(found) && /A finding/.test(found) && overlaps === 0
+      || JSON.stringify({ step2, skip, node, first, found: found.slice(0, 400), overlaps });
+  }));
+
+test("leaving a flow for another item leaves none of its steps current; a result chosen keeps the focus; the List view walks by the arrow keys; Coverage names who ran a statement and where",
+  "a step stayed announced as current after the selection moved on, choosing a result dropped the focus to the page, and the List view's note promised keys it did not answer (PR 119 critic)",
+  cased(FLOW_URL + "#summary/route1/step2", {}, async (page) => {
+    await page.click('#panel-summary [data-sel^="req:"]'); await settle(page);
+    const current = await page.locator('#flow-0 [aria-current="true"]').count(), rowSel = await page.locator("#sum-routes .route-row.sel").count();
+    await page.click('#flow-0 [data-act="flow-view"][data-view="list"]'); await settle(page);
+    await page.focus('#flow-0 .flow-li[data-k="0"]'); await page.keyboard.press("ArrowDown"); await settle(page);
+    const walked = page.url(), focus = await page.evaluate(() => document.activeElement?.dataset.k);
+    await page.goto(FLOW_URL + "#details/checks"); await page.waitForSelector(".tabbar"); await settle(page);
+    await page.click('#det-body [data-sel="check:0"]'); await settle(page); await page.click('[data-act="check-result"][data-result="observed"]'); await settle(page);
+    const kept = await page.evaluate(() => document.activeElement?.dataset.result ?? document.activeElement?.tagName);
+    await page.goto(FLOW_URL + "#details/coverage"); await page.waitForSelector(".tabbar"); await settle(page);
+    const coverage = await text(page, "#det-body .cov-ran");
+    return current === 0 && rowSel === 0 && /#summary\/route1\/step2$/.test(walked) && focus === "1" && kept === "observed" && /by the reviewer · in a local checkout/.test(coverage)
+      || JSON.stringify({ current, rowSel, walked, focus, kept, coverage });
+  }));
+
 test("without JavaScript a flow's steps at unchanged code, values, links, stops and confirmations, and a check's earlier observations, are in the document",
   "a reader without scripts got a route as blocks in a line and no check's results",
   async () => {
@@ -968,7 +1005,8 @@ test("without JavaScript a flow's steps at unchanged code, values, links, stops 
     try {
       const t = (await o.page.evaluate(() => document.body.textContent)).replace(/\s+/g, " ");
       const want = ["src/main.js:4 «print(row.code)» (unchanged code): Prints the code as read.", "Value: \"usd\" becomes \"USD\"", "1 → 4: the legacy path (Q2)", "Stops here: F2",
-        "· Confirmed by a test", "The list's states (states)", "2 → 3: the S key · Confirmed by a test", "Observed by the owner at abc123: fail — Lower case."];
+        "· Confirmed by a test", "The list's states (states)", "2 → 3: the S key · Confirmed by a test", "Observed by the owner at abc123 (another diff): fail — Lower case.",
+        "route 1, step 2", "B1: Reads. (F1, Q2)", "by the reviewer; in a local checkout"];
       const missing = want.filter((w) => !t.includes(w));
       return !missing.length || `missing ${JSON.stringify(missing)}`;
     } finally { await o.close(); }
@@ -986,6 +1024,7 @@ test("a Russian flow, its step, link and transition panels, its table, a check's
       for (const hash of ["summary/route1", "summary/route1/step2", "summary/route1/step4", "summary/route1/link3", "summary/route2", "summary/route2/link2"]) { await go(hash); scan(hash, await seen(page)); }
       await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page); scan("the states' diagram", await seen(page));
       await go("summary/route1"); await page.click('#flow-0 [data-act="flow-view"][data-view="list"]'); await settle(page); scan("a route as a list", await seen(page));
+      for (const hash of ["summary/route3/step1", "summary/route3/step2", "details/coverage"]) { await go(hash); scan(hash, await seen(page)); }
       await go("details/checks"); await page.click('#det-body [data-sel="check:0"]'); await settle(page); await page.click('[data-act="check-result"][data-result="fail"]'); await settle(page);
       scan("a check", await seen(page));
       await page.click('[data-act="export"]'); await settle(page); scan("the export", await seen(page)); await page.keyboard.press("Escape");

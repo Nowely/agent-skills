@@ -62,6 +62,11 @@ export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "questi
 // What a question asks of its resolver: a choice, a fact, or evidence. The number never decides the kind.
 export const QUESTION_KINDS = ["decision", "fact", "evidence"];
 export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
+// Two revision texts name the same code when they are equal, or when one is an abbreviated hash of the other.
+export const sameRevision = (a, b) => {
+  const x = String(a ?? "").trim().toLowerCase(), y = String(b ?? "").trim().toLowerCase();
+  return Boolean(x && y) && (x === y || (Math.min(x.length, y.length) >= 7 && /^[0-9a-f]+$/.test(x) && /^[0-9a-f]+$/.test(y) && (x.startsWith(y) || y.startsWith(x))));
+};
 // Who raised a point against the draft, and what the review did with it.
 export const CHALLENGERS = ["target", "critic", "verifier", "reviewer"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
@@ -565,7 +570,14 @@ export function check(review, files, directory) {
     if (list === undefined) return;
     if (!filled(list)) { errors.push(`${who}: confirmedBy lists nothing; leave it out, or name the run and the assertion`); return; }
     sourceFaults(`${who} confirmedBy`, list);
-    const objects = list.filter((s) => s && typeof s === "object" && !Array.isArray(s));
+    const objects = list.filter((s) => s && typeof s === "object" && !Array.isArray(s)), head = review.passport?.head;
+    for (const s of objects.filter((s) => s.ref !== undefined)) {
+      const m = /^\/coverageStructured\/(\d+)$/.exec(String(s.ref)), c = m && review.coverageStructured?.[+m[1]];
+      if (!m) { errors.push(`${who}: confirmedBy cites ${s.ref}; it cites runs and assertions only`); continue; }
+      if (c && c.kind !== "ran") { errors.push(`${who}: confirmedBy cites coverage statement ${+m[1] + 1}, which is ${c.kind}, not a run`); continue; }
+      if (c && !text(c.revision)) warnings.push(`${who}: confirmedBy cites a run that names no revision: say what code it ran on`);
+      else if (c && text(head) && !sameRevision(c.revision, head)) warnings.push(`${who}: confirmedBy cites a run at ${c.revision}, not the reviewed head ${head}: the page shows it as tested at another revision`);
+    }
     if (!objects.some((s) => { const m = /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? "")); return m && review.coverageStructured?.[+m[1]]?.kind === "ran"; }))
       errors.push(`${who}: confirmedBy names no "ran" coverage statement: cite the run, as {"ref": "/coverageStructured/N"}`);
     if (!objects.some((s) => s.ref === undefined && text(s.at) && text(s.quote))) errors.push(`${who}: confirmedBy quotes no assertion: cite the test's line that asserts it, with its quote`);
@@ -595,6 +607,10 @@ export function check(review, files, directory) {
       if (hasBlock === hasAt) errors.push(`${w} names ${hasBlock ? "both a block and a place" : "neither a block nor a place"}: a block of the diff, or "at" with the "quote" of its line for code outside it`);
       else if (hasBlock && (!Number.isInteger(step.block) || step.block < 1 || step.block > review.blocks.length)) errors.push(`${w} names block ${step.block}, which is not listed`);
       else if (hasAt && (!text(step.at) || !text(step.quote))) errors.push(`${w}: a place outside the diff needs "at" and the "quote" of its line`);
+      else if (hasAt) {
+        const [, p, line] = /^(.*):(\d+)$/.exec(step.at) ?? [], file = p && files.find((f) => f.path === p);
+        if (file && changedLines(file).some((l) => l.kind === "add" && l.new === +line)) warnings.push(`${w} is at ${step.at}, a line this diff changes: name its block instead`);
+      }
       if (!text(step?.role)) errors.push(`${w} has no "role": ${states ? "what the state is" : "what its code does for this behaviour"}`);
       if (step?.value !== undefined && !text(step.value)) errors.push(`${w}: value is empty`);
       if (links && step?.via !== undefined) errors.push(`${w} has "via", and the route has links: say it on the link into the step`);
@@ -606,6 +622,10 @@ export function check(review, files, directory) {
         else refs(w, [s.question], questions, "question");
         if (links ? links.some((l) => l?.from === k + 1 && l?.to !== k + 1) : k < n - 1) errors.push(`${w} stops, and the route goes on from it: a path stops at a step it does not leave`);
       }
+      if (step?.findings !== undefined && !Array.isArray(step.findings)) errors.push(`${w}: findings is not a list`);
+      else refs(w, step?.findings, findings, "finding");
+      if (step?.questions !== undefined && !Array.isArray(step.questions)) errors.push(`${w}: questions is not a list`);
+      else refs(w, step?.questions, questions, "question");
       confirmations(w, step?.confirmedBy);
     });
     (links ?? []).forEach((l, j) => {
@@ -630,6 +650,7 @@ export function check(review, files, directory) {
       else {
         if (p.step !== undefined && (!Number.isInteger(p.step) || p.step < 1 || p.step > (rt.steps?.length ?? 0))) errors.push(`${name}: route ${p.route} has no step ${p.step}`);
         if (p.link !== undefined && (!Number.isInteger(p.link) || p.link < 1 || p.link > (rt.links?.length ?? 0))) errors.push(`${name}: route ${p.route} has no link ${p.link}`);
+        if (p.step !== undefined && p.link !== undefined) errors.push(`${name}: route names a step or a link, not both`);
       }
     }
     confirmations(name, c.confirmedBy);
@@ -637,8 +658,8 @@ export function check(review, files, directory) {
     (Array.isArray(c.observations) ? c.observations : []).forEach((o, j) => {
       const ow = `${name} observation ${j + 1}`;
       if (!RESULTS.includes(o?.result)) errors.push(`${ow}: result is one of ${RESULTS.join(", ")}`);
-      if (!text(o?.revision)) errors.push(`${ow} has no "revision": the revision it was made at`);
-      for (const k of ["note", "conditions", "by"]) if (o?.[k] !== undefined && !text(o[k])) errors.push(`${ow}: ${k} is empty`);
+      if (!/^[0-9a-f]{64}$/.test(String(o?.diff ?? ""))) errors.push(`${ow} has no "diff": the export's diff_sha256, which names the code it was made on`);
+      for (const k of ["revision", "note", "conditions", "by"]) if (o?.[k] !== undefined && !text(o[k])) errors.push(`${ow}: ${k} is empty`);
     });
   });
 

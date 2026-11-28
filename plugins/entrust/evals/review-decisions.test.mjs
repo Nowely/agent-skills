@@ -228,7 +228,7 @@ test("the export is schema 9 under the record's and the diff's digests and the r
   assert.doesNotMatch(JSON.stringify(out), /verified|accepted/);
 });
 
-test("a check's result is the owner's observation apart from the answers: one of four results with its conditions and note, counted by no decision, exported only once a result is chosen", () => {
+test("a check's result is the owner's observation apart from the answers: one of four results with its conditions and note, counted by no decision; a note without a result is exported as a comment", () => {
   const items = D.itemsOf({ questions: [{ id: 1, kind: "fact" }] });
   let s = D.recordCheck(D.empty(), "c2", { result: "pass", conditions: "Chrome 130, demo data" });
   s = D.recordCheck(s, "c1", { note: "not run yet" });
@@ -236,7 +236,7 @@ test("a check's result is the owner's observation apart from the answers: one of
   assert.deepEqual(s.checks, { c2: { result: "pass", conditions: "Chrome 130, demo data", note: "Upper case in the list." }, c1: { note: "not run yet" } });
   assert.deepEqual(D.progress(items, s), D.progress(items, D.empty()));
   const out = D.exportOf(items, s, { recordSha: "r", diffSha: "d", key: "k", title: "t", range: "x", revision: "abc123" });
-  assert.deepEqual([out.revision, out.checks], ["abc123", [{ check: 2, result: "pass", conditions: "Chrome 130, demo data", note: "Upper case in the list." }]]);
+  assert.deepEqual([out.revision, out.checks], ["abc123", [{ check: 1, result: null, note: "not run yet" }, { check: 2, result: "pass", conditions: "Chrome 130, demo data", note: "Upper case in the list." }]]);
   // a result chosen again is cleared; an entry left empty is gone; storage keeps only what reads as a check
   s = D.recordCheck(D.recordCheck(s, "c1", { note: "" }), "c2", { result: undefined });
   assert.deepEqual(s.checks, { c2: { conditions: "Chrome 130, demo data", note: "Upper case in the list." } });

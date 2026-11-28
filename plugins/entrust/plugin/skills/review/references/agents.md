@@ -62,7 +62,8 @@ Brief:
 
 The same printout. Each factual claim in it: the source given for each requirement, its quote and its origin, every `met: read`, what calls what, what a
 contract guarantees, what is unavailable, what a removal would eliminate, what a test covers, the reasons for kept
-units. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
+units, each route step's quoted line at its place, and each confirmation: that its test line asserts that step and
+that its run covered it. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
 coverage limits and the sources of the accepted tradeoffs. The full text report carries all of these regardless of
 the page's profile. Check each against the source and return it as confirmed or refuted, with the place, or as not
 checkable and why. No new findings.

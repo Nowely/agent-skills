@@ -19,30 +19,37 @@ forensics remain in the repository references and release notes.
 - A route may pass through unchanged code — `at` with the `quote` of its line — and give each step's `value`. It
   forks, joins and loops through `links` (`from`, `to`, `via`); `"kind": "states"` makes its steps states and its
   links transitions with their triggers. `stops` marks a step the path ends at, citing the finding or the question
-  that says whether it should go on. `confirmedBy` names the test that asserts a step or a link — a `ran` coverage
-  statement and the quoted assertion — and `check` refuses one without both, so a read step is never shown as tested.
-  A route above 12 steps is warned of. The printout gives the checking agents every step, link, stop and
-  confirmation; `carry` brings steps at unchanged code and leaves stops, links' questions and confirmations to the
-  new review.
-- A check may name the point of a route it exercises, the test that asserts the same scenario, and the owner's
-  earlier `observations`, each with its result, revision and conditions, so an old observation is never read as a
-  result for a new revision.
+  that says whether it should go on; `findings` and `questions` on any step name what the review found or asks there
+  without ending the path. `confirmedBy` names the test that asserts a step or a link — a `ran` coverage statement
+  and the quoted assertion — and `check` refuses one without both, or one citing anything else, so a read step is
+  never shown as tested; a run at another revision than the passport's head, or at none named, is warned of. A step
+  `at` a line the diff changes is warned of, and a route above 12 steps. The printout gives the checking agents every
+  step, link, stop and confirmation, and the verifier checks each quote and confirmation; `carry` brings steps at
+  unchanged code, drops a route whose such step stands in a file the new diff touches, and leaves stops, findings,
+  questions and confirmations to the new review.
+- A check may name the point of a route it exercises — a step or a link — the test that asserts the same scenario,
+  and the owner's earlier `observations`, each with its result, the `diff` digest it was made on, its revision and
+  conditions, so an old observation is never read as a result for a new revision, whatever the revision is called.
 - A coverage statement may say `by` whom and `where` it ran or was read: a green CI job can skip a suite.
 
 ### Flows on the page
 
 - A route opens under its row in Summary › How it works as a flow the page lays out from the record's order and
-  links: each step in a row below the steps that lead to it, a link back drawn at the side, a state that stays as a
-  loop, each link's words on its edge. Selecting a step shows beside it its place, value, code — the block's excerpt
+  links: each step in a row below the steps that lead to it; a link that skips a row or goes back runs at the side,
+  beyond every step it passes; a state that stays is a loop; each link's words sit on its edge, kept apart from the
+  others. An edge of several triggers is green only when every one is confirmed by a test on this code, dotted when
+  some are. Selecting a step shows beside it its place, value, code — the block's excerpt
   or the quoted line of unchanged code — and its evidence: read, or confirmed by a test with its run, who ran it and
-  where, and the quoted assertion; a step where the path stops shows its finding or question. A link opens its own
+  where, and the quoted assertion, or tested on other code when the run was not on the reviewed head; what was found
+  or asked at it, and the finding or question where the path stops. A link opens its own
   context; the arrow keys walk the steps; `#summary/route1/step2` and `…/link3` open one. Every route has a List
   view; a route of states opens as its transition table, one row per trigger, the diagram one click away. The page
   without JavaScript lists the same steps, links, stops and confirmations.
 - Details › Checks keeps apart what stands behind each check: proposed and not run, confirmed by a test, observed by
   the owner at this revision or an earlier one. The owner records Pass, Fail, Could not run or Observed with the
-  conditions and a note; the result goes into the export, not into the decisions. **Breaking:** the export is
-  schema 9: it adds `revision`, the reviewed revision the answers and results belong to, and `checks`.
+  conditions and a note; the result goes into the export, not into the decisions, and a note without a result goes
+  as a comment. Details › Coverage names who ran each statement and where. **Breaking:** the export is schema 9: it
+  adds `revision`, the reviewed revision the answers and results belong to, and `checks`.
 
 ## 0.48.0 — 2026-11-27
 

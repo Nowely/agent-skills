@@ -201,8 +201,10 @@ export function decisionRuntime() {
           ...(s.draft ? { draft: answerOf(item, s.draft) } : {}), ...(zones.length ? { zones } : {}), ...(parent ? { waiting_for_parent: parent } : {}) };
       }),
       lineComments: state.lines, paragraphComments: state.paragraphs,
-      // the checks run, by number, at the revision above; one with a note and no result was not run
-      checks: Object.entries(state.checks ?? {}).filter(([, v]) => v.result).map(([k, v]) => ({ check: +k.slice(1), ...v })).sort((a, b) => a.check - b.check),
+      // the checks, by number, at the revision above: a result is the owner's observation; one with a note and no
+      // result was not run, and its note travels as the owner's comment
+      checks: Object.entries(state.checks ?? {}).map(([k, v]) => ({ check: +k.slice(1), result: v.result ?? null, ...(v.conditions ? { conditions: v.conditions } : {}), ...(v.note ? { note: v.note } : {}) }))
+        .sort((a, b) => a.check - b.check),
     };
   };
   return { schema, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf, recordCheck,

@@ -68,7 +68,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.kind === "states" ? ` (${t("route.states")})` : ""}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
       ...r.steps.map((step, k) => `${k + 1}. ${step.block !== undefined ? `B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`` : `\`${step.at}\` «${step.quote}» (${t("route.unchanged")})`}: ${step.role}`
         + `${step.value ? ` ${t("route.value")}: ${step.value}` : ""}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`
-        + `${step.stops ? ` ${t("route.stops")}: ${step.stops.finding !== undefined ? step.stops.finding : `Q${step.stops.question}`}` : ""}${confirmed(step.confirmedBy)}`),
+        + `${step.stops ? ` ${t("route.stops")}: ${step.stops.finding !== undefined ? step.stops.finding : `Q${step.stops.question}`}` : ""}`
+        + `${step.findings?.length || step.questions?.length ? ` (${[...(step.findings ?? []).map(String), ...(step.questions ?? []).map((q) => `Q${q}`)].join(", ")})` : ""}${confirmed(step.confirmedBy)}`),
       ...(r.links ?? []).map((l) => `   ${l.from} → ${l.to}: ${l.via}${l.question !== undefined ? ` (Q${l.question})` : ""}${confirmed(l.confirmedBy)}`)]), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
@@ -79,7 +80,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
       `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`
         + `${c.route ? ` (${c.route.step !== undefined ? t("route.of-check.step", c.route.route, c.route.step) : c.route.link !== undefined ? t("route.of-check.link", c.route.route, c.route.link) : t("route.of-check", c.route.route)})` : ""}${confirmed(c.confirmedBy)}`
-        + (c.observations ?? []).map((o) => `\n   ${t("check.observed", o.by ?? t("check.owner"), o.revision)}: ${resultWord(o.result)}${o.conditions ? `; ${o.conditions}` : ""}${o.note ? ` — ${o.note}` : ""}`).join("")), ""] : []),
+        + (c.observations ?? []).map((o) => `\n   ${t("check.observed", o.by ?? t("check.owner"), o.revision ?? o.diff.slice(0, 12))}${o.diff === review.diff.sha256 ? "" : ` (${t("check.earlier")})`}: ${resultWord(o.result)}${o.conditions ? `; ${o.conditions}` : ""}${o.note ? ` — ${o.note}` : ""}`).join("")), ""] : []),
     ...(screens.length ? [`## ${t("screens")}`, ...screens.flatMap((s) => { const historical = s.provenance.startsWith("historical"); return [
       `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
@@ -197,9 +198,10 @@ function carry(previousPath, target) {
   review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
     .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
   // A step at unchanged code comes over as it is; what pointed at the previous findings, questions and runs does not.
-  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => s.block === undefined || renumber.has(s.block)));
+  const touched = new Set(cur.files.map((f) => f.path));
+  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => s.block === undefined ? !touched.has(String(s.at).replace(/:\d+$/, "")) : renumber.has(s.block)));
   if (routes.length) review.routes = routes.map((r) => ({ ...r,
-    steps: r.steps.map(({ stops, confirmedBy, ...s }) => s.block === undefined ? s : { ...s, block: renumber.get(s.block) }),
+    steps: r.steps.map(({ stops, confirmedBy, findings, questions, ...s }) => s.block === undefined ? s : { ...s, block: renumber.get(s.block) }),
     ...(r.links ? { links: r.links.map(({ question, confirmedBy, ...l }) => l) } : {}) }));
   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
   // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a

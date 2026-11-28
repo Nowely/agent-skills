@@ -235,16 +235,20 @@ li.route-flow { border-top: 1px solid var(--border); padding: 10px 12px 12px; ba
 .fn-value { font: 12px var(--mono); color: var(--accent); overflow-wrap: anywhere; }
 .fn-place { font: 11.5px var(--mono); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fn-stop { font-size: 12px; color: var(--q); }
+.fn-items { font: 600 11.5px var(--mono); color: var(--warn); }
 .flow-svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .fe { fill: none; stroke-width: 1.6; }
 .fe.plain { stroke: var(--text-3); }
 .fe.ok { stroke: var(--ok); }
 .fe.q { stroke: var(--q-line); stroke-dasharray: 5 4; }
+.fe.mixed { stroke: var(--ok); stroke-dasharray: 2 4; }
 .fm.plain { fill: var(--text-3); }
 .fm.ok { fill: var(--ok); }
 .fm.q { fill: var(--q-line); }
+.fm.mixed { fill: var(--ok); }
 .flow-lbl { position: absolute; z-index: 2; transform: translate(-50%, -50%); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font: 11.5px/18px var(--sans); color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0 7px; }
+.flow-lbl.side { transform: translate(6px, -50%); max-width: 180px; }
 button.flow-lbl { cursor: pointer; }
 button.flow-lbl:hover { border-color: var(--border-strong); color: var(--text); }
 button.flow-lbl[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--text); }
