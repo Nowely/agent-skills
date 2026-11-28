@@ -6,6 +6,13 @@ forensics remain in the repository references and release notes.
 ## Unreleased
 
 - rnd adds a research-only route and an installed research method, with comparison guidance and support for delegated approved plans.
+- The repository rules file is named `AGENTS.md`, the name hosts load, with the pointer line kept.
+- rnd keeps a record of the research run: the owner's direction, the decisions and the dispositions of the preservation gate.
+- rnd's checks run when their result could change an answer or the plan, give every check session its own copy of the tree, leave a practical run on the user's task where the task is, and fix an impossible statement before the other sessions start.
+- rnd counts an unconfirmed mark as `unknown` with its effect on the verdict stated beforehand, and the review protocol stops again to agree on a next step.
+- rnd's Research route shows its plan and waits for the user's word before any session or agent, changes no file of the skill, opens its result with the answer and what it rests on, and runs the reader of the user's words.
+- rnd's description names research, evaluation and comparison of skills and lists what it is not for; its scope line covers research about skills.
+- rnd asks about words of the user that do not fit the design, and a child agent passed a scope needs the paths of the approved plan and of the user's saved word, else it returns its plan with its questions.
 
 ## 0.49.0 — 2026-11-28
 
