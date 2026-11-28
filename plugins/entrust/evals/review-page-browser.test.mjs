@@ -987,6 +987,34 @@ test("a flow keeps its edges off the steps they pass, its labels apart, and its 
       || JSON.stringify({ step2, skip, node, first, found: found.slice(0, 400), overlaps });
   }));
 
+test("no edge of a flow touches a step but its own two: a link past a row or back up runs through the empty gaps beside the steps, and a state that stays loops over its own top",
+  "an edge at the side entered its step level with a neighbour and seemed to lead into it — on the first real review, 6→4 read as 6→5 — and a state's loop lay over the step beside it (PR 119)",
+  cased(FLOW_URL + "#summary/route1", {}, async (page) => {
+    // every point along every edge, every 3 px, against every step's box less a pixel, its own two steps excepted
+    const crossings = (card) => page.evaluate((card) => {
+      const canvas = document.querySelector(`${card} .flow-canvas`), box = canvas.getBoundingClientRect(), out = [];
+      const steps = [...canvas.querySelectorAll(".flow-n")].map((el) => { const r = el.getBoundingClientRect(); return { k: el.dataset.k, l: r.left - box.left + 1, r: r.right - box.left - 1, t: r.top - box.top + 1, b: r.bottom - box.top - 1 }; });
+      for (const p of canvas.querySelectorAll("path.fe")) {
+        const len = p.getTotalLength();
+        for (let at = 0; at <= len; at += 3) {
+          const { x, y } = p.getPointAtLength(at);
+          for (const s of steps) if (s.k !== p.dataset.from && s.k !== p.dataset.to && x > s.l && x < s.r && y > s.t && y < s.b) out.push(`${p.dataset.from}→${p.dataset.to} crosses ${s.k}`);
+        }
+      }
+      return [...new Set(out)];
+    }, card);
+    const found = { fork: await crossings("#flow-0") };
+    await page.goto(FLOW_URL + "#summary/route2"); await page.waitForSelector(".tabbar"); await settle(page);
+    await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page);
+    found.states = await crossings("#flow-1");
+    // the loop of the state that stays begins and ends on its own top
+    const loop = await page.evaluate(() => { const p = document.querySelector('#flow-1 path.fe[data-from="2"][data-to="2"]'), n = document.querySelector('#flow-1 .flow-n[data-k="2"]').getBoundingClientRect(), c = document.querySelector("#flow-1 .flow-canvas").getBoundingClientRect();
+      if (!p) return "no loop"; const a = p.getPointAtLength(0), z = p.getPointAtLength(p.getTotalLength()); return Math.abs(a.y - (n.top - c.top)) < 1 && Math.abs(z.y - (n.top - c.top)) < 1 || JSON.stringify({ a, z, top: n.top - c.top }); });
+    await page.goto(FLOW_URL + "#summary/route3"); await page.waitForSelector(".tabbar"); await settle(page);
+    found.skip = await crossings("#flow-2");
+    return Object.values(found).every((x) => !x.length) && loop === true || JSON.stringify({ found, loop });
+  }));
+
 test("leaving a flow for another item leaves none of its steps current; a result chosen keeps the focus; the List view walks by the arrow keys; Coverage names who ran a statement and where",
   "a step stayed announced as current after the selection moved on, choosing a result dropped the focus to the page, and the List view's note promised keys it did not answer (PR 119 critic)",
   cased(FLOW_URL + "#summary/route1/step2", {}, async (page) => {

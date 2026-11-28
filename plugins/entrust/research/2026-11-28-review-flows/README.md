@@ -82,8 +82,10 @@ fixed in advance: one reviewer, no checking agents, the full record and page, an
 - a run on other code was shown as tested here;
 - a `read` statement was listed as a run.
 
-**Still open.** An edge drawn at the side enters its step from the right, so it can pass behind a neighbour in the same
-row.
+**Fixed after the round.** An edge drawn at the side entered its step from the right, so it passed behind a
+neighbour in the same row: on this review, 6→4 read as 6→5. Such edges now run only through the empty gaps between
+rows and enter their target from the top. A test samples every edge and fails if one touches a step that is not its
+own end.
 
 The [trial-db8076a](trial-db8076a/) folder holds the record, its saved diff, the task, the plan and the test log.
 `report.mjs render trial-db8076a/review.json` draws its page. The page is shown in

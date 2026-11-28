@@ -643,41 +643,59 @@ function drawFlow(i) {
   const rect = (k) => { const e = $(`.flow-n[data-k="${k}"]`, canvas).getBoundingClientRect(); return { l: e.left - box.left, t: e.top - box.top, r: e.right - box.left, b: e.bottom - box.top, cx: (e.left + e.right) / 2 - box.left, cy: (e.top + e.bottom) / 2 - box.top }; };
   const own = (l) => testedHere(l) ? "ok" : l.question !== null ? "q" : "plain";
   const cls = (e) => { const cs = e.js.map((j) => own(r.links[j])); return !cs.length ? "plain" : cs.every((c) => c === "ok") ? "ok" : cs.includes("ok") ? "mixed" : cs.includes("q") ? "q" : "plain"; };
-  // (3) an edge that skips a row, goes back or stays runs at the side, beyond every step in the rows it spans
+  // An edge between neighbouring rows runs down the gap between them. One that skips a row or goes back runs through
+  // the empty gaps only: out of its step's top or bottom, along the gap, down or up beyond every step in the rows it
+  // spans, along the gap above its target and into the target's top — so it touches no step but its two ends and can
+  // never seem to lead into a step it passes. A state that stays loops over its own top.
   const edges = flowEdges(r), rank = [];
   flowRows(r, edges).forEach((row, x) => row.forEach((k) => { rank[k] = x; }));
-  const aside = (e) => e.back || rank[e.to] - rank[e.from] > 1;
-  // room at the right for the edges at the side and their words
-  canvas.style.paddingRight = edges.some((e) => aside(e) || e.self) ? `${200 + 18 * edges.filter(aside).length}px` : "72px";
-  const nodes = $$(".flow-n", canvas).map((el) => ({ k: +el.dataset.k, ...rect(+el.dataset.k) }));
+  const aside = (e) => !e.self && (e.back || rank[e.to] - rank[e.from] > 1);
+  canvas.style.paddingRight = edges.some(aside) ? `${200 + 18 * edges.filter(aside).length}px` : "72px";
+  canvas.style.paddingTop = edges.some((e) => e.self || (aside(e) && rank[e.to] === 0)) ? "44px" : "";
+  const nodes = $$(".flow-n", canvas).map((el) => ({ k: +el.dataset.k, ...rect(+el.dataset.k) })), rowTop = [], rowBottom = [];
+  for (const nd of nodes) { rowTop[rank[nd.k]] = Math.min(rowTop[rank[nd.k]] ?? Infinity, nd.t); rowBottom[rank[nd.k]] = Math.max(rowBottom[rank[nd.k]] ?? -Infinity, nd.b); }
   const reach = (e) => Math.max(...nodes.filter((nd) => rank[nd.k] >= Math.min(rank[e.from], rank[e.to]) && rank[nd.k] <= Math.max(rank[e.from], rank[e.to])).map((nd) => nd.r));
+  // the gap above row g, from the row before's bottom (or the canvas's top) to the row's top, in lanes from its top
+  const lanes = [], lane = (g) => { const top = g === 0 ? 0 : rowBottom[g - 1], n = lanes[g] = (lanes[g] ?? -1) + 1; return Math.min(rowTop[g] - 6, top + 9 + 7 * n); };
+  const portOut = [], portIn = [], port = (list, k, nd) => nd.r - 18 - 14 * (list[k] = (list[k] ?? -1) + 1);
+  const ortho = (pts) => {
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let k = 1; k < pts.length - 1; k++) {
+      const [px, py] = pts[k - 1], [cx, cy] = pts[k], [nx, ny] = pts[k + 1], q = (a, b) => Math.sign(b - a) * Math.min(6, Math.abs(b - a) / 2);
+      d += ` L${cx - q(px, cx)},${cy - q(py, cy)} Q${cx},${cy} ${cx + q(cx, nx)},${cy + q(cy, ny)}`;
+    }
+    return `${d} L${pts.at(-1)[0]},${pts.at(-1)[1]}`;
+  };
   let side = 0, paths = "", labels = "";
   for (const e of edges) {
     const a = rect(e.from), b = rect(e.to), c = cls(e);
-    let d, x, y;
-    if (e.self) { d = `M${a.r},${a.cy - 10} C${a.r + 40},${a.cy - 30} ${a.r + 40},${a.cy + 30} ${a.r},${a.cy + 10}`; x = a.r + 34; y = a.cy; }
+    let d, x, y, centred = true;
+    // a state that stays loops over the left of its top, clear of the edges that leave and enter at its middle and right
+    if (e.self) { const x1 = a.l + 22, x2 = a.l + 52; d = `M${x1},${a.t} C${x1},${a.t - 30} ${x2},${a.t - 30} ${x2},${a.t}`; x = (x1 + x2) / 2; y = a.t - 30; }
     else if (aside(e)) {
-      const sx = reach(e) + 26 + 18 * side++, v = Math.sign(b.cy - a.cy) || 1, q = 8;
-      d = `M${a.r},${a.cy} L${sx - q},${a.cy} Q${sx},${a.cy} ${sx},${a.cy + v * q} L${sx},${b.cy - v * q} Q${sx},${b.cy} ${sx - q},${b.cy} L${b.r},${b.cy}`; x = sx; y = (a.cy + b.cy) / 2;
+      const sx = reach(e) + 26 + 18 * side++, ex = port(portOut, e.from, a), tx = port(portIn, e.to, b);
+      const out = e.back ? [ex, a.t] : [ex, a.b], y1 = e.back ? lane(rank[e.from]) : lane(rank[e.from] + 1), y2 = lane(rank[e.to]);
+      d = ortho([out, [ex, y1], [sx, y1], [sx, y2], [tx, y2], [tx, b.t]]); x = sx; y = (y1 + y2) / 2; centred = false;
     }
     else { const dy = (b.t - a.b) / 2; d = `M${a.cx},${a.b} C${a.cx},${a.b + dy} ${b.cx},${b.t - dy} ${b.cx},${b.t}`; x = (a.cx + b.cx) / 2; y = (a.b + b.t) / 2; }
-    paths += `<path class="fe ${c}" d="${d}" marker-end="url(#fa-${i}-${c})"/>`;
+    paths += `<path class="fe ${c}" d="${d}" data-from="${e.from}" data-to="${e.to}" marker-end="url(#fa-${i}-${c})"/>`;
     const via = e.js.length ? r.links[e.js[0]].via : r.steps[e.to].via;
     if (!via) continue;
-    // words on an edge at the side, or on a loop, start at its line instead of centring on it, so they cover no step
-    const words = `${via.length > 42 ? via.slice(0, 40) + "…" : via}${e.js.length > 1 ? ` · +${e.js.length - 1}` : ""}`, at = `left:${x}px;top:${y}px`, sideCls = e.self || aside(e) ? " side" : "";
+    // words on an edge at the side start at its line instead of centring on it, so they cover no step
+    const words = `${via.length > 42 ? via.slice(0, 40) + "…" : via}${e.js.length > 1 ? ` · +${e.js.length - 1}` : ""}`, at = `left:${x}px;top:${y}px`, sideCls = centred ? "" : " side";
     labels += e.js.length ? `<button class="flow-lbl${sideCls} ${own(r.links[e.js[0]])}" data-act="flow-link" data-route="${i}" data-j="${e.js[0]}" style="${at}" title="${esc(via)}" aria-current="${e.js.some((j) => S.sel.summary === `route:${i}:l:${j}`)}">${esc(words)}</button>`
       : `<span class="flow-lbl${sideCls}" style="${at}" title="${esc(via)}">${esc(words)}</span>`;
   }
   svgEl.setAttribute("width", canvas.scrollWidth); svgEl.setAttribute("height", canvas.scrollHeight);
   svgEl.innerHTML = `<defs>${["plain", "ok", "mixed", "q"].map((c) => `<marker id="fa-${i}-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs>${paths}`;
   canvas.insertAdjacentHTML("beforeend", labels);
-  // a label keeps off the steps and off the labels placed before it
+  // a label keeps off the steps and off the labels placed before it: moved up or down a little, then along its gap
   const placed = $$(".flow-n", canvas).map((el) => el.getBoundingClientRect());
   for (const el of $$(".flow-lbl", canvas)) {
-    const top = parseFloat(el.style.top), clear = (r) => !placed.some((p) => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
-    for (const dy of [0, -21, 21, -11, 11, -42, 42]) { el.style.top = `${top + dy}px`; if (clear(el.getBoundingClientRect())) break; }
-    if (!clear(el.getBoundingClientRect())) el.style.top = `${top}px`;
+    const top = parseFloat(el.style.top), left = parseFloat(el.style.left), clear = (r) => !placed.some((p) => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
+    const xs = el.classList.contains("side") ? [0, 40, 80] : [0, -70, 70, -140, 140], moves = xs.flatMap((dx) => [0, -12, 12, -22, 22].map((dy) => [dx, dy]));
+    const fits = moves.find(([dx, dy]) => { el.style.left = `${left + dx}px`; el.style.top = `${top + dy}px`; return clear(el.getBoundingClientRect()); }) ?? [0, 0];
+    el.style.left = `${left + fits[0]}px`; el.style.top = `${top + fits[1]}px`;
     placed.push(el.getBoundingClientRect());
   }
 }

@@ -219,7 +219,7 @@ li.route-flow { border-top: 1px solid var(--border); padding: 10px 12px 12px; ba
 .flow-head { display: flex; align-items: center; gap: 10px; }
 .flow-head .x { margin-left: auto; }
 .flow-scroll { overflow-x: auto; min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.flow-canvas { position: relative; display: flex; flex-direction: column; gap: 46px; padding: 16px 72px 16px 16px; min-width: max-content; }
+.flow-canvas { position: relative; display: flex; flex-direction: column; gap: 56px; padding: 16px 72px 16px 16px; min-width: max-content; }
 .flow-row { display: flex; gap: 28px; justify-content: center; }
 .flow-n { appearance: none; position: relative; z-index: 1; display: grid; gap: 4px; width: 230px; text-align: left; font: inherit; color: var(--text);
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px 9px; cursor: pointer; box-shadow: var(--shadow); }

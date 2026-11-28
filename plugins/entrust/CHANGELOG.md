@@ -35,9 +35,10 @@ forensics remain in the repository references and release notes.
 ### Flows on the page
 
 - A route opens under its row in Summary › How it works as a flow the page lays out from the record's order and
-  links: each step in a row below the steps that lead to it; a link that skips a row or goes back runs at the side,
-  beyond every step it passes; a state that stays is a loop; each link's words sit on its edge, kept apart from the
-  others. An edge of several triggers is green only when every one is confirmed by a test on this code, dotted when
+  links: each step in a row below the steps that lead to it; a link that skips a row or goes back runs through the
+  empty gaps between rows and beside them, from its step's top or bottom into its target's top, so no edge touches a
+  step but its own two; a state that stays loops over its own top; each link's words sit on its edge, clear of the
+  steps and of each other. An edge of several triggers is green only when every one is confirmed by a test on this code, dotted when
   some are. Selecting a step shows beside it its place, value, code — the block's excerpt
   or the quoted line of unchanged code — and its evidence: read, or confirmed by a test with its run, who ran it and
   where, and the quoted assertion, or tested on other code when the run was not on the reviewed head; what was found
