@@ -188,21 +188,23 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
    Your own judgement that a fact is not needed retires nothing. A change whose list held a line gets the
    verifier at step 9.
-9. **Finish.**
-   - Start the quality critic. Its brief is three paths and nothing else: [critics.md](references/critics.md#the-quality-critic)
-     with the heading "The quality critic", the files that section lists, and a file in the run directory for its
-     return. Act on its return as [that page](references/critics.md#handling-a-return) says.
+9. **Finish**, in Create's order for its steps 7 to 10.
+   - Start the quality critic as [critics.md](references/critics.md#every-brief) and
+     [its section](references/critics.md#the-quality-critic) brief it: the paths, what it must not open, whether a
+     verifier follows. Act on its return as [that page](references/critics.md#handling-a-return) says.
+   - Do Create's step 8 on the edited text: run the plan's check as [checks.md](references/checks.md) says, decide by
+     the plan's rule from confirmed marks; set no threshold after seeing a result. A failed rule is [a correction](references/plan.md#a-correction),
+     limited to one changed plan and one more run of the check; a second failure goes to the user with both
+     results, and the change is undone unless the user overrules. Kept or undone, write
+     [a close-out](references/plan.md#a-close-out), then start the parts of [reflection](references/reflection.md) the plan gave Create's step 8.
    - Where [critics.md](references/critics.md#which-model-and-how-many) gives the work a verifier, as when step 8
      listed a line, start it as [its section](references/critics.md#the-verifier) briefs it; a requirement it
-     returns as `not met` is [a correction](references/plan.md#a-correction).
-   - Start the parts of [reflection](references/reflection.md) the plan gave this step and act on what they return.
-     Where the audit at delivery does not run, write the result's text to `result.md` and start
+     returns as `not met` is a correction.
+   - Start the parts the plan gave Create's step 10 and act on what they return. Where the audit at
+     delivery does not run, write the result's text to `result.md` and start
      [the reader of the user's words](references/critics.md#the-reader-of-the-users-words); its marks go into
-     [the result](#the-result).
-   - Write [a close-out](references/plan.md#a-close-out). When it leaves no line without an outcome, hand the work
-     over as the sheet's delivery decision says, and give the result.
-   - After the plan's check fails, one changed plan and one more run of it are the limit; a second failure goes to
-     the user with both results, and the change is undone unless the user overrules.
+     [the result](#the-result). When the close-out leaves no line without an outcome, hand the work over as the
+     sheet's delivery decision says, and give the result.
 
 ## The result
 
