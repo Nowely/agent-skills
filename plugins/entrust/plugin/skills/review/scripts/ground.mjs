@@ -298,6 +298,44 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
       if ((per.get(name) ?? 0) >= perName || touched.get(name) === atCall || !reaches(m[1], name, hit[1], touched.get(name).replace(/:\d+$/, ""), textOf)) continue;
       add({ kind: "call", name, at: atCall, quote: m[3].trim().slice(0, 160), ...within(textOf(m[1]), +m[2]) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
     }
+    // Calls through a name the importing file gives the function: its default import, or `{ total as t }`. The files
+    // that mention the module's name are read, and only an import that names the module counts.
+    const homes = new Map();
+    for (const [name, at] of touched) {
+      const home = at.replace(/:\d+$/, "");
+      if (!/\.(?:[cm]?[jt]sx?)$/.test(home)) continue;
+      const e = name.replace(/[$]/g, "\\$"), text = (read(home) ?? []).join("\n");
+      const isDefault = new RegExp(`export\\s+default\\s+(?:async\\s+)?(?:function\\s*\\*?\\s*)?${e}\\b|export\\s+default\\s+${e}\\s*;?\\s*$|export\\s*\\{[^}]*\\b${e}\\s+as\\s+default\\b`, "m").test(text);
+      if (!homes.has(home)) homes.set(home, []);
+      homes.get(home).push({ name, isDefault, e });
+    }
+    for (const [home, fns] of homes) {
+      if (total >= calls) break;
+      const listed = git(checkout.root, ["grep", "-l", "-I", "-F", stemOf(home), checkout.sha, "--"]);
+      const users = (listed.status === 0 ? listed.stdout.split("\n") : []).map((l) => l.replace(/^[^:]+:/, "")).filter((p) => p && p !== home && running(p) && /\.(?:[cm]?[jt]sx?)$/.test(p));
+      read.many(users);
+      for (const p of users) {
+        const lines = read(p) ?? [], aliases = new Map();
+        for (const s of importStatements(lines.join("\n"))) {
+          const spec = /["'`]([^"'`]+)["'`]\s*$/.exec(s)?.[1];
+          if (!spec || !refersTo(p, spec, home)) continue;
+          const own = /^import\s+(?:type\s+)?([A-Za-z_$][\w$]*)\s*(?:,|from\b)/.exec(s)?.[1];
+          for (const f of fns) {
+            if (f.isDefault && own && own !== f.name) aliases.set(own, f.name);
+            const as = new RegExp(`(?<![\\w$])${f.e}\\s+as\\s+([A-Za-z_$][\\w$]*)`).exec(s)?.[1];
+            if (as && as !== f.name) aliases.set(as, f.name);
+          }
+        }
+        if (!aliases.size) continue;
+        const re = new RegExp(`(?<![\\w$.])(${[...aliases.keys()].map((a) => a.replace(/[$]/g, "\\$")).join("|")})\\s*\\(`, "g");
+        lines.forEach((t, k) => {
+          if (total >= calls || COMMENT.test(t) || /^\s*import\b/.test(t)) return;
+          const m = [...t.matchAll(re)].find((x) => inCode(t, x.index, false)), name = m && aliases.get(m[1]);
+          if (!name || definitionIn(t) === m[1] || (per.get(name) ?? 0) >= perName) return;
+          add({ kind: "call", name, at: `${p}:${k + 1}`, quote: t.trim().slice(0, 160), ...within(lines, k + 1) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
+        });
+      }
+    }
   }
   return found;
 }

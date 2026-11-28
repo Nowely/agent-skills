@@ -661,6 +661,25 @@ test("ground shows the disagreement both ways: a route's step in production code
       || `printout: ${printed.stderr} ${printed.stdout.slice(printed.stdout.indexOf("On a route"), printed.stdout.indexOf("On a route") + 400)}`;
   });
 
+test("a call through a name the importing file gives the changed function — its default import, or `{ f as g }` — is a caller; the same name imported from another module is not",
+  "a call through a renamed import was the known gap the verifier of ground left: the call regex looked for the function's own name only (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground5-")), put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(dir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", dir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const total = (k) => `export default function total(n) {\n  return n * ${k};\n}\n`, rate = (k) => `export function rate(v) {\n  return v + ${k};\n}\n`;
+    put({ "src/a.js": total(2), "src/b.js": rate(1),
+      "src/alias.js": "import tot from './a.js';\nexport const x = () => tot(1);\n",
+      "src/as.js": "import {\n  rate as r,\n} from './b.js';\nexport const w = () => r(2);\n",
+      "src/c.js": "export default function other() {}\n", "src/elsewhere.js": "import tot from './c.js';\nexport const y = () => tot(2);\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    put({ "src/a.js": total(3), "src/b.js": rate(2) });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const files = parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout);
+    const found = candidatesOf(files, checkoutOf(dir)).filter((c) => c.kind === "call").map((c) => `${c.name} ${c.at}`).sort();
+    return JSON.stringify(found) === JSON.stringify(["rate src/as.js:4", "total src/alias.js:2"]) || JSON.stringify(found);
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

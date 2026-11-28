@@ -57,6 +57,9 @@ forensics remain in the repository references and release notes.
   without JavaScript. A found function now spans its body and a found call the function it is in, so a step inside
   either is followed and seen. On the first real review 3 of 16 steps stood alone: top-level CLI code, a path through
   the page's data, and the browser's script.
+- A call through a name the importing file gives the changed function — its default import, or `{ total as t }` —
+  is a caller. Only an import that names the changed module counts, so the same name imported from another module is
+  not.
 
 ### Flows on the page
 
