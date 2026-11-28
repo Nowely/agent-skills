@@ -17,6 +17,7 @@ reaches it through [its adapter](../../opencode/SKILL.md); nothing in this table
 | A built-in skill for making skills | `skill-creator`, where the account has Anthropic's skills | `skill-creator`, enabled by default |
 | Reading a built-in skill | it is in the session's list of skills; its files are under `~/.claude/skills/synced/` when the account's skills are synced; otherwise load it by name and read what the host returns | the list of skills Codex gives the agent carries each skill's file path; read `SKILL.md` at that path |
 | Skill check, including common rules | [Claude adapter](../../claude/references/external.md#checking-a-claude-target-skill) | none in entrust |
+| Skill check, wider folder | when installation includes a wider folder than the default, add `--installed <installation-root>` to the check and preservation command | the same |
 | Selection checks | [Claude adapter](../../claude/references/external.md) | use host-supported sessions |
 | A session that can start agents | an external agent started through entrust has no agent tool ([its call page](../../claude/references/external.md)); a direct Claude session may have one; see [the Claude adapter](../../claude/references/external.md); whether an agent of the host can start agents: `unknown` | use the host-supported native session when it can start agents; otherwise `unknown` |
 | Where it lists its models | the model picker; with entrust, [its models page](../../claude/references/models.md) | the model picker; with entrust, [its models page](../../codex/references/models.md) |

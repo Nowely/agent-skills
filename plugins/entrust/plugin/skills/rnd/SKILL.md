@@ -2,11 +2,11 @@
 name: rnd
 description: >-
   Research, evaluate, compare, create or develop agent skills, including their SKILL.md, description, references
-  and scripts, and research without edits. Use for
-  a skill's operation, design or evaluation, whether named explicitly or requested in ordinary language.
-  Includes making a skill from a workflow or session, and drafting, rewriting, fixing, improving, cutting or
-  restructuring one, including after feedback or a failed run. For ordinary code review, collecting session
-  feedback or improving prose for people, use the corresponding workflow.
+  and scripts: research, evaluation and comparison of skills with or without an edit, and finding why a skill
+  failed. Includes making a skill from a workflow or session, and drafting, rewriting, fixing, improving, cutting
+  or restructuring one, including after feedback or a failed run. Not for reviewing code or a pull request,
+  running a skill's existing evals with no question to decide, collecting feedback from sessions, or improving a
+  text written for people.
 metadata:
   version: "0.49.0"
 license: MIT
@@ -15,7 +15,7 @@ license: MIT
 This skill takes a request about a skill to a checked result, and leaves collecting feedback from sessions to
 other skills. A skill is a folder, a `SKILL.md` and the files it links, that is loaded when a request matches
 its description. Take one of four routes; a change to this skill takes them too. Its name is short for
-research and develop, and every step here is written for work on a skill.
+research and develop, and every step here is written for work on skills and research about them.
 
 - **Research**: investigate, evaluate or compare skills without necessarily changing one.
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
@@ -136,7 +136,7 @@ research and develop, and every step here is written for work on a skill.
    show.
 6. **Write the text, once.** Follow [writing.md](references/writing.md): each line answers a failure a run
    showed or the user's words. After each edit run
-   the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run `node "<skill-dir>/scripts/check.mjs" <the skill's directory>`. A host check includes the common rules. When installation includes a wider folder than the default, add `--installed <installation-root>` to the check and preservation command. Run each repository suite that reads a file you changed or lists files of its kind, until all checks pass. Work on a skill that exists also
+   the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run `node "<skill-dir>/scripts/check.mjs" <the skill's directory>`. A host check includes the common rules. Add `--installed <installation-root>` as [hosts.md](references/hosts.md) says. Run each repository suite that reads a file you changed or lists files of its kind, until all checks pass. Work on a skill that exists also
    passes [Change's step 8](#change), against the copy step 3 made.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
