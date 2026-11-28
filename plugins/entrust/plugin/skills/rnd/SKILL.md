@@ -173,7 +173,7 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    user's words name the new value; the plan recommends none and asks, and a reply that leaves the choice to
    you keeps it and removes no fact. A fact moved to another file keeps a link from the page it left.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
-   one plan with the skill's state noted for step 8, and wait. The plan names step 9's judges, each with its model, and the close-out, as parts of it, not as questions.
+   one plan with the skill's state noted for step 8, and wait.
 5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
 6. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named, before any
    edit: its cases and statements, and whatever it runs on the skill as it is now, which you wait for.
