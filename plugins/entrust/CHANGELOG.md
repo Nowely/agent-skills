@@ -13,6 +13,10 @@ forensics remain in the repository references and release notes.
 - rnd's Research route shows its plan and waits for the user's word before any session or agent, changes no file of the skill, opens its result with the answer and what it rests on, and runs the reader of the user's words.
 - rnd's description names research, evaluation and comparison of skills and lists what it is not for; its scope line covers research about skills.
 - rnd asks about words of the user that do not fit the design, and a child agent passed a scope needs the paths of the approved plan and of the user's saved word, else it returns its plan with its questions.
+- rnd's Create step 3 and step 4 hold only their gates, with the list of what a plan shows, a parent's scope and the architecture critic's verdicts on plan.md and critics.md.
+- rnd writes Change's finish as its own step 9, with the judge's brief as three paths and the correction's limit.
+- rnd's description puts creating and developing a skill before researching one.
+- rnd's selection check runs only when the skill must be selected unnamed, once for each kind of request on the host and model in use, and its result holds for them only.
 
 ## 0.49.0 — 2026-11-28
 
