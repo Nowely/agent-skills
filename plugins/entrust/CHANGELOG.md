@@ -67,6 +67,9 @@ forensics remain in the repository references and release notes.
   function's only through the module's own name (`m.total(` after `import * as m`, a default import, a require, a
   Go package, `this.` in its own file): `seen.add(` of a Set no longer counted. A line calling two changed functions
   gives both calls. On that module: 4 places instead of 72, and 3 of 40 route steps unseen, all top-level CLI code.
+- SKILL.md says a route's step or link that a test the reviewer ran asserts cites it as `confirmedBy`, and that one
+  no test confirms is where a check belongs. On the second real trial the reviewer ran the suite, 72 passing with
+  two tests of the change, and confirmed none of 40 steps: the instruction lived in the data contract only.
 
 ### Flows on the page
 
