@@ -35,7 +35,7 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   from runs like it that the host has figures for, else `unknown`. A check runs when its result could
   change the answer to a question the user asked, or the plan; a comparison that a missing control leaves undecided does not stop a
   check that answers another such question.
-- Before starting a new run, look for and use an existing run that supports the contrast. Reuse it only when
+- Before starting a new run, look in the run directory and the repository's records for an existing run that supports the contrast, and use it. Reuse it only when
   its task, inputs, context, versions, tools, permissions and assessment
   support. Record material differences; an incompatible run is context, not a control. An already used case
   does not become independent by freezing it. When a control is unavailable, report observations and leave
@@ -75,9 +75,10 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   the repository. A practical run on the user's real task, with their authorization, is a use and not a check
   session: it runs where the task is, under the normal permissions. Respect actual permissions and approval
   conditions for protected actions. Record
-  the environment and limits; do not claim isolation that was not established. In an eval, stop before
-  irreversible actions or external effects, and before a tag, push, release, publication or message, and state what
-  the check cannot show. Stop there or simulate the action up to that boundary.
+  the environment and limits; do not claim isolation that was not established. No case performs an
+  irreversible action or one with an external effect, such as a tag, a push, a release, a publication or a message:
+  it stops before it, or simulates it up to that boundary, and the plan and the result say what the check
+  therefore cannot show.
 - No session receives the statements it is marked by or the finding you expect.
 - A session has no user. A question it asks appears in its return; count it as an event and do not answer it.
   A skill whose own steps wait for the user's word is the exception: write its replies before any run, one for

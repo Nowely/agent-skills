@@ -3,7 +3,7 @@
 Use this general method for research across the marketplace. Exploratory work develops questions;
 confirmatory comparisons test a question fixed before observing results. An experiment-specific protocol
 may supply details; for example, see the review-skill protocol, `plugins/entrust/evals/review/protocol.md`.
-Existing records remain historical records of their own methods.
+Existing records remain historical records of their own methods, not results retroactively obtained under this one.
 
 For Research alone, follow this method using the permissions and budget that actually apply. Choose the
 work needed to answer the question, including sessions when authorized; record their scope and cost.

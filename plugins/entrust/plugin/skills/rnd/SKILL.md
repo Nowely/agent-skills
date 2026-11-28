@@ -38,7 +38,7 @@ them too. Its name is short for research and develop; each step is written for w
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
 - For Create and Change, between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
   verdict that stops the work, and blockers, all in one message.
-- When a plan exists, what you deliver is what it showed. A step it requires that you would drop, or an edit to a file
+- When a plan exists, what you deliver is what it showed. A step of the plan or of these routes that you would drop, or an edit to a file
   the plan did not name, goes to the user as a changed plan before you act on it, never into the result.
 - State nothing about a file or about a reply of the user that you have not read at its place.
 - For Create and Change, a plan with a check that runs sessions, or with more than one round, is a file, as
