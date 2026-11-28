@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.50.0 — 2026-11-28
 
 - rnd adds a research-only route and an installed research method, with comparison guidance and support for delegated approved plans.
 - The repository rules file is named `AGENTS.md`, the name hosts load, with the pointer line kept.

@@ -9,7 +9,7 @@ description: >-
   existing evals with no question to decide, collecting feedback from sessions, or improving a text written for
   people.
 metadata:
-  version: "0.49.0"
+  version: "0.50.0"
 license: MIT
 ---
 

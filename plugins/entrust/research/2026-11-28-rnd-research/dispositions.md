@@ -191,3 +191,5 @@ moved | references/checks.md:48 | references/checks.md:51 | - A check of more th
 moved | references/checks.md:55 | references/checks.md:58 | cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet; a selection check takes the host and the model the
 retired | SKILL.md:149 | messages.md:46 | removing the close-out from the small route because it held nothing the result's first bullet lacks
 moved | SKILL.md:199 | SKILL.md:190 | Your own judgement that a fact is not needed retires nothing.
+# The version line changed with the release: the old value is replaced by 0.50.0 in the same key.
+moved | SKILL.md:10 | SKILL.md:12 | version: "0.50.0"
