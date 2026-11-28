@@ -23,7 +23,13 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    What the review quotes from the conversation — the owner's task, a decision, the author's description or a
    session's hand-off — is saved beside the record (`task.md`, `discussion.md`, `description.md`) and quoted from there.
    A generated file is one block, as [generated files](#generated-files) says.
-3. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
+3. Once routes are written, `node "<skill-dir>/scripts/report.mjs" ground <out>/review.json <repo>`, with the
+   checkout at the reviewed state: it reads every quote in the record at its `path:line`, lists the entry points the
+   changed code makes — changed functions and their callers, dispatch cases, listeners, handlers — and saves them in
+   `<out>/ground.json`. From then on `check` refuses a quote that is not at its place and warns of each found place
+   no route names; follow those that are behaviour through more than one place. The list is not complete, and the
+   page labels it found by script.
+   `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict without `whole`, about kept blocks that serve no requirement or only requirements to confirm no
    question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
@@ -160,7 +166,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs. A
   gap a test can assert goes to the author as a finding in the `tests` direction; a check may still cover it for a
   person who wants to see it. Optional: `route`, the point of a flow it exercises (`{"route": n, "step": n}`, or
-  `"link": n`, not both); `confirmedBy`, as on a route, when a test asserts the same scenario; `observations`, the
+  `"link": n`, not both). For a step or a transition no test confirms, a check is a charter: what to try there and
+  what to look for, not a script of every keystroke. `confirmedBy`, as on a route, when a test asserts the same scenario; `observations`, the
   results the owner's export carried, each a `result` (`pass`, `fail`, `could-not-run` or `observed`), `diff` (the
   export's `diff_sha256`, which names the code it was made on), `revision` when the export names one, its
   `conditions` and `note` as written, and `by` when someone other than the owner made it. An observation belongs to

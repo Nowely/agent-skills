@@ -271,6 +271,9 @@ button.flow-lbl[aria-current="true"] { outline: 2px solid var(--accent); outline
 .check-status { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .check-results { margin: 6px 0 8px; }
 .field-l { display: block; margin: 8px 0 3px; color: var(--text-2); }
+details.ground { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 8px 14px; }
+details.ground summary { cursor: pointer; font-weight: 500; }
+.ground-list { display: grid; gap: 8px; margin-top: 8px; }
 .route-nav { margin-top: 4px; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-3); }
 
 /* ---------- tables ---------- */

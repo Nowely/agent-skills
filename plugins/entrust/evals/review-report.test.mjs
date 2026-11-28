@@ -510,6 +510,39 @@ test("carry brings a route's steps at unchanged code with its carried blocks, an
       || JSON.stringify(c.record.routes);
   });
 
+test("ground reads every quote at its place in the repository — check then refuses one that is not there — and lists the entry points the changed production code makes and its callers, warning of those no route names",
+  "the first real review's reviewer wrote its own script to check its quotes, and a hand-made list of triggers missed six of 22 that were in the code (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    fs.mkdirSync(path.join(repoDir, "src"), { recursive: true }); fs.mkdirSync(out);
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), "export const x = 1;\n");
+    fs.writeFileSync(path.join(repoDir, "src/use.js"), "import { total } from './a.js';\nexport const y = () => total(2);\n");
+    fs.writeFileSync(path.join(repoDir, "src/a.test.js"), "total(3);\n");
+    fs.writeFileSync(path.join(repoDir, "README.md"), "Call total(n).\n");
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), 'export const x = 1;\nexport function total(n) {\n  switch (n) {\n    case "two": return 2;\n  }\n  document.addEventListener("keydown", () => {});\n}\n');
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    const routed = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2-7", does: "A total.", serves: [1], verdict: "keep" }]), units: [],
+      routes: [{ title: "A total", requirements: [1], steps: [{ block: 1, role: "Totals." }, { at: "src/use.js:2", quote: "export const y = () => total(2);", role: "Uses it.", via: "the import, src/use.js:1" }] }] };
+    const write = (r) => fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(r));
+    write(routed);
+    const g = report("ground", path.join(out, "review.json"), repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const kinds = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call total src/use.js:2", "case two src/a.js:4", "function total src/a.js:2", "listener keydown src/a.js:6"];
+    if (g.status !== 0 || JSON.stringify(kinds) !== JSON.stringify(want) || !/4 places found in the changed code, 0 on no route; 1 quotes read/.test(g.stdout)) return JSON.stringify({ status: g.status, out: g.stdout, err: g.stderr, kinds });
+    // without a route, check names what the script found; a quote not at its place is refused, saying what is there
+    write({ ...routed, routes: [] });
+    const bare = report("check", path.join(out, "review.json"));
+    if (bare.status !== 0 || !/4 of 4 places the script found in the changed code are on no route \(function total at src\/a\.js:2; case two at src\/a\.js:4/.test(bare.stderr)) return `no route: ${bare.stderr}`;
+    write({ ...routed, routes: [{ ...routed.routes[0], steps: [routed.routes[0].steps[0], { ...routed.routes[0].steps[1], quote: "total(9)" }] }] });
+    const wrong = report("check", path.join(out, "review.json"));
+    return wrong.status === 1 && wrong.stderr.includes("routes 1 steps 2: «total(9)» is not at src/use.js:2, which reads «export const y = () => total(2);»") || wrong.stderr;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

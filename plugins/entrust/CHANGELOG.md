@@ -31,6 +31,12 @@ forensics remain in the repository references and release notes.
   and the owner's earlier `observations`, each with its result, the `diff` digest it was made on, its revision and
   conditions, so an old observation is never read as a result for a new revision, whatever the revision is called.
 - A coverage statement may say `by` whom and `where` it ran or was read: a green CI job can skip a suite.
+- `report.mjs ground <review.json> <repo>` reads the record against the checkout at the reviewed state. Every quote
+  in the record — route steps, test assertions, sources — is read at its `path:line`, and the entry points the
+  changed production code makes (changed functions and their callers, dispatch cases, listeners, handlers, routes)
+  are saved in `ground.json`. From then on `check` refuses a quote that is not at its place, saying what is there,
+  and warns of each found place no route names; the printout lists them for the checking agents. The list is the
+  script's, never complete. A check for a step or a transition no test confirms is written as a charter.
 
 ### Flows on the page
 
@@ -38,8 +44,12 @@ forensics remain in the repository references and release notes.
   links: each step in a row below the steps that lead to it; a link that skips a row or goes back runs through the
   empty gaps between rows and beside them, from its step's top or bottom into its target's top, so no edge touches a
   step but its own two; a state that stays loops over its own top; each link's words sit on its edge, clear of the
-  steps and of each other. An edge of several triggers is green only when every one is confirmed by a test on this code, dotted when
-  some are. Selecting a step shows beside it its place, value, code — the block's excerpt
+  steps and of each other. An edge of several triggers is green only when every one is confirmed by a test on this
+  code, dotted when some are. The rows are ordered by alternating sweeps that keep the ordering with the fewest
+  crossings, in the order the steps run while that gains nothing. Each route says how many of the steps and links
+  it lists a test confirms here and lists the read-only ones, where a test or a check belongs; what the script found
+  in the changed code and no route names is listed under the routes as found by script. The page's browser suite
+  now runs in CI on Linux. Selecting a step shows beside it its place, value, code — the block's excerpt
   or the quoted line of unchanged code — and its evidence: read, or confirmed by a test with its run, who ran it and
   where, and the quoted assertion, or tested on other code when the run was not on the reviewed head; what was found
   or asked at it, and the finding or question where the path stops. A link opens its own

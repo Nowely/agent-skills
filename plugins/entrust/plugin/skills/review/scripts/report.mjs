@@ -5,6 +5,8 @@
 //   node report.mjs carry <previous/review.json> <review.json>   on a fresh scaffold, take over the previous record's blocks whose lines are unchanged
 //   node report.mjs lines <diff | review.json>   print every changed line of a diff, or of a record's saved diff, with its address
 //   node report.mjs comparisons <review.json> [<base-root> <head-root>]   emit the independent reader's source inventory as JSON
+//   node report.mjs ground <review.json> <repo>   read every quote at its place in the repository, list the entry points
+//                                          the changed code makes, and save them beside the record for check and render
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
 //
@@ -18,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisons } from "./comparisons.mjs";
+import { candidatesOf, GROUND } from "./ground.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
@@ -29,7 +32,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose, carried }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose, carried, ground }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -71,6 +74,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
         + `${step.stops ? ` ${t("route.stops")}: ${step.stops.finding !== undefined ? step.stops.finding : `Q${step.stops.question}`}` : ""}`
         + `${step.findings?.length || step.questions?.length ? ` (${[...(step.findings ?? []).map(String), ...(step.questions ?? []).map((q) => `Q${q}`)].join(", ")})` : ""}${confirmed(step.confirmedBy)}`),
       ...(r.links ?? []).map((l) => `   ${l.from} → ${l.to}: ${l.via}${l.question !== undefined ? ` (Q${l.question})` : ""}${confirmed(l.confirmedBy)}`)]), ""] : []),
+    ...(ground?.unlisted.length ? [`${t("ground.unlisted", ground.unlisted.length, ground.found)}:`, ...ground.unlisted.map((c) => `- ${c.kind} \`${c.name}\` \`${c.at}\`: ${c.quote}`), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -260,15 +264,26 @@ try {
     const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(
       changeOf(JSON.parse(fs.readFileSync(argument, "utf8")), path.dirname(path.resolve(argument)))) : parseDiff(fs.readFileSync(argument, "utf8"));
     for (const file of files) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
+  } else if (command === "ground" && argument && process.argv[4]) {
+    const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument)), repo = path.resolve(process.argv[4]);
+    const { files, fault } = changeOf(review, directory);
+    if (fault) throw new Error(fault);
+    if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) throw new Error(`${process.argv[4]} is not a directory: give the checkout at the reviewed state`);
+    fs.writeFileSync(path.join(directory, GROUND), `${JSON.stringify({ diff_sha256: review.diff.sha256, repo, candidates: candidatesOf(files, repo) }, null, 1)}\n`);
+    const { errors, warnings, ground } = check(review, files, directory);
+    for (const warning of warnings) console.error(`warning: ${warning}`);
+    if (errors.length) console.error(`Fix these ${errors.length} and run check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
+    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.checked ?? 0} quotes read at their places.`);
+    process.exit(errors.length ? 1 : 0);
   } else if (["render", "check"].includes(command) && argument) {
     const bytes = fs.readFileSync(argument), review = JSON.parse(bytes.toString("utf8")), directory = path.dirname(path.resolve(argument));
-    const { files, fault } = changeOf(review, directory), { errors, warnings = [], owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
+    const { files, fault } = changeOf(review, directory), { errors, warnings = [], owner, ground = null } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
     // The record's identity is computed from its bytes, never stored in it; the page and the printout carry it.
-    const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex") };
+    const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex"), ground };
     for (const warning of warnings) console.error(`warning: ${warning}`);
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size. A block
     // that says in "whole" why it is one decision is not warned of; the printout carries the reason to the critic.
@@ -285,7 +300,7 @@ try {
     fs.writeFileSync(target, page(review, files, model, { syntax, directory }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs ground <review.json> <repo> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

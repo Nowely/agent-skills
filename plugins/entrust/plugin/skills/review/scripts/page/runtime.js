@@ -607,18 +607,41 @@ function flowEdges(r) {
   for (let v = 0; v < n; v++) if (!seen[v]) visit(v);
   return edges;
 }
-// Rows by the longest path to each step, each row in the order of the steps that lead to it.
+// Rows by the longest path to each step. Each row starts in the order the steps run; then, as dagre does, sweeps down
+// and up order each row by the mean place of its neighbours in the row before, and the ordering with the fewest
+// crossings between neighbouring rows is kept — the order the steps run while nothing is gained. Edges that span
+// more than one row run at the side and cross no row.
 function flowRows(r, edges) {
   const n = r.steps.length, rank = new Array(n).fill(0), fwd = edges.filter((e) => !e.back && !e.self);
   for (let pass = 0; pass < n; pass++) for (const e of fwd) rank[e.to] = Math.max(rank[e.to], rank[e.from] + 1);
   const rows = [];
   rank.forEach((rk, k) => (rows[rk] ??= []).push(k));
-  for (let rk = 1; rk < rows.length; rk++) {
-    const pos = new Map(rows[rk - 1].map((k, x) => [k, x]));
-    const bary = (k) => { const ins = fwd.filter((e) => e.to === k && pos.has(e.from)).map((e) => pos.get(e.from)); return ins.length ? ins.reduce((a, b) => a + b, 0) / ins.length : Infinity; };
-    rows[rk].sort((a, b) => bary(a) - bary(b) || a - b);
+  const near = fwd.filter((e) => rank[e.to] === rank[e.from] + 1);
+  const crossings = (rs) => {
+    let c = 0;
+    for (let x = 1; x < rs.length; x++) {
+      const up = new Map(rs[x - 1].map((k, i) => [k, i])), low = new Map(rs[x].map((k, i) => [k, i]));
+      const es = near.filter((e) => up.has(e.from) && low.has(e.to)).map((e) => [up.get(e.from), low.get(e.to)]);
+      for (let i = 0; i < es.length; i++) for (let j = i + 1; j < es.length; j++) if ((es[i][0] - es[j][0]) * (es[i][1] - es[j][1]) < 0) c++;
+    }
+    return c;
+  };
+  const sweep = (rs, down) => {
+    for (const x of down ? rs.keys() : [...rs.keys()].reverse()) {
+      const by = rs[down ? x - 1 : x + 1]; if (!by) continue;
+      const at = new Map(by.map((k, i) => [k, i])), was = new Map(rs[x].map((k, i) => [k, i]));
+      const mean = (k) => { const ps = near.filter((e) => down ? e.to === k && at.has(e.from) : e.from === k && at.has(e.to)).map((e) => at.get(down ? e.from : e.to)); return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : was.get(k); };
+      rs[x] = [...rs[x]].sort((a, b) => mean(a) - mean(b) || a - b);
+    }
+  };
+  let best = rows.map((row) => [...row]), fewest = crossings(best);
+  const now = rows.map((row) => [...row]);
+  for (let i = 0, still = 0; i < 24 && still < 4 && fewest > 0; i++) {
+    sweep(now, i % 2 === 0);
+    const c = crossings(now);
+    if (c < fewest) { best = now.map((row) => [...row]); fewest = c; still = 0; } else still++;
   }
-  return rows;
+  return best;
 }
 function flowNode(i, k) {
   const r = D.routes[i], s = r.steps[k], b = s.block !== null ? blk(s.block) : null, cur = S.sel.summary === `route:${i}:s:${k}`;
@@ -752,15 +775,31 @@ function flowPanel(sel) {
       ${same.length > 1 ? `<div class="psec"><h3>${esc(L("p.flow.triggers"))}</h3><ul class="plain">${same.map(([x, j]) => `<li>${j === p.k ? `<b>${prose(x.via)}</b>` : `<button class="linkbtn" data-act="flow-link" data-route="${p.i}" data-j="${j}">${prose(x.via)}</button>`} ${evidenceTag(x)}</li>`).join("")}</ul></div>` : ""}
       ${checkLinks(checksOn(p.i, (x) => x.link === p.k + 1))}`);
   }
-  const confirmed = r.steps.filter(confirmedOf).length + (r.links ?? []).filter(confirmedOf).length, unchanged = r.steps.filter((s) => s.block === null).length, stops = r.steps.filter((s) => s.stops).length;
+  // what a test confirms here, of what the review listed, and the steps and links only read: where a test or a check belongs
+  const ev = routeEvidence(r), unchanged = r.steps.filter((s) => s.block === null).length, stops = r.steps.filter((s) => s.stops).length;
+  const readOnly = ev.items.filter(([, , x]) => !testedHere(x)).map(([kind, k, x]) => kind === "s"
+    ? `<li><button class="linkbtn" data-act="flow-step" data-route="${p.i}" data-k="${k}">${n(k + 1)}. ${prose(x.role)}</button> ${evidenceTag(x)}</li>`
+    : `<li><button class="linkbtn" data-act="flow-link" data-route="${p.i}" data-j="${k}">${n(x.from)} → ${n(x.to)}: ${prose(x.via)}</button> ${evidenceTag(x)}</li>`).join("");
   return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}${r.kind === "states" ? ` · ${L("p.flow.states")}` : ""}`), prose(r.title), `<div class="psec">
     ${r.requirements.length ? `<p class="small"><span class="lbl">${esc(L("p.route.serves"))}</span>${chips("r", r.requirements)}</p>` : ""}
-    <dl class="kv"><dt>${esc(L("p.flow.confirmed"))}</dt><dd>${n(confirmed)}</dd><dt>${esc(L("p.flow.unchanged"))}</dt><dd>${n(unchanged)}</dd><dt>${esc(L("route.stops"))}</dt><dd>${n(stops)}</dd></dl>
-    <p class="muted small gap-top">${esc(L("p.flow.select"))}</p></div>${checkLinks(checksOn(p.i))}`);
+    <dl class="kv"><dt>${esc(L("p.flow.confirmed"))}</dt><dd>${esc(L("p.flow.tested-of", n(ev.tested.length), n(ev.items.length)))}</dd><dt>${esc(L("p.flow.unchanged"))}</dt><dd>${n(unchanged)}</dd><dt>${esc(L("route.stops"))}</dt><dd>${n(stops)}</dd></dl>
+    <p class="muted small gap-top">${esc(L("p.flow.select"))}</p></div>
+    ${readOnly ? `<div class="psec"><h3>${esc(L("p.flow.untested"))}</h3><p class="small sub">${esc(L("p.flow.untested-note"))}</p><ul class="plain">${readOnly}</ul></div>` : ""}${checkLinks(checksOn(p.i))}`);
 }
+// What the script found in the changed code and no route names — its list is not complete, and a place in it may be
+// no behaviour at all — each opening its code where the diff has it.
+const GROUND_KIND = () => ({ function: L("p.ground.kind.function"), case: L("p.ground.kind.case"), listener: L("p.ground.kind.listener"), handler: L("p.ground.kind.handler"), route: L("p.ground.kind.route"), call: L("p.ground.kind.call") });
+function groundHtml() {
+  const g = D.ground; if (!g?.unlisted.length) return "";
+  const kinds = GROUND_KIND();
+  return `<details class="ground"><summary>${esc(L("ground.unlisted", n(g.unlisted.length), n(g.found)))}</summary><p class="muted small">${esc(L("p.ground.note"))}</p>
+    <ul class="plain ground-list">${g.unlisted.map((c) => `<li><span class="tag neutral">${esc(kinds[c.kind] ?? c.kind)}</span> <code>${esc(c.name)}</code> ${c.place?.file != null && !c.place.base ? `<a class="linkbtn mono small" href="#code/line/${c.place.file}:+${c.place.line}">${esc(c.at)}</a>` : `<span class="mono small muted">${esc(c.at)}</span>`}<div class="mono small sub">${esc(c.quote)}</div></li>`).join("")}</ul></details>`;
+}
+// How much of a route a test confirms: of the steps and links the review listed — not of all the code allows.
+const routeEvidence = (r) => { const items = [...r.steps.map((s, k) => ["s", k, s]), ...(r.links ?? []).map((l, j) => ["l", j, l])]; return { items, tested: items.filter(([, , x]) => testedHere(x)) }; };
 // The routes in Summary: one row each, the open one with its flow beneath.
 function routesHtml() {
-  return D.routes.map((r, i) => `<li class="route-row${S.sel.summary?.startsWith(`route:${i}`) && routeOf(S.sel.summary)?.i === i ? " sel" : ""}" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span>${r.kind === "states" ? `<span class="tag neutral">${esc(L("p.flow.states"))}</span>` : ""}<span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>${FLOW.route === i ? `<li class="route-flow">${flowCard(i)}</li>` : ""}`).join("");
+  return D.routes.map((r, i) => `<li class="route-row${S.sel.summary?.startsWith(`route:${i}`) && routeOf(S.sel.summary)?.i === i ? " sel" : ""}" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span>${r.kind === "states" ? `<span class="tag neutral">${esc(L("p.flow.states"))}</span>` : ""}<span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span><span class="muted small">${esc(L("p.flow.tested-of", n(routeEvidence(r).tested.length), n(routeEvidence(r).items.length)))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>${FLOW.route === i ? `<li class="route-flow">${flowCard(i)}</li>` : ""}`).join("");
 }
 function renderRoutes() {
   const ul = $("#sum-routes"); if (!ul) return;
@@ -1134,7 +1173,7 @@ function summaryHtml() {
     <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p class="pf">${prose(D.recommendation)}</p>`)}
       ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span><span class="pf">${prose(s.text)}</span>${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
     ${D.routes.length ? `<div class="section-h" id="summary-routes"><h2>${esc(L("routes"))}</h2><span class="muted">${esc(L("p.routes.note"))}</span></div>
-    <ul class="routes" id="sum-routes">${routesHtml()}</ul>` : ""}
+    <ul class="routes" id="sum-routes">${routesHtml()}</ul>` : ""}${groundHtml()}
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
     <table class="tbl"><thead><tr><th>#</th><th>${esc(L("requirement"))}</th><th>${esc(L("status"))}</th><th class="num">${esc(L("p.code"))}</th></tr></thead><tbody>
     ${reqGroups().map(([head, list]) => (head ? `<tr class="grp"><th colspan="4">${esc(head)} <span class="muted">${n(list.length)}</span></th></tr>` : "") + list.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}${r.sources.length ? ` · <span class="srcs">${srcItems(r.sources)}</span>` : ""}</div>${!r.established && askedIn(r.id).length ? `<div class="why"><b>${esc(L("p.req.asked-in"))}</b>${chips("q", askedIn(r.id))}</div>` : ""}${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
+import { checkQuotes, onRoute, readGround, GROUND } from "./ground.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -685,7 +686,24 @@ export function check(review, files, directory) {
     if (loose.length) errors.push(`${file.path}: no block covers ${[["added", of("add")], ["removed", of("del")]]
       .filter(([, lines]) => lines).map(([field, lines]) => `${field} ${lines}`).join("; ")}`);
   }
-  return { errors, warnings, owner };
+  // With the repository's reading beside the record, every quote is read at its place again — one that is not there is
+  // a fault — and the places the script found in the changed code are matched against the routes as they stand.
+  let ground = null;
+  const g = readGround(review, directory);
+  if (g?.fault) warnings.push(g.fault);
+  else if (g && g.diff_sha256 !== review.diff?.sha256) warnings.push(`${GROUND} was made for another diff: run report.mjs ground again`);
+  else if (g) {
+    const here = typeof g.repo === "string" && fs.existsSync(g.repo);
+    if (!here) warnings.push(`the repository ${GROUND} names (${g.repo}) is not here: the quotes were read beside the record only`);
+    const quotes = checkQuotes(review, [here ? g.repo : null, directory].filter(Boolean));
+    const words = (who) => who.slice(1).split("/").map((x) => /^\d+$/.test(x) ? +x + 1 : x).join(" ");
+    for (const m of quotes.mismatches) errors.push(`${words(m.who)}: «${m.quote}» is not at ${m.at}${m.line !== null ? `, which reads «${m.line.trim()}»` : ", past the end of its file"}`);
+    const found = Array.isArray(g.candidates) ? g.candidates : [], unlisted = found.filter((c) => !onRoute(c, review, owner));
+    if (unlisted.length && (routes.length || unlisted.length >= 3))
+      warnings.push(`${unlisted.length} of ${found.length} places the script found in the changed code are on no route (${unlisted.slice(0, 6).map((c) => `${c.kind} ${c.name} at ${c.at}`).join("; ")}${unlisted.length > 6 ? "; …" : ""}): follow those that are behaviour through more than one place, or leave them`);
+    ground = { found: found.length, unlisted, checked: quotes.checked };
+  }
+  return { errors, warnings, owner, ground };
 }
 
 export { sourceOf } from "./sources.mjs";

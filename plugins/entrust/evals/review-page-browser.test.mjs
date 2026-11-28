@@ -49,9 +49,10 @@ function png(w, h) {
   const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 3, 200)]);
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", head), chunk("IDAT", zlib.deflateSync(Buffer.concat(Array.from({ length: h }, () => row)))), chunk("IEND", Buffer.alloc(0))]);
 }
-function render(name, record, diffBytes = diff, pictures = true) {
+function render(name, record, diffBytes = diff, pictures = true, beside = {}) {
   const dir = path.join(run, name);
   fs.mkdirSync(dir, { recursive: true });
+  for (const [file, text] of Object.entries(beside)) fs.writeFileSync(path.join(dir, file), text);
   fs.writeFileSync(path.join(dir, "source.diff"), diffBytes);
   if (pictures) for (const p of ["before.png", "after.png"]) fs.writeFileSync(path.join(dir, p), pictures === true ? PIXEL : pictures[p] ?? PIXEL);
   fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(record));
@@ -912,14 +913,20 @@ const flowRecord = (base) => {
     // a link past a step, a test at another revision, and what was found or asked at a step that goes on
     { title: "A skip", requirements: [1], steps: [{ block: 1, role: "Reads.", findings: [1], questions: [2] },
       { block: 2, role: "Tests it.", confirmedBy: [{ ref: "/coverageStructured/2" }, { at: "test/archive.test.js:5", quote: "assert upper" }] }, { block: 3, role: "Checks." }],
-      links: [{ from: 1, to: 2, via: "the read" }, { from: 2, to: 3, via: "the test" }, { from: 1, to: 3, via: "the skip past the tests" }] }];
+      links: [{ from: 1, to: 2, via: "the read" }, { from: 2, to: 3, via: "the test" }, { from: 1, to: 3, via: "the skip past the tests" }] },
+    // two links that cross in the order the steps were written, and do not once the layout orders them
+    { title: "Crossed", requirements: [1], steps: [{ block: 1, role: "First." }, { block: 2, role: "Second." }, { block: 3, role: "Third." }, { block: 1, role: "Fourth." }],
+      links: [{ from: 1, to: 4, via: "first to fourth" }, { from: 2, to: 3, via: "second to third" }] }];
   r.coverageStructured.push({ kind: "ran", text: "An older run.", revision: "abc1234", sources: [{ at: "logs/old.txt:1", quote: "ok" }] });
   r.checks = [{ ...r.checks[0], route: { route: 1, step: 2 }, confirmedBy: confirmed,
     observations: [{ result: "pass", diff: base.diff.sha256, revision: "HEAD", conditions: "Chrome, the demo data" }, { result: "fail", diff: "f".repeat(64), revision: "abc123", note: "Lower case." }] },
     { do: ["Open the list."], expect: "It loads.", requirements: [1] }];
   return r;
 };
-const FLOWS = flowRecord(record), FLOWS_RU = flowRecord(RU), FLOW_URL = render("flows", FLOWS), FLOW_RU_URL = render("flows-ru", FLOWS_RU);
+// What `ground` saved: one place a route names, one no route names; the repository is not here, so quotes are read beside the record.
+const GROUND = JSON.stringify({ diff_sha256: record.diff.sha256, repo: "/nowhere", candidates: [
+  { kind: "listener", name: "keydown", at: "src/invoices/archive.js:4", quote: "on keydown" }, { kind: "call", name: "printAll", at: "src/print.js:7", quote: "printAll(rows)" }] });
+const FLOWS = flowRecord(record), FLOWS_RU = flowRecord(RU), FLOW_URL = render("flows", FLOWS, diff, true, { "ground.json": GROUND }), FLOW_RU_URL = render("flows-ru", FLOWS_RU, diff, true, { "ground.json": GROUND });
 
 test("a flow passes unchanged code, forks and stops: each step says what shows it — read, or confirmed by a test with its run, who ran it and where, and the quoted assertion — a stop names its finding, and a link opens its own context",
   "a flow that drew every step alike would show read code as tested, and a defect as an end",
@@ -1015,6 +1022,22 @@ test("no edge of a flow touches a step but its own two: a link past a row or bac
     return Object.values(found).every((x) => !x.length) && loop === true || JSON.stringify({ found, loop });
   }));
 
+test("a flow's rows are ordered to cross the fewest edges, in the order the steps run while that gains nothing; a route counts what a test confirms of what it lists and names the rest; what the script found and no route names is listed apart",
+  "one ordering pass left crossings a few sweeps remove, a route's evidence had no count, and the places in the changed code no route followed were nowhere (PR 119, Fable's research)",
+  cased(FLOW_URL + "#summary/route4", {}, async (page) => {
+    const order = await page.locator("#flow-3 .flow-row").evaluateAll((rows) => rows.map((r) => [...r.querySelectorAll(".flow-n")].map((n) => n.dataset.k).join(",")));
+    const ends = await page.locator("#flow-3 path.fe").evaluateAll((ps) => ps.map((p) => { const a = p.getPointAtLength(0), z = p.getPointAtLength(p.getTotalLength()); return [a.x, z.x]; }));
+    const crossed = ends.length === 2 && (ends[0][0] - ends[1][0]) * (ends[0][1] - ends[1][1]) < 0;
+    await page.goto(FLOW_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
+    const row = await text(page, '#sum-routes .route-row[data-sel="route:0"]'), panel = await text(page, "#ctx-summary");
+    const found = await text(page, "#panel-summary details.ground summary");
+    await page.click("#panel-summary details.ground summary"); await settle(page);
+    const list = await text(page, "#panel-summary .ground-list");
+    return JSON.stringify(order) === '["0,1","3,2"]' && !crossed && /1 of 7 listed confirmed by a test/.test(row) && /Read only/.test(panel) && /1 → 3: the test's call/.test(panel)
+      && /Found by script in the changed code, on no route: 1 of 2/.test(found) && /call printAll src\/print\.js:7 printAll\(rows\)/.test(list) && !/keydown/.test(list)
+      || JSON.stringify({ order, ends, row, panel: panel.slice(0, 600), found, list });
+  }));
+
 test("leaving a flow for another item leaves none of its steps current; a result chosen keeps the focus; the List view walks by the arrow keys; Coverage names who ran a statement and where",
   "a step stayed announced as current after the selection moved on, choosing a result dropped the focus to the page, and the List view's note promised keys it did not answer (PR 119 critic)",
   cased(FLOW_URL + "#summary/route1/step2", {}, async (page) => {
@@ -1049,7 +1072,8 @@ test("without JavaScript a flow's steps at unchanged code, values, links, stops 
 test("a Russian flow, its step, link and transition panels, its table, a check's panel and the export speak Russian: no English word but the record's own",
   "the flow's words are new to both catalogs; one left in English would reach a Russian reader",
   async () => {
-    const own = new Set(`${JSON.stringify(FLOWS_RU)}\n${diff}`.match(/[A-Za-z]{2,}/g)), english = new Map();
+    // the record's words, its diff's and the code's names the script found are the change's own
+    const own = new Set(`${JSON.stringify(FLOWS_RU)}\n${diff}\n${GROUND}`.match(/[A-Za-z]{2,}/g)), english = new Map();
     const scan = (where, words) => { for (const w of words.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|PDF|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? []) if (!own.has(w) && !english.has(w)) english.set(w, where); };
     const seen = (page) => page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll("[aria-label], [title], [placeholder]")].flatMap((el) => ["aria-label", "title", "placeholder"].map((a) => el.getAttribute(a) ?? ""))].join("\n"));
     const o = await open(FLOW_RU_URL), page = o.page;
