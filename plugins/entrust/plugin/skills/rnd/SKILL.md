@@ -1,12 +1,13 @@
 ---
 name: rnd
 description: >-
-  Researches, evaluates, compares, creates and develops agent skills, including their SKILL.md, description,
-  references and scripts, to settle a question about a skill: whether it works, meets its requirements or beats
-  another, or why it failed. Makes a skill from a workflow or session, and drafts, rewrites, fixes, improves, cuts or
-  restructures one, including after feedback or a failed run. Not for reviewing code, a pull request or a change to
-  a skill's text, a plain question of how a skill works, running a skill's existing evals with no question to
-  decide, collecting feedback from sessions, or improving a text written for people.
+  Creates a skill for an agent or develops an existing one: its SKILL.md, description, references and scripts.
+  Makes a skill from a workflow or session, and drafts, rewrites, fixes, improves, cuts or restructures one,
+  including after feedback or a failed run. Also researches, evaluates and compares skills, to settle a question
+  about a skill: whether it works, meets its requirements or beats another, or why it failed. Not for reviewing
+  code, a pull request or a change to a skill's text, a plain question of how a skill works, running a skill's
+  existing evals with no question to decide, collecting feedback from sessions, or improving a text written for
+  people.
 metadata:
   version: "0.49.0"
 license: MIT
