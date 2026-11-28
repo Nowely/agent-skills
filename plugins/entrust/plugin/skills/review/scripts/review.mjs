@@ -268,6 +268,8 @@ export function check(review, files, directory) {
   for (const f of review.findings) {
     // An id travels into anchors and hrefs: letters, digits, "_" and "-" only, so no quote or markup can ride along.
     if (!/^[A-Za-z0-9_-]+$/.test(String(f.id))) errors.push(`finding ${f.id}: id is letters, digits, "_" or "-"`);
+    // the page and the printout write F before an id, so one that names itself a finding reads twice
+    else if (/^f(?:[_-]|\d)/i.test(String(f.id))) warnings.push(`finding ${f.id}: the page writes F before an id, so it reads F${f.id}: drop the leading "${String(f.id).slice(0, 1)}"`);
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);

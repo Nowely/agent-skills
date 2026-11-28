@@ -1289,6 +1289,14 @@ test("check lists faults instead of throwing on malformed lists, and a run witho
     return true;
   });
 
+test("a finding id that names itself a finding is warned about, since the page writes F before it",
+  "the second real trial wrote f_coverage_count, and the page showed Ff_coverage_count (PR 119)",
+  () => {
+    // only the id changes, so the references to it no longer resolve: the warning is what this case reads
+    const files = parseThemeDiff(), r = structuredClone(THEMED), warned = (id) => { r.findings[0].id = id; return check(r, files, run).warnings.some((w) => w.startsWith(`finding ${id}: the page writes F`)); };
+    return warned("f_coverage") && warned("F2") && !warned("coverage") && !warned("fix-a") || "warned wrongly";
+  });
+
 test("a finding id is validated, and even a hostile one reaches an href escaped",
   "an id with a quote or markup rode into a source anchor unescaped; the check accepted any string as an id",
   () => {
