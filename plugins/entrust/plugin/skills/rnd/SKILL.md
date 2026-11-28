@@ -64,15 +64,19 @@ research and develop, and every step here is written for work on a skill.
 
 ## Research
 
-1. Identify the question, the skill or operation studied, the decision it can inform, and available evidence.
-   Read [the research method](references/research.md). Choose observation, assessment against requirements,
-   or comparison according to the question; a comparison names the intervention and comparator.
-2. Gather and assess the authorized evidence using that method. Preserve attempts, failures, uncertainty and
-   material differences in conditions. Report only contrasts supported by the evidence: unknown delivery
-   leaves the effect of actual activation unknown, but need not preclude an assignment or availability comparison.
-3. Deliver findings, sources, limits and any remaining questions. Research alone ends with this result and
-   does not change a skill. If changes were separately authorized in an approved plan, carry them out under
-   that scope; otherwise propose changes for the user's decision.
+1. Identify the question, its kind, the skill or operation studied, the decision it serves, and available
+   evidence. Read [the research method](references/research.md). Choose observation, assessment against
+   requirements, or comparison according to the question; a comparison names the intervention and comparator.
+2. Before any session or agent, show the plan: the question, its kind, the decision it serves, and each agent
+   and session with its model and cost, as [checks.md](references/checks.md#what-a-check-may-spend) gives them.
+   Wait for the user's word; an approval that already covers this scope and spend stands for it.
+3. Gather and assess the authorized evidence using that method. Preserve attempts, failures, uncertainty and
+   material differences in conditions. Report only contrasts the evidence supports.
+4. Deliver the answer to the question and what it rests on, then failures, unknowns, limits, sources and
+   remaining questions. Start
+   [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) as Create's step 10
+   does. Research changes no file of the skill: a change it suggests is put to the user, and becomes the
+   observation of a Change, which starts on the user's word.
 
 ## Create
 
@@ -132,7 +136,7 @@ research and develop, and every step here is written for work on a skill.
    show.
 6. **Write the text, once.** Follow [writing.md](references/writing.md): each line answers a failure a run
    showed or the user's words. After each edit run
-   the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run `node "<skill-dir>/scripts/check.mjs" <the skill's directory>`. A host check includes the common rules. When installation includes a wider folder than the default, add `--installed <installation-root>` to the check and preservation command; the author knows what the host copies, while the default cannot infer an unmarked layout. Run each repository suite that reads a file you changed or lists files of its kind, until all checks pass. Work on a skill that exists also
+   the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run `node "<skill-dir>/scripts/check.mjs" <the skill's directory>`. A host check includes the common rules. When installation includes a wider folder than the default, add `--installed <installation-root>` to the check and preservation command. Run each repository suite that reads a file you changed or lists files of its kind, until all checks pass. Work on a skill that exists also
    passes [Change's step 8](#change), against the copy step 3 made.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.

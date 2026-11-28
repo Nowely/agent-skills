@@ -6,9 +6,10 @@ may supply details. Existing records remain historical records of their own meth
 
 For Research alone, follow this method using the permissions and budget that actually apply. Choose the
 work needed to answer the question, including sessions when authorized; record their scope and cost.
-A session does not by itself require the Create or Change plan form, judges, reflection or orchestration.
-Use those only when the task or applicable instructions call for them. For a research eval, apply the
-[eval action boundary](checks.md#the-sessions): stop before irreversible or external actions, or simulate
+A session does not by itself require the Create or Change plan file form, judges, reflection or orchestration;
+use those only when the task or applicable instructions call for them. The plan shown before any session or
+agent, and the user's word on it, are never skipped: only the plan file form may be. For a research eval, apply
+the [eval action boundary](checks.md#the-sessions): stop before irreversible or external actions, or simulate
 them up to that boundary. Ordinary reading and authorized artifacts remain available; apply actual permissions
 to independently authorized practical checks.
 

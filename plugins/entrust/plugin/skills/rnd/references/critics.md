@@ -172,7 +172,7 @@ It marks every instruction, question and idea in the messages:
 It returns the marks with no verdict. Every `missing` and `part` goes into the result; report each `unknown` as unverified. The return is not a
 correction by itself: the user's reply decides whether it is one.
 
-It runs on Create and Change, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
+It runs on every route but Repair, a small change included; the last step of the route starts it. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
 word on the plan starts it and no step asks again. Where [the audit](reflection.md) at delivery runs, and not an audit at an earlier correction, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 
