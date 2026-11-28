@@ -1,6 +1,6 @@
 # Comparing review skills
 
-This protocol specializes the repository's [research method](../../../../RESEARCH.md) for a new
+This protocol specializes the repository's [research method](../../plugin/skills/rnd/references/research.md) for a new
 comparison of an ordinary review without a specialized review skill against review with one or more
 specified versions of a skill. It applies to future work, not retroactively to published experiments.
 Preparing this protocol does not authorize a model run, access to a private project, or a new version of
@@ -59,8 +59,10 @@ part of the intervention, not identical full input. OpenCode V2 documents an exp
 [per-session skill activation and prompt skill attachment](https://opencode.ai/docs/api), but their
 behavior, message representation and availability in a particular host must be checked rather than
 assumed. Other hosts may behave differently. If the required delivery or its observation cannot be
-established, report the uncertainty and stop to agree on a next step; do not silently add a user-facing
-skill instruction or call it the same strict comparison.
+established, report the uncertainty and stop to agree on a next step; the causal effect of actual activation
+remains unknown. Do not silently
+add a user-facing skill instruction or call it the same strict comparison. A supported comparison by
+assignment or availability may still be reported with its limits.
 
 A separate comparison may measure the effect of making a skill **available**, allowing the model to
 decide whether to invoke it. That is not the same question as the effect of an activated workflow.

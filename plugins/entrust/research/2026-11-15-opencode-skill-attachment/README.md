@@ -17,7 +17,7 @@ was a synthetic prompt in each of two fresh sessions. The first observation esta
 preparation only; the second extended the check to execution after a configuration change. These are
 sequential exploratory probes, not controlled arms isolating the effect of `resume`.
 
-This note follows the repository's [research method](../../../../RESEARCH.md). Its evidence sources are:
+This note follows the repository's [research method](https://github.com/Nowely/agent-skills/blob/716aa5d14d4880a6ec2df63880dd35b40212d75e/RESEARCH.md). Its evidence sources are:
 
 - **Host-observed, reported in chat:** version output, skill discovery, prompt responses, inbox,
   session state, active-session listing, projected messages/context, agent configuration, assistant

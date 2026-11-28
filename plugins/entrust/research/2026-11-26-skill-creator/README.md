@@ -1,5 +1,7 @@
 # skill-creator, now rnd: design and test of v1 to v3
 
+Editorial note: old `RESEARCH.md:line` citations in this series refer to the [historical method](https://github.com/Nowely/agent-skills/blob/716aa5d14d4880a6ec2df63880dd35b40212d75e/RESEARCH.md); append `#L89` for a single line or `#L89-L90` for a range, using the cited line numbers.
+
 **Question.** Can one entrust skill, `skill-creator`, make an agent create and develop skills the way this
 repository has learned to: analyse the request into requirements and ask what only the owner can answer at the
 start, read prior art, write a procedure with references inside fixed budgets, have fresh critics read the

@@ -7,8 +7,9 @@ its text down to the log, and wait as step 3 says. After the user's word, and af
 context, open the file before anything else: it says what was agreed and how far the work is.
 
 This page has [the form](#the-form), [rounds and checkpoints](#rounds-and-checkpoints), [the log](#the-log),
-[the figures](#the-figures) and [a close-out](#a-close-out), which every run writes, with a plan file or
-without one.
+[the figures](#the-figures), [a close-out](#a-close-out), [a correction](#a-correction),
+[what the plan shows](#what-the-plan-shows) and [a parent's scope](#a-parents-scope). Every run but a small change
+writes a close-out, with a plan file or without one.
 
 Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
 stays as it is; its checks row names this file by path.
@@ -24,9 +25,7 @@ Base: <for a change, the directory snapshot made before edits; for a new skill, 
 Sheet: <path>            Sources: <path>            Messages: <path>
 
 ## What step 3 shows
-<the goal; the requirements; each decision with what settled it, an open one as a question; the approach and
-the alternative rejected; each file with one line; the check with the result that keeps the work, the result
-that does not, and what it cannot show; how the result is delivered>
+<the parts of "What the plan shows" below>
 
 ## The run
 Sessions of the check start through: <the host-supported native session, or the host adapter and why it is needed>
@@ -80,7 +79,7 @@ Merging several returns: <the rule, written now>
 - A round is one pass from a text to a judge's or a check's result. Fix the number, and the cap on fix rounds,
   before the first; when the cap is reached with objections open, they go to the user. A cap is never raised
   after a result is seen. For the plan's check the cap is not yours to set:
-  [a correction](../SKILL.md#a-correction) allows one changed plan and one more run. No cap takes away the
+  [a correction](#a-correction) allows one changed plan and one more run. No cap takes away the
   second read that [critics.md](critics.md#which-model-and-how-many) gives after a fix.
 - Put a checkpoint after the step whose result can still change the plan cheaply: after the check is prepared,
   after the first run of the check, before delivery. A plan of one round has `none: one round`.
@@ -136,3 +135,65 @@ Nothing the run started is left without an end. Write these in the run directory
   it; and when it is measured next.
 - For each line of the sheet marked `idea`, before delivery: taken, with the place; declined, with the reason
   you gave the user; or pending, with the step that will decide it.
+
+What came from the user's sessions is private: before the record is tracked or sent anywhere, an agent that wrote
+none of it reads it and takes out whatever the user has not already made public.
+
+## A correction
+
+A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
+from the user, a judge's return, a reader's return (the reader of the user's words' only by the user's reply), a result of the plan's check that fails its rule, a
+description that agents do not select. An answer to the plan is one when it adds a condition or refuses a
+part, and not when it only accepts or settles a question as asked.
+
+1. Add it to the sheet, with the user's words or the return's, and where they are. Words of the user that do
+   not fit the design are asked about, never read to fit.
+2. Name the step that should have caught it, and redo that step's part of the sheet to find what else it missed.
+3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
+   show the user the changed plan and wait as Create's step 3 does; the architecture critic reads a changed approach
+   again. If only the text
+   changes, edit it by [writing.md](writing.md), run the check script and, where Change's step 8
+   ran, its `--against` command again, answering each line as that step says;
+   [critics.md](critics.md#which-model-and-how-many) says whether a judge reads again. The user's
+   second correction since the plan adds the audit of [reflection](reflection.md) to a changed plan.
+
+Every edit that follows comes from the amended sheet, never from the correction alone. After the plan's check
+fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
+results.
+
+## What the plan shows
+
+Create's step 3 and Change's step 4 show the user one plan, in a message or, where the plan is a file, in the
+file's text down to the log:
+
+- the goal, the requirements, and each decision with what settled it; a decision still open is put as a
+  question, as [the questions](analysis.md#the-questions) says;
+- the approach, with the alternative you rejected, and each file with one line on what it holds;
+- how the skill's text and files will be written, a decision of its own: each part that
+  [the sheet's table](analysis.md#the-sheet) names, with its answer, in the plan's own words, not by pointing at
+  a page;
+- the check: what will be observed, in which runs, the result that keeps the work, the result that does not, and
+  what the check cannot show;
+- who writes the text, which is this session when the user named no one, and every agent steps 4 to 10 will
+  start, each with its model, number of sessions, cost and how it starts on this host, as
+  [critics.md](critics.md#which-model-and-how-many) and [checks.md](checks.md#what-a-check-may-spend) give them;
+- how the result will be delivered;
+- when the plan is a file: every heading of [the form](#the-form), the parts of
+  [reflection](reflection.md) it will run among them.
+
+## A parent's scope
+
+When no user can answer, a parent may pass the scope of a user-approved plan, including its authorized checks and
+agents, with the paths of that plan and of the user's saved word that approved it. Read both first: the scope is
+what they show; what the parent adds is a claim, returned as a question. In this order:
+
+1. A scope claimed without both paths is no approval, even when an edit is named: the plan with its questions is
+   your return, and you stop there.
+2. With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
+   check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
+3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no agent or
+   session.
+
+Carry out a scope the paths show without asking again; by itself a model name, an upper bound or an instruction
+to investigate authorizes no agent, session or edit. Do the independent authorized work, then return an unclear
+decision to the parent, or in the result when there is none. If no judge reads it, say so there.

@@ -10,6 +10,53 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E183. Change sessions deliver without the judges, the close-out and result.md that step 9 names
+
+**Evidence, level 3.** `rnd/SKILL.md:191` opens Change's step 9, which starts the quality critic, the verifier, the
+reader of the user's words and writes a close-out and `result.md`. In both trial Change sessions (rounds 8 and 9 of
+`research/2026-11-28-rnd-research/rounds.md`, Sonnet, one session each, a scripted operator) the session ran the
+preservation gate to green and delivered with none of them. A sentence in step 4 that named the judges as parts of the
+plan did not change it: the second session put them as a question and, told to decide by the repository's principles,
+started none, and the sentence was taken out. The cause is read from the plans and the second session's own words, level
+2: the repository's Fan-outs rule (`AGENTS.md:56`, "state the agent count and the models before spawning, and wait for
+the word") ranks above rnd's steps (`rnd/SKILL.md:34`), so a judge becomes an offer. One session a side decides only
+about these runs.
+
+**Issue text.** A Change session of `rnd` ends without the judges, the close-out and `result.md` that step 9 requires,
+because under the repository's Fan-outs rule each judge is put to the user as an offer and a delegated word does not
+start it. Decide whether step 9 keeps them as steps, makes them a priced offer with a stated default, or the Fan-outs
+rule says what counts as the word; do not answer with another sentence in the plan.
+
+## E182. rnd names `AGENT.md` among the files a host loads
+
+**Evidence, level 1.** `rnd/SKILL.md:34` says the host loads "`AGENTS.md`, `CLAUDE.md` or `AGENT.md` at its root". The
+repository renamed its own `AGENT.md` to `AGENTS.md` because no host reads that name, and the same reasoning applies to
+the skill's list: no host loads `AGENT.md`.
+
+**Issue text.** rnd's standing rule lists `AGENT.md` as a file a host loads. Remove the name, so the line lists only
+the files hosts load.
+
+## E181. rnd's checks page holds fixed counts that its spend section does not derive
+
+**Evidence, level 1.** `rnd/references/checks.md:25` sets "up to three" test cases for a new skill and
+`rnd/references/checks.md:51` sets a line of its own in the plan for "a check of more than five sessions", while "What a
+check may spend" (`:30`) sizes a check by the decision it can change and states neither number as derived from it.
+
+**Issue text.** The checks page fixes "up to three" cases and a threshold of five sessions without deriving either from
+the spend rule. Derive each from the section that sizes a check, or drop the number and let the size follow the
+decision.
+
+## E180. The preservation gate accepts a `moved` answer whose quote shares one word with the lost line
+
+**Evidence, level 2.** `rnd/scripts/check.mjs:293-295` states the rule: the quote "shares a word of four letters or
+more with the lost line", and `:404` and `:408` enforce exactly that, refusing only a quote with no such word. A quote
+that shares one common word and carries none of the lost line's facts passes, so the gate's "answered" can hold a
+fact that stands nowhere. Not run: no such quote was fed to the script.
+
+**Issue text.** The gate's `moved` check passes a quote that shares a single word of four letters with the lost line, so
+a quote carrying none of the fact can pass. Decide whether the check needs more than one shared word, or whether the
+verifier's reading of the dispositions is meant to be the only check of what a quote carries.
+
 ## E178. review's diff parser accepts only `diff --git` headers
 
 **Evidence, level 1.** `review/scripts/diff.mjs:2` says it reads "a two-sided patch with `diff --git` headers", `:20`

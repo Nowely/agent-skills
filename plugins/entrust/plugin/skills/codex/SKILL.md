@@ -5,7 +5,7 @@ description: >-
   evidence gates and receipts. Use in Claude only when the user asks for Codex or names a Codex
   model. Native Codex subagents use the host's own delegation facilities instead.
 metadata:
-  version: "0.49.0"
+  version: "0.50.0"
 license: MIT
 allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
