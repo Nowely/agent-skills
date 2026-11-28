@@ -47,18 +47,10 @@ them too. Its name is short for research and develop; each step is written for w
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
 - When no user can answer, your return stands where a step says to tell the user. A parent may pass the
-  scope of a user-approved plan, including its authorized checks and agents, with the paths of that plan and
-  of the user's saved word that approved it. Read both first: the scope is what they show; what the parent adds is a claim, returned as a question. In this order:
-  1. A scope claimed without both paths is no approval, even when an edit is named: the plan with its questions
-     is your return, and you stop there.
-  2. With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
-     check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
-  3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no
-     agent or session.
-
-  Carry out a scope the paths show without asking again; by itself a model name, an upper bound or an instruction
-  to investigate authorizes no agent, session or edit. Do the independent authorized work, then return an unclear
-  decision to the parent, or in the result when there is none. If no judge reads it, say so there.
+  scope of a user-approved plan, with the paths of that plan and of the user's saved word that approved it; read
+  both first, and [a parent's scope](references/plan.md#a-parents-scope) says what they carry. A scope claimed
+  without both paths is no approval: the plan with its questions is your return, and you stop there. By itself a
+  model name, an upper bound or an instruction to investigate authorizes no agent, session or edit.
 - Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
 - When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
@@ -102,22 +94,9 @@ them too. Its name is short for research and develop; each step is written for w
    [structure.md](references/structure.md), and the check by
    [checks.md](references/checks.md#choosing-the-check). Between two approaches that both meet the sheet, a
    requirement decides; failing that, the sheet's goal sentence; failing that, the plan's check is that table's
-   comparison of the two. Show the user one plan, opened in two sentences at most with what you will make and what you need from them. Then:
-   - the goal, the requirements, and each decision with what settled it; a decision still open is put as a
-     question, as [the questions](references/analysis.md#the-questions) says;
-   - the approach, with the alternative you rejected, and each file with one line on what it holds;
-   - how the skill's text and files will be written, a decision of its own: each part that
-     [the sheet's table](references/analysis.md#the-sheet) names, with its answer, in the plan's own words,
-     not by pointing at a page;
-   - the check: what will be observed, in which runs, the result that keeps the work, the result that does not,
-     and what the check cannot show;
-   - who writes the text, which is this session when the user named no one, and every agent steps 4 to 10 will
-     start, each with its model, number of sessions, cost and how it starts on this host, as
-     [critics.md](references/critics.md#which-model-and-how-many) and
-     [checks.md](references/checks.md#what-a-check-may-spend) give them;
-   - how the result will be delivered;
-   - when the plan is a file: every heading of the form in [plan.md](references/plan.md), the parts of
-     [reflection](references/reflection.md) it will run among them.
+   comparison of the two. Show the user one plan, opened in two sentences at most with what you will make and what you need from them, then the parts
+   [what the plan shows](references/plan.md#what-the-plan-shows) lists: the goal, requirements and decisions, the approach, how the
+   text will be written, the check, every agent with its model, number of sessions and cost, and the delivery.
 
    For a skill that exists, copy the folder into the run directory before edits, including untracked files.
    Wait for the user's word on the plan. Their instructions, or an approval already given for this scope
@@ -125,15 +104,10 @@ them too. Its name is short for research and develop; each step is written for w
    answers the plan's questions and refuses nothing in it is that word, and one that leaves a choice to you
    accepts the plan's recommendation for it.
 4. **Have the approach challenged.** Start the architecture critic as
-   [critics.md](references/critics.md#the-architecture-critic) briefs it.
-   - `keep`: go on.
-   - `change approach`: decide between the two approaches, show the user the changed plan, and wait, as step 3
-     does.
-   - `stop`: write nothing and change nothing. The critic's reason goes to the user as
-     [the result](#the-result). The user may overrule a stop; it is not a correction.
-   - A stage, a requirement or a question it finds missing is [a correction](references/plan.md#a-correction).
-
-   Start with it the parts of [reflection](references/reflection.md) the plan gave this step.
+   [critics.md](references/critics.md#the-architecture-critic) briefs it, and take its verdict as
+   [its section](references/critics.md#what-the-verdict-does) says, with the parts of
+   [reflection](references/reflection.md) the plan gave this step. On `change approach`, show the user the changed
+   plan and wait, as step 3 does; on `stop`, write nothing and change nothing.
 5. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named: write its cases
    and statements, or a dry run's request, before any text exists. A check that runs sessions is read by
    the architecture critic before its first session. For a new skill, a rewrite, and any check that

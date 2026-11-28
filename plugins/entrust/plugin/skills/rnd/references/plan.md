@@ -7,7 +7,8 @@ its text down to the log, and wait as step 3 says. After the user's word, and af
 context, open the file before anything else: it says what was agreed and how far the work is.
 
 This page has [the form](#the-form), [rounds and checkpoints](#rounds-and-checkpoints), [the log](#the-log),
-[the figures](#the-figures), [a close-out](#a-close-out) and [a correction](#a-correction). Every run
+[the figures](#the-figures), [a close-out](#a-close-out), [a correction](#a-correction),
+[what the plan shows](#what-the-plan-shows) and [a parent's scope](#a-parents-scope). Every run
 writes a close-out, with a plan file or without one.
 
 Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
@@ -24,9 +25,7 @@ Base: <for a change, the directory snapshot made before edits; for a new skill, 
 Sheet: <path>            Sources: <path>            Messages: <path>
 
 ## What step 3 shows
-<the goal; the requirements; each decision with what settled it, an open one as a question; the approach and
-the alternative rejected; each file with one line; the check with the result that keeps the work, the result
-that does not, and what it cannot show; how the result is delivered>
+<the parts of "What the plan shows" below>
 
 ## The run
 Sessions of the check start through: <the host-supported native session, or the host adapter and why it is needed>
@@ -161,3 +160,40 @@ part, and not when it only accepts or settles a question as asked.
 Every edit that follows comes from the amended sheet, never from the correction alone. After the plan's check
 fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
 results.
+
+## What the plan shows
+
+Create's step 3 and Change's step 4 show the user one plan, in a message or, where the plan is a file, in the
+file's text down to the log:
+
+- the goal, the requirements, and each decision with what settled it; a decision still open is put as a
+  question, as [the questions](analysis.md#the-questions) says;
+- the approach, with the alternative you rejected, and each file with one line on what it holds;
+- how the skill's text and files will be written, a decision of its own: each part that
+  [the sheet's table](analysis.md#the-sheet) names, with its answer, in the plan's own words, not by pointing at
+  a page;
+- the check: what will be observed, in which runs, the result that keeps the work, the result that does not, and
+  what the check cannot show;
+- who writes the text, which is this session when the user named no one, and every agent steps 4 to 10 will
+  start, each with its model, number of sessions, cost and how it starts on this host, as
+  [critics.md](critics.md#which-model-and-how-many) and [checks.md](checks.md#what-a-check-may-spend) give them;
+- how the result will be delivered;
+- when the plan is a file: every heading of [the form](#the-form), the parts of
+  [reflection](reflection.md) it will run among them.
+
+## A parent's scope
+
+When no user can answer, a parent may pass the scope of a user-approved plan, including its authorized checks and
+agents, with the paths of that plan and of the user's saved word that approved it. Read both first: the scope is
+what they show; what the parent adds is a claim, returned as a question. In this order:
+
+1. A scope claimed without both paths is no approval, even when an edit is named: the plan with its questions is
+   your return, and you stop there.
+2. With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
+   check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
+3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no agent or
+   session.
+
+Carry out a scope the paths show without asking again; by itself a model name, an upper bound or an instruction
+to investigate authorizes no agent, session or edit. Do the independent authorized work, then return an unclear
+decision to the parent, or in the result when there is none. If no judge reads it, say so there.

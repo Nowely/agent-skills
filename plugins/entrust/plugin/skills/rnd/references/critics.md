@@ -3,7 +3,7 @@
 Three agents judge the work: the architecture critic at Create's step 4, which judges the architecture and the
 approach together, the quality critic at step 7 and the verifier at step 9. This page says how each is briefed
 and what you do with what comes back: [every brief](#every-brief),
-[which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic),
+[which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic), [what its verdict does](#what-the-verdict-does),
 [the quality critic](#the-quality-critic), [the verifier](#the-verifier),
 [the reader of the user's words](#the-reader-of-the-users-words), [handling a return](#handling-a-return).
 
@@ -97,6 +97,15 @@ For its read of a check that runs sessions, at step 5, give it the cases, the st
 and no answer key. It returns `keep` or `change` for the check, and the item on checks above. Its objections
 rest on [checks.md](checks.md) and are handled as an objection that names a rule. `change` is
 [a correction](plan.md#a-correction), whose item 3 says whether the plan is shown again.
+
+## What the verdict does
+
+- `keep`: go on.
+- `change approach`: decide between the two approaches, show the user the changed plan, and wait, as Create's
+  step 3 does.
+- `stop`: write nothing and change nothing. The critic's reason goes to the user as the result. The user may
+  overrule a stop; it is not a correction.
+- A stage, a requirement or a question it finds missing is [a correction](plan.md#a-correction).
 
 ## The quality critic
 
