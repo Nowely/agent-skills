@@ -12,10 +12,10 @@ metadata:
 license: MIT
 ---
 
-This skill takes a request about a skill to a checked result, and leaves collecting feedback from sessions to
-other skills. A skill is a folder, a `SKILL.md` and the files it links, that is loaded when a request matches
-its description. Take one of four routes; a change to this skill takes them too. Its name is short for
-research and develop, and every step here is written for work on skills and research about them.
+This skill takes a request about a skill to a checked result. A skill is a folder, a `SKILL.md` and the files it
+links, that is loaded when a request matches its description. Take one of four routes; a change to this skill takes
+them too. Its name is short for research and develop, and every step here is written for work on skills and
+research about them.
 
 - **Research**: investigate, evaluate or compare skills without necessarily changing one.
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
@@ -64,11 +64,11 @@ research and develop, and every step here is written for work on skills and rese
 
 ## Research
 
-1. Identify the question, its kind, the skill or operation studied, the decision it serves, and available
+1. Identify the question, its kind, the skill studied, the decision it serves, and available
    evidence. Read [the research method](references/research.md). Choose observation, assessment against
    requirements, or comparison according to the question; a comparison names the intervention and comparator.
 2. Before any session or agent, show the plan: the question, its kind, the decision it serves, and each agent
-   and session with its model and cost, as [checks.md](references/checks.md#what-a-check-may-spend) gives them.
+   and session with its model and [cost](references/checks.md#what-a-check-may-spend).
    Wait for the user's word; an approval that already covers this scope and spend stands for it.
 3. Gather and assess the authorized evidence using that method. Preserve attempts, failures, uncertainty and
    material differences in conditions. Report only contrasts the evidence supports.
@@ -221,7 +221,7 @@ every step.
 
 ## A correction
 
-Follow [a correction](references/plan.md#a-correction) when the sheet or text misses what the user wants.
+Follow [a correction](references/plan.md#a-correction) when the sheet or text misses what the user wants. Words of the user that do not fit the design are asked about, never read to fit.
 
 ## The result
 
@@ -240,5 +240,4 @@ Tell the user, in this order, the outcome first; the text that delivers the work
   session can improve this skill.
 
 Record the same, with the sheet, the sources table and the plan, where the repository keeps its changes and
-research. What came from the user's sessions is private: before the record is tracked or sent anywhere, an agent
-that wrote none of it reads it and takes out whatever the user has not already made public.
+research, as [plan.md](references/plan.md#a-close-out) says.

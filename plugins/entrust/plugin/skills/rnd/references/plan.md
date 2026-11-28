@@ -142,6 +142,9 @@ Nothing the run started is left without an end. Write these in the run directory
 - For each line of the sheet marked `idea`, before delivery: taken, with the place; declined, with the reason
   you gave the user; or pending, with the step that will decide it.
 
+What came from the user's sessions is private: before the record is tracked or sent anywhere, an agent that wrote
+none of it reads it and takes out whatever the user has not already made public.
+
 ## A correction
 
 A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
