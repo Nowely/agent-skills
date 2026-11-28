@@ -16,7 +16,7 @@ This skill takes a request about a skill to a checked result. A skill is a folde
 links, that is loaded when a request matches its description. Take one of four routes; a change to this skill takes
 them too. Its name is short for research and develop; each step is written for work on skills and research about them.
 
-- **Research**: investigate, evaluate or compare skills without necessarily changing one.
+- **Research**: investigate, evaluate or compare skills, changing none.
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
   that load it, or its set of reference files.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
@@ -37,7 +37,7 @@ them too. Its name is short for research and develop; each step is written for w
   is a new numbered file.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
 - For Create and Change, between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
-  verdict that stops the work, and blockers, all in one message.
+  verdict that stops the work, and blockers, all blockers in one message.
 - When a plan exists, what you deliver is what it showed. A step of the plan or of these routes that you would drop, or an edit to a file
   the plan did not name, goes to the user as a changed plan before you act on it, never into the result.
 - State nothing about a file or about a reply of the user that you have not read at its place.
@@ -69,18 +69,20 @@ them too. Its name is short for research and develop; each step is written for w
 ## Research
 
 1. Identify the question, its kind, the skill studied, the decision it serves, and available
-   evidence. Read [the research method](references/research.md). Choose observation, assessment against
-   requirements, or comparison by the question; a comparison names the intervention and comparator.
-2. Before any session or agent, show the plan: the question, its kind, the decision it serves, and each agent
-   and session with its model and [cost](references/checks.md#what-a-check-may-spend).
+   evidence; save the user's messages as a file in the run directory. Read
+   [the research method](references/research.md). Choose observation, assessment against requirements, or
+   comparison; a comparison names the intervention and comparator.
+2. Show the plan, on every Research: what step 1 found, and each agent and session, the reader of step 4
+   among them, with its model and [cost](references/checks.md#what-a-check-may-spend).
    Wait for the user's word; an approval that already covers this scope and spend stands for it.
-3. Gather and assess the authorized evidence using that method. Preserve attempts, failures, uncertainty and
-   material differences in conditions. Report only contrasts the evidence supports.
-4. Deliver the answer to the question and what it rests on, then failures, unknowns, limits, sources and
-   remaining questions. Start
+3. Gather and assess the authorized evidence using that method.
+4. Write the answer to the question and what it rests on, then failures, unknowns, limits, sources and
+   remaining questions, to `result.md`. Start
    [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) as Create's step 10
-   does. Research changes no file of the skill: a change it suggests is put to the user, and becomes the
-   observation of a Change, which starts on the user's word. A record that holds what came from the user's sessions is read for privacy
+   does, the plan standing for the sheet, and put its marks into [the result](#the-result), whose first two bullets
+   do not apply. Research changes no file of the skill: a change it suggests is put to the user, and becomes the
+   observation of a Change, which starts on the user's word; a request that also asks for an edit takes Change.
+   A record that holds what came from the user's sessions is read for privacy
    before it is tracked, as [a close-out](references/plan.md#a-close-out) says.
 
 ## Create
@@ -155,7 +157,7 @@ them too. Its name is short for research and develop; each step is written for w
 10. **Deliver.** First start the parts of [reflection](references/reflection.md) the plan gave this step and
     act on what they return. Where the audit at delivery does not run, write
     the result's text to `result.md` in the run directory, start [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put its marks into
-    [the result](#the-result); the return is a correction only by the user's reply. When [a close-out](references/plan.md#a-close-out) leaves no line without an
+    [the result](#the-result). When [a close-out](references/plan.md#a-close-out) leaves no line without an
     outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
 
 ## Change
@@ -223,9 +225,9 @@ Tell the user in this order; the text that delivers the work opens the same way:
 - for each requirement, the place that meets it, from the verifier's table or the quality critic's marks;
 - what ran, with its counts, and what did not run;
 - what stayed unmeasured, and what in the user's next real use would show the skill failing;
-- each instruction of the user that the reader of the user's words marked `missing` or `part`, or, where the audit at delivery
-  ran, each row of its table of the user's instructions and questions that the work does not meet; report each
-  `unknown` question from either as unverified;
+- the user's instructions and questions the work does not meet, from the
+  [reader](references/critics.md#the-reader-of-the-users-words) or the audit at delivery's
+  [table](references/reflection.md#what-a-part-returns), each `unknown` as unverified;
 - the judges' objections still open, and every close-out line that is `adjust`, `drop`, declined or pending;
 - at delivery, and whenever the user asks: what the skill does, in three sentences, and the questions still
   open; at delivery also that [a retro](references/reflection.md#a-retro-on-a-use-of-this-skill) on this

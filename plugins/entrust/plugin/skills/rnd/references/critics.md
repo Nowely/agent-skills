@@ -160,7 +160,8 @@ with the place. It returns what item 4 found, each with its place.
 It checks the result against what the user said, not against the sheet, because the sheet is your reading of their
 words. It is started fresh at delivery and briefed as [every brief](#every-brief) says. It reads first the file of
 the user's saved messages, whole, then `result.md`, which you write in the run directory from the result's text before
-it starts, the skill's files (for a change, its diff), the plan and the sheet.
+it starts, the skill's files (for a change, its diff), the plan and the sheet, or on Research the plan alone, with the messages
+file that step 1 saved.
 
 It marks every instruction, question and idea in the messages:
 

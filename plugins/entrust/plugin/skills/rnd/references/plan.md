@@ -13,11 +13,6 @@ writes a close-out, with a plan file or without one.
 Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
 stays as it is; its checks row names this file by path.
 
-For research or evaluation, select the protocol by the question in [research.md](research.md): an
-observation or requirements assessment can stand alone; a comparative claim needs a supported control.
-Record available, selected and delivered interventions separately from observed influence; unknown remains
-unknown. Preserve all attempts and report outcomes, harm, time and resources separately.
-
 ## The form
 
 Keep every heading. Where a part does not apply, write `none:` and the reason.
