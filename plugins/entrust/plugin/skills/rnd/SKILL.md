@@ -50,8 +50,9 @@ them too. Its name is short for research and develop; each step is written for w
 - When no user can answer, your return stands where a step says to tell the user. A parent may pass the
   scope of a user-approved plan, with the paths of that plan and of the user's saved word that approved it; read
   both first, and [a parent's scope](references/plan.md#a-parents-scope) says what they carry. A scope claimed
-  without both paths is no approval: the plan with its questions is your return, and you stop there. By itself a
-  model name, an upper bound or an instruction to investigate authorizes no agent, session or edit.
+  without both paths is no approval: the plan with its questions is your return, and you stop there. With no scope claimed,
+  the same section says what an instruction to edit or to investigate authorizes; by itself a model name, an
+  upper bound or an instruction to investigate authorizes no agent, session or edit.
 - Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
 - When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
@@ -97,7 +98,7 @@ them too. Its name is short for research and develop; each step is written for w
    requirement decides; failing that, the sheet's goal sentence; failing that, the plan's check is that table's
    comparison of the two. Show the user one plan, opened in two sentences at most with what you will make and what you need from them, then the parts
    [what the plan shows](references/plan.md#what-the-plan-shows) lists: the goal, requirements and decisions, the approach, how the
-   text will be written, the check, every agent with its model, number of sessions and cost, and the delivery.
+   text will be written, the check, every agent with its model, number of sessions and cost, the delivery, and, when the plan is a file, every heading of its form.
 
    For a skill that exists, copy the folder into the run directory before edits, including untracked files.
    Wait for the user's word on the plan. Their instructions, or an approval already given for this scope
@@ -105,9 +106,9 @@ them too. Its name is short for research and develop; each step is written for w
    answers the plan's questions and refuses nothing in it is that word, and one that leaves a choice to you
    accepts the plan's recommendation for it.
 4. **Have the approach challenged.** Start the architecture critic as
-   [critics.md](references/critics.md#the-architecture-critic) briefs it, and take its verdict as
-   [its section](references/critics.md#what-the-verdict-does) says, with the parts of
-   [reflection](references/reflection.md) the plan gave this step. On `change approach`, show the user the changed
+   [critics.md](references/critics.md#the-architecture-critic) briefs it, together with the parts of
+   [reflection](references/reflection.md) the plan gave this step, and take the critic's verdict as
+   [its section](references/critics.md#what-the-verdict-does) says. On `change approach`, show the user the changed
    plan and wait, as step 3 does; on `stop`, write nothing and change nothing.
 5. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named: write its cases
    and statements, or a dry run's request, before any text exists. A check that runs sessions is read by
