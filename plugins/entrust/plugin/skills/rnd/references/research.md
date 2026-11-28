@@ -8,7 +8,7 @@ Existing records remain historical records of their own methods, not results ret
 
 On the Research route, follow this method using the permissions and budget that actually apply. Choose the
 work needed to answer the question, including sessions when authorized; record their scope and cost.
-A session does not by itself require the Create or Change plan file form, judges (the reader of the user's words excepted), reflection or orchestration;
+A session does not by itself require the Create or Change plan file form, judges (the reader of the user's words, and the blind reader and confirmer a marked statement takes, excepted), reflection or orchestration;
 use those only when the task or applicable instructions call for them. The plan shown before any session or
 agent, and the user's word on it (an approval that already covers the scope and spend stands for it), are never skipped: only the plan file form may be. For a research eval, apply
 the [eval action boundary](checks.md#the-sessions): stop before irreversible or external actions, or simulate

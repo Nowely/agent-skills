@@ -122,10 +122,9 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
    detail a real request carries. Make one of them the request on which following the skill costs the agent
    most. Take none from the run that prompted the work.
 2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part`, `false` or
-   `unknown` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`.
-   A demonstrated violation is `false`; unavailable evidence is `unknown`, with the reason. The rule states
-   before any run how `unknown` counts toward the verdict; unsaid, it counts as `false`,
-   and it is not presented as a demonstrated failure. A
+   `unknown` with a place, and write in the plan's rule how `part` and `unknown` count, as
+   [every brief](critics.md#every-brief) says. A demonstrated violation is `false`; unavailable evidence is
+   `unknown`, with the reason. A
    statement is about the result. Where the claim is about what the agent does on the way, such as a
    question it asks or a step it skips, the statement names an event the transcript shows, never the agent's
    wording. Where the result is itself a thing agents use, such as a skill, a brief or a prompt, the statements are

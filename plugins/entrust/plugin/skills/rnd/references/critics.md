@@ -21,9 +21,9 @@ claim to check, and so does the author's own account of the work.
   are each forbidden the others' return files.
 - Every set of marks on this page and in [checks.md](checks.md) has one more member, `part`: the item is
   there without its value, or with one of its two clauses. A judge marks `part` and says what is missing. `part`
-  counts as the weakest mark of its set, `not met`, `lost` or absent, unless the plan's rule said otherwise
-  before the run. `unknown`, for evidence that cannot be checked, is no member of a set: the confirmer does not
-  open it, and [checks.md](checks.md#test-cases) item 2 says how it counts.
+  and `unknown` (evidence that cannot be checked) each counts as the weakest mark of its set (`false`, `not met`,
+  `lost` or absent), unless the plan's rule said otherwise before the run. An `unknown` is not called a demonstrated
+  failure; it is no member of a set, so the confirmer does not open it.
 - Two judges give counts that decide a verdict: the reader of [test cases](checks.md#test-cases) and the
   audit of [reflection](reflection.md). Before you brief either, find out whether its count can be trusted, by
   one of two ways, and write which in the plan: add to what it reads two false items of the kind it is to
@@ -191,7 +191,7 @@ table of the user's instructions and questions is this check, and this reader do
   for each thing a judge called lost or present.
 - Marks that decide a verdict are confirmed before they are counted. Start one fresh agent on the executor
   tier, briefed as [every brief](#every-brief) says, with the marks' file to read and this bullet as its role:
-  it opens every mark that is not the weakest of its set at the place cited and returns `confirmed` or `not
+  it opens every mark of a set that is not the weakest of it, at the place cited and returns `confirmed` or `not
   there`, or `unknown` when the evidence cannot be checked. A demonstrated absence takes the weakest mark;
   an unconfirmed mark becomes `unknown`, with the reason, and is not called a demonstrated failure.
 - A verdict is computed by you, from the rule the plan wrote before the result and from the confirmed marks,
