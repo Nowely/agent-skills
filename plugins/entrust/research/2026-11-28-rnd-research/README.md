@@ -21,7 +21,7 @@ step, result form and reader.
 - (a) every session of a check gets its own copy of the working tree; a practical run on the user's real task, with
   their authorization, is a use and runs where the task is;
 - (b) `unknown` stays a mark, and the plan says beforehand how it counts toward the verdict; unsaid, it counts as
-  `false` for a mandatory statement;
+  `false`;
 - (c) a statement no session could pass on that setup is fixed before the rest start;
 - (d) the method stays in `rnd`, which may not link outside its installed files;
 - (e) the review protocol still stops to agree on a next step.

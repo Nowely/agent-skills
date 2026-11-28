@@ -31,13 +31,12 @@ would have shown. With no run at all, the quality critic's read is the only evid
 
 Every session, reader and judge is paid for by the user, and a check is worth the decision it can change.
 
-- The plan gives each check its cost: its agents and sessions, the model of each, and the tokens estimated
+- The plan gives each check, and each practical run, its cost: its agents and sessions, the model of each, and the tokens estimated
   from runs like it that the host has figures for, else `unknown`. A check runs when its result could
   change the answer to a question the user asked, or the plan; a comparison that a missing control leaves undecided does not stop a
-  check that answers another such question.
-- Before starting a new run, look in the run directory and the repository's records for an existing run that supports the contrast, and use it. Reuse it only when
-  its task, inputs, context, versions, tools, permissions and assessment
-  support. Record material differences; an incompatible run is context, not a control. An already used case
+  check or a practical run that answers another such question.
+- Before starting a new run, look in the run directory and the repository's records for an existing run, and use it only when its task, inputs, context, versions, tools, permissions and
+  assessment support the contrast. Record material differences; an incompatible run is context, not a control. An already used case
   does not become independent by freezing it. When a control is unavailable, report observations and leave
   the comparison unknown.
 - A check starts with the smallest sample that can change its decision: one session for each case and each
@@ -102,7 +101,7 @@ for each failure seen, and none for what went right.
    session failed, and for which the user's words ask nothing, gets no step: mark it on the sheet as left to
    the agent, with the run that shows it. A stage that no session reached shows nothing about whether its
    instruction is needed.
-5. Reuse these sessions as controls for [test cases](#test-cases) only where the conditions above support the contrast.
+5. Reuse these sessions as controls for [test cases](#test-cases) only where the conditions of [what a check may spend](#what-a-check-may-spend) support the contrast.
 
 For a Change, the observation of its step 1 is the baseline. The baseline's sessions alone do not make the
 plan's check one that runs sessions: that takes test cases, a transfer test or a selection check.
@@ -139,7 +138,7 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
    is which, briefed as [every brief](critics.md#every-brief) with this item as its role. Give it the
    statements, each with its marks defined, and each run's outputs under a letter; it must not open the key to
    the letters, nor the plan's rule. It marks strictly and literally, and where two marks were possible it says
-   why it chose one. It returns the marks, with no total and no verdict: unavailable evidence is `unknown`, not `false`; how `part` counts is the plan's rule,
+   why it chose one. It returns the marks, with no total and no verdict; how `part` counts is the plan's rule,
    which it does not see. Then have the marks confirmed and compute the verdict as
    [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the
    skill no session opened and a step every session skipped; each is a finding for the result.
@@ -199,11 +198,11 @@ by any model, and resemblance then measures copying.
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
 3. Run each request once: about twenty sessions for each host. Start sessions as above, each given the request alone. A host adapter may describe a selection tool; use it only if its population, run count and side effects meet this plan and the user has explicitly authorized its spend and side effects. Record
-   which skill was loaded before the answer or the first action: this one, a rival by name, or observed none.
+   which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
    If the selection log is unavailable or selection was not observed by then, record `unknown` separately.
 4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
    earlier description, decides only against a second run of the same set, an option of
    [what a check may spend](#what-a-check-may-spend); without it the margin is reported as undecided.
-5. Requests the skill is for with a confirmed selection of a rival or confirmed none are [a correction](plan.md#a-correction): rewrite the
+5. Requests the skill is for with a confirmed selection of a rival or none shown by the log are [a correction](plan.md#a-correction): rewrite the
    description from them by [writing.md](writing.md#the-description), have a new set written, because a set its
    writer has seen no longer tests it, and run once more. Unknown selection is unverified, not a confirmed miss.

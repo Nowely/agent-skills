@@ -22,7 +22,8 @@ claim to check, and so does the author's own account of the work.
 - Every set of marks on this page and in [checks.md](checks.md) has one more member, `part`: the item is
   there without its value, or with one of its two clauses. A judge marks `part` and says what is missing. `part`
   counts as the weakest mark of its set, `not met`, `lost` or absent, unless the plan's rule said otherwise
-  before the run.
+  before the run. `unknown`, for evidence that cannot be checked, is no member of a set: the confirmer does not
+  open it, and [checks.md](checks.md#test-cases) item 2 says how it counts.
 - Two judges give counts that decide a verdict: the reader of [test cases](checks.md#test-cases) and the
   audit of [reflection](reflection.md). Before you brief either, find out whether its count can be trusted, by
   one of two ways, and write which in the plan: add to what it reads two false items of the kind it is to
@@ -173,7 +174,7 @@ It marks every instruction, question and idea in the messages:
 It returns the marks with no verdict. Every `missing` and `part` goes into the result; report each `unknown` as unverified. The return is not a
 correction by itself: the user's reply decides whether it is one.
 
-It runs on every route but Repair, a small change included; the last step of the route starts it. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
+It runs on every route but Repair, a small change included; the last step of the route starts it, and on Research the plan lists it, and how it starts, with the other agents. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
 word on the plan starts it and no step asks again. Where [the audit](reflection.md) at delivery runs, and not an audit at an earlier correction, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 
@@ -192,9 +193,7 @@ table of the user's instructions and questions is this check, and this reader do
   tier, briefed as [every brief](#every-brief) says, with the marks' file to read and this bullet as its role:
   it opens every mark that is not the weakest of its set at the place cited and returns `confirmed` or `not
   there`, or `unknown` when the evidence cannot be checked. A demonstrated absence takes the weakest mark;
-  an unconfirmed mark remains `unknown`, with the reason. The plan's rule states before any run how `unknown`
-  counts toward the verdict; unsaid, it counts as `false`, as an unsaid `part` does. Do
-  not call it a demonstrated failure.
+  an unconfirmed mark becomes `unknown`, with the reason, and is not called a demonstrated failure.
 - A verdict is computed by you, from the rule the plan wrote before the result and from the confirmed marks,
   one clause of the rule at a time. A judge's own total, and its opinion of what a finding does to a verdict,
   are claims and decide nothing.
