@@ -54,6 +54,7 @@ For agent-skill research, evaluation or development, see [`entrust:rnd`](plugins
   corresponding adapter; use them only for that host or VCS. Preserve a portable path when the workflow does not
   require a particular implementation.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
+  A plan the owner approved that names its agents with their models is that word.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
   default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
   Flags are forgotten, misused and maintained.
