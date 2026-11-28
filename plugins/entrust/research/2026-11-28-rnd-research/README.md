@@ -92,8 +92,8 @@ plan page opened first. Change on a recorded case (C1) and a second Change (C2) 
 close-out and `result.md` that step 9 names; both ran the preservation gate to green. C2 had the sentence in step 4
 that names the judges as parts of the plan; it put the judges as a question under the Fan-outs rule of `AGENTS.md`
 and, told to decide by the repository's principles, started none. The sentence was taken out. Limit: one session a
-side, so the result is about these runs and not a rate; the operator was scripted, and the real owner answers such a
-question differently; and the trials count the steps taken, not what the change was worth, so they do not show that
+side, so the result is about these runs and not a rate; the operator was scripted, so it shows what a user who delegates the
+decision gets; and the trials count the steps taken, not what the change was worth, so they do not show that
 the skipped judges would have changed either patch.
 
 **The selection check, two batches.** The first batch (3 requests meant, 3 near misses, Claude Code 2.1.332, three turns
