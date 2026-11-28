@@ -19,7 +19,7 @@ Take every row whose claim the user's request makes. For research without a chan
 | the skill makes a thing that agents then use, such as a skill, a brief or a prompt | [test cases](#test-cases) whose statements are about what fresh agents do with the thing each run made | two sessions per case, the agents that use each result, and one reader |
 | the skill carries a practice: an agent with only the pages does what the practitioner did | [a transfer test](#a-transfer-test), on the pages before and after | its sessions, one agent to build the material, and one confirmer |
 | one of two approaches serves the goal better | the same test cases under each approach, the statements written first | two sessions per case, and one reader |
-| the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check) | its sessions, for each host |
+| the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check), when the skill must be selected unnamed | one session for each kind of request, run once |
 
 Size the check to the work. A change to one step takes one case. A new skill takes [the baseline](#the-baseline) and the dry run, and when the
 user asks for runs, one test case for each stage of the walk that its instructions cover, up to three. When
@@ -45,7 +45,7 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   read the files it was given, and its result could pass each statement. A statement that no session could
   pass on that setup is rewritten, or the setup fixed, before the rest start. A genuine missed requirement remains a failure.
 - More than that is an option the plan puts to the user, with its cost and what it could show that the
-  smallest sample cannot: a repeated run, several sessions for each side, a second reader, or a role on the top
+  smallest sample cannot: a repeated run, more requests of a kind, several sessions for each side, a second reader, or a role on the top
   tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier. It runs only on the
   user's word naming it; a reply that leaves the choice to you takes the smallest sample.
 - A check of more than five sessions, such as a selection check, is shown in the plan on a line of its own
@@ -189,19 +189,24 @@ by any model, and resemblance then measures copying.
 
 ## A selection check
 
-1. Have an agent that has seen neither the description nor any earlier case write the requests: about ten the
-   skill is for, in varied wording, some that never name the skill, and about ten near misses, which share the
-   skill's words and need something else. Fewer leaves each kind of request with one example.
+It runs only when the sheet requires the skill to be selected without being named. Otherwise the quality critic's
+read of the description is the check.
+
+1. Have an agent that has seen neither the description nor any earlier case write the smallest set of requests that
+   can change the decision: one for each kind of request the description must take, in wording that does not name
+   the skill, and one for each kind it must leave, which shares the skill's words and needs something else.
 2. Make the session's list of skills the one a real user has: this skill, and every rival that
    [structure.md](structure.md#the-approach) sorted out in step 2, the host's built-in ones included. A rival
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
-3. Run each request once: about twenty sessions for each host. Start sessions as above, each given the request alone. A host adapter may describe a selection tool; use it only if its population, run count and side effects meet this plan and the user has explicitly authorized its spend and side effects. Record
+3. Run each request once, on the host and the model the user works with. Start sessions as above, each given the
+   request alone, and read the first one before the rest. A host adapter may describe a selection tool; use it only if its population, run count and side effects meet this plan and the user has explicitly authorized its spend and side effects. Record
    which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
    If the selection log is unavailable or selection was not observed by then, record `unknown` separately.
-4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
-   earlier description, decides only against a second run of the same set, an option of
-   [what a check may spend](#what-a-check-may-spend); without it the margin is reported as undecided.
+4. Report the result for each request, every request a rival took, and the host and the model measured; the result
+   holds for them only. More requests of a kind, or a second run of the same set, are an option of
+   [what a check may spend](#what-a-check-may-spend), put only when a result is ambiguous; a margin over a rival, or
+   over an earlier description, decides only against such a run, and without it is reported as undecided.
 5. Requests the skill is for with a confirmed selection of a rival or none shown by the log are [a correction](plan.md#a-correction): rewrite the
    description from them by [writing.md](writing.md#the-description), have a new set written, because a set its
    writer has seen no longer tests it, and run once more. Unknown selection is unverified, not a confirmed miss.

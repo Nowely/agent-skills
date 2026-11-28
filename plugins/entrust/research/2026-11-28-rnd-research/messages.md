@@ -34,3 +34,9 @@ On 2026-11-28 the owner accepted, in the review session, seven changes of value 
 7. the description no longer excludes reviewing a skill, which is now Research.
 
 The owner also delegated to the review decision (b), that `unknown` stays a mark and the plan says beforehand how it counts toward the verdict; it covers critics.md's line on a mark that is not confirmed.
+
+---
+
+## The selection check's size
+
+On 2026-11-28 the owner said in the review session that a fixed twenty-session selection check is excessive and unexplained, that its size should follow healthy pragmatism, and that the skill being selected automatically is not critical, since a result on one model does not hold on others.
