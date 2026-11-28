@@ -1,6 +1,6 @@
 # Messages
 
-The owner's direction comment on PR 120, verbatim, and below it the owner's later acceptance. Both are public.
+The owner's direction comment on PR 120, verbatim, is public. The dated entries after it are the owner's decisions in the review session, paraphrased by the coordinator and kept here pending the owner's word at the release package.
 
 - URL: https://github.com/Nowely/agent-skills/pull/120#issuecomment-7238644242
 - Date: 2026-11-28, 11:34 UTC
@@ -23,7 +23,7 @@ We will also clarify how an already approved plan is handed to a child agent. A 
 
 ## Acceptance of changes the direction does not name
 
-On 2026-11-28 the owner accepted, in the review session, seven changes of value that PR 120's first commit made and that the direction comment above does not name:
+On 2026-11-28 the coordinator listed, in the review session, seven changes of value that PR 120's first commit made and that the direction comment above does not name; the owner gave a general word for what waited on it, not a word naming each:
 
 1. answers the floor reaches now count; a floor pass the candidate misses is a regression (checks.md, transfer test);
 2. `not needed` also requires no regression (checks.md, transfer test);

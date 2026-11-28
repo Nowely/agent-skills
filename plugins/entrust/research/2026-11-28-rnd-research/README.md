@@ -16,7 +16,7 @@ points to `rnd`; `rnd` gains a Research route; the evaluation pages gain the mar
 added fixes: the rename of `AGENT.md` to `AGENTS.md`, this record, the check-cost rules, and the Research route's plan
 step, result form and reader.
 
-**Decisions.** The owner delegated these to the review of `c435d99`:
+**Decisions.** The owner delegated (a) to (e) to the review of `c435d99`; (f) is the coordinator's:
 
 - (a) every session of a check gets its own copy of the working tree; a practical run on the user's real task, with
   their authorization, is a use and runs where the task is;
@@ -25,12 +25,13 @@ step, result form and reader.
 - (c) a statement no session could pass on that setup is fixed before the rest start;
 - (d) the method stays in `rnd`, which may not link outside its installed files;
 - (e) the review protocol still stops to agree on a next step.
-- (f) "A correction" stays in `references/plan.md` and `SKILL.md` links to it there, a departure from review item 10
-  ("move it back whole"): the section is 1,584 characters, `SKILL.md` has room for 148 under the 20001-character
+- (f) The coordinator's decision, not one the owner delegated: "A correction" stays in `references/plan.md` and `SKILL.md`
+  links to it there, a departure from the coordinator's own review item 10 ("move it back whole"): the section is 1,584 characters, `SKILL.md` has room for 148 under the 20001-character
   limit, and a following PR will rebalance the body. Every link that landed on the stub now lands on `plan.md`.
 
-**Accepted by the owner.** On 2026-11-28 the owner accepted, in the review session, seven changes of value that PR 120's
-first commit made and that the direction comment does not name ([messages.md](messages.md)):
+**Listed by the coordinator, accepted by a general word.** On 2026-11-28 the coordinator listed, in the review session,
+seven changes of value that PR 120's first commit made and that the direction comment does not name
+([messages.md](messages.md)); the owner gave a general word for what waited on it, not a word naming each:
 
 1. answers the floor reaches now count; a floor pass the candidate misses is a regression (checks.md, transfer test);
 2. `not needed` also requires no regression (checks.md, transfer test);
