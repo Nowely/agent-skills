@@ -4,7 +4,7 @@
 moved | SKILL.md:4 | SKILL.md:4 | Researches, evaluates, compares, creates and develops agent skills, including their SKILL.md, description, references and scripts
 moved | SKILL.md:5 | SKILL.md:5 | Makes a skill from a workflow or session, and drafts, rewrites, fixes, improves, cuts or restructures one
 moved | SKILL.md:6 | SKILL.md:6 | including after feedback or a failed run.
-moved | SKILL.md:7 | SKILL.md:6 | Not for reviewing code, a pull request or a change to a skill's text, running a skill's existing evals with no question to decide, collecting feedback from sessions
+moved | SKILL.md:7 | SKILL.md:8 | a skill's text, a plain question of how a skill works, running a skill's existing evals with no question to
 retired | SKILL.md:7 | messages.md:34 | the description no longer excludes reviewing a skill, which is now Research
 moved | SKILL.md:14 | SKILL.md:14 | This skill takes a request about a skill to a checked result.
 moved | SKILL.md:14 | SKILL.md:8 | collecting feedback from sessions, or improving a
@@ -21,7 +21,7 @@ retired | SKILL.md:49 | messages.md:32 | with no user, a child carries out a pas
 retired | SKILL.md:50 | messages.md:32 | with no user, a child carries out a passed scope when it holds the paths of the plan and of the user's saved word; otherwise it returns its plan (SKILL.md standing rules)
 moved | SKILL.md:51 | SKILL.md:52 | With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
 moved | SKILL.md:52 | SKILL.md:53 | check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
-moved | SKILL.md:53 | SKILL.md:59 | If no judge reads it, say so in the result.
+moved | SKILL.md:53 | SKILL.md:61 | If no judge reads it, say so there.
 moved | SKILL.md:54 | SKILL.md:60 | Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
 moved | SKILL.md:56 | SKILL.md:62 | When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
 moved | SKILL.md:120 | SKILL.md:143 | the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run
@@ -31,7 +31,7 @@ moved | SKILL.md:120 | SKILL.md:143 | Run each repository suite that reads a fil
 moved | SKILL.md:120 | SKILL.md:143 | Work on a skill that exists also
 moved | SKILL.md:214 | references/plan.md:154 | show the user the changed plan and wait as Create's step 3 does; the architecture critic reads a changed approach
 moved | SKILL.md:242 | references/plan.md:140 | What came from the user's sessions is private: before the record is tracked or sent anywhere, an agent that wrote
-moved | SKILL.md:242 | SKILL.md:235 | where the repository keeps its changes and research,
+moved | SKILL.md:242 | SKILL.md:87 | repository tracks its research records, write the record as
 moved | references/analysis.md:107 | references/analysis.md:106 | Step 3 waits for the readers; with no user attached, use a scope passed as the standing rule says, when it names them; otherwise return the decision to the parent
 retired | references/analysis.md:107 | messages.md:33 | readers of sources with no user follow the parent-approved scope (analysis.md)
 moved | references/analysis.md:122 | references/analysis.md:122 | Before launching the reader, obtain the user's approval for its model and spend unless already authorized
@@ -51,17 +51,17 @@ moved | references/checks.md:72 | references/checks.md:77 | No case performs an 
 moved | references/checks.md:73 | references/checks.md:79 | it stops before it, or simulates it up to that boundary, and the plan and the result say what the check therefore cannot show.
 retired | references/checks.md:97 | messages.md:18 | Reusing a baseline requires comparable conditions
 moved | references/checks.md:117 | references/checks.md:124 | 2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part`, `false` or
-moved | references/checks.md:118 | references/checks.md:125 | `unknown` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`.
-moved | references/checks.md:131 | references/checks.md:140 | where two marks were possible it says why it chose one.
-moved | references/checks.md:131 | references/checks.md:141 | It returns the marks, with no total and no verdict; how `part` counts is the plan's rule,
+moved | references/checks.md:118 | references/checks.md:125 | `unknown` with a place, and write in the plan's rule how `part` and `unknown` count, as
+moved | references/checks.md:131 | references/checks.md:140 | why it chose one.
+moved | references/checks.md:131 | references/checks.md:140 | It returns the marks, with no total and no verdict; how `part` counts is the plan's rule,
 retired | references/checks.md:135 | messages.md:30 | a statement every run passes stays in the absolute assessment and leaves only the relative difference (test cases item 5)
 retired | references/checks.md:136 | messages.md:30 | a statement every run passes stays in the absolute assessment and leaves only the relative difference (test cases item 5)
 retired | references/checks.md:156 | messages.md:28 | answers the floor reaches now count; a floor pass the candidate misses is a regression (checks.md, transfer test)
 retired | references/checks.md:157 | messages.md:28 | answers the floor reaches now count; a floor pass the candidate misses is a regression (checks.md, transfer test)
-moved | references/checks.md:157 | references/checks.md:169 | When the floor reaches more than half of the answers, the
-moved | references/checks.md:158 | references/checks.md:170 | material is built again. The rule is written now: how many of the known answers each run must reach,
+moved | references/checks.md:157 | references/checks.md:168 | When the floor reaches more than half of the answers, the
+moved | references/checks.md:158 | references/checks.md:169 | material is built again. The rule is written now: how many of the known answers each run must reach,
 retired | references/checks.md:173 | messages.md:29 | `not needed` also requires no regression (checks.md, transfer test)
-moved | references/checks.md:188 | references/checks.md:201 | which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
+moved | references/checks.md:188 | references/checks.md:200 | which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
 retired | references/checks.md:192 | messages.md:31 | an unobserved selection is `unknown`, not a confirmed miss (selection check)
 moved | references/critics.md:175 | references/critics.md:177 | It runs on every route but Repair, a small change included; the last step of the route starts it
 moved | references/critics.md:175 | references/critics.md:177 | The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
@@ -81,23 +81,23 @@ moved | references/research.md:69 | references/research.md:90 | Preserve origina
 moved | references/research.md:69 | references/research.md:89 | missing evidence is unknown, not a pass or a failure.
 
 moved | SKILL.md:17 | SKILL.md:16 | them too. Its name is short for research and develop; each step is written for work on skills and research about them.
-moved | SKILL.md:24 | SKILL.md:24 | the file that owns it. Copy the folder before the edit as Create's step 3 says; make the edit; run the script of Create's step 6, then Change's step 8 against that copy.
+moved | SKILL.md:24 | SKILL.md:25 | Copy the folder as Create's step 3 says, edit, run the script of Create's step 6, then Change's step 8 against the copy.
 moved | SKILL.md:25 | SKILL.md:25 | A corrected word or link lists no line; a listed line whose fact still stands takes a `moved` line, and one whose
 moved | SKILL.md:31 | SKILL.md:31 | Read the repository's agent instructions first: what the host (a program that loads skills, such as Claude Code or Codex) loads for it, such as `AGENTS.md`,
 moved | SKILL.md:32 | SKILL.md:31 | Read the repository's agent instructions first: what the host (a program that loads skills, such as Claude Code or Codex) loads for it, such as `AGENTS.md`,
 moved | SKILL.md:33 | SKILL.md:32 | `CLAUDE.md` or `AGENT.md` at its root, and what those files link. Where they differ from these steps, follow them.
 moved | SKILL.md:34 | SKILL.md:33 | Keep what these steps write down, and every agent's return, in one run directory outside the skill's
-moved | SKILL.md:40 | SKILL.md:39 | verdict that stops the work, and blockers, all blockers in one message.
+moved | SKILL.md:40 | SKILL.md:40 | verdict that stops the work, and one message of all blockers.
 moved | SKILL.md:66 | SKILL.md:91 | the decisions every skill must settle. Read the material the request names first. For a rewrite, take
 moved | SKILL.md:68 | SKILL.md:93 | Read the sources. Read what already does this job, what the hosts say a skill is, and the user's
 moved | SKILL.md:70 | SKILL.md:95 | [the sources](references/analysis.md#the-sources) says. Hold step 1's walk against them.
 moved | SKILL.md:71 | SKILL.md:96 | [hosts.md](references/hosts.md) has each host's guide and what differs between hosts. [A practice someone already performs](references/analysis.md#a-practice-someone-already-performs) says when
-moved | SKILL.md:78 | SKILL.md:102 | comparison of the two. Show the user one plan, opened with what you will make and what you need from them in two sentences at most.
+moved | SKILL.md:78 | SKILL.md:105 | comparison of the two. Show the user one plan, opened in two sentences at most with what you will make and what you need from them. Then:
 moved | SKILL.md:84 | SKILL.md:108 | [the sheet's table](references/analysis.md#the-sheet) names, with its answer, in the plan's own words,
 moved | SKILL.md:89 | SKILL.md:113 | start, each with its model, number of sessions, cost and how it starts on this host, as
 moved | SKILL.md:97 | SKILL.md:121 | Wait for the user's word on the plan. Their instructions, or an approval already given for this scope
-moved | SKILL.md:98 | SKILL.md:122 | and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names, and no later step asks for another. A reply that
-moved | SKILL.md:99 | SKILL.md:122 | and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names, and no later step asks for another. A reply that
+moved | SKILL.md:98 | SKILL.md:124 | and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names; no later step asks again. A reply that
+moved | SKILL.md:99 | SKILL.md:124 | and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names; no later step asks again. A reply that
 moved | SKILL.md:100 | SKILL.md:123 | answers the plan's questions and refuses nothing in it is that word, and one that leaves a choice to you
 moved | SKILL.md:105 | SKILL.md:128 | `change approach`: decide between the two approaches, show the user the changed plan, and wait, as step 3
 moved | SKILL.md:106 | SKILL.md:128 | `change approach`: decide between the two approaches, show the user the changed plan, and wait, as step 3
@@ -107,35 +107,51 @@ moved | SKILL.md:114 | SKILL.md:137 | the architecture critic before its first s
 moved | SKILL.md:121 | SKILL.md:144 | passes [Change's step 8](#change) against the copy of step 3.
 moved | SKILL.md:127 | SKILL.md:150 | the user both results, then undo the change, or take the new skill's folder out of the tree and keep
 moved | SKILL.md:128 | SKILL.md:151 | its text in the run directory; the user can overrule the undo. Kept or not, write [a close-out](references/plan.md#a-close-out), and start the parts of
-moved | SKILL.md:128 | SKILL.md:223 | whether the work was kept, undone or left unchecked, and the rule that decided it;
+moved | SKILL.md:128 | SKILL.md:222 | whether the work was kept, undone or left unchecked, and the rule that decided it;
 moved | SKILL.md:129 | SKILL.md:151 | its text in the run directory; the user can overrule the undo. Kept or not, write [a close-out](references/plan.md#a-close-out), and start the parts of
 moved | SKILL.md:137 | SKILL.md:158 | the result's text to `result.md` in the run directory, start [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put its marks into
 moved | SKILL.md:138 | SKILL.md:158 | the result's text to `result.md` in the run directory, start [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put its marks into
 moved | SKILL.md:138 | SKILL.md:159 | [the result](#the-result). When [a close-out](references/plan.md#a-close-out) leaves no line without an
 moved | SKILL.md:138 | references/critics.md:174 | The return is not a correction by itself: the user's reply decides whether it is one.
-moved | SKILL.md:145 | SKILL.md:166 | table or plan file: what steps 1 to 3 find goes into step 4's plan message, which, saved
+moved | SKILL.md:145 | SKILL.md:168 | what steps 1 to 3 find goes into step 4's plan message, saved
 moved | SKILL.md:148 | SKILL.md:169 | is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it
 moved | SKILL.md:151 | SKILL.md:169 | is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
-moved | SKILL.md:159 | SKILL.md:176 | in the output of the failing check; when neither has it, step 4's plan includes one session that
+moved | SKILL.md:159 | SKILL.md:177 | in the failing check's output; when neither has it,
 moved | SKILL.md:172 | SKILL.md:189 | Choose the smallest change. Take the first that meets the requirement: remove; move, or link at
 moved | SKILL.md:173 | SKILL.md:190 | the step that needs it; reword; add. Remove is for an instruction the requirement no longer wants or a
 moved | SKILL.md:176 | SKILL.md:192 | never removed to make the change smaller: when its place goes, move it to the file that owns it, or put its removal to the user as a question in the plan that names the fact. A change that turns out to alter the skill's job, its hosts
-moved | SKILL.md:180 | SKILL.md:196 | user's words name the new value: the plan recommends none and asks. A reply that leaves the choice to you
-moved | SKILL.md:181 | SKILL.md:197 | keeps the owning file's value and removes no fact. A fact moved to another file keeps a link from the page it left.
+moved | SKILL.md:180 | SKILL.md:197 | user's words name the new value; the plan recommends none and asks, and a reply that leaves the choice to
+moved | SKILL.md:181 | SKILL.md:198 | you keeps it and removes no fact. A fact moved to another file keeps a link from the page it left.
 moved | SKILL.md:181 | SKILL.md:193 | or its set of reference files goes to Create's step 1 with this sheet. The file that owns a fact is the one
 moved | SKILL.md:182 | SKILL.md:193 | or its set of reference files goes to Create's step 1 with this sheet. The file that owns a fact is the one
-moved | SKILL.md:182 | SKILL.md:197 | keeps the owning file's value and removes no fact. A fact moved to another file keeps a link from the page it left.
-moved | SKILL.md:195 | SKILL.md:211 | the skill's, or the folder of skills when the change spans several. The base is the copy made before edits;
-moved | SKILL.md:196 | SKILL.md:212 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
-moved | SKILL.md:196 | SKILL.md:212 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
-moved | SKILL.md:227 | SKILL.md:221 | Tell the user in this order; the text that delivers the work opens the same way:
+moved | SKILL.md:182 | SKILL.md:198 | you keeps it and removes no fact. A fact moved to another file keeps a link from the page it left.
+moved | SKILL.md:195 | SKILL.md:210 | the skill's, or the folder of skills when the change spans several. The base is the copy made before edits;
+moved | SKILL.md:196 | SKILL.md:211 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
+moved | SKILL.md:196 | SKILL.md:211 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
+moved | SKILL.md:227 | SKILL.md:220 | Tell the user in this order; the text that delivers the work opens the same way:
 
 moved | SKILL.md:71 | SKILL.md:100 | [checks.md](references/checks.md#choosing-the-check). Between two approaches that both meet the sheet, a
-moved | SKILL.md:194 | SKILL.md:209 | `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`, adding
+moved | SKILL.md:194 | SKILL.md:208 | `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`, adding
 
-moved | SKILL.md:233 | SKILL.md:227 | the user's instructions and questions the work does not meet, from the
-moved | SKILL.md:234 | SKILL.md:227 | the user's instructions and questions the work does not meet, from the
-moved | SKILL.md:234 | SKILL.md:229 | each `unknown` as unverified;
-moved | SKILL.md:235 | SKILL.md:229 | [table](references/reflection.md#what-a-part-returns), each `unknown` as unverified;
+moved | SKILL.md:233 | SKILL.md:226 | the user's instructions and questions the work does not meet, from the
+moved | SKILL.md:234 | SKILL.md:226 | the user's instructions and questions the work does not meet, from the
+moved | SKILL.md:234 | SKILL.md:228 | each `unknown` as unverified;
+moved | SKILL.md:235 | SKILL.md:228 | [table](references/reflection.md#what-a-part-returns), each `unknown` as unverified;
 moved | references/checks.md:33 | references/checks.md:34 | The plan gives each check, and each practical run, its cost: its agents and sessions, the model of each, and the tokens estimated
 moved | references/critics.md:163 | references/critics.md:164 | it starts, the skill's files (for a change, its diff), the plan and the sheet, or on Research the plan alone, with the messages
+moved | SKILL.md:7 | SKILL.md:9 | decide, collecting feedback from sessions, or improving a text written for people.
+moved | SKILL.md:79 | SKILL.md:105 | opened in two sentences at most with what you will make and what you need from them. Then:
+moved | SKILL.md:139 | SKILL.md:162 | and give the result.
+moved | SKILL.md:146 | SKILL.md:169 | to stand for the sheet in the critic's brief. It leaves
+moved | SKILL.md:185 | SKILL.md:201 | when the change adds a step, a route, a script or a file. Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
+moved | SKILL.md:186 | SKILL.md:201 | Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
+moved | SKILL.md:187 | SKILL.md:201 | Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
+moved | SKILL.md:242 | SKILL.md:87 | repository tracks its research records, write the record as
+moved | references/critics.md:24 | references/critics.md:24 | each counts as the weakest mark of its set
+moved | references/critics.md:25 | references/critics.md:25 | absent), unless the plan's rule said otherwise before the run; an `unknown` is not called a demonstrated
+moved | references/critics.md:192 | references/critics.md:194 | it opens every mark of a set that is not the weakest of it, at the place cited and returns `confirmed` or `not
+
+moved | SKILL.md:24 | SKILL.md:122 | copy the folder into the run directory before edits, including untracked files.
+moved | references/checks.md:118 | references/critics.md:24 | each counts as the weakest mark of its set
+moved | SKILL.md:24 | SKILL.md:25 | the file that owns it.
+moved | references/checks.md:131 | references/checks.md:140 | how `part` counts is the plan's rule,
