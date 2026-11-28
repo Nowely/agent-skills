@@ -413,9 +413,9 @@ test("review 10: the Summary's verdict bar and its legend are in one unit, or bo
     return /keep 1 block, 3 lines/.test(legend) && /fix 1 block, 8 lines/.test(legend) && /question 1 block, 13 lines/.test(legend) || `legend «${legend}»`;
   }));
 
-test("review 11: the sticky file header sits right below the toolbar as the toolbar grows with a filter token, at 1024 px",
-  "the toolbar's height was measured once, so a toolbar that wrapped after a filter token hid the file header",
-  cased(BIG_URL + "#code", { viewport: { width: 1024, height: 800 } }, async (page) => {
+test("review 11: the sticky file header sits right below the toolbar as the toolbar grows with a filter token, at 1160 px, where the bar holds one row before the token in any font",
+  "the toolbar's height was measured once, so a toolbar that wrapped after a filter token hid the file header; at 1024 px a wider font wrapped the bar before the token, and the units table ran under the context panel (CI's first browser run)",
+  cased(BIG_URL + "#code", { viewport: { width: 1160, height: 800 } }, async (page) => {
     await page.waitForTimeout(300);
     const before = await page.evaluate(() => document.querySelector(".toolbar").offsetHeight);
     await page.goto(BIG_URL + "#details/structure"); await page.waitForSelector(".tabbar");
@@ -427,6 +427,18 @@ test("review 11: the sticky file header sits right below the toolbar as the tool
       return { grew: bar.offsetHeight, head: file.querySelector(".fh").getBoundingClientRect().top, bottom: bar.getBoundingClientRect().bottom };
     });
     return r.grew > before && Math.abs(r.head - r.bottom) <= 1 || JSON.stringify({ before, ...r });
+  }));
+
+test("review 11b: a units table wider than its column scrolls inside it, never under the context panel, whatever the font",
+  "at 1024 px CI's wider font pushed the table's Show in Code under the context panel, where no click reached it (CI's first browser run)",
+  cased(BIG_URL + "#details/structure", { viewport: { width: 1024, height: 800 },
+    init: () => document.addEventListener("DOMContentLoaded", () => { const s = document.createElement("style"); s.textContent = "body { letter-spacing: .12em; }"; document.head.append(s); }) }, async (page) => {
+    await settle(page);
+    const r = await page.evaluate(() => { const w = document.querySelector("#det-body .tbl-scroll"), a = document.querySelector("#ctx-details").getBoundingClientRect();
+      return { right: Math.round(w.getBoundingClientRect().right), panel: Math.round(a.left), scrolls: w.scrollWidth > w.clientWidth }; });
+    await page.click('#det-body [data-act="unit-code"]', { timeout: 3000 }); await settle(page);
+    const tab = await page.evaluate(() => document.querySelector('.tabbar [aria-selected="true"]')?.textContent.trim());
+    return r.right <= r.panel && r.scrolls && /^Code/.test(tab ?? "") || JSON.stringify({ ...r, tab });
   }));
 
 test("review 12: the keys help opens at its top, and the sub-tabs at 1024 px show every tab",

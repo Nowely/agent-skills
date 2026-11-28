@@ -392,6 +392,10 @@ tr.findhit td { box-shadow: inset 0 0 0 999px var(--hl) !important; }
 tr.findhit td.cd { outline: 2px solid var(--accent); outline-offset: -2px; }
 .warnings li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 0; }
 .tbl.compact td { padding: 7px 10px; }
+/* A compact table's headings wrap before the table outgrows its column; one that still does scrolls inside it, never
+   under the context panel beside it. */
+.tbl.compact th { white-space: normal; }
+.tbl-scroll { overflow-x: auto; border-radius: 8px; }
 .clamp1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

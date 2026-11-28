@@ -13,6 +13,9 @@ forensics remain in the repository references and release notes.
 - The printout's description said it lists only the blocks not kept; since 0.48.0 it lists every block with its
   description and verdict, not its lines. SKILL.md, the data contract, the agents' reference, the code and the
   printout's own heading now say so, and the critic is asked whether each block kept whole holds as one.
+- The units table in Details scrolls inside its column when it is wider, and compact tables wrap their headings
+  first: at 1024 px with a wider font its Show in Code ran under the context panel, where no click reached it.
+  CI's first run of the page's browser suite found it.
 
 ### Flows in the record
 
