@@ -10,6 +10,60 @@ pinned to a commit is that commit's address, with today's beside it. A path that
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
 before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
+## E178. review's diff parser accepts only `diff --git` headers
+
+**Evidence, level 1.** `review/scripts/diff.mjs:2` says it reads "a two-sided patch with `diff --git` headers", `:20`
+matches `^diff --git a\/(.*) b\/\1$`, and `:52` refuses a diff with no such header. This is an input format, not a call
+to the git executable. The observation is static: no diff from another version-control system was fed to it, and
+whether one can be converted is untested.
+
+Deferred: it lies outside rnd, and is part of the portability change that
+`research/2026-11-26-skill-creator/13-next.md` names.
+
+**Issue text.** review's parser requires Git-style `diff --git` headers. Decide whether the shared page names that
+format as a requirement of the input, or the capability needed (a two-sided patch with addressable lines), with the
+conversion from another system left to its adapter.
+
+## E177. orchestrate's shared page and worktree driver assume git
+
+**Evidence, level 1.** `orchestrate/SKILL.md:17-20` lists git commands the coordinator may run (`git status`,
+`git log`, `git diff --stat`). `orchestrate/scripts/drivers.mjs:196-199` runs `git` directly, and `:202-210`
+(`makeWorktree`) fails with "is not a git repository" when `git rev-parse HEAD` fails and otherwise runs
+`git worktree add --detach`. The observation is static: no run was made in a repository of another version-control
+system.
+
+Deferred: it lies outside rnd, and is part of the portability change that
+`research/2026-11-26-skill-creator/13-next.md` names.
+
+**Issue text.** orchestrate's shared instructions name git commands and its worktree driver requires a git
+repository. Decide whether the isolated working copy is a capability that the page names neutrally, with the git
+mechanism kept in a git adapter, under the repository's portable-workflows rule.
+
+## E170. Two entrust pages brief an architecture critic in opposite ways on the coordinator's reasons
+
+**Evidence, level 1.** `orchestrate/references/roles.md:63` has the architecture critic read "the approach the
+card chose with the coordinator's reasons". `skill-creator/references/critics.md:6` at `1ca6e90` said of every
+judge it starts, the architecture critic among them, "No brief carries your reasons or what you expect to hear";
+today `rnd/references/critics.md:15`, the skill's new name, says: "No brief carries your reasons or what you
+expect the judge to find". Both
+pages ship in the same plugin and use the same role name. Found while comparing the coordinator's own critic
+briefs with the pages (the skill-creator run of 2026-11-26).
+
+**Issue text.** orchestrate's architecture critic is given the coordinator's reasons for the chosen approach, and
+rnd's (formerly skill-creator) is forbidden them. Decide whether the role takes the reasons, and keep that rule in one place
+that the other page links.
+
+## E169. The cleanup help gives "no state directory" as a cause of its usage exit, and a listing with none exits 0
+
+**Evidence, level 3.** `cleanup/scripts/cleanup.mjs:121`, in the `--help` text, lists "no state directory" among
+the causes of `EXIT.USAGE` (2). At `e341ed1`, `--list` with `ENTRUST_STATE_DIR` naming a directory that does not
+exist and an empty `TMPDIR` printed "Nothing this cleanup covers is on this machine." and exited 0. No `die()` in
+the file names a missing state directory; `:249` and `:254` reject only a relative `TMPDIR` or state path.
+
+**Issue text.** The cleanup help says a missing state directory exits 2, while `--list` without one reports an empty
+machine and exits 0. Decide which is meant: drop the clause from the help, or make a missing state directory a
+usage exit.
+
 ## E168. Under orchestrate the advisor is told two opposite default models
 
 **Evidence, level 1.** `orchestrate/references/roles.md:89` at `256c326` says the orchestrate page's model and effort

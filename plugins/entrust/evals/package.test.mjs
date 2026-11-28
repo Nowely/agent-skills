@@ -157,7 +157,7 @@ test("every file the plugin needs to run is in the payload",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
-      ...under("skills/swarm/scripts"), ...under("skills/cleanup/scripts"),
+      ...under("skills/claude/scripts"), ...under("skills/swarm/scripts"), ...under("skills/cleanup/scripts"),
       ...under("skills/orchestrate/scripts"), ...under("skills/prepare-feedback/scripts"),
       ...under("skills/review/scripts"), ...under("skills/design-to-code/scripts"),
     ];
