@@ -23,21 +23,44 @@ export function checkoutOf(dir) {
   const root = top.stdout.trim(), head = git(root, ["rev-parse", "HEAD"]);
   return { root, sha: head.status === 0 ? head.stdout.trim() : null };
 }
-// A file's lines in a root, never outside it: at a commit through git, or on disk for a directory.
+// A file's lines in a root, never outside it: at a commit through git, or on disk for a directory. A directory is no
+// file, and a line keeps no carriage return. `many` reads a list of files at the commit in one git process.
+const linesOf = (text) => text.split("\n").map((l) => l.replace(/\r$/, ""));
 function reader(root, sha) {
   const cache = new Map();
-  return (rel) => {
+  const inside = (rel) => { const abs = path.resolve(root, rel); return abs !== root && abs.startsWith(root + path.sep) ? path.relative(root, abs).split(path.sep).join("/") : null; };
+  const many = (rels) => {
+    const want = [...new Set(rels)].filter((rel) => !cache.has(rel));
+    if (!sha) { for (const rel of want) read(rel); return; }
+    const ok = want.filter((rel) => { const at = inside(rel); if (!at || /\n/.test(at)) { cache.set(rel, null); return false; } return true; });
+    if (!ok.length) return;
+    const r = spawnSync("git", ["-C", root, "cat-file", "--batch"], { input: ok.map((rel) => `${sha}:${inside(rel)}\n`).join(""), maxBuffer: 1024 * 1024 * 1024 });
+    const out = r.status === 0 ? r.stdout : Buffer.alloc(0);
+    let at = 0;
+    for (const rel of ok) {
+      const eol = out.indexOf(10, at);
+      if (eol < 0) { cache.set(rel, null); continue; }
+      const head = out.subarray(at, eol).toString("utf8").split(" ");
+      at = eol + 1;
+      if (head.length !== 3) { cache.set(rel, null); continue; }
+      const size = +head[2];
+      cache.set(rel, head[1] === "blob" ? linesOf(out.subarray(at, at + size).toString("utf8")) : null);
+      at += size + 1;
+    }
+  };
+  const read = (rel) => {
     if (cache.has(rel)) return cache.get(rel);
+    if (sha) { many([rel]); return cache.get(rel) ?? null; }
     let lines = null;
     const abs = path.resolve(root, rel);
-    if (abs === root || !abs.startsWith(root + path.sep)) { cache.set(rel, null); return null; }
-    if (sha) { const r = git(root, ["show", `${sha}:${path.relative(root, abs).split(path.sep).join("/")}`]); if (r.status === 0) lines = r.stdout.split(/\r?\n/); }
-    else if (fs.existsSync(abs)) {
-      try { const real = fs.realpathSync(abs); if (real.startsWith(fs.realpathSync(root) + path.sep) && fs.statSync(real).isFile()) lines = fs.readFileSync(real, "utf8").split(/\r?\n/); } catch { lines = null; }
+    if (inside(rel) && fs.existsSync(abs)) {
+      try { const real = fs.realpathSync(abs); if (real.startsWith(fs.realpathSync(root) + path.sep) && fs.statSync(real).isFile()) lines = linesOf(fs.readFileSync(real, "utf8")); } catch { lines = null; }
     }
     cache.set(rel, lines);
     return lines;
   };
+  read.many = many;
+  return read;
 }
 
 // Every {at, quote} in the record that claims the reviewed code or the files beside the record. A reply's place is in
@@ -59,9 +82,10 @@ export function quotedPlaces(review) {
 function standsAt(lines, p, quote, json) {
   const want = strip(quote);
   if (!want || p.from < 1 || p.from > lines.length) return false;
-  const named = strip(lines.slice(p.from - 1, p.to).join("")).length, window = lines.slice(p.from - 1, p.to + Math.max(quote.split("\n").length, 1) + 20).join("");
-  for (const text of json ? [window, window.replace(/\\(["\\/])/g, "$1").replace(/\\n/g, "")] : [window]) {
-    const i = strip(text).indexOf(want);
+  const lines0 = lines.slice(p.from - 1, p.to).join(""), window = lines.slice(p.from - 1, p.to + Math.max(quote.split("\n").length, 1) + 20).join("");
+  const unescape = (s) => s.replace(/\\(["\\/])/g, "$1").replace(/\\n/g, "");
+  for (const as of json ? [(s) => s, unescape] : [(s) => s]) {
+    const named = strip(as(lines0)).length, i = strip(as(window)).indexOf(want);
     if (i >= 0 && (i < named || (named === 0 && i === 0))) return true;
   }
   return false;
@@ -81,12 +105,17 @@ export function checkQuotes(review, { roots, diffFiles = [], heads = [] }) {
     if (!p) { if (/:L?\d+/.test(q.at) && looksLikeFile(q.at.split(":")[0])) result.missing.push({ who: q.who, at: q.at, why: "form" }); result.skipped++; continue; }
     const file = inDiff(p.path), paths = [p.path, ...(file && file.path !== p.path ? [file.path] : [])];
     const found = readers.flatMap((read) => paths.map((rel) => read(rel))).filter(Boolean);
-    if (!found.length) { if (looksLikeFile(p.path)) result.missing.push({ who: q.who, at: q.at, why: "file" }); result.skipped++; continue; }
+    // a line the diff removes, cited by its old number without "(base)": in a file that stays or in one deleted
+    const removed = file && file.hunks.flat().filter((l) => l.kind === "del" && l.old >= p.from && l.old <= p.to + 20).sort((a, b) => a.old - b.old);
+    const wasRemoved = () => removed?.length && standsAt(Object.assign([], ...removed.map((l) => ({ [l.old - 1]: l.text }))), p, q.quote, false);
+    if (!found.length) {
+      if (wasRemoved()) { result.checked++; result.base.push({ who: q.who, at: q.at }); continue; }
+      if (looksLikeFile(p.path)) result.missing.push({ who: q.who, at: q.at, why: "file" });
+      result.skipped++; continue;
+    }
     result.checked++;
     if (found.some((lines) => standsAt(lines, { ...p, path: paths[0] }, q.quote, /\.json$/i.test(p.path)))) continue;
-    // a line the diff removes, cited by its old number without "(base)"
-    const removed = file && file.hunks.flat().filter((l) => l.kind === "del" && l.old >= p.from && l.old <= p.to + 20).sort((a, b) => a.old - b.old);
-    if (removed?.length && standsAt(Object.assign([], ...removed.map((l) => ({ [l.old - 1]: l.text }))), p, q.quote, false)) { result.base.push({ who: q.who, at: q.at }); continue; }
+    if (wasRemoved()) { result.base.push({ who: q.who, at: q.at }); continue; }
     result.mismatches.push({ who: q.who, at: q.at, quote: q.quote, line: found[0][p.from - 1] ?? null });
   }
   return result;
@@ -112,8 +141,70 @@ const MARKS = [
 const unquote = (s) => s.replace(/^["'`]|["'`]$/g, "");
 const definitionIn = (text) => { for (const re of DEFINITIONS) { const m = re.exec(text); if (m && !KEYWORDS.has(m[1])) return m[1]; } return null; };
 const indentOf = (text) => /^\s*/.exec(text)[0].replace(/\t/g, "  ").length;
+const COMMENT = /^\s*(?:\/\/|#|\*|\/\*)/;
 // Production code only: a test asserts behaviour and is evidence for a route, not a step of it; docs and config run nothing.
 const running = (p) => purposeOfPath(p) === "production";
+
+// Where a name is code, not prose: outside a string (inside a template's `${…}` it is code again) and before a comment.
+function inCode(t, at, hash) {
+  let q = null;
+  const nest = [];
+  for (let i = 0; i < at; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === "\\") { i++; continue; }
+      if (q === "`" && c === "$" && t[i + 1] === "{") { nest.push(0); q = null; i++; continue; }
+      if (c === q) q = null;
+      continue;
+    }
+    if ((c === "/" && (t[i + 1] === "/" || t[i + 1] === "*")) || (hash && c === "#")) return false;
+    if (c === '"' || c === "'" || c === "`") { q = c; continue; }
+    if (nest.length && c === "{") nest[nest.length - 1]++;
+    else if (nest.length && c === "}") { if (nest[nest.length - 1] === 0) { nest.pop(); q = "`"; } else nest[nest.length - 1]--; }
+  }
+  return q === null;
+}
+function firstCall(t, hash) {
+  if (COMMENT.test(t)) return null;
+  for (const m of t.matchAll(CALL.re)) if (inCode(t, m.index, hash)) return m;
+  return null;
+}
+const CALL = { re: null };
+// The modules a file imports, by the path it names them by, across lines: `from "./a.js"`, `require("./a")`,
+// `import("./a.js")`, Python's `from pkg.a import` and `import pkg.a`, Go's import paths.
+function importsOf(text, file) {
+  if (/\.go$/.test(file)) return [...text.matchAll(/\bimport\s*(?:\(([^)]*)\)|("[^"]+"))/g)].flatMap((m) => [...(m[1] ?? m[2]).matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+  if (/\.py$/.test(file)) return [...text.matchAll(/^\s*(?:from\s+([.\w]+)\s+import\b|import\s+([.\w]+))/gm)].map((m) => (m[1] ?? m[2]).replace(/\./g, "/"));
+  return [...text.matchAll(/\b(?:from|import|require)\s*\(?\s*["'`]([^"'`]+)["'`]/g)].map((m) => m[1]);
+}
+// The statements that import names, across lines, where a name imported through an index or a package shows.
+const importStatements = (text) => [...text.matchAll(/\bimport\b[^;]*?\bfrom\s*["'`][^"'`]+["'`]|\b(?:const|let|var)\s*\{[^}]*\}\s*=\s*require\s*\(|^\s*from\s+[.\w]+\s+import\s+(?:\([^)]*\)|[^\n]+)/gms)].map((m) => m[0]);
+// Source files in languages whose imports are not read here: a call in one counts; a patch, a log or data is no code.
+const CODE = /\.(?:rb|java|kt|kts|scala|rs|c|cc|cpp|cxx|h|hpp|cs|php|swift|m|mm|dart|ex|exs|erl|clj|lua|pl|sh|vue|svelte)$/;
+const wordIn = (w, text) => new RegExp(`(?<![\\w$])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w$])`).test(text);
+// A call in another file reaches the changed function only when that file imports the function's file, or names the
+// function in an import; a file that defines the name itself calls its own. A member call, `m.total(`, reaches it from a
+// file that imports its file, or from that file itself. In Go a call reaches it from the same package, or, qualified,
+// from a file importing that package. Calls through a renamed default import are not followed.
+function reaches(p, name, qualifier, home, textOf) {
+  if (p === home) return true;
+  const lines = textOf(p), text = lines.join("\n");
+  const stemOf = (f) => path.posix.basename(f).replace(/\.[^.]+$/, ""), bare = (f) => f.replace(/\.[^./]+$/, "");
+  const homeStem = stemOf(home), homeDir = path.posix.basename(path.posix.dirname(home)), homeBare = bare(home);
+  // a relative path is resolved from the importing file, so a copy of the module elsewhere imports its own copy
+  const importsHome = importsOf(text, p).some((spec) => {
+    if (/^\.\.?\//.test(spec) && !/\.py$/.test(p)) { const at = bare(path.posix.normalize(path.posix.join(path.posix.dirname(p), spec))); return at === homeBare || (homeStem === "index" && at === path.posix.dirname(home)); }
+    const s = stemOf(spec); return s === homeStem || (homeStem === "index" && s === homeDir) || (/\.go$/.test(p) && s === homeDir);
+  });
+  if (/\.go$/.test(p)) return qualifier ? importsHome : path.posix.dirname(p) === path.posix.dirname(home);
+  if (qualifier) return importsHome;
+  if (lines.some((t) => definitionIn(t) === name)) return false;
+  if (!/\.(?:[cm]?[jt]sx?|py)$/.test(p)) return CODE.test(p);
+  // a name imported from another module of this repository by its relative path is that module's; one imported through
+  // an index or a package may be the changed function
+  const elsewhere = (s) => { const spec = /["'`]([^"'`]+)["'`]/.exec(s)?.[1] ?? ""; return /^\.\.?\//.test(spec) && !/\.py$/.test(p) && stemOf(spec) !== "index" && !/\/$|^\.\.?$/.test(spec); };
+  return importsHome || importStatements(text).some((s) => wordIn(name, s) && !elsewhere(s));
+}
 
 export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}) {
   const found = [], seen = new Set(), touched = new Map(), read = reader(path.resolve(checkout.root), checkout.sha);
@@ -137,10 +228,13 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
         near.get(n).push(address(l));
       }
       for (const [n, changes] of near) {
-        const own = head[n - 1] ?? "", depth = own.trim() ? indentOf(own) : Infinity;
-        for (let k = n - 1; k >= 1; k--) {
-          const text = head[k - 1], name = text && definitionIn(text);
-          if (!name || indentOf(text) >= depth) continue;
+        const own = head[n - 1] ?? "";
+        let depth = own.trim() ? indentOf(own) : Infinity;
+        for (let k = n - 1; k >= 1 && depth > 0; k--) {
+          const text = head[k - 1];
+          if (!text?.trim() || COMMENT.test(text) || indentOf(text) >= depth) continue;
+          const name = definitionIn(text);
+          if (!name) { depth = indentOf(text); continue; }
           const at = `${file.path}:${k}`, had = found.find((c) => c.kind === "function" && c.name === name && c.at === at);
           if (had) had.changes = [...new Set([...(had.changes ?? []), ...changes])];
           else add({ kind: "function", name, at, quote: text.trim().slice(0, 160), changes });
@@ -155,30 +249,19 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
   if (checkout.sha && touched.size) {
     const names = [...touched.keys()].map((n) => n.replace(/\$/g, "\\$"));
     const r = git(checkout.root, ["grep", "-n", "-I", "--full-name", "-w", "-E", names.join("|"), checkout.sha, "--"]);
-    const call = new RegExp(`(?<![\\w$.])(${names.join("|")})\\s*\\(`, "g"), per = new Map(), texts = new Map();
-    const textOf = (p) => { if (!texts.has(p)) texts.set(p, read(p) ?? []); return texts.get(p); };
-    const word = (w) => new RegExp(`(?<![\\w$-])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w$-])`);
-    // A call in another file reaches the changed function only when that file imports it, by its name or its file's;
-    // a file that defines the name itself calls its own.
-    const reaches = (p, name) => {
-      const home = touched.get(name).replace(/:\d+$/, "");
-      if (p === home) return true;
-      const lines = textOf(p);
-      if (lines.some((t) => definitionIn(t) === name)) return false;
-      if (!/\.(?:[cm]?[jt]sx?|py)$/.test(p)) return true;
-      const stem = word(path.posix.basename(home).replace(/\.[^.]+$/, "")), named = word(name);
-      return lines.some((t) => /\bimport\b|\brequire\s*\(|^\s*from\s/.test(t) && (stem.test(t) || named.test(t)));
-    };
-    // A name in a comment or inside a string is prose: «this can carry (…)» calls nothing.
-    const quoted = (t, at) => { const before = t.slice(0, at).replace(/\\./g, ""); return ['"', "'", "`"].some((q) => before.split(q).length % 2 === 0); };
-    const firstCall = (t) => { if (/^\s*(?:\/\/|#|\*|\/\*)/.test(t)) return null; call.lastIndex = 0; for (const m of t.matchAll(call)) if (!quoted(t, m.index)) return m; return null; };
+    // a call: the name, or a member of one object, `m.total(`, `this.save(`; never one deeper in a chain
+    CALL.re = new RegExp(`(?<![\\w$.])((?:[A-Za-z_$][\\w$]*\\.)?)(${names.join("|")})\\s*\\(`, "g");
+    const per = new Map();
+    const rows = (r.status === 0 ? r.stdout.split("\n") : []).map((row) => /^[^:]+:(.+?):(\d+):(.*)$/.exec(row)).filter((m) => m && running(m[1]));
+    const hits = rows.map((m) => ({ m, hit: firstCall(m[3], /\.py$/.test(m[1])) })).filter(({ m, hit }) => hit && definitionIn(m[3]) !== hit[2]);
+    read.many(hits.map(({ m }) => m[1]));
+    const textOf = (p) => read(p) ?? [];
     let total = 0;
-    for (const row of r.status === 0 ? r.stdout.split("\n") : []) {
+    for (const { m, hit } of hits) {
       if (total >= calls) break;
-      const m = /^[^:]+:(.+?):(\d+):(.*)$/.exec(row); if (!m || !running(m[1])) continue;
-      const hit = firstCall(m[3]); if (!hit || definitionIn(m[3]) === hit[1] || (per.get(hit[1]) ?? 0) >= perName) continue;
-      const atCall = `${m[1]}:${m[2]}`; if (touched.get(hit[1]) === atCall || !reaches(m[1], hit[1])) continue;
-      add({ kind: "call", name: hit[1], at: atCall, quote: m[3].trim().slice(0, 160) }); per.set(hit[1], (per.get(hit[1]) ?? 0) + 1); total++;
+      const name = hit[2], atCall = `${m[1]}:${m[2]}`;
+      if ((per.get(name) ?? 0) >= perName || touched.get(name) === atCall || !reaches(m[1], name, hit[1], touched.get(name).replace(/:\d+$/, ""), textOf)) continue;
+      add({ kind: "call", name, at: atCall, quote: m[3].trim().slice(0, 160) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
     }
   }
   return found;
@@ -214,7 +297,7 @@ export function driftOf(files, checkout) {
     const lines = read(file.path), added = file.hunks.flat().filter((l) => l.kind === "add");
     if (!added.length) continue;
     if (!lines) return `${file.path} is not in the checkout`;
-    const off = added.find((l) => (lines[l.new - 1] ?? null) !== l.text);
+    const off = added.find((l) => (lines[l.new - 1] ?? null) !== l.text.replace(/\r$/, ""));
     if (off) return `${file.path}:${off.new} reads «${(lines[off.new - 1] ?? "").trim()}», and the diff adds «${off.text.trim()}» there`;
   }
   return null;

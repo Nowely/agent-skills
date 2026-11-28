@@ -40,8 +40,12 @@ forensics remain in the repository references and release notes.
   routes — in `ground.json`. From then on `check` reads every quote in the record at its `path:line` at that commit
   or beside the record, never outside them, and refuses one that is not there, saying what is; it names a removed
   line cited without `(base)` and a place that is no file, skips a source at another revision, and warns of each found
-  place no route follows. A call in another file counts when that file imports the function; a namesake defined
-  there, a comment or a string does not. A later checkout changes nothing. The printout lists the unfollowed places for the
+  place no route follows. A call in another file counts when that file imports the function's module — a relative
+  path resolved from the importing file, so a copy of the module elsewhere imports its own — or names the function in
+  an import, across lines; a member call, `m.total(`, counts from a file importing the module. A namesake defined
+  there, a comment, a string, or a change in an object literal or a class body outside any function does not. Files
+  are read at the commit in one git process, as blobs only, without carriage returns. A later checkout changes
+  nothing. The printout lists the unfollowed places for the
   checking agents; the list is the script's, never complete. Python and Go test files, and files under a `test/` or
   `tests/` directory, count as tests. A check for a step or a transition no test confirms is written as a charter.
 

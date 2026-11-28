@@ -18,6 +18,7 @@ import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, REQUIREMENT_STAT
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
+import { candidatesOf, checkoutOf, checkQuotes, driftOf } from "../plugin/skills/review/scripts/ground.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -589,6 +590,42 @@ test("ground reads at the reviewed commit and refuses a checkout that is not the
     const later = report("check", file);
     git("checkout", "-q", "-");
     return later.status === 0 || `after a checkout: ${later.stderr}`;
+  });
+
+test("ground's reading holds at the edges: a CRLF file is the reviewed state, a JSON quote must begin on its line, a removed line in a deleted file is a base line, a directory is no file; a call is found across a multi-line import, through a namespace, after an apostrophe and inside a template, and not in a trailing comment, in a copy of the module elsewhere, or for a change in an object literal",
+  "the verifier of ground: CRLF files made ground refuse every checkout, an escaped JSON line let the next line's quote pass, and the import test kept or dropped callers by the look of a line (PR 119)",
+  () => {
+    const base = fs.mkdtempSync(path.join(run, "ground3-")), faults = [];
+    const repo = (name, before, after) => {
+      const d = path.join(base, name), git = (...a) => spawnSync("git", ["-C", d, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+      const put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(d, f); fs.mkdirSync(path.dirname(p), { recursive: true }); if (t === null) fs.rmSync(p); else fs.writeFileSync(p, t); } };
+      fs.mkdirSync(d); git("init", "-q"); put(before); git("add", "-A"); git("commit", "-qm", "b"); put(after); git("add", "-A"); git("commit", "-qm", "h");
+      return { checkout: checkoutOf(d), files: parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout) };
+    };
+    const quote = (r, at, q) => checkQuotes({ x: { at, quote: q } }, { roots: [{ root: r.checkout.root, sha: r.checkout.sha }], diffFiles: r.files });
+    const crlf = repo("crlf", { "a.js": "export function f() {\r\n  return 1;\r\n}\r\n" }, { "a.js": "export function f() {\r\n  return 2;\r\n}\r\n" });
+    if (driftOf(crlf.files, crlf.checkout)) faults.push(`crlf: ${driftOf(crlf.files, crlf.checkout)}`);
+    const json = repo("json", { "p.json": "{\n}\n" }, { "p.json": '{\n  "a": "say \\"hi\\"",\n  "b": 1\n}\n' });
+    if (quote(json, "p.json:2", '"a": "say "hi""').mismatches.length || !quote(json, "p.json:2", '"b": 1').mismatches.length) faults.push("json");
+    const gone = repo("gone", { "old.js": "export const k = 1;\n", "b.js": "x\n" }, { "old.js": null, "b.js": "y\n" });
+    if (quote(gone, "old.js:1", "export const k = 1;").base.length !== 1) faults.push("a removed line in a deleted file");
+    const a = "export function total(n) {\n  return n;\n}\n", a2 = "export function total(n) {\n  return n * 2;\n}\n";
+    const callers = {
+      "src/multi.js": "import {\n  total,\n} from './a.js';\nexport const m = () => total(1);\n",
+      "src/ns.js": "import * as a from './a.js';\nexport const n = () => a.total(1);\n",
+      "src/apos.js": "import { total } from './a.js';\nconst s = \"it's\"; export const p = () => total(1);\n",
+      "src/tpl.js": "import { total } from './a.js';\nexport const t = (n) => `v ${total(n)}`;\n",
+      "src/cmt.js": "import './a.js';\nexport const c = () => 1; // total(2) is the sum\n",
+      "copy/a.js": a, "copy/use.js": "import { total } from './a.js';\nexport const u = () => total(3);\n",
+      "src/cfg.js": "function helper() {}\nexport const cfg = {\n  k: 1,\n};\n",
+    };
+    const calls = repo("calls", { "src/a.js": a, ...callers }, { "src/a.js": a2, "src/cfg.js": callers["src/cfg.js"].replace("k: 1", "k: 2") });
+    const found = candidatesOf(calls.files, calls.checkout).map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call total src/apos.js:2", "call total src/multi.js:4", "call total src/ns.js:2", "call total src/tpl.js:2", "function total src/a.js:1"];
+    if (JSON.stringify(found) !== JSON.stringify(want)) faults.push(`calls: ${JSON.stringify(found)}`);
+    // git shows a directory as a listing of its files: that is no file to quote
+    if (quote(calls, "src:3", "a.js").checked) faults.push("a directory read as a file");
+    return !faults.length || faults.join("; ");
   });
 
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
