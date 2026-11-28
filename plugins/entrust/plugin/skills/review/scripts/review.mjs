@@ -3,8 +3,10 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
+import { checkQuotes, entriesOf, onRoute, readGround, unseenSteps, GROUND } from "./ground.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -62,6 +64,11 @@ export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove", "questi
 // What a question asks of its resolver: a choice, a fact, or evidence. The number never decides the kind.
 export const QUESTION_KINDS = ["decision", "fact", "evidence"];
 export const COVERAGE_KINDS = ["ran", "read", "not_checked"];
+// Two revision texts name the same code when they are equal, or when one is an abbreviated hash of the other.
+export const sameRevision = (a, b) => {
+  const x = String(a ?? "").trim().toLowerCase(), y = String(b ?? "").trim().toLowerCase();
+  return Boolean(x && y) && (x === y || (Math.min(x.length, y.length) >= 7 && /^[0-9a-f]+$/.test(x) && /^[0-9a-f]+$/.test(y) && (x.startsWith(y) || y.startsWith(x))));
+};
 // Who raised a point against the draft, and what the review did with it.
 export const CHALLENGERS = ["target", "critic", "verifier", "reviewer"];
 export const OUTCOMES = ["accepted", "rejected", "owner"];
@@ -91,7 +98,8 @@ export const PURPOSES = ["production", "tests", "styles", "assets", "docs", "con
 export function purposeOfPath(p) {
   const base = p.split("/").pop().toLowerCase();
   const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1) : "";
-  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /\.browser\.mjs$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
+  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /\.browser\.mjs$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)
+    || /^test_.*\.py$/.test(base) || /_test\.(py|go)$/.test(base) || /(^|\/)tests?\//.test(p)) return "tests";
   if (["scss", "css", "less", "sass", "styl"].includes(ext)) return "styles";
   if (["svg", "png", "jpg", "jpeg", "gif", "ico", "webp", "avif", "woff", "woff2", "ttf", "eot"].includes(ext) || /(^|\/)(assets|icons)(\/|$)/.test(p) || /(^|\/)keysets(\/|$)/.test(p)) return "assets";
   if (["md", "mdx", "rst", "txt"].includes(ext) || /^(changelog|readme|license)/.test(base)) return "docs";
@@ -260,6 +268,8 @@ export function check(review, files, directory) {
   for (const f of review.findings) {
     // An id travels into anchors and hrefs: letters, digits, "_" and "-" only, so no quote or markup can ride along.
     if (!/^[A-Za-z0-9_-]+$/.test(String(f.id))) errors.push(`finding ${f.id}: id is letters, digits, "_" or "-"`);
+    // the page and the printout write F before an id, so one that names itself a finding reads twice
+    else if (/^f(?:[_-]|\d)/i.test(String(f.id))) warnings.push(`finding ${f.id}: the page writes F before an id, so it reads F${f.id}: drop the leading "${String(f.id).slice(0, 1)}"`);
     for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
@@ -437,6 +447,7 @@ export function check(review, files, directory) {
       if (!COVERAGE_KINDS.includes(c?.kind)) errors.push(`${who}: kind is one of ${COVERAGE_KINDS.join(", ")}`);
       if (!text(c?.text)) errors.push(`${who} has no text`);
       if (c?.revision !== undefined && !text(c.revision)) errors.push(`${who}: revision is empty`);
+      for (const k of ["by", "where"]) if (c?.[k] !== undefined && !text(c[k])) errors.push(`${who}: ${k} is empty`);
       // A run is a claim about a checked version: an external source without a revision cannot travel to it.
       if (c?.kind === "ran" && !text(c.revision) && (Array.isArray(c.sources) ? c.sources : []).some((s) => s && typeof s === "object" && !Array.isArray(s) && s.ref === undefined && text(s.at)))
         warnings.push(`${who} claims a run on an external source without a revision: name the revision it ran at`);
@@ -514,7 +525,9 @@ export function check(review, files, directory) {
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
-    if (block.unit !== undefined && !changed.has(block.unit)) errors.push(`${name}: "${block.unit}" is not a unit of the change`);
+    if (block.unit !== undefined && !changed.has(block.unit)) errors.push(units.some((u) => u.name === block.unit)
+      ? `${name}: "${block.unit}" is marked existing, untouched code: a block's unit is one the change writes or alters; leave "unit" out or name that unit`
+      : `${name}: "${block.unit}" is not a unit of the change: list it in "units", or name the unit the change writes`);
     // Code that stays is read line by line; only what goes entirely may be named whole.
     if ([block.added, block.removed].includes("all") && block.verdict !== "remove") errors.push(`${name}: "all" is for a block to remove; a block to ${block.verdict} lists its lines`);
     let own = 0;
@@ -558,20 +571,102 @@ export function check(review, files, directory) {
     sourceFaults(who, x?.sources, `/replies/${index}`);
   });
 
-  // A route follows one behaviour through its blocks in the order it runs: each step's role there, and from the second
-  // on how it gets what the step before produced.
+  // A test that asserts a step, a link or a check: the run that shows it, a `ran` coverage statement by ref, and the
+  // assertion itself, quoted at its place. Without both the claim is read, and the page never shows it as tested.
+  const confirmations = (who, list) => {
+    if (list === undefined) return;
+    if (!filled(list)) { errors.push(`${who}: confirmedBy lists nothing; leave it out, or name the run and the assertion`); return; }
+    sourceFaults(`${who} confirmedBy`, list);
+    const objects = list.filter((s) => s && typeof s === "object" && !Array.isArray(s)), head = review.passport?.head;
+    for (const s of objects.filter((s) => s.ref !== undefined)) {
+      const m = /^\/coverageStructured\/(\d+)$/.exec(String(s.ref)), c = m && review.coverageStructured?.[+m[1]];
+      if (!m) { errors.push(`${who}: confirmedBy cites ${s.ref}; it cites runs and assertions only`); continue; }
+      if (c && c.kind !== "ran") { errors.push(`${who}: confirmedBy cites coverage statement ${+m[1] + 1}, which is ${c.kind}, not a run`); continue; }
+      if (c && !text(c.revision)) warnings.push(`${who}: confirmedBy cites a run that names no revision: say what code it ran on`);
+      else if (c && text(head) && !sameRevision(c.revision, head)) warnings.push(`${who}: confirmedBy cites a run at ${c.revision}, not the reviewed head ${head}: the page shows it as tested at another revision`);
+    }
+    if (!objects.some((s) => { const m = /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? "")); return m && review.coverageStructured?.[+m[1]]?.kind === "ran"; }))
+      errors.push(`${who}: confirmedBy names no "ran" coverage statement: cite the run, as {"ref": "/coverageStructured/N"}`);
+    if (!objects.some((s) => s.ref === undefined && text(s.at) && text(s.quote))) errors.push(`${who}: confirmedBy quotes no assertion: cite the test's line that asserts it, with its quote`);
+  };
+  // A route follows one behaviour through the code in the order it runs: each step at a block of the diff, or at
+  // unchanged code it passes through, quoted; its role there; and how each step gets what the one before produced —
+  // from the second step on in order, or on `links` when the route forks, joins or loops. A route of `states` has
+  // states for steps and transitions for links, each with its trigger. A step where the path ends early says so in
+  // `stops`, with the finding or question that says whether it should go on.
+  const STEP_LIMIT = 12;
   if (review.routes !== undefined && !Array.isArray(review.routes)) errors.push(`"routes" is not a list`);
-  (Array.isArray(review.routes) ? review.routes : []).forEach((route, index) => {
+  const routes = Array.isArray(review.routes) ? review.routes : [];
+  routes.forEach((route, index) => {
     const who = `route ${index + 1}`;
     if (!text(route?.title)) errors.push(`${who} has no "title": name the behaviour it follows`);
     if (route?.requirements !== undefined && !Array.isArray(route.requirements)) errors.push(`${who}: requirements is not a list`);
     else refs(who, route?.requirements, requirements, "requirement");
-    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several blocks`); return; }
-    route.steps.forEach((step, k) => {
-      const w = `${who} step ${k + 1}`;
-      if (!Number.isInteger(step?.block) || step.block < 1 || step.block > review.blocks.length) errors.push(`${w} names block ${step?.block}, which is not listed`);
-      if (!text(step?.role)) errors.push(`${w} has no "role": what its block does for this behaviour`);
-      if (k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+    if (route?.kind !== undefined && !["path", "states"].includes(route.kind)) errors.push(`${who}: kind is "path" or "states"`);
+    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several places`); return; }
+    const states = route.kind === "states", steps = route.steps, n = steps.length;
+    if (route.links !== undefined && !filled(route.links)) errors.push(`${who}: links lists nothing; leave it out for steps in order`);
+    const links = filled(route.links) ? route.links : null;
+    if (states && !links) errors.push(`${who} follows states and has no links: each transition is a link, its trigger in "via"`);
+    if (n > STEP_LIMIT) warnings.push(`${who} has ${n} steps: above ${STEP_LIMIT} a flow is hard to follow; follow a shorter part, or split it`);
+    steps.forEach((step, k) => {
+      const w = `${who} step ${k + 1}`, hasBlock = step?.block !== undefined, hasAt = step?.at !== undefined;
+      if (hasBlock === hasAt) errors.push(`${w} names ${hasBlock ? "both a block and a place" : "neither a block nor a place"}: a block of the diff, or "at" with the "quote" of its line for code outside it`);
+      else if (hasBlock && (!Number.isInteger(step.block) || step.block < 1 || step.block > review.blocks.length)) errors.push(`${w} names block ${step.block}, which is not listed`);
+      else if (hasAt && (!text(step.at) || !text(step.quote))) errors.push(`${w}: a place outside the diff needs "at" and the "quote" of its line`);
+      else if (hasAt) {
+        const [, p, line] = /^(.*):(\d+)$/.exec(step.at) ?? [], file = p && files.find((f) => f.path === p);
+        if (file && changedLines(file).some((l) => l.kind === "add" && l.new === +line)) warnings.push(`${w} is at ${step.at}, a line this diff changes: name its block instead`);
+      }
+      if (!text(step?.role)) errors.push(`${w} has no "role": ${states ? "what the state is" : "what its code does for this behaviour"}`);
+      if (step?.value !== undefined && !text(step.value)) errors.push(`${w}: value is empty`);
+      if (links && step?.via !== undefined) errors.push(`${w} has "via", and the route has links: say it on the link into the step`);
+      if (!links && k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+      if (step?.stops !== undefined) {
+        const s = step.stops, ok = s && typeof s === "object" && !Array.isArray(s) && (s.finding === undefined) !== (s.question === undefined);
+        if (!ok) errors.push(`${w}: stops names one finding or one question, as {"finding": id} or {"question": n}`);
+        else if (s.finding !== undefined) refs(w, [s.finding], findings, "finding");
+        else refs(w, [s.question], questions, "question");
+        if (links ? links.some((l) => l?.from === k + 1 && l?.to !== k + 1) : k < n - 1) errors.push(`${w} stops, and the route goes on from it: a path stops at a step it does not leave`);
+      }
+      if (step?.findings !== undefined && !Array.isArray(step.findings)) errors.push(`${w}: findings is not a list`);
+      else refs(w, step?.findings, findings, "finding");
+      if (step?.questions !== undefined && !Array.isArray(step.questions)) errors.push(`${w}: questions is not a list`);
+      else refs(w, step?.questions, questions, "question");
+      confirmations(w, step?.confirmedBy);
+    });
+    (links ?? []).forEach((l, j) => {
+      const lw = `${who} link ${j + 1}`;
+      for (const end of ["from", "to"]) if (!Number.isInteger(l?.[end]) || l[end] < 1 || l[end] > n) errors.push(`${lw}: ${end} is a step number of this route, from 1`);
+      if (l?.from === l?.to && !states) errors.push(`${lw} leads a step to itself: only a state may stay where it is`);
+      if (!text(l?.via)) errors.push(`${lw} has no "via": ${states ? "the trigger that makes the move" : "how the step gets what the one before produced, with its place"}`);
+      if (l?.question !== undefined) refs(lw, [l.question], questions, "question");
+      confirmations(lw, l?.confirmedBy);
+    });
+    if (links) steps.forEach((_, k) => { if (!links.some((l) => l?.from === k + 1 || l?.to === k + 1)) errors.push(`${who} step ${k + 1} is on no link`); });
+  });
+  // A check a person runs, as the record keeps it: the point of a route it exercises, the test that asserts the same,
+  // and what the owner observed earlier — each result at the revision and in the conditions it was made in, never
+  // a result for this one.
+  const RESULTS = ["pass", "fail", "could-not-run", "observed"];
+  (review.checks ?? []).forEach((c, index) => {
+    const name = `check ${index + 1}`;
+    if (c.route !== undefined) {
+      const p = c.route, rt = p && Number.isInteger(p.route) ? routes[p.route - 1] : undefined;
+      if (!rt) errors.push(`${name}: route names route ${p?.route}, which is not listed`);
+      else {
+        if (p.step !== undefined && (!Number.isInteger(p.step) || p.step < 1 || p.step > (rt.steps?.length ?? 0))) errors.push(`${name}: route ${p.route} has no step ${p.step}`);
+        if (p.link !== undefined && (!Number.isInteger(p.link) || p.link < 1 || p.link > (rt.links?.length ?? 0))) errors.push(`${name}: route ${p.route} has no link ${p.link}`);
+        if (p.step !== undefined && p.link !== undefined) errors.push(`${name}: route names a step or a link, not both`);
+      }
+    }
+    confirmations(name, c.confirmedBy);
+    if (c.observations !== undefined && !Array.isArray(c.observations)) errors.push(`${name}: observations is not a list`);
+    (Array.isArray(c.observations) ? c.observations : []).forEach((o, j) => {
+      const ow = `${name} observation ${j + 1}`;
+      if (!RESULTS.includes(o?.result)) errors.push(`${ow}: result is one of ${RESULTS.join(", ")}`);
+      if (!/^[0-9a-f]{64}$/.test(String(o?.diff ?? ""))) errors.push(`${ow} has no "diff": the export's diff_sha256, which names the code it was made on`);
+      for (const k of ["revision", "note", "conditions", "by"]) if (o?.[k] !== undefined && !text(o[k])) errors.push(`${ow}: ${k} is empty`);
     });
   });
 
@@ -597,7 +692,28 @@ export function check(review, files, directory) {
     if (loose.length) errors.push(`${file.path}: no block covers ${[["added", of("add")], ["removed", of("del")]]
       .filter(([, lines]) => lines).map(([field, lines]) => `${field} ${lines}`).join("; ")}`);
   }
-  return { errors, warnings, owner };
+  // With the repository's reading beside the record, every quote is read at its place again — one that is not there is
+  // a fault — and the places the script found in the changed code are matched against the routes as they stand.
+  let ground = null;
+  const g = readGround(review, directory);
+  if (g?.fault) warnings.push(g.fault);
+  else if (g && g.diff_sha256 !== review.diff?.sha256) warnings.push(`${GROUND} was made for another diff: run report.mjs ground again`);
+  else if (g) {
+    // the checkout as `ground` found it, read at its commit; gone, or its commit gone, the quotes are read beside the record only
+    const here = typeof g.repo === "string" && fs.existsSync(g.repo), known = here && (!g.sha || spawnSync("git", ["-C", g.repo, "cat-file", "-e", `${g.sha}^{commit}`]).status === 0);
+    if (!known) warnings.push(here ? `the commit ${GROUND} names (${g.sha}) is not in ${g.repo}: the quotes were read beside the record only` : `the checkout ${GROUND} names (${g.repo}) is not here: the quotes were read beside the record only`);
+    const quotes = checkQuotes(review, { roots: [{ root: directory, sha: null }, ...(known ? [{ root: g.repo, sha: g.sha ?? null }] : [])], diffFiles: files, heads: [g.sha, review.passport?.head] });
+    const words = (who) => who.slice(1).split("/").map((x) => /^\d+$/.test(x) ? +x + 1 : x).join(" ");
+    for (const m of quotes.mismatches) errors.push(`${words(m.who)}: «${m.quote}» is not at ${m.at}${m.line !== null ? `, which reads «${m.line.trim()}»` : ", past the end of its file"}`);
+    for (const m of quotes.base) warnings.push(`${words(m.who)}: ${m.at} quotes a line the diff removes: mark the place (base)`);
+    for (const m of quotes.missing) warnings.push(`${words(m.who)}: ${m.at} ${m.why === "form" ? "is not a place: write path:line" : "is no file in the checkout or beside the record"}`);
+    const all = Array.isArray(g.candidates) ? g.candidates : [], found = entriesOf(all), unlisted = found.filter((c) => !onRoute(c, review, owner));
+    if (unlisted.length && (routes.length || unlisted.length >= 3))
+      warnings.push(`${unlisted.length} of ${found.length} places the script found in the changed code are on no route (${unlisted.slice(0, 6).map((c) => `${c.kind} ${c.name} at ${c.at}`).join("; ")}${unlisted.length > 6 ? "; …" : ""}): follow those that are behaviour through more than one place, or leave them`);
+    const { unseen, of } = unseenSteps(review, all, owner);
+    ground = { found: found.length, unlisted, unseen, steps: of, checked: quotes.checked, skipped: quotes.skipped };
+  }
+  return { errors, warnings, owner, ground };
 }
 
 export { sourceOf } from "./sources.mjs";

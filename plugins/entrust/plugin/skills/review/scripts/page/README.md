@@ -16,8 +16,12 @@ only word it. `evals/review-page.test.mjs` checks what the file carries, and `ev
 drives it in Chromium, locally only.
 
 - **Summary** opens the page: the verdict, the recommendation and its steps, «How it works» — the record's routes,
-  each drawn as a flow in the side panel, a step opening its code — the requirements, established apart from those to
-  confirm, with one status each, the coverage limits and «Start review», which goes to the first open item.
+  each opening under its row as a flow the page lays out from the record's order and links, no coordinates in the
+  record: a step selected shows its place, value, code and evidence beside it, a link its words and evidence, and the
+  arrow keys walk the steps; a route of states opens as its transition table, its diagram one click away; each step
+  is read or confirmed by a test with its run and quoted assertion, never more than the record names — the
+  requirements, established apart from those to confirm, with one status each, the coverage limits and «Start
+  review», which goes to the first open item.
 - **Decisions** shows every question, finding and idea as one card, with sub-tabs by kind, by state (deferred,
   done) and for the comments; a side panel adds the card's place, sources and related items.
 - **Code** is the diff with the open decisions in its margin and kept code folded: j and k walk the open decisions,
@@ -28,7 +32,9 @@ drives it in Chromium, locally only.
   pictures, fonts and `assets/`, `icons/`, `keysets/` assets; `.md/.mdx/.rst/.txt` and changelog/readme/license
   docs; `package.json`, lock files, `tsconfig*`, `a.yaml`, `.eslintrc` and the like config; the rest production. A
   block whose own `kind` is `test` in a production file counts as tests.
-- **Details** holds the structure, mechanisms, scenarios, checks by hand, challenges, screens with their
+- **Details** holds the structure, mechanisms, scenarios, checks by hand — each with what stands behind it kept
+  apart: proposed and not run, confirmed by a test, observed by the owner at this revision or an earlier one, and the
+  owner's own result here with its conditions, which goes into the export, not into the decisions — challenges, screens with their
   provenance and what each is about, coverage — what was not checked and the review's limits first, then what ran
   and what was read — and the report's details, with the review a continuation continues.
 - **Answering.** By click or key, in Decisions or in the code's margin, one answer per item as the data contract's

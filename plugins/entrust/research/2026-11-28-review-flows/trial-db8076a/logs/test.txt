@@ -1,0 +1,47 @@
+ok    the printout says when a decision's variants combine and names every variant its recommendation names
+ok    check and render refuse a question without kind
+ok    a record without questions checks and renders, and both renderings read it as no questions
+ok    lines prints every changed line under its file, with the address a block names it by
+ok    a frozen comparison can be traced to the final report or to an explicit limit
+ok    comparison witnesses preserve source values, or record why a parser could not supply them
+ok    two reviews of one change keep their decisions apart, and one review rendered twice keeps them together
+ok    the printout presents the verdict, current solution, target and recommendations in that order
+ok    the printout lists each route's steps in order, each with its block, place, role and how it gets its input, and each requirement with its origin and quote
+ok    a candidate the reviewer set aside on a place is recorded as its own, so the owner sees it was considered
+ok    carry takes over the previous record's blocks whose lines read the same: a kept one stays kept and is marked carried, one to fix is judged again, and check proves each carried block from the previous record
+ok    a reply to a previous comment keeps the place the comment had, needs its words and sources, and the printout lists every reply
+ok    kept code that serves only requirements to confirm is warned of until a question asks about them, as kept code that serves none is
+ok    a block carried by its own lines is read again when its unit uses a unit that changed, the changed unit is judged again, and check refuses such a block marked carried
+ok    carry leaves out a requirement's source that pointed into the previous record, says so, and check refuses the requirement until it is cited again
+ok    the earlier answers are not offered to a conditional question whose parent's condition changed, though the rest of it reads the same
+ok    check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged
+ok    English and Russian hold the same words, every word the page and the printout ask for is in both, and none is left over
+ok    check accepts the language as one well-formed tag and refuses anything else
+ok    language picks Russian for ru and ru-*, English for any other tag, and a record that carries labels is refused
+ok    mechanisms keep purpose, cost and decision in both renderings and resolve their references
+ok    scenarios render and reference validation survives without a numerical design gate
+ok    mechanism weights count nonblank +/- lines, separate shared blocks and retain unknowns
+ok    weight overview leads with the full footprint, not exclusive lines or net change
+ok    weight is rendered in HTML and text without changing the review record
+ok    a review that does not match the diff is refused, every fault is listed, and no page is written
+ok    a block to remove may name a whole file
+ok    scaffold writes the record's mechanical part: nonblank changed lines in blocks, the diff saved and named, and never over a record
+ok    scaffold reads a supplied diff outside a repository, splits at declarations, and check warns on one verdict over a large block
+ok    unsupported or incomplete diffs and records without a saved diff are refused
+ok    a block kept for a rule of the project instructions is not warned about as kept for an assumption
+ok    a diff whose filename has spaces is read with its file headers
+ok    a block or unit whose premise is unread is a question, and a point against the draft is rejected only on a place that refutes it
+ok    the page that tells a reviewer what to write names every word the check accepts, and its example parses
+ok    the minimal record is valid and warning-free; the themed record with decision cards passes check
+ok    check refuses broken card references: cycles, self-parent, bad refs, duplicate variant ids, permission met
+ok    a decision is refused with fewer than two variants or a variant without consequences; other kinds keep the warning
+ok    check lists faults instead of throwing on malformed lists, and a run without a revision is warned about
+ok    a finding id is validated, and even a hostile one reaches an href escaped
+ok    modelOf derives children, unique counters and file status
+ok    the full printout carries the cards, tradeoffs and coverage limits, and the digest of the record's bytes
+ok    a mechanism's findings stand as related findings, never as an invented consequence; historical screens carry their sources in the printout
+ok    the passport's digest words are localized in the printout
+ok    purpose is the model's deterministic classification, and the page carries its counters
+ok    the Shiki syntax is sequence-wide per hunk, deterministic, and falls back honestly
+
+all 45 passed

@@ -10,7 +10,7 @@ import { highlight } from "./highlight.mjs";
 import { esc } from "./text.mjs";
 import { decisionRuntime } from "./decisions.mjs";
 import path from "node:path";
-import { keyOf, previousOf, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
+import { keyOf, previousOf, sameRevision, sourceOf, weightOverview, PURPOSES, SHOTS } from "./review.mjs";
 import { documentOf } from "./page/document.mjs";
 
 const read = (name) => fs.readFileSync(new URL(`./page/${name}`, import.meta.url), "utf8");
@@ -131,13 +131,25 @@ export function page(review, files, model, { syntax, directory } = {}) {
   // A mechanism's weight as the printout words it, by kind, with the blocks it shares.
   const t = labelsOf(review);
   const weightOf = (weight) => weight && { rows: weightOverview(weight, t, language).map((row) => ({ kind: t(`weight.category.${row.kind}`), text: row.text })), shared: weight.shared };
+  // A test that confirms a step, a link or a check, as the page shows it: each run it cites, with who ran it and where,
+  // and each assertion at its place with its quote.
+  // A run on other code than the reviewed head — another revision, or none named — is shown as such.
+  const confirm = (list) => list?.length ? {
+    runs: list.map((s) => /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? ""))).filter(Boolean).map((m) => review.coverageStructured[+m[1]]).filter((c) => c?.kind === "ran")
+      .map((c) => ({ text: c.text, revision: c.revision ?? null, by: c.by ?? null, where: c.where ?? null,
+        here: c.revision ? (review.passport?.head ? sameRevision(c.revision, review.passport.head) : true) : false })),
+    asserts: list.filter((s) => s.ref === undefined && s.at).map((s) => ({ at: s.at, quote: s.quote ?? "" })) } : null;
   const data = {
     title: review.title, range: review.range, language, labels,
     change: review.change, verdict: review.verdict, now: review.now, target: review.target, recommendation: review.recommendation,
     steps: (review.steps ?? []).map((s) => ({ text: s.text, findings: (s.findings ?? []).map(String) })),
-    coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, sources: sources(c.sources) })),
+    coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, by: c.by ?? null, where: c.where ?? null, sources: sources(c.sources) })),
     tradeoffs: (review.tradeoffs ?? []).map((x) => ({ text: x.text, consequence: x.consequence, sources: sources(x.sources) })),
     passport: review.passport ?? null,
+    // what the script found in the changed code and no route names, each at its place in the diff when it is there
+    ground: model.ground ? { found: model.ground.found, checked: model.ground.checked,
+      unlisted: model.ground.unlisted.map((c) => ({ kind: c.kind, name: c.name, at: c.at, quote: c.quote, place: placeOf(c.at) })),
+      steps: model.ground.steps ?? 0, unseen: (model.ground.unseen ?? []).map((u) => ({ route: u.route, step: u.step, block: u.block, at: u.at })) } : null,
     screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, revision: s.revision ?? null, provenance: s.provenance,
       sources: sources(s.sources), differences: s.differences.map((d) => ({ what: d.what, why: d.why, finding: d.finding === undefined ? null : String(d.finding) })),
       // A picture given as a file travels once, in the document's <img data-pic>; the runtime takes it from there.
@@ -160,8 +172,15 @@ export function page(review, files, model, { syntax, directory } = {}) {
       // the parent's variants this question applies under, by their words
       parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
         texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
-    checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String) })),
-    routes: (review.routes ?? []).map((r) => ({ title: r.title, requirements: (r.requirements ?? []).map(String), steps: r.steps.map((s) => ({ block: s.block, role: s.role, via: s.via ?? "" })) })),
+    // an observation made on this diff is current; one made on another is earlier, whatever its revision is called
+    checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String), route: c.route ?? null,
+      confirmedBy: confirm(c.confirmedBy), observations: (c.observations ?? []).map((o) => ({ result: o.result, revision: o.revision ?? o.diff.slice(0, 12), conditions: o.conditions ?? null,
+        note: o.note ?? null, by: o.by ?? null, current: o.diff === review.diff.sha256 })) })),
+    routes: (review.routes ?? []).map((r) => ({ title: r.title, kind: r.kind ?? "path", requirements: (r.requirements ?? []).map(String),
+      steps: r.steps.map((s) => ({ block: s.block ?? null, at: s.at ?? null, quote: s.quote ?? null, role: s.role, via: s.via ?? "", value: s.value ?? null,
+        stops: s.stops ? { finding: s.stops.finding === undefined ? null : String(s.stops.finding), question: s.stops.question ?? null } : null, confirmedBy: confirm(s.confirmedBy),
+        findings: (s.findings ?? []).map(String), questions: s.questions ?? [] })),
+      links: r.links ? r.links.map((l) => ({ from: l.from, to: l.to, via: l.via, question: l.question ?? null, confirmedBy: confirm(l.confirmedBy) })) : null })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),
       findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id), lines: u.lines })),
@@ -169,7 +188,7 @@ export function page(review, files, model, { syntax, directory } = {}) {
     mechanisms: model.mechanisms.map((m) => ({ name: m.name, change: m.change, units: m.units ?? [], purpose: m.purpose, basis: m.basis, instead: m.instead,
       benefit: m.benefit, cost: m.cost, decision: m.decision, evidence: m.evidence, findings: (m.findings ?? []).map(String), blocks: m.blocks ?? [], weight: weightOf(m.weight) })),
     together: model.together && { names: model.together.names, ...weightOf(model.together) },
-    blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,
+    blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, whole: b.whole ?? null, kind: b.kind ?? null,
       serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),
     unasked: model.unasked,
     carried: model.carried ?? [], history: historyOf(review, directory),

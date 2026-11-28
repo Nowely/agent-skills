@@ -6,7 +6,7 @@ description: >-
   here or in a subagent.
 disable-model-invocation: true
 metadata:
-  version: "0.50.0"
+  version: "0.51.0"
 license: MIT
 ---
 
@@ -40,7 +40,7 @@ Read the whole diff, the base version of rewritten logic, the producers of chang
 
 ## Analyse
 
-For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check; a [generated file](references/report-data.md#generated-files) is the exception. Each block says what it does and why it is there, kept or not, and each behaviour that runs through several blocks gets a [route](references/report-data.md#fields).
+For the full record, obtain the diff for the agreed scope and start it with `node "<skill-dir>/scripts/report.mjs" scaffold <diff-file> <out>/review.json`, as [the data contract](references/report-data.md) says, and write in `range` how the diff was obtained and the state its files are read at. Read the change's files at that state, not a working tree that may differ. Its blocks are the decisions to judge: divide one that holds two, so that each block is a branch, guard, parameter, request, constant, test or cohesive body that could go on its own. A block kept whole over several decisions defeats the necessity check; a [generated file](references/report-data.md#generated-files) is the exception. Each block says what it does and why it is there, kept or not, and each behaviour that runs through several blocks gets a [route](references/report-data.md#fields). A step or link that a test you ran asserts cites it as `confirmedBy`; one no test confirms is where a [check](references/report-data.md#fields) belongs. Once routes are written, run `report.mjs ground <out>/review.json <repo>` at the reviewed head: from then on `check` refuses a quote not at its place and names the entry points in the changed code no route follows.
 
 The record's fields are the data contract's. What they mean here:
 
@@ -79,7 +79,7 @@ Scrutinise the fixes the same way, and after a large removal reassess what remai
 
 **Full draft.** Save, check and freeze one [comparison inventory](references/report-data.md#comparison-pass). Give the same reader the full draft and three successive briefs: [structure](references/comparison-structure.md), [paths](references/comparison-paths.md), then [decisions](references/comparison-decisions.md). Deliver each after the previous return is saved. Verify and reconcile the results into the record before challenge.
 
-If the plan includes checking agents, print the reconciled draft with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
+If the plan includes checking agents, print the reconciled draft with `report.mjs render`, which gives every block's description and verdict but not its lines; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
 
 A challenge is a point that could change a requirement, a verdict, a finding or its rank, or a question. A point two agents raise is one challenge; a citation the verifier corrects is fixed in place. Record no agreement; a point its own agent argued against is an agreement.
 

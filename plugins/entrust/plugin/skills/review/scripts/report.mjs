@@ -5,6 +5,8 @@
 //   node report.mjs carry <previous/review.json> <review.json>   on a fresh scaffold, take over the previous record's blocks whose lines are unchanged
 //   node report.mjs lines <diff | review.json>   print every changed line of a diff, or of a record's saved diff, with its address
 //   node report.mjs comparisons <review.json> [<base-root> <head-root>]   emit the independent reader's source inventory as JSON
+//   node report.mjs ground <review.json> <repo>   read every quote at its place in the repository, list the entry points
+//                                          the changed code makes, and save them beside the record for check and render
 //   node report.mjs check <review.json>    validate without writing HTML
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
 //
@@ -18,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisons } from "./comparisons.mjs";
+import { candidatesOf, checkoutOf, driftOf, GROUND } from "./ground.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
@@ -29,7 +32,7 @@ const grounds = (item) => cited(item.verdict === "question" ? item.questions.map
 
 // The review in the shape SKILL.md gives the report. The full text carries the decision cards, the tradeoffs and
 // the coverage limits: the critic and the verifier read this, not the page, so nothing analytical lives only in HTML.
-function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose, carried }, t) {
+function markdown(review, { blocks, requirements, units, target, mechanisms, scenarios, together, questions, screens, key, recordSha, purpose, carried, ground }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
   const coverageWord = (kind) => t(kind === "not_checked" ? "coverage.not-checked" : `coverage.${kind}`);
@@ -54,15 +57,26 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
   const side = (s) => s ? `${t("edit")}: ${s.edit.join("; ")}. ${t("read")}: ${(s.read ?? []).join("; ") || t("nothing")}.` : t("as-now");
   const written = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   const names = (label, ids) => ids?.length ? ` ${t(label)} ${ids.join(", ")}.` : "";
+  // A test that confirms a step, a link or a check: the run and the quoted assertion, for the verifier to check.
+  const confirmed = (list) => list?.length ? ` (${t("route.confirmed")}: ${srcs(list)})` : "";
+  const resultWord = (r) => ({ pass: t("check.result.pass"), fail: t("check.result.fail"), "could-not-run": t("check.result.could-not-run"), observed: t("check.result.observed") })[r];
   return [
     ...(review.passport ? [`${t("passport")}: ${(review.passport.links ?? []).map((l) => `${l.label} (${l.url})`).join("; ")}${review.passport.links?.length ? "; " : ""}`
       + `${review.passport.repository} · ${t("passport.base")} ${review.passport.base} → ${t("passport.head")} ${review.passport.head} · ${t("passport.reviewed-at")} ${review.passport.reviewedAt}`, ""] : []),
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
     `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}${ESTABLISHED.has(r.source) ? "" : `, ${t("req.to-confirm")}`}; ${state(r)})${r.sources?.length ? ` — ${srcs(r.sources)}` : ""}${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
-    // A route follows one behaviour through its blocks in order; the checking agents read the roles and links here.
-    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
-      ...r.steps.map((step, k) => `${k + 1}. B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`: ${step.role}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`)]), ""] : []),
+    // A route follows one behaviour through the code; the checking agents read its roles, links, stops and the tests
+    // that confirm them here, and the verifier checks each confirmation against its run and its quoted assertion.
+    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.kind === "states" ? ` (${t("route.states")})` : ""}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
+      ...r.steps.map((step, k) => `${k + 1}. ${step.block !== undefined ? `B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`` : `\`${step.at}\` «${step.quote}» (${t("route.unchanged")})`}: ${step.role}`
+        + `${step.value ? ` ${t("route.value")}: ${step.value}` : ""}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`
+        + `${step.stops ? ` ${t("route.stops")}: ${step.stops.finding !== undefined ? step.stops.finding : `Q${step.stops.question}`}` : ""}`
+        + `${step.findings?.length || step.questions?.length ? ` (${[...(step.findings ?? []).map(String), ...(step.questions ?? []).map((q) => `Q${q}`)].join(", ")})` : ""}${confirmed(step.confirmedBy)}`),
+      ...(r.links ?? []).map((l) => `   ${l.from} → ${l.to}: ${l.via}${l.question !== undefined ? ` (Q${l.question})` : ""}${confirmed(l.confirmedBy)}`)]), ""] : []),
+    ...(ground?.unlisted.length ? [`${t("ground.unlisted", ground.unlisted.length, ground.found)}:`, ...ground.unlisted.map((c) => `- ${c.kind} \`${c.name}\` \`${c.at}\`: ${c.quote}`), ""] : []),
+    // the other side: steps the script found no entry point for, which the verifier confirms by reading
+    ...(ground?.unseen?.length ? [`${t("ground.unseen", ground.unseen.length, ground.steps)}:`, ...ground.unseen.map((u) => `- ${review.routes[u.route].title}, ${u.step + 1}. ${u.block ? `B${u.block} ` : ""}\`${u.block ? `${blocks[u.block - 1]?.path}:${blocks[u.block - 1]?.where}` : u.at}\`: ${review.routes[u.route].steps[u.step].role}`), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -70,7 +84,9 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     `## ${t("ideas")}`, ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
     ...(review.tradeoffs?.length ? [`## ${t("tradeoffs")}`, ...review.tradeoffs.map((x) => `- ${x.text} ${t("tradeoff.consequence")}: ${x.consequence} (${srcs(x.sources)})`), ""] : []),
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
-      `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
+      `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`
+        + `${c.route ? ` (${c.route.step !== undefined ? t("route.of-check.step", c.route.route, c.route.step) : c.route.link !== undefined ? t("route.of-check.link", c.route.route, c.route.link) : t("route.of-check", c.route.route)})` : ""}${confirmed(c.confirmedBy)}`
+        + (c.observations ?? []).map((o) => `\n   ${t("check.observed", o.by ?? t("check.owner"), o.revision ?? o.diff.slice(0, 12))}${o.diff === review.diff.sha256 ? "" : ` (${t("check.earlier")})`}: ${resultWord(o.result)}${o.conditions ? `; ${o.conditions}` : ""}${o.note ? ` — ${o.note}` : ""}`).join("")), ""] : []),
     ...(screens.length ? [`## ${t("screens")}`, ...screens.flatMap((s) => { const historical = s.provenance.startsWith("historical"); return [
       `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
@@ -93,7 +109,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     ...(scenarios.length ? [`## ${t("scenarios")}`, t("scenarios-note"), ...scenarios.map((s) => `${s.id}. ${s.change}${s.requirements.length ? ` (${t("requirement").toLowerCase()} ${s.requirements.join(", ")})` : ""}`
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
-    // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
+    // Every block with its description, verdict and reason, so the checking agents read what the page shows; the
+    // lines stay on the page and in `lines`.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
     `${t("purpose")}: ${PURPOSES.map((p) => `${t(`purpose.${p}`)} ${purpose.counts[p].blocks}`).join("; ")}. ${t("purpose.lines-note")}`,
     ...blocks.map((b) => `- B${b.id} \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}${b.carried ? ` (${t("carried").toLowerCase()})` : ""}.${b.whole ? ` ${t("whole")}: ${b.whole}` : ""}`),
@@ -104,7 +121,11 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text} (${srcs(x.sources)})`), ""] : []),
     `## ${t("coverage")}`,
     ...(carried?.length ? [`${t("carried")}: ${carried.map((id) => `B${id}`).join(", ")}`] : []),
-    ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
+    // the comparison pass, counted by outcome: what reached the author, what a source settled, what stays unchecked
+    ...(Array.isArray(review.comparisonReview?.decisions) ? [t("comparison.count", review.comparisonReview.decisions.length,
+      Object.entries({ ref: t("comparison.ref"), settled: t("comparison.settled"), unchecked: t("comparison.unchecked") })
+        .map(([k, word]) => `${word} ${review.comparisonReview.decisions.filter((d) => d && Object.hasOwn(d, k)).length}`).join(", "))] : []),
+    ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""}${c.by ? `; ${t("coverage.by", c.by)}` : ""}${c.where ? `; ${t("coverage.where", c.where)}` : ""} (${srcs(c.sources)})`),
     review.coverage || t("none"), "",
     `${t("report-details")}: ${review.range} · ${key} · ${t("passport.diffSha")} ${review.diff?.sha256 ?? t("none")} · ${t("passport.record")} ${recordSha ?? t("none")}`,
   ].join("\n");
@@ -186,8 +207,12 @@ function carry(previousPath, target) {
   review.target_units = prev.target_units ?? [];
   review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
     .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
-  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
-  if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
+  // A step at unchanged code comes over as it is; what pointed at the previous findings, questions and runs does not.
+  const touched = new Set(cur.files.map((f) => f.path));
+  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => s.block === undefined ? !touched.has(String(s.at).replace(/:\d+$/, "")) : renumber.has(s.block)));
+  if (routes.length) review.routes = routes.map((r) => ({ ...r,
+    steps: r.steps.map(({ stops, confirmedBy, findings, questions, ...s }) => s.block === undefined ? s : { ...s, block: renumber.get(s.block) }),
+    ...(r.links ? { links: r.links.map(({ question, confirmedBy, ...l }) => l) } : {}) }));
   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
   // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a
   // requirement left with no source is refused until this review cites one again.
@@ -245,15 +270,30 @@ try {
     const files = argument.endsWith(".json") ? (({ files, fault }) => { if (fault) throw new Error(fault); return files; })(
       changeOf(JSON.parse(fs.readFileSync(argument, "utf8")), path.dirname(path.resolve(argument)))) : parseDiff(fs.readFileSync(argument, "utf8"));
     for (const file of files) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
+  } else if (command === "ground" && argument && process.argv[4]) {
+    const review = JSON.parse(fs.readFileSync(argument, "utf8")), directory = path.dirname(path.resolve(argument)), repo = path.resolve(process.argv[4]);
+    const { files, fault } = changeOf(review, directory);
+    if (fault) throw new Error(fault);
+    if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) throw new Error(`${process.argv[4]} is not a directory: give the checkout at the reviewed state`);
+    // The checkout at its commit: every line the diff adds must stand there, or this is not the reviewed state.
+    const checkout = checkoutOf(repo), drift = driftOf(files, checkout);
+    if (drift) throw new Error(`${checkout.root}${checkout.sha ? ` at ${checkout.sha.slice(0, 12)}` : ""} is not the reviewed state: ${drift}. Check out the reviewed head and run ground again`);
+    if (!checkout.sha) console.error(`warning: ${checkout.root} is no git checkout: its files are read as they are now, and no callers are listed`);
+    fs.writeFileSync(path.join(directory, GROUND), `${JSON.stringify({ diff_sha256: review.diff.sha256, repo: checkout.root, sha: checkout.sha, candidates: candidatesOf(files, checkout) }, null, 1)}\n`);
+    const { errors, warnings, ground } = check(review, files, directory);
+    for (const warning of warnings) console.error(`warning: ${warning}`);
+    if (errors.length) console.error(`Fix these ${errors.length} and run check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
+    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.unseen?.length ?? 0} of ${ground?.steps ?? 0} route steps in production code it did not find; ${ground?.checked ?? 0} quotes read at their places, ${ground?.skipped ?? 0} not read (another revision, a base line, or no file).`);
+    process.exit(errors.length ? 1 : 0);
   } else if (["render", "check"].includes(command) && argument) {
     const bytes = fs.readFileSync(argument), review = JSON.parse(bytes.toString("utf8")), directory = path.dirname(path.resolve(argument));
-    const { files, fault } = changeOf(review, directory), { errors, warnings = [], owner } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
+    const { files, fault } = changeOf(review, directory), { errors, warnings = [], owner, ground = null } = fault ? { errors: [fault], owner: new Map() } : check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
     // The record's identity is computed from its bytes, never stored in it; the page and the printout carry it.
-    const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex") };
+    const model = { ...modelOf(review, files, owner, directory), recordSha: createHash("sha256").update(bytes).digest("hex"), ground };
     for (const warning of warnings) console.error(`warning: ${warning}`);
     // One verdict over a large block is where a needless part hides: the check cannot see decisions, only size. A block
     // that says in "whole" why it is one decision is not warned of; the printout carries the reason to the critic.
@@ -270,7 +310,7 @@ try {
     fs.writeFileSync(target, page(review, files, model, { syntax, directory }));
     console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
   } else {
-    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
+    console.error("usage: report.mjs scaffold <diff> <review.json> | report.mjs carry <previous/review.json> <review.json> | report.mjs lines <diff | review.json> | report.mjs ground <review.json> <repo> | report.mjs comparisons <review.json> [<base-root> <head-root>] | report.mjs check <review.json> | report.mjs render <review.json>");
     process.exit(2);
   }
 } catch (error) {

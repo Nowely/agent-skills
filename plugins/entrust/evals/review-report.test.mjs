@@ -18,6 +18,7 @@ import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, REQUIREMENT_STAT
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
+import { candidatesOf, checkoutOf, checkQuotes, driftOf, entriesOf } from "../plugin/skills/review/scripts/ground.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -103,6 +104,9 @@ test("a frozen comparison can be traced to the final report or to an explicit li
         : { key: row.key, unchecked: "No runtime contract was available." }) };
     const valid = render(r => { r.comparisonReview = pass; });
     if (valid.status !== 0) return valid.stderr;
+    // the printout counts the decisions by outcome, as the data contract says
+    const n = pass.decisions.length;
+    if (!valid.stdout.includes(`Comparison pass: ${n} pairs decided (to the author 1, settled 0, unchecked ${n - 1})`)) return `no count: ${valid.stdout.slice(-600)}`;
     for (const [alter, fault] of [
       [p => p.decisions.pop(), "missing decision"],
       [p => p.decisions.push(p.decisions[0]), "duplicate comparison decision"],
@@ -390,6 +394,316 @@ test("a large kept block is warned of until it says in «whole» why it is one d
     return refused.status === 1 && refused.stderr.includes('"whole" says why the block is one decision') || `an empty whole passed: ${refused.stderr}`;
   });
 
+// ---- flows (PR 119): routes through unchanged code, forks and states, stops, tests that confirm, checks the owner ran
+// A route of the themed record that passes unchanged code, forks after its first step, and stops where a finding says.
+const FLOW = () => ({ title: "A code reaches the screen", requirements: [1], steps: [
+  { block: 1, role: "Converts the code.", value: "\"usd\" becomes \"USD\"" },
+  { at: "src/main.js:4", quote: "print(row.code)", role: "Prints the code as read.",
+    confirmedBy: [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }] },
+  { block: 3, role: "Checks the outputs." },
+  { at: "src/old.js:2", quote: "legacy(row)", role: "The legacy reader.", stops: { finding: 2 } }],
+  links: [{ from: 1, to: 2, via: "readArchive's return" }, { from: 1, to: 3, via: "the test's call" }, { from: 1, to: 4, via: "the legacy path", question: 1 }] });
+const withFlow = (edit) => render((r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [FLOW()]; edit?.(r, r.routes[0]); });
+
+test("a route may pass through unchanged code, fork, carry a value and stop where a finding says, and the printout gives each step, link and test that confirms one",
+  "a route could only list blocks of the diff in a line: the code a value passes through unchanged, a fork and an end that is a defect had no place, and the checking agents saw none of it",
+  () => {
+    const done = withFlow();
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const out = done.stdout, part = out.slice(out.indexOf("## How it works"), out.indexOf("## Verdict"));
+    const want = ["1. B1 `src/invoices/archive.js:", "Converts the code. Value: \"usd\" becomes \"USD\"",
+      "2. `src/main.js:4` «print(row.code)» (unchanged code): Prints the code as read. (Confirmed by a test: ",
+      "4. `src/old.js:2` «legacy(row)» (unchanged code): The legacy reader. Stops here: 2", "1 → 2: readArchive's return", "1 → 4: the legacy path (Q1)"];
+    const missing = want.filter((w) => !part.includes(w));
+    return !missing.length || `missing ${JSON.stringify(missing)} in:\n${part}`;
+  });
+
+test("check refuses a malformed flow: a step with both or neither of a block and a place, a place without its line, via beside links, a link outside the route or to itself, states without links, a stop the route goes on from, a confirmation without a run or a quoted assertion, a step on no link",
+  "a flow drawn from a malformed record shows a path the code does not take, or a test that does not assert it",
+  () => {
+    const cases = [
+      ["both a block and a place", (r, f) => { f.steps[0].at = "src/a.js:1"; f.steps[0].quote = "x"; }],
+      ["neither a block nor a place", (r, f) => { delete f.steps[2].block; }],
+      ['a place outside the diff needs "at" and the "quote" of its line', (r, f) => { delete f.steps[1].quote; }],
+      ['has "via", and the route has links', (r, f) => { f.steps[2].via = "the call"; }],
+      ["to is a step number of this route", (r, f) => { f.links[1].to = 9; }],
+      ["leads a step to itself", (r, f) => { f.links.push({ from: 3, to: 3, via: "again" }); }],
+      ["follows states and has no links", (r, f) => { f.kind = "states"; delete f.links; for (const s of f.steps.slice(1)) s.via = "a move"; delete f.steps[3].stops; }],
+      ["stops, and the route goes on from it", (r, f) => { f.steps[0].stops = { question: 1 }; }],
+      ["stops, and the route goes on from it", (r, f) => { delete f.links; f.steps.forEach((s, k) => { if (k) s.via = "the call"; }); f.steps[1].stops = { finding: 2 }; delete f.steps[3].stops; }],
+      ["stops names one finding or one question", (r, f) => { f.steps[3].stops = { finding: 2, question: 1 }; }],
+      ['confirmedBy names no "ran" coverage statement', (r, f) => { f.steps[1].confirmedBy[0] = { ref: "/coverageStructured/1" }; }],
+      ["confirmedBy quotes no assertion", (r, f) => { f.steps[1].confirmedBy[1] = { at: "test/archive.test.js:5" }; }],
+      ["step 4 is on no link", (r, f) => { f.links.pop(); }],
+      ["names finding 9, which is not listed", (r, f) => { f.steps[3].stops = { finding: 9 }; }],
+      ["confirmedBy cites coverage statement 2, which is not_checked, not a run", (r, f) => { f.steps[1].confirmedBy.push({ ref: "/coverageStructured/1" }); }],
+      ["confirmedBy cites /requirements/0; it cites runs and assertions only", (r, f) => { f.steps[1].confirmedBy.push({ ref: "/requirements/0" }); }],
+      ["names question 9, which is not listed", (r, f) => { f.steps[0].questions = [9]; }],
+    ];
+    const wrong = cases.map(([want, edit], i) => [want, i, withFlow(edit)]).filter(([want, , r]) => r.status !== 1 || !r.stderr.includes(want))
+      .map(([want, i, r]) => `case ${i + 1} (${want}): ${r.status} ${r.stderr.slice(0, 300)}`);
+    return !wrong.length || wrong.join("\n");
+  });
+
+test("a route of states takes its states as steps and its transitions as links, several triggers between two states and a state that stays, and the printout says it follows states",
+  "a part of the interface that moves between states could not be written as a route at all",
+  () => {
+    const done = render((r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [{ title: "The viewer", kind: "states", requirements: [1], steps: [
+      { block: 1, role: "Closed." }, { block: 2, role: "Fitted." }, { block: 3, role: "Own size." }],
+      links: [{ from: 1, to: 2, via: "a click on a thumbnail" }, { from: 2, to: 3, via: "a click on the picture" }, { from: 2, to: 3, via: "Actual size" },
+        { from: 3, to: 3, via: "→ to the next picture" }, { from: 3, to: 1, via: "Escape" }] }]; });
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    return /### The viewer \(states\) \(requirement 1\)/.test(done.stdout) && done.stdout.includes("2 → 3: Actual size") && done.stdout.includes("3 → 3: → to the next picture")
+      || done.stdout.slice(done.stdout.indexOf("## How it works"), done.stdout.indexOf("## Verdict"));
+  });
+
+test("a check keeps the point of a flow it exercises, the test that asserts the same and the owner's earlier results at their revisions, and check refuses a result without one",
+  "an owner's observation travelled as a bare result, and the next review could read an old observation as a result for the new revision",
+  () => {
+    const good = (r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [FLOW()];
+      Object.assign(r.checks[0], { route: { route: 1, step: 2 }, confirmedBy: [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }],
+        observations: [{ result: "pass", diff: "a".repeat(64), revision: "abc123", conditions: "Chrome 130, the demo data", note: "Upper case in the list." },
+          { result: "could-not-run", diff: "a".repeat(64), revision: "abc123", by: "the author" }] }); };
+    const done = render(good);
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const part = done.stdout.slice(done.stdout.indexOf("## Check by hand"), done.stdout.indexOf("## Check by hand") + 900);
+    if (!part.includes("(route 1, step 2) (Confirmed by a test: ") || !part.includes("Observed by the owner at abc123 (another diff): pass; Chrome 130, the demo data — Upper case in the list.")
+      || !part.includes("Observed by the author at abc123 (another diff): could not run")) return part;
+    const cases = [["has no \"diff\"", (r) => { delete r.checks[0].observations[0].diff; }], ["result is one of", (r) => { r.checks[0].observations[0].result = "ok"; }],
+      ["route 1 has no step 7", (r) => { r.checks[0].route.step = 7; }], ["route names route 4, which is not listed", (r) => { r.checks[0].route = { route: 4 }; }],
+      ["route names a step or a link, not both", (r) => { r.checks[0].route = { route: 1, step: 2, link: 1 }; }]];
+    const wrong = cases.map(([want, edit]) => [want, render((r) => { good(r); edit(r); })]).filter(([want, r]) => r.status !== 1 || !r.stderr.includes(want)).map(([want, r]) => `${want}: ${r.stderr.slice(0, 300)}`);
+    return !wrong.length || wrong.join("\n");
+  });
+
+test("check warns of a confirmation by a run on other code and of a step at a line the diff changes, and a step names what was found or asked at it without ending the path",
+  "a test run at another revision read as tested here, an «unchanged» step stood on a changed line, and a finding in the middle of a loop needed a duplicated step (PR 119 trial)",
+  () => {
+    const done = withFlow((r, f) => { r.coverageStructured.push({ kind: "ran", text: "An older run.", revision: "abc1234", sources: [{ at: "logs/old.txt:1", quote: "ok" }] });
+      f.steps[1].confirmedBy[0] = { ref: "/coverageStructured/2" }; f.steps[0].findings = [1]; f.steps[0].questions = [2];
+      f.steps.push({ at: "src/invoices/archive.js:2", quote: "the changed line", role: "A step on a changed line." }); f.links.push({ from: 3, to: 5, via: "the call" }); });
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const warned = ["route 1 step 2: confirmedBy cites a run at abc1234, not the reviewed head HEAD", "route 1 step 5 is at src/invoices/archive.js:2, a line this diff changes: name its block instead"]
+      .filter((w) => !done.stderr.includes(w));
+    return !warned.length && done.stdout.includes("Converts the code. Value: \"usd\" becomes \"USD\" (1, Q2)") || JSON.stringify({ warned, err: done.stderr.slice(0, 900) });
+  });
+
+test("a coverage statement says who ran it and where, and the printout gives both",
+  "a green CI job that skipped a suite read the same as a run on a checkout: where a test ran was nowhere in the record",
+  () => {
+    const done = render((r) => { Object.assign(r, structuredClone(THEMED)); Object.assign(r.coverageStructured[0], { by: "the reviewer", where: "a local checkout" }); });
+    if (done.status !== 0 || !done.stdout.includes("The suite ran on the working copy. @ head; by the reviewer; in a local checkout")) return done.stderr || done.stdout.slice(-1200);
+    const empty = render((r) => { Object.assign(r, structuredClone(THEMED)); r.coverageStructured[0].where = " "; });
+    return empty.status === 1 && empty.stderr.includes("coverageStructured 1: where is empty") || empty.stderr;
+  });
+
+test("carry brings a route's steps at unchanged code with its carried blocks, and leaves its stops, links' questions and confirmations for this review",
+  "a route through unchanged code was dropped as if its step were a block that did not come over, and a stop citing the previous findings would have pointed at this review's",
+  () => {
+    const before = RATE(2);
+    const prev = { ...twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total, times the rate.", serves: [1], verdict: "keep" }]),
+      findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/a.js:2", what: "What.", shown_by: "The line.", fix: "Fix." }],
+      routes: [{ title: "A total", requirements: [1], steps: [{ block: 1, role: "The rate." }, { block: 2, role: "The total." },
+        { at: "src/print.js:3", quote: "print(total(n))", role: "Prints it.", stops: { finding: 1 } }],
+        links: [{ from: 1, to: 2, via: "the import" }, { from: 2, to: 3, via: "the call", question: 1 }] },
+        // a step at a file the new diff touches: its line may have moved or changed, so the route is left for this review
+        { title: "A rate", requirements: [1], steps: [{ block: 1, role: "The rate." }, { at: "src/a.js:9", quote: "total(1)", role: "Uses it.", via: "the import" }] }] };
+    const c = continuation("flow-carry", prev, before, before), r = c.record.routes?.[0];
+    return r && c.record.routes.length === 1 && r.steps.length === 3 && r.steps[2].at === "src/print.js:3" && r.steps[2].stops === undefined && r.links[1].question === undefined && r.links[1].via === "the call"
+      || JSON.stringify(c.record.routes);
+  });
+
+test("ground reads every quote at its place in the repository — check then refuses one that is not there — and lists the entry points the changed production code makes and its callers, warning of those no route names",
+  "the first real review's reviewer wrote its own script to check its quotes, and a hand-made list of triggers missed six of 22 that were in the code (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    fs.mkdirSync(path.join(repoDir, "src"), { recursive: true }); fs.mkdirSync(out);
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), "export const x = 1;\n");
+    fs.writeFileSync(path.join(repoDir, "src/use.js"), "import { total } from './a.js';\nexport const y = () => total(2);\n");
+    fs.writeFileSync(path.join(repoDir, "src/a.test.js"), "total(3);\n");
+    fs.writeFileSync(path.join(repoDir, "README.md"), "Call total(n).\n");
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), 'export const x = 1;\nexport function total(n) {\n  switch (n) {\n    case "two": return 2;\n  }\n  document.addEventListener("keydown", () => {});\n}\n');
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    const routed = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2-7", does: "A total.", serves: [1], verdict: "keep" }]), units: [],
+      routes: [{ title: "A total", requirements: [1], steps: [{ block: 1, role: "Totals." }, { at: "src/use.js:2", quote: "export const y = () => total(2);", role: "Uses it.", via: "the import, src/use.js:1" }] }] };
+    const write = (r) => fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(r));
+    write(routed);
+    const g = report("ground", path.join(out, "review.json"), repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const kinds = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call total src/use.js:2", "case two src/a.js:4", "function total src/a.js:2", "listener keydown src/a.js:6"];
+    if (g.status !== 0 || JSON.stringify(kinds) !== JSON.stringify(want) || !/4 places found in the changed code, 0 on no route; 0 of 2 route steps in production code it did not find; 1 quotes read/.test(g.stdout)) return JSON.stringify({ status: g.status, out: g.stdout, err: g.stderr, kinds });
+    // without a route, check names what the script found; a quote not at its place is refused, saying what is there
+    write({ ...routed, routes: [] });
+    const bare = report("check", path.join(out, "review.json"));
+    if (bare.status !== 0 || !/4 of 4 places the script found in the changed code are on no route \(function total at src\/a\.js:2; case two at src\/a\.js:4/.test(bare.stderr)) return `no route: ${bare.stderr}`;
+    write({ ...routed, routes: [{ ...routed.routes[0], steps: [routed.routes[0].steps[0], { ...routed.routes[0].steps[1], quote: "total(9)" }] }] });
+    const wrong = report("check", path.join(out, "review.json"));
+    return wrong.status === 1 && wrong.stderr.includes("routes 1 steps 2: «total(9)» is not at src/use.js:2, which reads «export const y = () => total(2);»") || wrong.stderr;
+  });
+
+test("ground reads at the reviewed commit and refuses a checkout that is not there; a quote passes where it stands beside the record or in the code, never outside them; a removed line without (base) is named, not refused; a change to a function's body lists the function and the calls that reach it, a caller only by its place, and tests, prose and namesakes are no entry points",
+  "the critic of ground: a later checkout made check refuse a valid record, the repository's own task.md shadowed the one beside the record, a path could read /etc/passwd, and a change inside a function found nothing (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground2-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    fs.mkdirSync(path.join(repoDir, "src"), { recursive: true }); fs.mkdirSync(path.join(repoDir, "tests"), { recursive: true }); fs.mkdirSync(out);
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const body = (n) => `export function total(n) {\n  const k = ${n};\n  return n * k;\n}\nexport const old = 1;\n`;
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), body(2));
+    fs.writeFileSync(path.join(repoDir, "src/use.js"), "import { total } from './a.js';\nexport const y = () => total(2);\n");
+    fs.writeFileSync(path.join(repoDir, "tests/test_a.py"), "def test_total():\n    total(1)\n");
+    // no callers: a module with a total of its own, a total in a message, one that does not import it
+    fs.writeFileSync(path.join(repoDir, "src/own.js"), "const total = (x) => x;\nexport const w = () => total(1);\n");
+    fs.writeFileSync(path.join(repoDir, "src/say.js"), "import { total } from './a.js';\nexport const s = () => { throw new Error(`cannot total (${total})`); };\n// total(n) is the sum\n");
+    fs.writeFileSync(path.join(repoDir, "src/free.js"), "export const z = () => total(4);\n");
+    fs.writeFileSync(path.join(repoDir, "task.md"), "The repository's own notes.\n");
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), body(3).replace("export const old = 1;\n", ""));
+    fs.writeFileSync(path.join(repoDir, "tests/test_a.py"), "def test_total():\n    total(3)\n");
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    fs.writeFileSync(path.join(out, "task.md"), "# Task\nMake the rate three.\n");
+    const record = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2", removed: "2, 5", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "tests/test_a.py", added: "2", removed: "2", does: "Its test.", serves: [1], verdict: "keep" }]), units: [],
+      requirements: [{ id: 1, text: "A total uses the rate.", source: "task", sources: [{ at: "task.md:2", quote: "Make the rate three." },
+        { at: "src/a.js:5", quote: "export const old = 1;" }, { at: "../../../../../etc/passwd:1", quote: "root" }] }],
+      routes: [{ title: "A total, as the total call makes it", requirements: [1], steps: [{ block: 1, role: "The rate." }, { block: 1, role: "Its total.", via: "the rate it reads, src/a.js:3" }] }] };
+    fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(record));
+    const file = path.join(out, "review.json");
+    // not at the reviewed commit: refused before anything is saved
+    git("checkout", "-q", "HEAD~1");
+    const early = report("ground", file, repoDir);
+    git("checkout", "-q", "-");
+    if (early.status !== 1 || !/is not the reviewed state: src\/a\.js:2 reads «const k = 2;», and the diff adds «const k = 3;» there/.test(early.stderr) || fs.existsSync(path.join(out, "ground.json"))) return `drift: ${early.stderr}`;
+    const g = report("ground", file, repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const found = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    if (g.status !== 0 || JSON.stringify(found) !== JSON.stringify(["call total src/use.js:2", "function total src/a.js:1"])) return JSON.stringify({ status: g.status, err: g.stderr, found });
+    // the caller is followed by its place only, not by the word in the title; the removed line and the outside path are named
+    if (!/1 of 2 places the script found in the changed code are on no route \(call total at src\/use\.js:2\)/.test(g.stderr) || !/src\/a\.js:5 quotes a line the diff removes: mark the place \(base\)/.test(g.stderr)
+      || !/etc\/passwd:1 is no file in the checkout or beside the record/.test(g.stderr) || /root:x:/.test(g.stdout + g.stderr)) return `warnings: ${g.stderr}`;
+    // a later checkout changes nothing: the quotes are read at the saved commit
+    git("checkout", "-q", "HEAD~1");
+    const later = report("check", file);
+    git("checkout", "-q", "-");
+    return later.status === 0 || `after a checkout: ${later.stderr}`;
+  });
+
+test("ground's reading holds at the edges: a CRLF file is the reviewed state, a JSON quote must begin on its line, a removed line in a deleted file is a base line, a directory is no file; a call is found across a multi-line import, through a namespace, after an apostrophe and inside a template, and not in a trailing comment, in a copy of the module elsewhere, or for a change in an object literal",
+  "the verifier of ground: CRLF files made ground refuse every checkout, an escaped JSON line let the next line's quote pass, and the import test kept or dropped callers by the look of a line (PR 119)",
+  () => {
+    const base = fs.mkdtempSync(path.join(run, "ground3-")), faults = [];
+    const repo = (name, before, after) => {
+      const d = path.join(base, name), git = (...a) => spawnSync("git", ["-C", d, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+      const put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(d, f); fs.mkdirSync(path.dirname(p), { recursive: true }); if (t === null) fs.rmSync(p); else fs.writeFileSync(p, t); } };
+      fs.mkdirSync(d); git("init", "-q"); put(before); git("add", "-A"); git("commit", "-qm", "b"); put(after); git("add", "-A"); git("commit", "-qm", "h");
+      return { checkout: checkoutOf(d), files: parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout) };
+    };
+    const quote = (r, at, q) => checkQuotes({ x: { at, quote: q } }, { roots: [{ root: r.checkout.root, sha: r.checkout.sha }], diffFiles: r.files });
+    const crlf = repo("crlf", { "a.js": "export function f() {\r\n  return 1;\r\n}\r\n" }, { "a.js": "export function f() {\r\n  return 2;\r\n}\r\n" });
+    if (driftOf(crlf.files, crlf.checkout)) faults.push(`crlf: ${driftOf(crlf.files, crlf.checkout)}`);
+    const json = repo("json", { "p.json": "{\n}\n" }, { "p.json": '{\n  "a": "say \\"hi\\"",\n  "b": 1\n}\n' });
+    if (quote(json, "p.json:2", '"a": "say "hi""').mismatches.length || !quote(json, "p.json:2", '"b": 1').mismatches.length) faults.push("json");
+    const gone = repo("gone", { "old.js": "export const k = 1;\n", "b.js": "x\n" }, { "old.js": null, "b.js": "y\n" });
+    if (quote(gone, "old.js:1", "export const k = 1;").base.length !== 1) faults.push("a removed line in a deleted file");
+    const a = "export function total(n) {\n  return n;\n}\n", a2 = "export function total(n) {\n  return n * 2;\n}\n";
+    const callers = {
+      "src/multi.js": "import {\n  total,\n} from './a.js';\nexport const m = () => total(1);\n",
+      "src/ns.js": "import * as a from './a.js';\nexport const n = () => a.total(1);\n",
+      "src/apos.js": "import { total } from './a.js';\nconst s = \"it's\"; export const p = () => total(1);\n",
+      "src/tpl.js": "import { total } from './a.js';\nexport const t = (n) => `v ${total(n)}`;\n",
+      "src/cmt.js": "import './a.js';\nexport const c = () => 1; // total(2) is the sum\n",
+      "copy/a.js": a, "copy/use.js": "import { total } from './a.js';\nexport const u = () => total(3);\n",
+      "src/cfg.js": "function helper() {}\nexport const cfg = {\n  k: 1,\n};\n",
+    };
+    const calls = repo("calls", { "src/a.js": a, ...callers }, { "src/a.js": a2, "src/cfg.js": callers["src/cfg.js"].replace("k: 1", "k: 2") });
+    const found = candidatesOf(calls.files, calls.checkout).map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call total src/apos.js:2", "call total src/multi.js:4", "call total src/ns.js:2", "call total src/tpl.js:2", "function total src/a.js:1"];
+    if (JSON.stringify(found) !== JSON.stringify(want)) faults.push(`calls: ${JSON.stringify(found)}`);
+    // git shows a directory as a listing of its files: that is no file to quote
+    if (quote(calls, "src:3", "a.js").checked) faults.push("a directory read as a file");
+    return !faults.length || faults.join("; ");
+  });
+
+test("ground shows the disagreement both ways: a route's step in production code the script found no entry point for is listed, as no fault, in the printout and its counts; a step in a function it found, or in the function a found call is in, is seen",
+  "Fable's research: static call graphs of JavaScript find 76-88% of calls, so the script's list is never complete and the useful signal is where it and the routes disagree, in both directions (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground4-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    const put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(repoDir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    fs.mkdirSync(repoDir, { recursive: true }); fs.mkdirSync(out); git("init", "-q");
+    const total = (k) => `export default function total(n) {\n  return n * ${k};\n}\n`, rate = (k) => `export function rate(v) {\n  return v + ${k};\n}\n`;
+    put({ "src/a.js": total(2), "src/b.js": rate(1),
+      "src/as.js": "import { rate } from './b.js';\nexport function use() {\n  const v = 1;\n  return rate(v);\n}\n",
+      "src/free.js": "export const z = 1;\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    put({ "src/a.js": total(3), "src/b.js": rate(2) });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    const record = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2", removed: "2", does: "The total.", serves: [1], verdict: "keep" },
+      { path: "src/b.js", added: "2", removed: "2", does: "The rate.", serves: [1], verdict: "keep" }]), units: [],
+      routes: [{ title: "A total, through its rate", requirements: [1], steps: [{ block: 1, role: "Multiplies." },
+        { at: "src/as.js:3", quote: "const v = 1;", role: "Takes the value.", via: "its own constant, src/as.js:3" },
+        { at: "src/free.js:1", quote: "export const z = 1;", role: "Holds a value the script cannot tie in.", via: "a name read at run time, src/free.js:1" }] }] };
+    fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(record));
+    const g = report("ground", path.join(out, "review.json"), repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const found = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call rate src/as.js:4", "function rate src/b.js:1", "function total src/a.js:1"];
+    if (g.status !== 0 || JSON.stringify(found) !== JSON.stringify(want)) return JSON.stringify({ status: g.status, err: g.stderr, found });
+    // three steps in production code; the block is in total, as.js:3 is in use(), where rate is called; free.js is seen by nothing
+    if (!/1 of 3 route steps in production code it did not find/.test(g.stdout)) return `counts: ${g.stdout}`;
+    const printed = report("render", path.join(out, "review.json"));
+    return printed.status === 0 && /On a route, not found by script: 1 of 3 steps:\n- A total, through its rate, 3\. `src\/free\.js:1`: Holds a value/.test(printed.stdout) && !/On a route, not found[^#]*src\/as\.js/.test(printed.stdout)
+      || `printout: ${printed.stderr} ${printed.stdout.slice(printed.stdout.indexOf("On a route"), printed.stdout.indexOf("On a route") + 400)}`;
+  });
+
+test("a call through a name the importing file gives the changed function — its default import, or `{ f as g }` — is a caller; the same name imported from another module is not",
+  "a call through a renamed import was the known gap the verifier of ground left: the call regex looked for the function's own name only (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground5-")), put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(dir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", dir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const total = (k) => `export default function total(n) {\n  return n * ${k};\n}\n`, rate = (k) => `export function rate(v) {\n  return v + ${k};\n}\n`;
+    put({ "src/a.js": total(2), "src/b.js": rate(1),
+      "src/alias.js": "import tot from './a.js';\nexport const x = () => tot(1);\n",
+      "src/as.js": "import {\n  rate as r,\n} from './b.js';\nexport const w = () => r(2);\n",
+      "src/c.js": "export default function other() {}\n", "src/elsewhere.js": "import tot from './c.js';\nexport const y = () => tot(2);\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    put({ "src/a.js": total(3), "src/b.js": rate(2) });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const files = parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout);
+    const found = candidatesOf(files, checkoutOf(dir)).filter((c) => c.kind === "call").map((c) => `${c.name} ${c.at}`).sort();
+    return JSON.stringify(found) === JSON.stringify(["rate src/as.js:4", "total src/alias.js:2"]) || JSON.stringify(found);
+  });
+
+test("ground lists the change's entry points, not its plumbing: a new file is entered by what it exports, a change in a nested helper by the outermost function, a call on a line the diff adds is part of the change, and a member call is the function's only through the module's own name",
+  "on a new 270-line module the script listed 23 functions and 49 calls, most of them between its own helpers, the reviewer wrote five routes to cover them, and `seen.add(` of a Set counted as a call of the module's helper `add` (the second real trial, PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground6-")), put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(dir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", dir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const old = (k) => `export function run(x) {\n  const inner = (y) => {\n    return y + ${k};\n  };\n  return inner(x);\n}\n`;
+    put({ "src/old.js": old(1), "src/user.js": "import { run } from './old.js';\nimport { build } from './fresh.js';\nconst seen = new Set();\nexport const u = () => { seen.add(1); return build([run(2)]); };\n",
+      "src/fresh.js": "export const placeholder = 0;\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.rmSync(path.join(dir, "src/fresh.js"));
+    git("add", "-A"); git("commit", "-qm", "no fresh");
+    put({ "src/old.js": old(2), "src/fresh.js": "function add(rows, x) {\n  rows.push(x);\n}\nexport function build(rows) {\n  add(rows, 1);\n  return rows;\n}\n" });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const files = parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout);
+    const all = candidatesOf(files, checkoutOf(dir)), entries = entriesOf(all).map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const inner = all.filter((c) => c.kind === "inner").map((c) => `${c.name} ${c.at}`);
+    return JSON.stringify(entries) === JSON.stringify(["call build src/user.js:4", "call run src/user.js:4", "function build src/fresh.js:4", "function run src/old.js:1"])
+      && JSON.stringify(inner) === JSON.stringify(["add src/fresh.js:1"]) || JSON.stringify({ entries, inner });
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {
@@ -641,7 +955,8 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.blocks[1].findings = [9]; }, "block 2 names finding 9, which is not listed"],
       [(r) => { r.blocks[0].serves = [7]; }, "block 1 names requirement 7, which is not listed"],
       [(r) => { r.blocks[1].findings = []; }, "block 2 is to fix and names no finding"],
-      [(r) => { r.blocks[0].unit = "rows"; }, 'block 1: "rows" is not a unit of the change'],
+      [(r) => { r.blocks[0].unit = "rows"; }, 'block 1: "rows" is marked existing, untouched code: a block\'s unit is one the change writes or alters'],
+      [(r) => { r.blocks[0].unit = "nowhere"; }, 'block 1: "nowhere" is not a unit of the change: list it in "units", or name the unit the change writes'],
       [(r) => { delete r.blocks[0].unit; }, "unit readArchive has no block"],
       [(r) => { r.units[0].uses = ["nobody"]; }, "units: readArchive names unit nobody, which is not listed"],
       [(r) => { r.findings[1].breaks = [5]; }, "finding 2 names requirement 5, which is not listed"],
@@ -972,6 +1287,14 @@ test("check lists faults instead of throwing on malformed lists, and a run witho
     if (readChecked.errors.length) return `the read statement record broke elsewhere: ${readChecked.errors.join("; ")}`;
     if (readChecked.warnings.some((w) => w.includes("without a revision"))) return "a read statement was asked for a revision";
     return true;
+  });
+
+test("a finding id that names itself a finding is warned about, since the page writes F before it",
+  "the second real trial wrote f_coverage_count, and the page showed Ff_coverage_count (PR 119)",
+  () => {
+    // only the id changes, so the references to it no longer resolve: the warning is what this case reads
+    const files = parseThemeDiff(), r = structuredClone(THEMED), warned = (id) => { r.findings[0].id = id; return check(r, files, run).warnings.some((w) => w.startsWith(`finding ${id}: the page writes F`)); };
+    return warned("f_coverage") && warned("F2") && !warned("coverage") && !warned("fix-a") || "warned wrongly";
   });
 
 test("a finding id is validated, and even a hostile one reaches an href escaped",

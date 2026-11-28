@@ -213,15 +213,67 @@ ul.routes { list-style: none; margin: 0; padding: 0; border: 1px solid var(--bor
 .route-row:hover { background: var(--surface-2); }
 .route-row.sel { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
 .route-t { font-weight: 500; }
-.flow { list-style: none; margin: 8px 0 10px; padding: 0; }
-.flow-step { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; background: var(--surface); }
-.flow-step .flow-node { border-top: 0; }
-.flow-node.open-v { box-shadow: inset 3px 0 0 var(--warn); }
-.flow-role { display: block; margin-top: 3px; font-size: 13px; color: var(--text); }
-.flow-via { position: relative; margin: 0 0 0 18px; padding: 6px 0 6px 18px; border-left: 2px solid var(--border-strong, var(--border)); font-size: 12.5px; color: var(--text-2); }
-.flow-via .lbl { display: block; }
-.flow-arrow { position: absolute; left: -6px; bottom: -1px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--border-strong, var(--text-3)); }
-.flow-step + .flow-step { margin-top: 10px; }
+/* a route's flow, open under its row: steps in rows, edges drawn over them, a link's words on its edge */
+li.route-flow { border-top: 1px solid var(--border); padding: 10px 12px 12px; background: var(--surface-2); cursor: default; }
+.flow-card { display: grid; gap: 8px; min-width: 0; }
+.flow-head { display: flex; align-items: center; gap: 10px; }
+.flow-head .x { margin-left: auto; }
+.flow-scroll { overflow-x: auto; min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.flow-canvas { position: relative; display: flex; flex-direction: column; gap: 56px; padding: 16px 72px 16px 16px; min-width: max-content; }
+.flow-row { display: flex; gap: 28px; justify-content: center; }
+.flow-n { appearance: none; position: relative; z-index: 1; display: grid; gap: 4px; width: 230px; text-align: left; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px 9px; cursor: pointer; box-shadow: var(--shadow); }
+.flow-n:hover { border-color: var(--text-3); }
+.flow-n[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.flow-n.open-v { box-shadow: inset 3px 0 0 var(--warn), var(--shadow); }
+.flow-n.stops { border-bottom: 2px dashed var(--q-line); }
+.fn-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.fn-top .ev { margin-left: auto; }
+.fn-num { font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fn-id { font: 600 12px var(--mono); }
+.fn-role { font-size: 13px; line-height: 1.35; }
+.fn-value { font: 12px var(--mono); color: var(--accent); overflow-wrap: anywhere; }
+.fn-place { font: 11.5px var(--mono); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fn-stop { font-size: 12px; color: var(--q); }
+.fn-items { font: 600 11.5px var(--mono); color: var(--warn); }
+.flow-svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.fe { fill: none; stroke-width: 1.6; }
+.fe.plain { stroke: var(--text-3); }
+.fe.ok { stroke: var(--ok); }
+.fe.q { stroke: var(--q-line); stroke-dasharray: 5 4; }
+.fe.mixed { stroke: var(--ok); stroke-dasharray: 2 4; }
+.fm.plain { fill: var(--text-3); }
+.fm.ok { fill: var(--ok); }
+.fm.q { fill: var(--q-line); }
+.fm.mixed { fill: var(--ok); }
+.flow-lbl { position: absolute; z-index: 2; transform: translate(-50%, -50%); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 11.5px/18px var(--sans); color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0 7px; }
+.flow-lbl.side { transform: translate(6px, -50%); max-width: 180px; }
+button.flow-lbl { cursor: pointer; }
+button.flow-lbl:hover { border-color: var(--border-strong); color: var(--text); }
+button.flow-lbl[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--text); }
+.flow-lbl.ok { border-color: var(--ok-bd); }
+.flow-lbl.q { border-color: var(--q-bd); }
+.flow-note { margin: 0; }
+.flow-list { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.flow-li-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.flow-li { font-weight: 500; text-align: left; }
+.flow-li[aria-current="true"] { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.flow-via { margin: 0 0 2px 10px; padding: 2px 0 2px 12px; border-left: 2px solid var(--border-strong); color: var(--text-2); }
+.flow-via .lbl { margin-right: 6px; }
+.flow-out { margin: 2px 0 0 18px; color: var(--text-2); }
+.flow-table td { vertical-align: top; }
+.flow-table tr.sel td { background: var(--accent-bg); }
+.ev-list { display: grid; gap: 6px; }
+.ev-list .lbl { margin-right: 6px; }
+.quote-line { margin: 0; padding: 6px 10px; font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--code-bg); }
+.flow-nav { display: flex; justify-content: space-between; gap: 8px; }
+.check-status { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.check-results { margin: 6px 0 8px; }
+.field-l { display: block; margin: 8px 0 3px; color: var(--text-2); }
+details.ground { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 8px 14px; }
+details.ground summary { cursor: pointer; font-weight: 500; }
+.ground-list { display: grid; gap: 8px; margin-top: 8px; }
 .route-nav { margin-top: 4px; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-3); }
 
 /* ---------- tables ---------- */
@@ -340,6 +392,10 @@ tr.findhit td { box-shadow: inset 0 0 0 999px var(--hl) !important; }
 tr.findhit td.cd { outline: 2px solid var(--accent); outline-offset: -2px; }
 .warnings li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 0; }
 .tbl.compact td { padding: 7px 10px; }
+/* A compact table's headings wrap before the table outgrows its column; one that still does scrolls inside it, never
+   under the context panel beside it. */
+.tbl.compact th { white-space: normal; }
+.tbl-scroll { overflow-x: auto; border-radius: 8px; }
 .clamp1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -457,6 +513,8 @@ tr.note-row td, tr.done-row td, tr.cont-row td, tr.lc-row td { padding: 0 !impor
 .note-top { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--border); min-width: 0; }
 .note-top .bid { font: 700 12px var(--mono); }
 .note-top .does { color: var(--text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.note-whole { padding: 5px 8px 6px 12px; font-size: 12.5px; color: var(--text-2); border-bottom: 1px solid var(--border); }
+.note-whole .lbl, .ex-whole .lbl { margin-right: 6px; }
 .note-item { padding: 8px 12px 10px; }
 .note-item + .note-item { border-top: 1px dashed var(--border); }
 .note-item .ni-head { display: flex; gap: 8px; align-items: flex-start; }
@@ -509,7 +567,7 @@ tr.lc-row td { background: var(--surface-2); }
 .ex-h { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12px; min-width: 0; flex-wrap: wrap; }
 .ex-h .ex-path { font-family: var(--mono); color: var(--text-2); min-width: 0; overflow-wrap: break-word; flex: 1; }
 .ex-h .ex-path b { color: var(--text); }
-.ex-does { padding: 6px 10px; font-size: 12.5px; color: var(--text-2); border-bottom: 1px solid var(--border); background: var(--surface); }
+.ex-does, .ex-whole { padding: 6px 10px; font-size: 12.5px; color: var(--text-2); border-bottom: 1px solid var(--border); background: var(--surface); }
 .excerpt table.diff { font-size: 11.5px; line-height: 18px; }
 .excerpt table.diff col.c-num { width: 38px; }
 .excerpt td.cd { padding-left: 18px !important; text-indent: -10px; }

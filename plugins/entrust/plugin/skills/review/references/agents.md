@@ -43,8 +43,9 @@ their places, and what was looked for and not found. No opinion on the change.
 ## Critic
 
 The printout of the reviewer's saved draft (`report.mjs render`: the requirements with their sources, the units with
-their verdicts and reasons, the mechanisms, the target, the findings, the questions and the blocks not kept; a kept
-block's lines through `report.mjs lines`) and `<out>/target.md`; not the reviewer's working notes.
+their verdicts and reasons, the mechanisms, the target, the findings, the questions and every block with its
+description, verdict and, for one kept whole, its reason; a block's lines through `report.mjs lines`) and
+`<out>/target.md`; not the reviewer's working notes.
 Brief:
 
 > Give the five strongest points against this draft, ranked, each with its place. Name any requirement that no
@@ -54,13 +55,15 @@ Brief:
 > missed defect or test gap), and what it proposes that should not (a change that removes no burden, adds a boundary
 > or loses required behavior). Open the saved diff (`<out>/review.diff`) for the code the draft keeps without comment
 > and name each construct there you would not have written, with the burden it carries, by the leads of the design
-> standard. Where you found nothing to argue, say so.
+> standard. For a block kept whole, say whether its reason holds for its lines, and divide it where it does not.
+> Where you found nothing to argue, say so.
 
 ## Verifier
 
 The same printout. Each factual claim in it: the source given for each requirement, its quote and its origin, every `met: read`, what calls what, what a
 contract guarantees, what is unavailable, what a removal would eliminate, what a test covers, the reasons for kept
-units. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
+units, each route step's quoted line at its place, and each confirmation: that its test line asserts that step and
+that its run covered it. Check also the facts in the cards' context, the variants' consequences, the bases of the recommendations, the
 coverage limits and the sources of the accepted tradeoffs. The full text report carries all of these regardless of
 the page's profile. Check each against the source and return it as confirmed or refuted, with the place, or as not
 checkable and why. No new findings.

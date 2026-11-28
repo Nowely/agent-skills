@@ -10,12 +10,15 @@
 // request is the owner's input, never a verified result.
 export function decisionRuntime() {
   // The export format's number: it tells a later reader how to read the export, and changes with the export alone.
-  const schema = 8;
+  const schema = 9;
   // answers by item key; comments on a line of the saved diff (its path, side and number) and on a paragraph of the
   // report (an item or part of it, and a field). A comment made on a selection also keeps what was selected: in the
   // diff the lines it spans on one side (`line` to `end`), and in either the characters (`from` in its first line or
   // the paragraph, `to` in its last) and the selected words (`quote`). A comment never answers anything.
-  const empty = () => ({ answers: {}, lines: [], paragraphs: [] });
+  const empty = () => ({ answers: {}, lines: [], paragraphs: [], checks: {} });
+  // A check's result as the owner recorded it: one of these, with the conditions it was run in and a note. It is the
+  // owner's observation at the reviewed revision, never a test result, and no decision counts it.
+  const RESULTS = ["pass", "fail", "could-not-run", "observed"];
   const OPTIONS = { finding: ["fix", "leave"], idea: ["take", "skip"] };
   const REQUESTS = ["fact", "evidence"];
   // The items of a record, each under the key the page and the export name it by: questions by number, findings by
@@ -34,9 +37,18 @@ export function decisionRuntime() {
     if (!object(raw)) return empty();
     return { answers: object(raw.answers) ? { ...raw.answers } : {},
       lines: list(raw.lines, (c) => typeof c.path === "string" && ["head", "base"].includes(c.side) && Number.isInteger(c.line) && spanOk(c) && (c.end === undefined || (Number.isInteger(c.end) && c.end >= c.line))),
-      paragraphs: list(raw.paragraphs, (c) => typeof c.item === "string" && typeof c.field === "string" && spanOk(c)) };
+      paragraphs: list(raw.paragraphs, (c) => typeof c.item === "string" && typeof c.field === "string" && spanOk(c)),
+      checks: object(raw.checks) ? Object.fromEntries(Object.entries(raw.checks).filter(([k, v]) => /^c\d+$/.test(k) && object(v))
+        .map(([k, v]) => [k, checkEntry(v)]).filter(([, v]) => Object.keys(v).length)) : {} };
   };
   const entryOf = (state, key) => state.answers[key] ?? {};
+  const checkEntry = (v) => ({ ...(RESULTS.includes(v.result) ? { result: v.result } : {}), ...(has(v.conditions) ? { conditions: String(v.conditions) } : {}), ...(has(v.note) ? { note: String(v.note) } : {}) });
+  // a result, its conditions or its note changed; an entry left empty is gone
+  const recordCheck = (state, key, change) => {
+    const checks = { ...(state.checks ?? {}) }, next = checkEntry({ ...(checks[key] ?? {}), ...change });
+    if (Object.keys(next).length) checks[key] = next; else delete checks[key];
+    return { ...state, checks };
+  };
   const byKeyOf = (items) => new Map(items.map((item) => [item.key, item]));
   const has = (text) => String(text ?? "").trim() !== "";
   // The variants chosen, as a list whether the question takes one or several.
@@ -180,7 +192,7 @@ export function decisionRuntime() {
       ? (item.kind !== "decision" ? { option: a.choice } : item.multiple ? { variants: chosen(a).map((id) => ({ id, text: item.variants[id] })) } : { variant: { id: a.choice, text: item.variants[a.choice] } })
       : has(a.text) ? { text: a.text } : {};
     return {
-      schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range,
+      schema_version: schema, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: meta.key, title: meta.title, range: meta.range, revision: meta.revision ?? null,
       progress: (({ total, done, open, deferred }) => ({ total, done, open, deferred }))(progress(items, state)),
       items: items.map((item) => {
         const s = statusIn(item, state, byKey), entry = entryOf(state, item.key), parent = waitingIn(item, state, byKey);
@@ -189,9 +201,13 @@ export function decisionRuntime() {
           ...(s.draft ? { draft: answerOf(item, s.draft) } : {}), ...(zones.length ? { zones } : {}), ...(parent ? { waiting_for_parent: parent } : {}) };
       }),
       lineComments: state.lines, paragraphComments: state.paragraphs,
+      // the checks, by number, at the revision above: a result is the owner's observation; one with a note and no
+      // result was not run, and its note travels as the owner's comment
+      checks: Object.entries(state.checks ?? {}).map(([k, v]) => ({ check: +k.slice(1), result: v.result ?? null, ...(v.conditions ? { conditions: v.conditions } : {}), ...(v.note ? { note: v.note } : {}) }))
+        .sort((a, b) => a.check - b.check),
     };
   };
-  return { schema, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf,
+  return { schema, empty, normalize, itemsOf, settle, choose, write, defer, undefer, applyDraft, clear, markZone, progress, undo, lineComment, paragraphComment, exportOf, recordCheck,
     waitingFor: (items, state, key) => waitingIn(item(items, key), state, byKeyOf(items)),
     done: (items, state, key) => DONE.includes(statusIn(item(items, key), state, byKeyOf(items)).state),
     status: (items, state, key) => statusIn(item(items, key), state, byKeyOf(items)),
