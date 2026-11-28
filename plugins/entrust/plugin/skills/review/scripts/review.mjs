@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
-import { checkQuotes, onRoute, readGround, unseenSteps, GROUND } from "./ground.mjs";
+import { checkQuotes, entriesOf, onRoute, readGround, unseenSteps, GROUND } from "./ground.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -703,10 +703,10 @@ export function check(review, files, directory) {
     for (const m of quotes.mismatches) errors.push(`${words(m.who)}: «${m.quote}» is not at ${m.at}${m.line !== null ? `, which reads «${m.line.trim()}»` : ", past the end of its file"}`);
     for (const m of quotes.base) warnings.push(`${words(m.who)}: ${m.at} quotes a line the diff removes: mark the place (base)`);
     for (const m of quotes.missing) warnings.push(`${words(m.who)}: ${m.at} ${m.why === "form" ? "is not a place: write path:line" : "is no file in the checkout or beside the record"}`);
-    const found = Array.isArray(g.candidates) ? g.candidates : [], unlisted = found.filter((c) => !onRoute(c, review, owner));
+    const all = Array.isArray(g.candidates) ? g.candidates : [], found = entriesOf(all), unlisted = found.filter((c) => !onRoute(c, review, owner));
     if (unlisted.length && (routes.length || unlisted.length >= 3))
       warnings.push(`${unlisted.length} of ${found.length} places the script found in the changed code are on no route (${unlisted.slice(0, 6).map((c) => `${c.kind} ${c.name} at ${c.at}`).join("; ")}${unlisted.length > 6 ? "; …" : ""}): follow those that are behaviour through more than one place, or leave them`);
-    const { unseen, of } = unseenSteps(review, found, owner);
+    const { unseen, of } = unseenSteps(review, all, owner);
     ground = { found: found.length, unlisted, unseen, steps: of, checked: quotes.checked, skipped: quotes.skipped };
   }
   return { errors, warnings, owner, ground };

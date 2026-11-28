@@ -60,6 +60,13 @@ forensics remain in the repository references and release notes.
 - A call through a name the importing file gives the changed function — its default import, or `{ total as t }` —
   is a caller. Only an import that names the changed module counts, so the same name imported from another module is
   not.
+- `ground` lists the change's entry points, not its plumbing. On a new 270-line module it listed 23 functions and 49
+  calls (72 places), and the reviewer wrote five routes to cover them; now a new file is entered by what it exports,
+  a change in a nested helper by the outermost function, and a call on a line the diff adds is part of the change.
+  The helpers still count as code the change reaches, so a step in one is not listed as unseen. A member call is the
+  function's only through the module's own name (`m.total(` after `import * as m`, a default import, a require, a
+  Go package, `this.` in its own file): `seen.add(` of a Set no longer counted. A line calling two changed functions
+  gives both calls. On that module: 4 places instead of 72, and 3 of 40 route steps unseen, all top-level CLI code.
 
 ### Flows on the page
 

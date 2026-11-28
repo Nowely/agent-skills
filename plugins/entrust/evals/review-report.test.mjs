@@ -18,7 +18,7 @@ import { check, modelOf, weightOverview, sourceOf, BLOCK_KINDS, REQUIREMENT_STAT
 import { page } from "../plugin/skills/review/scripts/page.mjs";
 import { createSyntax, highlight } from "../plugin/skills/review/scripts/highlight.mjs";
 import { parseDiff } from "../plugin/skills/review/scripts/diff.mjs";
-import { candidatesOf, checkoutOf, checkQuotes, driftOf } from "../plugin/skills/review/scripts/ground.mjs";
+import { candidatesOf, checkoutOf, checkQuotes, driftOf, entriesOf } from "../plugin/skills/review/scripts/ground.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -678,6 +678,27 @@ test("a call through a name the importing file gives the changed function — it
     const files = parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout);
     const found = candidatesOf(files, checkoutOf(dir)).filter((c) => c.kind === "call").map((c) => `${c.name} ${c.at}`).sort();
     return JSON.stringify(found) === JSON.stringify(["rate src/as.js:4", "total src/alias.js:2"]) || JSON.stringify(found);
+  });
+
+test("ground lists the change's entry points, not its plumbing: a new file is entered by what it exports, a change in a nested helper by the outermost function, a call on a line the diff adds is part of the change, and a member call is the function's only through the module's own name",
+  "on a new 270-line module the script listed 23 functions and 49 calls, most of them between its own helpers, the reviewer wrote five routes to cover them, and `seen.add(` of a Set counted as a call of the module's helper `add` (the second real trial, PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground6-")), put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(dir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", dir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const old = (k) => `export function run(x) {\n  const inner = (y) => {\n    return y + ${k};\n  };\n  return inner(x);\n}\n`;
+    put({ "src/old.js": old(1), "src/user.js": "import { run } from './old.js';\nimport { build } from './fresh.js';\nconst seen = new Set();\nexport const u = () => { seen.add(1); return build([run(2)]); };\n",
+      "src/fresh.js": "export const placeholder = 0;\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.rmSync(path.join(dir, "src/fresh.js"));
+    git("add", "-A"); git("commit", "-qm", "no fresh");
+    put({ "src/old.js": old(2), "src/fresh.js": "function add(rows, x) {\n  rows.push(x);\n}\nexport function build(rows) {\n  add(rows, 1);\n  return rows;\n}\n" });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const files = parseDiff(git("diff", "--no-color", "--no-ext-diff", "--no-renames", "-U3", "HEAD~1..HEAD", "--").stdout);
+    const all = candidatesOf(files, checkoutOf(dir)), entries = entriesOf(all).map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const inner = all.filter((c) => c.kind === "inner").map((c) => `${c.name} ${c.at}`);
+    return JSON.stringify(entries) === JSON.stringify(["call build src/user.js:4", "call run src/user.js:4", "function build src/fresh.js:4", "function run src/old.js:1"])
+      && JSON.stringify(inner) === JSON.stringify(["add src/fresh.js:1"]) || JSON.stringify({ entries, inner });
   });
 
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",

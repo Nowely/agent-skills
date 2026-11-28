@@ -25,8 +25,10 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    A generated file is one block, as [generated files](#generated-files) says.
 3. Once routes are written, `node "<skill-dir>/scripts/report.mjs" ground <out>/review.json <repo>`, with the
    checkout at the reviewed head (it refuses one whose files do not hold the lines the diff adds). It saves its commit
-   in `<out>/ground.json` with the entry points the changed production code makes — the functions each change is in
-   and the calls that reach them from files that import them, dispatch cases, listeners, handlers, routes. From then
+   in `<out>/ground.json` with the entry points the changed production code makes — the outermost function each
+   change is in (in a new file, what it exports), the calls that reach them from the code around the change, dispatch
+   cases, listeners, handlers, routes. A helper inside a function, a new file's own helper and a call between them are
+   plumbing, not entry points. From then
    on `check` reads every quote in the record at its `path:line` at that commit or beside the record, refuses one
    that is not there, names a removed line cited without `(base)`, skips a source at another `revision`, and warns of
    each found place no route follows; follow those that are behaviour through more than one place. The list is not

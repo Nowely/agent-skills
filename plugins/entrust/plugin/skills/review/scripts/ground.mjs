@@ -164,10 +164,11 @@ function inCode(t, at, hash) {
   }
   return q === null;
 }
-function firstCall(t, hash) {
-  if (COMMENT.test(t)) return null;
-  for (const m of t.matchAll(CALL.re)) if (inCode(t, m.index, hash)) return m;
-  return null;
+// The calls on a line, in code, one for each name: a line may call two changed functions.
+function callsIn(t, hash) {
+  if (COMMENT.test(t)) return [];
+  const names = new Set();
+  return [...t.matchAll(CALL.re)].filter((m) => inCode(t, m.index, hash) && !names.has(m[2]) && names.add(m[2]));
 }
 const CALL = { re: null };
 // The modules a file imports, by the path it names them by, across lines: `from "./a.js"`, `require("./a")`,
@@ -194,12 +195,50 @@ function refersTo(p, spec, home) {
   if (/^\.\.?\//.test(spec) && !/\.py$/.test(p)) { const at = bare(path.posix.normalize(path.posix.join(path.posix.dirname(p), spec))); return at === bare(home) || (homeStem === "index" && at === path.posix.dirname(home)); }
   const s = stemOf(spec); return s === homeStem || (homeStem === "index" && s === homeDir) || (/\.go$/.test(p) && s === homeDir);
 }
+// The names a file gives the module home as a whole: `import * as m`, a default import, `const m = require(...)`,
+// Python's `import pkg.mod as m` and `from pkg import mod`, Go's package name.
+function bindingsOf(text, p, home) {
+  const out = new Set();
+  if (/\.go$/.test(p)) {
+    for (const spec of importsOf(text, p)) if (refersTo(p, spec, home)) out.add(path.posix.basename(spec));
+    for (const m of text.matchAll(/^\s*(?:import\s+)?([A-Za-z_]\w*)\s+"([^"]+)"/gm)) if (refersTo(p, m[2], home)) out.add(m[1]);
+    return out;
+  }
+  if (/\.py$/.test(p)) {
+    for (const m of text.matchAll(/^\s*import\s+([\w.]+)(?:\s+as\s+(\w+))?/gm)) if (stemOf(m[1].replace(/\./g, "/")) === stemOf(home)) out.add(m[2] ?? m[1]);
+    for (const m of text.matchAll(/^\s*from\s+[\w.]+\s+import\s+\(?([^)\n]+)/gm)) for (const part of m[1].split(",")) { const [n, as] = part.trim().split(/\s+as\s+/); if (n === stemOf(home)) out.add(as ?? n); }
+    return out;
+  }
+  for (const s of importStatements(text)) {
+    const spec = /["'`]([^"'`]+)["'`]\s*$/.exec(s)?.[1];
+    if (!spec || !refersTo(p, spec, home)) continue;
+    const ns = /\*\s*as\s+([A-Za-z_$][\w$]*)/.exec(s)?.[1], own = /^import\s+(?:type\s+)?([A-Za-z_$][\w$]*)\s*(?:,|from\b)/.exec(s)?.[1];
+    if (ns) out.add(ns);
+    if (own) out.add(own);
+  }
+  for (const m of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["'`]([^"'`]+)["'`]/g)) if (refersTo(p, m[2], home)) out.add(m[1]);
+  return out;
+}
+// Whether the definition of name at line k is what its file offers others: marked export, listed in an export or
+// module.exports, a Go name in capitals, a Python name without a leading underscore; in other languages, any.
+function exported(lines, k, name, file) {
+  if (/\.(?:[cm]?[jt]sx?)$/.test(file)) {
+    if (/^\s*export\b/.test(lines[k - 1] ?? "")) return true;
+    const e = name.replace(/[$]/g, "\\$"), text = lines.join("\n");
+    return new RegExp(`export\\s*\\{[^}]*(?<![\\w$])${e}(?![\\w$])`).test(text) || new RegExp(`\\bexports\\.${e}\\s*=|module\\.exports\\s*=\\s*\\{[^}]*(?<![\\w$])${e}(?![\\w$])`).test(text);
+  }
+  if (/\.go$/.test(file)) return /^[A-Z]/.test(name);
+  if (/\.py$/.test(file)) return !name.startsWith("_");
+  return true;
+}
 function reaches(p, name, qualifier, home, textOf) {
+  const lines = textOf(p), text = lines.join("\n"), owner = qualifier.slice(0, -1);
+  // a member call is the function's only through the module's own name — `m.total(` after `import * as m`, a default
+  // import or a require of the module, a Go package — or `this.`/`self.` in its own file; `seen.add(` is a Set's
+  if (qualifier) return p === home ? owner === "this" || owner === "self" : bindingsOf(text, p, home).has(owner);
   if (p === home) return true;
-  const lines = textOf(p), text = lines.join("\n");
   const importsHome = importsOf(text, p).some((spec) => refersTo(p, spec, home));
-  if (/\.go$/.test(p)) return qualifier ? importsHome : path.posix.dirname(p) === path.posix.dirname(home);
-  if (qualifier) return importsHome;
+  if (/\.go$/.test(p)) return path.posix.dirname(p) === path.posix.dirname(home);
   if (lines.some((t) => definitionIn(t) === name)) return false;
   if (!/\.(?:[cm]?[jt]sx?|py)$/.test(p)) return CODE.test(p);
   // a name imported from another module of this repository by its relative path is that module's; one imported through
@@ -252,16 +291,24 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
   const found = [], seen = new Set(), touched = new Map(), read = reader(path.resolve(checkout.root), checkout.sha);
   const add = (c) => { const key = `${c.kind}\n${c.name}\n${c.at}`; if (!seen.has(key)) { seen.add(key); found.push(c); } };
   for (const file of files.filter((f) => running(f.path))) {
-    const head = read(file.path);
+    const head = read(file.path), isNew = file.status === "A";
+    const changesIn = (from, to) => file.hunks.flat().filter((l) => l.kind === "add" && l.new >= from && l.new <= to).map(address);
     for (const hunk of file.hunks) {
       for (const line of hunk.filter((l) => l.kind === "add")) {
         const name = definitionIn(line.text);
-        if (name) { add({ kind: "function", name, at: `${file.path}:${line.new}`, to: head ? endOf(head, line.new) : line.new, quote: line.text.trim().slice(0, 160) }); continue; }
+        if (name) {
+          // a helper defined inside another function is reached through it, and a new file is entered by what it
+          // exports: such a helper is kept as `inner`, no entry point, but code the change reaches
+          const to = head ? endOf(head, line.new) : line.new;
+          const inner = head && (enclosingOf(head, line.new) || (isNew && !exported(head, line.new, name, file.path)));
+          add({ kind: inner ? "inner" : "function", name, at: `${file.path}:${line.new}`, to, quote: line.text.trim().slice(0, 160), changes: changesIn(line.new, to) });
+          continue;
+        }
         for (const [kind, re] of MARKS) { const m = re.exec(line.text); if (m) { add({ kind, name: unquote(m[1]), at: `${file.path}:${line.new}`, quote: line.text.trim().slice(0, 160) }); break; } }
       }
       // the definition that encloses each change, found upward in the file at the reviewed commit: a change to a
       // function's body changes the function, so its callers are where the change is felt
-      if (!head) continue;
+      if (!head || isNew) continue;
       // Each keeps the changes it encloses, so a block that is a step follows the function its lines are in.
       const near = new Map();
       for (const l of hunk.filter((l) => l.kind !== "ctx")) {
@@ -270,7 +317,8 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
         near.get(n).push(address(l));
       }
       for (const [n, changes] of near) {
-        const def = enclosingOf(head, n);
+        let def = enclosingOf(head, n);
+        for (let up = def && enclosingOf(head, def.k); up; up = enclosingOf(head, up.k)) def = up;
         if (!def) continue;
         const at = `${file.path}:${def.k}`, had = found.find((c) => c.kind === "function" && c.name === def.name && c.at === at);
         if (had) had.changes = [...new Set([...(had.changes ?? []), ...changes])];
@@ -288,7 +336,8 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
     CALL.re = new RegExp(`(?<![\\w$.])((?:[A-Za-z_$][\\w$]*\\.)?)(${names.join("|")})\\s*\\(`, "g");
     const per = new Map();
     const rows = (r.status === 0 ? r.stdout.split("\n") : []).map((row) => /^[^:]+:(.+?):(\d+):(.*)$/.exec(row)).filter((m) => m && running(m[1]));
-    const hits = rows.map((m) => ({ m, hit: firstCall(m[3], /\.py$/.test(m[1])) })).filter(({ m, hit }) => hit && definitionIn(m[3]) !== hit[2]);
+    const added = new Set(files.flatMap((f) => f.hunks.flat().filter((l) => l.kind === "add").map((l) => `${f.path}:${l.new}`)));
+    const hits = rows.filter((m) => !added.has(`${m[1]}:${m[2]}`)).flatMap((m) => callsIn(m[3], /\.py$/.test(m[1])).map((hit) => ({ m, hit }))).filter(({ m, hit }) => definitionIn(m[3]) !== hit[2]);
     read.many(hits.map(({ m }) => m[1]));
     const textOf = (p) => read(p) ?? [];
     let total = 0;
@@ -329,7 +378,7 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
         if (!aliases.size) continue;
         const re = new RegExp(`(?<![\\w$.])(${[...aliases.keys()].map((a) => a.replace(/[$]/g, "\\$")).join("|")})\\s*\\(`, "g");
         lines.forEach((t, k) => {
-          if (total >= calls || COMMENT.test(t) || /^\s*import\b/.test(t)) return;
+          if (total >= calls || COMMENT.test(t) || /^\s*import\b/.test(t) || added.has(`${p}:${k + 1}`)) return;
           const m = [...t.matchAll(re)].find((x) => inCode(t, x.index, false)), name = m && aliases.get(m[1]);
           if (!name || definitionIn(t) === m[1] || (per.get(name) ?? 0) >= perName) return;
           add({ kind: "call", name, at: `${p}:${k + 1}`, quote: t.trim().slice(0, 160), ...within(lines, k + 1) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
@@ -355,8 +404,10 @@ export function onRoute(c, review, owner) {
     || [...text(r).matchAll(/([\w./-]+:\d+(?:-\d+)?)/g)].some((m) => same(m[1])) || (c.kind !== "call" && named(code(r))));
 }
 
+// The places the script found that enter the change: all but the helpers it keeps as `inner`.
+export const entriesOf = (candidates) => candidates.filter((c) => c.kind !== "inner");
 // The other side of the disagreement: a route's step in production code where the script found no entry point — not
-// its line, not a change in the function it found, not a call at its place. Such a step stands on the review's reading
+// its line, not a change in a function it found or a helper of the change, not a call at its place. Such a step stands on the review's reading
 // alone, which may be right: static search misses calls made through names it cannot see. `of` counts the steps the
 // script could have found, those in production code.
 export function unseenSteps(review, candidates, owner) {
