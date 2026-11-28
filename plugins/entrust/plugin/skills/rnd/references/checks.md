@@ -43,8 +43,8 @@ Every session, reader and judge is paid for by the user, and a check is worth th
 - A check starts with the smallest sample that can change its decision: one session for each case and each
   side, one reader and one confirmer. Before more than one session of a check starts, run one and read its
   transcript, the transfer test's scenarios and the selection check's requests included: it had the tools, it
-  read the files it was given, and its result could pass each statement. If the setup makes a statement impossible to assess, preserve the first result and fix the setup or revise
-  the rubric for a subsequent round. A genuine missed requirement remains a failure.
+  read the files it was given, and its result could pass each statement. A statement that no session could
+  pass on that setup is rewritten, or the setup fixed, before the rest start. A genuine missed requirement remains a failure.
 - More than that is an option the plan puts to the user, with its cost and what it could show that the
   smallest sample cannot: a repeated run, several sessions for each side, a second reader, or a role on the top
   tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier. It runs only on the
