@@ -5,6 +5,8 @@ Claude Code plugin marketplace `nowely`. One plugin per `plugins/<name>/`: its i
 it — `CHANGELOG.md`, `evals/`, `ISSUES.md`, and `research/`. Release tags
 are `<name>@X.Y.Z`.
 
+For agent-skill research, evaluation or development, see [`entrust:rnd`](plugins/entrust/plugin/skills/rnd/SKILL.md).
+
 ## Rules for this repository
 
 - **Defects found in passing go in the plugin's `ISSUES.md`** (`plugins/<name>/ISSUES.md`; a defect of the

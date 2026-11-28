@@ -22,7 +22,7 @@ approval or permission to publish the owner's verbatim conversation.
 
 The intended contrast was one reviewer versus a coordinator and four focused assistants using the
 same review package. Both arms had the skill; neither was a no-skill control. This note uses the
-[research method](../../../../RESEARCH.md) and the
+[research method](https://github.com/Nowely/agent-skills/blob/716aa5d14d4880a6ec2df63880dd35b40212d75e/RESEARCH.md) and the
 [review protocol](../../evals/review/protocol.md) for provenance and reporting, without claiming a
 completed protocol comparison or a confirmatory experiment.
 

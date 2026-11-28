@@ -3,7 +3,7 @@
 Every measurement the `terse` plugin's rules rest on, and the runs that produced them. Nothing here is
 installed with the plugin or read at runtime. Each directory has its own README with the result; this is
 the index. entrust's runs have [their own index](../../entrust/research/README.md). The repository's
-[research method](../../../RESEARCH.md) applies to new studies.
+[research method](../../entrust/plugin/skills/rnd/references/research.md) applies to new studies.
 
 | Directory | Question | Result |
 |---|---|---|

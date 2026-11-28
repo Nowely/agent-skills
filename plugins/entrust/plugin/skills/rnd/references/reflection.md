@@ -25,12 +25,12 @@ files.
 | from zero | what a skill for this job would be, designed without the present one | 4; never | a new major version of a skill that exists, once |
 | prior art | what other skills and guides do that this one lacks | 4; 5 | the skill's sources table has a row that is new, read in part, or whose version or date has changed; the first version reads its sources at step 2 and runs no lens |
 | combinations | two or three changes that fail apart and may work together | 10; 9 | an audit of this run lists a thing dropped on opinion, or tested without a named partner |
-| audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 9 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](../SKILL.md#a-correction), it is the user's second since the plan |
+| audit | where the run left the user's words, its own promises or its own rules | 10, before delivery; 9 | the plan's check ran sessions, or the plan named a lens; or, at [a correction](plan.md#a-correction), it is the user's second since the plan |
 | questions | what you believe about your own run, for the audit to check | 10, before the audit; 9 | with the audit of step 10 or 9, as [the section](#questions-you-answer-yourself) says |
 
 A run whose check ran no session has no part of this page, but for the audit at the user's second
 correction: a dry run's agent, a confirmer of marks and a reader of sources do not count. It still has its [close-out](plan.md#a-close-out). What the two early
-parts return reaches the sheet as [a correction](../SKILL.md#a-correction).
+parts return reaches the sheet as [a correction](plan.md#a-correction).
 A baseline's session does not count either. Change's step 9 holds Create's 7 to 10: a part
 the table gives step 9 runs where Create's column says, inside it.
 
@@ -103,7 +103,7 @@ Which questions find most is judged across runs by the owner of this skill, not 
 
 ## What you do with a return
 
-- A finding of the audit is opened at its place. Confirmed, it is [a correction](../SKILL.md#a-correction), and
+- A finding of the audit is opened at its place. Confirmed, it is [a correction](plan.md#a-correction), and
   where it touches a verdict you recompute the verdict as
   [handling a return](critics.md#handling-a-return) says. Its tables are trusted only when they hold, from before it
   opened them, the deviations the log already records.

@@ -3,7 +3,7 @@
 Three agents judge the work: the architecture critic at Create's step 4, which judges the architecture and the
 approach together, the quality critic at step 7 and the verifier at step 9. This page says how each is briefed
 and what you do with what comes back: [every brief](#every-brief),
-[which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic),
+[which model, and how many](#which-model-and-how-many), [the architecture critic](#the-architecture-critic), [what its verdict does](#what-the-verdict-does),
 [the quality critic](#the-quality-critic), [the verifier](#the-verifier),
 [the reader of the user's words](#the-reader-of-the-users-words), [handling a return](#handling-a-return).
 
@@ -21,8 +21,9 @@ claim to check, and so does the author's own account of the work.
   are each forbidden the others' return files.
 - Every set of marks on this page and in [checks.md](checks.md) has one more member, `part`: the item is
   there without its value, or with one of its two clauses. A judge marks `part` and says what is missing. `part`
-  counts as the weakest mark of its set, `not met`, `lost` or absent, unless the plan's rule said otherwise
-  before the run.
+  and `unknown` (evidence that cannot be checked) each counts as the weakest mark of its set (`false`, `not met`,
+  `lost` or absent), unless the plan's rule said otherwise before the run. An `unknown` is not called a demonstrated
+  failure; it is no member of a set, so the confirmer does not open it.
 - Two judges give counts that decide a verdict: the reader of [test cases](checks.md#test-cases) and the
   audit of [reflection](reflection.md). Before you brief either, find out whether its count can be trusted, by
   one of two ways, and write which in the plan: add to what it reads two false items of the kind it is to
@@ -95,7 +96,16 @@ Each objection cites a place: a line of the messages, the sheet, a source or the
 For its read of a check that runs sessions, at step 5, give it the cases, the statements and the rule as well,
 and no answer key. It returns `keep` or `change` for the check, and the item on checks above. Its objections
 rest on [checks.md](checks.md) and are handled as an objection that names a rule. `change` is
-[a correction](../SKILL.md#a-correction), whose item 3 says whether the plan is shown again.
+[a correction](plan.md#a-correction), whose item 3 says whether the plan is shown again.
+
+## What the verdict does
+
+- `keep`: go on.
+- `change approach`: decide between the two approaches, show the user the changed plan, and wait, as Create's
+  step 3 does.
+- `stop`: write nothing and change nothing. The critic's reason goes to the user as the result. The user may
+  overrule a stop; it is not a correction.
+- A stage, a requirement or a question it finds missing is [a correction](plan.md#a-correction).
 
 ## The quality critic
 
@@ -160,7 +170,8 @@ with the place. It returns what item 4 found, each with its place.
 It checks the result against what the user said, not against the sheet, because the sheet is your reading of their
 words. It is started fresh at delivery and briefed as [every brief](#every-brief) says. It reads first the file of
 the user's saved messages, whole, then `result.md`, which you write in the run directory from the result's text before
-it starts, the skill's files (for a change, its diff), the plan and the sheet.
+it starts, the skill's files (for a change, its diff), the plan and the sheet, or on Research the plan alone, with the messages
+file that step 1 saved.
 
 It marks every instruction, question and idea in the messages:
 
@@ -172,7 +183,7 @@ It marks every instruction, question and idea in the messages:
 It returns the marks with no verdict. Every `missing` and `part` goes into the result; report each `unknown` as unverified. The return is not a
 correction by itself: the user's reply decides whether it is one.
 
-It runs on every route but Repair, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
+It runs on every route but Repair, a small change included; the last step of the route starts it, and on Research the plan lists it, and how it starts, with the other agents. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
 word on the plan starts it and no step asks again. Where [the audit](reflection.md) at delivery runs, and not an audit at an earlier correction, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 
@@ -189,8 +200,9 @@ table of the user's instructions and questions is this check, and this reader do
   for each thing a judge called lost or present.
 - Marks that decide a verdict are confirmed before they are counted. Start one fresh agent on the executor
   tier, briefed as [every brief](#every-brief) says, with the marks' file to read and this bullet as its role:
-  it opens every mark that is not the weakest of its set at the place cited and returns `confirmed` or `not
-  there`. A mark that is not confirmed counts as the weakest.
+  it opens every mark of a set that is not the weakest of it, at the place cited and returns `confirmed` or `not
+  there`, or `unknown` when the evidence cannot be checked. A demonstrated absence takes the weakest mark;
+  an unconfirmed mark becomes `unknown`, with the reason, and is not called a demonstrated failure.
 - A verdict is computed by you, from the rule the plan wrote before the result and from the confirmed marks,
   one clause of the rule at a time. A judge's own total, and its opinion of what a finding does to a verdict,
   are claims and decide nothing.
