@@ -1033,7 +1033,7 @@ test("a flow's rows are ordered to cross the fewest edges, in the order the step
     const found = await text(page, "#panel-summary details.ground summary");
     await page.click("#panel-summary details.ground summary"); await settle(page);
     const list = await text(page, "#panel-summary .ground-list");
-    return JSON.stringify(order) === '["0,1","3,2"]' && !crossed && /1 of 7 listed confirmed by a test/.test(row) && /Read only/.test(panel) && /1 → 3: the test's call/.test(panel)
+    return JSON.stringify(order) === '["0,1","3,2"]' && !crossed && /1 of 7 listed confirmed by a test/.test(row) && /Not confirmed on this code/.test(panel) && /1 → 3: the test's call/.test(panel)
       && /Found by script in the changed code, on no route: 1 of 2/.test(found) && /call printAll src\/print\.js:7 printAll\(rows\)/.test(list) && !/keydown/.test(list)
       || JSON.stringify({ order, ends, row, panel: panel.slice(0, 600), found, list });
   }));
