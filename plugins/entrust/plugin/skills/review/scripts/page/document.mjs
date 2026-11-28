@@ -115,6 +115,6 @@ ${decisions}
     details: `<noscript id="static-details"><div class="static">${details}</div></noscript>`,
     // The line before a block's first row, and before a row where it resumes after other code: its verdict and what it does.
     blockLine: (b, resumed) => resumed ? `<tr class="bn v-${b.verdict}"><td colspan="3">${esc(t("p.continues", `B${b.id}`))}</td></tr>`
-      : `<tr class="bn v-${b.verdict}" id="code/b${b.id}"><td colspan="3"><b>B${b.id}</b> ${verdict(b.verdict)}${b.does ? ` · ${prose(b.does)}` : ""} · ${b.serves.length ? `${esc(t("serves"))} ${ids("R", b.serves)}` : esc(t("serves-nothing"))}${b.findings.length || b.questions.length ? ` · ${[ids("F", b.findings), ids("Q", b.questions)].filter(Boolean).join(", ")}` : ""}</td></tr>`,
+      : `<tr class="bn v-${b.verdict}" id="code/b${b.id}"><td colspan="3"><b>B${b.id}</b> ${verdict(b.verdict)}${b.does ? ` · ${prose(b.does)}` : ""}${b.whole ? ` · ${esc(t("whole"))}: ${prose(b.whole)}` : ""} · ${b.serves.length ? `${esc(t("serves"))} ${ids("R", b.serves)}` : esc(t("serves-nothing"))}${b.findings.length || b.questions.length ? ` · ${[ids("F", b.findings), ids("Q", b.questions)].filter(Boolean).join(", ")}` : ""}</td></tr>`,
   };
 }

@@ -85,6 +85,9 @@ const NEXT_URL = render("next", NEXT), NEXT_KEY = createHash("sha256").update(JS
 const HOSTILE_URL = render("hostile", hostileThemed(record));
 // The themed record with its idea at a line of the base side, which the head numbers otherwise.
 const BASE_URL = render("base-place", { ...structuredClone(record), ideas: [{ ...record.ideas[0], at: "src/invoices/archive.js:2 (base)" }] });
+// The themed record whose kept block says why its lines are one decision.
+const WHOLE = "one conversion, written once for every row";
+const WHOLE_URL = render("whole", { ...structuredClone(record), blocks: record.blocks.map((b, i) => i === 0 ? { ...b, whole: WHOLE } : i === 1 ? { ...b, whole: "one test" } : b) });
 const HOSTILE_PATH_URL = (() => { const { diff: bytes, record: r } = hostileFixture(); return render("hostile-path", r, bytes, false); })();
 // A large record: 40 files of 180 added lines, seven blocks each, a few of them to fix or to ask about.
 const FILES = 40, LINES = 180, UNIT = "theGeneratedModulesThatExportTheirValuesOneByOne";
@@ -895,6 +898,25 @@ test("a kept block's panel says what the record knows about it — what it does,
     const routed = await page.getAttribute("#tab-summary", "aria-selected") === "true" && await page.locator("#panel-summary .route-row.sel").count() === 1;
     return /Converts the code/.test(panel) && /About this code/.test(panel) && /readArchive/.test(panel) && /reads the archive/.test(panel) && /A requirement that fails/.test(panel)
       && /step 1 of 2/.test(panel) && !/Kept code/.test(panel) && routed || JSON.stringify({ panel: panel.slice(0, 600), routed });
+  }));
+
+test("a block's reason for one verdict shows beside the verdict: in its note in Code, in its panel, in an excerpt and in the page without JavaScript",
+  "the reason a reviewer gave for one verdict over many lines reached the critic but never the owner, who reads the same lines (PR 119)",
+  cased(WHOLE_URL + "#code", {}, async (page) => {
+    // a kept block has no note in Code; the block to fix has
+    const note = await text(page, '#note-2 .note-whole'), notes = await page.locator(".note-whole").count();
+    await page.goto(WHOLE_URL + "#code/b1"); await page.waitForSelector(".tabbar"); await settle(page);
+    if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
+    await settle(page);
+    const panel = await text(page, "#ctx-code");
+    await page.goto(WHOLE_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
+    await page.click('#ctx-summary [data-act="cmap"][data-b="1"]'); await settle(page);
+    const excerpt = await page.locator('#ctx-summary .excerpt[data-ex="1"] .ex-whole').isVisible();
+    const o = await open(WHOLE_URL, { js: false });
+    // the files sit in closed sections, so their text is read whole, not as shown
+    let plain; try { plain = (await o.page.evaluate(() => document.querySelector('.sfile tr.bn[id="code/b1"]')?.textContent ?? "")).replace(/\s+/g, " "); } finally { await o.close(); }
+    return /^One decision ?one test$/.test(note) && panel.includes(`One decision ${WHOLE}`) && excerpt && notes === 1 && plain.includes(`One decision: ${WHOLE}`)
+      || JSON.stringify({ note, panel: panel.slice(0, 400), excerpt, notes, plain });
   }));
 
 // ---- comments on a selection (PR 109: C1, C5, C6)

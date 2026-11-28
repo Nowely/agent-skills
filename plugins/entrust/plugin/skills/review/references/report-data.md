@@ -181,7 +181,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   it as much as an open one: the owner reads it to understand the change, not only to decide.
   `fix` and `remove` name `findings`; `question`, for a premise not settled, names `questions`. `remove` means the
   target has no such code: work that belongs in another change keeps its verdict, and a step moves it. `whole`,
-  optional, says why a block of many lines is one decision; the printout gives it to the checking agents.
+  optional, says why a block of many lines is one decision; the page shows it beside the block's verdict, and the
+  printout gives it to the checking agents.
 - **Routes.** One for each behaviour the change adds or alters that runs through more than one block — where its
   data is produced, transformed and used, or how a request reaches its effect. `title` names the behaviour,
   `requirements` the ids it serves, and `steps` lists its blocks (numbers from 1) in the order the behaviour runs,

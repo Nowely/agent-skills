@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Review report
+
+- A block's `whole` — why one verdict covers its lines — shows beside the verdict: under the block's note in Code,
+  first in its panel, in its excerpt wherever a panel shows it, and in the page without JavaScript and its print.
+  It reached the critic and never the owner, who reads the same lines.
+
 ## 0.48.0 — 2026-11-27
 
 ### Review report

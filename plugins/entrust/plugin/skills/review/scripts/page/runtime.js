@@ -611,7 +611,7 @@ function excerptHtml(bid) {
   const ranges = excerptRanges(b.file, (r) => r[3] === bid);
   const key = "ex" + bid, t = excerptTable(b.file, ranges, S.more[key] ? 1e9 : 24);
   return `<div class="excerpt" data-ex="${bid}"><div class="ex-h">${chip("b", bid)}<span class="ex-path">${pathHtml(b.path)} <span class="muted">${esc(b.where)}</span></span>${verdictTag(b.verdict)}</div>
-    ${b.does ? `<div class="ex-does">${prose(b.does)}</div>` : ""}${t.html}
+    ${b.does ? `<div class="ex-does">${prose(b.does)}</div>` : ""}${b.whole ? `<div class="ex-whole"><span class="lbl">${esc(L("whole"))}</span>${prose(b.whole)}</div>` : ""}${t.html}
     <div class="ex-more">${t.shown < t.total ? `<button class="btn sm quiet" data-act="more" data-more="${esc(key)}">${esc(P("p.more.lines", t.total))}</button>` : ""}<button class="btn sm quiet" data-go="b:${bid}">${esc(L("p.show-in-code"))}</button><button class="btn sm quiet" data-act="copy-block" data-b="${bid}">${esc(L("p.copy"))}</button></div></div>`;
 }
 function placeExcerpt(place, row) {
@@ -1233,6 +1233,7 @@ function noteHtml(b) {
   const sel = S.sel.code === b.id, items = blockItems(b);
   return `<tr class="note-row v-${b.verdict}" data-b="${b.id}"><td colspan="3"><div class="note v-${b.verdict}${sel ? " sel" : ""}" data-b="${b.id}" id="note-${b.id}" tabindex="-1" role="group" aria-label="${esc(`B${b.id}, ${L("p.verdict.reviewer")} ${verdictWord(b.verdict)}. ${b.does}`)}">
     <div class="note-top">${verdictTag(b.verdict)}<span class="bid">B${b.id}</span><span class="does" title="${esc(b.does)}">${prose(b.does)}</span><button class="btn sm quiet" data-act="copy-block" data-b="${b.id}" title="${esc(blockRef(b.id))}">${esc(L("p.copy"))}<span class="key">y</span></button>${S.code.doneOpen.has(b.id) && !blockOpen(b) ? `<button class="btn sm quiet" data-act="done-close" data-b="${b.id}">${esc(L("p.fold"))}</button>` : ""}</div>
+    ${b.whole ? `<div class="note-whole"><span class="lbl">${esc(L("whole"))}</span>${prose(b.whole)}</div>` : ""}
     ${items.map((c) => noteItem(c, b)).join("")}</div></td></tr>`;
 }
 const answerAt = {};
@@ -1627,6 +1628,7 @@ function rovingInit(body) { const first = $(".lnb", body); if (first) first.tabI
 // the requirements it serves in words, the mechanisms it is part of with what they replace, and the routes it is a step of.
 function aboutBlock(b) {
   const rows = [], add = (label, html) => rows.push(`<dt>${esc(L(label))}</dt><dd>${html}</dd>`);
+  if (b.whole) add("whole", prose(b.whole));
   const u = b.unit && D.units.find((x) => x.name === b.unit);
   if (u) add("p.block.unit", `<button class="linkbtn" data-act="gounit" data-unit="${D.units.indexOf(u)}"><span class="unit-name">${esc(u.name)}</span></button>${u.jobs.length ? ` — ${u.jobs.map(prose).join("; ")}` : ""}${u.reason ? `<div class="small sub">${prose(u.reason)}</div>` : ""}`);
   add("p.block.serves", b.serves.length ? `<ul class="plain">${b.serves.map((id) => { const r = reqById.get(String(id)); return `<li>${chip("r", id)} ${prose(r.text)} <span class="muted small">${esc(L("source." + r.source))}${r.established ? "" : ` · ${esc(L("req.to-confirm"))}`}</span></li>`; }).join("")}</ul>` : `<span class="muted">${esc(L("p.block.no-req"))}</span>`);
