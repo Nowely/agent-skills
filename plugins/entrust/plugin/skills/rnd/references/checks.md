@@ -125,7 +125,7 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
 2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part`, `false` or
    `unknown` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`.
    A demonstrated violation is `false`; unavailable evidence is `unknown`, with the reason. The rule states
-   before any run how `unknown` counts toward the verdict; unsaid, it counts as `false` for a mandatory statement,
+   before any run how `unknown` counts toward the verdict; unsaid, it counts as `false`,
    and it is not presented as a demonstrated failure. A
    statement is about the result. Where the claim is about what the agent does on the way, such as a
    question it asks or a step it skips, the statement names an event the transcript shows, never the agent's
