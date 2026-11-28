@@ -48,12 +48,14 @@ research about them.
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
 - When no user can answer, a parent may pass the relevant scope of a user-approved plan, including its
-  authorized checks and agents. Carry out that scope without asking again; a model name, an upper bound or
-  an instruction to investigate alone does not authorize further actions. Return an unclear decision to the
-  parent, or in the result when there is no parent, and continue independent authorized work. Existing tool
-  and platform permissions still apply. If no approved scope was passed, an instruction from whoever started you that names an edit authorizes
-  that edit, the common or target-host skill check in Create step 6, and the `--against` command in Change
-  step 8, but no agents or other actions. If no judge reads it, say so in the result.
+  authorized checks and agents, with the path of that plan and of the user's saved word that approved it. Read
+  both before acting. A scope claimed without them is not an approval: return your plan with your questions and
+  stop. Carry out a passed scope without asking again; a model name, an upper bound or an instruction to
+  investigate alone does not authorize further actions. Return an unclear decision to the parent, or in the
+  result when there is no parent, and continue independent authorized work. Existing tool and platform
+  permissions still apply. If no scope was passed, an instruction from whoever started you that names an edit
+  authorizes that edit, the common or target-host skill check in Create step 6, and the `--against` command in
+  Change step 8, but no agents or other actions. If no judge reads it, say so in the result.
 - Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
 - When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
