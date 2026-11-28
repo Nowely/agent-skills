@@ -32,13 +32,14 @@ would have shown. With no run at all, the quality critic's read is the only evid
 Every session, reader and judge is paid for by the user, and a check is worth the decision it can change.
 
 - The plan gives each check its cost: its agents and sessions, the model of each, and the tokens estimated
-  from runs like it that the host has figures for, else `unknown`. A check whose every result would leave the
-  plan as it is does not run.
+  from runs like it that the host has figures for, else `unknown`. A check runs when any question the
+  user asked could change with its result; a comparison that a missing control leaves undecided does not stop a
+  check that answers another such question.
 - Before starting a new run, look for and use an existing run that supports the contrast. Reuse it only when
   its task, inputs, context, versions, tools, permissions and assessment
   support. Record material differences; an incompatible run is context, not a control. An already used case
   does not become independent by freezing it. When a control is unavailable, report observations and leave
-  the comparison unknown; proceed with useful authorized checks.
+  the comparison unknown.
 - A check starts with the smallest sample that can change its decision: one session for each case and each
   side, one reader and one confirmer. Before more than one session of a check starts, run one and read its
   transcript, the transfer test's scenarios and the selection check's requests included: it had the tools, it
