@@ -32,8 +32,8 @@ would have shown. With no run at all, the quality critic's read is the only evid
 Every session, reader and judge is paid for by the user, and a check is worth the decision it can change.
 
 - The plan gives each check its cost: its agents and sessions, the model of each, and the tokens estimated
-  from runs like it that the host has figures for, else `unknown`. A check runs when any question the
-  user asked could change with its result; a comparison that a missing control leaves undecided does not stop a
+  from runs like it that the host has figures for, else `unknown`. A check runs when its result could
+  change the answer to a question the user asked, or the plan; a comparison that a missing control leaves undecided does not stop a
   check that answers another such question.
 - Before starting a new run, look for and use an existing run that supports the contrast. Reuse it only when
   its task, inputs, context, versions, tools, permissions and assessment
