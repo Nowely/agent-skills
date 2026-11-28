@@ -6,9 +6,10 @@
 // export, reading without JavaScript, both print profiles, the Russian page and the large record's speed and bounded
 // DOM. Run it after an edit to page.mjs, page/ or decisions.mjs.
 //
-// It runs locally only: CI installs no Playwright. It needs Playwright and its Chromium: PLAYWRIGHT_CORE names
-// Playwright's index.mjs, else playwright-core or playwright is imported, from here or the global npm root. Without
-// them it says NOT RUN and exits 0.
+// CI runs it on Linux, where it installs Playwright and sets REVIEW_BROWSER_REQUIRED, so a broken install fails there.
+// It needs Playwright and its Chromium: PLAYWRIGHT_CORE names Playwright's index.mjs, else playwright-core or
+// playwright is imported, from here or the global npm root. Without them it says NOT RUN and exits 0, or fails where
+// REVIEW_BROWSER_REQUIRED is set.
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -33,7 +34,8 @@ async function playwright() {
 }
 const browser = await playwright();
 if (!browser) {
-  console.log("NOT RUN: the page's browser suite runs locally only, and Playwright with its Chromium is not installed here; CI never runs it. Install Playwright, or set PLAYWRIGHT_CORE to its index.mjs, and run it after a change to the page");
+  if (process.env.REVIEW_BROWSER_REQUIRED) { console.log("FAIL: the page's browser suite is required here and Playwright with its Chromium did not start"); process.exit(1); }
+  console.log("NOT RUN: the page's browser suite needs Playwright and its Chromium, which are not installed here; CI runs it on Linux. Install Playwright, or set PLAYWRIGHT_CORE to its index.mjs, and run it after a change to the page");
   process.exit(0);
 }
 

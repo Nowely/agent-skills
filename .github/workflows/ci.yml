@@ -53,6 +53,8 @@ jobs:
         # available at step level, which is why this sits here and not on the job.
         env:
           TMPDIR: ${{ runner.temp }}
+          # Linux installs Playwright above: there the browser suite fails instead of reporting NOT RUN.
+          REVIEW_BROWSER_REQUIRED: ${{ matrix.os == 'ubuntu' && '1' || '' }}
         run: node evals/run-all.mjs --skip-conformance
 
   terse:
