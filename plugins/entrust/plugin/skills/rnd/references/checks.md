@@ -48,14 +48,15 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   smallest sample cannot: a repeated run, more requests of a kind, several sessions for each side, a second reader, or a role on the top
   tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier. It runs only on the
   user's word naming it; a reply that leaves the choice to you takes the smallest sample.
-- A check of more than five sessions, such as a selection check, is shown in the plan on a line of its own
+- A check of more than five sessions is shown in the plan on a line of its own
   with its count and cost, so the user's word on the plan is given on it.
 - The plan's rule says, before any run, whether a margin reported as undecided keeps the work or fails the rule.
 
 ## The sessions
 
 - Start each session with a host-supported native session when it meets the check's needs; otherwise use the repository's adapter for that host. The plan names which. Run every case on the
-  cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet.
+  cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet; a selection check takes the host and the model the
+  user works with, as [its step 3](#a-selection-check) says.
   A session on a host this one cannot run is started only when the user named that host. A model or a host on
   the sheet that got no session is named in the result as unmeasured.
 - Give each session the tools the skill's steps use: a skill that starts agents is checked in sessions that can
