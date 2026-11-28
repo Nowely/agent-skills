@@ -523,7 +523,9 @@ export function check(review, files, directory) {
     if (!VERDICTS.includes(block.verdict)) errors.push(`${name}: verdict is one of ${VERDICTS.join(", ")}`);
     refs(name, block.serves, requirements, "requirement");
     settled(name, block);
-    if (block.unit !== undefined && !changed.has(block.unit)) errors.push(`${name}: "${block.unit}" is not a unit of the change`);
+    if (block.unit !== undefined && !changed.has(block.unit)) errors.push(units.some((u) => u.name === block.unit)
+      ? `${name}: "${block.unit}" is marked existing, untouched code: a block's unit is one the change writes or alters; leave "unit" out or name that unit`
+      : `${name}: "${block.unit}" is not a unit of the change: list it in "units", or name the unit the change writes`);
     // Code that stays is read line by line; only what goes entirely may be named whole.
     if ([block.added, block.removed].includes("all") && block.verdict !== "remove") errors.push(`${name}: "all" is for a block to remove; a block to ${block.verdict} lists its lines`);
     let own = 0;

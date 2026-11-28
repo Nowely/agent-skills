@@ -18,6 +18,8 @@ forensics remain in the repository references and release notes.
   to take the base root without touching the checkout, and that the reader gets a copy of the checked draft while
   the record goes on and takes the reader's results; the printout counts the pass's decisions by outcome, which the
   contract promised and no code gave.
+- A block's unit is one the change writes or alters. `check` says so when a block names a unit marked `existing`,
+  and the data contract states it; only `check` knew it before.
 - The units table in Details scrolls inside its column when it is wider, and compact tables wrap their headings
   first: at 1024 px with a wider font its Show in Code ran under the context panel, where no click reached it.
   CI's first run of the page's browser suite found it.

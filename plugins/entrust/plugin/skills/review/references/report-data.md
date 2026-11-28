@@ -203,8 +203,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   mixes other work, shared imports included, is left out. Weigh the mechanisms specified in [Analyse](../SKILL.md#analyse); with two or more weighed, the report
   also gives the lines they touch together, each block counted once.
 - **Blocks.** `path`, `added` and `removed` line ranges, `serves` (the ids of the requirements the block exists for: one
-  it implements, tests or wires in, its `does` saying which — never one it merely sits beside), `verdict`, `unit`,
-  and `does`:
+  it implements, tests or wires in, its `does` saying which — never one it merely sits beside), `verdict`, `unit` (a
+  unit the change writes or alters; one marked `existing` is untouched code and no block's unit), and `does`:
   what the block does and why it is there, read from its lines and the code around them, with the reason the task, a
   requirement or the code gives — or the plain statement that no source gives one, never a guess. A kept block needs
   it as much as an open one: the owner reads it to understand the change, not only to decide.
