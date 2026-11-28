@@ -244,7 +244,7 @@ textarea { width: 100%; min-height: 64px; font: 13px/1.45 var(--sans); color: va
         <span><i class="dot read"></i>Read: the code was read; nothing asserts it</span>
         <span><i class="dot proposed"></i>Proposed: what should happen, not run</span>
         <span><i class="dot question"></i>Question: the review could not settle it</span>
-        <span><i class="dot missing"></i>Not reached: should get here and does not</span>
+        <span><i class="dot missing"></i>Stops here: the path ends at this step; a finding or a question says whether it should go on</span>
       </div>
     </div>
     <aside class="ctx" id="ctx" aria-live="polite"></aside>
@@ -331,7 +331,7 @@ const FLOWS = [
         "    blocks: model.blocks.map((b) => ({ id: b.id, path: b.path, file: model.blockFile[b.id], verdict: b.verdict, unit: b.unit ?? null, does: b.does, kind: b.kind ?? null,",
         "      serves: b.serves.map(String), findings: b.findings.map(String), questions: b.questions.map(String), where: b.where, size: b.size, purpose: model.purpose.block[b.id] })),"] },
       evidence: [{ basis: "read", text: "No “whole” in the block's fields." }] },
-    { id: "n7", num: 7, x: 840, y: 300, w: 200, end: true, title: "The owner sees why it is one decision", value: "not shown", basis: "missing",
+    { id: "n7", num: 7, x: 840, y: 300, w: 200, end: true, title: "The owner's page", value: "the reason is not shown", basis: "missing",
       body: "On the page and in the printed copy, a 40-line kept block shows its explanation and verdict but not why one verdict covers it. The reason reaches the critic and stops before the owner.",
       evidence: [{ basis: "read", text: "Nothing in page.mjs, runtime.js or document.mjs reads a block's “whole” at 835c58d. (runtime.js's “whole” is the file view toggle, which is unrelated.)" },
                  { basis: "read", text: "By design so far: the reference gives the reason to the checking agents.", at: "skills/review/references/report-data.md:183" }],
@@ -439,14 +439,14 @@ const FLOWS = [
       body: "Each branch starts from the same setup, so one result does not depend on another." },
     { id: "a1", x: 0, y: 236, w: 340, title: "A · Open the small screenshot", basis: "proposed", kind: "action", branch: "A" },
     { id: "a2", x: 360, y: 236, w: 340, title: "B · Open any picture and press Tab through the bar", basis: "proposed", kind: "action", branch: "B" },
-    { id: "a3", x: 720, y: 236, w: 340, title: "C · Close with Escape, then press Tab once", basis: "proposed", kind: "action", branch: "C" },
+    { id: "a3", x: 720, y: 236, w: 340, title: "C · Open any picture, close it with Escape, then press Tab once", basis: "proposed", kind: "action", branch: "C" },
     { id: "e1", x: 0, y: 340, w: 340, expect: "Shown at up to twice its size, its text is still readable and nothing looks smeared.", basis: "proposed", kind: "expect", branch: "A",
       gap: { flow: "states", item: "s1", text: "Fitted: a test asserts 200 px shows at 400 px, not how it looks" } },
     { id: "e2", x: 360, y: 340, w: 340, expect: "Focus starts on Close; Tab and Shift+Tab reach every button in the bar, each with a visible focus ring.", basis: "proposed", kind: "expect", branch: "B",
       gap: { flow: "states", item: "t8", text: "Viewer open → Closed: the Close button has autofocus; no test moves through the bar" } },
     { id: "e3", x: 720, y: 340, w: 340, expect: "Record where focus was. Nothing in the record says where it should be, so this is an observation, not a pass or a fail.", basis: "question", kind: "expect", observe: true, branch: "C",
       gap: { flow: "states", item: "t8", text: "Viewer open → Closed: where focus lands after closing (question)" } },
-    { id: "c9", x: 0, y: 452, w: 1060, end: true, title: "Sent to the author as tests, not to a person", desc: "The Close button, ← and the bar's arrows, wrapping at either end, a resize, Enter on Actual size, a click on the picture at own size, Own size → No picture, back from a broken picture, and a picture opened from a requirement's or a finding's panel.", basis: "proposed", kind: "note",
+    { id: "c9", x: 0, y: 452, w: 1060, end: true, title: "Sent to the author as tests, not to a person", desc: "The Close button, a click on the empty field beside a narrow picture, ← and the bar's arrows, wrapping at either end, a resize, Enter on Actual size, a click on the picture at own size, Own size → No picture, back from a broken picture, and a picture opened from a requirement's or a finding's panel.", basis: "proposed", kind: "note",
       body: "A test asserts these better than a person can, and keeps asserting them. They go to the author as test steps; a person checks only what needs eyes or an observation." },
   ],
   edges: [
@@ -463,7 +463,7 @@ const FLOWS = [
 ];
 
 // ---------------------------------------------------------------- state
-const BASIS = { ran: "Ran", read: "Read", proposed: "Proposed", question: "Question", missing: "Not reached" };
+const BASIS = { ran: "Ran", read: "Read", proposed: "Proposed", question: "Question", missing: "Stops here" };
 const RES = { pass: "Pass", fail: "Fail", skip: "Couldn't run", seen: "Observed" };
 const KEY = "flows.835c58d.";
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -481,9 +481,9 @@ function tabs() {
     <span class="t-kind">${esc(f.kind)}</span><span class="t-title">${esc(f.title)}</span><span class="t-sum">${esc(f.check ? checkSummary(f) : f.summary)}</span></button>`).join("");
 }
 function checkSummary(f) {
-  const ex = f.nodes.filter((n) => n.kind === "expect"), done = ex.filter((n) => S.results[n.id]);
-  const pass = done.filter((n) => S.results[n.id] === "pass").length, fail = done.filter((n) => S.results[n.id] === "fail").length;
-  return `${f.summary} You ran ${done.length} of ${ex.length}${done.length ? ` (${pass} pass${fail ? `, ${fail} fail` : ""})` : ""}.`;
+  const ex = f.nodes.filter((n) => n.kind === "expect"), ran = ex.filter((n) => ["pass", "fail", "seen"].includes(S.results[n.id]));
+  const c = (r) => ex.filter((n) => S.results[n.id] === r).length, parts = [["pass", "pass"], ["fail", "fail"], ["seen", "observed"]].filter(([r]) => c(r)).map(([r, w]) => `${c(r)} ${w}`);
+  return `${f.summary} You ran ${ran.length} of ${ex.length}${parts.length ? ` (${parts.join(", ")})` : ""}${c("skip") ? `; ${c("skip")} could not be run` : ""}.`;
 }
 
 // ---------------------------------------------------------------- header strip
@@ -497,7 +497,7 @@ function strip() {
       <button type="button" class="gapbtn" data-goto="2">Where the ${c("read") + c("question")} gaps go →</button>`;
   } else if (f.id === "data") {
     const c = (b) => f.nodes.filter((n) => n.basis === b).length;
-    html += `<span><i class="dot ran"></i> ${c("ran")} steps asserted, all by one test</span><span><i class="dot read"></i> ${c("read")} read</span><span><i class="dot question"></i> ${c("question")} question</span><span><i class="dot missing"></i> ${c("missing")} not reached</span>`;
+    html += `<span><i class="dot ran"></i> ${c("ran")} steps asserted, all by one test</span><span><i class="dot read"></i> ${c("read")} read</span><span><i class="dot question"></i> ${c("question")} question</span><span><i class="dot missing"></i> ${c("missing")} stops</span>`;
   } else {
     html += `<span>12 gaps go to the author as tests; these 3 need a person. Each result is kept with the record and its revision.</span>`;
   }
@@ -619,7 +619,7 @@ function panel() {
   const where = n.triggers ? "Transition" : n.state ? "State" : n.kind === "expect" ? `Branch ${n.branch}` : n.kind === "action" ? `Branch ${n.branch}` : n.num ? `Step ${n.num}` : n.end ? "End" : n.kind === "setup" ? "Setup" : f.id === "states" ? "State" : "";
   parts.push(`<div class="ctx-eyebrow">${esc(where)} · ${esc(f.kind)}</div>`);
   parts.push(`<h3>${esc(n.title ?? (n.kind === "expect" ? `${n.observe ? "Observe" : "Expect"}: ${n.expect}` : ""))}</h3>`);
-  const basis = n.basis ?? best(n.triggers);
+  const basis = n.basis ?? (n.triggers ? best(n.triggers) : null);
   const counted = n.triggers ? ["ran", "read", "question"].map((b) => [b, n.triggers.filter((t) => t.basis === b).length]).filter(([, c]) => c).map(([b, c]) => chip(b, `${c} ${BASIS[b].toLowerCase()}`)).join("") : null;
   parts.push(`<div class="badges">${n.kind === "expect" ? (S.results[n.id] ? chip(S.results[n.id], RES[S.results[n.id]]) : chip("notrun", "Not run")) : n.state ? "" : counted ?? chip(basis)}${n.change ? `<span class="chip">${n.change === "changed" ? "Changed in this diff" : "Context: unchanged code"}</span>` : ""}</div>`);
   if (n.body || n.desc || n.note && n.triggers) parts.push(`<p>${esc(n.body ?? n.note ?? n.desc)}</p>`);
