@@ -43,3 +43,40 @@ its refusal is an inference. Selection of the Research route, against near-miss 
 **Not comparable.** Until the rename, no session received the repository's rules on its own, since the rules sat in
 `AGENT.md`, which no host reads. Since the rename every session does. A baseline recorded before the rename is not
 comparable with a run after it.
+
+## Findings during the work
+
+**Which reference files sessions open.** Of 48 recorded sessions of earlier versions of `rnd`, the 33 of arm R (the arm that was given the skill) were scanned. In the
+14 Create sessions, `SKILL.md` and nearly every reference file were opened, each whole (`analysis.md` in all 14,
+`structure.md` and `checks.md` and `critics.md` in 13, `reflection.md` in 12, `hosts.md`, `writing.md` and `plan.md`
+in 11). Of the 19 Change sessions, 10 opened only `SKILL.md` (a search of another file does not count as opening it);
+the others opened `critics.md` (9), `analysis.md` (6), `checks.md` and `writing.md` (5 each). Limit: earlier versions,
+not this one; some Change cases were small; and a file not opened shows nothing about whether it was needed. The script
+is kept in this folder as [scan.py](scan.py); it reads the session folders given as arguments.
+
+**The load check.** A fresh headless Claude Code session (2.1.332), started in this cloud container in a copy of the
+branch, answered `none` when asked for the Fan-outs rule that `AGENTS.md` carries. A control, a plain `CLAUDE.md` holding
+a marker in an empty folder, was also answered `unknown`. So here nested headless sessions receive no project
+instructions under any name. The cause is not found, and Claude's loading of `AGENTS.md` is unverified here. The Codex
+check is requested in the PR. Consequence: the harness sessions of earlier runs, started the same way, received no
+project instructions either, so the rename does not by itself make their baselines incomparable on this host (the
+**Not comparable** note above holds for hosts that do read the file).
+
+**Prior art.** A read of five public sources (Hermes Agent, ACE, the Darwin Godel Machine, GEPA, and the Claude Code
+memory documentation) gave five hypotheses for `rnd`. They are hypotheses only; none is applied, and none was seen in an
+`rnd` run. Each is given with the test that would refute it:
+
+- H1, the writer of an edit does not see the held-out part of the check: write the edit twice, with all cases visible and
+  with half withheld, and judge both on the withheld half; refuted if the visible-cases text scores no better there.
+- H2, screen an edit on a few cases before the full check: replay stored check records; refuted if more than one in five
+  accepted edits would have been rejected, or if no record exists.
+- H3, judge a retro's lessons only against evidence the acting agent did not produce: take the last three retro-born
+  Changes; refuted if every one already stands on external evidence.
+- H4, keep a rival text that wins a case the leader loses: compare the average winner with a merge of both on fresh cases;
+  refuted if the merge does no better.
+- H5, a "lessons, not logs" line test in the writing rule: count lines with dates, run ids or quoted words in edited
+  skills; refuted if the count is near zero.
+
+Limit: the sources report their authors' own measures, mostly single runs without variance and on tasks other than
+skills. No source compares a human-gated change with the same change ungated, so the value of the owner's approval step
+is unmeasured.
