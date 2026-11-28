@@ -98,7 +98,7 @@ for each failure seen, and none for what went right.
    failure, the case, the place that shows it, and which requirement line or stage of the sheet it belongs to.
    A failure is a result the user would send back, or a stage of the walk the session skipped or got wrong;
    read what the session did, not only what it reported.
-4. A failure that no line of the sheet covers is [a correction](../SKILL.md#a-correction). A stage where no
+4. A failure that no line of the sheet covers is [a correction](plan.md#a-correction). A stage where no
    session failed, and for which the user's words ask nothing, gets no step: mark it on the sheet as left to
    the agent, with the run that shows it. A stage that no session reached shows nothing about whether its
    instruction is needed.
@@ -204,6 +204,6 @@ by any model, and resemblance then measures copying.
 4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
    earlier description, decides only against a second run of the same set, an option of
    [what a check may spend](#what-a-check-may-spend); without it the margin is reported as undecided.
-5. Requests the skill is for with a confirmed selection of a rival or confirmed none are [a correction](../SKILL.md#a-correction): rewrite the
+5. Requests the skill is for with a confirmed selection of a rival or confirmed none are [a correction](plan.md#a-correction): rewrite the
    description from them by [writing.md](writing.md#the-description), have a new set written, because a set its
    writer has seen no longer tests it, and run once more. Unknown selection is unverified, not a confirmed miss.

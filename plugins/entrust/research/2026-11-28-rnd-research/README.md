@@ -25,6 +25,9 @@ step, result form and reader.
 - (c) a statement no session could pass on that setup is fixed before the rest start;
 - (d) the method stays in `rnd`, which may not link outside its installed files;
 - (e) the review protocol still stops to agree on a next step.
+- (f) "A correction" stays in `references/plan.md` and `SKILL.md` links to it there, a departure from review item 10
+  ("move it back whole"): the section is 1,584 characters, `SKILL.md` has room for 148 under the 20001-character
+  limit, and a following PR will rebalance the body. Every link that landed on the stub now lands on `plan.md`.
 
 **Accepted by the owner.** On 2026-11-28 the owner accepted, in the review session, seven changes of value that PR 120's
 first commit made and that the direction comment does not name ([messages.md](messages.md)):

@@ -124,7 +124,7 @@ them too. Its name is short for research and develop; each step is written for w
      does.
    - `stop`: write nothing and change nothing. The critic's reason goes to the user as
      [the result](#the-result). The user may overrule a stop; it is not a correction.
-   - A stage, a requirement or a question it finds missing is [a correction](#a-correction).
+   - A stage, a requirement or a question it finds missing is [a correction](references/plan.md#a-correction).
 
    Start with it the parts of [reflection](references/reflection.md) the plan gave this step.
 5. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named: write its cases
@@ -141,13 +141,13 @@ them too. Its name is short for research and develop; each step is written for w
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
 8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
    and decide by the plan's rule from confirmed marks; set no threshold after seeing a result. A result that
-   fails the rule is [a correction](#a-correction). Past [its limit](#a-correction) the work is not kept: give
+   fails the rule is [a correction](references/plan.md#a-correction). Past [its limit](references/plan.md#a-correction) the work is not kept: give
    the user both results, then undo the change, or take the new skill's folder out of the tree and keep
    its text in the run directory; the user can overrule the undo. Kept or not, write [a close-out](references/plan.md#a-close-out), and start the parts of
    [reflection](references/reflection.md) the plan gave this step.
 9. **Have the result verified.** Where [critics.md](references/critics.md#which-model-and-how-many) gives the
    work a verifier, start it as [its section](references/critics.md#the-verifier) briefs it. A requirement it
-   returns as `not met` is [a correction](#a-correction).
+   returns as `not met` is [a correction](references/plan.md#a-correction).
 10. **Deliver.** First start the parts of [reflection](references/reflection.md) the plan gave this step and
     act on what they return. Where the audit at delivery does not run, write
     the result's text to `result.md` in the run directory, start [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put its marks into
@@ -210,10 +210,6 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    Your own judgement that a fact is not needed retires nothing. A change whose list held a line gets the
    verifier at step 9.
 9. **Finish as Create's steps 7 to 10 say.**
-
-## A correction
-
-Follow [a correction](references/plan.md#a-correction) when the sheet or text misses what the user wants. Words of the user that do not fit the design are asked about, never read to fit.
 
 ## The result
 

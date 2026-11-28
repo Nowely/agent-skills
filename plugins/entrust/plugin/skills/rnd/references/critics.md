@@ -95,7 +95,7 @@ Each objection cites a place: a line of the messages, the sheet, a source or the
 For its read of a check that runs sessions, at step 5, give it the cases, the statements and the rule as well,
 and no answer key. It returns `keep` or `change` for the check, and the item on checks above. Its objections
 rest on [checks.md](checks.md) and are handled as an objection that names a rule. `change` is
-[a correction](../SKILL.md#a-correction), whose item 3 says whether the plan is shown again.
+[a correction](plan.md#a-correction), whose item 3 says whether the plan is shown again.
 
 ## The quality critic
 

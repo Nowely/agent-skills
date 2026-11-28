@@ -85,7 +85,7 @@ Merging several returns: <the rule, written now>
 - A round is one pass from a text to a judge's or a check's result. Fix the number, and the cap on fix rounds,
   before the first; when the cap is reached with objections open, they go to the user. A cap is never raised
   after a result is seen. For the plan's check the cap is not yours to set:
-  [a correction](../SKILL.md#a-correction) allows one changed plan and one more run. No cap takes away the
+  [a correction](#a-correction) allows one changed plan and one more run. No cap takes away the
   second read that [critics.md](critics.md#which-model-and-how-many) gives after a fix.
 - Put a checkpoint after the step whose result can still change the plan cheaply: after the check is prepared,
   after the first run of the check, before delivery. A plan of one round has `none: one round`.
@@ -156,7 +156,7 @@ part, and not when it only accepts or settles a question as asked.
    not fit the design are asked about, never read to fit.
 2. Name the step that should have caught it, and redo that step's part of the sheet to find what else it missed.
 3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
-   show the user the changed plan and wait as Create’s step 3 does; the architecture critic reads a changed approach
+   show the user the changed plan and wait as Create's step 3 does; the architecture critic reads a changed approach
    again. If only the text
    changes, edit it by [writing.md](writing.md), run the check script and, where Change's step 8
    ran, its `--against` command again, answering each line as that step says;
