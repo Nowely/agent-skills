@@ -975,8 +975,14 @@ test("a flow keeps its edges off the steps they pass, its labels apart, and its 
     const node = await text(page, '#flow-2 .flow-n[data-k="1"]'), first = await text(page, '#flow-2 .flow-n[data-k="0"]');
     await page.click('#flow-2 .flow-n[data-k="0"]'); await settle(page); const found = await text(page, "#ctx-summary");
     await page.goto(FLOW_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
-    const lbls = await page.locator("#flow-0 .flow-lbl").evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]; }));
-    const overlaps = lbls.flatMap((a, i) => lbls.slice(i + 1).filter((b) => a[0] < b[1] && a[1] > b[0] && a[2] < b[3] && a[3] > b[2])).length;
+    // no label covers another label or a step, on the fork and on the states with their loop and way back
+    let overlaps = 0;
+    for (const card of ["#flow-0", "#flow-1"]) {
+      if (card === "#flow-1") { await page.goto(FLOW_URL + "#summary/route2"); await page.waitForSelector(".tabbar"); await settle(page); await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page); }
+      const boxes = (sel) => page.locator(`${card} ${sel}`).evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]; }));
+      const lbls = await boxes(".flow-lbl"), steps = await boxes(".flow-n"), hit = (a, b) => a[0] < b[1] && a[1] > b[0] && a[2] < b[3] && a[3] > b[2];
+      overlaps += lbls.flatMap((a, i) => [...lbls.slice(i + 1), ...steps].filter((b) => hit(a, b))).length;
+    }
     return skip.l >= step2.r && /Tested on other code/.test(node) && !/Confirmed by a test/.test(node) && /F1 Q2/.test(first) && /Found or asked here/.test(found) && /A finding/.test(found) && overlaps === 0
       || JSON.stringify({ step2, skip, node, first, found: found.slice(0, 400), overlaps });
   }));

@@ -672,10 +672,11 @@ function drawFlow(i) {
   svgEl.setAttribute("width", canvas.scrollWidth); svgEl.setAttribute("height", canvas.scrollHeight);
   svgEl.innerHTML = `<defs>${["plain", "ok", "mixed", "q"].map((c) => `<marker id="fa-${i}-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs>${paths}`;
   canvas.insertAdjacentHTML("beforeend", labels);
-  const placed = [];
+  // a label keeps off the steps and off the labels placed before it
+  const placed = $$(".flow-n", canvas).map((el) => el.getBoundingClientRect());
   for (const el of $$(".flow-lbl", canvas)) {
     const top = parseFloat(el.style.top), clear = (r) => !placed.some((p) => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
-    for (const dy of [0, -21, 21, -42, 42]) { el.style.top = `${top + dy}px`; if (clear(el.getBoundingClientRect())) break; }
+    for (const dy of [0, -21, 21, -11, 11, -42, 42]) { el.style.top = `${top + dy}px`; if (clear(el.getBoundingClientRect())) break; }
     if (!clear(el.getBoundingClientRect())) el.style.top = `${top}px`;
     placed.push(el.getBoundingClientRect());
   }
