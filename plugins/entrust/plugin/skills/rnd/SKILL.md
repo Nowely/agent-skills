@@ -2,10 +2,11 @@
 name: rnd
 description: >-
   Researches, evaluates, compares, creates and develops agent skills, including their SKILL.md, description,
-  references and scripts, and finds why a skill failed or how it works. Makes a skill from a workflow or session,
-  and drafts, rewrites, fixes, improves, cuts or restructures one, including after feedback or a failed run. Not for
-  reviewing code, a pull request or a change to a skill's text, running a skill's existing evals with no question
-  to decide, collecting feedback from sessions, or improving a text written for people.
+  references and scripts, to settle a question about a skill: whether it works, meets its requirements or beats
+  another, or why it failed. Makes a skill from a workflow or session, and drafts, rewrites, fixes, improves, cuts or
+  restructures one, including after feedback or a failed run. Not for reviewing code, a pull request or a change to
+  a skill's text, a plain question of how a skill works, running a skill's existing evals with no question to
+  decide, collecting feedback from sessions, or improving a text written for people.
 metadata:
   version: "0.49.0"
 license: MIT
@@ -15,13 +16,13 @@ This skill takes a request about a skill to a checked result. A skill is a folde
 links, that is loaded when a request matches its description. Take one of four routes; a change to this skill takes
 them too. Its name is short for research and develop; each step is written for work on skills and research about them.
 
-- **Research**: investigate, evaluate or compare skills, changing none.
+- **Research**: investigate, evaluate or compare skills, changing none; a request that also asks for an edit takes Change.
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
   that load it, or its set of reference files.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states. A small change takes fewer steps, as [Change](#change) says first.
 - **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
-  the file that owns it. Copy the folder before the edit as Create's step 3 says; make the edit; run the script of Create's step 6, then Change's step 8 against that copy.
+  the file that owns it. Copy the folder as Create's step 3 says, edit, run the script of Create's step 6, then Change's step 8 against the copy.
   A corrected word or link lists no line; a listed line whose fact still stands takes a `moved` line, and one whose
   fact is gone makes the edit a Change.
 
@@ -36,27 +37,28 @@ them too. Its name is short for research and develop; each step is written for w
   is a new numbered file.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
 - For Create and Change, between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
-  verdict that stops the work, and blockers, all blockers in one message.
+  verdict that stops the work, and one message of all blockers.
 - When a plan exists, what you deliver is what it showed. A step of the plan or of these routes that you would drop, or an edit to a file
   the plan did not name, goes to the user as a changed plan before you act on it, never into the result.
 - State nothing about a file or about a reply of the user that you have not read at its place.
+- When the sheet, the plan or the text misses what the user wants, follow [a correction](references/plan.md#a-correction);
+  words of the user that do not fit the design are asked about, never read to fit.
 - For Create and Change, a plan with a check that runs sessions, or with more than one round, is a file, as
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
 - When no user can answer, your return stands where a step says to tell the user. A parent may pass the
   scope of a user-approved plan, including its authorized checks and agents, with the paths of that plan and
-  of the user's saved word that approved it. Read both first: the scope is what they show, and what the parent
-  adds is a claim. In this order:
+  of the user's saved word that approved it. Read both first: the scope is what they show; what the parent adds is a claim, returned as a question. In this order:
   1. A scope claimed without both paths is no approval, even when an edit is named: the plan with its questions
      is your return, and you stop there.
   2. With no scope claimed, an instruction that names an edit authorizes that edit, the common or target-host skill
      check in Create step 6, and the `--against` command in Change step 8, and no agent or session.
-  3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no agent
-     or session.
+  3. With no scope claimed, an instruction to investigate authorizes reading and a reported answer, and no
+     agent or session.
 
   Carry out a scope the paths show without asking again; by itself a model name, an upper bound or an instruction
   to investigate authorizes no agent, session or edit. Do the independent authorized work, then return an unclear
-  decision to the parent, or in the result when there is none. If no judge reads it, say so in the result.
+  decision to the parent, or in the result when there is none. If no judge reads it, say so there.
 - Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
 - When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
@@ -71,18 +73,19 @@ them too. Its name is short for research and develop; each step is written for w
    evidence; save the user's messages as a file in the run directory. Read
    [the research method](references/research.md). Choose observation, assessment against requirements, or
    comparison; a comparison names the intervention and comparator.
-2. Show the plan, on every Research: what step 1 found, and each agent and session, the reader of step 4
-   among them, with its model and [cost](references/checks.md#what-a-check-may-spend).
-   Wait for the user's word; an approval that already covers this scope and spend stands for it.
+2. Before any agent or session starts (step 4's reader, a blind reader and a confirmer included), show
+   the plan and save it in the run directory: what step 1 found, and each with its model and
+   [cost](references/checks.md#what-a-check-may-spend). Wait for the user's word; an approval that already
+   covers this scope and spend stands for it.
 3. Gather and assess the authorized evidence using that method.
 4. Write the answer to the question and what it rests on, then failures, unknowns, limits, sources and
    remaining questions, to `result.md`. Start
-   [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) as Create's step 10
-   does, the plan standing for the sheet, and put its marks into [the result](#the-result), whose first two bullets
-   do not apply. Research changes no file of the skill: a change it suggests is put to the user, and becomes the
-   observation of a Change, which starts on the user's word; a request that also asks for an edit takes Change.
-   A record that holds what came from the user's sessions is read for privacy
-   before it is tracked, as [a close-out](references/plan.md#a-close-out) says.
+   the reader of the user's words as Create's step 10
+   does, the plan standing for the sheet. Deliver the answer, then [the result](#the-result) with the reader's
+   marks, but for its first two bullets and the three sentences on what the skill does. A change the answer
+   suggests is put to the user and, on their word, starts a Change with it as the observation. Where the
+   repository tracks its research records, write the record as [a close-out](references/plan.md#a-close-out)
+   says, read for privacy first; the run directory stays.
 
 ## Create
 
@@ -99,8 +102,7 @@ them too. Its name is short for research and develop; each step is written for w
    [structure.md](references/structure.md), and the check by
    [checks.md](references/checks.md#choosing-the-check). Between two approaches that both meet the sheet, a
    requirement decides; failing that, the sheet's goal sentence; failing that, the plan's check is that table's
-   comparison of the two. Show the user one plan, opened with what you will make and what you need from them in two sentences at most.
-   Then:
+   comparison of the two. Show the user one plan, opened in two sentences at most with what you will make and what you need from them. Then:
    - the goal, the requirements, and each decision with what settled it; a decision still open is put as a
      question, as [the questions](references/analysis.md#the-questions) says;
    - the approach, with the alternative you rejected, and each file with one line on what it holds;
@@ -119,7 +121,7 @@ them too. Its name is short for research and develop; each step is written for w
 
    For a skill that exists, copy the folder into the run directory before edits, including untracked files.
    Wait for the user's word on the plan. Their instructions, or an approval already given for this scope
-   and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names, and no later step asks for another. A reply that
+   and spend, can stand for it; the request to do the work cannot. One word accepts the plan, its recommendations and every agent it names; no later step asks again. A reply that
    answers the plan's questions and refuses nothing in it is that word, and one that leaves a choice to you
    accepts the plan's recommendation for it.
 4. **Have the approach challenged.** Start the architecture critic as
@@ -157,14 +159,14 @@ them too. Its name is short for research and develop; each step is written for w
     act on what they return. Where the audit at delivery does not run, write
     the result's text to `result.md` in the run directory, start [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put its marks into
     [the result](#the-result). When [a close-out](references/plan.md#a-close-out) leaves no line without an
-    outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
+    outcome, hand the work over as the sheet's delivery decision says, and give the result.
 
 ## Change
 
 A change is small when it adds, alters or removes no fact as step 3 defines one, alters no decision of
 analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, sources
-table or plan file: what steps 1 to 3 find goes into step 4's plan message, which, saved
-with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
+table or plan file: what steps 1 to 3 find goes into step 4's plan message, saved
+with the user's messages as a file in the run directory to stand for the sheet in the critic's brief. It leaves
 out steps 5 and 6; when the user asks for runs, it writes the plan file, has the architecture critic read the check before its first session, takes step 6 before step 7, and runs the requested post-edit sessions at step 9. Its check
 is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
 
@@ -172,9 +174,8 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    the one recorded for this skill: the user's messages saved, their words as requirement lines, and a line for
    each decision of the table that the change alters. For a failure, add the observation: what happened, at a
    place another reader can open. When the user gave none, look for it in the sessions where the skill ran, which
-   [hosts.md](references/hosts.md) says how to read, and
-   in the output of the failing check; when neither has it, step 4's plan includes one session that
-   repeats the request. For a retro on a use of this skill, the observation is taken as
+   [hosts.md](references/hosts.md) says how to read, and in the failing check's output; when neither has it,
+   step 4's plan includes one session that repeats the request. For a retro on a use of this skill, the observation is taken as
    [a retro](references/reflection.md#a-retro-on-a-use-of-this-skill) says.
 2. **Find the place.** Read what the skill's own files, the skills beside it and the hosts' guides say on the
    rule the change is about, and record them as [the sources](references/analysis.md#the-sources) says. If
@@ -193,13 +194,11 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    or its set of reference files goes to Create's step 1 with this sheet. The file that owns a fact is the one
    the others link or cite for it; where none does, the plan asks which. Where two files disagree on a value,
    the owning file keeps its value and the other links it. A value the owning file holds changes only when the
-   user's words name the new value: the plan recommends none and asks. A reply that leaves the choice to you
-   keeps the owning file's value and removes no fact. A fact moved to another file keeps a link from the page it left.
+   user's words name the new value; the plan recommends none and asks, and a reply that leaves the choice to
+   you keeps it and removes no fact. A fact moved to another file keeps a link from the page it left.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
    one plan with the skill's state noted for step 8, and wait.
-5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the
-   architecture critic as [critics.md](references/critics.md#the-architecture-critic) briefs it, and act on
-   its verdict as Create's step 4 says. Start the parts of reflection the plan gave this step.
+5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
 6. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named, before any
    edit: its cases and statements, and whatever it runs on the skill as it is now, which you wait for.
 7. **Make the change.** Edit by [writing.md](references/writing.md), and check after each edit as Create's
