@@ -123,8 +123,9 @@ moved | SKILL.md:181 | SKILL.md:187 | or its set of reference files goes to Crea
 moved | SKILL.md:182 | SKILL.md:187 | or its set of reference files goes to Create's step 1 with this sheet. The file that owns a fact is the one
 moved | SKILL.md:182 | SKILL.md:191 | keeps the owning file's value and removes no fact. A fact moved to another file keeps a link from the page it left.
 moved | SKILL.md:195 | SKILL.md:204 | the skill's, or the folder of skills when the change spans several. The base is the copy made before edits;
-moved | SKILL.md:196 | SKILL.md:203 | `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
+moved | SKILL.md:196 | SKILL.md:207 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
 moved | SKILL.md:196 | SKILL.md:205 | the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
 moved | SKILL.md:227 | SKILL.md:218 | Tell the user in this order; the text that delivers the work opens the same way:
 
 moved | SKILL.md:71 | SKILL.md:94 | [checks.md](references/checks.md#choosing-the-check). Between two approaches that both meet the sheet, a
+moved | SKILL.md:194 | SKILL.md:204 | `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`, adding

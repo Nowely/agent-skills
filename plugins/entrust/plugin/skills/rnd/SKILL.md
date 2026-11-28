@@ -76,7 +76,8 @@ them too. Its name is short for research and develop; each step is written for w
    remaining questions. Start
    [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) as Create's step 10
    does. Research changes no file of the skill: a change it suggests is put to the user, and becomes the
-   observation of a Change, which starts on the user's word.
+   observation of a Change, which starts on the user's word. A record that holds what came from the user's sessions is read for privacy
+   before it is tracked, as [a close-out](references/plan.md#a-close-out) says.
 
 ## Create
 
@@ -200,7 +201,8 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    step 6 says. A failure that the files as they were also show is not this
    edit's: record it as the repository records a defect found in passing, and go on.
 8. **Show that no line was lost.** After the last edit, run
-   `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
+   `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`, adding
+   `--installed <installation-root>` as [hosts.md](references/hosts.md) says. The directory is
    the skill's, or the folder of skills when the change spans several. The base is the copy made before edits;
    the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
