@@ -44,9 +44,7 @@ Decide the files before the sentences. Each requirement goes to exactly one file
   and `SKILL.md` chooses between them.
 - A skill whose whole text fits the budgets and has no detail that only one step needs is a single `SKILL.md`.
 - Create no file that no step reads or runs.
-- Link only to files an install copies: the skill's folder and the skills beside it, and for a skill in a
-  Claude Code plugin, at `<plugin>/skills/<name>/`, the rest of the plugin's folder. Nothing else of a
-  repository arrives, so any other link is dead on arrival.
+- Link only to files an install copies: the skill's folder and the skills beside it, and any wider folder the target host actually installs with them. A repository file outside that installation does not arrive.
 - Write the skill in a folder that has its final name, in the place the sheet gives it, so that its links to
   neighbouring files open.
 
@@ -61,5 +59,4 @@ Decide the files before the sentences. Each requirement goes to exactly one file
 | a long reference: a contents list at its top | an agent previews the top of a file and must see what the rest holds |
 | a link: forward slashes, and a file or heading that exists | a backslash fails outside Windows; a dead link stops the reader |
 
-The check script of Create's step 6 owns the numbers. It checks every row of this table and prints each limit
-with what the skill uses of it. [hosts.md](hosts.md) says which host each number comes from.
+The common check script of Create's step 6 owns common limits; the target-host check named in [hosts.md](hosts.md) adds that host's limits. A mechanical match does not establish preserved meaning. [hosts.md](hosts.md) says which host each number comes from.

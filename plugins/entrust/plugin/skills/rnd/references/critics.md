@@ -167,9 +167,9 @@ It marks every instruction, question and idea in the messages:
 - `covered`, with the place that acts on it;
 - `part`, with what is missing;
 - `missing`;
-- `answered only`: a question answered in a reply that needs nothing in the work.
+- `answered only`: a question answered in a reply that needs nothing in the work, with the answer's place; when no answer evidence is available, mark it `unknown`.
 
-It returns the marks with no verdict. Every `missing` and `part` goes into the result. The return is not a
+It returns the marks with no verdict. Every `missing` and `part` goes into the result; report each `unknown` as unverified. The return is not a
 correction by itself: the user's reply decides whether it is one.
 
 It runs on every route but Repair, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's

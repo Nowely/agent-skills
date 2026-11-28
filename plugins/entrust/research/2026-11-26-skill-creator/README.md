@@ -33,18 +33,16 @@ changed by the host alone, marked blind ([12-v3.md](12-v3.md)). Selection holds 
 misses). The other three clauses fail: facts kept in 5 of 6 change sessions after one correction; the main measure
 shows no margin on Create (68.9 against 68.0) and a lower score on the thin Change kind, at 2.2x to 11.6x the cost;
 the text-and-files decision is whole in 1 of 6 plans after one correction. By the landing rule v3 does not land;
-it is released on the owner's word, with the defects in `ISSUES.md` (E171 to E174).
+the owner approved proceeding despite the result. The text fixes for E171 to E174 were applied and those entries are no longer in `ISSUES.md`.
 
-**After v3.** Spend rules for every check and fixes for E171 to E174 went in before the merge, measured by no
-run yet; [13-next.md](13-next.md) lists them and the plan from here, each item with the decision it can change
-and its cost.
+**After v3.** Spend rules and text fixes for E171 to E174 were followed by limited one-session follow-ups, read by the coordinator rather than blind ([13-next.md](13-next.md#results-of-items-2-3-5-and-6)). A dispositions reader still missed a moved condition; undo beyond the correction limit was not reached. These runs do not establish general efficacy.
 
 ## What was built
 
 `plugins/entrust/plugin/skills/skill-creator/`: `SKILL.md` (two routes, Create in ten steps and Change, plus
 Repair, a correction, the result and standing rules), six references (`analysis.md`, `checks.md`, `critics.md`,
 `hosts.md`, `structure.md`, `writing.md`) and `scripts/check.mjs`, twelve mechanical rules that
-`scripts/skills.test.mjs` now imports, so the repository's page checks have one owner. Its suite is
+`scripts/skills.test.mjs` now imports; the current checker separates common rules in rnd from Claude rules in its adapter. Its suite is
 `plugins/entrust/evals/skill-check.test.mjs`. The critics on the top tier are the owner's choice and differ from
 orchestrate's defaults; `critics.md` says so. That was v1. v2 adds the preservation gate (`check.mjs --against`), a
 written-out Change route, one brief form for the judges, a plan file (`references/plan.md`), a reflection role

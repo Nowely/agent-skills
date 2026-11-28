@@ -51,9 +51,7 @@ Every session, reader and judge is paid for by the user, and a check is worth th
 
 ## The sessions
 
-- Start each session through what the repository has for starting sessions, on this host too; in entrust that
-  is orchestrate's [call page](../../orchestrate/references/external.md) with the host's adapter. Where the
-  repository has nothing, start it as an agent of this host. The plan names which. Run every case on the
+- Start each session with a host-supported native session when it meets the check's needs; otherwise use the repository's adapter for that host. The plan names which. Run every case on the
   cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet.
   A session on a host this one cannot run is started only when the user named that host. A model or a host on
   the sheet that got no session is named in the result as unmeasured.
@@ -66,9 +64,9 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   follow it. A session that runs without the skill gets neither the path nor the skill's name.
   The plan names the control it means: the host as it is, which may find another skill for the same job, or no
   skill for the job: their folders are removed from the copy, and an installed copy the session's host loads from
-  outside it is turned off where the host allows. Where neither can be done, the control is the host as it is,
+  outside it is turned off where the host allows. If either exposure cannot be excluded, the control is the host as it is,
   and the plan and the result say so. The result names every skill a
-  control session opened.
+  control session opened. If a control opens a skill for the job, label it host-as-is and do not treat its observations as no-skill evidence.
 - Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
   repository. No case performs an action that cannot be undone or that leaves the copy, such as a tag, a push,
   a release, a publication or a message sent: the case stops before it, and the plan says what the check
@@ -81,7 +79,7 @@ Every session, reader and judge is paid for by the user, and a check is worth th
 
 ## The baseline
 
-The baseline is what the agent does on the job with no skill for it. It says which lines the skill needs: one
+The baseline is what the agent does on the job with no skill for it, when both exposure sources can be excluded; otherwise it is host-as-is and cannot prove no-skill behavior. It says which lines the skill needs: one
 for each failure seen, and none for what went right.
 
 1. At step 5, take the cases the plan's check has. A plan without test cases writes one request the way a
@@ -153,7 +151,7 @@ by any model, and resemblance then measures copying.
    lists them. A second fresh agent, with the key, confirms each answer can be found from the scenario; one
    that cannot is replaced. Both write to files you pass on by path and do not open before step 8, since you
    may be the one who writes the pages; any other writer of the pages is not given them either.
-2. Learn the floor, then write the rule. Have each scenario answered once by a fresh agent, of the tier that uses an artifact in item 4, whose brief holds
+2. Learn the floor, then write the rule. The plan preregisters the raw-key threshold for sufficiency. Compare the floor against it before removing floor answers or rebuilding: if it meets the threshold for a new skill, the result is `not needed`. Have each scenario answered once by a fresh agent, of the tier that uses an artifact in item 4, whose brief holds
    the artifact's name and the scenario's files and nothing of the pages, and have the second agent of item 1
    count the known answers that come back. An answer the floor reaches measured nothing and leaves the count, as item 5
    of [test cases](#test-cases) says of a statement; when the floor reaches more than half of the answers, the
@@ -172,7 +170,7 @@ by any model, and resemblance then measures copying.
 5. Decide by the rule. A margin counts only above the difference between two runs on the new pages; that
    second run is an option of [what a check may spend](#what-a-check-may-spend), and without it a margin is
    reported as undecided. When
-   the pages as they were already reach the rule, or for a new skill the floor does, the result is `not needed`:
+   the pages as they were already reach the rule, the result is `not needed`:
    the gaps were not gaps.
 6. Report beside it, deciding nothing: which things of the catalogue each artifact holds, and what the
    sessions said they were unsure of. The second is where the next correction starts.
@@ -186,7 +184,7 @@ by any model, and resemblance then measures copying.
    [structure.md](structure.md#the-approach) sorted out in step 2, the host's built-in ones included. A rival
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
-3. Run each request once: about twenty sessions for each host. Use the host's own tool for this where [hosts.md](hosts.md) names one; otherwise start sessions as above, each given the request alone. Record
+3. Run each request once: about twenty sessions for each host. Start sessions as above, each given the request alone. A host adapter may describe a selection tool; use it only if its population, run count and side effects meet this plan and the user has explicitly authorized its spend and side effects. Record
    which skill was loaded before the answer or the first action: this one, a rival by name, or none.
 4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
    earlier description, decides only against a second run of the same set, an option of

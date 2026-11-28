@@ -2,7 +2,7 @@
 // Does a skill keep the mechanical rules its hosts apply to it? The reason for each rule is in the budgets table
 // of ../references/structure.md; this file owns the numbers and the checks.
 //
-//   node check.mjs <skill-directory> [<skill-directory> ...]
+//   node check.mjs <skill-directory> [<skill-directory> ...] [--installed <directory>]
 //   node check.mjs <directory> --against <base> [--dispositions <file>]     was a line lost? (see `preserved`)
 //
 // Reads <dir>/SKILL.md and every markdown file it reaches by relative links inside the skill's folder. A link that
@@ -15,7 +15,7 @@
 // The frontmatter reader takes plain, quoted and folded (`>`, `>-`) scalars for name, description and
 // when_to_use and refuses any other form of those three, so that no length is counted on a guess.
 //
-// `--against` names the state before the edit, a git revision or a directory that holds a copy; the agent sets
+// `--against` names the state before the edit, a directory that holds a copy; the agent sets
 // it, because work that spans commits has no "before" a script could guess, and without it a cut that drops a fact
 // passes. `--dispositions` names the file that answers the listed lines; the agent sets it, because the script
 // cannot know where a run keeps its files, and without it no listed line can be answered.
@@ -25,45 +25,40 @@
 // exported, so that a repository's own suite can import them and add which skills it reads and what else its
 // walk covers.
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The body budget. The open specification recommends a body under 5,000 tokens. Claude Code counts a token as four
-// characters and, when it compacts a session, keeps a skill's block whole while Math.round(length / 4) <= 5000,
-// that is up to 20,001 characters; past that it keeps the first 19,900 and a marker. The block is a header line
-// with the skill's directory, then the body with each ${CLAUDE_...} placeholder replaced by its path; every path
-// is taken as `path` characters, a chosen bound.
-export const LIMITS = { name: 64, description: 1024, listing: 1536, bodyLines: 500, reattached: 20001, kept: 19900,
-  preview: 100, path: 120 };
-const HEAD = "Base directory for this skill: ".length + "\n\n".length;
+export const LIMITS = { name: 64, description: 1024, bodyLines: 500 };
 
-const read = (file) => fs.readFileSync(file, "utf8");
-const lineCount = (text) => (text.match(/\n/g) ?? []).length; // as `wc -l` counts
-const lineAt = (text, index) => lineCount(text.slice(0, index)) + 1;
+export const read = (file) => fs.readFileSync(file, "utf8");
+export const lineCount = (text) => (text.match(/\n/g) ?? []).length; // as `wc -l` counts
+export const lineAt = (text, index) => lineCount(text.slice(0, index)) + 1;
 const inside = (dir, p) => p.startsWith(dir + path.sep);
+// Resolve existing targets before reading them; lexical containment alone permits symlink escapes.
+const contained = (root, dest) => {
+  if (!dest || !(dest === root || inside(root, dest))) return false;
+  try {
+    const r = fs.realpathSync(root), d = fs.realpathSync(dest);
+    return d === r || inside(r, d);
+  } catch { return false; }
+};
 
-// A skill to check. `bound` is the directory the walk stays inside, the skill's folder unless the caller widens
-// it; `follows` says whether the walk reads a linked markdown file, and `skips` names a directly linked file that
-// is held to no rule. `installed` is the directory an install copies the skill with, unless the caller names
-// one: the folder that holds the skill and its neighbours, or, for a skill at `<plugin>/skills/<name>/` whose
-// plugin folder holds Claude Code's manifest `.claude-plugin/plugin.json`, that plugin folder, which a plugin
-// install copies whole. No other host's plugin layout is recognised. A repository's suite passes its own four.
+// The default installation boundary is the skill's parent. Callers that know a wider installed root pass it.
 export function skillAt(dir, { bound, follows, skips, installed } = {}) {
   const root = path.resolve(dir), file = path.join(root, "SKILL.md");
-  const beside = path.dirname(root), plugin = path.dirname(beside);
-  const whole = path.basename(beside) === "skills" && fs.existsSync(path.join(plugin, ".claude-plugin", "plugin.json"));
+  const beside = path.dirname(root);
   const skill = { name: path.basename(root), dir: root, file, bound: bound ?? root, skips: skips ?? (() => false),
-    installed: installed ?? (whole ? plugin : beside) };
+    installed: installed ? path.resolve(installed) : beside };
   skill.follows = follows ?? ((dest) => inside(skill.bound, dest));
+  skill.heldFollows = follows ?? ((dest) => inside(skill.installed, dest));
   return skill;
 }
 
 // The strict subset of YAML these frontmatters use. Another form of a field a rule reads is refused, not
 // guessed at; a field no rule reads is kept as written.
 const READ = new Set(["name", "description", "when_to_use"]);
-function frontmatter(file) {
+export function frontmatter(file) {
   const lines = read(file).split("\n");
   if (lines[0] !== "---") throw new Error("no YAML frontmatter");
   const end = lines.indexOf("---", 1);
@@ -110,13 +105,13 @@ function scalar(raw, line) {
 }
 
 // A SKILL.md's body: everything after the frontmatter's closing `---` line, with its offset in the file.
-function body(text) {
+export function body(text) {
   const lines = text.split("\n");
   const end = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
   const start = end < 0 ? 0 : lines.slice(0, end + 1).join("\n").length + 1;
   return { text: text.slice(start), start };
 }
-const bodyLines = (file) => {
+export const bodyLines = (file) => {
   const text = body(read(file)).text;
   return text === "" ? 0 : text.replace(/\n$/, "").split("\n").length;
 };
@@ -129,7 +124,7 @@ const prose = (text) => text.replace(FENCE, blank).replace(/`[^`\n]*`/g, blank);
 // Every place a link can land in a file, with its line: each heading, by GitHub's ids (lower case, anything but
 // letters, digits, `_`, `-` and spaces dropped, each space a hyphen, a repeat numbered; code spans stay in a
 // heading's text), with its level; and every <a id> or <a name> as written, as level 0.
-function targets(file) {
+export function targets(file) {
   const text = read(file), seen = new Map(), found = [];
   const fenceless = text.replace(FENCE, blank);
   for (const m of fenceless.matchAll(/^ {0,3}(#{1,6})[ \t]+(.+?)[ \t#]*$/gm)) {
@@ -144,7 +139,7 @@ function targets(file) {
 }
 
 // Every inline link that is not a URL: its target as written, its line, and the path it names.
-function links(file) {
+export function links(file) {
   const text = prose(read(file));
   return [...text.matchAll(/\]\(([^)\s]+)\)/g)]
     .filter(([, target]) => !/^[a-z][a-z0-9+.-]*:/i.test(target))
@@ -160,7 +155,7 @@ function links(file) {
 
 // The walk reads a markdown file that exists, is not the skill's own page, and that the skill follows.
 const walked = (skill, dest) => Boolean(dest) && dest.endsWith(".md") && dest !== skill.file && fs.existsSync(dest)
-  && skill.follows(dest);
+  && contained(skill.installed, dest) && skill.follows(dest);
 
 // A link to a directory counts as a direct link to each markdown file directly in it: the model lists the
 // directory and opens a file with no page between. The walk reads the pages SKILL.md's directory links list.
@@ -171,12 +166,13 @@ const listed = (dest) => dest && fs.existsSync(dest) && fs.statSync(dest).isDire
 
 // The files SKILL.md links directly, and every file its walk reaches, with the link that first reached it.
 function walk(skill) {
-  const direct = new Set(links(skill.file).flatMap((l) => listed(l.dest)));
+  const safeList = (d) => d && contained(skill.installed, d) && skill.follows(d) ? listed(d) : [d];
+  const direct = new Set(links(skill.file).flatMap((l) => safeList(l.dest)));
   const reached = new Map(), queue = [skill.file];
   while (queue.length) {
     const from = queue.shift();
     // Only SKILL.md's directory links list their pages; a page's own link to a directory is not followed.
-    for (const l of links(from)) for (const dest of from === skill.file ? listed(l.dest) : [l.dest]) {
+    for (const l of links(from)) for (const dest of from === skill.file ? safeList(l.dest) : [l.dest]) {
       if (!walked(skill, dest) || reached.has(dest)) continue;
       reached.set(dest, { from, line: l.line });
       queue.push(dest);
@@ -185,34 +181,22 @@ function walk(skill) {
   return { skill, direct, reached };
 }
 
-// The pages rule 12 holds: SKILL.md, the walk, and every page a directory link on one of them lists (not walked, so
-// rule 6 is not asked of them), the listed pages' own directory links too.
-function held(skill, reached) {
-  const pages = new Set([skill.file, ...reached.keys()]);
-  for (const f of pages) for (const l of links(f)) for (const d of listed(l.dest)) if (d !== l.dest && d.endsWith(".md")) pages.add(d);
-  return [...pages].filter((f) => f === skill.file || inside(skill.dir, f));
-}
-
-function reattached(file) {
-  const text = read(file), after = body(text);
-  const start = after.start + after.text.match(/^(?:[ \t]*\n)*/)[0].length;
-  const block = text.slice(start);
-  const places = [...block.matchAll(/\$\{CLAUDE_[A-Z_]+\}/g)];
-  const PATH = LIMITS.path;
-  const length = HEAD + PATH + block.length + places.reduce((n, m) => n + PATH - m[0].length, 0);
-  // The body offset of the first character lost: the kept characters, less the header, run through the body,
-  // a placeholder taking PATH of them; a cut inside a path falls at its placeholder.
-  let room = LIMITS.kept - HEAD - PATH, at = 0;
-  for (const m of places) {
-    if (m.index - at >= room) break;
-    room -= m.index - at;
-    at = m.index;
-    if (room < PATH) { room = 0; break; }
-    room -= PATH;
-    at = m.index + m[0].length;
+// Rule 12 follows owned links and directory members transitively, independently of rule 6.
+function held(skill, excluded = () => false) {
+  if (!contained(skill.dir, skill.file) || excluded(skill.file)) return [];
+  const pages = new Set(), queue = [skill.file];
+  while (queue.length) {
+    const f = queue.shift();
+    if (pages.has(f) || excluded(f)) continue;
+    pages.add(f);
+    for (const l of links(f)) {
+      const d = l.dest;
+      if (excluded(d) || !contained(skill.installed, d) || skill.skips(d) || !skill.heldFollows(d)) continue;
+      for (const member of listed(d)) if (member && member.endsWith(".md") && !excluded(member) && !skill.skips(member)
+        && skill.heldFollows(member) && contained(skill.installed, member)) queue.push(member);
+    }
   }
-  const cut = Math.min(at + room, block.length);
-  return { length, line: lineAt(text, start + cut), lines: lineCount(text), kept: Math.round(100 * cut / block.length) };
+  return [...pages];
 }
 
 const markdownUnder = (dir) => !fs.existsSync(dir) ? [] : fs.readdirSync(dir, { withFileTypes: true }).flatMap((f) =>
@@ -226,7 +210,7 @@ export function rules(skills, rel = (p) => p) {
   // bound that the skill does not skip.
   const pages = [...new Set(walks.flatMap(({ skill, direct, reached }) => [
     skill.file, ...reached.keys(),
-    ...[...direct].filter((d) => d && d.endsWith(".md") && inside(skill.bound, d) && !skill.skips(d) && fs.existsSync(d)),
+    ...[...direct].filter((d) => d && d.endsWith(".md") && inside(skill.bound, d) && !skill.skips(d) && contained(skill.installed, d)),
   ]))].sort();
   const field = (s, collect) => {
     let fm;
@@ -237,55 +221,22 @@ export function rules(skills, rel = (p) => p) {
     [1, "name uses lowercase letters, digits and hyphens only (open specification)", () => skills.flatMap((s) => field(s, (fm) =>
       // The vendor: "the `name` field must use lowercase letters, numbers, and hyphens only."
       typeof fm.name === "string" && /^[a-z0-9-]+$/.test(fm.name) ? [] : [`${rel(s.file)}: name is ${JSON.stringify(fm.name)}`]))],
-    [2, "description plus when_to_use is at most 1,536 characters (Claude Code's listing cuts the rest)", () => skills.flatMap((s) => field(s, (fm) => {
-      // The vendor: "the combined `description` and `when_to_use` text is truncated at 1,536 characters in the
-      // skill listing". Counted on the values after YAML folds them.
-      const parts = [fm.description ?? "", fm.when_to_use ?? ""];
-      if (parts.some((p) => typeof p !== "string")) return [`${rel(s.file)}: a field is not a string`];
-      const n = parts[0].length + parts[1].length;
-      return n <= LIMITS.listing ? [] : [`${rel(s.file)}: ${n} characters`];
-    }))],
     [3, "SKILL.md's body is under 500 lines (open specification)", () => skills.flatMap((s) => {
       // The vendor: "Keep SKILL.md body under 500 lines". Counted over the body, after the frontmatter, as lines of text:
       // one trailing newline is dropped before splitting, so a last line counts once whether or not one ends it.
       const n = bodyLines(s.file);
       return n < LIMITS.bodyLines ? [] : [`${rel(s.file)}: ${n} lines of body`];
     })],
-    [4, "SKILL.md's body is within 5,000 tokens, which the open specification recommends and Claude Code keeps through a compaction: 20,001 characters as it counts them", () => skills.flatMap((s) => {
-      // The vendor: Claude Code "re-attaches the most recent invocation of each skill after the summary, keeping the
-      // first 5,000 tokens of each". The purpose is narrower: a page's standing rules lie within the part kept.
-      // Which lines those are is a judgement no count makes, so failing any page that is cut at all is a
-      // deterministic choice, stricter than the purpose.
-      const r = reattached(s.file);
-      return r.length <= LIMITS.reattached ? [] : [`${rel(s.file)}: ${r.length} characters re-attached; the cut `
-        + `falls at line ${r.line} of ${r.lines}, and ${r.kept}% of the body is kept`];
-    })],
-    [5, "a linked file links each section after its line 100 from its first 100 lines (Anthropic's guide: a file is previewed)", () => pages
-      .filter((f) => !["SKILL.md", "README.md"].includes(path.basename(f)))
-      .flatMap((f) => {
-        // The vendor: "For reference files longer than 100 lines, include a table of contents at the top." Claude
-        // "might use commands like `head -100` to preview content rather than reading entire files". So each
-        // section that starts after line 100, a `##` heading or an <a id>, must be the target of a #anchor link in
-        // lines 1-100; the links' form, heading and place are free.
-        const early = new Set(links(f).filter((l) => l.dest === f && l.anchor && l.line <= LIMITS.preview).map((l) => l.anchor));
-        const late = targets(f).filter((t) => (t.level === 2 || t.level === 0) && t.line > LIMITS.preview && !early.has(t.id));
-        return late.length === 0 ? [] : [`${rel(f)}: ${late.length} section(s) after line 100 not linked in `
-          + `lines 1-100, the first ${late[0].id} at line ${late[0].line}`];
-      })],
     [6, "every file SKILL.md reaches is linked from SKILL.md itself (open specification: references one level deep)", () => walks
       .flatMap(({ skill, direct, reached }) => [...reached]
         // The vendor: "Keep references one level deep from SKILL.md". "All reference files should link directly
-        // from SKILL.md to ensure Claude reads complete files when needed."
+        // from SKILL.md to ensure complete files are read when needed."
         .filter(([dest]) => !direct.has(dest))
         .map(([dest, { from, line }]) => `${rel(skill.file)} reaches ${rel(dest)} only through ${rel(from)}:${line}`))],
-    [7, "no backslash in a link target (Anthropic's guide)", () => pages.flatMap((f) => links(f)
-      // The vendor: "Always use forward slashes in file paths, even on Windows"
-      .filter((l) => l.target.includes("\\"))
-      .map((l) => `${rel(f)}:${l.line}: ${l.target}`))],
     [8, "every relative link opens, its anchor included", () => pages.flatMap((f) => links(f).flatMap((l) => {
       const at = `${rel(f)}:${l.line}: ${l.target}`;
       if (!l.dest || !fs.existsSync(l.dest)) return [`${at}: no such file`];
-      if (l.anchor && l.dest.endsWith(".md") && !new Set(targets(l.dest).map((t) => t.id)).has(l.anchor)) return [`${at}: no such anchor`];
+      if (l.anchor && l.dest.endsWith(".md") && skills.some((s) => contained(s.installed, f) && contained(s.installed, l.dest)) && !new Set(targets(l.dest).map((t) => t.id)).has(l.anchor)) return [`${at}: no such anchor`];
       return [];
     }))],
     [9, "name is the folder's name, at most 64 characters, with no hyphen at an end or doubled (open specification)",
@@ -306,8 +257,8 @@ export function rules(skills, rel = (p) => p) {
       markdownUnder(path.join(skill.dir, "references")).filter((f) => !direct.has(f))
         .map((f) => `${rel(skill.file)} does not link ${rel(f)}`))],
     [12, "every relative link stays among the files installed with the skill", () => walks.flatMap(({ skill, reached }) =>
-      held(skill, reached).flatMap((f) => links(f)
-        .filter((l) => l.dest && l.dest !== skill.installed && !inside(skill.installed, l.dest))
+      held(skill).flatMap((f) => links(f)
+        .filter((l) => l.dest && (!(l.dest === skill.installed || inside(skill.installed, l.dest)) || (fs.existsSync(l.dest) && !contained(skill.installed, l.dest))))
         .map((l) => `${rel(f)}:${l.line}: ${l.target} leaves the installed folders`)))],
   ].map(([n, title, collect]) => {
     try { return [n, title, collect()]; } catch (e) { return [n, title, [`threw: ${e.stack}`]]; }
@@ -339,7 +290,7 @@ export function rules(skills, rel = (p) => p) {
 //   retired | <file>:<line> | <file>:<line> | <the user's words that retire it>
 //
 // The first place is the candidate's, as printed. The second is where the quote stands, within five lines from
-// the one named: for `moved` a file under `dir` or beside it, by a path relative to `dir`, and the quote shares a
+// the one named: for `moved` a carrying file, by a path relative to `dir`, and the quote shares a
 // word of four letters or more with the lost line; for `retired` a file outside `dir` that holds the user's
 // messages, by a path relative to the dispositions file. `#` starts a comment line.
 //
@@ -361,35 +312,18 @@ const parts = (line) => line.replace(/`[^`\n]*`|\*\*[^*\n]*\*\*/g, " ").split(/[
 // Does `was` stand in `now` as whole tokens: the characters just around a match are not letters or digits, so
 // `wait at most 10` is not found in `wait at most 100`? Rewrapping is already folded into spaces by `collapse`.
 function stands(now, was) {
-  const edge = (c) => c === undefined || !/[\p{L}\p{N}]/u.test(c);
+  const edge = (c) => c === undefined || !/[\p{L}\p{N}_]/u.test(c);
   for (let at = now.indexOf(was); at >= 0; at = now.indexOf(was, at + 1))
-    if (edge(now[at - 1]) && edge(now[at + was.length])) return true;
+    if (edge(now[at - 1]) && edge(now[at + was.length])
+      && !(now[at - 1] === "." && /\d/.test(now[at - 2] ?? "") && /^\d/.test(was))
+      && !(now[at + was.length] === "." && /\d/.test(now[at + was.length + 1] ?? "") && /\d$/.test(was))) return true;
   return false;
 }
-const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", maxBuffer: 1 << 28,
-  stdio: ["ignore", "pipe", "ignore"] });
-
-// The Markdown files under `dir` as they were at `base`, by path relative to `dir`: every file when `base` is a
-// directory, the files that differ from the working tree when it is a revision.
+// A directory snapshot holds the Markdown files before the edit, including untracked files.
 function before(dir, base) {
-  const files = new Map();
-  if (fs.existsSync(base) && fs.statSync(base).isDirectory()) {
-    const root = path.resolve(base);
-    for (const f of markdownUnder(root)) files.set(path.relative(root, f).split(path.sep).join("/"), read(f));
-    return files;
-  }
-  let top;
-  try {
-    top = git(dir, "rev-parse", "--show-toplevel").trim();
-    git(top, "rev-parse", "--verify", "--quiet", `${base}^{commit}`);
-  } catch { throw new Error(`${base} is neither a directory nor a revision of the repository that holds ${dir}`); }
-  const rel = path.relative(top, fs.realpathSync(dir)).split(path.sep).join("/");
-  const changed = git(top, "diff", "--name-only", "-z", "--no-renames", base, "--", rel || ".").split("\0");
-  for (const f of changed.filter((f) => f.endsWith(".md"))) {
-    let text;
-    try { text = git(top, "show", `${base}:${f}`); } catch { continue; } // a file the edit added
-    files.set(rel ? f.slice(rel.length + 1) : f, text);
-  }
+  if (!fs.existsSync(base) || !fs.statSync(base).isDirectory()) throw new Error(`${base} is not a directory snapshot`);
+  const root = path.resolve(base), files = new Map();
+  for (const f of markdownUnder(root)) files.set(path.relative(root, f).split(path.sep).join("/"), read(f));
   return files;
 }
 
@@ -435,7 +369,7 @@ function answers(file) {
 // The lines of `dir` at `base` that nothing carries now: `lost` have no answer that holds, each with the `parts`
 // its `moved` lines leave uncarried; `answered` have dispositions that hold and carry them; `problems` says why
 // a disposition does not hold. A dispositions file that does not exist is read as empty. Changes nothing.
-export function preserved(dir, base, dispositions) {
+export function preserved(dir, base, dispositions, { installed, makeSkill = skillAt } = {}) {
   const root = path.resolve(dir);
   const isBaseDir = fs.existsSync(base) && fs.statSync(base).isDirectory();
   const isSkill = fs.existsSync(path.join(root, "SKILL.md"));
@@ -446,8 +380,13 @@ export function preserved(dir, base, dispositions) {
   // skills) that holds a SKILL.md; a loose Markdown file carries no line.
   const near = (top) => fs.readdirSync(top, { withFileTypes: true })
     .filter((f) => f.isDirectory() && fs.existsSync(path.join(top, f.name, "SKILL.md"))).map((f) => path.join(top, f.name));
-  const files = [...new Set((isSkill ? [root, ...near(path.dirname(root))] : near(root)).flatMap(markdownUnder))]
-    .filter((f) => !apart.some((a) => within(a, f)));
+  const excluded = (f) => Boolean(f) && apart.some((a) => within(a, f)
+    || (fs.existsSync(a) && fs.existsSync(f) && within(fs.realpathSync(a), fs.realpathSync(f))));
+  const roots = (isSkill ? [root, ...near(path.dirname(root))] : near(root))
+    .filter((dir) => !excluded(dir) && (!installed || contained(path.resolve(installed), dir))
+      && contained(dir, path.join(dir, "SKILL.md")));
+  const shared = roots.flatMap((dir) => held(makeSkill(dir, { installed }), excluded));
+  const files = [...new Set([...roots.flatMap(markdownUnder), ...shared])].filter((f) => !excluded(f));
   const texts = files.map(read);
   const now = texts.map(collapse).join(" \n ");
   const words = new Set(texts.flatMap((t) => t.toLowerCase().match(WORD) ?? []));
@@ -457,14 +396,15 @@ export function preserved(dir, base, dispositions) {
   const refused = (answer, line) => {
     const from = answer.kind === "moved" ? root : path.dirname(path.resolve(dispositions));
     const place = path.resolve(from, answer.file), quote = collapse(answer.quote);
+    if (answer.kind === "moved" && isBaseDir && (within(path.resolve(base), place)
+      || (fs.existsSync(place) && contained(path.resolve(base), place)))) return "the place is in the copy from before the edit";
+    if (answer.kind === "moved" && !files.includes(place)) return "the place is not a Markdown file that carries a line now";
     const window = fs.existsSync(place) && fs.statSync(place).isFile()
       ? collapse(read(place).split("\n").slice(answer.line - 1, answer.line + 4).join("\n")) : null;
     const shared = [...longWords(line)].some((w) => longWords(answer.quote).has(w));
     return window === null ? `${answer.file} is not a file`
       : quote.length <= 12 ? "the quote is too short to find"
-      : !window.includes(quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
-      : answer.kind === "moved" && (isBaseDir && within(path.resolve(base), place)) ? "the place is in the copy from before the edit"
-      : answer.kind === "moved" && !files.includes(place) ? "the place is not a Markdown file of the skill or of a skill beside it, the files that carry a line now"
+      : !stands(window, quote) ? `the quote is not at ${answer.file}:${answer.line}; copy it from within five lines of that line`
       : answer.kind === "moved" && longWords(line).size && !shared ? "the quote shares no word with the lost line"
       : answer.kind === "retired" && within(root, place) ? "the user's words must stand outside the directory checked"
       : null;
@@ -472,7 +412,7 @@ export function preserved(dir, base, dispositions) {
   const lost = [], answered = [];
   for (const [rel, text] of before(root, base)) {
     const same = path.join(root, rel);
-    const here = fs.existsSync(same) ? collapse(read(same)).split(" ") : [];
+    const here = files.includes(same) ? collapse(read(same)).split(" ") : [];
     text.split("\n").forEach((line, i) => {
       const was = collapse(line);
       if (was.length <= 12 || onlyLinks(line) || stands(now, was) || respelt(was.split(" "), here, words)) return;
@@ -497,32 +437,35 @@ function room(skill) {
   try { fm = frontmatter(skill.file); } catch { return ""; }
   const len = (v) => typeof v === "string" ? v.trim().length : 0;
   return `name ${len(fm.name)}/${LIMITS.name}, description ${len(fm.description)}/${LIMITS.description}, `
-    + `description with when_to_use ${len(fm.description) + len(fm.when_to_use)}/${LIMITS.listing}, `
-    + `body ${bodyLines(skill.file)}/${LIMITS.bodyLines - 1} lines and ${reattached(skill.file).length}/${LIMITS.reattached} `
-    + `characters, a contents list from line ${LIMITS.preview + 1} of a reference`;
+    + `body ${bodyLines(skill.file)}/${LIMITS.bodyLines - 1} lines`;
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+export function main({ check = rules, makeSkill = skillAt, describe = room } = {}) {
   const dirs = [], option = {};
   for (let args = process.argv.slice(2), i = 0; i < args.length; i++) {
-    if (args[i] === "--against" || args[i] === "--dispositions") option[args[i].slice(2)] = args[++i] ?? "";
+    if (args[i] === "--against" || args[i] === "--dispositions" || args[i] === "--installed") option[args[i].slice(2)] = args[++i] ?? "";
     else dirs.push(args[i]);
   }
   const usage = (refused) => {
     console.error(`check.mjs: ${refused}\n`
-      + "usage: node check.mjs <skill-directory> [<skill-directory> ...]\n"
-      + "       node check.mjs <directory> --against <revision or directory> [--dispositions <file>]");
+      + "usage: node check.mjs <skill-directory> [<skill-directory> ...] [--installed <directory>]\n"
+      + "       node check.mjs <directory> --against <directory snapshot> [--dispositions <file>] [--installed <directory>]");
     process.exit(2);
   };
   for (const [name, value] of Object.entries(option)) if (value === "") usage(`--${name} needs a value after it`);
   const unknown = dirs.find((d) => d.startsWith("-"));
-  if (unknown) usage(`${unknown} is not an option; the options are --against and --dispositions`);
+  if (unknown) usage(`${unknown} is not an option; the options are --against, --dispositions and --installed`);
   if (!dirs.length) usage("no directory was named");
+  if ("installed" in option) {
+    option.installed = path.resolve(option.installed);
+    if (!fs.existsSync(option.installed) || !fs.statSync(option.installed).isDirectory()) usage("--installed must name an existing directory");
+    for (const dir of dirs) if (!contained(option.installed, path.resolve(dir))) usage(`--installed does not contain ${dir}`);
+  }
   if ("against" in option) {
     if (dirs.length !== 1) usage(`--against takes one directory, and ${dirs.length} were named: ${dirs.join(", ")}`);
     if (!fs.existsSync(dirs[0])) usage(`${dirs[0]} does not exist`);
     let result;
-    try { result = preserved(dirs[0], option.against, option.dispositions); }
+    try { result = preserved(dirs[0], option.against, option.dispositions, { installed: option.installed, makeSkill }); }
     catch (error) { usage(error.message); }
     const { lost, answered, problems } = result, file = option.dispositions;
     if (file && !fs.existsSync(file)) console.log(`note  ${file} does not exist yet and is read as empty; write the answers there`);
@@ -551,14 +494,16 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
   if ("dispositions" in option) usage("--dispositions is read only with --against");
   let failed = 0;
   for (const dir of dirs) {
-    const skill = skillAt(dir);
+    const skill = makeSkill(dir, { installed: option.installed });
     if (!fs.existsSync(skill.file)) { failed++; console.log(`FAIL  ${dir}: no SKILL.md`); continue; }
-    const { found, pages } = rules([skill], (p) => path.relative(skill.bound, p).split(path.sep).join("/"));
+    const { found, pages } = check([skill], (p) => path.relative(skill.bound, p).split(path.sep).join("/"));
     const bad = found.filter(([, , list]) => list.length);
     for (const [n, title, list] of bad) console.log(`FAIL  ${n}. ${title}\n      ${list.join("\n      ")}`);
     if (bad.length) failed++;
     console.log(`${bad.length ? "FAIL" : "ok  "}  ${dir}: ${found.length - bad.length} of ${found.length} rules passed, `
-      + `${pages.length} file(s) read; ${room(skill)}`);
+      + `${pages.length} file(s) read; ${describe(skill)}`);
   }
   process.exit(failed ? 1 : 0);
 }
+
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

@@ -75,7 +75,7 @@ rule written before the result or on opinion; every rule changed after a result 
 gives, recounted. Then at most five findings, and what it could not read. It returns no verdict and no opinion of
 what a finding does to one. One of its tables is the spend by requirement line, recounted, beside the lines the
 user's messages weigh most.
-A row of its table of the user's instructions and questions that the work does not meet goes into the result, as
+For a question, `answered only` requires evidence of the actual answer; without it mark `unknown` and report it as unverified in the result. A row of its table of the user's instructions and questions that the work does not meet goes into the result, as
 [the result](../SKILL.md#the-result) says.
 
 ## Questions you answer yourself

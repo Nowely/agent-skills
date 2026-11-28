@@ -76,3 +76,16 @@ The report also carries outputSchemaPath, outputSchemaSha256, submittedSchemaSha
 spawnedAt, firstEventAt, resultAt and resumedFromSession, the `limits` the run had (`--timeout`, none by default;
 `--idle-timeout`, 900 s of a silent stream; `--max-tool-calls`) and, after a cut or a stop, `cancellation.kind`. durationMs is the CLI's duration_ms;
 durationApiMs is duration_api_ms, which may accumulate across resumes rather than measure only this invocation.
+
+For a direct Claude Code session that needs to start agents, `claude -p` can have the agent tool when its allowed tools include it; consult the Claude Code guide for the current flag.
+
+Claude Code offers `claude plugin eval` for selection checks. Its documented defaults include three runs per case,
+with/without ablation for a resolved plugin, and report publication where supported. Do not run it without explicit
+user authorization for the live evaluation and its side effects. Before using it, verify that its configuration
+provides the planned one run per request, rival population and no publication; otherwise use the host session route.
+
+## Checking a Claude-target skill
+
+After each edit, run `node "<skill-dir>/../claude/scripts/check-skill.mjs" <target-skill-directory>`, where
+`<skill-dir>` is rnd's installed directory. It runs the shared common rules and Claude-specific rules. Pass
+`--installed <installation-root>` when the installation copies a wider folder than the default.

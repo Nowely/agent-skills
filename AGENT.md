@@ -44,7 +44,8 @@ are `<name>@X.Y.Z`.
   it links, run `node scripts/skills.test.mjs`: it checks every plugin's skill pages against the
   mechanical rules for a skill (name, description and listing length, body lines and characters, sections reachable
   from a file's first 100 lines, references linked from SKILL.md, forward slashes) and every link and anchor. The
-  rules are owned by entrust's `plugin/skills/rnd/scripts/check.mjs`, which the suite imports, so a
+  common rules are owned by entrust's `plugin/skills/rnd/scripts/check.mjs` and Claude-specific rules by
+  `plugin/skills/claude/scripts/check-skill.mjs`; the suite imports both, so a
   change to a rule is a change to entrust's installed files and ships with an entrust release.
 - **Portable workflows.** Shared skills and scripts describe capabilities in host- and VCS-neutral terms and use the
   current environment's supported mechanisms. Host- or VCS-specific commands, formats and assumptions belong in the

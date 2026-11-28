@@ -17,7 +17,8 @@ import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/h
 const { cases: CASES, test } = registry();
 const DIR = path.join(ROOT, "skills", "rnd");
 const CHECK = path.join(DIR, "scripts", "check.mjs");
-const { LIMITS, preserved, rules, skillAt } = await import(CHECK);
+const { preserved, rules, skillAt } = await import(CHECK);
+const { LIMITS, claudeRules, claudeSkillAt } = await import(path.join(DIR, "..", "claude", "scripts", "check-skill.mjs"));
 const TMP = tempDir("skill-check-test-");
 
 const CLEAN = {
@@ -34,7 +35,7 @@ function plant(files = {}, folder = "sample") {
   }
   return dir;
 }
-const failing = (dir) => rules([skillAt(dir)]).found.filter(([, , list]) => list.length).map(([number]) => number);
+const failing = (dir) => claudeRules([claudeSkillAt(dir)]).found.filter(([, , list]) => list.length).map(([number]) => number);
 const page = (frontmatter, body = "Read [the table](references/table.md).\n") => `---\n${frontmatter}\n---\n\n${body}`;
 const expect = (what, dir, want) => {
   const got = failing(dir);
@@ -80,7 +81,7 @@ test("the command line prints the failed rule, exits 1 on a violation, 0 on none
     const red = await run(plant({ "references/orphan.md": "# Orphan\n" }));
     const bare = await run();
     const problems = [];
-    if (clean.code !== 0 || !/^ok {4}.*12 of 12 rules passed/m.test(clean.out)) problems.push(`clean: exit ${clean.code}: ${clean.out}`);
+    if (clean.code !== 0 || !/^ok {4}.*8 of 8 rules passed/m.test(clean.out)) problems.push(`clean: exit ${clean.code}: ${clean.out}`);
     if (red.code !== 1 || !/^FAIL {2}11\. /m.test(red.out)) problems.push(`red: exit ${red.code}: ${red.out}`);
     if (bare.code !== 2) problems.push(`no argument: exit ${bare.code}`);
     return problems.length === 0 || problems.join("; ");
@@ -89,7 +90,7 @@ test("the command line prints the failed rule, exits 1 on a violation, 0 on none
 test("rnd's own folder keeps its rules, and the summary line prints every limit the script holds",
   "the budgets table gives a writer the reasons and sends them to the script for the numbers, so a limit the summary leaves out is a limit no writer sees",
   async () => {
-    const r = await spawnNode([CHECK, DIR], { killAfterMs: 30_000 }).done;
+    const r = await spawnNode([path.join(DIR, "..", "claude", "scripts", "check-skill.mjs"), DIR], { killAfterMs: 30_000 }).done;
     const numbers = [LIMITS.name, LIMITS.description, LIMITS.listing, LIMITS.bodyLines - 1, LIMITS.reattached, LIMITS.preview + 1];
     const missing = numbers.filter((x) => !new RegExp(`(?:/| )${x}\\b`).test(r.out));
     return (r.code === 0 && missing.length === 0) || `exit ${r.code}; the summary lacks ${missing.join(", ") || "nothing"}: ${r.out}`;
@@ -229,7 +230,7 @@ test("a dispositions file that does not exist yet is read as empty, and a refuse
       /^2 /.test(two) && /--against takes one directory, and 2 were named/.test(two) || `two directories: ${two}`,
       /^2 /.test(noValue) && /--against needs a value/.test(noValue) || `no value: ${noValue}`,
       /^2 /.test(alone) && /--dispositions is read only with --against/.test(alone) || `alone: ${alone}`,
-      /^2 /.test(noBase) && /neither a directory nor a revision/.test(noBase) || `no base: ${noBase}`,
+      /^2 /.test(noBase) && /not a directory snapshot/.test(noBase) || `no base: ${noBase}`,
     );
   });
 
@@ -273,19 +274,11 @@ test("a copy from before the edit that lies inside the checked folder, and the d
     return JSON.stringify(got) === JSON.stringify([`sample/${LOW}`]) || `wanted [sample/${LOW}], got [${got}] under ${top}`;
   });
 
-test("a revision of a git repository serves as the state before the edit",
-  "a skill kept in a repository has its earlier state there, and a run that had to copy the folder first would skip the step",
-  () => {
-    const t = edited({});
-    const git = (...args) => execFileSync("git", ["-C", t.base, "-c", "user.name=t", "-c", "user.email=t@example.com",
-      "-c", "commit.gpgsign=false", ...args], { stdio: "ignore" });
-    git("init", "-q");
-    git("add", ".");
-    git("commit", "-q", "-m", "before");
-    fs.writeFileSync(path.join(t.base, "references", "effort.md"), noLow["references/effort.md"].replace("recieve", "receive"));
-    const got = preserved(t.base, "HEAD").lost.map((c) => c.id);
-    return JSON.stringify(got) === JSON.stringify([LOW]) || `wanted [${LOW}], got [${got}]`;
-  });
+test("a revision is not a directory snapshot", "the shared checker accepts portable snapshots", () => {
+  const t = edited({});
+  try { preserved(t.dir, "HEAD"); return "revision accepted"; }
+  catch (e) { return e.message.includes("directory snapshot") || e.message; }
+});
 
 test("a moved line must cite a Markdown file that carries it now, not the dispositions file or a note outside; a sibling skill's page still does",
   "a review removed an instruction and answered it as moved with its own disposition line or an external note, and the gate passed",
@@ -362,6 +355,118 @@ test("a page that a directory link on a reference page lists is held to the inst
       expect("a folder linked from a reference page whose page stays", stays, []),
     );
   });
+
+test("numeric and identifier extensions cannot carry a line or a quoted disposition", "a longer value must not pass by substring", () => {
+  const old = "The timeout limit is 10";
+  const failures = [];
+  for (const changed of ["The timeout limit is 100", "The timeout limit is 10.5", "The timeout limit is 10_backup"]) {
+    const t = edited({ "references/effort.md": changed + "\n" }, {}, { "references/effort.md": old + "\n" });
+    const r = preserved(t.dir, t.base);
+    if (!r.lost.length) failures.push(changed);
+  }
+  return failures.length === 0 || failures.join(", ");
+});
+
+test("a disposition quote must end at a value boundary", "a quoted 10 cannot be found inside 10.5 or 100", () => {
+  const errors = [];
+  for (const value of ["100", "10.5", "10_backup"]) {
+    const t = edited({ "references/effort.md": `The current timeout is ${value}.\n` }, {}, { "references/effort.md": "The previous timeout was 10.\n" });
+    fs.mkdirSync(t.run, { recursive: true });
+    fs.writeFileSync(path.join(t.run, "d.md"), `moved | references/effort.md:1 | references/effort.md:1 | The current timeout is 10\n`);
+    if (!preserved(t.dir, t.base, path.join(t.run, "d.md")).problems.length) errors.push(value);
+  }
+  return errors.length === 0 || errors.join(", ");
+});
+
+test("linked installed shared pages carry lines and their transitive escapes are checked", "plugin shared references are installed but unrelated notes are not", () => {
+  const t = edited({ "references/effort.md": "# Removed\n" }, {}, { "references/effort.md": "The original timeout is ten minutes.\n" });
+  const plugin = path.dirname(path.dirname(path.dirname(t.dir)));
+  const skills = path.join(plugin, "skills"), skill = path.join(skills, "sample");
+  fs.mkdirSync(path.join(plugin, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(path.join(plugin, ".claude-plugin", "plugin.json"), "{}");
+  fs.mkdirSync(skills, { recursive: true }); fs.renameSync(t.dir, skill);
+  fs.mkdirSync(path.join(plugin, "references", "pages"), { recursive: true });
+  fs.appendFileSync(path.join(skill, "SKILL.md"), "\nRead [shared](../../references/pages/).\n");
+  fs.mkdirSync(path.join(plugin, "references", "other"), { recursive: true });
+  fs.writeFileSync(path.join(plugin, "references", "pages", "one.md"), "See [leaf](../other/leaf.md).\n");
+  fs.writeFileSync(path.join(plugin, "references", "other", "leaf.md"), "The original timeout is ten minutes.\n\nSee [out](../../../../outside.md).\n");
+  fs.writeFileSync(path.join(plugin, "references", "unrelated.md"), "A separate secret instruction survives here.\n");
+  fs.appendFileSync(path.join(t.base, "references", "effort.md"), "A separate secret instruction survives here.\n");
+  const lost = preserved(skill, t.base, undefined, { installed: plugin }).lost.map((x) => x.id);
+  const r = rules([skillAt(skill, { installed: plugin })]).found.find(([n]) => n === 12)[2];
+  const groupLost = preserved(skills, path.dirname(t.base), undefined, { installed: plugin }).lost.map((x) => x.id);
+  return (!lost.includes("references/effort.md:1") && lost.includes("references/effort.md:2") && !groupLost.includes("sample/references/effort.md:1") && r.some((v) => v.includes("outside.md"))) || `lost ${lost}; violations ${r}`;
+});
+
+test("a decimal cannot carry a numeric suffix, including a disposition quote", "5.10 is not 10; punctuation remains valid", () => {
+  const line = "10 minutes provides sufficient waiting time";
+  const changed = "5.10 minutes provides sufficient waiting time";
+  const make = (now) => edited({ "references/effort.md": now + "\n" }, {}, { "references/effort.md": line + "\n" });
+  const bad = make(changed), good = make(line + ".");
+  fs.mkdirSync(bad.run, { recursive: true });
+  fs.writeFileSync(path.join(bad.run, "d.md"), `moved | references/effort.md:1 | references/effort.md:1 | ${line}\n`);
+  return all(lostIn("decimal prefix", bad, ["references/effort.md:1"], "d.md"), lostIn("punctuation", good, []));
+});
+
+test("symlinked files and directories outside the installation cannot carry lines", "resolved targets must remain installed", () => {
+  const t = edited({ "references/effort.md": "# Removed\n" }, {}, { "references/effort.md": "A secret timeout is ten minutes.\n" });
+  const outside = path.join(t.run, "outside"); fs.mkdirSync(outside, { recursive: true });
+  fs.writeFileSync(path.join(outside, "note.md"), "A secret timeout is ten minutes.\n");
+  fs.symlinkSync(path.join(outside, "note.md"), path.join(t.dir, "references", "alias.md"));
+  fs.symlinkSync(outside, path.join(t.dir, "references", "alias-dir"));
+  fs.appendFileSync(path.join(t.dir, "SKILL.md"), "\n[alias](references/alias.md#secret) [directory](references/alias-dir/)\n");
+  const r = rules([skillAt(t.dir)]).found.find(([n]) => n === 12)[2];
+  return (preserved(t.dir, t.base).lost.some((x) => x.id === "references/effort.md:1") && r.length === 2) || `rule 12: ${r}`;
+});
+
+test("a sibling snapshot and excluded page cannot make shared notes reachable", "only current links carry a removed instruction", () => {
+  const t = edited({ "references/effort.md": "# Removed\n" }, {}, { "references/effort.md": "The secret timeout is fifteen minutes.\n" });
+  const parent = path.dirname(t.dir), snapshot = path.join(parent, "baseline"), note = path.join(parent, "notes", "fact.md");
+  fs.renameSync(t.base, snapshot); fs.mkdirSync(path.dirname(note), { recursive: true });
+  fs.writeFileSync(note, "The secret timeout is fifteen minutes.\n");
+  fs.appendFileSync(path.join(snapshot, "SKILL.md"), "\n[shared](../notes/fact.md)\n");
+  fs.appendFileSync(path.join(t.dir, "SKILL.md"), "\n[old](../baseline/SKILL.md)\n");
+  const result = preserved(t.dir, snapshot);
+  return result.lost.some((x) => x.id === "references/effort.md:1") || `snapshot linked note carried it`;
+});
+
+test("an external symlinked sibling entry is never read or used", "a discovered skill entry must belong to its folder", () => {
+  const t = edited({ "references/effort.md": "# Removed\n" }, {}, { "references/effort.md": "The secret timeout is fifteen minutes.\n" });
+  const sibling = path.join(path.dirname(t.dir), "intruder"), outside = path.join(t.run, "outside.md");
+  fs.mkdirSync(sibling, { recursive: true }); fs.mkdirSync(t.run, { recursive: true });
+  fs.writeFileSync(outside, "The secret timeout is fifteen minutes.\n");
+  fs.symlinkSync(outside, path.join(sibling, "SKILL.md"));
+  const read = fs.readFileSync, reads = [];
+  fs.readFileSync = function (file, ...args) { reads.push(String(file)); return read.call(this, file, ...args); };
+  try {
+    const result = preserved(t.dir, t.base);
+    return (result.lost.some((x) => x.id === "references/effort.md:1") && !reads.includes(path.join(sibling, "SKILL.md")) && !reads.includes(outside)) || `external entry read: ${reads}`;
+  } finally { fs.readFileSync = read; }
+});
+
+test("installed Claude adapter enforces host rules and accepts an explicit installation root", "the portable checker cannot infer an unmarked host layout or a target host", async () => {
+  const top = path.join(TMP, String(++n)), payload = path.join(top, "payload"), skill = path.join(top, "target", "skills", "sample");
+  const rnd = path.join(payload, "skills", "rnd", "scripts"), claude = path.join(payload, "skills", "claude", "scripts");
+  fs.mkdirSync(rnd, { recursive: true }); fs.mkdirSync(claude, { recursive: true }); fs.mkdirSync(skill, { recursive: true });
+  fs.copyFileSync(CHECK, path.join(rnd, "check.mjs"));
+  fs.mkdirSync(path.join(top, "target", "references"), { recursive: true });
+  fs.writeFileSync(path.join(top, "target", "references", "guide.md"), "# Guide\n");
+  fs.writeFileSync(path.join(skill, "SKILL.md"), page(`name: sample\ndescription: ${"a".repeat(900)}\nwhen_to_use: ${"b".repeat(700)}`, "[guide](../../references/guide.md)\n"));
+  const run = async (script, ...args) => (await spawnNode([script, ...args], { killAfterMs: 30000 }).done);
+  const common = path.join(rnd, "check.mjs"), adapter = path.join(claude, "check-skill.mjs"), installed = path.join(top, "target");
+  const unmarked = await run(common, skill), portable = await run(common, skill, "--installed", installed);
+  fs.copyFileSync(path.join(DIR, "..", "claude", "scripts", "check-skill.mjs"), adapter);
+  const host = await run(adapter, skill, "--installed", installed);
+  fs.mkdirSync(path.join(installed, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(path.join(installed, ".claude-plugin", "plugin.json"), "{}");
+  const genericMarked = await run(common, skill), hostMarked = await run(adapter, skill);
+  const base = path.join(top, "base"); fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(path.join(base, "old.md"), "A unique timeout is fifteen minutes.\n");
+  fs.appendFileSync(path.join(top, "target", "references", "guide.md"), "\nA unique timeout is fifteen minutes.\n");
+  const before = await run(common, skill, "--against", base, "--installed", installed);
+  const hostBefore = await run(adapter, skill, "--against", base);
+  return (before.code === 0 && hostBefore.code === 0 && genericMarked.code === 1 && /FAIL  12\./.test(genericMarked.out) && hostMarked.code === 1 && /FAIL  2\./.test(hostMarked.out) && !/FAIL  12\./.test(hostMarked.out) && unmarked.code === 1 && /FAIL  12\./.test(unmarked.out) && portable.code === 0 && host.code === 1 && /FAIL  2\./.test(host.out) && !/FAIL  12\./.test(host.out)) || `preservation ${before.code}: ${before.out}; unmarked ${unmarked.code}: ${unmarked.out}; common ${portable.code}: ${portable.out}; Claude ${host.code}: ${host.out}`;
+});
 
 const failed = await runCases(CASES);
 process.exit(summarize(failed, CASES.length));

@@ -3,9 +3,11 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## 0.49.0 — 2026-11-27
+## 0.49.0 — 2026-11-28
 
 ### Skills
+
+- rnd's shared checker applies common rules; the installed Claude adapter also enforces Claude-specific rules (E175). The author can name the actual installation root when its layout is not detectable. Preservation uses a pre-edit directory snapshot instead of a Git revision (E179), follows linked installed shared pages and checks quote boundaries. Session guidance distinguishes host-as-is controls and native sessions, with Claude commands in its adapter (E176).
 
 - New skill `rnd` (`skills/rnd/`), selected by the assistant or called by name: it creates a skill or develops an
   existing one. Create writes a requirements sheet from the user's words, walks the job stage by stage, reads and
@@ -14,7 +16,7 @@ forensics remain in the repository references and release notes.
   written out as its own nine steps for one instruction, with fewer agents, and a small change takes a light
   route: no sheet, sources table or plan file and no steps 5 and 6, the check script and the preservation gate, the
   quality critic's read, the reader of the user's words and a close-out; when the user asks for runs, it writes the
-  plan file and takes step 6 before step 7. Repair is for a typo or a link. A correction goes back to
+  plan file, gets the architecture read before the first session, prepares the check before editing and runs the requested post-edit sessions. Repair is for a typo or a link. A correction goes back to
   the sheet, not into the text.
 - In a Change, a value the owning file holds changes only on the user's words naming it: a reply that leaves the
   choice to the agent removes no fact and changes no value, and a fact moved off a page keeps a link from it. A
@@ -23,8 +25,9 @@ forensics remain in the repository references and release notes.
   written as its own item, each size limit as a number, and carries spend by requirement line with a checkpoint
   rule on it. After a use of the skill a retro can be collected, read by the audit and evidence parts of
   reflection, and entered as the observation of the next Change.
-- `rnd/scripts/check.mjs <directory> --against <revision or copy>` lists every line of a skill's
-  Markdown that an edit removed and nothing carries now, and exits 1 until each is answered in a dispositions
+- `rnd/scripts/check.mjs <directory> --against <directory snapshot>` lists candidate lines of a skill's Markdown that an edit removed and nothing carries now; it excludes
+  collapsed lines of 12 characters or fewer and lines consisting only of links, and allows a single-word typo
+  correction. A mechanical match does not prove semantic preservation. It exits 1 until each is answered in a dispositions
   file: `moved`, with the place and the words that carry it, one line for each place a part of it went, or
   `retired`, with the user's own words. A corrected word or link lists nothing. It is step 8 of Change; Repair
   and any Create on a skill that exists run it too, and "remove first" no longer applies to a fact.
@@ -46,18 +49,20 @@ forensics remain in the repository references and release notes.
   take that practice from their runs, hold it against the pages and write the gaps for a reader who was not
   there. `references/checks.md` adds a transfer test for it, judged by what a reader with only the pages
   achieves on material whose answer is known.
-- `rnd/scripts/check.mjs` holds a skill to twelve mechanical rules and prints every limit with what the
+- `rnd/scripts/check.mjs` holds a skill to eight common mechanical rules, and the Claude adapter adds four host-specific rules and prints every limit with what the
   skill uses of it. Four rules are new: the open specification's limits on `name` and `description`, that
   every file under `references/` is linked from `SKILL.md`, and that no link leaves the files installed with the
   skill.
-- The repository's `scripts/skills.test.mjs` imports its rules from that script and keeps only which skills it
-  reads and its plugin-wide walk. Its rule titles now name what each rule rests on.
+- The repository's `scripts/skills.test.mjs` imports the common rules from rnd and the Claude rules from its
+  adapter, and keeps which skills it reads and its plugin-wide walk. Its rule titles now name what each rule rests on.
 
 ### Gate and limits
 
-- Local checks passed on this head: `scripts/skills.test.mjs` (12), skill-check (16), package (21, one skipped
-  until the release tag), orchestrate (13) and fragments (2), on Node.js v22.23.5. The figures after this
-  section's first bullet, the sessions of the earlier versions and of v3, are observations of those test runs,
+- Conformance on Node.js v24.15.0 with codex-cli 0.171.0-alpha.13.2: 108 scenarios passed checked schema constraints; 324 responses (`skills/list`, `skills/extraRoots/set`) were not checked, nor were `definitions`, `minLength` or `minimum`. Plugin version: 0.49.0.
+- Local checks on Node.js v24.15.0: skill-check 24/24, repository skills 12/12, package 21/21, with the tag check skipped because HEAD has no release tag.
+- Practical Codex trials explicitly opened the skill file. The first child Change and Create exercises had no independent judge; a separate Change in the main session was independently read. A later main-session Create trial produced a skill that, on one synthetic example, gave the same correct facts as the baseline; its checker passed 8/8 and a quality critic and verifier read the skill and example. The sample did not test automatic discovery, reproducibility or the full documented Create protocol: the verifier noted that the sheet omitted stages and decisions and did not receive the original critic report or complete rule.
+- Earlier checks passed: `scripts/skills.test.mjs` (12), skill-check (16), package (21, one skipped
+  until the release tag), orchestrate (13) and fragments (2), on Node.js v22.23.5; they predate the latest edits. The figures below for the earlier versions and v3 are observations of those test runs,
   not of this head.
 - The first version was tested on Sonnet by a protocol frozen before the test
   (`research/2026-11-26-skill-creator/`) and did not land: on a pending change, both sessions that followed it
@@ -84,8 +89,7 @@ forensics remain in the repository references and release notes.
   clause of a pass held). A further change to the preservation list, tried after it, was dropped by its pilot's
   rule and reverted.
 - This version, the third, is renamed `rnd` and was checked by a landing rule of four clauses written before any
-  session (`research/2026-11-26-skill-creator/12-v3.md`). One holds and three fail, and it is released on the
-  owner's word. Selection holds: the skill was invoked on 10 of 10 requests meant for it and on 0 of 5 near
+  session (`research/2026-11-26-skill-creator/12-v3.md`). One holds and three fail; the owner approved proceeding with the candidate despite that result. Selection holds: the skill was invoked on 10 of 10 requests meant for it and on 0 of 5 near
   misses. Facts kept in a change fails on its rerun: four of four sessions kept every fact on one pending
   change, one of two on the other, where a condition was dropped while its rule moved to another page and the
   fresh reader the skill requires did not start. The main measure fails: skills made or changed with `rnd` and
@@ -95,7 +99,7 @@ forensics remain in the repository references and release notes.
   not a clean one. The skill's arm cost 11.6 and 7.6 times the host's on Create, 2.2 and 3.2 times on Change. The
   text-and-files decision fails: stated whole before writing in 0 of 6 Create sessions, and in 1 of 6 after a
   correction, read by the coordinator, not blind.
-- After that check, before the release, and measured by no run yet: `references/checks.md` gains "What a check
+- After that check, before release preparation: `references/checks.md` gains "What a check
   may spend": the plan prices each check, a check whose every result leaves the plan as it is does not run, runs
   without the skill are a baseline reused for later rounds and versions, a check starts with one session for
   each case and side and reads the first session before more start, and anything larger, the top tier for a
@@ -113,20 +117,18 @@ forensics remain in the repository references and release notes.
 - A new part of the reflection, `questions`: before the audit, the coordinator writes its answers to seven
   questions about its own run in `questions.md`, and the audit marks each against the run directory.
 - A fresh reader of the user's words at delivery, on every route but Repair: it marks each instruction, question and
-  idea of the user's saved messages `covered`, `part`, `missing` or `answered only`, and every `missing` and `part`
-  goes into the result. A rule to write to the user in the language of their messages.
-- Review fixes (PR 118): the preservation gate takes a `moved` quote only from the skills' own files (the checked
-  skill's and those of a skill beside it), compares whole tokens, and walks the pages the directory links of
-  SKILL.md list, while rule 12 holds the pages any directory link on a walked page lists; a correction that changes
-  only the text runs the `--against` gate again; a requested session in a small change is prepared as in any
-  change; the base is a copy where changes are uncommitted or git is absent, in Create's step 3 and Repair as in
-  Change's step 8; the transfer test of a new skill runs the new pages only, against the floor, and applies a
+  idea of the user's saved messages `covered`, `part`, `missing`, `answered only` or `unknown`; every `missing`,
+  `part` and unverified `unknown` goes into the result. A rule to write to the user in the language of their messages.
+- Review fixes (PR 118): the preservation gate accepts `moved` quotes from the skills' files and linked installed
+  shared Markdown, checks whole-token boundaries, and rule 12 follows installed links and directory members; a
+  correction that changes only the text runs the `--against` gate again; a requested session in a small change is
+  prepared and run after editing; Create, Repair and Change use a directory snapshot from before edits; the transfer test of a new skill runs the new pages only, against the floor, and applies a
   derivation approved in the plan; the control session is named, how a control is kept free of other skills is
   said, and its opened skills are listed, and a stage no session reached shows nothing; a retro of a session on
   another host takes the route for supplied files; readers start on the user's word unless it already covers
-  them. The question whether `answered only` can be marked honestly is recorded as open, not answered.
-- Unmeasured: the plan file and the practice step in a session that has only the pages; whether agents select
-  the skill beside a host's built-in `skill-creator`; anything on Codex or OpenCode.
+  them. A question without evidence of an answer is `unknown` and reported as unverified.
+- Limited follow-up sessions after v3 ([13-next.md](research/2026-11-26-skill-creator/13-next.md)) were read by the coordinator, not blind: a plan included limits and spend rows; a Change started a reader that still missed a moved condition; and a Create ran its smallest sample. Undo beyond the correction limit was not reached.
+- Unmeasured: the plan file and practice step in a session that has only the pages; automatic selection beside a host's built-in `skill-creator`; a full Codex Create protocol and reproducibility; OpenCode separately.
 
 ## 0.48.0 — 2026-11-27
 

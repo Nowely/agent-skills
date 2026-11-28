@@ -21,8 +21,7 @@ research and develop, and every step here is written for work on a skill.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
   enforce a rule the skill already states. A small change takes fewer steps, as [Change](#change) says first.
 - **Repair**: an edit that alters no instruction, such as a typo, a link, or a fact brought back in line with
-  the file that owns it. Note the revision the files are at, or, with changes uncommitted or no git, copy the
-  folder; make the edit; run the script of Create's step 6, then Change's step 8 against that revision or copy.
+  the file that owns it. Copy the folder before the edit, including untracked files; make the edit; run the script of Create's step 6, then Change's step 8 against that copy.
   A corrected word or link lists no line. A listed line whose fact still stands takes a `moved` line; a listed line
   whose fact is gone makes the edit a Change.
 
@@ -94,8 +93,7 @@ research and develop, and every step here is written for work on a skill.
    - when the plan is a file: every heading of the form in [plan.md](references/plan.md), the parts of
      [reflection](references/reflection.md) it will run among them.
 
-   For a skill that exists, note the revision its files are at, or, with changes uncommitted or no git, copy the
-   folder into the run directory.
+   For a skill that exists, copy the folder into the run directory before edits, including untracked files.
    Wait for the user's word on the plan. Their instructions, or an approval they already gave for this scope
    and spend, can stand for it; the request to do the work cannot. One word accepts the plan and its
    recommendations, and no later step asks for another. It covers every agent the plan names. A reply that
@@ -119,10 +117,8 @@ research and develop, and every step here is written for work on a skill.
    show.
 6. **Write the text, once.** Follow [writing.md](references/writing.md): each line answers a failure a run
    showed or the user's words. After each edit run
-   `node "<skill-dir>/scripts/check.mjs" <the skill's directory>` and, where the
-   repository has them, each of its suites that reads a file you changed or lists files of its kind,
-   until they pass. Work on a skill that exists also
-   passes [Change's step 8](#change), against the revision or copy step 3 noted.
+   the check for the target host as [hosts.md](references/hosts.md) names it; where no host check is named, run `node "<skill-dir>/scripts/check.mjs" <the skill's directory>`. A host check includes the common rules. When installation includes a wider folder than the default, add `--installed <installation-root>` to the check and preservation command; the author knows what the host copies, while the default cannot infer an unmarked layout. Run each repository suite that reads a file you changed or lists files of its kind, until all checks pass. Work on a skill that exists also
+   passes [Change's step 8](#change), against the copy step 3 made.
 7. **Have the text read.** Start the quality critic as [critics.md](references/critics.md#the-quality-critic)
    briefs it, and act on its return as [that page](references/critics.md#handling-a-return) says.
 8. **Run the plan's check.** Run it on the text as it now stands, as [checks.md](references/checks.md) says,
@@ -139,7 +135,7 @@ research and develop, and every step here is written for work on a skill.
     act on what they return. Where the audit at delivery does not run, write
     the result's text to `result.md` in the run directory, start
     [the reader of the user's words](references/critics.md#the-reader-of-the-users-words) and put each `missing`
-    and `part` into the result; they are a correction only by the user's reply. When [a close-out](references/plan.md#a-close-out) leaves no line without an
+    and `part` into the result, and each `unknown` as unverified; the return is a correction only by the user's reply. When [a close-out](references/plan.md#a-close-out) leaves no line without an
     outcome, hand the work over as the sheet's delivery decision says, and give [the result](#the-result).
 
 ## Change
@@ -148,7 +144,7 @@ A change is small when it adds, alters or removes no fact as step 3 defines one,
 analysis.md's table, and adds no step, route, script or file. A small change writes no sheet file, sources
 table or plan file: what steps 1 to 3 find goes into the plan message of step 4, and that message, saved
 with the user's messages as a file in the run directory, stands for the sheet in the critic's brief. It leaves
-out steps 5 and 6; when the user asks for runs, it writes the plan file and takes step 6 before step 7. Its check
+out steps 5 and 6; when the user asks for runs, it writes the plan file, has the architecture critic read the check before its first session, takes step 6 before step 7, and runs the requested post-edit sessions at step 9. Its check
 is step 7's commands and step 8.
 Its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then
 the result. When a step
@@ -196,8 +192,7 @@ every step.
    edit's: record it as the repository records a defect found in passing, and go on.
 8. **Show that no line was lost.** After the last edit, run
    `node "<skill-dir>/scripts/check.mjs" <directory> --against <base> --dispositions <file>`. The directory is
-   the skill's, or the folder of skills when the change spans several. The base is step 4's revision or copy;
-   it is a copy where changes are uncommitted or there is no git.
+   the skill's, or the folder of skills when the change spans several. The base is the directory copy made before edits.
    The file is one in the run directory; it need not exist yet. Each listed line stood in the files before and
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
@@ -236,7 +231,8 @@ Tell the user, in this order, the outcome first; the text that delivers the work
 - what ran, with its counts, and what did not run;
 - what stayed unmeasured, and what in the user's next real use would show the skill failing;
 - each instruction of the user that the reader of the user's words marked `missing` or `part`, or, where the audit at delivery
-  ran, each row of its table of the user's instructions and questions that the work does not meet;
+  ran, each row of its table of the user's instructions and questions that the work does not meet; report each
+  `unknown` question from either as unverified;
 - the judges' objections still open, and every close-out line that is `adjust`, `drop`, declined or pending;
 - at delivery, and whenever the user asks: what the skill does, in three sentences, and the questions still
   open; at delivery also that [a retro](references/reflection.md#a-retro-on-a-use-of-this-skill) on this

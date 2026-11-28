@@ -20,7 +20,7 @@ Keep every heading. Where a part does not apply, write `none:` and the reason.
 ```text
 # Plan: <what will be made, and what is needed from the user, in two sentences at most>
 
-Base: <for a change, the revision the files are at, or the copy of the folder; for a new skill, "new">
+Base: <for a change, the directory snapshot made before edits; for a new skill, "new">
 Sheet: <path>            Sources: <path>            Messages: <path>
 
 ## What step 3 shows
@@ -29,13 +29,11 @@ the alternative rejected; each file with one line; the check with the result tha
 that does not, and what it cannot show; how the result is delivered>
 
 ## The run
-Sessions of the check start through: <what the repository has for starting a session, by its path; else "an
-  agent of this host">
+Sessions of the check start through: <the host-supported native session, or the host adapter and why it is needed>
 Sessions are given: <the tools the skill's steps use, an agent tool among them; or what the check cannot show
   without one>
 The skill's text and files are written as: <the form of the text; what goes to references and what to scripts;
-  each limit on size as a number, read from what `node "<skill-dir>/scripts/check.mjs" "<skill-dir>"`
-  prints after each slash; the model that will read it>
+  each limit on size as a number printed after a slash by the common or target-host check run on `<skill-dir>`; the model that will read it>
 The skill's text is written by: <this session, or the model or person the user named>
 The delivery text is written by: <the same, or who the user named>
 Could not be read: <each source or file, with every way tried; or "nothing">

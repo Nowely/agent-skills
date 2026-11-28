@@ -44,7 +44,7 @@ the sources of step 2 share; the default in the table. Write beside each answer 
 | Its name | the name the sources use for this job; else a short name that starts with the action |
 | Where it lives | where the user said; else beside the skills of the plugin or repository it belongs to; else the host's folder for personal skills |
 | What it uses and touches outside its folder, and what in it is private | it uses what the repository already has for the purpose and adds nothing new; it changes nothing outside; it carries no private material |
-| How its text and files are written: the form of the text, what goes to reference files and what to scripts, the limits on size, the model that will read it, and who writes it | a procedure in steps in `SKILL.md`, a reference file for what one step needs, a script for what must come out the same each time, all within the limits the check script prints, each given in the plan as the number it prints after the slash when run on `<skill-dir>` before the plan; written for the cheapest model on the sheet, by this session |
+| How its text and files are written: the form of the text, what goes to reference files and what to scripts, the limits on size, the model that will read it, and who writes it | a procedure in steps in `SKILL.md`, a reference file for what one step needs, a script for what must come out the same each time, all within the limits the common and target-host checks print, each given in the plan as the number printed after the slash when run on `<skill-dir>` before the plan; written for the cheapest model on the sheet, by this session |
 | How the result is delivered, and who writes that text | as the repository's instructions say; else the files in place and the result message. The text is written by whoever writes the skill, unless the user names another |
 
 A decision is open when none of the four answers it, when two of them disagree, or when the default would go
@@ -103,7 +103,7 @@ user's word, unless the user's words already cover them
 ([what a check may spend](checks.md#what-a-check-may-spend) rules on spending);
 [critics.md](critics.md#which-model-and-how-many) gives their tier. Give each reader the messages file, the
 sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give
-its address." Have a stronger model read again any part whose return contradicts the sheet. Step 3 waits for the
+its address." Have a stronger model read again any part whose return contradicts the sheet only with prior approval for that retry's model and spend. Step 3 waits for the
 readers; with no user attached, step 3 names them in the plan and they run after it is accepted.
 
 ## A practice someone already performs
@@ -119,7 +119,7 @@ the user's and private: read only the ones they named, and keep what you take in
    each review, each message of the kind the skill is to produce, with what came back from it. A named session
    that is not where the user said is looked for as [the sources](#the-sources) says. Where a session cannot be
    read, record the gap and go on; do not widen the search to sessions the user did not name.
-2. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
+2. Before launching the reader, obtain the user's approval for its model and spend unless already authorized; with no user attached, name it in the plan and wait for acceptance. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
    reads the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
    practice. It writes `practice.md` in the run directory, in four parts:
    - the catalogue: each thing the artifacts do, in how many of them, with one example and its place;
