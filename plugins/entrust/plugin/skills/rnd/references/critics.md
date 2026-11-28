@@ -191,8 +191,9 @@ table of the user's instructions and questions is this check, and this reader do
   tier, briefed as [every brief](#every-brief) says, with the marks' file to read and this bullet as its role:
   it opens every mark that is not the weakest of its set at the place cited and returns `confirmed` or `not
   there`, or `unknown` when the evidence cannot be checked. A demonstrated absence takes the weakest mark;
-  an unconfirmed mark remains `unknown`, with the reason. Apply the plan's rule for its effect on the verdict
-  without calling it a demonstrated failure.
+  an unconfirmed mark remains `unknown`, with the reason. The plan's rule states before any run how `unknown`
+  counts toward the verdict; unsaid, it counts as `false` for a mandatory statement, as an unsaid `part` does. Do
+  not call it a demonstrated failure.
 - A verdict is computed by you, from the rule the plan wrote before the result and from the confirmed marks,
   one clause of the rule at a time. A judge's own total, and its opinion of what a finding does to a verdict,
   are claims and decide nothing.
