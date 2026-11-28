@@ -29,12 +29,12 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
-4. Read the record itself back as a whole, not the printout, which leaves kept blocks to the page: the verdict,
+4. Read the record itself back as a whole, not the printout, which gives no block's lines: the verdict,
    `now`, `target`, units, mechanism decisions and steps describe one solution; a removal leaves no orphaned state;
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
 5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
-   beside it and prints the report as text, with only the blocks not kept or not linked to a requirement; the JSON is
-   not changed. Link [the page](#the-page).
+   beside it and prints the report as text, every block with its description and verdict but not its lines; the
+   JSON is not changed. Link [the page](#the-page).
 
 Where writes are not allowed, give the record inline, say which checks could not run, and make no page. A partial
 review has no record and no page. A later page is drawn from the same bytes and the saved diff, with no new analysis;

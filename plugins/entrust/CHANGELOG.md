@@ -10,6 +10,9 @@ forensics remain in the repository references and release notes.
 - A block's `whole` — why one verdict covers its lines — shows beside the verdict: under the block's note in Code,
   first in its panel, in its excerpt wherever a panel shows it, and in the page without JavaScript and its print.
   It reached the critic and never the owner, who reads the same lines.
+- The printout's description said it lists only the blocks not kept; since 0.48.0 it lists every block with its
+  description and verdict, not its lines. SKILL.md, the data contract, the agents' reference, the code and the
+  printout's own heading now say so, and the critic is asked whether each block kept whole holds as one.
 
 ## 0.48.0 — 2026-11-27
 

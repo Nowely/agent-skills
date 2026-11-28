@@ -93,7 +93,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
     ...(scenarios.length ? [`## ${t("scenarios")}`, t("scenarios-note"), ...scenarios.map((s) => `${s.id}. ${s.change}${s.requirements.length ? ` (${t("requirement").toLowerCase()} ${s.requirements.join(", ")})` : ""}`
       + `\n   ${t("as-written")}: ${side(s.now)}\n   ${t("target")}: ${side(s.target)}${s.findings.length ? `\n   ${t("findings")}: ${s.findings.join(", ")}` : ""}`), ""] : []),
-    // The map is on the page; the printout, which the reviewer reads back, names the blocks that ask for something.
+    // Every block with its description, verdict and reason, so the checking agents read what the page shows; the
+    // lines stay on the page and in `lines`.
     `## ${t("map")}`, `${t("map-summary", blocks.length)} ${VERDICTS.map((v) => `${word("verdict", v)}: ${blocks.filter((b) => b.verdict === v).length}`).join("; ")}.`,
     `${t("purpose")}: ${PURPOSES.map((p) => `${t(`purpose.${p}`)} ${purpose.counts[p].blocks}`).join("; ")}. ${t("purpose.lines-note")}`,
     ...blocks.map((b) => `- B${b.id} \`${b.path}:${b.where}\`: ${b.does ? `${b.does} ` : ""}${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${grounds(b)}${b.carried ? ` (${t("carried").toLowerCase()})` : ""}.${b.whole ? ` ${t("whole")}: ${b.whole}` : ""}`),

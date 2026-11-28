@@ -79,7 +79,7 @@ Scrutinise the fixes the same way, and after a large removal reassess what remai
 
 **Full draft.** Save, check and freeze one [comparison inventory](references/report-data.md#comparison-pass). Give the same reader the full draft and three successive briefs: [structure](references/comparison-structure.md), [paths](references/comparison-paths.md), then [decisions](references/comparison-decisions.md). Deliver each after the previous return is saved. Verify and reconcile the results into the record before challenge.
 
-If the plan includes checking agents, print the reconciled draft with `report.mjs render`, which leaves kept blocks to the page; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
+If the plan includes checking agents, print the reconciled draft with `report.mjs render`, which gives every block's description and verdict but not its lines; give that printout to the critic and the verifier at once, and the independent target's sketch to the critic. A block's lines come from `report.mjs lines <out>/review.json`. A short review gives them its draft response instead.
 
 A challenge is a point that could change a requirement, a verdict, a finding or its rank, or a question. A point two agents raise is one challenge; a citation the verifier corrects is fixed in place. Record no agreement; a point its own agent argued against is an agreement.
 
