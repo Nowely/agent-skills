@@ -54,15 +54,22 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
   const side = (s) => s ? `${t("edit")}: ${s.edit.join("; ")}. ${t("read")}: ${(s.read ?? []).join("; ") || t("nothing")}.` : t("as-now");
   const written = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   const names = (label, ids) => ids?.length ? ` ${t(label)} ${ids.join(", ")}.` : "";
+  // A test that confirms a step, a link or a check: the run and the quoted assertion, for the verifier to check.
+  const confirmed = (list) => list?.length ? ` (${t("route.confirmed")}: ${srcs(list)})` : "";
+  const resultWord = (r) => ({ pass: t("check.result.pass"), fail: t("check.result.fail"), "could-not-run": t("check.result.could-not-run"), observed: t("check.result.observed") })[r];
   return [
     ...(review.passport ? [`${t("passport")}: ${(review.passport.links ?? []).map((l) => `${l.label} (${l.url})`).join("; ")}${review.passport.links?.length ? "; " : ""}`
       + `${review.passport.repository} · ${t("passport.base")} ${review.passport.base} → ${t("passport.head")} ${review.passport.head} · ${t("passport.reviewed-at")} ${review.passport.reviewedAt}`, ""] : []),
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
     `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}${ESTABLISHED.has(r.source) ? "" : `, ${t("req.to-confirm")}`}; ${state(r)})${r.sources?.length ? ` — ${srcs(r.sources)}` : ""}${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
-    // A route follows one behaviour through its blocks in order; the checking agents read the roles and links here.
-    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
-      ...r.steps.map((step, k) => `${k + 1}. B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`: ${step.role}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`)]), ""] : []),
+    // A route follows one behaviour through the code; the checking agents read its roles, links, stops and the tests
+    // that confirm them here, and the verifier checks each confirmation against its run and its quoted assertion.
+    ...(review.routes?.length ? [`## ${t("routes")}`, ...review.routes.flatMap((r) => [`### ${r.title}${r.kind === "states" ? ` (${t("route.states")})` : ""}${r.requirements?.length ? ` (${t("requirement").toLowerCase()} ${r.requirements.join(", ")})` : ""}`,
+      ...r.steps.map((step, k) => `${k + 1}. ${step.block !== undefined ? `B${step.block} \`${blocks[step.block - 1]?.path}:${blocks[step.block - 1]?.where}\`` : `\`${step.at}\` «${step.quote}» (${t("route.unchanged")})`}: ${step.role}`
+        + `${step.value ? ` ${t("route.value")}: ${step.value}` : ""}${step.via ? ` ${t("route.via")}: ${step.via}` : ""}`
+        + `${step.stops ? ` ${t("route.stops")}: ${step.stops.finding !== undefined ? step.stops.finding : `Q${step.stops.question}`}` : ""}${confirmed(step.confirmedBy)}`),
+      ...(r.links ?? []).map((l) => `   ${l.from} → ${l.to}: ${l.via}${l.question !== undefined ? ` (Q${l.question})` : ""}${confirmed(l.confirmedBy)}`)]), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -70,7 +77,9 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     `## ${t("ideas")}`, ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
     ...(review.tradeoffs?.length ? [`## ${t("tradeoffs")}`, ...review.tradeoffs.map((x) => `- ${x.text} ${t("tradeoff.consequence")}: ${x.consequence} (${srcs(x.sources)})`), ""] : []),
     ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
-      `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
+      `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`
+        + `${c.route ? ` (${c.route.step !== undefined ? t("route.of-check.step", c.route.route, c.route.step) : c.route.link !== undefined ? t("route.of-check.link", c.route.route, c.route.link) : t("route.of-check", c.route.route)})` : ""}${confirmed(c.confirmedBy)}`
+        + (c.observations ?? []).map((o) => `\n   ${t("check.observed", o.by ?? t("check.owner"), o.revision)}: ${resultWord(o.result)}${o.conditions ? `; ${o.conditions}` : ""}${o.note ? ` — ${o.note}` : ""}`).join("")), ""] : []),
     ...(screens.length ? [`## ${t("screens")}`, ...screens.flatMap((s) => { const historical = s.provenance.startsWith("historical"); return [
       `- ${s.name}: ${SHOTS.filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}${historical ? ` (${t("screen.historical")}${s.revision ? ` @ ${s.revision}` : ""})` : ""}${historical && s.sources?.length ? ` (${srcs(s.sources)})` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
@@ -105,7 +114,7 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text} (${srcs(x.sources)})`), ""] : []),
     `## ${t("coverage")}`,
     ...(carried?.length ? [`${t("carried")}: ${carried.map((id) => `B${id}`).join(", ")}`] : []),
-    ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""} (${srcs(c.sources)})`),
+    ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""}${c.by ? `; ${t("coverage.by", c.by)}` : ""}${c.where ? `; ${t("coverage.where", c.where)}` : ""} (${srcs(c.sources)})`),
     review.coverage || t("none"), "",
     `${t("report-details")}: ${review.range} · ${key} · ${t("passport.diffSha")} ${review.diff?.sha256 ?? t("none")} · ${t("passport.record")} ${recordSha ?? t("none")}`,
   ].join("\n");
@@ -187,8 +196,11 @@ function carry(previousPath, target) {
   review.target_units = prev.target_units ?? [];
   review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
     .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
-  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
-  if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
+  // A step at unchanged code comes over as it is; what pointed at the previous findings, questions and runs does not.
+  const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => s.block === undefined || renumber.has(s.block)));
+  if (routes.length) review.routes = routes.map((r) => ({ ...r,
+    steps: r.steps.map(({ stops, confirmedBy, ...s }) => s.block === undefined ? s : { ...s, block: renumber.get(s.block) }),
+    ...(r.links ? { links: r.links.map(({ question, confirmedBy, ...l }) => l) } : {}) }));
   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
   // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a
   // requirement left with no source is refused until this review cites one again.

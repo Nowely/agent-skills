@@ -92,8 +92,9 @@ of the same diff, so the owner's answers to the items it leaves unchanged come w
                  { "path": "src/a.js", "added": "20-24", "unit": "storeUpload",
                    "does": "...", "serves": [], "verdict": "question", "questions": [1] }],
       "routes": [{ "title": "an upload gets its thumbnails", "requirements": [2],
-                   "steps": [{ "block": 1, "role": "picks the sizes" },
-                             { "block": 2, "role": "writes each size", "via": "the sizes storeUpload returns, src/a.js:16" }] }],
+                   "steps": [{ "block": 1, "role": "picks the sizes", "value": "[64, 256]" },
+                             { "block": 2, "role": "writes each size", "via": "the sizes storeUpload returns, src/a.js:16" },
+                             { "at": "src/store.js:40", "quote": "return put(key, bytes)", "role": "stores each file", "via": "write's call, src/a.js:22" }] }],
       "challenges": [{ "from": "target", "point": "...", "outcome": "rejected", "at": "path:line", "note": "what that place shows" }],
       "questions": [{ "at": "path:line", "text": "which behavior to keep", "kind": "decision", "resolver": "owner",
                       "context": [{ "text": "what the code does now", "sources": [{ "ref": "/blocks/0" }] }],
@@ -111,7 +112,7 @@ of the same diff, so the owner's answers to the items it leaves unchanged come w
       "previous": { "record": "previous/review.json", "sha256": "the previous record's digest" },
       "replies": [{ "comment": "the owner's comment, from the export", "place": "src/a.js:12, as the export named it",
                     "text": "the answer", "sources": [{ "at": "src/a.js:14", "quote": "the line" }] }],
-      "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123",
+      "coverageStructured": [{ "kind": "ran", "text": "the tests, and what they showed", "revision": "abc123", "by": "the reviewer", "where": "local checkout",
                                "sources": [{ "at": "logs/test.txt:12", "quote": "1 failed" }] }],
       "passport": { "links": [{ "kind": "task", "label": "TASK-1", "url": "https://tracker.example/TASK-1" }],
                     "repository": "the repository", "base": "the base revision", "head": "the reviewed revision", "reviewedAt": "2026-01-01" },
@@ -156,7 +157,13 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
 - **Findings.** `id` is letters, digits, `_` or `-`: it travels into the page's anchors. `direction`: `behavior`, `necessity`, `design` or `tests`. `evidence`: `ran`, `read` or `judgment`.
   `shown_by` is the evidence. A candidate without evidence becomes a question only when settling it could change a conclusion or next action.
   `breaks` lists requirements shown unmet. For a test gap, `untested` lists the requirements whose regression no test would catch.
-- **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs.
+- **Checks.** Manual scenarios grounded in the code: `from`, `do`, `expect`, `requirements`. Proposals, not runs. A
+  gap a test can assert goes to the author as a finding in the `tests` direction; a check may still cover it for a
+  person who wants to see it. Optional: `route`, the point of a flow it exercises (`{"route": n, "step": n}`, or
+  `"link": n`); `confirmedBy`, as on a route, when a test asserts the same scenario; `observations`, the results the
+  owner's export carried, each a `result` (`pass`, `fail`, `could-not-run` or `observed`), the `revision` it was made
+  at, its `conditions` and `note` as written, and `by` when someone other than the owner made it. An observation
+  belongs to its revision and conditions: the page shows it as earlier, never as a result for this revision.
 - **Ideas.** `title`, `text`, and `at` when the idea has a place. The text says what the code does now and why, with
   its place, what is proposed instead, the burden it removes and what it costs; an idea is optional and never a
   defect. `sources`, optional, cite what shows it, such as the mechanism it would replace.
@@ -183,12 +190,21 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   target has no such code: work that belongs in another change keeps its verdict, and a step moves it. `whole`,
   optional, says why a block of many lines is one decision; the page shows it beside the block's verdict, and the
   printout gives it to the checking agents.
-- **Routes.** One for each behaviour the change adds or alters that runs through more than one block — where its
-  data is produced, transformed and used, or how a request reaches its effect. `title` names the behaviour,
-  `requirements` the ids it serves, and `steps` lists its blocks (numbers from 1) in the order the behaviour runs,
-  each with its `role` there and, from the second step on, `via`: how it gets what the step before produced — a
-  call, a return, an event, a stored value — with its place. Order, roles and connections are not in the diff, so the
-  reviewer writes them; the page lets the owner walk a route with its code beside it.
+- **Routes.** One for each behaviour the change adds or alters that runs through more than one place — where its
+  data is produced, transformed and used, how a request reaches its effect, or which states a part moves through.
+  `title` names the behaviour, `requirements` the ids it serves, and `steps` lists where it runs, in order: a `block`
+  (its number, from 1), or for unchanged code it passes through, `at` with the `quote` of that line; its `role` there;
+  optionally `value`, the value at that point. From the second step on, `via` says how the step gets what the one
+  before produced — a call, a return, an event, a stored value — with its place. Order, roles and connections are not
+  in the diff, so the reviewer writes them; the page draws the route as a flow the owner walks, each step's code beside it.
+  - A route that forks, joins or loops gives `links` instead of `via`: each a `from` and a `to` (step numbers) and
+    its `via`. `"kind": "states"` makes the steps states and the links transitions, `via` the trigger; several links
+    between two states are several triggers, and a state may lead to itself.
+  - `stops`, on a step the path does not leave, names the finding (a defect) or the question (open) that says whether
+    it should go on: `{"finding": id}` or `{"question": n}`.
+  - `confirmedBy`, on a step or a link, cites the test that asserts it: the run, a `ran` coverage statement by `ref`,
+    and the assertion, `at` its place with its `quote`. Without it a step is read, and the page never shows it as
+    tested; a test that asserts something else does not confirm it. A route above 12 steps is warned of.
 - **Challenges.** The points the review page says to record: `from` (`target`, `critic` or `verifier`; a difference
   between the two targets is from `target`; for a point two raise, the first, the note naming the other; `reviewer`
   for a candidate of your own you set aside on a place in the code, always `rejected`, so the owner sees it was
@@ -205,7 +221,8 @@ Keep the stage ledgers beside the frozen draft for attribution and efficient rep
   owner can answer without opening the code; they are described under [Decision cards](#decision-cards).
   `coverageStructured` lists the coverage as statements — `kind` of `ran`, `read` or
   `not_checked`, `text`, a `revision` for what was run (a `ran` statement on an external source without one is a
-  warning: a claim about a checked version must name it), and `sources`; the page shows these words as written, and
+  warning: a claim about a checked version must name it), `by` and `where` (who ran or read it, and where: a local
+  checkout, CI — a green CI job may have skipped a suite, so say where it actually ran), and `sources`; the page shows these words as written, and
   never reads a status such as "tests passed" or "merge-ready" out of the prose. The page's Coverage is built
   from them, what was not checked first; without them it shows `coverage` alone, as written. Write them whenever
   anything ran, was read or was left unchecked: they are how the owner sees how far the review reaches.

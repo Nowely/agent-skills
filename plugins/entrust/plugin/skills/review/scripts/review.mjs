@@ -437,6 +437,7 @@ export function check(review, files, directory) {
       if (!COVERAGE_KINDS.includes(c?.kind)) errors.push(`${who}: kind is one of ${COVERAGE_KINDS.join(", ")}`);
       if (!text(c?.text)) errors.push(`${who} has no text`);
       if (c?.revision !== undefined && !text(c.revision)) errors.push(`${who}: revision is empty`);
+      for (const k of ["by", "where"]) if (c?.[k] !== undefined && !text(c[k])) errors.push(`${who}: ${k} is empty`);
       // A run is a claim about a checked version: an external source without a revision cannot travel to it.
       if (c?.kind === "ran" && !text(c.revision) && (Array.isArray(c.sources) ? c.sources : []).some((s) => s && typeof s === "object" && !Array.isArray(s) && s.ref === undefined && text(s.at)))
         warnings.push(`${who} claims a run on an external source without a revision: name the revision it ran at`);
@@ -558,20 +559,86 @@ export function check(review, files, directory) {
     sourceFaults(who, x?.sources, `/replies/${index}`);
   });
 
-  // A route follows one behaviour through its blocks in the order it runs: each step's role there, and from the second
-  // on how it gets what the step before produced.
+  // A test that asserts a step, a link or a check: the run that shows it, a `ran` coverage statement by ref, and the
+  // assertion itself, quoted at its place. Without both the claim is read, and the page never shows it as tested.
+  const confirmations = (who, list) => {
+    if (list === undefined) return;
+    if (!filled(list)) { errors.push(`${who}: confirmedBy lists nothing; leave it out, or name the run and the assertion`); return; }
+    sourceFaults(`${who} confirmedBy`, list);
+    const objects = list.filter((s) => s && typeof s === "object" && !Array.isArray(s));
+    if (!objects.some((s) => { const m = /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? "")); return m && review.coverageStructured?.[+m[1]]?.kind === "ran"; }))
+      errors.push(`${who}: confirmedBy names no "ran" coverage statement: cite the run, as {"ref": "/coverageStructured/N"}`);
+    if (!objects.some((s) => s.ref === undefined && text(s.at) && text(s.quote))) errors.push(`${who}: confirmedBy quotes no assertion: cite the test's line that asserts it, with its quote`);
+  };
+  // A route follows one behaviour through the code in the order it runs: each step at a block of the diff, or at
+  // unchanged code it passes through, quoted; its role there; and how each step gets what the one before produced —
+  // from the second step on in order, or on `links` when the route forks, joins or loops. A route of `states` has
+  // states for steps and transitions for links, each with its trigger. A step where the path ends early says so in
+  // `stops`, with the finding or question that says whether it should go on.
+  const STEP_LIMIT = 12;
   if (review.routes !== undefined && !Array.isArray(review.routes)) errors.push(`"routes" is not a list`);
-  (Array.isArray(review.routes) ? review.routes : []).forEach((route, index) => {
+  const routes = Array.isArray(review.routes) ? review.routes : [];
+  routes.forEach((route, index) => {
     const who = `route ${index + 1}`;
     if (!text(route?.title)) errors.push(`${who} has no "title": name the behaviour it follows`);
     if (route?.requirements !== undefined && !Array.isArray(route.requirements)) errors.push(`${who}: requirements is not a list`);
     else refs(who, route?.requirements, requirements, "requirement");
-    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several blocks`); return; }
-    route.steps.forEach((step, k) => {
-      const w = `${who} step ${k + 1}`;
-      if (!Number.isInteger(step?.block) || step.block < 1 || step.block > review.blocks.length) errors.push(`${w} names block ${step?.block}, which is not listed`);
-      if (!text(step?.role)) errors.push(`${w} has no "role": what its block does for this behaviour`);
-      if (k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+    if (route?.kind !== undefined && !["path", "states"].includes(route.kind)) errors.push(`${who}: kind is "path" or "states"`);
+    if (!Array.isArray(route?.steps) || route.steps.length < 2) { errors.push(`${who} has fewer than two steps: a route runs through several places`); return; }
+    const states = route.kind === "states", steps = route.steps, n = steps.length;
+    if (route.links !== undefined && !filled(route.links)) errors.push(`${who}: links lists nothing; leave it out for steps in order`);
+    const links = filled(route.links) ? route.links : null;
+    if (states && !links) errors.push(`${who} follows states and has no links: each transition is a link, its trigger in "via"`);
+    if (n > STEP_LIMIT) warnings.push(`${who} has ${n} steps: above ${STEP_LIMIT} a flow is hard to follow; follow a shorter part, or split it`);
+    steps.forEach((step, k) => {
+      const w = `${who} step ${k + 1}`, hasBlock = step?.block !== undefined, hasAt = step?.at !== undefined;
+      if (hasBlock === hasAt) errors.push(`${w} names ${hasBlock ? "both a block and a place" : "neither a block nor a place"}: a block of the diff, or "at" with the "quote" of its line for code outside it`);
+      else if (hasBlock && (!Number.isInteger(step.block) || step.block < 1 || step.block > review.blocks.length)) errors.push(`${w} names block ${step.block}, which is not listed`);
+      else if (hasAt && (!text(step.at) || !text(step.quote))) errors.push(`${w}: a place outside the diff needs "at" and the "quote" of its line`);
+      if (!text(step?.role)) errors.push(`${w} has no "role": ${states ? "what the state is" : "what its code does for this behaviour"}`);
+      if (step?.value !== undefined && !text(step.value)) errors.push(`${w}: value is empty`);
+      if (links && step?.via !== undefined) errors.push(`${w} has "via", and the route has links: say it on the link into the step`);
+      if (!links && k > 0 && !text(step?.via)) errors.push(`${w} has no "via": how it gets what step ${k} produced, with its place`);
+      if (step?.stops !== undefined) {
+        const s = step.stops, ok = s && typeof s === "object" && !Array.isArray(s) && (s.finding === undefined) !== (s.question === undefined);
+        if (!ok) errors.push(`${w}: stops names one finding or one question, as {"finding": id} or {"question": n}`);
+        else if (s.finding !== undefined) refs(w, [s.finding], findings, "finding");
+        else refs(w, [s.question], questions, "question");
+        if (links ? links.some((l) => l?.from === k + 1 && l?.to !== k + 1) : k < n - 1) errors.push(`${w} stops, and the route goes on from it: a path stops at a step it does not leave`);
+      }
+      confirmations(w, step?.confirmedBy);
+    });
+    (links ?? []).forEach((l, j) => {
+      const lw = `${who} link ${j + 1}`;
+      for (const end of ["from", "to"]) if (!Number.isInteger(l?.[end]) || l[end] < 1 || l[end] > n) errors.push(`${lw}: ${end} is a step number of this route, from 1`);
+      if (l?.from === l?.to && !states) errors.push(`${lw} leads a step to itself: only a state may stay where it is`);
+      if (!text(l?.via)) errors.push(`${lw} has no "via": ${states ? "the trigger that makes the move" : "how the step gets what the one before produced, with its place"}`);
+      if (l?.question !== undefined) refs(lw, [l.question], questions, "question");
+      confirmations(lw, l?.confirmedBy);
+    });
+    if (links) steps.forEach((_, k) => { if (!links.some((l) => l?.from === k + 1 || l?.to === k + 1)) errors.push(`${who} step ${k + 1} is on no link`); });
+  });
+  // A check a person runs, as the record keeps it: the point of a route it exercises, the test that asserts the same,
+  // and what the owner observed earlier — each result at the revision and in the conditions it was made in, never
+  // a result for this one.
+  const RESULTS = ["pass", "fail", "could-not-run", "observed"];
+  (review.checks ?? []).forEach((c, index) => {
+    const name = `check ${index + 1}`;
+    if (c.route !== undefined) {
+      const p = c.route, rt = p && Number.isInteger(p.route) ? routes[p.route - 1] : undefined;
+      if (!rt) errors.push(`${name}: route names route ${p?.route}, which is not listed`);
+      else {
+        if (p.step !== undefined && (!Number.isInteger(p.step) || p.step < 1 || p.step > (rt.steps?.length ?? 0))) errors.push(`${name}: route ${p.route} has no step ${p.step}`);
+        if (p.link !== undefined && (!Number.isInteger(p.link) || p.link < 1 || p.link > (rt.links?.length ?? 0))) errors.push(`${name}: route ${p.route} has no link ${p.link}`);
+      }
+    }
+    confirmations(name, c.confirmedBy);
+    if (c.observations !== undefined && !Array.isArray(c.observations)) errors.push(`${name}: observations is not a list`);
+    (Array.isArray(c.observations) ? c.observations : []).forEach((o, j) => {
+      const ow = `${name} observation ${j + 1}`;
+      if (!RESULTS.includes(o?.result)) errors.push(`${ow}: result is one of ${RESULTS.join(", ")}`);
+      if (!text(o?.revision)) errors.push(`${ow} has no "revision": the revision it was made at`);
+      for (const k of ["note", "conditions", "by"]) if (o?.[k] !== undefined && !text(o[k])) errors.push(`${ow}: ${k} is empty`);
     });
   });
 

@@ -390,6 +390,107 @@ test("a large kept block is warned of until it says in «whole» why it is one d
     return refused.status === 1 && refused.stderr.includes('"whole" says why the block is one decision') || `an empty whole passed: ${refused.stderr}`;
   });
 
+// ---- flows (PR 119): routes through unchanged code, forks and states, stops, tests that confirm, checks the owner ran
+// A route of the themed record that passes unchanged code, forks after its first step, and stops where a finding says.
+const FLOW = () => ({ title: "A code reaches the screen", requirements: [1], steps: [
+  { block: 1, role: "Converts the code.", value: "\"usd\" becomes \"USD\"" },
+  { at: "src/main.js:4", quote: "print(row.code)", role: "Prints the code as read.",
+    confirmedBy: [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }] },
+  { block: 3, role: "Checks the outputs." },
+  { at: "src/old.js:2", quote: "legacy(row)", role: "The legacy reader.", stops: { finding: 2 } }],
+  links: [{ from: 1, to: 2, via: "readArchive's return" }, { from: 1, to: 3, via: "the test's call" }, { from: 1, to: 4, via: "the legacy path", question: 1 }] });
+const withFlow = (edit) => render((r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [FLOW()]; edit?.(r, r.routes[0]); });
+
+test("a route may pass through unchanged code, fork, carry a value and stop where a finding says, and the printout gives each step, link and test that confirms one",
+  "a route could only list blocks of the diff in a line: the code a value passes through unchanged, a fork and an end that is a defect had no place, and the checking agents saw none of it",
+  () => {
+    const done = withFlow();
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const out = done.stdout, part = out.slice(out.indexOf("## How it works"), out.indexOf("## Verdict"));
+    const want = ["1. B1 `src/invoices/archive.js:", "Converts the code. Value: \"usd\" becomes \"USD\"",
+      "2. `src/main.js:4` «print(row.code)» (unchanged code): Prints the code as read. (Confirmed by a test: ",
+      "4. `src/old.js:2` «legacy(row)» (unchanged code): The legacy reader. Stops here: 2", "1 → 2: readArchive's return", "1 → 4: the legacy path (Q1)"];
+    const missing = want.filter((w) => !part.includes(w));
+    return !missing.length || `missing ${JSON.stringify(missing)} in:\n${part}`;
+  });
+
+test("check refuses a malformed flow: a step with both or neither of a block and a place, a place without its line, via beside links, a link outside the route or to itself, states without links, a stop the route goes on from, a confirmation without a run or a quoted assertion, a step on no link",
+  "a flow drawn from a malformed record shows a path the code does not take, or a test that does not assert it",
+  () => {
+    const cases = [
+      ["both a block and a place", (r, f) => { f.steps[0].at = "src/a.js:1"; f.steps[0].quote = "x"; }],
+      ["neither a block nor a place", (r, f) => { delete f.steps[2].block; }],
+      ['a place outside the diff needs "at" and the "quote" of its line', (r, f) => { delete f.steps[1].quote; }],
+      ['has "via", and the route has links', (r, f) => { f.steps[2].via = "the call"; }],
+      ["to is a step number of this route", (r, f) => { f.links[1].to = 9; }],
+      ["leads a step to itself", (r, f) => { f.links.push({ from: 3, to: 3, via: "again" }); }],
+      ["follows states and has no links", (r, f) => { f.kind = "states"; delete f.links; for (const s of f.steps.slice(1)) s.via = "a move"; delete f.steps[3].stops; }],
+      ["stops, and the route goes on from it", (r, f) => { f.steps[0].stops = { question: 1 }; }],
+      ["stops, and the route goes on from it", (r, f) => { delete f.links; f.steps.forEach((s, k) => { if (k) s.via = "the call"; }); f.steps[1].stops = { finding: 2 }; delete f.steps[3].stops; }],
+      ["stops names one finding or one question", (r, f) => { f.steps[3].stops = { finding: 2, question: 1 }; }],
+      ['confirmedBy names no "ran" coverage statement', (r, f) => { f.steps[1].confirmedBy[0] = { ref: "/coverageStructured/1" }; }],
+      ["confirmedBy quotes no assertion", (r, f) => { f.steps[1].confirmedBy[1] = { at: "test/archive.test.js:5" }; }],
+      ["step 4 is on no link", (r, f) => { f.links.pop(); }],
+      ["names finding 9, which is not listed", (r, f) => { f.steps[3].stops = { finding: 9 }; }],
+    ];
+    const wrong = cases.map(([want, edit], i) => [want, i, withFlow(edit)]).filter(([want, , r]) => r.status !== 1 || !r.stderr.includes(want))
+      .map(([want, i, r]) => `case ${i + 1} (${want}): ${r.status} ${r.stderr.slice(0, 300)}`);
+    return !wrong.length || wrong.join("\n");
+  });
+
+test("a route of states takes its states as steps and its transitions as links, several triggers between two states and a state that stays, and the printout says it follows states",
+  "a part of the interface that moves between states could not be written as a route at all",
+  () => {
+    const done = render((r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [{ title: "The viewer", kind: "states", requirements: [1], steps: [
+      { block: 1, role: "Closed." }, { block: 2, role: "Fitted." }, { block: 3, role: "Own size." }],
+      links: [{ from: 1, to: 2, via: "a click on a thumbnail" }, { from: 2, to: 3, via: "a click on the picture" }, { from: 2, to: 3, via: "Actual size" },
+        { from: 3, to: 3, via: "→ to the next picture" }, { from: 3, to: 1, via: "Escape" }] }]; });
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    return /### The viewer \(states\) \(requirement 1\)/.test(done.stdout) && done.stdout.includes("2 → 3: Actual size") && done.stdout.includes("3 → 3: → to the next picture")
+      || done.stdout.slice(done.stdout.indexOf("## How it works"), done.stdout.indexOf("## Verdict"));
+  });
+
+test("a check keeps the point of a flow it exercises, the test that asserts the same and the owner's earlier results at their revisions, and check refuses a result without one",
+  "an owner's observation travelled as a bare result, and the next review could read an old observation as a result for the new revision",
+  () => {
+    const good = (r) => { Object.assign(r, structuredClone(THEMED)); r.routes = [FLOW()];
+      Object.assign(r.checks[0], { route: { route: 1, step: 2 }, confirmedBy: [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }],
+        observations: [{ result: "pass", revision: "abc123", conditions: "Chrome 130, the demo data", note: "Upper case in the list." }, { result: "could-not-run", revision: "abc123", by: "the author" }] }); };
+    const done = render(good);
+    if (done.status !== 0) return `refused: ${done.stderr}`;
+    const part = done.stdout.slice(done.stdout.indexOf("## Check by hand"), done.stdout.indexOf("## Check by hand") + 900);
+    if (!part.includes("(route 1, step 2) (Confirmed by a test: ") || !part.includes("Observed by the owner at abc123: pass; Chrome 130, the demo data — Upper case in the list.")
+      || !part.includes("Observed by the author at abc123: could not run")) return part;
+    const cases = [["has no \"revision\"", (r) => { delete r.checks[0].observations[0].revision; }], ["result is one of", (r) => { r.checks[0].observations[0].result = "ok"; }],
+      ["route 1 has no step 7", (r) => { r.checks[0].route.step = 7; }], ["route names route 4, which is not listed", (r) => { r.checks[0].route = { route: 4 }; }]];
+    const wrong = cases.map(([want, edit]) => [want, render((r) => { good(r); edit(r); })]).filter(([want, r]) => r.status !== 1 || !r.stderr.includes(want)).map(([want, r]) => `${want}: ${r.stderr.slice(0, 300)}`);
+    return !wrong.length || wrong.join("\n");
+  });
+
+test("a coverage statement says who ran it and where, and the printout gives both",
+  "a green CI job that skipped a suite read the same as a run on a checkout: where a test ran was nowhere in the record",
+  () => {
+    const done = render((r) => { Object.assign(r, structuredClone(THEMED)); Object.assign(r.coverageStructured[0], { by: "the reviewer", where: "a local checkout" }); });
+    if (done.status !== 0 || !done.stdout.includes("The suite ran on the working copy. @ head; by the reviewer; in a local checkout")) return done.stderr || done.stdout.slice(-1200);
+    const empty = render((r) => { Object.assign(r, structuredClone(THEMED)); r.coverageStructured[0].where = " "; });
+    return empty.status === 1 && empty.stderr.includes("coverageStructured 1: where is empty") || empty.stderr;
+  });
+
+test("carry brings a route's steps at unchanged code with its carried blocks, and leaves its stops, links' questions and confirmations for this review",
+  "a route through unchanged code was dropped as if its step were a block that did not come over, and a stop citing the previous findings would have pointed at this review's",
+  () => {
+    const before = RATE(2);
+    const prev = { ...twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "src/a.js", added: "1-2", unit: "total", does: "The total, times the rate.", serves: [1], verdict: "keep" }]),
+      findings: [{ id: 1, title: "A finding", direction: "behavior", evidence: "read", at: "src/a.js:2", what: "What.", shown_by: "The line.", fix: "Fix." }],
+      routes: [{ title: "A total", requirements: [1], steps: [{ block: 1, role: "The rate." }, { block: 2, role: "The total." },
+        { at: "src/print.js:3", quote: "print(total(n))", role: "Prints it.", stops: { finding: 1 } }],
+        links: [{ from: 1, to: 2, via: "the import" }, { from: 2, to: 3, via: "the call", question: 1 }] }] };
+    const c = continuation("flow-carry", prev, before, before), r = c.record.routes?.[0];
+    return r && r.steps.length === 3 && r.steps[2].at === "src/print.js:3" && r.steps[2].stops === undefined && r.links[1].question === undefined && r.links[1].via === "the call"
+      || JSON.stringify(c.record.routes);
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

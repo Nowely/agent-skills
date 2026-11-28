@@ -14,6 +14,21 @@ forensics remain in the repository references and release notes.
   description and verdict, not its lines. SKILL.md, the data contract, the agents' reference, the code and the
   printout's own heading now say so, and the critic is asked whether each block kept whole holds as one.
 
+### Flows in the record
+
+- A route may pass through unchanged code — `at` with the `quote` of its line — and give each step's `value`. It
+  forks, joins and loops through `links` (`from`, `to`, `via`); `"kind": "states"` makes its steps states and its
+  links transitions with their triggers. `stops` marks a step the path ends at, citing the finding or the question
+  that says whether it should go on. `confirmedBy` names the test that asserts a step or a link — a `ran` coverage
+  statement and the quoted assertion — and `check` refuses one without both, so a read step is never shown as tested.
+  A route above 12 steps is warned of. The printout gives the checking agents every step, link, stop and
+  confirmation; `carry` brings steps at unchanged code and leaves stops, links' questions and confirmations to the
+  new review.
+- A check may name the point of a route it exercises, the test that asserts the same scenario, and the owner's
+  earlier `observations`, each with its result, revision and conditions, so an old observation is never read as a
+  result for a new revision.
+- A coverage statement may say `by` whom and `where` it ran or was read: a green CI job can skip a suite.
+
 ## 0.48.0 — 2026-11-27
 
 ### Review report
