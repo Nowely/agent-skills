@@ -50,7 +50,47 @@ The prototype and the proposal were corrected. The critic's ideas that were take
 - A reviewer's list of triggers misses some.
 - 12 of the viewer's 13 gaps belong in tests.
 
+## The first real review with flows (db8076a)
+
+After the first working version ([#119](https://github.com/Nowely/agent-skills/pull/119)), a Sonnet reviewer ran the
+skill on a real change: `db8076a`, +134 −14 lines in 7 files, about how a continuation carries blocks. The plan was
+fixed in advance: one reviewer, no checking agents, the full record and page, and one run of the record's own suite.
+
+**Cost.**
+- 168k tokens and about 6 minutes to the render.
+- Routes took roughly a quarter of the time spent writing the record, most of it on anchors in unchanged code and on
+  checking quotes.
+
+**What it wrote.** Three routes:
+- **Seven steps and seven links.** The route has a loop between `carry` and `staleCarried`, a second entry point from
+  `check`, and a stop at a finding.
+- **Four steps in a line.** Three of the steps are confirmed by a test.
+- **Five steps.** Four of them are in unchanged code, and one is confirmed by a test.
+
+`check` passed with no warnings. The reviewer checked every quote against the files.
+
+**What it asked of the skill:**
+- A finding in the middle of a path needed a duplicate step, because `stops` ends the path. This led to `findings`
+  and `questions` on any step.
+- `check` cannot test that a quoted line matches its file, so the verifier's brief now names route quotes and
+  confirmations.
+
+**What the critic found on the same diff** (fixed, and verified by a Sonnet verifier):
+- an observation counted as current because its revision text matched;
+- an edge that merged links was drawn green when only one of them was tested;
+- edges that skipped a row ran under the step between;
+- a run on other code was shown as tested here;
+- a `read` statement was listed as a run.
+
+**Still open.** An edge drawn at the side enters its step from the right, so it can pass behind a neighbour in the same
+row.
+
+The [trial-db8076a](trial-db8076a/) folder holds the record, its saved diff, the task, the plan and the test log.
+`report.mjs render trial-db8076a/review.json` draws its page. The page is shown in
+[trial-loop.png](trial-loop.png) and [trial-confirmed.png](trial-confirmed.png).
+
 | File | What |
 |---|---|
 | [prototype.html](prototype.html) | The three flows, a List view for each, and the context panel. Opens in any browser, offline. |
 | [data-path.png](data-path.png), [states.png](states.png), [states-table.png](states-table.png), [manual-check.png](manual-check.png) | Screenshots at 1440 px. |
+| [trial-db8076a/](trial-db8076a/), [trial-loop.png](trial-loop.png), [trial-confirmed.png](trial-confirmed.png) | The first real review with flows: its record and two screenshots of its page. |

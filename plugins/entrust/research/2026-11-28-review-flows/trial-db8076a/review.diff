@@ -1,0 +1,262 @@
+diff --git a/plugins/entrust/CHANGELOG.md b/plugins/entrust/CHANGELOG.md
+index 6cbb3ac..bc34e03 100644
+--- a/plugins/entrust/CHANGELOG.md
++++ b/plugins/entrust/CHANGELOG.md
+@@ -76,14 +76,18 @@ forensics remain in the repository references and release notes.
+   came from by its digest, and `check` proves every carried block against it and its saved diff. The plan offers a
+   continuation only when the previous review was whole, the base stayed or the change's own commits are unaltered,
+   no manifest or lock file changed and no answer changed a requirement the previous analysis rested on, and names
+-  what it skips. The previous requirements come with the carried blocks, by their ids, each to be checked again, and
++  what it skips. A kept block is carried only while what it was kept for stands: a block of a unit that changed, or
++  that uses one that did through `uses`, and a block with no unit in a file that changed, are read again, and such a
++  unit is judged again; `check` refuses such a block marked carried. The previous requirements come with the carried
++  blocks, by their ids, each to be checked again — a source that pointed into the previous record by `ref` left out,
++  so it is cited again — and
+   so do the units and target units (a unit the previous record did not keep left to judge), the mechanisms with their
+   carried blocks and each route whose every step was carried, all renumbered; a comparison key whose witnesses read as
+   before keeps its previous decision. The
+   printout and the page list the carried blocks, Coverage with «Show in Code». A revised record of the same diff is a
+   continuation with nothing changed since: its page offers the answers this browser kept for the previous report on
+-  the items still unanswered that read the same in full — the question with its context, variants, consequences and
+-  recommendation, the finding with its evidence — never by number; a record of a new revision takes the owner's
++  the items still unanswered that read the same in full — the question with its context, variants, consequences,
++  recommendation and the parent's condition, the finding with its evidence — never by number; a record of a new revision takes the owner's
+   answers through the export.
+ - `replies` answer the owner's comments on the previous review: the comment quoted, its place as the export named
+   it, the answer and its sources. Decisions › Comments lists them at that place, counted with the comments, never
+diff --git a/plugins/entrust/evals/review-page-browser.test.mjs b/plugins/entrust/evals/review-page-browser.test.mjs
+index 66477a0..bfa0f3e 100644
+--- a/plugins/entrust/evals/review-page-browser.test.mjs
++++ b/plugins/entrust/evals/review-page-browser.test.mjs
+@@ -68,7 +68,8 @@ const RU = { ...structuredClone(record), language: "ru" }, RU_URL = render("ru",
+ const PREV_KEY = createHash("sha256").update(JSON.stringify(record)).digest("hex").slice(0, 10);
+ const NEXT = { ...structuredClone(record), title: "Where the conversion lives, again",
+   previous: { record: "../themed/review.json", sha256: createHash("sha256").update(JSON.stringify(record)).digest("hex") },
+-  blocks: record.blocks.map((b, i) => i === 0 ? { ...b, carried: true } : b),
++  // the first block carried: its unit has blocks not kept, so it is carried without one, by its file, which nothing else in changes
++  blocks: record.blocks.map((b, i) => i === 0 ? (({ unit, ...rest }) => ({ ...rest, carried: true }))(b) : b),
+   replies: [{ comment: "Why convert here?", place: "src/invoices/archive.js:4", text: "The archive keeps lower case.", sources: [{ at: "TASK-9", quote: "upper case" }] },
+     { comment: "And the old reader?", place: "src/old.js:9", text: "It is gone.", sources: [{ at: "TASK-9", quote: "upper case" }] }] };
+ const NEXT_URL = render("next", NEXT), NEXT_KEY = createHash("sha256").update(JSON.stringify(NEXT)).digest("hex").slice(0, 10);
+diff --git a/plugins/entrust/evals/review-report.test.mjs b/plugins/entrust/evals/review-report.test.mjs
+index a49bec4..c0bcc53 100644
+--- a/plugins/entrust/evals/review-report.test.mjs
++++ b/plugins/entrust/evals/review-report.test.mjs
+@@ -263,6 +263,79 @@ test("kept code that serves only requirements to confirm is warned of until a qu
+       || `${asked.status} ${asked.stderr} | ${unlinked.status} ${unlinked.stderr}`;
+   });
+ 
++// A continuation in a folder of its own: the previous record and diff under previous/, a scaffold of the new diff.
++function continuation(name, prevRecord, prevDiff, nextDiff) {
++  const dir = fs.mkdtempSync(path.join(run, `${name}-`)), prev = path.join(dir, "previous");
++  fs.mkdirSync(prev);
++  fs.writeFileSync(path.join(prev, "source.diff"), prevDiff);
++  fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(prevRecord));
++  const input = path.join(dir, "next.diff"), target = path.join(dir, "review.json");
++  fs.writeFileSync(input, nextDiff);
++  const made = report("scaffold", input, target);
++  if (made.status !== 0) throw new Error(made.stderr);
++  const carried = report("carry", path.join(prev, "review.json"), target);
++  if (carried.status !== 0) throw new Error(carried.stderr);
++  return { dir, target, out: carried.stdout, record: JSON.parse(fs.readFileSync(target, "utf8")) };
++}
++// A two-file change: a.js's total uses b.js's rate. The next revision changes only the rate.
++const RATE = (n) => [`diff --git a/src/b.js b/src/b.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/b.js", "@@ -0,0 +1,1 @@", `+export const rate = ${n};`,
++  `diff --git a/src/a.js b/src/a.js`, "new file mode 100644", "--- /dev/null", "+++ b/src/a.js", "@@ -0,0 +1,2 @@", `+import { rate } from "./b.js";`, "+export const total = (n) => n * rate;", ""].join("\n");
++const sha = (text) => createHash("sha256").update(text).digest("hex");
++const twoUnits = (diffText, blocks) => ({ title: "Rates", range: "two commits", language: "en", diff: { file: "source.diff", sha256: sha(diffText) },
++  change: { goal: "Totals use a rate.", parts: ["A rate and a total."], sources: ["TASK-2"] }, verdict: "Done.", now: "Now.", target: "Same.", recommendation: "Accept.",
++  requirements: [{ id: 1, text: "A total uses the rate.", source: "task", sources: [{ at: "TASK-2", quote: "a total uses the rate" }] }], findings: [],
++  units: [{ name: "total", jobs: ["computes a total"], uses: ["rate"], verdict: "keep", reason: "One job." }, { name: "rate", jobs: ["holds the rate"], verdict: "keep", reason: "A constant." }],
++  blocks, challenges: [], coverage: "All of it." });
++
++test("a block carried by its own lines is read again when its unit uses a unit that changed, the changed unit is judged again, and check refuses such a block marked carried",
++  "a consumer whose producer changed in another file stayed carried and kept, and a changed unit kept its earlier verdict and reason",
++  () => {
++    const before = RATE(2), after = RATE(3);
++    const prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
++      { path: "src/a.js", added: "1-2", unit: "total", does: "The total, times the rate.", serves: [1], verdict: "keep" }]);
++    const c = continuation("dependency", prev, before, after);
++    const a = c.record.blocks.find((b) => b.path === "src/a.js"), units = Object.fromEntries(c.record.units.map((u) => [u.name, u.verdict]));
++    if (a.carried || a.verdict !== "" || a.does !== "The total, times the rate." || units.total !== "" || units.rate !== "" || !/0 kept blocks carried/.test(c.out))
++      return JSON.stringify({ a, units, out: c.out });
++    // marked carried by hand anyway, it is refused
++    const filled = { ...twoUnits(after, c.record.blocks.map((b) => b.path === "src/a.js" ? { ...b, verdict: "keep", carried: true } : { ...b, does: "The rate, now 3.", serves: [1], unit: "rate", verdict: "keep" })), diff: c.record.diff, previous: c.record.previous };
++    fs.writeFileSync(c.target, JSON.stringify(filled));
++    const refused = report("check", c.target);
++    return refused.status === 1 && refused.stderr.includes("is marked carried, and its unit total changed since the previous review, or uses a unit that did") || `a stale carried block passed: ${refused.stderr}`;
++  });
++
++test("carry leaves out a requirement's source that pointed into the previous record, says so, and check refuses the requirement until it is cited again",
++  "a carried requirement's /screens/0 named another screen in the new record, and check accepted it",
++  () => {
++    const before = RATE(2), prev = twoUnits(before, [{ path: "src/b.js", added: "1", unit: "rate", does: "The rate.", serves: [1], verdict: "keep" },
++      { path: "src/a.js", added: "1-2", unit: "total", does: "The total.", serves: [1], verdict: "keep" }]);
++    prev.requirements.push({ id: 2, text: "The rate matches the mockup.", source: "author", sources: [{ ref: "/blocks/0" }] });
++    const c = continuation("sources", prev, before, before);
++    const r2 = c.record.requirements.find((r) => r.id === 2);
++    if (r2.sources !== undefined || !/Requirements 2 lost sources that pointed into the previous record/.test(c.out)) return JSON.stringify({ r2, out: c.out });
++    fs.writeFileSync(c.target, JSON.stringify({ ...twoUnits(before, c.record.blocks), requirements: c.record.requirements, diff: c.record.diff, previous: c.record.previous }));
++    const refused = report("check", c.target);
++    return refused.status === 1 && refused.stderr.includes("requirement 2 names no source") || `a requirement with its source dropped passed: ${refused.stderr}`;
++  });
++
++test("the earlier answers are not offered to a conditional question whose parent's condition changed, though the rest of it reads the same",
++  "an answer given while the parent took one variant was offered and marked decided under another",
++  () => {
++    const dir = fs.mkdtempSync(path.join(run, "condition-")), prev = path.join(dir, "previous");
++    fs.mkdirSync(prev);
++    for (const d of [dir, prev]) { fs.writeFileSync(path.join(d, "source.diff"), generated.stdout); for (const name of ["before.png", "after.png"]) fs.copyFileSync(path.join(run, name), path.join(d, name)); }
++    fs.writeFileSync(path.join(prev, "review.json"), JSON.stringify(THEMED));
++    const next = structuredClone(THEMED);
++    next.title = "Where the conversion lives, revised";
++    next.questions[3].parent = { ...next.questions[3].parent, variants: ["status-quo"] };
++    next.previous = { record: "previous/review.json", sha256: sha(JSON.stringify(THEMED)) };
++    fs.writeFileSync(path.join(dir, "review.json"), JSON.stringify(next));
++    const done = report("render", path.join(dir, "review.json"));
++    if (done.status !== 0) return done.stderr;
++    const pairs = dataOf(fs.readFileSync(path.join(dir, "review.html"), "utf8")).previous?.pairs.map(([now]) => now) ?? [];
++    return pairs.includes("q3") && !pairs.includes("q4") || `offered ${pairs.join(", ")}`;
++  });
++
+ test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
+   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
+   () => {
+diff --git a/plugins/entrust/plugin/skills/review/references/report-data.md b/plugins/entrust/plugin/skills/review/references/report-data.md
+index 37a64d8..f356a4e 100644
+--- a/plugins/entrust/plugin/skills/review/references/report-data.md
++++ b/plugins/entrust/plugin/skills/review/references/report-data.md
+@@ -326,11 +326,17 @@ record does not hold is left out, and the response says so. A short review appli
+   decision, and one that pointed at a previous finding, question or idea by `ref` keeps it as `settled` text naming
+   that item by its words. `previous` names the record they
+   came from, and `check` proves each carried block against it; the printout and the page list the carried blocks. A
+-  carried block was judged on its own lines: where the change since touches its file, read it with that change. While
++  block is kept for the code around it too, so `carry` and `check` carry it only while that stands: a block of a unit
++  that changed — a block of it read again, changed or gone — or that uses one that did, at any remove through `uses`,
++  is read again, its unit judged again with its reason; so is a block with no unit in a file that holds a block read
++  again. Give a unit to code another file depends on, or it is carried by its own file alone. A carried requirement's
++  source that pointed into the previous record by `ref` would name another entry here: `carry` leaves it out and says
++  so, and a requirement left with no source is cited again. While
+   the base and the requirements stand the independent target is not started again; the comparison pass, the critic
+   and the verifier take the change since and the claims new or changed. A revised record at the same head — new
+   evidence, the same diff — is a continuation whose change since is empty: there the page offers the answers this
+-  browser kept for the previous report on the items that read exactly the same in full, never by number; a record of
++  browser kept for the previous report on the items that read exactly the same in full — a conditional question under
++  the same parent and variants — never by number; a record of
+   a new revision takes the owner's answers through the export, as below.
+ - **Replies.** Each comment of the export is answered in `replies`: `comment` quoting it, `place` as the export named
+   it, `text` and `sources`. Decisions › Comments lists them at the place the comment had, never placed in this diff.
+diff --git a/plugins/entrust/plugin/skills/review/scripts/page.mjs b/plugins/entrust/plugin/skills/review/scripts/page.mjs
+index 3965813..fb17528 100644
+--- a/plugins/entrust/plugin/skills/review/scripts/page.mjs
++++ b/plugins/entrust/plugin/skills/review/scripts/page.mjs
+@@ -91,7 +91,7 @@ ${hunks.map((list) => { last = 0; return `<tbody>\n${rows(list)}\n</tbody>`; }).
+ // An item as the owner answered it: a later record holding an item that reads the same — the same question with the
+ // same variants, the same finding, the same idea — asks the same thing, whatever its number there.
+ const itemReads = (r) => new Map([
+-  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: undefined }])]),
++  ...(r.questions ?? []).map((q, i) => [`q${i + 1}`, JSON.stringify(["q", { ...q, parent: q.parent ? [r.questions?.[q.parent.question - 1]?.text, q.parent.variants] : null }])]),
+   ...(r.findings ?? []).map((f) => [`f${f.id}`, JSON.stringify(["f", f])]),
+   ...(r.ideas ?? []).map((x, i) => [`i${i + 1}`, JSON.stringify(["i", x])])]);
+ // A revised record of the same diff: the previous record's key and its items this record holds unchanged in full, each
+diff --git a/plugins/entrust/plugin/skills/review/scripts/report.mjs b/plugins/entrust/plugin/skills/review/scripts/report.mjs
+index 8e17b8e..c492730 100644
+--- a/plugins/entrust/plugin/skills/review/scripts/report.mjs
++++ b/plugins/entrust/plugin/skills/review/scripts/report.mjs
+@@ -21,7 +21,7 @@ import { comparisons } from "./comparisons.mjs";
+ import { labelsOf, languageOf } from "./labels.mjs";
+ import { createSyntax } from "./highlight.mjs";
+ import { page } from "./page.mjs";
+-import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
++import { check, compact, lineRead, modelOf, mechanismCounts, ownerOf, sourceOf, staleCarried, weightCountsText, weightOverview, ESTABLISHED, VERDICTS, PURPOSES, SHOTS } from "./review.mjs";
+ 
+ const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
+ // What a block or unit rests on: its findings, or for a question the questions it waits on.
+@@ -182,19 +182,37 @@ function carry(previousPath, target) {
+   // named, a unit judged anew where the previous record did not keep it; mechanisms with the blocks that came over;
+   // routes whose every step came over. What pointed at the previous findings or questions is left for this review.
+   const renumber = new Map(ordered.map((x, i) => [x.from, i + 1]).filter(([from]) => from !== undefined));
+-  const unjudged = ({ findings, questions, ...u }) => u.verdict === "keep" || u.existing ? u : { ...u, verdict: "", reason: "" };
+-  review.units = (prev.units ?? []).map(unjudged);
++  review.units = (prev.units ?? []).map(({ findings, questions, ...u }) => u);
+   review.target_units = prev.target_units ?? [];
+   review.mechanisms = (prev.mechanisms ?? []).map(({ findings, blocks, ...m }) => ({ ...m, ...(blocks ? { blocks: blocks.map((n) => renumber.get(n)).filter(Boolean) } : {}) }))
+     .map((m) => m.blocks && !m.blocks.length && m.change !== "reused" ? (({ blocks, ...rest }) => rest)(m) : m);
+   const routes = (prev.routes ?? []).filter((r) => r.steps.every((s) => renumber.has(s.block)));
+   if (routes.length) review.routes = routes.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, block: renumber.get(s.block) })) }));
+   // A carried block serves the previous record's requirements by their ids: they come with it, each still to be checked.
+-  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => ({ id, text, source, ...(sources ? { sources } : {}), ...(permission ? { permission } : {}) }));
++  // A source that pointed into the previous record by `ref` would name another entry here: it is left out, and a
++  // requirement left with no source is refused until this review cites one again.
++  const unsourced = [];
++  review.requirements = (prev.requirements ?? []).map(({ id, text, source, sources, permission }) => {
++    const kept = (sources ?? []).filter((x) => x?.ref === undefined);
++    if (kept.length !== (sources ?? []).length) unsourced.push(id);
++    return { id, text, source, ...(kept.length ? { sources: kept } : {}), ...(permission ? { permission } : {}) };
++  });
++  // A kept block is carried only while what it was kept for stands: a block of a unit that changed, or uses one that
++  // did, and a block with no unit in a file that changed, are read again — until nothing more changes.
+   review.previous = { record: path.relative(dir, path.resolve(previousPath)), sha256: createHash("sha256").update(prevBytes).digest("hex") };
++  const prevRecord = { review: prev, files: p.files, owner: prevOwner };
++  for (let again = true; again;) {
++    const stale = staleCarried(review, cur.files, ownerOf(review, cur.files), prevRecord);
++    again = stale.some(Boolean);
++    stale.forEach((why, i) => { if (why) { const { carried, ...b } = review.blocks[i]; review.blocks[i] = { ...b, verdict: "" }; } });
++  }
++  // A unit with a block read again is judged again, its reason with it.
++  const reread = new Set(review.blocks.filter((b) => b.carried !== true && b.unit).map((b) => b.unit));
++  for (const b of prev.blocks) if (b.unit && !review.blocks.some((x) => x.carried === true && x.unit === b.unit)) reread.add(b.unit);
++  review.units = review.units.map((u) => u.existing || (u.verdict === "keep" && !reread.has(u.name)) ? u : { ...u, verdict: "", reason: "" });
+   fs.writeFileSync(target, `${JSON.stringify(review, null, 2)}\n`);
+-  return { kept: carriedBlocks.filter((x) => x.block.carried).length, judge: carriedBlocks.filter((x) => !x.block.carried).length, fresh: rest.length,
+-    routes: [routes.length, (prev.routes ?? []).length] };
++  const kept = review.blocks.filter((b) => b.carried).length;
++  return { kept, judge: carriedBlocks.length - kept, fresh: rest.length, routes: [routes.length, (prev.routes ?? []).length], unsourced };
+ }
+ 
+ // The diff a record judges is the copy saved beside it, checked against its digest.
+@@ -215,7 +233,7 @@ try {
+     console.log(`${process.argv[4]}: ${made.blocks} blocks over ${made.files} files; the diff is saved as ${made.saved}. Fill in \`range\` (how the diff was obtained and the state its files are read at; read them there), the change's sources, and each block's verdict, what it serves and what it does and why; divide a block that holds two decisions; then run check.`);
+   } else if (command === "carry" && argument && process.argv[4]) {
+     const made = carry(argument, process.argv[4]);
+-    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept; ${made.fresh} blocks new or changed. The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
++    console.log(`${process.argv[4]}: ${made.kept} kept blocks carried unchanged, not to be read again; ${made.judge} blocks of the previous record to judge again, their descriptions kept — not kept before, or kept for a unit or file that changed; ${made.fresh} blocks new or changed.${made.unsourced.length ? ` Requirements ${made.unsourced.join(", ")} lost sources that pointed into the previous record; cite them again.` : ""} The previous requirements, units, target units, mechanisms and ${made.routes[0]} of ${made.routes[1]} routes came with them, renumbered; check each again — requirements come without met or doubt, units not kept without a verdict — and add what the export's answers make, with new ids.`);
+   } else if (command === "comparisons" && argument && [4, 6].includes(process.argv.length)) {
+     const review = JSON.parse(fs.readFileSync(argument, "utf8"));
+     const { files, fault } = changeOf(review, path.dirname(path.resolve(argument)));
+diff --git a/plugins/entrust/plugin/skills/review/scripts/review.mjs b/plugins/entrust/plugin/skills/review/scripts/review.mjs
+index d2f3bdb..99f9002 100644
+--- a/plugins/entrust/plugin/skills/review/scripts/review.mjs
++++ b/plugins/entrust/plugin/skills/review/scripts/review.mjs
+@@ -159,6 +159,23 @@ export const blockLines = (files, owner, index, path) => {
+   const file = files.find((f) => f.path === path);
+   return file ? changedLines(file).filter((l) => owner.get(`${file.path}\n${address(l)}`) === index).map(lineRead).join("\n") : "";
+ };
++// Which carried blocks cannot stand as carried. The previous record kept a block for the code around it too: one whose
++// unit changed — a block of it read again, changed or gone — or uses, at any remove, a unit that changed is read again,
++// and so is one with no unit in a file that holds a block read again. Each stale block gets the reason, the rest null.
++export function staleCarried(review, files, owner, prev) {
++  const sig = (f, o, i, p) => `${p}\n${blockLines(f, o, i, p)}`;
++  const carried = new Set(review.blocks.map((b, i) => b.carried === true ? sig(files, owner, i, b.path) : null).filter(Boolean));
++  const changed = new Set();
++  prev.review.blocks.forEach((b, i) => { if (b.unit && !(b.verdict === "keep" && carried.has(sig(prev.files, prev.owner, i, b.path)))) changed.add(b.unit); });
++  review.blocks.forEach((b) => { if (b.carried !== true && b.unit) changed.add(b.unit); });
++  const affected = new Set(changed), uses = (review.units ?? []).map((u) => [u.name, Array.isArray(u.uses) ? u.uses : []]);
++  for (let grew = true; grew;) { grew = false; for (const [name, list] of uses) if (!affected.has(name) && list.some((x) => affected.has(x))) { affected.add(name); grew = true; } }
++  const touched = new Set(review.blocks.filter((b) => b.carried !== true).map((b) => b.path));
++  return review.blocks.map((b) => b.carried !== true ? null
++    : b.unit ? (affected.has(b.unit) ? `its unit ${b.unit} changed since the previous review, or uses a unit that did` : null)
++    : touched.has(b.path) ? `it has no unit, and its file holds a block read again` : null);
++}
++
+ // The previous record a continuation carries blocks from, read with its saved diff, both by their digests.
+ export function previousOf(review, directory) {
+   const p = review.previous;
+@@ -528,6 +545,7 @@ export function check(review, files, directory) {
+       const kept = new Set(prev.review.blocks.map((b, i) => b.verdict === "keep" ? `${b.path}\n${blockLines(prev.files, prev.owner, i, b.path)}` : null).filter(Boolean));
+       for (const [b, i] of carried) if (b.carried === true && !kept.has(`${b.path}\n${blockLines(files, owner, i, b.path)}`))
+         errors.push(`block ${i + 1} is marked carried, and no block the previous record kept has its lines: read it and judge it, and it is not carried`);
++      staleCarried(review, files, owner, prev).forEach((why, i) => { if (why) errors.push(`block ${i + 1} is marked carried, and ${why}: read it and judge it, and it is not carried`); });
+     }
+   }
+   // A reply answers a comment the owner made on the previous review, at the place that comment had there.

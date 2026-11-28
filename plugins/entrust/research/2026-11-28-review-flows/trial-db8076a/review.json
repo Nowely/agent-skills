@@ -1,0 +1,1036 @@
+{
+ "title": "Continuation: stale carried blocks, ref sources, parent condition",
+ "language": "en",
+ "range": "git diff db8076a~1 db8076a (7 files, +134 -14) in the checkout trial/repo, saved as review.diff; files read at db8076a (detached HEAD), not a working tree. Places cited are at db8076a unless marked (base).",
+ "diff": {
+  "file": "review.diff",
+  "sha256": "5a07e78328e896c260478459b81ed96693204c98ecdb26f3b009cce121c689ae"
+ },
+ "change": {
+  "goal": "A continuation stops carrying a kept block whose unit or a unit it uses changed, drops requirement sources that pointed into the previous record, and offers earlier answers to a conditional question only under the same parent condition.",
+  "why": "An external review of PR 109 showed a consumer carried and kept though its unit had changed, a carried requirement's ref naming another entry, and an answer offered under a changed parent condition.",
+  "parts": [
+   "staleCarried (review.mjs): one rule for which carried blocks cannot stand, called by carry and by check",
+   "carry (report.mjs): demotes stale blocks until none is left, judges their units again, drops ref sources and reports them",
+   "itemReads (page.mjs): a question reads with its parent's question and variants",
+   "three tests, a browser fixture edit, the data contract and the CHANGELOG"
+  ],
+  "sources": [
+   "task.md: the commit message",
+   "the change"
+  ]
+ },
+ "verdict": "The change does its task.\n- the three rules behave as the commit says on the cases its tests assert: the report suite passes, 45 of 45, at db8076a\n- one non-blocking design finding: the rule's fixed point lives in carry's loop, while check runs the rule once\n- the rule's two other branches (a unit reached through two or more `uses`, a block with no unit) have no test in the suite that was run\n- one open choice: whether a unit holding a block the previous record did not keep makes its kept blocks read again",
+ "now": "staleCarried (review.mjs) returns a reason per carried block of an affected unit or of a unit-less block in a touched file. carry (report.mjs) calls it in a loop, drops each reported block's carried mark and verdict, then blanks the units with a block read again. check calls it once and refuses what it reports. carry drops ref sources of requirements and says which. itemReads reads a question with its parent's question text and variants.",
+ "target": "The same behavior with the fixed point inside staleCarried: it treats every block it reports as not carried and repeats until none is added, so carry demotes from one call and check reports every stale block in one run. Two more tests (a two-step uses chain, a unit-less block in a touched file). The rest as written.",
+ "recommendation": "Fix in place: move the repetition into staleCarried and add the two tests; answer question 1; accept the rest.",
+ "requirements": [
+  {
+   "id": 1,
+   "text": "A continuation carries a kept block only while what it was kept for stands.",
+   "source": "task",
+   "met": "read",
+   "not_checked": "a unit reached through two or more `uses`, and a block with no unit, which no test of the suite run asserts",
+   "sources": [
+    {
+     "at": "task.md:3",
+     "quote": "a continuation carries a block only while what it was kept for stands"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "text": "A carried requirement's source that pointed into the previous record is dropped and carry says so.",
+   "source": "task",
+   "met": "ran",
+   "sources": [
+    {
+     "at": "task.md:3",
+     "quote": "drops sources that pointed into the previous record"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "text": "An earlier answer is offered to a conditional question only when its parent's condition reads the same.",
+   "source": "task",
+   "met": "ran",
+   "not_checked": "the offer bar in the browser, which the browser suite would show",
+   "sources": [
+    {
+     "at": "task.md:3",
+     "quote": "matches a conditional question with its parent's condition"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "text": "The docs the change edits say what the code does.",
+   "source": "project",
+   "met": "read",
+   "sources": [
+    {
+     "at": "AGENT.md:55",
+     "quote": "each fact has one owner and is defined in one place, and a page says what the code"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "text": "Carry and check share one rule for a stale carried block.",
+   "source": "author",
+   "doubt": "carry repeats the rule until nothing more is reported; check calls it once (finding 1)",
+   "sources": [
+    {
+     "at": "task.md:7",
+     "quote": "Carry and check now share one rule for a stale carried block through units and their uses"
+    }
+   ]
+  }
+ ],
+ "findings": [
+  {
+   "id": 1,
+   "title": "The rule's fixed point is in carry's loop, so check reports a stale record in waves",
+   "direction": "design",
+   "evidence": "read",
+   "at": "plugins/entrust/plugin/skills/review/scripts/review.mjs:165",
+   "what": "staleCarried is one pass: a block counts as touching its file only if it is not marked carried (review.mjs:173). carry repeats the pass, demoting what it reports, until nothing is reported (report.mjs:204-208). check calls it once (review.mjs:548). On a record where block A (unit stale) and block B (no unit, same file, no other block read again) are both marked carried, check reports A; B is reported only after A is fixed and check is run again. The rule is the same in name and owned in two places, against 'each fact has one owner'. Non-blocking: carry never writes such a record, only a hand-edited one meets the waves.",
+   "shown_by": "report.mjs:204 `for (let again = true; again;) {` against review.mjs:548 `staleCarried(review, files, owner, prev).forEach(`; review.mjs:173 `const touched = new Set(review.blocks.filter((b) => b.carried !== true)`",
+   "fix": "Do the repetition inside staleCarried (a block it reports counts as not carried in the next round, until no block is added) and let carry demote once from the one call.",
+   "breaks": [
+    5
+   ]
+  },
+  {
+   "id": 2,
+   "title": "No test fails if the uses chain stops at one step or the unit-less branch goes",
+   "direction": "tests",
+   "evidence": "read",
+   "at": "plugins/entrust/evals/review-report.test.mjs:290",
+   "what": "Test 1 has one consumer using the changed unit directly. The loop `for (let grew = true; grew;)` that spreads through `uses` 'at any remove', and the `it has no unit` branch, are not asserted by any test in the report suite; the no-unit case is only exercised as a carried block that stays accepted, in the browser fixture (not run).",
+   "shown_by": "review-report.test.mjs:293-304 (units total uses rate, nothing deeper, every block has a unit); review-page-browser.test.mjs:71-72",
+   "fix": "Add a three-unit chain (c uses a uses the changed b) asserting c is read again, and a unit-less block next to a block read again asserting it is refused as carried.",
+   "untested": [
+    1
+   ]
+  }
+ ],
+ "units": [
+  {
+   "name": "carry",
+   "jobs": [
+    "matches previous blocks by their lines",
+    "copies units, requirements, routes",
+    "demotes stale blocks",
+    "judges units again"
+   ],
+   "uses": [
+    "staleCarried"
+   ],
+   "verdict": "fix",
+   "reason": "the repetition that finishes the rule belongs in staleCarried",
+   "findings": [
+    1
+   ]
+  },
+  {
+   "name": "staleCarried",
+   "jobs": [
+    "finds the units that changed",
+    "spreads through uses",
+    "reports each carried block that cannot stand"
+   ],
+   "uses": [
+    "blockLines"
+   ],
+   "verdict": "fix",
+   "reason": "one pass; its fixed point is left to carry",
+   "findings": [
+    1
+   ]
+  },
+  {
+   "name": "blockLines",
+   "existing": true,
+   "jobs": [
+    "the changed lines of a block"
+   ]
+  },
+  {
+   "name": "check",
+   "existing": true,
+   "jobs": [
+    "validates a record against its diff"
+   ],
+   "uses": [
+    "staleCarried"
+   ]
+  },
+  {
+   "name": "itemReads",
+   "jobs": [
+    "reads an item as the owner answered it"
+   ],
+   "verdict": "keep",
+   "reason": "one job; a question now reads with its parent's condition"
+  }
+ ],
+ "mechanisms": [
+  {
+   "name": "stale carried block rule",
+   "change": "added",
+   "units": [
+    "staleCarried",
+    "carry",
+    "check"
+   ],
+   "purpose": "a continuation does not keep a block whose unit or whose dependencies changed since the previous review",
+   "basis": "requirement 1; commit body, the PR 109 consumer case",
+   "instead": "before it, carry kept every block with the same lines and check proved only the lines (review.mjs, base :528-531 of the check, 'no block the previous record kept has its lines'); no existing code looked at units or `uses`",
+   "benefit": "stops a kept verdict surviving a change in what it depends on; every continuation with a changed producer",
+   "cost": "a unit holding a block not kept makes its kept blocks read again (question 1); a rule in two places (finding 1)",
+   "decision": "keep, with the fixed point inside staleCarried",
+   "evidence": "read",
+   "findings": [
+    1
+   ],
+   "blocks": [
+    15,
+    17,
+    18,
+    21,
+    22,
+    7
+   ]
+  },
+  {
+   "name": "ref sources dropped on carry",
+   "change": "added",
+   "units": [
+    "carry"
+   ],
+   "purpose": "a carried requirement does not point at another entry of the new record",
+   "basis": "requirement 2",
+   "instead": "base carry copied `sources` whole (report.mjs base :193); check resolves a ref but cannot know it meant the previous record",
+   "benefit": "a wrong source no longer passes check; frequency unknown",
+   "cost": "the reviewer cites the requirement again; a message line",
+   "decision": "keep",
+   "evidence": "ran",
+   "blocks": [
+    16,
+    8
+   ]
+  },
+  {
+   "name": "parent condition in an item's read",
+   "change": "changed",
+   "units": [
+    "itemReads"
+   ],
+   "purpose": "offer an earlier answer to a child only under the parent condition it was given in",
+   "basis": "requirement 3",
+   "instead": "base itemReads set `parent: undefined`, so the condition was in no read (page.mjs base :94); the runtime offers whatever pairs hold (runtime.js:187)",
+   "benefit": "no answer offered and marked decided under another variant",
+   "cost": "a child whose parent text or listed variants changed loses the offer",
+   "decision": "keep",
+   "evidence": "ran",
+   "blocks": [
+    13,
+    9
+   ]
+  }
+ ],
+ "blocks": [
+  {
+   "path": "plugins/entrust/CHANGELOG.md",
+   "added": "79-81",
+   "removed": "79",
+   "kind": "other",
+   "does": "CHANGELOG, Review report: says a kept block is carried only while its unit and the units it uses stand, that such a unit is judged again and that check refuses a stale block marked carried. It is the user-facing statement of the first rule of the task.",
+   "serves": [
+    1,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/CHANGELOG.md",
+   "added": "82-83",
+   "kind": "other",
+   "does": "CHANGELOG: says a requirement source that pointed into the previous record by ref is left out and cited again. Statement of the second rule.",
+   "serves": [
+    2,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/CHANGELOG.md",
+   "added": "89-90",
+   "removed": "85-86",
+   "kind": "other",
+   "does": "CHANGELOG: the answers offered back to an unchanged item now include, for a question, the parent's condition. Statement of the third rule; the rest of the lines is re-wrapped.",
+   "serves": [
+    3,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/evals/review-page-browser.test.mjs",
+   "added": "71-72",
+   "removed": "71",
+   "kind": "test",
+   "does": "The browser suite's continuation fixture carried its first block with a unit that also holds a block not kept; under the new rule that block would be read again, so the fixture drops the block's unit and is carried by its file. It bends the fixture around the rule rather than testing it, and rests on how a unit holding a not-kept block counts (question 1).",
+   "serves": [
+    1
+   ],
+   "verdict": "question",
+   "questions": [
+    1
+   ]
+  },
+  {
+   "path": "plugins/entrust/evals/review-report.test.mjs",
+   "added": "266-279",
+   "kind": "test",
+   "does": "Test helper: lays a previous record and diff under previous/, scaffolds the new diff, runs carry and returns its output and the record. Shared by the two carry tests.",
+   "serves": [
+    1,
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/evals/review-report.test.mjs",
+   "added": "280-289",
+   "kind": "test",
+   "does": "Test fixtures: a two-file change (b.js's rate, a.js's total using it) as a diff for rate 2 and 3, and a record builder with units total and rate. Shared by the two carry tests.",
+   "serves": [
+    1,
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/evals/review-report.test.mjs",
+   "added": "290-306",
+   "kind": "test",
+   "does": "Test 1: the next revision changes only the rate; the consumer block of total must come back read again (not carried, verdict blank, description kept), both units judged again, and a record marking it carried by hand is refused by check with the unit's name.",
+   "serves": [
+    1
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/evals/review-report.test.mjs",
+   "added": "307-320",
+   "kind": "test",
+   "does": "Test 2: a carried requirement whose only source was a ref into the previous record comes without sources, carry's output names it, and check refuses it as having no source.",
+   "serves": [
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/evals/review-report.test.mjs",
+   "added": "321-338",
+   "kind": "test",
+   "does": "Test 3: render of a revised record whose child question's parent variants changed: the earlier answers are offered to the parent (q3) and not to the child (q4).",
+   "serves": [
+    3
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/references/report-data.md",
+   "added": "329-332",
+   "removed": "329",
+   "kind": "other",
+   "does": "Data contract, next revision: a carried block is kept for the code around it too; a block of a changed unit, of a unit that uses one, or with no unit in a file holding a block read again is read again and its unit judged again. Replaces the weaker sentence that only said to read a block with the change that touched its file.",
+   "serves": [
+    1,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/references/report-data.md",
+   "added": "333-334",
+   "kind": "other",
+   "does": "Data contract: carry leaves out a requirement source that pointed into the previous record by ref and says so; a requirement left with no source is cited again.",
+   "serves": [
+    2,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/references/report-data.md",
+   "added": "338-339",
+   "removed": "333",
+   "kind": "other",
+   "does": "Data contract: the answers offered back to a conditional question need the same parent and variants.",
+   "serves": [
+    3,
+    4
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/page.mjs",
+   "added": "94",
+   "removed": "94",
+   "kind": "code",
+   "unit": "itemReads",
+   "does": "itemReads, the text an item is compared by across records: a question now includes its parent's question text and the variants listed, in place of dropping the parent. A child answered under one parent condition is no longer paired with the same child under another.",
+   "serves": [
+    3
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "24",
+   "removed": "24",
+   "kind": "code",
+   "does": "Imports staleCarried from review.mjs so carry uses the rule check uses.",
+   "serves": [
+    1,
+    5
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "185",
+   "removed": "185-186",
+   "kind": "code",
+   "unit": "carry",
+   "does": "carry copies the previous units as they were; the blanking of units not kept moves to the end of carry, after the stale blocks are known.",
+   "serves": [
+    1
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "192-199",
+   "removed": "193",
+   "kind": "code",
+   "unit": "carry",
+   "does": "carry copies the previous requirements, leaving out each source that is a ref, since a ref into the previous record would name another entry here, and lists the ids that lost one.",
+   "serves": [
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "200-201, 203-208",
+   "kind": "code",
+   "unit": "carry",
+   "does": "carry asks staleCarried which carried blocks cannot stand and drops the carried mark and the verdict of each, repeating until none is reported. The repetition is needed because a demoted block can make its file touched. check does not repeat (finding 1).",
+   "serves": [
+    1,
+    5
+   ],
+   "verdict": "fix",
+   "findings": [
+    1
+   ]
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "209-212",
+   "kind": "code",
+   "unit": "carry",
+   "does": "carry judges a unit again, verdict and reason blank, when it has a block read again or a previous block with no carried counterpart; the units not kept and existing ones are treated as before.",
+   "serves": [
+    1
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "214-215",
+   "removed": "196-197",
+   "kind": "code",
+   "unit": "carry",
+   "does": "carry counts the blocks that stayed carried after the demotion, and returns the ids of requirements that lost sources, for its message.",
+   "serves": [
+    1,
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/report.mjs",
+   "added": "236",
+   "removed": "218",
+   "kind": "code",
+   "does": "carry's message says some kept blocks are read again for a unit or file that changed, and names the requirements that lost sources and must be cited again.",
+   "serves": [
+    2
+   ],
+   "verdict": "keep"
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/review.mjs",
+   "added": "162-178",
+   "kind": "code",
+   "unit": "staleCarried",
+   "does": "staleCarried: for the record's carried blocks, finds the units whose previous blocks are not all carried or whose current blocks are not carried, spreads that through `uses` to the units that depend on them, and returns a reason for each carried block of an affected unit or of no unit in a file holding a block read again. It is the rule the task asks for, owned once and called by carry and by check.",
+   "serves": [
+    1,
+    5
+   ],
+   "verdict": "fix",
+   "findings": [
+    1
+   ]
+  },
+  {
+   "path": "plugins/entrust/plugin/skills/review/scripts/review.mjs",
+   "added": "548",
+   "kind": "code",
+   "does": "check refuses each carried block staleCarried reports, with the reason and the way out.",
+   "serves": [
+    1,
+    5
+   ],
+   "verdict": "keep"
+  }
+ ],
+ "challenges": [
+  {
+   "from": "reviewer",
+   "point": "carry no longer blanks the units not kept at the copy (the `unjudged` helper is gone), so a previous question or fix unit might come over judged.",
+   "outcome": "rejected",
+   "at": "plugins/entrust/plugin/skills/review/scripts/report.mjs:212",
+   "note": "the units are blanked at the end instead: `review.units = review.units.map((u) => u.existing || (u.verdict === \"keep\" && !reread.has(u.name)) ? u : { ...u, verdict: \"\", reason: \"\" });` keeps only a kept unit with nothing read again, and existing ones."
+  },
+  {
+   "from": "reviewer",
+   "point": "check might refuse a record carry has just written, because carry judges staleness before the units are blanked.",
+   "outcome": "rejected",
+   "at": "plugins/entrust/plugin/skills/review/scripts/report.mjs:206",
+   "note": "carry's loop ends only when `again = stale.some(Boolean);` is false, and the units are blanked after it, which staleCarried does not read (it reads `uses` only), so the call check makes returns none for that record."
+  }
+ ],
+ "coverage": "Read: the whole diff and the files at db8076a named in coverageStructured. Ran: the report suite once, 45 of 45. Not run: the browser suite, skills.test.mjs, run-all. No agent checked this record. Binary files and file modes: none in the diff.",
+ "steps": [
+  {
+   "text": "Move the repetition from carry's loop into staleCarried, so check and carry share it.",
+   "findings": [
+    1
+   ]
+  },
+  {
+   "text": "Add a test for a unit that uses a unit that uses the changed one, and for a unit-less block in a file with a block read again.",
+   "findings": [
+    2
+   ]
+  },
+  {
+   "text": "Decide question 1 and say its answer in the data contract."
+  }
+ ],
+ "target_units": [
+  {
+   "name": "carry",
+   "jobs": [
+    "matches previous blocks by their lines",
+    "copies units, requirements, routes",
+    "demotes what staleCarried reports",
+    "judges units again"
+   ],
+   "uses": [
+    "staleCarried"
+   ]
+  },
+  {
+   "name": "staleCarried",
+   "jobs": [
+    "finds the units that changed",
+    "spreads through uses",
+    "repeats until no block is added",
+    "reports each carried block that cannot stand"
+   ],
+   "uses": [
+    "blockLines"
+   ]
+  },
+  {
+   "name": "itemReads",
+   "jobs": [
+    "reads an item as the owner answered it"
+   ]
+  },
+  {
+   "name": "blockLines",
+   "existing": true,
+   "jobs": [
+    "the changed lines of a block"
+   ]
+  }
+ ],
+ "routes": [
+  {
+   "title": "A kept block whose unit changed is read again, and check refuses it if still marked carried",
+   "requirements": [
+    1,
+    5
+   ],
+   "steps": [
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/report.mjs:171",
+     "quote": "...(b.verdict === \"keep\" ? { verdict: \"keep\", carried: true } : { verdict: \"\" })",
+     "role": "carry matches a previous kept block by its lines and marks it carried",
+     "value": "a.js 1-2: verdict \"keep\", carried: true"
+    },
+    {
+     "block": 15,
+     "role": "the previous units come over with their verdicts; units are no longer blanked here",
+     "value": "units: total keep, rate keep"
+    },
+    {
+     "block": 17,
+     "role": "carry asks staleCarried and drops the carried mark of each block reported, until none is",
+     "value": "a.js block: carried dropped, verdict \"\"",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:298",
+       "quote": "if (a.carried || a.verdict !== \"\""
+      }
+     ]
+    },
+    {
+     "block": 21,
+     "role": "staleCarried finds the changed unit, spreads it through uses and returns a reason per block",
+     "value": "changed {rate}; affected {rate, total}; reason for a.js"
+    },
+    {
+     "block": 18,
+     "role": "a unit with a block read again is judged again: verdict and reason blank",
+     "value": "units.total \"\", units.rate \"\"",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:298",
+       "quote": "units.total !== \"\" || units.rate !== \"\""
+      }
+     ]
+    },
+    {
+     "block": 22,
+     "role": "check, on the record as it stands, calls the same rule (entry for a hand-marked block)",
+     "value": "a.js marked carried by hand"
+    },
+    {
+     "block": 22,
+     "role": "check pushes one error for each block the single pass reports",
+     "value": "\"block 1 is marked carried, and its unit total changed ...\"",
+     "stops": {
+      "finding": 1
+     }
+    }
+   ],
+   "links": [
+    {
+     "from": 1,
+     "to": 2,
+     "via": "the matched block and the previous units are copied into the new record, report.mjs:171 and :185"
+    },
+    {
+     "from": 2,
+     "to": 3,
+     "via": "the loop starts on the record so far, report.mjs:204"
+    },
+    {
+     "from": 3,
+     "to": 4,
+     "via": "staleCarried(review, cur.files, ownerOf(review, cur.files), prevRecord), report.mjs:205"
+    },
+    {
+     "from": 4,
+     "to": 3,
+     "via": "a reason per block comes back, review.mjs:174; any reason drops the carried mark and the loop asks again, report.mjs:206-207"
+    },
+    {
+     "from": 3,
+     "to": 5,
+     "via": "no block is reported any more: the loop ends and the units are judged, report.mjs:210"
+    },
+    {
+     "from": 6,
+     "to": 4,
+     "via": "check calls staleCarried(review, files, owner, prev), review.mjs:548"
+    },
+    {
+     "from": 4,
+     "to": 7,
+     "via": "the reasons come back and check pushes an error for each, review.mjs:548",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:304",
+       "quote": "refused.stderr.includes(\"is marked carried, and its unit total changed since the previous review, or uses a unit that did\")"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "A carried requirement's ref source is dropped, reported, and refused until cited again",
+   "requirements": [
+    2
+   ],
+   "steps": [
+    {
+     "block": 16,
+     "role": "carry drops each ref source of a previous requirement and keeps the ids that lost one",
+     "value": "requirement 2: sources [{ref:\"/blocks/0\"}] -> none; unsourced [2]",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:315",
+       "quote": "r2.sources !== undefined"
+      }
+     ]
+    },
+    {
+     "block": 19,
+     "role": "carry returns the ids with its counts",
+     "via": "`unsourced` in the object returned at report.mjs:215"
+    },
+    {
+     "block": 20,
+     "role": "the command prints which requirements lost sources and must be cited again",
+     "value": "\"Requirements 2 lost sources that pointed into the previous record; cite them again.\"",
+     "via": "made.unsourced read at report.mjs:236",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:315",
+       "quote": "Requirements 2 lost sources that pointed into the previous record"
+      }
+     ]
+    },
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/review.mjs:278",
+     "quote": "sourceFaults(`requirement ${r.id}`, r.sources, `/requirements/${index}`);",
+     "role": "check holds the requirement to a source: none left is an error",
+     "value": "\"requirement 2 names no source: an analytical claim needs one\"",
+     "via": "the requirement as carry wrote it, without `sources`, review.mjs:278",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:318",
+       "quote": "refused.stderr.includes(\"requirement 2 names no source\")"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Earlier answers are offered to a conditional question only under the same parent condition",
+   "requirements": [
+    3
+   ],
+   "steps": [
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/page.mjs:162",
+     "quote": "previous: previousAnswers(review, directory),",
+     "role": "the page data asks for the pairs of items that read the same in both records"
+    },
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/page.mjs:105",
+     "quote": "const before = itemReads(prev.review), now = itemReads(review)",
+     "role": "reads every question, finding and idea of both records",
+     "via": "previousAnswers calls itemReads on each record, page.mjs:105"
+    },
+    {
+     "block": 13,
+     "role": "a question reads with its parent's question text and variants",
+     "value": "q4: parent [\"<q3 text>\", [\"status-quo\"]] now; [\"<q3 text>\", [..previous variants]] before",
+     "via": "itemReads called for each record, page.mjs:105"
+    },
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/page.mjs:107",
+     "quote": "pairs: [...now].filter(([, v]) => onceNow.get(v) === 1 && byRead.has(v))",
+     "role": "only items that read the same, once in each record, are paired",
+     "value": "pairs: q3 -> q3; q4 absent",
+     "via": "the two maps of reads, page.mjs:105-107",
+     "confirmedBy": [
+      {
+       "ref": "/coverageStructured/0"
+      },
+      {
+       "at": "plugins/entrust/evals/review-report.test.mjs:336",
+       "quote": "pairs.includes(\"q3\") && !pairs.includes(\"q4\")"
+      }
+     ]
+    },
+    {
+     "at": "plugins/entrust/plugin/skills/review/scripts/page/runtime.js:187",
+     "quote": "return D.previous.pairs.filter(([now, before]) => !state.answers[now] && answers[before]",
+     "role": "the browser offers the saved answer of each paired item not yet answered",
+     "value": "offered: q3 only",
+     "via": "D.previous.pairs in the page data, runtime.js:182-187"
+    }
+   ]
+  }
+ ],
+ "checks": [
+  {
+   "from": "a previous record that kept a consumer block whose unit uses another unit, and a new diff that changes only that other unit",
+   "do": [
+    "scaffold the new diff",
+    "carry the previous record into it",
+    "open the new record's consumer block",
+    "mark it carried and keep it by hand, then run check"
+   ],
+   "expect": "carry reports 0 kept blocks carried, the consumer block has no carried mark and a blank verdict, both units have blank verdicts; check on the hand-marked record names the unit",
+   "requirements": [
+    1
+   ],
+   "route": {
+    "route": 1,
+    "step": 3
+   },
+   "confirmedBy": [
+    {
+     "ref": "/coverageStructured/0"
+    },
+    {
+     "at": "plugins/entrust/evals/review-report.test.mjs:304",
+     "quote": "refused.stderr.includes(\"is marked carried, and its unit total changed since the previous review, or uses a unit that did\")"
+    }
+   ]
+  },
+  {
+   "from": "a previous record whose requirement cites a mockup screen by ref",
+   "do": [
+    "carry the previous record into a new scaffold",
+    "read carry's output and the requirement",
+    "run check"
+   ],
+   "expect": "the output names the requirement as having lost its sources; the requirement has none; check says it names no source",
+   "requirements": [
+    2
+   ],
+   "route": {
+    "route": 2,
+    "step": 3
+   },
+   "confirmedBy": [
+    {
+     "ref": "/coverageStructured/0"
+    },
+    {
+     "at": "plugins/entrust/evals/review-report.test.mjs:318",
+     "quote": "refused.stderr.includes(\"requirement 2 names no source\")"
+    }
+   ]
+  },
+  {
+   "from": "a page of the previous record with an answered conditional question, and a revised record where the parent's listed variants differ",
+   "do": [
+    "render the revised record",
+    "open the page in the browser that kept the earlier answers",
+    "look for the bar that offers earlier answers"
+   ],
+   "expect": "the parent's answer is offered; the child's is not",
+   "requirements": [
+    3
+   ],
+   "route": {
+    "route": 3,
+    "step": 5
+   }
+  }
+ ],
+ "questions": [
+  {
+   "at": "plugins/entrust/plugin/skills/review/scripts/review.mjs:169",
+   "text": "Should a unit that holds a block the previous record did not keep make its kept blocks read again?",
+   "kind": "decision",
+   "resolver": "owner",
+   "context": [
+    {
+     "text": "staleCarried counts a unit as changed when any previous block of it is not kept, though its lines are unchanged.",
+     "sources": [
+      {
+       "at": "plugins/entrust/plugin/skills/review/scripts/review.mjs:169",
+       "quote": "prev.review.blocks.forEach((b, i) => { if (b.unit && !(b.verdict === \"keep\""
+      }
+     ]
+    },
+    {
+     "text": "The data contract says 'a block of it read again, changed or gone'; it does not say that a block not kept counts.",
+     "sources": [
+      {
+       "at": "plugins/entrust/plugin/skills/review/references/report-data.md:330",
+       "quote": "a block of it read again, changed or gone"
+      }
+     ]
+    },
+    {
+     "text": "The browser suite's continuation fixture was edited to drop the unit of its first block because of this.",
+     "sources": [
+      {
+       "ref": "/blocks/3"
+      }
+     ]
+    },
+    {
+     "text": "No comparison outside the project was made.",
+     "sources": [
+      {
+       "ref": "/requirements/0"
+      }
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "id": "reread",
+     "text": "Yes, as written: an open block makes the unit's kept blocks read again.",
+     "consequences": [
+      {
+       "text": "A continuation never carries the kept blocks of a unit that still has a fix or a question; they are re-read with the open block.",
+       "sources": [
+        {
+         "ref": "/blocks/20"
+        }
+       ]
+      },
+      {
+       "text": "The contract's sentence names the case; the fixture edit stays.",
+       "sources": [
+        {
+         "ref": "/blocks/3"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "changed",
+     "text": "No: only a block whose lines changed or are gone counts.",
+     "consequences": [
+      {
+       "text": "The `b.verdict === \"keep\" &&` test leaves staleCarried; kept blocks stay carried beside an open block, though its fix may change the code around them.",
+       "sources": [
+        {
+         "at": "plugins/entrust/plugin/skills/review/scripts/review.mjs:169",
+         "quote": "b.verdict === \"keep\" && carried.has("
+        }
+       ]
+      },
+      {
+       "text": "The browser fixture's edit is undone.",
+       "sources": [
+        {
+         "ref": "/blocks/3"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recommendation": {
+    "text": "Keep as written, and name the case in the contract: the fix of the open block changes the code around a kept block, which is what the rule asks to read again.",
+    "variant": "reread",
+    "sources": [
+     {
+      "ref": "/blocks/20"
+     }
+    ]
+   }
+  }
+ ],
+ "tradeoffs": [],
+ "coverageStructured": [
+  {
+   "kind": "ran",
+   "text": "node evals/review-report.test.mjs from plugins/entrust: all 45 tests passed, among them the three tests the change adds.",
+   "revision": "db8076a",
+   "by": "the reviewer (this session)",
+   "where": "local checkout, detached HEAD at db8076a, clean",
+   "sources": [
+    {
+     "at": "logs/test.txt:14",
+     "quote": "ok    a block carried by its own lines is read again"
+    },
+    {
+     "at": "logs/test.txt:47",
+     "quote": "all 45 passed"
+    }
+   ]
+  },
+  {
+   "kind": "read",
+   "text": "The diff and the files at db8076a: staleCarried, carry, check's carried branch, previousOf, itemReads and previousAnswers, the runtime offer at runtime.js:182-187, the browser suite's fixture and the report fixtures, AGENT.md's rules.",
+   "by": "the reviewer (this session)",
+   "where": "checkout at db8076a",
+   "sources": [
+    {
+     "at": "review.diff:1",
+     "quote": "diff --git a/plugins/entrust/CHANGELOG.md b/plugins/entrust/CHANGELOG.md"
+    }
+   ]
+  },
+  {
+   "kind": "not_checked",
+   "text": "The browser suite (review-page-browser.test.mjs): the continuation fixture edit and the page's offer of earlier answers were read, not run; the plan allows no browser.",
+   "sources": [
+    {
+     "at": "plan.md:4",
+     "quote": "no browser suite, no network"
+    }
+   ]
+  },
+  {
+   "kind": "not_checked",
+   "text": "scripts/skills.test.mjs, which AGENT.md asks for after an edit to a file a SKILL.md links (report-data.md changed), and evals/run-all.mjs: outside the plan's limits.",
+   "sources": [
+    {
+     "at": "AGENT.md:44",
+     "quote": "run `node scripts/skills.test.mjs`"
+    }
+   ]
+  },
+  {
+   "kind": "not_checked",
+   "text": "No independent target, critic or verifier: the owner chose none, so every claim here is the reviewer's own and unchallenged.",
+   "sources": [
+    {
+     "at": "plan.md:3",
+     "quote": "Checking agents: none (the owner chose none for this trial)"
+    }
+   ]
+  }
+ ],
+ "passport": {
+  "repository": "agent-skills (marketplace nowely), plugins/entrust",
+  "base": "db8076a~1 (5400577)",
+  "head": "db8076a",
+  "reviewedAt": "2026-11-28"
+ }
+}
