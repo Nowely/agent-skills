@@ -104,7 +104,7 @@ user's word, unless the user's words already cover them
 [critics.md](critics.md#which-model-and-how-many) gives their tier. Give each reader the messages file, the
 sheet and this question: "What did the user require, correct or reject about this job? Quote each item and give
 its address." Have a stronger model read again any part whose return contradicts the sheet only with prior approval for that retry's model and spend. Step 3 waits for the
-readers; with no user attached, step 3 names them in the plan and they run after it is accepted.
+readers; with no user attached, use the parent-approved scope when it names them; otherwise return the decision to the parent, or in the result when there is no parent.
 
 ## A practice someone already performs
 
@@ -119,7 +119,7 @@ the user's and private: read only the ones they named, and keep what you take in
    each review, each message of the kind the skill is to produce, with what came back from it. A named session
    that is not where the user said is looked for as [the sources](#the-sources) says. Where a session cannot be
    read, record the gap and go on; do not widen the search to sessions the user did not name.
-2. Before launching the reader, obtain the user's approval for its model and spend unless already authorized; with no user attached, name it in the plan and wait for acceptance. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
+2. Before launching the reader, obtain the user's approval for its model and spend unless already authorized; with no user attached, use the parent-approved scope when it authorizes the reader; otherwise return the decision to the parent, or in the result when there is no parent. Start one fresh reader, briefed as [every brief](critics.md#every-brief) with this section as its role. It
    reads the artifacts, what came back, and the skill's pages or the draft; nothing of your own account of the
    practice. It writes `practice.md` in the run directory, in four parts:
    - the catalogue: each thing the artifacts do, in how many of them, with one example and its place;

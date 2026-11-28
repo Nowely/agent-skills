@@ -7,7 +7,8 @@ This page has [choosing the check](#choosing-the-check), [what a check may spend
 
 ## Choosing the check
 
-Take every row whose claim the user's request makes.
+Take every row whose claim the user's request makes. For research without a change, choose the method in
+[research.md](research.md) by the question; a comparison is not required for every observation or assessment.
 
 | The work claims | The check that can fail | It starts |
 |---|---|---|
@@ -33,14 +34,16 @@ Every session, reader and judge is paid for by the user, and a check is worth th
 - The plan gives each check its cost: its agents and sessions, the model of each, and the tokens estimated
   from runs like it that the host has figures for, else `unknown`. A check whose every result would leave the
   plan as it is does not run.
-- What was run is used again. The sessions without the skill are the baseline for every later round and
-  version on the same cases, and are not run again; a run in the run directory or in the repository's records
-  that answers the same question on the same text is used before a new one starts.
+- Before starting a new run, look for and use an existing run that supports the contrast. Reuse it only when
+  its task, inputs, context, versions, tools, permissions and assessment
+  support. Record material differences; an incompatible run is context, not a control. An already used case
+  does not become independent by freezing it. When a control is unavailable, report observations and leave
+  the comparison unknown; proceed with useful authorized checks.
 - A check starts with the smallest sample that can change its decision: one session for each case and each
   side, one reader and one confirmer. Before more than one session of a check starts, run one and read its
   transcript, the transfer test's scenarios and the selection check's requests included: it had the tools, it
-  read the files it was given, and its result could pass each statement. A statement that no session could
-  pass on that setup is rewritten, or the setup fixed, before the rest start.
+  read the files it was given, and its result could pass each statement. If the setup makes a statement impossible to assess, preserve the first result and fix the setup or revise
+  the rubric for a subsequent round. A genuine missed requirement remains a failure.
 - More than that is an option the plan puts to the user, with its cost and what it could show that the
   smallest sample cannot: a repeated run, several sessions for each side, a second reader, or a role on the top
   tier that [critics.md](critics.md#which-model-and-how-many) gives the executor tier. It runs only on the
@@ -67,10 +70,13 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   outside it is turned off where the host allows. If either exposure cannot be excluded, the control is the host as it is,
   and the plan and the result say so. The result names every skill a
   control session opened. If a control opens a skill for the job, label it host-as-is and do not treat its observations as no-skill evidence.
-- Give each session its own copy of the working tree, so that nothing it writes enters the skill or the
-  repository. No case performs an action that cannot be undone or that leaves the copy, such as a tag, a push,
-  a release, a publication or a message sent: the case stops before it, and the plan says what the check
-  therefore cannot show.
+- For an eval that writes files, keep one arm's outputs from changing another arm's inputs or the actual
+  project files; use a suitable temporary location or copy as needed. Read-only and separately authorized
+  practical work do not require a copy for this. Respect actual permissions and approval conditions for
+  protected actions. Record
+  the environment and limits; do not claim isolation that was not established. In an eval, stop before
+  irreversible actions or external effects, and before a tag, push, release, publication or message, and state what
+  the check cannot show. Stop there or simulate the action up to that boundary.
 - No session receives the statements it is marked by or the finding you expect.
 - A session has no user. A question it asks appears in its return; count it as an event and do not answer it.
   A skill whose own steps wait for the user's word is the exception: write its replies before any run, one for
@@ -94,7 +100,7 @@ for each failure seen, and none for what went right.
    session failed, and for which the user's words ask nothing, gets no step: mark it on the sheet as left to
    the agent, with the run that shows it. A stage that no session reached shows nothing about whether its
    instruction is needed.
-5. These sessions are the runs without the skill of [test cases](#test-cases); they are not run again.
+5. Reuse these sessions as controls for [test cases](#test-cases) only where the conditions above support the contrast.
 
 For a Change, the observation of its step 1 is the baseline. The baseline's sessions alone do not make the
 plan's check one that runs sessions: that takes test cases, a transfer test or a selection check.
@@ -114,8 +120,10 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
 1. Write each case as a request the way a user would type it: concrete, with the file names, the context and the
    detail a real request carries. Make one of them the request on which following the skill costs the agent
    most. Take none from the run that prompted the work.
-2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part` or
-   `false` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`. A
+2. Before any run, write for each case what a good result is, as statements a reader can mark `true`, `part`, `false` or
+   `unknown` with a place, and write in the plan's rule how `part` counts; unsaid, it counts as `false`.
+   A demonstrated violation is `false`; unavailable evidence is `unknown`, with the reason. The rule states
+   how unknown affects the verdict without presenting it as a demonstrated failure. A
    statement is about the result. Where the claim is about what the agent does on the way, such as a
    question it asks or a step it skips, the statement names an event the transcript shows, never the agent's
    wording. Where the result is itself a thing agents use, such as a skill, a brief or a prompt, the statements are
@@ -128,12 +136,12 @@ plan's check one that runs sessions: that takes test cases, a transfer test or a
    is which, briefed as [every brief](critics.md#every-brief) with this item as its role. Give it the
    statements, each with its marks defined, and each run's outputs under a letter; it must not open the key to
    the letters, nor the plan's rule. It marks strictly and literally, and where two marks were possible it says
-   why it chose one. It returns the marks, with no total and no verdict: how `part` counts is the plan's rule,
+   why it chose one. It returns the marks, with no total and no verdict: unavailable evidence is `unknown`, not `false`; how `part` counts is the plan's rule,
    which it does not see. Then have the marks confirmed and compute the verdict as
    [handling a return](critics.md#handling-a-return) says. Read the transcripts as well, for a file of the
    skill no session opened and a step every session skipped; each is a finding for the result.
-5. A statement that every run passes, or that no run passes, measured nothing. Report it so and count it for
-   neither side.
+5. Report every statement in absolute assessment, including a mandatory criterion failed by all runs. A
+   shared outcome does not distinguish the sides and is excluded only from the relative difference.
 6. Code that every session wrote for itself is a finding for the result: a script the skill should carry.
 7. A difference between two versions counts only when it is larger than the difference between two runs of the
    same version. A second run of the unchanged skill, which learns that difference, is an option of
@@ -153,9 +161,11 @@ by any model, and resemblance then measures copying.
    may be the one who writes the pages; any other writer of the pages is not given them either.
 2. Learn the floor, then write the rule. The plan preregisters the raw-key threshold for sufficiency. Compare the floor against it before removing floor answers or rebuilding: if it meets the threshold for a new skill, the result is `not needed`. Have each scenario answered once by a fresh agent, of the tier that uses an artifact in item 4, whose brief holds
    the artifact's name and the scenario's files and nothing of the pages, and have the second agent of item 1
-   count the known answers that come back. An answer the floor reaches measured nothing and leaves the count, as item 5
-   of [test cases](#test-cases) says of a statement; when the floor reaches more than half of the answers, the
-   material is built again. The rule is written now: how many of the known answers left each run must reach,
+   count the known answers that come back. Count every answer for each arm, including those the floor reaches.
+   Equal outcomes contribute zero difference; if the floor passes an answer and a candidate misses it, retain
+   the regression. A residual count may be a separate measure only if the plan specifies it in advance; it
+   does not replace the full assessment. When the floor reaches more than half of the answers, the
+   material is built again. The rule is written now: how many of the known answers each run must reach,
    and by how much the pages as they will be must beat the pages as they are, as the derivation from the floor
    that the plan approved before any run gives. A rule the plan did not provide for goes to the user before any
    run.
@@ -170,8 +180,9 @@ by any model, and resemblance then measures copying.
 5. Decide by the rule. A margin counts only above the difference between two runs on the new pages; that
    second run is an option of [what a check may spend](#what-a-check-may-spend), and without it a margin is
    reported as undecided. When
-   the pages as they were already reach the rule, the result is `not needed`:
-   the gaps were not gaps.
+   the pages as they were already reach the rule and the new pages show no regression, the result is
+   `not needed`: the gaps were not gaps. Report any observed regression separately, including when the floor
+   met its threshold.
 6. Report beside it, deciding nothing: which things of the catalogue each artifact holds, and what the
    sessions said they were unsure of. The second is where the next correction starts.
 
@@ -185,10 +196,11 @@ by any model, and resemblance then measures copying.
    of the same name is the nearest. If the sessions cannot be given a rival to list, say in the result that
    selection beside it is unmeasured.
 3. Run each request once: about twenty sessions for each host. Start sessions as above, each given the request alone. A host adapter may describe a selection tool; use it only if its population, run count and side effects meet this plan and the user has explicitly authorized its spend and side effects. Record
-   which skill was loaded before the answer or the first action: this one, a rival by name, or none.
+   which skill was loaded before the answer or the first action: this one, a rival by name, or observed none.
+   If the selection log is unavailable or selection was not observed by then, record `unknown` separately.
 4. Report the result for each request, and every request a rival took. A margin over a rival, or over an
    earlier description, decides only against a second run of the same set, an option of
    [what a check may spend](#what-a-check-may-spend); without it the margin is reported as undecided.
-5. Requests the skill is for that did not select it are [a correction](../SKILL.md#a-correction): rewrite the
+5. Requests the skill is for with a confirmed selection of a rival or confirmed none are [a correction](../SKILL.md#a-correction): rewrite the
    description from them by [writing.md](writing.md#the-description), have a new set written, because a set its
-   writer has seen no longer tests it, and run once more.
+   writer has seen no longer tests it, and run once more. Unknown selection is unverified, not a confirmed miss.

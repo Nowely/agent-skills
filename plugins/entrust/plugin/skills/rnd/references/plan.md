@@ -7,11 +7,16 @@ its text down to the log, and wait as step 3 says. After the user's word, and af
 context, open the file before anything else: it says what was agreed and how far the work is.
 
 This page has [the form](#the-form), [rounds and checkpoints](#rounds-and-checkpoints), [the log](#the-log),
-[the figures](#the-figures) and [a close-out](#a-close-out), which every run writes, with a plan file or
-without one.
+[the figures](#the-figures), [a close-out](#a-close-out) and [a correction](#a-correction). Every run
+writes a close-out, with a plan file or without one.
 
 Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
 stays as it is; its checks row names this file by path.
+
+For research or evaluation, select the protocol by the question in [research.md](research.md): an
+observation or requirements assessment can stand alone; a comparative claim needs a supported control.
+Record available, selected and delivered interventions separately from observed influence; unknown remains
+unknown. Preserve all attempts and report outcomes, harm, time and resources separately.
 
 ## The form
 
@@ -136,3 +141,25 @@ Nothing the run started is left without an end. Write these in the run directory
   it; and when it is measured next.
 - For each line of the sheet marked `idea`, before delivery: taken, with the place; declined, with the reason
   you gave the user; or pending, with the step that will decide it.
+
+## A correction
+
+A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
+from the user, a judge's return, a reader's return (the reader of the user's words' only by the user's reply), a result of the plan's check that fails its rule, a
+description that agents do not select. An answer to the plan is one when it adds a condition or refuses a
+part, and not when it only accepts or settles a question as asked.
+
+1. Add it to the sheet, with the user's words or the return's, and where they are. Words of the user that do
+   not fit the design are asked about, never read to fit.
+2. Name the step that should have caught it, and redo that step's part of the sheet to find what else it missed.
+3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
+   show the user the changed plan and wait as Create’s step 3 does; the architecture critic reads a changed approach
+   again. If only the text
+   changes, edit it by [writing.md](writing.md), run the check script and, where Change's step 8
+   ran, its `--against` command again, answering each line as that step says;
+   [critics.md](critics.md#which-model-and-how-many) says whether a judge reads again. The user's
+   second correction since the plan adds the audit of [reflection](reflection.md) to a changed plan.
+
+Every edit that follows comes from the amended sheet, never from the correction alone. After the plan's check
+fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
+results.

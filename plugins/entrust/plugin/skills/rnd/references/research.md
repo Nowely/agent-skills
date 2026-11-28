@@ -1,10 +1,16 @@
-# Research in this repository
+# Research method
 
-This is the shared method for new research across the marketplace. It distinguishes exploratory work,
-which develops questions, from confirmatory comparisons, which test a question fixed before observing
-the results. A plugin's experiment-specific protocol supplies the details; for example, see the
-[review-skill protocol](plugins/entrust/evals/review/protocol.md). Existing research records remain
-historical records of their own methods, not results retroactively obtained under this one.
+Use this general method for research across the marketplace. Exploratory work develops questions;
+confirmatory comparisons test a question fixed before observing results. An experiment-specific protocol
+may supply details. Existing records remain historical records of their own methods.
+
+For Research alone, follow this method using the permissions and budget that actually apply. Choose the
+work needed to answer the question, including sessions when authorized; record their scope and cost.
+A session does not by itself require the Create or Change plan form, judges, reflection or orchestration.
+Use those only when the task or applicable instructions call for them. For a research eval, apply the
+[eval action boundary](checks.md#the-sessions): stop before irreversible or external actions, or simulate
+them up to that boundary. Ordinary reading and authorized artifacts remain available; apply actual permissions
+to independently authorized practical checks.
 
 ## Frame the question
 
@@ -31,6 +37,14 @@ under its actual prompt, environment and permissions; do not call it instruction
 skill was absent. Hold other conditions common where feasible, record actual order and any differences, and
 explain what cannot be observed. Randomization and neutral labels can reduce biases; they do not establish
 identical contexts, independence or full blinding by themselves.
+
+A practical observation can answer what happened in one case; an assessment can check one result against
+requirements without a control. Choose a comparison when the question asks about a difference. Reuse a
+control only for a contrast supported by comparable tasks, context, conditions and assessment; otherwise
+report it as context. If a required control is unknown, the corresponding comparison is not established.
+Unknown delivery leaves the causal effect of actual activation unknown, but a supported comparison by
+assignment or availability can still be reported with its limits. Distinguish availability, selection, delivery
+and actual influence.
 
 ## Review prior work
 
@@ -66,7 +80,8 @@ intervention being studied. If the genuine task itself names an issue, retain it
 Give an evaluator the source evidence needed for the task, use neutral labels where appropriate, and
 record where format or context can reveal an arm. Assess unexpected findings as well as expected ones.
 Separate a supported observation, a contradicted claim, an unresolved question and a reasoned judgment;
-missing evidence is not a pass or a failure. Preserve original assessments and explain substantive
+missing evidence is unknown, not a pass or a failure. A demonstrated missed requirement is a failure,
+even when all arms miss it; report absolute compliance separately from relative differences. Preserve original assessments and explain substantive
 disagreements and subsequent checks. Independent checking can reduce error but does not make a model's
 judgment ground truth.
 

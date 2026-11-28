@@ -3,6 +3,10 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+- rnd adds a research-only route and an installed research method, with comparison guidance and support for delegated approved plans.
+
 ## 0.49.0 — 2026-11-28
 
 ### Skills

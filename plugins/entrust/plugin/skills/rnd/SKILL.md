@@ -1,11 +1,12 @@
 ---
 name: rnd
 description: >-
-  Creates a skill for an agent or develops an existing one: its SKILL.md, description, references and scripts.
-  For requests to make, write or draft a skill, to turn a workflow or a session into a skill, and to rewrite,
-  fix, improve, cut or restructure a skill, including after feedback on it or a run where it failed. Not for
-  reviewing a skill or running its evals with nothing to change, for collecting feedback from sessions, or for
-  improving a text written for people.
+  Research, evaluate, compare, create or develop agent skills, including their SKILL.md, description, references
+  and scripts, and research without edits. Use for
+  a skill's operation, design or evaluation, whether named explicitly or requested in ordinary language.
+  Includes making a skill from a workflow or session, and drafting, rewriting, fixing, improving, cutting or
+  restructuring one, including after feedback or a failed run. For ordinary code review, collecting session
+  feedback or improving prose for people, use the corresponding workflow.
 metadata:
   version: "0.49.0"
 license: MIT
@@ -13,9 +14,10 @@ license: MIT
 
 This skill takes a request about a skill to a checked result, and leaves collecting feedback from sessions to
 other skills. A skill is a folder, a `SKILL.md` and the files it links, that is loaded when a request matches
-its description. Take one of three routes; a change to this skill takes them too. Its name is short for
+its description. Take one of four routes; a change to this skill takes them too. Its name is short for
 research and develop, and every step here is written for work on a skill.
 
+- **Research**: investigate, evaluate or compare skills without necessarily changing one.
 - **Create**: a new skill; a rewrite of a skill's whole text; or a change to the job a skill does, the hosts
   that load it, or its set of reference files.
 - **Change**: an instruction removed, moved, reworded or added inside the files a skill has, or a script made to
@@ -36,28 +38,41 @@ research and develop, and every step here is written for work on a skill.
   personal folder has one too. Where that rule numbers each version of a file and overwrites none, an amended
   sheet is a new numbered file.
 - Do with this session's own tools whatever they can do, before any line says the user must do or supply it.
-- Between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
+- For Create and Change, between the plan and the result, the user hears from you only a changed plan, a checkpoint's table, a
   verdict that stops the work, and blockers, all blockers in one message.
-- What you deliver is what the plan showed. A step of these routes that you would drop, or an edit to a file
+- When a plan exists, what you deliver is what it showed. A step it requires that you would drop, or an edit to a file
   the plan did not name, goes to the user as a changed plan before you act on it, never into the result
   afterwards.
 - State nothing about a file or about a reply of the user that you have not read at its place.
-- A plan with a check that runs sessions, or with more than one round, is a file, as
+- For Create and Change, a plan with a check that runs sessions, or with more than one round, is a file, as
   [plan.md](references/plan.md) sets it out. After the user's word, and after any pause, open it first, and
   keep its log and its checkpoints as that page says.
-- When no user can answer, because another agent started you or the run has no one attached, your return
-  stands where a step says to tell the user. The plan with its questions is then your return, and you stop
-  there, on either route.
-- With no user attached, an instruction from whoever started you that names an edit is acceptance of that edit
-  and the script's two commands, of Create's step 6 and Change's step 8, and of nothing else: make the edit,
-  start no agent, and say in the result that no judge read it.
-- Every judge, reader and session a step names is an agent this session starts, the way the plan says it
+- When no user can answer, a parent may pass the relevant scope of a user-approved plan, including its
+  authorized checks and agents. Carry out that scope without asking again; a model name, an upper bound or
+  an instruction to investigate alone does not authorize further actions. Return an unclear decision to the
+  parent, or in the result when there is no parent, and continue independent authorized work. Existing tool
+  and platform permissions still apply. If no approved scope was passed, an instruction from whoever started you that names an edit authorizes
+  that edit, the common or target-host skill check in Create step 6, and the `--against` command in Change
+  step 8, but no agents or other actions. If no judge reads it, say so in the result.
+- Every judge, reader and session a step names is an agent this session starts, the way an applicable plan says it
   starts on this host; none is handed to the user to run.
-- When this session cannot start agents, say so in the plan, do the steps that need none, and name each step
+- When this session cannot start required agents, say so in the plan if there is one, do the steps that need none, and name each step
   left undone in the result.
 - A step number in a reference is Create's; Change's steps 5, 6 and 7 are Create's 4, 5 and 6, and its step 9
   is Create's 7 to 10.
 - `<skill-dir>` is this skill's installed directory. Its script needs Node.js 18 or later.
+
+## Research
+
+1. Identify the question, the skill or operation studied, the decision it can inform, and available evidence.
+   Read [the research method](references/research.md). Choose observation, assessment against requirements,
+   or comparison according to the question; a comparison names the intervention and comparator.
+2. Gather and assess the authorized evidence using that method. Preserve attempts, failures, uncertainty and
+   material differences in conditions. Report only contrasts supported by the evidence: unknown delivery
+   leaves the effect of actual activation unknown, but need not preclude an assignment or availability comparison.
+3. Deliver findings, sources, limits and any remaining questions. Research alone ends with this result and
+   does not change a skill. If changes were separately authorized in an approved plan, carry them out under
+   that scope; otherwise propose changes for the user's decision.
 
 ## Create
 
@@ -202,25 +217,7 @@ every step.
 
 ## A correction
 
-A correction is anything that shows the sheet or the text misses or misreads what the user wants: a message
-from the user, a judge's return, a reader's return (the reader of the user's words' only by the user's reply), a result of the plan's check that fails its rule, a
-description that agents do not select. An answer to the plan is one when it adds a condition or refuses a
-part, and not when it only accepts or settles a question as asked.
-
-1. Add it to the sheet, with the user's words or the return's, and where they are. Words of the user that do
-   not fit the design are asked about, never read to fit.
-2. Name the step that should have caught it, and redo that step's part of the sheet to find what else it missed.
-3. Hold the approach, the layout and the check against the amended sheet. If the approach or the check changes,
-   show the user the changed plan and wait as step 3 does; the architecture critic reads a changed approach
-   again. If only the text
-   changes, edit it by [writing.md](references/writing.md), run the check script and, where Change's step 8
-   ran, its `--against` command again, answering each line as that step says;
-   [critics.md](references/critics.md#which-model-and-how-many) says whether a judge reads again. The user's
-   second correction since the plan adds the audit of [reflection](references/reflection.md) to a changed plan.
-
-Every edit that follows comes from the amended sheet, never from the correction alone. After the plan's check
-fails, one changed plan and one more run of it are the limit; a second failure goes to the user with both
-results.
+Follow [a correction](references/plan.md#a-correction) when the sheet or text misses what the user wants.
 
 ## The result
 

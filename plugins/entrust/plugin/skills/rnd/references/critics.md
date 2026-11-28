@@ -172,7 +172,7 @@ It marks every instruction, question and idea in the messages:
 It returns the marks with no verdict. Every `missing` and `part` goes into the result; report each `unknown` as unverified. The return is not a
 correction by itself: the user's reply decides whether it is one.
 
-It runs on every route but Repair, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
+It runs on Create and Change, a small change included. The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
 word on the plan starts it and no step asks again. Where [the audit](reflection.md) at delivery runs, and not an audit at an earlier correction, the audit's
 table of the user's instructions and questions is this check, and this reader does not run.
 
@@ -190,7 +190,9 @@ table of the user's instructions and questions is this check, and this reader do
 - Marks that decide a verdict are confirmed before they are counted. Start one fresh agent on the executor
   tier, briefed as [every brief](#every-brief) says, with the marks' file to read and this bullet as its role:
   it opens every mark that is not the weakest of its set at the place cited and returns `confirmed` or `not
-  there`. A mark that is not confirmed counts as the weakest.
+  there`, or `unknown` when the evidence cannot be checked. A demonstrated absence takes the weakest mark;
+  an unconfirmed mark remains `unknown`, with the reason. Apply the plan's rule for its effect on the verdict
+  without calling it a demonstrated failure.
 - A verdict is computed by you, from the rule the plan wrote before the result and from the confirmed marks,
   one clause of the rule at a time. A judge's own total, and its opinion of what a finding does to a verdict,
   are claims and decide nothing.
