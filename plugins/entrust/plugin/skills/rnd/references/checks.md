@@ -71,10 +71,10 @@ Every session, reader and judge is paid for by the user, and a check is worth th
   outside it is turned off where the host allows. If either exposure cannot be excluded, the control is the host as it is,
   and the plan and the result say so. The result names every skill a
   control session opened. If a control opens a skill for the job, label it host-as-is and do not treat its observations as no-skill evidence.
-- For an eval that writes files, keep one arm's outputs from changing another arm's inputs or the actual
-  project files; use a suitable temporary location or copy as needed. Read-only and separately authorized
-  practical work do not require a copy for this. Respect actual permissions and approval conditions for
-  protected actions. Record
+- Every session of a check gets its own copy of the working tree, so that nothing it writes enters the skill or
+  the repository. A practical run on the user's real task, with their authorization, is a use and not a check
+  session: it runs where the task is, under the normal permissions. Respect actual permissions and approval
+  conditions for protected actions. Record
   the environment and limits; do not claim isolation that was not established. In an eval, stop before
   irreversible actions or external effects, and before a tag, push, release, publication or message, and state what
   the check cannot show. Stop there or simulate the action up to that boundary.
