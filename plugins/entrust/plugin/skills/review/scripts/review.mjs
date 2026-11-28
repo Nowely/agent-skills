@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
 import { checkQuotes, onRoute, readGround, GROUND } from "./ground.mjs";
@@ -97,7 +98,8 @@ export const PURPOSES = ["production", "tests", "styles", "assets", "docs", "con
 export function purposeOfPath(p) {
   const base = p.split("/").pop().toLowerCase();
   const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1) : "";
-  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /\.browser\.mjs$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)) return "tests";
+  if (/(^|\/)__tests__(\/|$)/.test(p) || /\.(test|spec)\.[a-z]+$/.test(base) || /\.browser\.mjs$/.test(base) || /(^|\/)__stories__(\/|$)/.test(p) || /\.stories\.[a-z]+$/.test(base)
+    || /^test_.*\.py$/.test(base) || /_test\.(py|go)$/.test(base) || /(^|\/)tests?\//.test(p)) return "tests";
   if (["scss", "css", "less", "sass", "styl"].includes(ext)) return "styles";
   if (["svg", "png", "jpg", "jpeg", "gif", "ico", "webp", "avif", "woff", "woff2", "ttf", "eot"].includes(ext) || /(^|\/)(assets|icons)(\/|$)/.test(p) || /(^|\/)keysets(\/|$)/.test(p)) return "assets";
   if (["md", "mdx", "rst", "txt"].includes(ext) || /^(changelog|readme|license)/.test(base)) return "docs";
@@ -693,15 +695,18 @@ export function check(review, files, directory) {
   if (g?.fault) warnings.push(g.fault);
   else if (g && g.diff_sha256 !== review.diff?.sha256) warnings.push(`${GROUND} was made for another diff: run report.mjs ground again`);
   else if (g) {
-    const here = typeof g.repo === "string" && fs.existsSync(g.repo);
-    if (!here) warnings.push(`the repository ${GROUND} names (${g.repo}) is not here: the quotes were read beside the record only`);
-    const quotes = checkQuotes(review, [here ? g.repo : null, directory].filter(Boolean));
+    // the checkout as `ground` found it, read at its commit; gone, or its commit gone, the quotes are read beside the record only
+    const here = typeof g.repo === "string" && fs.existsSync(g.repo), known = here && (!g.sha || spawnSync("git", ["-C", g.repo, "cat-file", "-e", `${g.sha}^{commit}`]).status === 0);
+    if (!known) warnings.push(here ? `the commit ${GROUND} names (${g.sha}) is not in ${g.repo}: the quotes were read beside the record only` : `the checkout ${GROUND} names (${g.repo}) is not here: the quotes were read beside the record only`);
+    const quotes = checkQuotes(review, { roots: [{ root: directory, sha: null }, ...(known ? [{ root: g.repo, sha: g.sha ?? null }] : [])], diffFiles: files, heads: [g.sha, review.passport?.head] });
     const words = (who) => who.slice(1).split("/").map((x) => /^\d+$/.test(x) ? +x + 1 : x).join(" ");
     for (const m of quotes.mismatches) errors.push(`${words(m.who)}: «${m.quote}» is not at ${m.at}${m.line !== null ? `, which reads «${m.line.trim()}»` : ", past the end of its file"}`);
+    for (const m of quotes.base) warnings.push(`${words(m.who)}: ${m.at} quotes a line the diff removes: mark the place (base)`);
+    for (const m of quotes.missing) warnings.push(`${words(m.who)}: ${m.at} ${m.why === "form" ? "is not a place: write path:line" : "is no file in the checkout or beside the record"}`);
     const found = Array.isArray(g.candidates) ? g.candidates : [], unlisted = found.filter((c) => !onRoute(c, review, owner));
     if (unlisted.length && (routes.length || unlisted.length >= 3))
       warnings.push(`${unlisted.length} of ${found.length} places the script found in the changed code are on no route (${unlisted.slice(0, 6).map((c) => `${c.kind} ${c.name} at ${c.at}`).join("; ")}${unlisted.length > 6 ? "; …" : ""}): follow those that are behaviour through more than one place, or leave them`);
-    ground = { found: found.length, unlisted, checked: quotes.checked };
+    ground = { found: found.length, unlisted, checked: quotes.checked, skipped: quotes.skipped };
   }
   return { errors, warnings, owner, ground };
 }

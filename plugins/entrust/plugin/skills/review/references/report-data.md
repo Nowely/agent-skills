@@ -24,11 +24,13 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    session's hand-off — is saved beside the record (`task.md`, `discussion.md`, `description.md`) and quoted from there.
    A generated file is one block, as [generated files](#generated-files) says.
 3. Once routes are written, `node "<skill-dir>/scripts/report.mjs" ground <out>/review.json <repo>`, with the
-   checkout at the reviewed state: it reads every quote in the record at its `path:line`, lists the entry points the
-   changed code makes — changed functions and their callers, dispatch cases, listeners, handlers — and saves them in
-   `<out>/ground.json`. From then on `check` refuses a quote that is not at its place and warns of each found place
-   no route names; follow those that are behaviour through more than one place. The list is not complete, and the
-   page labels it found by script.
+   checkout at the reviewed head (it refuses one whose files do not hold the lines the diff adds). It saves its commit
+   in `<out>/ground.json` with the entry points the changed production code makes — the functions each change is in
+   and the calls that reach them from files that import them, dispatch cases, listeners, handlers, routes. From then on `check` reads every quote in the
+   record at its `path:line` at that commit or beside the record, refuses one that is not there, names a removed line
+   cited without `(base)`, skips a source at another `revision`, and warns of each found place no route follows;
+   follow those that are behaviour through more than one place. The list is not complete; the page labels it found
+   by script.
    `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict without `whole`, about kept blocks that serve no requirement or only requirements to confirm no

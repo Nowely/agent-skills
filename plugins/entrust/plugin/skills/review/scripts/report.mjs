@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisons } from "./comparisons.mjs";
-import { candidatesOf, GROUND } from "./ground.mjs";
+import { candidatesOf, checkoutOf, driftOf, GROUND } from "./ground.mjs";
 import { labelsOf, languageOf } from "./labels.mjs";
 import { createSyntax } from "./highlight.mjs";
 import { page } from "./page.mjs";
@@ -269,11 +269,15 @@ try {
     const { files, fault } = changeOf(review, directory);
     if (fault) throw new Error(fault);
     if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) throw new Error(`${process.argv[4]} is not a directory: give the checkout at the reviewed state`);
-    fs.writeFileSync(path.join(directory, GROUND), `${JSON.stringify({ diff_sha256: review.diff.sha256, repo, candidates: candidatesOf(files, repo) }, null, 1)}\n`);
+    // The checkout at its commit: every line the diff adds must stand there, or this is not the reviewed state.
+    const checkout = checkoutOf(repo), drift = driftOf(files, checkout);
+    if (drift) throw new Error(`${checkout.root}${checkout.sha ? ` at ${checkout.sha.slice(0, 12)}` : ""} is not the reviewed state: ${drift}. Check out the reviewed head and run ground again`);
+    if (!checkout.sha) console.error(`warning: ${checkout.root} is no git checkout: its files are read as they are now, and no callers are listed`);
+    fs.writeFileSync(path.join(directory, GROUND), `${JSON.stringify({ diff_sha256: review.diff.sha256, repo: checkout.root, sha: checkout.sha, candidates: candidatesOf(files, checkout) }, null, 1)}\n`);
     const { errors, warnings, ground } = check(review, files, directory);
     for (const warning of warnings) console.error(`warning: ${warning}`);
     if (errors.length) console.error(`Fix these ${errors.length} and run check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
-    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.checked ?? 0} quotes read at their places.`);
+    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.checked ?? 0} quotes read at their places, ${ground?.skipped ?? 0} not read (another revision, a base line, or no file).`);
     process.exit(errors.length ? 1 : 0);
   } else if (["render", "check"].includes(command) && argument) {
     const bytes = fs.readFileSync(argument), review = JSON.parse(bytes.toString("utf8")), directory = path.dirname(path.resolve(argument));

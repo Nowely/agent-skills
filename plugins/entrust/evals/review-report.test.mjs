@@ -543,6 +543,54 @@ test("ground reads every quote at its place in the repository — check then ref
     return wrong.status === 1 && wrong.stderr.includes("routes 1 steps 2: «total(9)» is not at src/use.js:2, which reads «export const y = () => total(2);»") || wrong.stderr;
   });
 
+test("ground reads at the reviewed commit and refuses a checkout that is not there; a quote passes where it stands beside the record or in the code, never outside them; a removed line without (base) is named, not refused; a change to a function's body lists the function and the calls that reach it, a caller only by its place, and tests, prose and namesakes are no entry points",
+  "the critic of ground: a later checkout made check refuse a valid record, the repository's own task.md shadowed the one beside the record, a path could read /etc/passwd, and a change inside a function found nothing (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground2-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    fs.mkdirSync(path.join(repoDir, "src"), { recursive: true }); fs.mkdirSync(path.join(repoDir, "tests"), { recursive: true }); fs.mkdirSync(out);
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    git("init", "-q");
+    const body = (n) => `export function total(n) {\n  const k = ${n};\n  return n * k;\n}\nexport const old = 1;\n`;
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), body(2));
+    fs.writeFileSync(path.join(repoDir, "src/use.js"), "import { total } from './a.js';\nexport const y = () => total(2);\n");
+    fs.writeFileSync(path.join(repoDir, "tests/test_a.py"), "def test_total():\n    total(1)\n");
+    // no callers: a module with a total of its own, a total in a message, one that does not import it
+    fs.writeFileSync(path.join(repoDir, "src/own.js"), "const total = (x) => x;\nexport const w = () => total(1);\n");
+    fs.writeFileSync(path.join(repoDir, "src/say.js"), "import { total } from './a.js';\nexport const s = () => { throw new Error(`cannot total (${total})`); };\n// total(n) is the sum\n");
+    fs.writeFileSync(path.join(repoDir, "src/free.js"), "export const z = () => total(4);\n");
+    fs.writeFileSync(path.join(repoDir, "task.md"), "The repository's own notes.\n");
+    git("add", "-A"); git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(repoDir, "src/a.js"), body(3).replace("export const old = 1;\n", ""));
+    fs.writeFileSync(path.join(repoDir, "tests/test_a.py"), "def test_total():\n    total(3)\n");
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    fs.writeFileSync(path.join(out, "task.md"), "# Task\nMake the rate three.\n");
+    const record = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2", removed: "2, 5", does: "The rate.", serves: [1], verdict: "keep" },
+      { path: "tests/test_a.py", added: "2", removed: "2", does: "Its test.", serves: [1], verdict: "keep" }]), units: [],
+      requirements: [{ id: 1, text: "A total uses the rate.", source: "task", sources: [{ at: "task.md:2", quote: "Make the rate three." },
+        { at: "src/a.js:5", quote: "export const old = 1;" }, { at: "../../../../../etc/passwd:1", quote: "root" }] }],
+      routes: [{ title: "A total, as the total call makes it", requirements: [1], steps: [{ block: 1, role: "The rate." }, { block: 1, role: "Its total.", via: "the rate it reads, src/a.js:3" }] }] };
+    fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(record));
+    const file = path.join(out, "review.json");
+    // not at the reviewed commit: refused before anything is saved
+    git("checkout", "-q", "HEAD~1");
+    const early = report("ground", file, repoDir);
+    git("checkout", "-q", "-");
+    if (early.status !== 1 || !/is not the reviewed state: src\/a\.js:2 reads «const k = 2;», and the diff adds «const k = 3;» there/.test(early.stderr) || fs.existsSync(path.join(out, "ground.json"))) return `drift: ${early.stderr}`;
+    const g = report("ground", file, repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const found = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    if (g.status !== 0 || JSON.stringify(found) !== JSON.stringify(["call total src/use.js:2", "function total src/a.js:1"])) return JSON.stringify({ status: g.status, err: g.stderr, found });
+    // the caller is followed by its place only, not by the word in the title; the removed line and the outside path are named
+    if (!/1 of 2 places the script found in the changed code are on no route \(call total at src\/use\.js:2\)/.test(g.stderr) || !/src\/a\.js:5 quotes a line the diff removes: mark the place \(base\)/.test(g.stderr)
+      || !/etc\/passwd:1 is no file in the checkout or beside the record/.test(g.stderr) || /root:x:/.test(g.stdout + g.stderr)) return `warnings: ${g.stderr}`;
+    // a later checkout changes nothing: the quotes are read at the saved commit
+    git("checkout", "-q", "HEAD~1");
+    const later = report("check", file);
+    git("checkout", "-q", "-");
+    return later.status === 0 || `after a checkout: ${later.stderr}`;
+  });
+
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",
   "the review must exist before a request for HTML, and rendering must not reconstruct its analysis",
   () => {

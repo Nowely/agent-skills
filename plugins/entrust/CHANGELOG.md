@@ -31,12 +31,16 @@ forensics remain in the repository references and release notes.
   and the owner's earlier `observations`, each with its result, the `diff` digest it was made on, its revision and
   conditions, so an old observation is never read as a result for a new revision, whatever the revision is called.
 - A coverage statement may say `by` whom and `where` it ran or was read: a green CI job can skip a suite.
-- `report.mjs ground <review.json> <repo>` reads the record against the checkout at the reviewed state. Every quote
-  in the record — route steps, test assertions, sources — is read at its `path:line`, and the entry points the
-  changed production code makes (changed functions and their callers, dispatch cases, listeners, handlers, routes)
-  are saved in `ground.json`. From then on `check` refuses a quote that is not at its place, saying what is there,
-  and warns of each found place no route names; the printout lists them for the checking agents. The list is the
-  script's, never complete. A check for a step or a transition no test confirms is written as a charter.
+- `report.mjs ground <review.json> <repo>` reads the record against the checkout at the reviewed head, and refuses a
+  checkout that does not hold the lines the diff adds. It saves the commit and the entry points the changed
+  production code makes — the function each change is in and its callers, dispatch cases, listeners, handlers,
+  routes — in `ground.json`. From then on `check` reads every quote in the record at its `path:line` at that commit
+  or beside the record, never outside them, and refuses one that is not there, saying what is; it names a removed
+  line cited without `(base)` and a place that is no file, skips a source at another revision, and warns of each found
+  place no route follows. A call in another file counts when that file imports the function; a namesake defined
+  there, a comment or a string does not. A later checkout changes nothing. The printout lists the unfollowed places for the
+  checking agents; the list is the script's, never complete. Python and Go test files, and files under a `test/` or
+  `tests/` directory, count as tests. A check for a step or a transition no test confirms is written as a charter.
 
 ### Flows on the page
 
