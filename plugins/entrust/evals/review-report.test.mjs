@@ -104,6 +104,9 @@ test("a frozen comparison can be traced to the final report or to an explicit li
         : { key: row.key, unchecked: "No runtime contract was available." }) };
     const valid = render(r => { r.comparisonReview = pass; });
     if (valid.status !== 0) return valid.stderr;
+    // the printout counts the decisions by outcome, as the data contract says
+    const n = pass.decisions.length;
+    if (!valid.stdout.includes(`Comparison pass: ${n} pairs decided (to the author 1, settled 0, unchecked ${n - 1})`)) return `no count: ${valid.stdout.slice(-600)}`;
     for (const [alter, fault] of [
       [p => p.decisions.pop(), "missing decision"],
       [p => p.decisions.push(p.decisions[0]), "duplicate comparison decision"],

@@ -121,6 +121,10 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
     ...(review.replies?.length ? [`## ${t("replies")}`, ...review.replies.map((x, index) => `${index + 1}. ${x.place}: «${x.comment}» — ${x.text} (${srcs(x.sources)})`), ""] : []),
     `## ${t("coverage")}`,
     ...(carried?.length ? [`${t("carried")}: ${carried.map((id) => `B${id}`).join(", ")}`] : []),
+    // the comparison pass, counted by outcome: what reached the author, what a source settled, what stays unchecked
+    ...(Array.isArray(review.comparisonReview?.decisions) ? [t("comparison.count", review.comparisonReview.decisions.length,
+      Object.entries({ ref: t("comparison.ref"), settled: t("comparison.settled"), unchecked: t("comparison.unchecked") })
+        .map(([k, word]) => `${word} ${review.comparisonReview.decisions.filter((d) => d && Object.hasOwn(d, k)).length}`).join(", "))] : []),
     ...(review.coverageStructured ?? []).map((c) => `- ${coverageWord(c.kind)}: ${c.text}${c.revision ? ` @ ${c.revision}` : ""}${c.by ? `; ${t("coverage.by", c.by)}` : ""}${c.where ? `; ${t("coverage.where", c.where)}` : ""} (${srcs(c.sources)})`),
     review.coverage || t("none"), "",
     `${t("report-details")}: ${review.range} · ${key} · ${t("passport.diffSha")} ${review.diff?.sha256 ?? t("none")} · ${t("passport.record")} ${recordSha ?? t("none")}`,

@@ -2,7 +2,11 @@
 
 The full record of a review: one `review.json` that the response is written from and the page is drawn from. Pictures follow [visual evidence](#visual-evidence).
 
-See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sources), [decision cards](#decision-cards), [the page](#the-page), [the next revision](#the-next-revision) and [generated files](#generated-files).
+Read [making it](#making-it), the [format](#format), the [fields](#fields) and the [sources](#sources) before writing the
+record. Read the rest when the review has it: the [comparison pass](#comparison-pass) for a full draft, [decision
+cards](#decision-cards) for a point the owner decides, [the page](#the-page) once it is rendered, [the next
+revision](#the-next-revision) for a change reviewed before, [generated files](#generated-files) when the diff holds one,
+and [visual evidence](#visual-evidence) for pictures.
 
 ## Making it
 
@@ -134,16 +138,19 @@ of the same diff, so the owner's answers to the items it leaves unchanged come w
 
 ## Comparison pass
 
-Freeze the checked full draft and the saved diff before handing them to the reader. Without an approved reader the
+Save a copy of the checked full draft beside the record and give the reader that copy and the saved diff: the copy
+stays as the reader saw it, while the record goes on and takes the reader's results when they are reconciled. Without an approved reader the
 reviewer is it, stage by stage — staged self-review — and keeps each stage's ledger itself. Run from the directory of the approved project toolchain:
 
     node "<skill-dir>/scripts/report.mjs" comparisons <out>/review.json <base-root> <head-root> > <out>/comparisons.json
 
-The two roots contain the paths from the diff at their respective revisions. The command checks the patch lines against those files and reads installed TypeScript and PostCSS SCSS parsers when available. Use only trusted, in-scope toolchains. Without source trees, omit both roots to index two-sided replacements in the patch. Read `limits` for unsupported formats, missing sources and unindexed files. Add the evidenced comparisons the automated views miss, including one-sided changes with an unchanged peer or a consumer elsewhere. Freeze the resulting inventory before the reader sees it.
+The two roots contain the paths from the diff at their respective revisions. With git, take the base from its commit
+without touching the checkout — `git -C <repo> worktree add --detach <out>/base <base>`, or
+`git -C <repo> archive <base> | tar -x -C <out>/base` — and give the checkout at the reviewed head as the head root. The command checks the patch lines against those files and reads installed TypeScript and PostCSS SCSS parsers when available. Use only trusted, in-scope toolchains. Without source trees, omit both roots to index two-sided replacements in the patch. Read `limits` for unsupported formats, missing sources and unindexed files. Add the evidenced comparisons the automated views miss, including one-sided changes with an unchanged peer or a consumer elsewhere. Freeze the resulting inventory before the reader sees it.
 
 Each comparison has a unique `key`, a stage (`structure` or `paths`), a default `file`, the `property` being compared, and `left` and `right` witnesses. Each witness specifies `side` (`base` or `head`), one-based `line`, the observed `value` and optionally its own `file`. A `contrast` records additional facts measured by the parser. Use source addresses to read full expressions, context and contracts. A block description can help locate a decision; the pair's evidence comes from the sources.
 
-The final record binds the reader's decisions to the frozen inventory with optional `comparisonReview`: `inventory` (filename beside the record), `sha256` (hash of that file's bytes), and `decisions` (one entry per issued key). For example, `{"key":"K","ref":"/ideas/0"}` links the comparison to the first idea. Use a zero-based reference to a finding, question or idea for points that reach the author. For other decisions give the key and either `settled` with a source-backed explanation, or `unchecked` with the missing evidence. A coverage count records how many pairs were decided; it does not certify the completeness of the inventory or the truth of the decisions.
+The final record binds the reader's decisions to the frozen inventory with optional `comparisonReview`: `inventory` (filename beside the record), `sha256` (hash of that file's bytes), and `decisions` (one entry per issued key). For example, `{"key":"K","ref":"/ideas/0"}` links the comparison to the first idea. Use a zero-based reference to a finding, question or idea for points that reach the author. For other decisions give the key and either `settled` with a source-backed explanation, or `unchecked` with the missing evidence. `check` refuses a pass that leaves an issued key undecided, and the printout counts the decisions by outcome: to the author, settled, unchecked. The count certifies neither the inventory's completeness nor the decisions' truth.
 
 Keep the stage ledgers beside the frozen draft for attribution and efficient replays. The main reviewer records the source limits and any unchecked comparisons in coverage, attaches `comparisonReview` to the reconciled record, and runs the ordinary check and render. If a stage changes, reuse earlier snapshots with matching source, inventory and instructions; label a replay from saved files when the reader's original context is unavailable.
 

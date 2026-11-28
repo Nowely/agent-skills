@@ -13,6 +13,11 @@ forensics remain in the repository references and release notes.
 - The printout's description said it lists only the blocks not kept; since 0.48.0 it lists every block with its
   description and verdict, not its lines. SKILL.md, the data contract, the agents' reference, the code and the
   printout's own heading now say so, and the critic is asked whether each block kept whole holds as one.
+- The data contract opens with what to read: making it, the format, the fields and the sources before writing the
+  record, the rest when the review has it; the second real trial read all 44 KB first. The comparison pass says how
+  to take the base root without touching the checkout, and that the reader gets a copy of the checked draft while
+  the record goes on and takes the reader's results; the printout counts the pass's decisions by outcome, which the
+  contract promised and no code gave.
 - The units table in Details scrolls inside its column when it is wider, and compact tables wrap their headings
   first: at 1024 px with a wider font its Show in Code ran under the context panel, where no click reached it.
   CI's first run of the page's browser suite found it.
