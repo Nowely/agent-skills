@@ -84,3 +84,26 @@ memory documentation) gave five hypotheses for `rnd`. They are hypotheses only; 
 Limit: the sources report their authors' own measures, mostly single runs without variance and on tasks other than
 skills. No source compares a human-gated change with the same change ungated, so the value of the owner's approval step
 is unmeasured.
+
+**The trials of Change and Create.** Two Change sessions and one Create session, on Sonnet, started through a scripted
+operator with capped turns, each session run once (the sessions of the first head, `93f89d0`, and of the head with the
+plan sentence, `8aea356`). Create, stopped at its plan (K1), held: one plan, every agent with its model and cost, the
+plan page opened first. Change on a recorded case (C1) and a second Change (C2) delivered without the judges, the
+close-out and `result.md` that step 9 names; both ran the preservation gate to green. C2 had the sentence in step 4
+that names the judges as parts of the plan; it put the judges as a question under the Fan-outs rule of `AGENTS.md`
+and, told to decide by the repository's principles, started none. The sentence was taken out. Limit: one session a
+side, so the result is about these runs and not a rate; the operator was scripted, and the real owner answers such a
+question differently; and the trials count the steps taken, not what the change was worth, so they do not show that
+the skipped judges would have changed either patch.
+
+**The selection check, two batches.** The first batch (3 requests meant, 3 near misses, Claude Code 2.1.332, three turns
+each) is void: its set was written by someone who had read the description. The second, from a fresh writer: 2 of 3
+requests meant selected `rnd`, 0 of 3 near misses did, and the one miss, a request to create a skill, went to a rival
+skill. Limit: three a side, one run each, one host and model, a small neutral repository, and the two sets differ, so
+the batches do not compare with each other or show a margin over any earlier description.
+
+**The critic of direction.** On the branch head it returned `change direction`, in three lines: stop answering each
+finding with more text, since three sentences for the same skipped judge have failed; run a subtraction test of a minimal
+`rnd` against the present one, judged on outcome, which no run has done since the third measured version; keep the gate
+script and the plan-then-wait rule, the two parts the sessions follow. Limit: one critic, commit subjects and sizes read
+and not each line's origin, and no outcome measured in this PR.
