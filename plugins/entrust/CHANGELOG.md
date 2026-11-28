@@ -17,6 +17,7 @@ forensics remain in the repository references and release notes.
 - rnd writes Change's finish as its own step 9, with the judge's brief as three paths and the correction's limit.
 - rnd's description puts creating and developing a skill before researching one.
 - rnd's selection check runs only when the skill must be selected unnamed, once for each kind of request on the host and model in use, and its result holds for them only.
+- rnd's Change plan names step 9's judges with their models and the close-out as parts of it, not as questions, so a change is no longer delivered without the finish its plan lacked.
 
 ## 0.49.0 — 2026-11-28
 

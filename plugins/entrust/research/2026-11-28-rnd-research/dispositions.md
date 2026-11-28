@@ -160,7 +160,9 @@ moved | SKILL.md:105 | references/critics.md:102 | decide between the two approa
 moved | SKILL.md:103 | SKILL.md:109 | [critics.md](references/critics.md#the-architecture-critic) briefs it, together with the parts of
 moved | SKILL.md:111 | SKILL.md:110 | [reflection](references/reflection.md) the plan gave this step, and take the critic's verdict as
 moved | SKILL.md:93 | references/plan.md:181 | when the plan is a file: every heading of [the form](#the-form), the parts of
-moved | SKILL.md:201 | SKILL.md:192 | 9. **Finish**, in Create's order for its steps 7 to 10.
+moved | SKILL.md:201 | SKILL.md:191 | 9. **Finish**, in Create's order for its steps 7 to 10.
+moved | SKILL.md:199 | SKILL.md:201 | listed a line, start it as [its section](references/critics.md#the-verifier) briefs it; a requirement it
+moved | SKILL.md:199 | SKILL.md:190 | Your own judgement that a fact is not needed retires nothing.
 moved | references/checks.md:21 | references/checks.md:22 | the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check), when the skill must be selected unnamed
 retired | references/checks.md:21 | messages.md:42 | a fixed twenty-session selection check is excessive and unexplained
 moved | references/checks.md:45 | references/checks.md:48 | a repeated run, more requests of a kind, several sessions for each side, a second reader, or a role on the top

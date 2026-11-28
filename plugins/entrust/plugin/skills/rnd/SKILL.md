@@ -173,7 +173,7 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    user's words name the new value; the plan recommends none and asks, and a reply that leaves the choice to
    you keeps it and removes no fact. A fact moved to another file keeps a link from the page it left.
 4. **Plan.** Do Create's step 3 with the change in place of the approach: choose the check, show the user
-   one plan with the skill's state noted for step 8, and wait.
+   one plan with the skill's state noted for step 8, and wait. The plan names step 9's judges, each with its model, and the close-out, as parts of it, not as questions.
 5. **Have the approach challenged**, when the change adds a step, a route, a script or a file. Start the critic and the parts of reflection the plan gave this step as Create's step 4 does, and act on its verdict.
 6. **Prepare the check.** Follow [checks.md](references/checks.md) for the check the plan named, before any
    edit: its cases and statements, and whatever it runs on the skill as it is now, which you wait for.
@@ -187,15 +187,14 @@ is step 7's commands and step 8; its step 9 is the quality critic's read as crit
    the file is one in the run directory and need not exist yet. Each listed line stood in the files before and
    stands nowhere now. Answer each as the script prints under its list: a `moved` line for each place a fact of
    it went, a `retired` line with the user's saved words, or the line put back. Run it again until it exits 0.
-   Your own judgement that a fact is not needed retires nothing. A change whose list held a line gets the
-   verifier at step 9.
+   Your own judgement that a fact is not needed retires nothing.
 9. **Finish**, in Create's order for its steps 7 to 10.
    - Start the quality critic as [critics.md](references/critics.md#every-brief) and
      [its section](references/critics.md#the-quality-critic) brief it: the paths, what it must not open, whether a
      verifier follows. Act on its return as [that page](references/critics.md#handling-a-return) says.
    - Do Create's step 8 on the edited text: run the plan's check as [checks.md](references/checks.md) says, decide by
-     the plan's rule from confirmed marks; set no threshold after seeing a result. A failed rule is [a correction](references/plan.md#a-correction),
-     limited to one changed plan and one more run of the check; a second failure goes to the user with both
+     the plan's rule from confirmed marks; set no threshold after a result. A failed rule is [a correction](references/plan.md#a-correction),
+     limited to one changed plan and one more run; a second failure goes to the user with both
      results, and the change is undone unless the user overrules. Kept or undone, write
      [a close-out](references/plan.md#a-close-out), then start the parts of [reflection](references/reflection.md) the plan gave Create's step 8.
    - Where [critics.md](references/critics.md#which-model-and-how-many) gives the work a verifier, as when step 8
