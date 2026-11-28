@@ -26,21 +26,22 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
 3. Once routes are written, `node "<skill-dir>/scripts/report.mjs" ground <out>/review.json <repo>`, with the
    checkout at the reviewed head (it refuses one whose files do not hold the lines the diff adds). It saves its commit
    in `<out>/ground.json` with the entry points the changed production code makes — the functions each change is in
-   and the calls that reach them from files that import them, dispatch cases, listeners, handlers, routes. From then on `check` reads every quote in the
-   record at its `path:line` at that commit or beside the record, refuses one that is not there, names a removed line
-   cited without `(base)`, skips a source at another `revision`, and warns of each found place no route follows;
-   follow those that are behaviour through more than one place. The list is not complete; the page labels it found
-   by script.
-   `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
+   and the calls that reach them from files that import them, dispatch cases, listeners, handlers, routes. From then
+   on `check` reads every quote in the record at its `path:line` at that commit or beside the record, refuses one
+   that is not there, names a removed line cited without `(base)`, skips a source at another `revision`, and warns of
+   each found place no route follows; follow those that are behaviour through more than one place. The list is not
+   complete; the page labels it found by script. Run it before the checking agents get the printout, which lists
+   those places for them.
+4. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns
    about a large block given one verdict without `whole`, about kept blocks that serve no requirement or only requirements to confirm no
    question asks about, and about a kept unit holding an open block; for the decision-card fields, about an
    external source without a quote, a historical picture without a revision, a `ran` statement on an external source without a revision, and a card thin without broken links.
    It cannot check that the words are true, nor that a place named to reject a challenge refutes it.
-4. Read the record itself back as a whole, not the printout, which gives no block's lines: the verdict,
+5. Read the record itself back as a whole, not the printout, which gives no block's lines: the verdict,
    `now`, `target`, units, mechanism decisions and steps describe one solution; a removal leaves no orphaned state;
    the target keeps every required rule; each `does` given matches its lines. Binary changes and file modes are outside the blocks: review them and say so in `coverage`.
-5. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
+6. `node "<skill-dir>/scripts/report.mjs" render <out>/review.json` checks the record again, writes `review.html`
    beside it and prints the report as text, every block with its description and verdict but not its lines; the
    JSON is not changed. Link [the page](#the-page).
 

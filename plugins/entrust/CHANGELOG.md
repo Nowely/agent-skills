@@ -46,7 +46,8 @@ forensics remain in the repository references and release notes.
   there, a comment, a string, or a change in an object literal or a class body outside any function does not. Files
   are read at the commit in one git process, as blobs only, without carriage returns. A later checkout changes
   nothing. The printout lists the unfollowed places for the
-  checking agents; the list is the script's, never complete. Python and Go test files, and files under a `test/` or
+  checking agents; the list is the script's, never complete. SKILL.md names the step once routes are written, before
+  the checking agents' printout, and the data contract gives it and `check` a step each. Python and Go test files, and files under a `test/` or
   `tests/` directory, count as tests. A check for a step or a transition no test confirms is written as a charter.
 
 ### Flows on the page
