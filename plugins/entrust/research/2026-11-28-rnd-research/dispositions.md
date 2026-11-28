@@ -61,7 +61,7 @@ retired | references/checks.md:157 | messages.md:28 | answers the floor reaches 
 moved | references/checks.md:157 | references/checks.md:168 | When the floor reaches more than half of the answers, the
 moved | references/checks.md:158 | references/checks.md:169 | material is built again. The rule is written now: how many of the known answers each run must reach,
 retired | references/checks.md:173 | messages.md:29 | `not needed` also requires no regression (checks.md, transfer test)
-moved | references/checks.md:188 | references/checks.md:200 | which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
+moved | references/checks.md:188 | references/checks.md:205 | which skill was loaded before the answer or the first action: this one, a rival by name, or none, shown by the log.
 retired | references/checks.md:192 | messages.md:31 | an unobserved selection is `unknown`, not a confirmed miss (selection check)
 moved | references/critics.md:175 | references/critics.md:182 | It runs on every route but Repair, a small change included; the last step of the route starts it
 moved | references/critics.md:175 | references/critics.md:182 | The plan names it among its agents, on a file's Agents line or in a plan message's list, so the user's
@@ -157,10 +157,10 @@ moved | SKILL.md:24 | SKILL.md:25 | the file that owns it.
 moved | references/checks.md:131 | references/checks.md:140 | how `part` counts is the plan's rule,
 moved | references/plan.md:10 | references/plan.md:12 | writes a close-out, with a plan file or without one.
 moved | SKILL.md:105 | references/critics.md:102 | decide between the two approaches, show the user the changed plan, and wait, as Create's
-moved | SKILL.md:103 | SKILL.md:108 | [critics.md](references/critics.md#the-architecture-critic) briefs it, and take its verdict as
-moved | SKILL.md:111 | SKILL.md:109 | with the parts of [reflection](references/reflection.md) the plan gave this step.
+moved | SKILL.md:103 | SKILL.md:109 | [critics.md](references/critics.md#the-architecture-critic) briefs it, together with the parts of
+moved | SKILL.md:111 | SKILL.md:110 | [reflection](references/reflection.md) the plan gave this step, and take the critic's verdict as
 moved | SKILL.md:93 | references/plan.md:181 | when the plan is a file: every heading of [the form](#the-form), the parts of
-moved | SKILL.md:201 | SKILL.md:191 | 9. **Finish.** - Start the quality critic. Its brief is three paths and nothing else
+moved | SKILL.md:201 | SKILL.md:192 | 9. **Finish**, in Create's order for its steps 7 to 10.
 moved | references/checks.md:21 | references/checks.md:22 | the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check), when the skill must be selected unnamed
 retired | references/checks.md:21 | messages.md:42 | a fixed twenty-session selection check is excessive and unexplained
 moved | references/checks.md:45 | references/checks.md:48 | a repeated run, more requests of a kind, several sessions for each side, a second reader, or a role on the top
@@ -185,3 +185,6 @@ moved | references/plan.md:28 | references/plan.md:171 | the approach, with the 
 moved | references/plan.md:28 | references/plan.md:175 | the check: what will be observed, in which runs, the result that keeps the work, the result that does not, and
 moved | references/plan.md:29 | references/plan.md:175 | what the check cannot show;
 moved | references/plan.md:29 | references/plan.md:180 | how the result will be delivered;
+
+moved | references/checks.md:48 | references/checks.md:51 | - A check of more than five sessions is shown in the plan on a line of its own
+moved | references/checks.md:55 | references/checks.md:58 | cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet; a selection check takes the host and the model the
