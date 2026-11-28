@@ -790,10 +790,14 @@ function flowPanel(sel) {
 // no behaviour at all — each opening its code where the diff has it.
 const GROUND_KIND = () => ({ function: L("p.ground.kind.function"), case: L("p.ground.kind.case"), listener: L("p.ground.kind.listener"), handler: L("p.ground.kind.handler"), route: L("p.ground.kind.route"), call: L("p.ground.kind.call") });
 function groundHtml() {
-  const g = D.ground; if (!g?.unlisted.length) return "";
+  const g = D.ground; if (!g) return "";
   const kinds = GROUND_KIND();
+  // the other side: steps on a route the script found no entry point for, each a way into its step
+  const unseen = g.unseen?.length ? `<details class="ground ground-unseen"><summary>${esc(L("ground.unseen", n(g.unseen.length), n(g.steps)))}</summary><p class="muted small">${esc(L("p.ground.unseen-note"))}</p>
+    <ul class="plain ground-list">${g.unseen.map((u) => `<li><a class="linkbtn" href="#summary/route${u.route + 1}/step${u.step + 1}">${prose(D.routes[u.route].title)} · ${n(u.step + 1)}. ${prose(D.routes[u.route].steps[u.step].role)}</a><div class="mono small sub">${esc(u.block ? `B${u.block} ${u.at}` : u.at)}</div></li>`).join("")}</ul></details>` : "";
+  if (!g.unlisted.length) return unseen;
   return `<details class="ground"><summary>${esc(L("ground.unlisted", n(g.unlisted.length), n(g.found)))}</summary><p class="muted small">${esc(L("p.ground.note"))}</p>
-    <ul class="plain ground-list">${g.unlisted.map((c) => `<li><span class="tag neutral">${esc(kinds[c.kind] ?? c.kind)}</span> <code>${esc(c.name)}</code> ${c.place?.file != null && !c.place.base ? `<a class="linkbtn mono small" href="#code/line/${c.place.file}:+${c.place.line}">${esc(c.at)}</a>` : `<span class="mono small muted">${esc(c.at)}</span>`}<div class="mono small sub">${esc(c.quote)}</div></li>`).join("")}</ul></details>`;
+    <ul class="plain ground-list">${g.unlisted.map((c) => `<li><span class="tag neutral">${esc(kinds[c.kind] ?? c.kind)}</span> <code>${esc(c.name)}</code> ${c.place?.file != null && !c.place.base ? `<a class="linkbtn mono small" href="#code/line/${c.place.file}:+${c.place.line}">${esc(c.at)}</a>` : `<span class="mono small muted">${esc(c.at)}</span>`}<div class="mono small sub">${esc(c.quote)}</div></li>`).join("")}</ul></details>` + unseen;
 }
 // How much of a route a test confirms: of the steps and links the review listed — not of all the code allows.
 const routeEvidence = (r) => { const items = [...r.steps.map((s, k) => ["s", k, s]), ...(r.links ?? []).map((l, j) => ["l", j, l])]; return { items, tested: items.filter(([, , x]) => testedHere(x)) }; };

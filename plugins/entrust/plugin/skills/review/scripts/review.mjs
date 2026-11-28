@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { address, blank, changedLines, numberOf, parseDiff } from "./diff.mjs";
 import { comparisonFaults } from "./comparisons.mjs";
-import { checkQuotes, onRoute, readGround, GROUND } from "./ground.mjs";
+import { checkQuotes, onRoute, readGround, unseenSteps, GROUND } from "./ground.mjs";
 
 export const MECHANISM_CHANGES = ["added", "reused", "changed", "removed"];
 export const mechanismCounts = (review) => MECHANISM_CHANGES.map((change) =>
@@ -706,7 +706,8 @@ export function check(review, files, directory) {
     const found = Array.isArray(g.candidates) ? g.candidates : [], unlisted = found.filter((c) => !onRoute(c, review, owner));
     if (unlisted.length && (routes.length || unlisted.length >= 3))
       warnings.push(`${unlisted.length} of ${found.length} places the script found in the changed code are on no route (${unlisted.slice(0, 6).map((c) => `${c.kind} ${c.name} at ${c.at}`).join("; ")}${unlisted.length > 6 ? "; …" : ""}): follow those that are behaviour through more than one place, or leave them`);
-    ground = { found: found.length, unlisted, checked: quotes.checked, skipped: quotes.skipped };
+    const { unseen, of } = unseenSteps(review, found, owner);
+    ground = { found: found.length, unlisted, unseen, steps: of, checked: quotes.checked, skipped: quotes.skipped };
   }
   return { errors, warnings, owner, ground };
 }

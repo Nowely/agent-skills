@@ -47,8 +47,16 @@ forensics remain in the repository references and release notes.
   are read at the commit in one git process, as blobs only, without carriage returns. A later checkout changes
   nothing. The printout lists the unfollowed places for the
   checking agents; the list is the script's, never complete. SKILL.md names the step once routes are written, before
-  the checking agents' printout, and the data contract gives it and `check` a step each. Python and Go test files, and files under a `test/` or
-  `tests/` directory, count as tests. A check for a step or a transition no test confirms is written as a charter.
+  the checking agents' printout, and the data contract gives it and `check` a step each. Python and Go test files,
+  and files under a `test/` or `tests/` directory, count as tests. A check for a step or a transition no test
+  confirms is written as a charter.
+- `ground` shows the disagreement both ways. Beside the places it found and no route follows, it lists each route
+  step in production code it found no entry point for: such a step stands on the review's reading alone, which may be
+  right, since static search misses calls made through names it cannot see. It is no fault: the printout lists these
+  steps for the verifier to confirm by reading, and Summary lists them apart, each a link into its step, with and
+  without JavaScript. A found function now spans its body and a found call the function it is in, so a step inside
+  either is followed and seen. On the first real review 3 of 16 steps stood alone: top-level CLI code, a path through
+  the page's data, and the browser's script.
 
 ### Flows on the page
 

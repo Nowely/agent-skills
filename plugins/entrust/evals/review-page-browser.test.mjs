@@ -1052,6 +1052,20 @@ test("a flow's rows are ordered to cross the fewest edges, in the order the step
       || JSON.stringify({ order, ends, row, panel: panel.slice(0, 600), found, list });
   }));
 
+test("the other side of the disagreement is listed apart: a route's step the script found no entry point for, as a way into that step, and the page without JavaScript lists it too",
+  "Fable's research: the script's list is never complete, so the steps that stand on the review's reading alone are shown beside the places no route follows (PR 119)",
+  cased(FLOW_URL + "#summary", {}, async (page) => {
+    const head = await text(page, "#panel-summary details.ground-unseen summary");
+    await page.click("#panel-summary details.ground-unseen summary"); await settle(page);
+    const first = page.locator("#panel-summary details.ground-unseen .ground-list a").first(), href = await first.getAttribute("href"), label = await first.innerText();
+    await first.click(); await settle(page);
+    const current = await page.evaluate(() => ({ hash: location.hash, step: document.querySelector('.flow-n[aria-current="true"]')?.textContent.replace(/\s+/g, " ").trim() ?? null }));
+    const plain = await open(FLOW_URL, { js: false });
+    const noJs = await plain.page.evaluate(() => document.body.innerText).finally(() => plain.close());
+    return /^On a route, not found by script: \d+ of \d+ steps$/.test(head) && current.hash === href && current.step !== null && current.step.includes(label.split(". ").slice(1).join(". ").slice(0, 20))
+      && noJs.includes(head) || JSON.stringify({ head, href, label, current, noJs: noJs.includes("On a route") });
+  }));
+
 test("leaving a flow for another item leaves none of its steps current; a result chosen keeps the focus; the List view walks by the arrow keys; Coverage names who ran a statement and where",
   "a step stayed announced as current after the selection moved on, choosing a result dropped the focus to the page, and the List view's note promised keys it did not answer (PR 119 critic)",
   cased(FLOW_URL + "#summary/route1/step2", {}, async (page) => {

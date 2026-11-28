@@ -534,7 +534,7 @@ test("ground reads every quote at its place in the repository — check then ref
     const g = report("ground", path.join(out, "review.json"), repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
     const kinds = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
     const want = ["call total src/use.js:2", "case two src/a.js:4", "function total src/a.js:2", "listener keydown src/a.js:6"];
-    if (g.status !== 0 || JSON.stringify(kinds) !== JSON.stringify(want) || !/4 places found in the changed code, 0 on no route; 1 quotes read/.test(g.stdout)) return JSON.stringify({ status: g.status, out: g.stdout, err: g.stderr, kinds });
+    if (g.status !== 0 || JSON.stringify(kinds) !== JSON.stringify(want) || !/4 places found in the changed code, 0 on no route; 0 of 2 route steps in production code it did not find; 1 quotes read/.test(g.stdout)) return JSON.stringify({ status: g.status, out: g.stdout, err: g.stderr, kinds });
     // without a route, check names what the script found; a quote not at its place is refused, saying what is there
     write({ ...routed, routes: [] });
     const bare = report("check", path.join(out, "review.json"));
@@ -626,6 +626,39 @@ test("ground's reading holds at the edges: a CRLF file is the reviewed state, a 
     // git shows a directory as a listing of its files: that is no file to quote
     if (quote(calls, "src:3", "a.js").checked) faults.push("a directory read as a file");
     return !faults.length || faults.join("; ");
+  });
+
+test("ground shows the disagreement both ways: a route's step in production code the script found no entry point for is listed, as no fault, in the printout and its counts; a step in a function it found, or in the function a found call is in, is seen",
+  "Fable's research: static call graphs of JavaScript find 76-88% of calls, so the script's list is never complete and the useful signal is where it and the routes disagree, in both directions (PR 119)",
+  () => {
+    const dir = fs.mkdtempSync(path.join(run, "ground4-")), repoDir = path.join(dir, "repo"), out = path.join(dir, "out");
+    const put = (files) => { for (const [f, t] of Object.entries(files)) { const p = path.join(repoDir, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, t); } };
+    const git = (...a) => spawnSync("git", ["-C", repoDir, "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { encoding: "utf8" });
+    fs.mkdirSync(repoDir, { recursive: true }); fs.mkdirSync(out); git("init", "-q");
+    const total = (k) => `export default function total(n) {\n  return n * ${k};\n}\n`, rate = (k) => `export function rate(v) {\n  return v + ${k};\n}\n`;
+    put({ "src/a.js": total(2), "src/b.js": rate(1),
+      "src/as.js": "import { rate } from './b.js';\nexport function use() {\n  const v = 1;\n  return rate(v);\n}\n",
+      "src/free.js": "export const z = 1;\n" });
+    git("add", "-A"); git("commit", "-qm", "base");
+    put({ "src/a.js": total(3), "src/b.js": rate(2) });
+    git("add", "-A"); git("commit", "-qm", "head");
+    const diffText = git("diff", "--no-color", "--no-ext-diff", "-U3", "HEAD~1..HEAD", "--").stdout;
+    fs.writeFileSync(path.join(out, "source.diff"), diffText);
+    const record = { ...twoUnits(diffText, [{ path: "src/a.js", added: "2", removed: "2", does: "The total.", serves: [1], verdict: "keep" },
+      { path: "src/b.js", added: "2", removed: "2", does: "The rate.", serves: [1], verdict: "keep" }]), units: [],
+      routes: [{ title: "A total, through its rate", requirements: [1], steps: [{ block: 1, role: "Multiplies." },
+        { at: "src/as.js:3", quote: "const v = 1;", role: "Takes the value.", via: "its own constant, src/as.js:3" },
+        { at: "src/free.js:1", quote: "export const z = 1;", role: "Holds a value the script cannot tie in.", via: "a name read at run time, src/free.js:1" }] }] };
+    fs.writeFileSync(path.join(out, "review.json"), JSON.stringify(record));
+    const g = report("ground", path.join(out, "review.json"), repoDir), saved = JSON.parse(fs.readFileSync(path.join(out, "ground.json"), "utf8"));
+    const found = saved.candidates.map((c) => `${c.kind} ${c.name} ${c.at}`).sort();
+    const want = ["call rate src/as.js:4", "function rate src/b.js:1", "function total src/a.js:1"];
+    if (g.status !== 0 || JSON.stringify(found) !== JSON.stringify(want)) return JSON.stringify({ status: g.status, err: g.stderr, found });
+    // three steps in production code; the block is in total, as.js:3 is in use(), where rate is called; free.js is seen by nothing
+    if (!/1 of 3 route steps in production code it did not find/.test(g.stdout)) return `counts: ${g.stdout}`;
+    const printed = report("render", path.join(out, "review.json"));
+    return printed.status === 0 && /On a route, not found by script: 1 of 3 steps:\n- A total, through its rate, 3\. `src\/free\.js:1`: Holds a value/.test(printed.stdout) && !/On a route, not found[^#]*src\/as\.js/.test(printed.stdout)
+      || `printout: ${printed.stderr} ${printed.stdout.slice(printed.stdout.indexOf("On a route"), printed.stdout.indexOf("On a route") + 400)}`;
   });
 
 test("check validates without rendering or changing the canonical record; delayed rendering keeps it unchanged",

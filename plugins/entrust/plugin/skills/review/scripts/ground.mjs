@@ -186,16 +186,18 @@ const wordIn = (w, text) => new RegExp(`(?<![\\w$])${w.replace(/[.*+?^${}()|[\]\
 // function in an import; a file that defines the name itself calls its own. A member call, `m.total(`, reaches it from a
 // file that imports its file, or from that file itself. In Go a call reaches it from the same package, or, qualified,
 // from a file importing that package. Calls through a renamed default import are not followed.
+const stemOf = (f) => path.posix.basename(f).replace(/\.[^.]+$/, "");
+// Whether an import in file p, by the path it is written with, names the file home: a relative path resolved from p, so
+// a copy of the module elsewhere imports its own copy; a package path or a Python module by its last part.
+function refersTo(p, spec, home) {
+  const bare = (f) => f.replace(/\.[^./]+$/, ""), homeStem = stemOf(home), homeDir = path.posix.basename(path.posix.dirname(home));
+  if (/^\.\.?\//.test(spec) && !/\.py$/.test(p)) { const at = bare(path.posix.normalize(path.posix.join(path.posix.dirname(p), spec))); return at === bare(home) || (homeStem === "index" && at === path.posix.dirname(home)); }
+  const s = stemOf(spec); return s === homeStem || (homeStem === "index" && s === homeDir) || (/\.go$/.test(p) && s === homeDir);
+}
 function reaches(p, name, qualifier, home, textOf) {
   if (p === home) return true;
   const lines = textOf(p), text = lines.join("\n");
-  const stemOf = (f) => path.posix.basename(f).replace(/\.[^.]+$/, ""), bare = (f) => f.replace(/\.[^./]+$/, "");
-  const homeStem = stemOf(home), homeDir = path.posix.basename(path.posix.dirname(home)), homeBare = bare(home);
-  // a relative path is resolved from the importing file, so a copy of the module elsewhere imports its own copy
-  const importsHome = importsOf(text, p).some((spec) => {
-    if (/^\.\.?\//.test(spec) && !/\.py$/.test(p)) { const at = bare(path.posix.normalize(path.posix.join(path.posix.dirname(p), spec))); return at === homeBare || (homeStem === "index" && at === path.posix.dirname(home)); }
-    const s = stemOf(spec); return s === homeStem || (homeStem === "index" && s === homeDir) || (/\.go$/.test(p) && s === homeDir);
-  });
+  const importsHome = importsOf(text, p).some((spec) => refersTo(p, spec, home));
   if (/\.go$/.test(p)) return qualifier ? importsHome : path.posix.dirname(p) === path.posix.dirname(home);
   if (qualifier) return importsHome;
   if (lines.some((t) => definitionIn(t) === name)) return false;
@@ -206,6 +208,46 @@ function reaches(p, name, qualifier, home, textOf) {
   return importsHome || importStatements(text).some((s) => wordIn(name, s) && !elsewhere(s));
 }
 
+// The last line of the definition at line k: the line that closes it at its own indentation, or, where the language
+// closes by indentation, the last line indented deeper. A one-line definition ends where it starts.
+function endOf(lines, k) {
+  const depth = indentOf(lines[k - 1] ?? "");
+  let last = k;
+  for (let j = k + 1; j <= lines.length; j++) {
+    const t = lines[j - 1];
+    if (!t.trim()) continue;
+    if (indentOf(t) > depth) { last = j; continue; }
+    return /^\s*[}\])]/.test(t) ? j : last;
+  }
+  return last;
+}
+// The definition that encloses line n, found upward: the first line at a lower indentation that defines a function and
+// runs past n. A block at a lower indentation that is no definition — an object, a class, a call — encloses the line
+// instead, and the search goes on above it; at the top level it stops.
+function enclosingOf(lines, n) {
+  const own = lines[n - 1] ?? "";
+  let depth = own.trim() ? indentOf(own) : Infinity;
+  for (let k = n - 1; k >= 1 && depth > 0; k--) {
+    const text = lines[k - 1];
+    if (!text?.trim() || COMMENT.test(text) || indentOf(text) >= depth) continue;
+    const name = definitionIn(text), to = name ? endOf(lines, k) : 0;
+    if (!name || to < n) { depth = indentOf(text); continue; }
+    return { k, name, text, to };
+  }
+  return null;
+}
+// A call's function: a route that passes through the function a call is in passes through the call.
+const within = (lines, n) => { const def = enclosingOf(lines ?? [], n); return def ? { in: [def.k, def.to] } : {}; };
+// A candidate's lines: a function from its definition to its end, a call the function it is in, anything else its one
+// line.
+const spanOf = (c) => {
+  const p = placeOf(c.at);
+  if (!p) return null;
+  if (Array.isArray(c.in)) return { path: p.path, from: Math.min(p.from, c.in[0]), to: Math.max(p.from, c.in[1]) };
+  return { ...p, to: Math.max(p.from, Number.isInteger(c.to) ? c.to : p.from) };
+};
+const overlaps = (a, b) => Boolean(a && b && a.path === b.path && a.from <= b.to && b.from <= a.to);
+
 export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}) {
   const found = [], seen = new Set(), touched = new Map(), read = reader(path.resolve(checkout.root), checkout.sha);
   const add = (c) => { const key = `${c.kind}\n${c.name}\n${c.at}`; if (!seen.has(key)) { seen.add(key); found.push(c); } };
@@ -214,7 +256,7 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
     for (const hunk of file.hunks) {
       for (const line of hunk.filter((l) => l.kind === "add")) {
         const name = definitionIn(line.text);
-        if (name) { add({ kind: "function", name, at: `${file.path}:${line.new}`, quote: line.text.trim().slice(0, 160) }); continue; }
+        if (name) { add({ kind: "function", name, at: `${file.path}:${line.new}`, to: head ? endOf(head, line.new) : line.new, quote: line.text.trim().slice(0, 160) }); continue; }
         for (const [kind, re] of MARKS) { const m = re.exec(line.text); if (m) { add({ kind, name: unquote(m[1]), at: `${file.path}:${line.new}`, quote: line.text.trim().slice(0, 160) }); break; } }
       }
       // the definition that encloses each change, found upward in the file at the reviewed commit: a change to a
@@ -228,19 +270,12 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
         near.get(n).push(address(l));
       }
       for (const [n, changes] of near) {
-        const own = head[n - 1] ?? "";
-        let depth = own.trim() ? indentOf(own) : Infinity;
-        for (let k = n - 1; k >= 1 && depth > 0; k--) {
-          const text = head[k - 1];
-          if (!text?.trim() || COMMENT.test(text) || indentOf(text) >= depth) continue;
-          const name = definitionIn(text);
-          if (!name) { depth = indentOf(text); continue; }
-          const at = `${file.path}:${k}`, had = found.find((c) => c.kind === "function" && c.name === name && c.at === at);
-          if (had) had.changes = [...new Set([...(had.changes ?? []), ...changes])];
-          else add({ kind: "function", name, at, quote: text.trim().slice(0, 160), changes });
-          if (name.length >= 3) touched.set(name, at);
-          break;
-        }
+        const def = enclosingOf(head, n);
+        if (!def) continue;
+        const at = `${file.path}:${def.k}`, had = found.find((c) => c.kind === "function" && c.name === def.name && c.at === at);
+        if (had) had.changes = [...new Set([...(had.changes ?? []), ...changes])];
+        else add({ kind: "function", name: def.name, at, to: def.to, quote: def.text.trim().slice(0, 160), changes });
+        if (def.name.length >= 3) touched.set(def.name, at);
       }
     }
     for (const c of found.filter((c) => c.kind === "function" && c.at.startsWith(file.path + ":") && c.name.length >= 3)) touched.set(c.name, c.at);
@@ -261,24 +296,54 @@ export function candidatesOf(files, checkout, { perName = 12, calls = 120 } = {}
       if (total >= calls) break;
       const name = hit[2], atCall = `${m[1]}:${m[2]}`;
       if ((per.get(name) ?? 0) >= perName || touched.get(name) === atCall || !reaches(m[1], name, hit[1], touched.get(name).replace(/:\d+$/, ""), textOf)) continue;
-      add({ kind: "call", name, at: atCall, quote: m[3].trim().slice(0, 160) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
+      add({ kind: "call", name, at: atCall, quote: m[3].trim().slice(0, 160), ...within(textOf(m[1]), +m[2]) }); per.set(name, (per.get(name) ?? 0) + 1); total++;
     }
   }
   return found;
 }
 
-// A candidate a route follows: its line, or a change it encloses, falls in a block that is a step, or is a step's place in unchanged code, or the
-// route's words name its place; a function, a case, a listener, a handler or a route is followed too when the route
-// names it as code — in backticks, or in a step's quoted line. A caller is followed by its place only.
+// A candidate a route follows: its line, or a change it encloses, falls in a block that is a step; a step's place lies in
+// its lines — a function's from its definition to its end, a call's the function it is in; or the route's words name a
+// place in them. A function, a case, a listener, a handler or a route is followed too when the route names it as code,
+// in backticks or in a step's quoted line; a call by its place only.
 export function onRoute(c, review, owner) {
   const p = placeOf(c.at), routes = Array.isArray(review.routes) ? review.routes : [];
   const blocks = new Set([p && owner?.get(`${p.path}\n+${p.from}`), ...(p ? c.changes ?? [] : []).map((a) => owner?.get(`${p.path}\n${a}`))].filter((b) => b !== undefined));
-  const same = (at) => { const q = placeOf(at); return Boolean(q && p && q.path === p.path && p.from >= q.from && p.from <= q.to); };
+  const span = spanOf(c), same = (at) => overlaps(placeOf(at), span);
   const text = (r) => [r.title, ...(r.steps ?? []).flatMap((s) => [s.role, s.via, s.value]), ...(r.links ?? []).map((l) => l.via)].filter((x) => typeof x === "string").join("\n");
   const code = (r) => [...text(r).matchAll(/`([^`]+)`/g)].map((m) => m[1]).join("\n") + "\n" + (r.steps ?? []).map((s) => s.quote ?? "").join("\n");
   const named = (hay) => new RegExp(`(?<![\\w$-])${c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w$-])`).test(hay);
   return routes.some((r) => (r.steps ?? []).some((s) => blocks.has(s.block - 1) || (s.at && same(s.at)))
     || [...text(r).matchAll(/([\w./-]+:\d+(?:-\d+)?)/g)].some((m) => same(m[1])) || (c.kind !== "call" && named(code(r))));
+}
+
+// The other side of the disagreement: a route's step in production code where the script found no entry point — not
+// its line, not a change in the function it found, not a call at its place. Such a step stands on the review's reading
+// alone, which may be right: static search misses calls made through names it cannot see. `of` counts the steps the
+// script could have found, those in production code.
+export function unseenSteps(review, candidates, owner) {
+  const blocks = new Set(), places = [], out = [];
+  let of = 0;
+  for (const c of candidates) {
+    const p = placeOf(c.at);
+    if (!p) continue;
+    places.push(spanOf(c));
+    for (const a of [`+${p.from}`, ...(c.changes ?? [])]) { const b = owner?.get(`${p.path}\n${a}`); if (b !== undefined) blocks.add(b); }
+  }
+  (Array.isArray(review.routes) ? review.routes : []).forEach((r, i) => (Array.isArray(r.steps) ? r.steps : []).forEach((s, k) => {
+    if (Number.isInteger(s.block)) {
+      const b = review.blocks?.[s.block - 1];
+      if (!b || !running(b.path)) return;
+      of++;
+      if (!blocks.has(s.block - 1)) out.push({ route: i, step: k, block: s.block, at: b.path });
+      return;
+    }
+    const q = placeOf(s.at ?? "");
+    if (!q || !running(q.path)) return;
+    of++;
+    if (!places.some((p) => overlaps(p, q))) out.push({ route: i, step: k, block: null, at: s.at });
+  }));
+  return { unseen: out, of };
 }
 
 // What `ground` saves beside the record: the diff it read, the checkout's top level and commit, and the candidates.

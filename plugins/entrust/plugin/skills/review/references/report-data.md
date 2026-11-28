@@ -30,7 +30,9 @@ See the [comparison pass](#comparison-pass), [fields](#fields), [sources](#sourc
    on `check` reads every quote in the record at its `path:line` at that commit or beside the record, refuses one
    that is not there, names a removed line cited without `(base)`, skips a source at another `revision`, and warns of
    each found place no route follows; follow those that are behaviour through more than one place. The list is not
-   complete; the page labels it found by script. Run it before the checking agents get the printout, which lists
+   complete; the page labels it found by script. The other side is listed too, as no fault: a route's step in
+   production code where the script found no entry point stands on the review's reading alone, and the verifier
+   confirms it by reading. Run it before the checking agents get the printout, which lists
    those places for them.
 4. `node "<skill-dir>/scripts/report.mjs" check <out>/review.json` until it passes. It checks the fields, the
    references between them, and that every nonblank changed line of the saved diff belongs to exactly one block. It warns

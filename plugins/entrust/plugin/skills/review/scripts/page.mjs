@@ -148,7 +148,8 @@ export function page(review, files, model, { syntax, directory } = {}) {
     passport: review.passport ?? null,
     // what the script found in the changed code and no route names, each at its place in the diff when it is there
     ground: model.ground ? { found: model.ground.found, checked: model.ground.checked,
-      unlisted: model.ground.unlisted.map((c) => ({ kind: c.kind, name: c.name, at: c.at, quote: c.quote, place: placeOf(c.at) })) } : null,
+      unlisted: model.ground.unlisted.map((c) => ({ kind: c.kind, name: c.name, at: c.at, quote: c.quote, place: placeOf(c.at) })),
+      steps: model.ground.steps ?? 0, unseen: (model.ground.unseen ?? []).map((u) => ({ route: u.route, step: u.step, block: u.block, at: u.at })) } : null,
     screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, revision: s.revision ?? null, provenance: s.provenance,
       sources: sources(s.sources), differences: s.differences.map((d) => ({ what: d.what, why: d.why, finding: d.finding === undefined ? null : String(d.finding) })),
       // A picture given as a file travels once, in the document's <img data-pic>; the runtime takes it from there.

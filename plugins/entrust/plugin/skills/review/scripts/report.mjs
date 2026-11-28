@@ -75,6 +75,8 @@ function markdown(review, { blocks, requirements, units, target, mechanisms, sce
         + `${step.findings?.length || step.questions?.length ? ` (${[...(step.findings ?? []).map(String), ...(step.questions ?? []).map((q) => `Q${q}`)].join(", ")})` : ""}${confirmed(step.confirmedBy)}`),
       ...(r.links ?? []).map((l) => `   ${l.from} → ${l.to}: ${l.via}${l.question !== undefined ? ` (Q${l.question})` : ""}${confirmed(l.confirmedBy)}`)]), ""] : []),
     ...(ground?.unlisted.length ? [`${t("ground.unlisted", ground.unlisted.length, ground.found)}:`, ...ground.unlisted.map((c) => `- ${c.kind} \`${c.name}\` \`${c.at}\`: ${c.quote}`), ""] : []),
+    // the other side: steps the script found no entry point for, which the verifier confirms by reading
+    ...(ground?.unseen?.length ? [`${t("ground.unseen", ground.unseen.length, ground.steps)}:`, ...ground.unseen.map((u) => `- ${review.routes[u.route].title}, ${u.step + 1}. ${u.block ? `B${u.block} ` : ""}\`${u.block ? `${blocks[u.block - 1]?.path}:${blocks[u.block - 1]?.where}` : u.at}\`: ${review.routes[u.route].steps[u.step].role}`), ""] : []),
     `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
@@ -277,7 +279,7 @@ try {
     const { errors, warnings, ground } = check(review, files, directory);
     for (const warning of warnings) console.error(`warning: ${warning}`);
     if (errors.length) console.error(`Fix these ${errors.length} and run check again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
-    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.checked ?? 0} quotes read at their places, ${ground?.skipped ?? 0} not read (another revision, a base line, or no file).`);
+    console.log(`${GROUND}: ${ground?.found ?? 0} places found in the changed code, ${ground?.unlisted.length ?? 0} on no route; ${ground?.unseen?.length ?? 0} of ${ground?.steps ?? 0} route steps in production code it did not find; ${ground?.checked ?? 0} quotes read at their places, ${ground?.skipped ?? 0} not read (another revision, a base line, or no file).`);
     process.exit(errors.length ? 1 : 0);
   } else if (["render", "check"].includes(command) && argument) {
     const bytes = fs.readFileSync(argument), review = JSON.parse(bytes.toString("utf8")), directory = path.dirname(path.resolve(argument));
