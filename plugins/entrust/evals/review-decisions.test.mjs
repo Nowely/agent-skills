@@ -175,7 +175,7 @@ test("one comment per line or paragraph: new text replaces it in place, empty te
   s = D.paragraphComment(D.lineComment(s, { path: "a.js", side: "base", line: 3 }, ""), { item: "f1", field: "what" }, "");
   assert.deepEqual([s.lines.length, s.paragraphs.length], [1, 0]);
   assert.deepEqual(D.normalize({ answers: { q1: { choice: "keep" } }, lines: [{ path: "a", side: "left", line: 1, text: "x" }, { path: "a", side: "head", line: 2, text: "ok" }],
-    paragraphs: [{ item: "q1", text: "no field" }] }), { answers: { q1: { choice: "keep" } }, lines: [{ path: "a", side: "head", line: 2, text: "ok" }], paragraphs: [] });
+    paragraphs: [{ item: "q1", text: "no field" }] }), { answers: { q1: { choice: "keep" } }, lines: [{ path: "a", side: "head", line: 2, text: "ok" }], paragraphs: [], checks: {} });
   for (const raw of [null, "x", [], 5]) assert.deepEqual(D.normalize(raw), D.empty());
 });
 
@@ -197,7 +197,7 @@ test("a comment on a selection keeps its lines, characters and words; it is the 
   assert.deepEqual([read.lines.map((c) => c.text), read.paragraphs.map((c) => c.text)], [["ok"], ["fine"]]);
 });
 
-test("the export is schema 8 under the record's and the diff's digests: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
+test("the export is schema 9 under the record's and the diff's digests and the reviewed revision: each item's status and the answer in effect, drafts apart, comments with their anchors", () => {
   const items = D.itemsOf({ questions: [
     { id: 1, kind: "decision", variants: [{ id: "keep", text: "Keep it" }, { id: "revert", text: "Revert it" }] },
     { id: 2, kind: "decision", variants: [{ id: "yes", text: "Yes" }, { id: "no", text: "No" }], parent: { question: 1, variants: ["keep"] } },
@@ -211,8 +211,8 @@ test("the export is schema 8 under the record's and the diff's digests: each ite
   const meta = { recordSha: "r".repeat(64), diffSha: "d".repeat(64), key: "k1", title: "A review", range: "HEAD~1..HEAD" };
   const out = D.exportOf(items, s, meta);
   assert.deepEqual({ ...out, items: undefined, lineComments: undefined, paragraphComments: undefined },
-    { schema_version: 8, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD",
-      progress: { total: 5, done: 3, open: 1, deferred: 1 }, items: undefined, lineComments: undefined, paragraphComments: undefined });
+    { schema_version: 9, record_sha256: meta.recordSha, diff_sha256: meta.diffSha, key: "k1", title: "A review", range: "HEAD~1..HEAD", revision: null,
+      progress: { total: 5, done: 3, open: 1, deferred: 1 }, items: undefined, lineComments: undefined, paragraphComments: undefined, checks: [] });
   assert.deepEqual(out.items, [
     { item: "q1", kind: "decision", status: "open" },
     // Q2's answer is in effect while its parent is open, and it says so: the parent can still retire it.
@@ -228,3 +228,17 @@ test("the export is schema 8 under the record's and the diff's digests: each ite
   assert.doesNotMatch(JSON.stringify(out), /verified|accepted/);
 });
 
+test("a check's result is the owner's observation apart from the answers: one of four results with its conditions and note, counted by no decision, exported only once a result is chosen", () => {
+  const items = D.itemsOf({ questions: [{ id: 1, kind: "fact" }] });
+  let s = D.recordCheck(D.empty(), "c2", { result: "pass", conditions: "Chrome 130, demo data" });
+  s = D.recordCheck(s, "c1", { note: "not run yet" });
+  s = D.recordCheck(s, "c2", { note: "Upper case in the list." });
+  assert.deepEqual(s.checks, { c2: { result: "pass", conditions: "Chrome 130, demo data", note: "Upper case in the list." }, c1: { note: "not run yet" } });
+  assert.deepEqual(D.progress(items, s), D.progress(items, D.empty()));
+  const out = D.exportOf(items, s, { recordSha: "r", diffSha: "d", key: "k", title: "t", range: "x", revision: "abc123" });
+  assert.deepEqual([out.revision, out.checks], ["abc123", [{ check: 2, result: "pass", conditions: "Chrome 130, demo data", note: "Upper case in the list." }]]);
+  // a result chosen again is cleared; an entry left empty is gone; storage keeps only what reads as a check
+  s = D.recordCheck(D.recordCheck(s, "c1", { note: "" }), "c2", { result: undefined });
+  assert.deepEqual(s.checks, { c2: { conditions: "Chrome 130, demo data", note: "Upper case in the list." } });
+  assert.deepEqual(D.normalize({ checks: { c1: { result: "ok" }, x: { result: "pass" }, c3: { result: "fail", note: "  " }, c4: "pass" } }).checks, { c3: { result: "fail" } });
+});

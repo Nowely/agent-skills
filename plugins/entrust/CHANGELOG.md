@@ -29,6 +29,21 @@ forensics remain in the repository references and release notes.
   result for a new revision.
 - A coverage statement may say `by` whom and `where` it ran or was read: a green CI job can skip a suite.
 
+### Flows on the page
+
+- A route opens under its row in Summary › How it works as a flow the page lays out from the record's order and
+  links: each step in a row below the steps that lead to it, a link back drawn at the side, a state that stays as a
+  loop, each link's words on its edge. Selecting a step shows beside it its place, value, code — the block's excerpt
+  or the quoted line of unchanged code — and its evidence: read, or confirmed by a test with its run, who ran it and
+  where, and the quoted assertion; a step where the path stops shows its finding or question. A link opens its own
+  context; the arrow keys walk the steps; `#summary/route1/step2` and `…/link3` open one. Every route has a List
+  view; a route of states opens as its transition table, one row per trigger, the diagram one click away. The page
+  without JavaScript lists the same steps, links, stops and confirmations.
+- Details › Checks keeps apart what stands behind each check: proposed and not run, confirmed by a test, observed by
+  the owner at this revision or an earlier one. The owner records Pass, Fail, Could not run or Observed with the
+  conditions and a note; the result goes into the export, not into the decisions. **Breaking:** the export is
+  schema 9: it adds `revision`, the reviewed revision the answers and results belong to, and `checks`.
+
 ## 0.48.0 — 2026-11-27
 
 ### Review report

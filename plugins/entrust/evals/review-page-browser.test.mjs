@@ -869,22 +869,131 @@ test("a decision's recommendation names the variant it recommends, and one with 
   }));
 
 // ---- understanding the change (PR 109: C5, C6)
-test("Summary says how the change works, one route per behaviour, and a route's panel draws its steps as a flow, each role in its box and each link on the arrow into it, a step opening its code",
-  "related blocks were a set with no order, roles or connections",
+test("Summary says how the change works, one route per behaviour; a route opens under its row as a flow — its steps in order, each link's words on its edge — and a step opens its code and evidence beside it, the arrow keys walking the steps",
+  "related blocks were a set with no order, roles or connections; then the route lived only in the side panel, away from the summary it explains (PR 119)",
   cased(THEMED_URL + "#summary", {}, async (page) => {
-    const rows = await page.locator("#summary-routes + ul.routes .route-row").allInnerTexts();
-    await page.click("#summary-routes + ul.routes .route-row"); await settle(page);
-    const flow = await page.locator("#ctx-summary .flow > li").evaluateAll((els) => els.map((e) => `${e.className}: ${e.innerText.replace(/\s+/g, " ").trim()}`));
-    const closed = await page.locator("#ctx-summary .flow .excerpt").count() + await page.locator("#ctx-summary .flow-node[aria-label]").count();
-    await page.click('#ctx-summary .flow-node[data-b="3"]'); await settle(page);
-    const opened = await page.locator("#ctx-summary .flow .cmap-ex .excerpt").evaluateAll((els) => els.map((e) => e.dataset.ex));
-    const url = page.url();
+    const rows = await page.locator("#sum-routes .route-row").allInnerTexts();
+    await page.click("#sum-routes .route-row"); await settle(page);
+    const nodes = await page.locator("#flow-0 .flow-n").evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, " ").trim()));
+    const edges = await page.locator("#flow-0 .flow-svg path.fe").count(), label = await text(page, "#flow-0 .flow-lbl");
+    await page.click('#flow-0 .flow-n[data-k="1"]'); await settle(page);
+    const panel = await text(page, "#ctx-summary"), code = await page.locator('#ctx-summary .excerpt[data-ex="3"]').count(), url = page.url();
+    await page.keyboard.press("ArrowUp"); await settle(page);
+    const up = page.url(), focused = await page.evaluate(() => document.activeElement?.dataset.k);
+    await page.click('#flow-0 [data-act="flow-view"][data-view="list"]'); await settle(page);
+    const list = await text(page, "#flow-0 .flow-list");
     await page.goto(THEMED_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
-    const linked = await page.locator('#panel-summary .route-row.sel').count();
-    return rows.length === 1 && /2 steps/.test(rows[0]) && flow.length === 3 && /^flow-step: 1 B1 archive\.js/.test(flow[0]) && /^flow-via: Gets it from readArchive's return/.test(flow[1])
-      && /^flow-step: 2 B3 outputs\.test\.js .*question.*Checks the three outputs/.test(flow[2]) && closed === 0 && JSON.stringify(opened) === '["3"]' && /#summary\/route1$/.test(url) && linked === 1
-      || JSON.stringify({ rows, flow, closed, opened, url, linked });
+    const linked = await page.locator("#sum-routes .route-row.sel").count() + await page.locator("#flow-0").count();
+    return rows.length === 1 && /2 steps/.test(rows[0]) && nodes.length === 2 && /^1 B1 Read Converts the code while it reads each row\. archive\.js/.test(nodes[0])
+      && /^2 B3 .*Read Checks the three outputs/.test(nodes[1]) && edges === 1 && /readArchive's return/.test(label)
+      && /Route · step 2 of 2/.test(panel) && /Gets it from readArchive's return/.test(panel) && /Read The reviewer read this code/.test(panel) && code === 1 && /#summary\/route1\/step2$/.test(url)
+      && /#summary\/route1\/step1$/.test(up) && focused === "0" && /1\. Converts the code.*Gets it from ?readArchive's return.*2\. Checks the three outputs/.test(list) && linked === 2
+      || JSON.stringify({ rows, nodes, edges, label, panel: panel.slice(0, 500), code, url, up, focused, list, linked });
   }));
+
+// ---- flows (PR 119)
+// The themed record with a route that passes unchanged code, forks after its first step and stops where a finding
+// says; a route of states with two triggers between two states, a state that stays and a way back; a check on the
+// route with a test that asserts it and the owner's earlier observations, one at the reviewed revision; and a check
+// with nothing behind it.
+const flowRecord = (base) => {
+  const r = structuredClone(base), confirmed = [{ ref: "/coverageStructured/0" }, { at: "test/archive.test.js:5", quote: "assert upper" }];
+  r.coverageStructured[0] = { ...r.coverageStructured[0], by: "the reviewer", where: "a local checkout" };
+  r.routes = [
+    { title: "A code reaches the screen", requirements: [1], steps: [
+      { block: 1, role: "Converts the code.", value: "\"usd\" becomes \"USD\"" },
+      { at: "src/main.js:4", quote: "print(row.code)", role: "Prints the code as read.", confirmedBy: confirmed },
+      { block: 3, role: "Checks the outputs." },
+      { at: "src/old.js:2", quote: "legacy(row)", role: "The legacy reader.", stops: { finding: 2 } }],
+      links: [{ from: 1, to: 2, via: "readArchive's return" }, { from: 1, to: 3, via: "the test's call" }, { from: 1, to: 4, via: "the legacy path", question: 2 }] },
+    { title: "The list's states", kind: "states", requirements: [1], steps: [{ block: 1, role: "Closed." }, { block: 2, role: "Open." }, { block: 3, role: "Sorted." }],
+      links: [{ from: 1, to: 2, via: "a click on the list" }, { from: 2, to: 3, via: "a click on a header" }, { from: 2, to: 3, via: "the S key", confirmedBy: confirmed },
+        { from: 3, to: 3, via: "another header" }, { from: 3, to: 1, via: "Escape" }] }];
+  r.checks = [{ ...r.checks[0], route: { route: 1, step: 2 }, confirmedBy: confirmed,
+    observations: [{ result: "pass", revision: "HEAD", conditions: "Chrome, the demo data" }, { result: "fail", revision: "abc123", note: "Lower case." }] },
+    { do: ["Open the list."], expect: "It loads.", requirements: [1] }];
+  return r;
+};
+const FLOWS = flowRecord(record), FLOWS_RU = flowRecord(RU), FLOW_URL = render("flows", FLOWS), FLOW_RU_URL = render("flows-ru", FLOWS_RU);
+
+test("a flow passes unchanged code, forks and stops: each step says what shows it — read, or confirmed by a test with its run, who ran it and where, and the quoted assertion — a stop names its finding, and a link opens its own context",
+  "a flow that drew every step alike would show read code as tested, and a defect as an end",
+  cased(FLOW_URL + "#summary/route1", {}, async (page) => {
+    const nodes = await page.locator("#flow-0 .flow-n").evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, " ").trim()));
+    const rows = await page.locator("#flow-0 .flow-row").evaluateAll((els) => els.map((e) => e.querySelectorAll(".flow-n").length));
+    const labels = await page.locator("#flow-0 button.flow-lbl").count();
+    await page.click('#flow-0 .flow-n[data-k="1"]'); await settle(page); const confirmed = await text(page, "#ctx-summary");
+    await page.click('#flow-0 .flow-n[data-k="3"]'); await settle(page); const stop = await text(page, "#ctx-summary");
+    await page.click('#flow-0 button.flow-lbl[data-j="2"]'); await settle(page); const link = await text(page, "#ctx-summary"), url = page.url();
+    return JSON.stringify(rows) === "[1,3]" && labels === 3 && /Unchanged code Confirmed by a test Prints the code as read\. main\.js:4/.test(nodes[1]) && /Stops here · F2/.test(nodes[3]) && /"usd" becomes "USD"/.test(nodes[0])
+      && /Confirmed by a test Run ?The suite ran on the working copy\. at head · by the reviewer · in a local checkout Assertion ?test\/archive\.test\.js:5 assert upper/.test(confirmed) && /print\(row\.code\)/.test(confirmed)
+      && /The path ends at this step/.test(stop) && /A defect/.test(stop) && /the legacy path/.test(link) && /From 1\. Converts the code\. To 4\. The legacy reader\./.test(link) && /Q2/.test(link) && /#summary\/route1\/link3$/.test(url)
+      || JSON.stringify({ rows, labels, nodes, confirmed: confirmed.slice(0, 700), stop: stop.slice(0, 400), link: link.slice(0, 400), url });
+  }));
+
+test("a route of states opens as its transition table, one row per trigger; its diagram draws two triggers between two states as one edge and a state that stays as a loop, and a trigger opens the transition with the others beside it",
+  "a state machine drawn as a list of steps hides which moves a test asserts and which were only read",
+  cased(FLOW_URL + "#summary/route2", {}, async (page) => {
+    const rows = await page.locator("#flow-1 .flow-table tbody tr").count(), tag = await text(page, '#sum-routes .route-row[data-sel="route:1"]');
+    await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page);
+    const edges = await page.locator("#flow-1 path.fe").count(), lbls = await page.locator("#flow-1 .flow-lbl").allInnerTexts(), ok = await page.locator("#flow-1 path.fe.ok").count();
+    await page.click('#flow-1 button.flow-lbl[data-j="1"]'); await settle(page);
+    const panel = await text(page, "#ctx-summary");
+    return rows === 5 && /States/.test(tag) && edges === 4 && lbls.some((l) => /a click on a header · \+1/.test(l)) && ok === 1 && /Transition/.test(panel)
+      && /Triggers between these steps a click on a header Read the S key Confirmed by a test/.test(panel) || JSON.stringify({ rows, tag, edges, lbls, ok, panel: panel.slice(0, 500) });
+  }));
+
+test("a check says what stands behind it, kept apart — proposed and not run, confirmed by a test, observed by the owner at this revision or an earlier one — and the owner's result goes into the export at the reviewed revision, not into the decisions",
+  "an owner's observation and a test result read alike, and an old observation could pass for a result on the new revision (PR 119)",
+  cased(FLOW_URL + "#details/checks", {}, async (page) => {
+    const card = await text(page, '#det-body [data-check-status="0"]'), bare = await text(page, '#det-body [data-check-status="1"]');
+    await page.click('#det-body [data-sel="check:0"]'); await settle(page);
+    await page.click('[data-act="check-result"][data-result="pass"]'); await settle(page);
+    await page.fill("#check-cond-0", "Firefox, my data"); await page.fill("#check-note-0", "All upper case."); await settle(page);
+    const status = await text(page, '#det-body [data-check-status="0"]'), p = await payload(page), t = await exported(page);
+    await page.reload(); await page.waitForSelector(".tabbar"); await settle(page);
+    const kept = await text(page, '#det-body [data-check-status="0"]');
+    await page.click('#det-body [data-sel="check:0"]'); await settle(page); await page.click('#ctx-details [data-act="flow-step"]'); await settle(page);
+    const url = page.url();
+    return /Confirmed by a test/.test(card) && /the owner observed at HEAD: pass/.test(card) && /the owner observed at abc123, not this revision: fail/.test(card) && !/Proposed/.test(card) && /Proposed, not run/.test(bare)
+      && /Your result: pass/.test(status) && JSON.stringify(p.checks) === JSON.stringify([{ check: 1, result: "pass", conditions: "Firefox, my data", note: "All upper case." }]) && p.revision === "HEAD"
+      && p.progress.done === 0 && /Checks you ran\n- check 1: pass · Conditions: Firefox, my data — All upper case\./.test(t) && /Your result: pass/.test(kept) && /#summary\/route1\/step2$/.test(url)
+      || JSON.stringify({ card, bare, status, checks: p.checks, revision: p.revision, progress: p.progress, t: t.slice(0, 700), kept, url });
+  }));
+
+test("without JavaScript a flow's steps at unchanged code, values, links, stops and confirmations, and a check's earlier observations, are in the document",
+  "a reader without scripts got a route as blocks in a line and no check's results",
+  async () => {
+    const o = await open(FLOW_URL, { js: false });
+    try {
+      const t = (await o.page.evaluate(() => document.body.textContent)).replace(/\s+/g, " ");
+      const want = ["src/main.js:4 «print(row.code)» (unchanged code): Prints the code as read.", "Value: \"usd\" becomes \"USD\"", "1 → 4: the legacy path (Q2)", "Stops here: F2",
+        "· Confirmed by a test", "The list's states (states)", "2 → 3: the S key · Confirmed by a test", "Observed by the owner at abc123: fail — Lower case."];
+      const missing = want.filter((w) => !t.includes(w));
+      return !missing.length || `missing ${JSON.stringify(missing)}`;
+    } finally { await o.close(); }
+  });
+
+test("a Russian flow, its step, link and transition panels, its table, a check's panel and the export speak Russian: no English word but the record's own",
+  "the flow's words are new to both catalogs; one left in English would reach a Russian reader",
+  async () => {
+    const own = new Set(`${JSON.stringify(FLOWS_RU)}\n${diff}`.match(/[A-Za-z]{2,}/g)), english = new Map();
+    const scan = (where, words) => { for (const w of words.replace(/\b[QFRBI]\d+\b|\b[0-9a-f]{7,64}\b|\b(Ctrl|Shift|Enter|Esc|JSON|PDF|JavaScript)\b/g, " ").match(/[A-Za-z]{2,}/g) ?? []) if (!own.has(w) && !english.has(w)) english.set(w, where); };
+    const seen = (page) => page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll("[aria-label], [title], [placeholder]")].flatMap((el) => ["aria-label", "title", "placeholder"].map((a) => el.getAttribute(a) ?? ""))].join("\n"));
+    const o = await open(FLOW_RU_URL), page = o.page;
+    try {
+      const go = async (hash) => { await page.evaluate((h) => { location.hash = h; }, hash); await page.waitForTimeout(200); await settle(page); };
+      for (const hash of ["summary/route1", "summary/route1/step2", "summary/route1/step4", "summary/route1/link3", "summary/route2", "summary/route2/link2"]) { await go(hash); scan(hash, await seen(page)); }
+      await page.click('#flow-1 [data-act="flow-view"][data-view="flow"]'); await settle(page); scan("the states' diagram", await seen(page));
+      await go("summary/route1"); await page.click('#flow-0 [data-act="flow-view"][data-view="list"]'); await settle(page); scan("a route as a list", await seen(page));
+      await go("details/checks"); await page.click('#det-body [data-sel="check:0"]'); await settle(page); await page.click('[data-act="check-result"][data-result="fail"]'); await settle(page);
+      scan("a check", await seen(page));
+      await page.click('[data-act="export"]'); await settle(page); scan("the export", await seen(page)); await page.keyboard.press("Escape");
+      const plain = await open(FLOW_RU_URL, { js: false });
+      try { scan("without JavaScript", await plain.page.evaluate(() => document.body.innerText)); } finally { await plain.close(); }
+      return !english.size && !o.errors.length || `English words: ${[...english].map(([w, where]) => `${w} (${where})`).join(", ")}${o.errors.length ? `; page errors: ${o.errors.join("; ")}` : ""}`;
+    } finally { await o.close(); }
+  });
 
 test("a kept block's panel says what the record knows about it — what it does, its unit with its jobs, the requirements it serves in words and its place in a route — not a bare «Kept code»",
   "selecting kept code showed the verdict, not what the code is for",
@@ -909,8 +1018,7 @@ test("a block's reason for one verdict shows beside the verdict: in its note in 
     if (!(await page.locator("#ctx-code").isVisible())) await page.click('.toolbar [data-act="ctx"]');
     await settle(page);
     const panel = await text(page, "#ctx-code");
-    await page.goto(WHOLE_URL + "#summary/route1"); await page.waitForSelector(".tabbar"); await settle(page);
-    await page.click('#ctx-summary [data-act="cmap"][data-b="1"]'); await settle(page);
+    await page.goto(WHOLE_URL + "#summary/route1/step1"); await page.waitForSelector(".tabbar"); await settle(page);
     const excerpt = await page.locator('#ctx-summary .excerpt[data-ex="1"] .ex-whole').isVisible();
     const o = await open(WHOLE_URL, { js: false });
     // the files sit in closed sections, so their text is read whole, not as shown
@@ -1293,7 +1401,7 @@ test("the page reads what a page of the same stored format kept: an answer, a de
       && r.q1 === "Answered" && r.zone && r.comments === "1" && /Files viewed 1 of 3/.test(r.viewed) && r.theme === "dark" || JSON.stringify(r);
   }));
 
-test("the export is one schema-8 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
+test("the export is one schema-9 payload behind the preview, the text and the JSON, with line and paragraph comments anchored",
   "a second builder would let the preview, the text and the file disagree; comments need anchors to travel",
   cased(THEMED_URL + "#decisions/q3", {}, async (page) => {
     await page.locator('#card-q3 input[data-opt="status-quo"]').check();
@@ -1302,7 +1410,7 @@ test("the export is one schema-8 payload behind the preview, the text and the JS
     await page.keyboard.press("c"); await page.keyboard.type("check this"); await page.keyboard.press("Control+Enter"); await settle(page);
     const p = await payload(page), t = await exported(page);
     const q3 = p.items.find((x) => x.item === "q3");
-    return p.schema_version === 8 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
+    return p.schema_version === 9 && p.diff_sha256 === record.diff.sha256 && q3.variant.id === "status-quo"
       && p.lineComments[0]?.path === "src/invoices/archive.js" && p.lineComments[0].side === "head" && p.lineComments[0].line === 4
       && p.paragraphComments[0]?.item === "q3" && p.paragraphComments[0].field === "text" && t.includes("Q3: Keep the conversion in the reader") && t.includes("check this")
       || JSON.stringify({ q3, lines: p.lineComments, paragraphs: p.paragraphComments });

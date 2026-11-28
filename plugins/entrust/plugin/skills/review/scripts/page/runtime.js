@@ -391,11 +391,12 @@ function copy(text) {
 
 // ---------------------------------------------------------------- the export: one payload from decisions.mjs, shown as a preview, as text and as JSON
 function exportPayload() {
-  return DR.exportOf(ITEMS, state, { recordSha: D.digest.record, diffSha: D.digest.diff, key: D.digest.key, title: D.title, range: D.range });
+  return DR.exportOf(ITEMS, state, { recordSha: D.digest.record, diffSha: D.digest.diff, key: D.digest.key, title: D.title, range: D.range, revision: D.passport?.head ?? null });
 }
 // The payload's rows in words, by section: each row is its text and the place «Show» goes to.
 function exportModel() {
-  const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [] };
+  const payload = exportPayload(), sections = { decided: [], answered: [], deferred: [], na: [], open: [], comments: [], checks: [] };
+  for (const x of payload.checks) sections.checks.push({ text: `${L("p.rel.check", x.check)}: ${resultWord(x.result)}${x.conditions ? ` · ${L("p.check.conditions")}: ${x.conditions}` : ""}${x.note ? ` — ${x.note}` : ""}`, go: "check:" + (x.check - 1) });
   const answerWords = (c, a) => a.variant ? a.variant.text : a.variants ? a.variants.map((v) => v.text).join(", ") : a.option ? OPTION_LABEL[a.option] : a.text !== undefined ? L("p.export.own", a.text) : "";
   for (const x of payload.items) {
     const c = itemByKey.get(x.item), draft = x.draft ? ` · ${L("p.export.draft", answerWords(c, x.draft))}` : "";
@@ -415,7 +416,7 @@ function exportModel() {
   return { payload, sections, progress: [...progressWords(p), p.deferred && P("p.count.deferred", p.deferred)].filter(Boolean).join(" · ") };
 }
 const EXPORT_SECTIONS = [["decided", "p.export.decided"], ["answered", "p.export.answered"], ["deferred", "p.export.deferred"], ["na", "p.export.not-applicable"],
-  ["comments", "p.export.comments"], ["open", "p.export.open"]];
+  ["checks", "p.export.checks"], ["comments", "p.export.comments"], ["open", "p.export.open"]];
 function exportText(m) {
   const lines = [L("p.export.head", m.payload.title, m.payload.range)];
   for (const [id, head] of EXPORT_SECTIONS) if (m.sections[id].length) lines.push("", L(head), ...m.sections[id].map((r) => "- " + r.text));
@@ -519,6 +520,7 @@ function showTab(id, { push = true } = {}) {
   if (!S.rendered[id]) { RENDER[id](); S.rendered[id] = true; }
   if (changed) window.scrollTo(0, S.scroll[id] ?? 0);
   if (id === "code") requestAnimationFrame(fillVisible);
+  if (id === "summary" && FLOW.route !== null && flowView(FLOW.route) === "flow") requestAnimationFrame(() => drawFlow(FLOW.route));
   updateChrome();
   if (push) setHash();
 }
@@ -530,7 +532,7 @@ function setHash() {
   else if (S.tab === "code" && S.sel.code) h += "/b" + S.sel.code;
   else if (S.tab === "details") h += "/" + S.sub.details + (sel ? "/" + hashPart(sel) : "");
   else if (S.tab === "summary" && sel?.startsWith("req:")) h += "/r" + hashPart(sel.slice(4));
-  else if (S.tab === "summary" && sel?.startsWith("route:")) h += "/route" + (+sel.slice(6) + 1);
+  else if (S.tab === "summary" && routeOf(sel)) { const p = routeOf(sel); h += "/route" + (p.i + 1) + (p.kind === "s" ? "/step" + (p.k + 1) : p.kind === "l" ? "/link" + (p.k + 1) : ""); }
   // An explicit move to another place adds a history entry, so Back returns there; a step within a list replaces it.
   if (pushNext && location.hash !== "#" + h) history.pushState(null, "", "#" + h); else history.replaceState(null, "", "#" + h);
   pushNext = false;
@@ -548,7 +550,10 @@ function route(hash) {
   if (tab === "code" && rest && /^b\d+$/.test(rest) && blk(+rest.slice(1))) return goBlock(+rest.slice(1));
   if (tab === "code" && rest?.startsWith("line/") && rowOfLk(rest.slice(5))) return goLine(rest.slice(5));
   if (tab === "details" && rest) { const [sub, sel] = rest.split("/").map(dec); if (DETAIL_TABS.some((t) => t.id === sub)) { S.sub.details = sub; if (sel) S.sel.details = sel; showTab("details"); if (S.rendered.details) renderDetailBody(); return; } }
-  if (tab === "summary" && rest && /^route\d+$/.test(rest) && D.routes[+rest.slice(5) - 1]) { showTab("summary"); return select("summary", "route:" + (+rest.slice(5) - 1), { scroll: true }); }
+  if (tab === "summary" && rest && /^route\d+(\/(step|link)\d+)?$/.test(rest)) {
+    const [, i, part, k] = /^route(\d+)(?:\/(step|link)(\d+))?$/.exec(rest), r = D.routes[+i - 1];
+    if (r && (!part || (part === "step" ? r.steps : r.links ?? [])[+k - 1])) { showTab("summary"); return select("summary", `route:${+i - 1}${part ? `:${part[0]}:${+k - 1}` : ""}`, { scroll: !part }); }
+  }
   if (tab === "summary" && rest && /^r/.test(rest) && reqById.has(dec(rest.slice(1)))) { showTab("summary"); return select("summary", "req:" + dec(rest.slice(1)), { scroll: true }); }
   showTab(tab);
 }
@@ -567,9 +572,200 @@ function select(tab, sel, { scroll = false, collapsePrev = false } = {}) {
     if (prev && prev !== sel) { const pc = $(`#card-${prev.slice(5)}`); if (pc && collapsePrev) pc.classList.remove("open-full"); }
     if (sel) $(`#card-${sel.slice(5)}`)?.classList.add("open-full");
   }
+  if (tab === "summary") syncFlow(sel);
   if (tab !== "code" || S.code.ctx) renderPanel(tab);
   if (scroll && sel) { const el = $(`[data-sel="${CSS.escape(sel)}"]`, root); el?.scrollIntoView({ block: "center" }); }
   if (S.tab === tab) setHash();
+}
+
+// ---------------------------------------------------------------- flows: a route drawn as the code runs it
+// A route opens under its row in Summary as a flow the page lays out from the record's order and links alone — each
+// step in a row below every step that leads to it, a link back drawn at the side — so the record holds no coordinates.
+// Selecting a step opens its context beside the flow, which stays in view. A route of states opens as its transition
+// table, the diagram one click away. A step shows the evidence the record names for it and no more: read code, or a
+// test that confirms it with its run and its quoted assertion; a step where the path stops names its finding or question.
+const FLOW = { route: null, view: {} };
+const routeOf = (sel) => { const m = /^route:(\d+)(?::(s|l):(\d+))?$/.exec(sel ?? ""); return m && D.routes[+m[1]] ? { i: +m[1], kind: m[2] ?? null, k: m[3] === undefined ? null : +m[3] } : null; };
+const flowView = (i) => FLOW.view[i] ?? (D.routes[i].kind === "states" ? "list" : "flow");
+const confirmedOf = (x) => x.confirmedBy && x.confirmedBy.runs.length ? x.confirmedBy : null;
+const evidenceTag = (x) => confirmedOf(x) ? `<span class="tag ok ev">${esc(L("p.flow.confirmed"))}</span>` : `<span class="tag neutral ev">${esc(L("p.flow.read"))}</span>`;
+const stepPlace = (s) => { if (s.block !== null) { const b = blk(s.block); return `${splitPath(b.path)[1]} ${b.where}`; } const [p, line] = cutLast(s.at, ":"); return line ? `${splitPath(p)[1]}:${line}` : s.at; };
+const stopRef = (s) => s.stops.finding !== null ? `F${s.stops.finding}` : `Q${s.stops.question}`;
+const stopKey = (s) => s.stops.finding !== null ? "f" + s.stops.finding : "q" + s.stops.question;
+const whoWhere = (c) => [c.by && L("coverage.by", c.by), c.where && L("coverage.where", c.where)].filter(Boolean).map((t) => ` <span class="muted small">· ${esc(t)}</span>`).join("");
+// The edges as drawn: one per link, or one per step in order. Links between the same two steps are one edge; a link
+// that returns to a step on the way to it is drawn at the side and does not set a row.
+function flowEdges(r) {
+  const raw = r.links ? r.links.map((l, j) => ({ from: l.from - 1, to: l.to - 1, js: [j] })) : r.steps.slice(1).map((_, k) => ({ from: k, to: k + 1, js: [] }));
+  const byPair = new Map();
+  for (const e of raw) { const key = `${e.from}>${e.to}`; if (byPair.has(key)) byPair.get(key).js.push(...e.js); else byPair.set(key, e); }
+  const edges = [...byPair.values()], n = r.steps.length, out = Array.from({ length: n }, () => []), seen = new Array(n).fill(0);
+  for (const e of edges) if (e.from === e.to) e.self = true; else out[e.from].push(e);
+  const visit = (v) => { seen[v] = 1; for (const e of out[v]) { if (seen[e.to] === 1) e.back = true; else if (!seen[e.to]) visit(e.to); } seen[v] = 2; };
+  for (let v = 0; v < n; v++) if (!seen[v]) visit(v);
+  return edges;
+}
+// Rows by the longest path to each step, each row in the order of the steps that lead to it.
+function flowRows(r, edges) {
+  const n = r.steps.length, rank = new Array(n).fill(0), fwd = edges.filter((e) => !e.back && !e.self);
+  for (let pass = 0; pass < n; pass++) for (const e of fwd) rank[e.to] = Math.max(rank[e.to], rank[e.from] + 1);
+  const rows = [];
+  rank.forEach((rk, k) => (rows[rk] ??= []).push(k));
+  for (let rk = 1; rk < rows.length; rk++) {
+    const pos = new Map(rows[rk - 1].map((k, x) => [k, x]));
+    const bary = (k) => { const ins = fwd.filter((e) => e.to === k && pos.has(e.from)).map((e) => pos.get(e.from)); return ins.length ? ins.reduce((a, b) => a + b, 0) / ins.length : Infinity; };
+    rows[rk].sort((a, b) => bary(a) - bary(b) || a - b);
+  }
+  return rows;
+}
+function flowNode(i, k) {
+  const r = D.routes[i], s = r.steps[k], b = s.block !== null ? blk(s.block) : null, cur = S.sel.summary === `route:${i}:s:${k}`;
+  return `<button class="flow-n${s.stops ? " stops" : ""}${b && b.verdict !== "keep" ? " open-v" : ""}" data-act="flow-step" data-route="${i}" data-k="${k}" aria-current="${cur}">
+    <span class="fn-top"><span class="fn-num">${n(k + 1)}</span>${b ? `<span class="fn-id">B${b.id}</span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}` : `<span class="fn-id muted">${esc(L("p.flow.unchanged"))}</span>`}${evidenceTag(s)}</span>
+    <span class="fn-role">${prose(s.role)}</span>${s.value ? `<span class="fn-value">${prose(s.value)}</span>` : ""}
+    <span class="fn-place" title="${esc(s.block !== null ? blk(s.block).path : s.at)}">${esc(stepPlace(s))}</span>${s.stops ? `<span class="fn-stop">${esc(L("route.stops"))} · ${esc(stopRef(s))}</span>` : ""}</button>`;
+}
+function flowCard(i) {
+  const r = D.routes[i], view = flowView(i), states = r.kind === "states", words = { flow: L("p.flow.view.flow"), list: L("p.flow.view.list") };
+  const body = view === "list" ? flowList(i) : `<div class="flow-scroll"><div class="flow-canvas">${flowRows(r, flowEdges(r)).map((row) => `<div class="flow-row">${row.map((k) => flowNode(i, k)).join("")}</div>`).join("")}<svg class="flow-svg" aria-hidden="true"></svg></div></div>`;
+  return `<div class="flow-card" id="flow-${i}" data-route="${i}"><div class="flow-head">${states ? `<span class="lbl">${esc(L("p.flow.states"))}</span>` : ""}
+    <div class="seg" role="group" aria-label="${esc(L("p.flow.view"))}">${["flow", "list"].map((v) => `<button data-act="flow-view" data-route="${i}" data-view="${v}" aria-pressed="${view === v}">${esc(words[v])}</button>`).join("")}</div>
+    ${closeX(`data-act="flow-close" data-route="${i}"`, L("p.flow.close"))}</div>${body}<p class="muted small flow-note">${esc(states ? L("p.flow.note.states") : L("p.flow.note"))}</p></div>`;
+}
+// The edges drawn over the laid-out steps: down to the next row, at the side when a link goes back, a loop for a
+// state that stays. A link's words sit on its edge; a link of the record is a button that opens it.
+function drawFlow(i) {
+  const card = $(`#flow-${i}`), canvas = card && $(".flow-canvas", card); if (!canvas) return;
+  const r = D.routes[i], box = canvas.getBoundingClientRect(), svgEl = $(".flow-svg", canvas);
+  $$(".flow-lbl", canvas).forEach((x) => x.remove());
+  const rect = (k) => { const e = $(`.flow-n[data-k="${k}"]`, canvas).getBoundingClientRect(); return { l: e.left - box.left, t: e.top - box.top, r: e.right - box.left, b: e.bottom - box.top, cx: (e.left + e.right) / 2 - box.left, cy: (e.top + e.bottom) / 2 - box.top }; };
+  const cls = (e) => e.js.some((j) => confirmedOf(r.links[j])) ? "ok" : e.js.some((j) => r.links[j].question !== null) ? "q" : "plain";
+  let side = 0, paths = "", labels = "";
+  for (const e of flowEdges(r)) {
+    const a = rect(e.from), b = rect(e.to), c = cls(e);
+    let d, x, y;
+    if (e.self) { d = `M${a.r},${a.cy - 10} C${a.r + 40},${a.cy - 30} ${a.r + 40},${a.cy + 30} ${a.r},${a.cy + 10}`; x = a.r + 34; y = a.cy; }
+    else if (e.back || b.t < a.b) { const sx = Math.max(a.r, b.r) + 26 + 18 * side++; d = `M${a.r},${a.cy} C${sx},${a.cy} ${sx},${b.cy} ${b.r},${b.cy}`; x = sx - 4; y = (a.cy + b.cy) / 2; }
+    else { const dy = (b.t - a.b) / 2; d = `M${a.cx},${a.b} C${a.cx},${a.b + dy} ${b.cx},${b.t - dy} ${b.cx},${b.t}`; x = (a.cx + b.cx) / 2; y = (a.b + b.t) / 2; }
+    paths += `<path class="fe ${c}" d="${d}" marker-end="url(#fa-${i}-${c})"/>`;
+    const via = e.js.length ? r.links[e.js[0]].via : r.steps[e.to].via;
+    if (!via) continue;
+    const words = `${via.length > 42 ? via.slice(0, 40) + "…" : via}${e.js.length > 1 ? ` · +${e.js.length - 1}` : ""}`, at = `left:${x}px;top:${y}px`;
+    labels += e.js.length ? `<button class="flow-lbl ${c}" data-act="flow-link" data-route="${i}" data-j="${e.js[0]}" style="${at}" title="${esc(via)}" aria-current="${e.js.some((j) => S.sel.summary === `route:${i}:l:${j}`)}">${esc(words)}</button>`
+      : `<span class="flow-lbl" style="${at}" title="${esc(via)}">${esc(words)}</span>`;
+  }
+  svgEl.setAttribute("width", canvas.scrollWidth); svgEl.setAttribute("height", canvas.scrollHeight);
+  svgEl.innerHTML = `<defs>${["plain", "ok", "q"].map((c) => `<marker id="fa-${i}-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${c}" d="M0,0 L10,5 L0,10 z"/></marker>`).join("")}</defs>${paths}`;
+  canvas.insertAdjacentHTML("beforeend", labels);
+}
+// The same route as words: steps in order with how each gets its input; a route with links lists the links leaving
+// each step; a route of states is its transition table, one row per trigger with its evidence.
+function flowList(i) {
+  const r = D.routes[i], sel = S.sel.summary;
+  const step = (k) => `<button class="linkish flow-li" data-act="flow-step" data-route="${i}" data-k="${k}" aria-current="${sel === `route:${i}:s:${k}`}">${n(k + 1)}. ${prose(r.steps[k].role)}</button>`;
+  const row = (s, k) => `<div class="flow-li-row">${step(k)} ${evidenceTag(s)}<span class="muted small mono">${esc(stepPlace(s))}</span>${s.stops ? ` <span class="tag q">${esc(L("route.stops"))} · ${esc(stopRef(s))}</span>` : ""}</div>`;
+  const link = (l, j, words) => `<button class="linkish" data-act="flow-link" data-route="${i}" data-j="${j}" aria-current="${sel === `route:${i}:l:${j}`}">${words}</button>`;
+  if (r.kind === "states") return `<div class="flow-scroll"><table class="tbl flow-table"><thead><tr><th>${esc(L("p.flow.from"))}</th><th>${esc(L("p.flow.trigger"))}</th><th>${esc(L("p.flow.to"))}</th><th>${esc(L("p.flow.evidence"))}</th></tr></thead><tbody>
+    ${r.links.map((l, j) => `<tr class="${sel === `route:${i}:l:${j}` ? "sel" : ""}"><td>${step(l.from - 1)}</td><td>${link(l, j, prose(l.via))}</td><td>${step(l.to - 1)}</td><td>${evidenceTag(l)}${l.question !== null ? ` ${chip("q", l.question)}` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+  if (!r.links) return `<ul class="plain flow-list">${r.steps.map((s, k) => `<li>${k && s.via ? `<div class="flow-via small"><span class="lbl">${esc(L("route.via"))}</span>${prose(s.via)}</div>` : ""}${row(s, k)}</li>`).join("")}</ul>`;
+  return `<ul class="plain flow-list">${r.steps.map((s, k) => `<li>${row(s, k)}${r.links.map((l, j) => [l, j]).filter(([l]) => l.from === k + 1).map(([l, j]) => `<div class="flow-out small">→ ${link(l, j, `${n(l.to)}. ${prose(r.steps[l.to - 1].role)}`)} <span class="muted">${prose(l.via)}</span></div>`).join("")}</li>`).join("")}</ul>`;
+}
+// What shows a step or a link: the code read, or a test that confirms it — its run, with who ran it and where, and the
+// assertion quoted at its place.
+function evidenceHtml(x) {
+  const c = confirmedOf(x);
+  if (!c) return `<p>${evidenceTag(x)} <span class="small sub">${esc(L("p.flow.read-note"))}</span></p>`;
+  return `<p>${evidenceTag(x)}</p><ul class="plain ev-list">${c.runs.map((run) => `<li><span class="lbl">${esc(L("p.flow.run"))}</span>${prose(run.text)}${run.revision ? ` <span class="muted small">${esc(L("p.coverage.at", run.revision))}</span>` : ""}${whoWhere(run)}</li>`).join("")}
+    ${c.asserts.map((a) => `<li><span class="lbl">${esc(L("p.flow.assertion"))}</span><span class="mono small">${slashBreaks(a.at)}</span><blockquote class="sel-quote">${esc(a.quote)}</blockquote></li>`).join("")}</ul>`;
+}
+const checksOn = (i, pick) => D.checks.map((c, k) => [c, k]).filter(([c]) => c.route && c.route.route === i + 1 && (!pick || pick(c.route)));
+const checkLinks = (list) => list.length ? `<div class="psec"><h3>${esc(L("p.details.checks"))}</h3><ul class="plain">${list.map(([c, k]) => `<li><button class="linkbtn" data-act="gocheck" data-check="${k}">${esc(L("p.rel.check", k + 1))}</button> ${prose(c.expect)}<div data-check-status="${k}">${checkStatus(c, k)}</div></li>`).join("")}</ul></div>` : "";
+function flowPanel(sel) {
+  const p = routeOf(sel); if (!p) return "";
+  const r = D.routes[p.i], back = `<button class="linkbtn" data-act="sel" data-sel="route:${p.i}">${prose(r.title)}</button>`;
+  if (p.kind === "s") {
+    const k = p.k, s = r.steps[k], b = s.block !== null ? blk(s.block) : null, total = r.steps.length;
+    const ins = (r.links ?? []).map((l, j) => [l, j]).filter(([l]) => l.to === k + 1 && l.from !== k + 1), outs = (r.links ?? []).map((l, j) => [l, j]).filter(([l]) => l.from === k + 1);
+    const linkRows = (list, word) => list.map(([l, j]) => `<li><button class="linkbtn" data-act="flow-link" data-route="${p.i}" data-j="${j}">${prose(l.via)}</button> <span class="muted small">${esc(word(l))}</span></li>`).join("");
+    const [atPath, atLine] = b ? [] : cutLast(s.at, ":");
+    const code = b ? excerptHtml(b.id) : `<div class="excerpt"><div class="ex-h"><span class="ex-path">${pathHtml(atPath)} <span class="muted">${esc(atLine)}</span></span><span class="tag neutral">${esc(L("p.flow.unchanged"))}</span></div><pre class="quote-line">${esc(s.quote)}</pre></div>`;
+    const nav = (d, word) => k + d >= 0 && k + d < total ? `<button class="btn sm" data-act="flow-step" data-route="${p.i}" data-k="${k + d}">${esc(word)}</button>` : `<span></span>`;
+    return panelWrap(esc(`${L("p.route")} · ${L("p.route.of", n(k + 1), n(total))}`), prose(s.role), `<div class="psec"><p class="small">${back}</p><dl class="kv">
+      <dt>${esc(L("p.place"))}</dt><dd>${b ? `${chip("b", b.id)} <span class="mono small">${slashBreaks(b.path)}</span> <span class="muted small">${esc(b.where)}</span>` : `<span class="mono small">${slashBreaks(s.at)}</span>`}</dd>
+      ${s.value ? `<dt>${esc(L("route.value"))}</dt><dd class="mono small">${prose(s.value)}</dd>` : ""}${!r.links && k && s.via ? `<dt>${esc(L("route.via"))}</dt><dd>${prose(s.via)}</dd>` : ""}</dl>
+      ${ins.length ? `<h3 class="gap-top">${esc(L("p.flow.arrives"))}</h3><ul class="plain">${linkRows(ins, (l) => L("p.flow.from-step", n(l.from)))}</ul>` : ""}
+      ${outs.length ? `<h3 class="gap-top">${esc(L("p.flow.leaves"))}</h3><ul class="plain">${linkRows(outs, (l) => L("p.flow.to-step", n(l.to)))}</ul>` : ""}</div>
+      <div class="psec"><h3>${esc(L("p.flow.evidence"))}</h3>${evidenceHtml(s)}</div>
+      ${s.stops ? `<div class="psec"><h3>${esc(L("route.stops"))}</h3><p class="small sub">${esc(L("p.flow.stops-note"))}</p>${itemByKey.has(stopKey(s)) ? miniItem(itemByKey.get(stopKey(s))) : ""}</div>` : ""}
+      <div class="psec"><h3>${esc(L("p.code"))}</h3>${code}</div>${checkLinks(checksOn(p.i, (x) => x.step === k + 1))}
+      <div class="psec flow-nav">${nav(-1, L("p.flow.prev"))}${nav(1, L("p.flow.next"))}</div>`);
+  }
+  if (p.kind === "l") {
+    const l = r.links[p.k], same = r.links.map((x, j) => [x, j]).filter(([x]) => x.from === l.from && x.to === l.to);
+    const stepRef = (k) => `<button class="linkbtn" data-act="flow-step" data-route="${p.i}" data-k="${k - 1}">${n(k)}. ${prose(r.steps[k - 1].role)}</button>`;
+    return panelWrap(esc(`${L("p.route")} · ${r.kind === "states" ? L("p.flow.transition") : L("p.flow.link")}`), prose(l.via), `<div class="psec"><p class="small">${back}</p><dl class="kv">
+      <dt>${esc(L("p.flow.from"))}</dt><dd>${stepRef(l.from)}</dd><dt>${esc(L("p.flow.to"))}</dt><dd>${stepRef(l.to)}</dd></dl></div>
+      <div class="psec"><h3>${esc(L("p.flow.evidence"))}</h3>${evidenceHtml(l)}</div>
+      ${l.question !== null && itemByKey.has("q" + l.question) ? `<div class="psec"><h3>${esc(L("p.flow.question"))}</h3>${miniItem(itemByKey.get("q" + l.question))}</div>` : ""}
+      ${same.length > 1 ? `<div class="psec"><h3>${esc(L("p.flow.triggers"))}</h3><ul class="plain">${same.map(([x, j]) => `<li>${j === p.k ? `<b>${prose(x.via)}</b>` : `<button class="linkbtn" data-act="flow-link" data-route="${p.i}" data-j="${j}">${prose(x.via)}</button>`} ${evidenceTag(x)}</li>`).join("")}</ul></div>` : ""}
+      ${checkLinks(checksOn(p.i, (x) => x.link === p.k + 1))}`);
+  }
+  const confirmed = r.steps.filter(confirmedOf).length + (r.links ?? []).filter(confirmedOf).length, unchanged = r.steps.filter((s) => s.block === null).length, stops = r.steps.filter((s) => s.stops).length;
+  return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}${r.kind === "states" ? ` · ${L("p.flow.states")}` : ""}`), prose(r.title), `<div class="psec">
+    ${r.requirements.length ? `<p class="small"><span class="lbl">${esc(L("p.route.serves"))}</span>${chips("r", r.requirements)}</p>` : ""}
+    <dl class="kv"><dt>${esc(L("p.flow.confirmed"))}</dt><dd>${n(confirmed)}</dd><dt>${esc(L("p.flow.unchanged"))}</dt><dd>${n(unchanged)}</dd><dt>${esc(L("route.stops"))}</dt><dd>${n(stops)}</dd></dl>
+    <p class="muted small gap-top">${esc(L("p.flow.select"))}</p></div>${checkLinks(checksOn(p.i))}`);
+}
+// The routes in Summary: one row each, the open one with its flow beneath.
+function routesHtml() {
+  return D.routes.map((r, i) => `<li class="route-row${S.sel.summary?.startsWith(`route:${i}`) && routeOf(S.sel.summary)?.i === i ? " sel" : ""}" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span>${r.kind === "states" ? `<span class="tag neutral">${esc(L("p.flow.states"))}</span>` : ""}<span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>${FLOW.route === i ? `<li class="route-flow">${flowCard(i)}</li>` : ""}`).join("");
+}
+function renderRoutes() {
+  const ul = $("#sum-routes"); if (!ul) return;
+  ul.innerHTML = routesHtml();
+  if (FLOW.route !== null && flowView(FLOW.route) === "flow") drawFlow(FLOW.route);
+}
+// A route selected, or a step or link of it: its flow opens, and stays open while its parts are walked.
+function syncFlow(sel) {
+  const p = routeOf(sel);
+  if (p && FLOW.route !== p.i) { FLOW.route = p.i; return renderRoutes(); }
+  if (!p || FLOW.route === null) return;
+  const card = $(`#flow-${FLOW.route}`); if (!card) return renderRoutes();
+  $$("[data-act=flow-step], [data-act=flow-link]", card).forEach((el) => el.setAttribute("aria-current", String(el.dataset.act === "flow-step" ? sel === `route:${el.dataset.route}:s:${el.dataset.k}` : sel === `route:${el.dataset.route}:l:${el.dataset.j}`)));
+  $$("tr", card).forEach((tr) => tr.classList.toggle("sel", Boolean($(`[data-act=flow-link][aria-current="true"]`, tr))));
+  $$(".route-row", $("#sum-routes")).forEach((row) => row.classList.toggle("sel", row.dataset.sel === `route:${p.i}`));
+}
+// A check, as the record and this page know it: proposed and not run until a test or a person says otherwise; a
+// test that asserts the same scenario; what the owner observed at an earlier revision, never a result for this one;
+// and the result recorded here, which goes into the export.
+const resultWord = (x) => ({ pass: L("check.result.pass"), fail: L("check.result.fail"), "could-not-run": L("check.result.could-not-run"), observed: L("check.result.observed") })[x];
+const RESULT_CLS = { pass: "ok", fail: "bad", "could-not-run": "warn", observed: "q" };
+function checkStatus(c, k) {
+  const own = state.checks?.["c" + (k + 1)], tags = [];
+  if (confirmedOf(c)) tags.push(`<span class="tag ok">${esc(L("p.flow.confirmed"))}</span>`);
+  for (const o of c.observations) tags.push(`<span class="tag dashed" title="${esc(L("p.check.earlier-note"))}">${esc(L(o.current ? "p.check.observed" : "p.check.observed-earlier", o.by ?? L("check.owner"), o.revision))}: ${esc(resultWord(o.result))}</span>`);
+  if (own?.result) tags.push(`<span class="tag ${RESULT_CLS[own.result]}">${esc(L("p.check.yours", resultWord(own.result)))}</span>`);
+  if (!tags.length) tags.push(`<span class="tag open">${esc(L("p.check.proposed"))}</span>`);
+  return `<span class="check-status">${tags.join("")}</span>`;
+}
+function checkPanel(k) {
+  const c = D.checks[k], own = state.checks?.["c" + (k + 1)] ?? {}, rt = c.route && D.routes[c.route.route - 1];
+  const point = rt ? (c.route.step ? `<button class="linkbtn" data-act="flow-step" data-route="${c.route.route - 1}" data-k="${c.route.step - 1}">${esc(L("route.of-check.step", n(c.route.route), n(c.route.step)))}</button> ${prose(rt.steps[c.route.step - 1].role)}`
+    : c.route.link ? `<button class="linkbtn" data-act="flow-link" data-route="${c.route.route - 1}" data-j="${c.route.link - 1}">${esc(L("route.of-check.link", n(c.route.route), n(c.route.link)))}</button> ${prose(rt.links[c.route.link - 1].via)}`
+    : `<button class="linkbtn" data-act="goroute" data-route="${c.route.route - 1}">${esc(L("route.of-check", n(c.route.route)))}</button> ${prose(rt.title)}`) : "";
+  return `<div class="psec"><h3>${esc(L("p.check.status"))}</h3><div data-check-status="${k}">${checkStatus(c, k)}</div></div>
+    <div class="psec"><dl class="kv">${c.from ? `<dt>${esc(L("from"))}</dt><dd>${prose(c.from)}</dd>` : ""}<dt>${esc(L("do"))}</dt><dd><ol class="tight">${c.do.map((x) => `<li>${prose(x)}</li>`).join("")}</ol></dd><dt>${esc(L("expect"))}</dt><dd>${prose(c.expect)}</dd>
+      ${point ? `<dt>${esc(L("p.check.point"))}</dt><dd>${point}</dd>` : ""}</dl></div>
+    ${confirmedOf(c) ? `<div class="psec"><h3>${esc(L("p.flow.evidence"))}</h3>${evidenceHtml(c)}</div>` : ""}
+    ${c.observations.length ? `<div class="psec"><h3>${esc(L("p.check.earlier"))}</h3><p class="small sub">${esc(L("p.check.earlier-note"))}</p><ul class="plain">${c.observations.map((o) => `<li><b>${esc(resultWord(o.result))}</b> <span class="muted small">${esc(L("check.observed", o.by ?? L("check.owner"), o.revision))}</span>${o.conditions ? `<div class="small">${esc(L("p.check.conditions"))}: ${prose(o.conditions)}</div>` : ""}${o.note ? `<div class="small">${prose(o.note)}</div>` : ""}</li>`).join("")}</ul></div>` : ""}
+    <div class="psec"><h3>${esc(L("p.check.record"))}</h3><p class="small sub">${esc(L("p.check.record-note"))}</p>
+      <div class="seg check-results" role="group" aria-label="${esc(L("p.check.record"))}">${["pass", "fail", "could-not-run", "observed"].map((x) => `<button data-act="check-result" data-check="${k}" data-result="${x}" aria-pressed="${own.result === x}">${esc(resultWord(x))}</button>`).join("")}</div>
+      <label class="small field-l" for="check-cond-${k}">${esc(L("p.check.conditions"))}</label><input class="answer" id="check-cond-${k}" data-act="check-text" data-check="${k}" data-field="conditions" value="${esc(own.conditions ?? "")}" placeholder="${esc(L("p.check.conditions-hint"))}">
+      <label class="small field-l" for="check-note-${k}">${esc(L("p.check.note"))}</label><textarea class="answer" id="check-note-${k}" data-act="check-text" data-check="${k}" data-field="note" placeholder="${esc(L("p.check.note-hint"))}">${esc(own.note ?? "")}</textarea></div>`;
+}
+function recordCheck(k, patch) {
+  setState(DR.recordCheck(state, "c" + (k + 1), patch));
+  for (const el of $$(`[data-check-status="${k}"]`)) el.innerHTML = checkStatus(D.checks[k], k);
 }
 
 // ---------------------------------------------------------------- shared: code rows and excerpts
@@ -639,7 +835,7 @@ function codeMap(r) {
     const b = blk(id), open = S.cmap[key] === id;
     return `<button class="cmap-tog${mine.has(id) ? "" : " aside"}" data-act="cmap" data-key="${esc(key)}" data-b="${id}" aria-expanded="${open}"><span class="cmap-line">${step ? `<span class="cmap-n">${step}</span>` : ""}<span class="cmap-id">B${id}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${mine.has(id) ? "" : `<span class="cmap-aside" title="${esc(L("p.cmap.aside-title"))}">${esc(L("p.cmap.aside"))}</span>`}${attention(id) ? verdictTag(b.verdict) : ""}</span><span class="cmap-text">${prose(text || b.does)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(id)}</div>` : ""}`;
   };
-  const groups = D.routes.map((rt, i) => [rt, i]).filter(([rt]) => rt.requirements.includes(r.id)).map(([rt, i]) => `<div class="cmap-g"><div class="cmap-gh"><button class="linkish" data-act="goroute" data-route="${i}">${esc(L("p.route"))}</button> ${prose(rt.title)}</div>${rt.steps.map((s, k) => { seen.add(s.block); return row(s.block, s.role, k + 1); }).join("")}</div>`);
+  const groups = D.routes.map((rt, i) => [rt, i]).filter(([rt]) => rt.requirements.includes(r.id)).map(([rt, i]) => `<div class="cmap-g"><div class="cmap-gh"><button class="linkish" data-act="goroute" data-route="${i}">${esc(L("p.route"))}</button> ${prose(rt.title)}</div>${rt.steps.map((s, k) => { if (s.block === null) return `<button class="cmap-tog aside" data-act="flow-step" data-route="${i}" data-k="${k}"><span class="cmap-line"><span class="cmap-n">${k + 1}</span><span class="cmap-id muted">${esc(L("p.flow.unchanged"))}</span><span class="cmap-place" title="${esc(s.at)}">${esc(stepPlace(s))}</span></span><span class="cmap-text">${prose(s.role)}</span></button>`; seen.add(s.block); return row(s.block, s.role, k + 1); }).join("")}</div>`);
   const byUnit = new Map();
   for (const id of r.blocks.filter((id) => !seen.has(id))) { const u = blk(id).unit ?? ""; byUnit.set(u, [...(byUnit.get(u) ?? []), id]); }
   const units = [...byUnit].map(([u, ids]) => [u, ids.sort((a, b) => attention(b) - attention(a) || at(a) - at(b))])
@@ -896,7 +1092,7 @@ function summaryHtml() {
     <div class="rec"><h3>${esc(L("recommendation"))}</h3>${pcWrap("recommendation/text", `<p class="pf">${prose(D.recommendation)}</p>`)}
       ${D.steps.length ? `<ol class="steps">${D.steps.map((s, i) => `<li data-sel="step:${i}" data-act="sel" tabindex="0">${pcWrap(`step.${i + 1}/text`, `<span><span class="pf">${prose(s.text)}</span>${s.findings.length ? ` ${chips("f", s.findings)}` : ""}</span>`)}</li>`).join("")}</ol>` : ""}</div>
     ${D.routes.length ? `<div class="section-h" id="summary-routes"><h2>${esc(L("routes"))}</h2><span class="muted">${esc(L("p.routes.note"))}</span></div>
-    <ul class="routes">${D.routes.map((r, i) => `<li class="route-row" data-sel="route:${i}" data-act="sel" tabindex="0"><span class="route-t">${prose(r.title)}</span><span class="muted small">${esc(P("p.count.steps", r.steps.length))}</span>${r.requirements.length ? chips("r", r.requirements) : ""}</li>`).join("")}</ul>` : ""}
+    <ul class="routes" id="sum-routes">${routesHtml()}</ul>` : ""}
     <div class="section-h" id="summary-reqs"><h2>${esc(L("requirements"))}</h2><span class="muted">${esc(L("p.req.note"))}</span></div>
     <table class="tbl"><thead><tr><th>#</th><th>${esc(L("requirement"))}</th><th>${esc(L("status"))}</th><th class="num">${esc(L("p.code"))}</th></tr></thead><tbody>
     ${reqGroups().map(([head, list]) => (head ? `<tr class="grp"><th colspan="4">${esc(head)} <span class="muted">${n(list.length)}</span></th></tr>` : "") + list.map((r) => `<tr class="selectable" data-sel="req:${esc(r.id)}" data-act="sel" tabindex="0"><td class="id">R${esc(r.id)}</td><td>${prose(r.text)}<div class="why"><b>${esc(L("source"))}</b>${esc(L("source." + r.source))}${r.sources.length ? ` · <span class="srcs">${srcItems(r.sources)}</span>` : ""}</div>${!r.established && askedIn(r.id).length ? `<div class="why"><b>${esc(L("p.req.asked-in"))}</b>${chips("q", askedIn(r.id))}</div>` : ""}${r.doubt ? `<div class="why"><b>${esc(L("p.req.doubt"))}</b>${prose(r.doubt)}</div>` : ""}</td><td class="req-status">${reqStatus(r)}</td>
@@ -913,6 +1109,7 @@ function summaryHtml() {
 function renderSummary() {
   $("#panel-summary").innerHTML = `<div class="frame"><div class="col">${summaryHtml()}</div><aside class="panel" id="ctx-summary" aria-label="${esc(L("p.context"))}"></aside></div>`;
   renderPanel("summary");
+  if (FLOW.route !== null && flowView(FLOW.route) === "flow") drawFlow(FLOW.route);
 }
 // Where a requirement comes from decides whether it binds; the ones to confirm are listed apart, each with the questions that ask about it.
 const askedIn = (id) => D.questions.filter((q) => refsIn([q.context.flatMap((x) => x.sources), q.variants.flatMap((v) => v.consequences.flatMap((x) => x.sources)), q.recommendation?.sources ?? [], q.zones.flatMap((z) => z.sources)], "r").includes(id)).map((q) => q.id);
@@ -962,20 +1159,7 @@ function summaryPanel(sel) {
       <div class="psec"><h3>${esc(L("p.related"))}</h3>${relations("r", r.id)}</div>
       <div class="psec"><h3>${esc(L("p.code"))} · ${esc(P("p.count.blocks", r.blocks.length))}${attn ? ` · ${esc(P("p.count.attention", attn))}` : ""}${r.blocks.length ? `<button class="btn sm" data-act="req-code" data-req="${esc(r.id)}">${esc(L("p.show-in-code"))}</button>` : ""}</h3>${r.blocks.length ? codeMap(r) : `<p class="muted">${esc(L("p.no-block"))}</p>`}</div>`);
   }
-  if (sel.startsWith("route:")) {
-    // A route as a flow: each step a box with its block, place and role, a step whose block is not kept marked; the
-    // arrow into a step says where it gets what the step before produced. A step opens its code in place, one at a time.
-    const i = +sel.slice(6), r = D.routes[i], key = `route${i}`;
-    const node = (s, k) => {
-      const b = blk(s.block), open = S.cmap[key] === s.block;
-      return `<li class="flow-step"><button class="cmap-tog flow-node${b.verdict !== "keep" ? " open-v" : ""}" data-act="cmap" data-key="${esc(key)}" data-b="${s.block}" aria-expanded="${open}"><span class="cmap-line"><span class="cmap-n" title="${esc(L("p.route.step", k + 1))}">${k + 1}</span><span class="cmap-id">B${s.block}</span><span class="cmap-place" title="${esc(b.path)}">${esc(splitPath(b.path)[1])} <span class="muted">${esc(b.where)}</span></span>${b.verdict !== "keep" ? verdictTag(b.verdict) : ""}</span><span class="flow-role">${prose(s.role)}</span></button>${open ? `<div class="cmap-ex">${excerptHtml(s.block)}</div>` : ""}</li>`;
-    };
-    const via = (s) => `<li class="flow-via"><span class="flow-arrow" aria-hidden="true"></span><span><span class="lbl">${esc(L("route.via"))}</span>${prose(s.via)}</span></li>`;
-    return panelWrap(esc(`${L("p.route")} · ${P("p.count.steps", r.steps.length)}`), prose(r.title), `<div class="psec">
-      ${r.requirements.length ? `<p class="small"><span class="lbl">${esc(L("p.route.serves"))}</span>${chips("r", r.requirements)}</p>` : ""}
-      <ol class="cmap flow">${r.steps.map((s, k) => (k && s.via ? via(s) : "") + node(s, k)).join("")}</ol>
-      <p class="muted small">${esc(L("p.route.note"))}</p></div>`);
-  }
+  if (sel.startsWith("route:")) return flowPanel(sel);
   if (sel.startsWith("step:")) {
     const i = +sel.slice(5), s = D.steps[i], ids = [...new Set(s.findings.flatMap((f) => itemByKey.get("f" + f)?.blocks ?? []))];
     return panelWrap(esc(L("p.rel.step", i + 1)), prose(s.text), `
@@ -1637,7 +1821,7 @@ function aboutBlock(b) {
   D.routes.forEach((r, i) => r.steps.forEach((s, k) => {
     if (s.block !== b.id) return;
     const prev = r.steps[k - 1], next = r.steps[k + 1];
-    add("p.route", `<button class="linkbtn" data-act="goroute" data-route="${i}">${prose(r.title)}</button> <span class="muted small">${esc(L("p.route.of", k + 1, r.steps.length))}</span><div class="small">${prose(s.role)}</div><div class="route-nav">${prev ? `${esc(L("p.route.prev"))} ${chip("b", prev.block)}` : ""}${next ? ` ${esc(L("p.route.next"))} ${chip("b", next.block)}` : ""}</div>`);
+    add("p.route", `<button class="linkbtn" data-act="goroute" data-route="${i}">${prose(r.title)}</button> <span class="muted small">${esc(L("p.route.of", k + 1, r.steps.length))}</span><div class="small">${prose(s.role)}</div><div class="route-nav">${prev ? `${esc(L("p.route.prev"))} ${prev.block !== null ? chip("b", prev.block) : `<span class="mono small">${esc(stepPlace(prev))}</span>`}` : ""}${next ? ` ${esc(L("p.route.next"))} ${next.block !== null ? chip("b", next.block) : `<span class="mono small">${esc(stepPlace(next))}</span>`}` : ""}</div>`);
   }));
   if (SETS.carried.ids.has(b.id)) add("p.block.carried", `<span class="tag dashed">${esc(L("p.block.carried-tag"))}</span> <span class="small sub">${esc(L("p.block.carried-note"))}</span>`);
   const items = blockItems(b);
@@ -1721,7 +1905,7 @@ function renderDetailBody() {
     const side = (s) => s ? `<div><span class="lbl">${esc(L("edit"))}</span>${s.edit.map(prose).join("; ") || esc(L("nothing"))}</div><div><span class="lbl">${esc(L("read"))}</span>${s.read.map(prose).join("; ") || esc(L("nothing"))}</div>` : `<span class="muted">${esc(L("as-now"))}</span>`;
     html = `<p class="muted intro">${esc(L("scenarios-note"))}</p><div class="cards">${D.scenarios.map((s) => `<div class="card selectable" data-sel="scen:${esc(s.id)}" data-act="sel" tabindex="0" id="scen-${esc(s.id)}"><div class="card-head"><span class="card-id">${esc(L("p.rel.scenario", s.id))}</span>${s.requirements.length ? `<span class="card-type">${esc(L("p.scenario.for", s.requirements.map((r) => "R" + r).join(", ")))}</span>` : ""}</div>${pcWrap(`scenario.${s.id}/change`, `<p class="card-title pf">${prose(s.change)}</p>`)}<div class="twocol"><div class="box"><h3>${esc(L("as-written"))}</h3>${side(s.now)}</div><div class="box"><h3>${esc(L("target"))}</h3>${side(s.target)}</div></div>${s.findings.length ? `<div class="card-foot"><span class="lbl">${esc(L("findings"))}</span>${chips("f", s.findings)}</div>` : ""}</div>`).join("")}</div>`;
   } else if (sub === "checks") {
-    html = `<p class="muted intro">${esc(L("checks-note"))}</p><div class="cards">${D.checks.map((c, i) => `<div class="card selectable" data-sel="check:${i}" data-act="sel" tabindex="0"><div class="check-item"><span class="n">${i + 1}</span><div>${c.from ? `<p><span class="lbl">${esc(L("from"))}</span>${prose(c.from)}</p>` : ""}<ol>${c.do.map((x) => `<li>${prose(x)}</li>`).join("")}</ol><p><span class="lbl">${esc(L("expect"))}</span>${prose(c.expect)}</p>${c.requirements.length ? `<div class="card-foot"><span class="lbl">${esc(L("p.check.checks"))}</span>${chips("r", c.requirements)}</div>` : ""}</div></div></div>`).join("")}</div>`;
+    html = `<p class="muted intro">${esc(L("checks-note"))}</p><div class="cards">${D.checks.map((c, i) => `<div class="card selectable" data-sel="check:${i}" data-act="sel" tabindex="0"><div class="check-item"><span class="n">${i + 1}</span><div>${c.from ? `<p><span class="lbl">${esc(L("from"))}</span>${prose(c.from)}</p>` : ""}<ol>${c.do.map((x) => `<li>${prose(x)}</li>`).join("")}</ol><p><span class="lbl">${esc(L("expect"))}</span>${prose(c.expect)}</p><div data-check-status="${i}">${checkStatus(c, i)}</div>${c.requirements.length ? `<div class="card-foot"><span class="lbl">${esc(L("p.check.checks"))}</span>${chips("r", c.requirements)}</div>` : ""}</div></div></div>`).join("")}</div>`;
   } else if (sub === "challenges") {
     html = `<p class="muted intro">${esc(L("challenges-note"))}</p><table class="tbl"><thead><tr><th>#</th><th>${esc(L("raised-by"))}</th><th>${esc(L("point"))}</th><th>${esc(L("outcome"))}</th></tr></thead><tbody>${D.challenges.map((c, i) => `<tr class="selectable" data-sel="chal:${i}" data-act="sel" tabindex="0"><td class="id">${i + 1}</td><td class="nowrap sub">${esc(L("challenger." + c.from))}</td><td><div class="clamp2">${prose(c.point)}</div></td><td class="nowrap"><span class="tag ${c.outcome === "owner" ? "open" : "neutral"}">${esc(L("outcome." + c.outcome))}</span></td></tr>`).join("")}</tbody></table>`;
   } else if (sub === "screens") {
@@ -1825,7 +2009,7 @@ function detailsPanel(sel) {
   if (kind === "check") {
     const c = D.checks[i]; if (!c) return "";
     return panelWrap(esc(L("p.rel.check", i + 1)), prose(c.expect), `<div class="psec"><h3>${esc(L("p.check.requirements"))}</h3>${c.requirements.map((id) => { const r = reqById.get(id); return `<div class="mini"><div class="mh">${chip("r", id)}</div><div class="mx">${prose(r.text)}</div><div class="mini-status">${reqStatus(r)}</div></div>`; }).join("") || `<p class="muted">${esc(L("p.none-named"))}</p>`}</div>
-      <div class="psec"><p class="muted small">${esc(L("checks-note"))}</p></div>`);
+      ${checkPanel(i)}<div class="psec"><p class="muted small">${esc(L("checks-note"))}</p></div>`);
   }
   if (kind === "chal") {
     const c = D.challenges[i]; if (!c) return "";
@@ -1938,7 +2122,7 @@ document.addEventListener("click", (e) => {
       case "unreadable-show": return openUnreadable();
       case "unreadable-copy": return copyText($("#unreadable-text"), $("#unreadable-status"));
       case "unreadable-replace": return saveOverUnreadable();
-      case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : goCard(go); }
+      case "export-go": { const go = act.dataset.target; $("#export-dialog").close(); return go.startsWith("line:") ? goLine(go.slice(5)) : go.startsWith("anchor:") ? goAnchor(go.slice(7)) : go.startsWith("check:") ? goDetails("checks", go) : goCard(go); }
       case "keys": return $("#keys-dialog").showModal();
       case "start": return startReview();
       case "sel": {
@@ -1975,6 +2159,16 @@ document.addEventListener("click", (e) => {
       case "gounit": return goDetails("structure", "unit:" + act.dataset.unit);
       case "gomech": return goDetails("mechanisms", "mech:" + act.dataset.mech);
       case "gocheck": return goDetails("checks", "check:" + act.dataset.check);
+      case "flow-step": case "flow-link": {
+        if (S.tab !== "summary") showTab("summary");
+        const sel = `route:${act.dataset.route}:${a === "flow-step" ? `s:${act.dataset.k}` : `l:${act.dataset.j}`}`;
+        select("summary", sel);
+        if (!act.closest(".flow-card")) $(`#flow-${act.dataset.route}`)?.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      case "flow-view": FLOW.view[+act.dataset.route] = act.dataset.view; renderRoutes(); return $(`#flow-${act.dataset.route} [data-act="flow-view"][data-view="${act.dataset.view}"]`)?.focus();
+      case "flow-close": { const i = +act.dataset.route; FLOW.route = null; select("summary", null); renderRoutes(); return $(`#sum-routes [data-sel="route:${i}"]`)?.focus(); }
+      case "check-result": { const k = +act.dataset.check, now = state.checks?.["c" + (k + 1)]?.result; recordCheck(k, { result: now === act.dataset.result ? undefined : act.dataset.result }); return renderPanel(S.tab, { keep: true }); }
       case "goscen": return goDetails("scenarios", "scen:" + act.dataset.scen);
       case "gostep": showTab("summary"); return select("summary", "step:" + act.dataset.step, { scroll: true });
       case "goanchor": return goAnchor(act.dataset.anchor);
@@ -2043,6 +2237,7 @@ document.addEventListener("input", (e) => {
   if (a === "reason") { S.reasonText[t.dataset.key] = t.value; for (const el of $$(`[data-defer-hint="${t.dataset.key}"]`)) el.textContent = ""; }
   if (a === "q") { S.code.q = t.value; clearTimeout(qTimer); qTimer = setTimeout(rerenderCode, 140); }
   if (a === "find-q") { S.find.q = t.value; clearTimeout(qTimer); qTimer = setTimeout(runFind, 160); }
+  if (a === "check-text") recordCheck(+t.dataset.check, { [t.dataset.field]: t.value });
 });
 // leaving a text answer redraws the item once, so the code around it reflects the new state
 document.addEventListener("focusout", (e) => {
@@ -2386,7 +2581,15 @@ window.addEventListener("scroll", () => {
   spyQueued = true;
   requestAnimationFrame(() => { spyQueued = false; spy(); releaseFar(); syncOverlay(); });
 }, { passive: true });
-window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } });
+window.addEventListener("resize", () => { if (S.rendered.code) { measureCpl(); syncTbar(); } if (S.tab === "summary" && FLOW.route !== null && flowView(FLOW.route) === "flow") drawFlow(FLOW.route); });
+// the arrow keys walk a flow's steps in their order, from the step that has the focus
+document.addEventListener("keydown", (e) => {
+  const t = e.target, d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+  if (!d || !t.classList?.contains("flow-n") || e.altKey || e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  const i = +t.dataset.route, k = Math.max(0, Math.min(D.routes[i].steps.length - 1, +t.dataset.k + d));
+  select("summary", `route:${i}:s:${k}`); $(`#flow-${i} .flow-n[data-k="${k}"]`)?.focus();
+});
 window.addEventListener("hashchange", () => route(location.hash));
 
 // ---------------------------------------------------------------- the picture viewer: every picture given as a file, fitted or at its own size

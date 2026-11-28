@@ -301,10 +301,10 @@ is the owner's input, not a checked result. Decisions are never carried between 
 ## The page
 
 `report.mjs render` writes the page from the record and the saved diff alone, never a new record field. The owner
-answers each item on it and exports the answers as schema 8: proposals for the next step, not edits to the source.
+answers each item on it and exports the answers as schema 9: proposals for the next step, not edits to the source.
 
 The export is one payload behind the page's preview, its text and its JSON: the record's and the diff's
-digests, the key, the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
+digests, the key, `revision` (the passport's head, the revision the answers belong to, or `null`), the progress, and for each item its key, kind and status (`open`, `decided`, `answered`,
 `deferred`, `not-applicable`) with the answer in effect — `variant` (id and text), or `variants` where they combine, `option` (`fix`, `leave`,
 `take`, `skip`) or the owner's `text` — a deferral's `reason`, an answer not in effect as `draft`, marked evidence
 `zones`, and `waiting_for_parent` while an ancestor whose answer decides whether the item applies is still open.
@@ -312,7 +312,9 @@ digests, the key, the progress, and for each item its key, kind and status (`ope
 `line`), and `paragraphComments` to an item or a part of the report and its field (`item`, `field`). A comment made on
 a selection also keeps what was selected: on several lines the last as `end`, the characters as `from` in the first
 line, or in the field's text as the page shows it, and `to` in the last, and the words as `quote`. A comment never
-answers an item.
+answers an item. `checks` lists the checks the owner ran on the page, by number: `result` (`pass`, `fail`,
+`could-not-run` or `observed`), `conditions` and `note` as typed. A review of the next revision copies each into its
+check's `observations` with the export's `revision`; it stays the owner's observation there, never a test result.
 
 The export is the owner's word for the next step. It goes, with the record, to whoever makes the change, such as the
 owner's own session or orchestrate's fix round; the review applies none of it. A review of the next revision reads it as

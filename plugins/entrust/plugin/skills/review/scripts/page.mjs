@@ -131,11 +131,18 @@ export function page(review, files, model, { syntax, directory } = {}) {
   // A mechanism's weight as the printout words it, by kind, with the blocks it shares.
   const t = labelsOf(review);
   const weightOf = (weight) => weight && { rows: weightOverview(weight, t, language).map((row) => ({ kind: t(`weight.category.${row.kind}`), text: row.text })), shared: weight.shared };
+  // A test that confirms a step, a link or a check, as the page shows it: each run it cites, with who ran it and where,
+  // and each assertion at its place with its quote.
+  const confirm = (list) => list?.length ? {
+    runs: list.map((s) => /^\/coverageStructured\/(\d+)$/.exec(String(s.ref ?? ""))).filter(Boolean).map((m) => review.coverageStructured[+m[1]])
+      .map((c) => ({ text: c.text, revision: c.revision ?? null, by: c.by ?? null, where: c.where ?? null })),
+    asserts: list.filter((s) => s.ref === undefined && s.at).map((s) => ({ at: s.at, quote: s.quote ?? "" })) } : null;
+  const head = review.passport?.head ?? null;
   const data = {
     title: review.title, range: review.range, language, labels,
     change: review.change, verdict: review.verdict, now: review.now, target: review.target, recommendation: review.recommendation,
     steps: (review.steps ?? []).map((s) => ({ text: s.text, findings: (s.findings ?? []).map(String) })),
-    coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, sources: sources(c.sources) })),
+    coverage: review.coverage, coverageStructured: (review.coverageStructured ?? []).map((c) => ({ kind: c.kind, text: c.text, revision: c.revision, by: c.by ?? null, where: c.where ?? null, sources: sources(c.sources) })),
     tradeoffs: (review.tradeoffs ?? []).map((x) => ({ text: x.text, consequence: x.consequence, sources: sources(x.sources) })),
     passport: review.passport ?? null,
     screens: model.screens.map((s) => ({ name: s.name, match: Boolean(s.match), missing: s.missing, revision: s.revision ?? null, provenance: s.provenance,
@@ -160,8 +167,14 @@ export function page(review, files, model, { syntax, directory } = {}) {
       // the parent's variants this question applies under, by their words
       parent: q.parent ? { question: String(q.parent.question), variants: q.parent.variants,
         texts: q.parent.variants.map((id) => model.questions[q.parent.question - 1].variants.find((v) => v.id === id).text) } : null })),
-    checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String) })),
-    routes: (review.routes ?? []).map((r) => ({ title: r.title, requirements: (r.requirements ?? []).map(String), steps: r.steps.map((s) => ({ block: s.block, role: s.role, via: s.via ?? "" })) })),
+    // an observation at the reviewed revision is current; at another, or with no reviewed revision named, it is earlier
+    checks: (review.checks ?? []).map((c) => ({ from: c.from, do: c.do, expect: c.expect, requirements: (c.requirements ?? []).map(String), route: c.route ?? null,
+      confirmedBy: confirm(c.confirmedBy), observations: (c.observations ?? []).map((o) => ({ result: o.result, revision: o.revision, conditions: o.conditions ?? null, note: o.note ?? null,
+        by: o.by ?? null, current: head !== null && o.revision === head })) })),
+    routes: (review.routes ?? []).map((r) => ({ title: r.title, kind: r.kind ?? "path", requirements: (r.requirements ?? []).map(String),
+      steps: r.steps.map((s) => ({ block: s.block ?? null, at: s.at ?? null, quote: s.quote ?? null, role: s.role, via: s.via ?? "", value: s.value ?? null,
+        stops: s.stops ? { finding: s.stops.finding === undefined ? null : String(s.stops.finding), question: s.stops.question ?? null } : null, confirmedBy: confirm(s.confirmedBy) })),
+      links: r.links ? r.links.map((l) => ({ from: l.from, to: l.to, via: l.via, question: l.question ?? null, confirmedBy: confirm(l.confirmedBy) })) : null })),
     challenges: (review.challenges ?? []).map((c) => ({ ...c, place: placeOf(c.at) })),
     units: model.units.map((u) => ({ name: u.name, jobs: u.jobs ?? [], uses: u.uses, verdict: u.verdict, reason: u.reason, existing: Boolean(u.existing),
       findings: u.findings.map(String), questions: u.questions.map(String), blocks: u.blocks.map((b) => b.id), lines: u.lines })),
