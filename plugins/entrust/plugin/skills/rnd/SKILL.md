@@ -144,7 +144,7 @@ analysis.md's table, and adds no step, route, script or file. A small change wri
 table or plan file: what steps 1 to 3 find goes into step 4's plan message, saved
 with the user's messages as a file in the run directory to stand for the sheet in the critic's brief. It leaves
 out steps 5 and 6; when the user asks for runs, it writes the plan file, has the architecture critic read the check before its first session, takes step 6 before step 7, and runs the requested post-edit sessions at step 9. Its check
-is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
+is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
 
 1. **Analyse the change.** Start a sheet as [analysis.md](references/analysis.md#the-sheet) sets it out, or open
    the one recorded for this skill: the user's messages saved, their words as requirement lines, and a line for

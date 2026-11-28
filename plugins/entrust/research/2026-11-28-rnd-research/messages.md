@@ -40,3 +40,7 @@ The owner also delegated to the review decision (b), that `unknown` stays a mark
 ## The selection check's size
 
 On 2026-11-28 the owner said in the review session that a fixed twenty-session selection check is excessive and unexplained, that its size should follow healthy pragmatism, and that the skill being selected automatically is not critical, since a result on one model does not hold on others.
+
+## The small route's close-out
+
+On 2026-11-28 the owner approved, on the coordinator's recommendation after the architecture critic, removing the close-out from the small route because it held nothing the result's first bullet lacks.

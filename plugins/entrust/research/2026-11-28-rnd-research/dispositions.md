@@ -115,7 +115,7 @@ moved | SKILL.md:138 | SKILL.md:136 | [the result](#the-result). When [a close-o
 moved | SKILL.md:138 | references/critics.md:180 | The return is not a correction by itself: the user's reply decides whether it is one.
 moved | SKILL.md:145 | SKILL.md:143 | what steps 1 to 3 find goes into step 4's plan message, saved
 moved | SKILL.md:148 | SKILL.md:146 | is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it
-moved | SKILL.md:151 | SKILL.md:146 | is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, the close-out, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
+moved | SKILL.md:151 | SKILL.md:146 | is step 7's commands and step 8; its step 9 is the quality critic's read as critics.md gives it, the reader of the user's words, then the result. When a step shows that a fact would be added, changed or go, or step 8 lists a line, the change is no longer small: take every step.
 moved | SKILL.md:159 | SKILL.md:152 | in the failing check's output; when neither has it,
 moved | SKILL.md:172 | SKILL.md:165 | Choose the smallest change. Take the first that meets the requirement: remove; move, or link at
 moved | SKILL.md:173 | SKILL.md:166 | the step that needs it; reword; add. Remove is for an instruction the requirement no longer wants or a
@@ -162,7 +162,6 @@ moved | SKILL.md:111 | SKILL.md:110 | [reflection](references/reflection.md) the
 moved | SKILL.md:93 | references/plan.md:181 | when the plan is a file: every heading of [the form](#the-form), the parts of
 moved | SKILL.md:201 | SKILL.md:191 | 9. **Finish**, in Create's order for its steps 7 to 10.
 moved | SKILL.md:199 | SKILL.md:201 | listed a line, start it as [its section](references/critics.md#the-verifier) briefs it; a requirement it
-moved | SKILL.md:199 | SKILL.md:190 | Your own judgement that a fact is not needed retires nothing.
 moved | references/checks.md:21 | references/checks.md:22 | the description selects the skill: a changed name or description, or a new skill when the user asks for it | [a selection check](#a-selection-check), when the skill must be selected unnamed
 retired | references/checks.md:21 | messages.md:42 | a fixed twenty-session selection check is excessive and unexplained
 moved | references/checks.md:45 | references/checks.md:48 | a repeated run, more requests of a kind, several sessions for each side, a second reader, or a role on the top
@@ -190,3 +189,5 @@ moved | references/plan.md:29 | references/plan.md:180 | how the result will be 
 
 moved | references/checks.md:48 | references/checks.md:51 | - A check of more than five sessions is shown in the plan on a line of its own
 moved | references/checks.md:55 | references/checks.md:58 | cheapest model the sheet says will load the skill, and one case once more on each other model on the sheet; a selection check takes the host and the model the
+retired | SKILL.md:149 | messages.md:46 | removing the close-out from the small route because it held nothing the result's first bullet lacks
+moved | SKILL.md:199 | SKILL.md:190 | Your own judgement that a fact is not needed retires nothing.

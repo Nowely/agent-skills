@@ -8,7 +8,7 @@ context, open the file before anything else: it says what was agreed and how far
 
 This page has [the form](#the-form), [rounds and checkpoints](#rounds-and-checkpoints), [the log](#the-log),
 [the figures](#the-figures), [a close-out](#a-close-out), [a correction](#a-correction),
-[what the plan shows](#what-the-plan-shows) and [a parent's scope](#a-parents-scope). Every run
+[what the plan shows](#what-the-plan-shows) and [a parent's scope](#a-parents-scope). Every run but a small change
 writes a close-out, with a plan file or without one.
 
 Under entrust's [orchestrate](../../orchestrate/SKILL.md), that skill's own plan, which it calls the card,
