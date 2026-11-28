@@ -26,6 +26,17 @@ step, result form and reader.
 - (d) the method stays in `rnd`, which may not link outside its installed files;
 - (e) the review protocol still stops to agree on a next step.
 
+**Accepted by the owner.** On 2026-11-28 the owner accepted, in the review session, seven changes of value that PR 120's
+first commit made and that the direction comment does not name ([messages.md](messages.md)):
+
+1. answers the floor reaches now count; a floor pass the candidate misses is a regression (checks.md, transfer test);
+2. `not needed` also requires no regression (checks.md, transfer test);
+3. a statement every run passes stays in the absolute assessment and leaves only the relative difference (test cases item 5);
+4. an unobserved selection is `unknown`, not a confirmed miss (selection check);
+5. with no user, a child carries out a passed scope when it holds the paths of the plan and of the user's saved word; otherwise it returns its plan (SKILL.md standing rules);
+6. readers of sources with no user follow the parent-approved scope (analysis.md);
+7. the description no longer excludes reviewing a skill, which is now Research.
+
 **Unverified.** The transcript of the Codex pilot that declined the practical check was not read, so the cause of
 its refusal is an inference. Selection of the Research route, against near-miss requests, is unmeasured.
 
