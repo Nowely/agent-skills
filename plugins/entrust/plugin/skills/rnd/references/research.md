@@ -2,17 +2,21 @@
 
 Use this general method for research across the marketplace. Exploratory work develops questions;
 confirmatory comparisons test a question fixed before observing results. An experiment-specific protocol
-may supply details; for example, see the review-skill protocol, `plugins/entrust/evals/review/protocol.md`.
+may supply details; for example, the review-skill protocol, `plugins/entrust/evals/review/protocol.md`, which exists only in this
+repository's checkout.
 Existing records remain historical records of their own methods, not results retroactively obtained under this one.
 
-For Research alone, follow this method using the permissions and budget that actually apply. Choose the
+On the Research route, follow this method using the permissions and budget that actually apply. Choose the
 work needed to answer the question, including sessions when authorized; record their scope and cost.
-A session does not by itself require the Create or Change plan file form, judges, reflection or orchestration;
+A session does not by itself require the Create or Change plan file form, judges (the reader of the user's words excepted), reflection or orchestration;
 use those only when the task or applicable instructions call for them. The plan shown before any session or
-agent, and the user's word on it, are never skipped: only the plan file form may be. For a research eval, apply
+agent, and the user's word on it (an approval that already covers the scope and spend stands for it), are never skipped: only the plan file form may be. For a research eval, apply
 the [eval action boundary](checks.md#the-sessions): stop before irreversible or external actions, or simulate
 them up to that boundary. Ordinary reading and authorized artifacts remain available; apply actual permissions
-to independently authorized practical checks.
+to independently authorized practical runs. Of [checks.md](checks.md), [the sessions](checks.md#the-sessions)
+(each its own copy; the plan's models for the sheet's) and [what a check may spend](checks.md#what-a-check-may-spend)
+hold on Research; a statement it marks takes the blind reader and the confirmer of
+[test cases](checks.md#test-cases) item 4.
 
 ## Frame the question
 
@@ -40,7 +44,7 @@ skill was absent. Hold other conditions common where feasible, record actual ord
 explain what cannot be observed. Randomization and neutral labels can reduce biases; they do not establish
 identical contexts, independence or full blinding by themselves.
 
-A practical observation can answer what happened in one case; an assessment can check one result against
+A practical run can answer what happened in one case; an assessment can check one result against
 requirements without a control. Choose a comparison when the question asks about a difference. Reuse a
 control only for a contrast supported by comparable tasks, context, conditions and assessment; otherwise
 report it as context. If a required control is unknown, the corresponding comparison is not established.
